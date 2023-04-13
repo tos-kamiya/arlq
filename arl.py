@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 import argparse
 import curses
 import math
@@ -33,7 +35,11 @@ CHAR_DRAGON = 'D'
 CHAR_TREASURE = 'G'
 
 
-def gen_maze(width, height):
+Point = Tuple[int, int]
+Edge = Tuple[Point, Point]
+
+
+def gen_maze(width: int, height: int) -> List[Edge]:
     # Returns a list of neighboring points given a point p
     def neighbor_points(p):
         x, y = p
