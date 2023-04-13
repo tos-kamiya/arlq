@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import argparse
 import curses
@@ -107,26 +107,29 @@ def gen_maze(width: int, height: int) -> List[Edge]:
 # visualize_maze(width, height, edges)
 
 
-class Treasure:
+class Entity:
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
 
-class Player:
+class Treasure(Entity):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+
+
+class Player(Entity):
     def __init__(self, x, y, level, food):
-        self.x = x
-        self.y = y
+        super().__init__(x, y)
         self.level = level
         self.food = food
         self.item = ""
         self.item_taken_from = ""
 
 
-class Monster:
+class Monster(Entity):
     def __init__(self, x, y, kind):
-        self.x = x
-        self.y = y
+        super().__init__(x, y)
         self.kind = kind
 
 
@@ -139,7 +142,7 @@ class MonsterKind:
 
 
 # Combine monster_data and item_data into a single dict
-MONSTER_KINDS = [
+MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind('a', 1, '', FOOD_AMOEBA),  # Amoeba
     MonsterKind('b', 3, ITEM_BISON_MEET, FOOD_BISON),  # Bison
     MonsterKind('c', 6, ITEM_SWORD, FOOD_CHIMERA),  # Chimera
@@ -147,13 +150,13 @@ MONSTER_KINDS = [
     MonsterKind('E', 20, ITEM_RANDOM_WARP, FOOD_ELEMENTAL),  # Elemental
 ]
 
-RARE_MONSTER_KINDS = [
+RARE_MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind('A', 1, ITEM_SPECIAL_EXP, FOOD_AMOEBA),  # Amoeba rare
     MonsterKind('B', 3, ITEM_SPECIAL_BISON_MEET, FOOD_SPECIAL_BISON),  # Bison rare
     MonsterKind('C', 6, ITEM_SWORD_AND_CLAIRVOYANCE, FOOD_CHIMERA),  # Chimera rare
 ]
 
-MONSTER_KIND_POPULATION = {
+MONSTER_KIND_POPULATION: Dict[str, int] = {
     'a': 20,
     'b': 5,
     'c': 5,
@@ -162,7 +165,7 @@ MONSTER_KIND_POPULATION = {
 }
 
 
-def find_random_place(objects, field, distance):
+def find_random_place(objects: List[Entity], field: List[List[str]], distance: int) -> Point:
     places = [(o.x, o.y) for o in objects]
     while True:
         x = random.randint(1, FIELD_WIDTH - 2)
@@ -171,7 +174,17 @@ def find_random_place(objects, field, distance):
             return x, y
 
 
-def spawn_monsters(objects, field):
+def spawn_monsters(objects: List[Entity], field: List[List[str]]) -> None:
+    """
+    Spawn monsters in the game by finding random places on the field.
+    
+    Args:
+    - objects: a list of objects in the game
+    - field: the game field
+    
+    This function modifies the objects list by adding newly spawned monsters.
+    """
+
     for kind in MONSTER_KINDS:
         for _ in range(MONSTER_KIND_POPULATION[kind.char]):
             x, y = find_random_place(objects, field, 2)
@@ -183,7 +196,7 @@ def spawn_monsters(objects, field):
     objects.append(m)
 
 
-def create_field():
+def create_field() -> List[List[str]]:
     # Create field filled with spaces
     field = [[' ' for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
 
@@ -215,9 +228,8 @@ def create_field():
     return field
 
 
-def draw_stage(stdscr, objects, field, torched, encountered_types, no_hide=False):
+def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[str]], torched: List[List[int]], encountered_types: Set[str], no_hide: Optional[bool] = False) -> None:
     hide_on = not no_hide
-
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
             if torched[y][x] == 0:
@@ -249,7 +261,7 @@ def draw_stage(stdscr, objects, field, torched, encountered_types, no_hide=False
                 stdscr.addstr(t.y, t.x, CHAR_TREASURE, curses.color_pair(4) | curses.A_BOLD)
 
 
-def draw_status_bar(stdscr, player, hours, message=None):
+def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: Optional[str] = None) -> None:
     player_level = player.level
     if player.item == ITEM_SWORD:
         player_level *= 3
@@ -279,7 +291,7 @@ def draw_status_bar(stdscr, player, hours, message=None):
         stdscr.addstr(FIELD_HEIGHT + 1, 0, message)
 
 
-def key_to_dir(key):
+def key_to_dir(key: int) -> Optional[Point]:
     dx, dy = 0, 0
     if key in [ord('w'), curses.KEY_UP]:
         dy = -1
@@ -294,7 +306,7 @@ def key_to_dir(key):
     return dx, dy
 
 
-def update_torched(torched, player, torch_radius):
+def update_torched(torched: List[List[int]], player: Player, torch_radius: int) -> None:
     for dy in range(-torch_radius, torch_radius + 1):
         y = player.y + dy
         if 0 <= y < FIELD_HEIGHT:
@@ -305,38 +317,39 @@ def update_torched(torched, player, torch_radius):
                     torched[y][x] = 1
 
 
-args_box = [None]
+args_box: List[argparse.Namespace] = []
 
 
 class TerminalSizeSmall(ValueError):
     pass
 
 
-def main(stdscr):
+def main(stdscr: curses.window) -> None:
     sh, sw = stdscr.getmaxyx()
     if sh < FIELD_HEIGHT + 2 or sw < FIELD_WIDTH:
         raise TerminalSizeSmall()
 
+    assert args_box
     args = args_box[0]
 
     # Set up the game
-    field = create_field()
-    torched = [[0 for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
+    field: List[List[str]] = create_field()
+    torched: List[List[int]] = [[0 for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
     x, y = find_random_place([], field, 2)
-    player = Player(x, y, 1, FOOD_INIT)
-    objects = [player]
-    treasure = Treasure(*find_random_place(objects, field, 2))
+    player: Player = Player(x, y, 1, FOOD_INIT)
+    objects: List[Entity] = [player]
+    treasure: Treasure = Treasure(*find_random_place(objects, field, 2))
     objects.append(treasure)
     spawn_monsters(objects, field)
-    encountered_types = set()
+    encountered_types: Set[str] = set()
 
-    torch_radius = 4
+    torch_radius: int = 4
     if args.large_torch:
         torch_radius = 5
     elif args.small_torch:
         torch_radius = 3
 
-    def consume_player_item(player):
+    def consume_player_item(player: Player) -> str:
         item = player.item
         message = ''
         if item in [ITEM_BISON_MEET, ITEM_SPECIAL_BISON_MEET]:
@@ -355,8 +368,8 @@ def main(stdscr):
 
     stdscr.keypad(True)
 
-    message = None
-    hours = -1
+    message: Optional[str] = None
+    hours: int = -1
     while True:
         hours += 1
 
@@ -388,11 +401,14 @@ def main(stdscr):
                 break
 
         # Find encountered object
-        enc_obj = None
-        for oi, o in enumerate(objects):
+        enc_obj: Optional[Entity] = None
+        enc_obj_i: int = -1
+        for enc_obj_i, o in enumerate(objects):
             if (not isinstance(o, Player)) and o.x == player.x and o.y == player.y:
                 enc_obj = o
                 break
+        if enc_obj is None:
+            continue  # while True
 
         if isinstance(enc_obj, Treasure):
             if CHAR_DRAGON.lower() in encountered_types:
@@ -431,7 +447,7 @@ def main(stdscr):
                     player.x, player.y = find_random_place(objects, field, 2)
                     m.x, m.y = player.x + 1, player.y
                 else:
-                    del objects[oi]
+                    del objects[enc_obj_i]
                     player.item = m.kind.item
                     player.item_taken_from = m.kind.char
 
@@ -471,7 +487,8 @@ if __name__ == "__main__":
         help='Debug option.'
     )
 
-    args_box[0] = args = parser.parse_args()
+    args = parser.parse_args()
+    args_box.append(args)
 
     curses.initscr()
     curses.noecho()
