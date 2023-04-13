@@ -34,44 +34,51 @@ CHAR_TREASURE = 'G'
 
 
 def gen_maze(width, height):
+    # Returns a list of neighboring points given a point p
     def neighbor_points(p):
         x, y = p
-        ns = []
-        if y > 0:
-            ns.append((x, y - 1))
-        if y < height - 1:
-            ns.append((x, y + 1))
-        if x > 0:
-            ns.append((x - 1, y))
-        if x < width - 1:
-            ns.append((x + 1, y))
-        return ns
+        return [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)]
 
-    unconnected_points = set((x, y) for y in range(height) for x in range(width))
+    # Returns True if the given point p is within the bounds of the maze
+    def is_within_bounds(p):
+        return 0 <= p[0] < width and 0 <= p[1] < height
+
+    # Initialize the maze generation process
+    unconnected_point_set = set((x, y) for y in range(height) for x in range(width))
     connecting_points = []
     done_points = []
     edges = []
 
-    cur_p = random.randrange(width), random.randrange(height)
-    unconnected_points.remove(cur_p)
+    # Choose a random starting point
+    cur_p = random.choice(list(unconnected_point_set))
+    unconnected_point_set.remove(cur_p)
     connecting_points.append(cur_p)
 
+    # Keep generating until all points have been connected
     while len(done_points) < width * height:
+        # Choose a random connecting point
         i = random.randrange(len(connecting_points))
         cur_p = connecting_points[i]
+
+        # Find neighboring points that haven't been connected yet
         nps = neighbor_points(cur_p)
-        unconnected_nps = [np for np in nps if np in unconnected_points]
+        unconnected_nps = [np for np in nps if is_within_bounds(np) and np in unconnected_point_set]
+
+        # If there are no unconnected neighboring points, remove this point from the connecting points list
         if not unconnected_nps:
             done_points.append(cur_p)
             del connecting_points[i]
-            continue  # while
-        else:
-            selected_np = random.choice(unconnected_nps)
-            connecting_points.append(selected_np)
-            unconnected_points.remove(selected_np)
+            continue
 
-            edges.append((cur_p, selected_np))
+        # Choose a random unconnected neighboring point and connect it
+        selected_np = random.choice(unconnected_nps)
+        unconnected_point_set.remove(selected_np)
+        connecting_points.append(selected_np)
 
+        # Add the edge between the current point and the selected neighboring point to the list of edges
+        edges.append((cur_p, selected_np))
+
+    # Return the list of edges that connect all points in the maze
     return edges
 
 
@@ -92,7 +99,6 @@ def gen_maze(width, height):
 # width, height = 10, 10
 # edges = gen_maze(width, height)
 # visualize_maze(width, height, edges)
-
 
 
 class Treasure:
