@@ -237,7 +237,7 @@ def draw_stage(stdscr, objects, field, torched, encountered_types, no_hide=False
                 stdscr.addstr(t.y, t.x, CHAR_TREASURE, curses.color_pair(4) | curses.A_BOLD)
 
 
-def draw_status_bar(stdscr, player, day, message=None):
+def draw_status_bar(stdscr, player, hours, message=None):
     player_level = player.level
     if player.item == ITEM_SWORD:
         player_level *= 3
@@ -249,7 +249,7 @@ def draw_status_bar(stdscr, player, day, message=None):
         beatable = mk
     assert beatable.level <= player_level
 
-    day_str = "DAY: %d" % day
+    hours_str = "HRS: %d" % hours
     item = player.item
     if item == ITEM_SWORD:
         level_str = "LVL: %d x3 > %s" % (player.level, beatable.char)
@@ -261,7 +261,7 @@ def draw_status_bar(stdscr, player, day, message=None):
     else:
         item_str = "ITEM: -"
     qm_str = '/ Press [Q] to exit'
-    stdscr.addstr(FIELD_HEIGHT, 0, "  ".join([day_str, level_str, food_str, item_str, qm_str]))
+    stdscr.addstr(FIELD_HEIGHT, 0, "  ".join([hours_str, level_str, food_str, item_str, qm_str]))
 
     if message:
         stdscr.addstr(FIELD_HEIGHT + 1, 0, message)
@@ -344,9 +344,9 @@ def main(stdscr):
     stdscr.keypad(True)
 
     message = None
-    day = 0
+    hours = -1
     while True:
-        day += 1
+        hours += 1
 
         # Starvation check
         player.food -= 1
@@ -359,7 +359,7 @@ def main(stdscr):
         temp_message = consume_player_item(player)
         stdscr.clear()
         draw_stage(stdscr, objects, field, torched, encountered_types, no_hide=args.debug_no_hide)
-        draw_status_bar(stdscr, player, day, message=message or temp_message)
+        draw_status_bar(stdscr, player, hours, message=message or temp_message)
         stdscr.refresh()
 
         # Move player
@@ -428,7 +428,7 @@ def main(stdscr):
     temp_message = consume_player_item(player)
     stdscr.clear()
     draw_stage(stdscr, objects, field, torched, encountered_types, no_hide=args.debug_no_hide)
-    draw_status_bar(stdscr, player, day, message=message or temp_message)
+    draw_status_bar(stdscr, player, hours, message=message or temp_message)
     stdscr.refresh()
 
     while True:
