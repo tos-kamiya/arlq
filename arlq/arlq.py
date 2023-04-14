@@ -171,11 +171,11 @@ RARE_MONSTER_KINDS: List[MonsterKind] = [
 
 MONSTER_KIND_POPULATION: Dict[str, int] = {
     'a': 20,
-    'b': 5,
-    'c': 5,
+    'b': 4,
+    'c': 4,
     'd': 4,
     'D': 1,
-    'E': 3,
+    'E': 2,
     'f': 1,
 }
 
