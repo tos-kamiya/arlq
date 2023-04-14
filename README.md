@@ -36,15 +36,16 @@ For those curious, there's a more detailed monster description next! Feel free t
 
 |Monster Display, Name | Description |
 |---|---|
-|a Amoeba|Weak enough for the player to defeat from the start. Good for leveling up|
+|a Amoeba|Weak enough for the player to defeat from the start. Good for leveling up.|
 |b Bison|Second weakest. Gives lots of food. Hunt a Bison when you're hungry!|
-|c Chimera|Fairly strong. Carries a sword that you can obtain when defeated. With the sword, your attack power triples in the next battle|
-|d Komodo Dragon|Strong. If defeated, provides a lot of food, but being poisoned, your attack power will be reduced to one-third in the next battle|
-|E Elemental|Categorized as a monster, but not a foe. Teleports the player to a random location in the dungeon. Offers extra services for high-level players|
+|c Chimera|Fairly strong. Carries a sword that you can obtain when defeated. With the sword, your attack power triples in the next battle.|
+|d Komodo Dragon|Strong. If defeated, provides a lot of food, but being poisoned, your attack power will be reduced to one-third in the next battle.|
+|f Fairy|Not a foe. Follows you when you come in contact. Gives you a small blessing.|
 |A Rare Amoeba|A rare Amoeba that boosts your level significantly!|
 |B Rare Bison|So delicious that you'll probably eat much more than a regular Bison|
-|C Rare Chimera|In addition to the sword, it possesses clairvoyance. Clears a wide area of fog from the fog system|
-|D Dragon|Strong. Defeating the Dragon reveals the treasure chest ("T") location. Even if you don't defeat it, you'll be able to recognize the chest|
+|C Rare Chimera|In addition to the sword, it possesses clairvoyance.|
+|D Dragon|Strong. Defeating the Dragon reveals the treasure chest ("T") location. Even if you don't defeat it, you'll be able to recognize the chest.|
+|E Elemental|Not a foe. Teleports the player to a random location in the dungeon. Offers extra services for high-level players.|
 
 ## License
 
