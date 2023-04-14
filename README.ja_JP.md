@@ -1,4 +1,4 @@
-# ARQL, another rogue-like quest game
+# ARLQ, another rogue-like quest game
 
 ARLQ (Another Rogue-Like Quest)は人間とChatGPTとでコードとマニュアルを開発する実験として作成したローグライクゲームです。
 
