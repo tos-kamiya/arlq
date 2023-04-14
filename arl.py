@@ -20,19 +20,21 @@ FOOD_BISON = 40
 FOOD_SPECIAL_BISON = 80
 FOOD_AMOEBA = 8
 FOOD_CHIMERA = 8
+FOOD_COMODO_DRAGON = 30
 FOOD_DRAGON = 10
 FOOD_ELEMENTAL = 0
 
 ITEM_BISON_MEAT = 'Bison Meat'
 ITEM_SWORD = 'Sword'
-ITEM_TREASURE_POINTER = 'Treasure Ptr.'
-ITEM_RANDOM_WARP = 'Random Warp'
+ITEM_POISONED = 'Poisoned'
+ITEM_RANDOM_TRANSPORT = 'Random Trans.'
 ITEM_SPECIAL_EXP = 'Special Exp.'
 ITEM_SPECIAL_BISON_MEAT = 'Bison Meat++'
 ITEM_SWORD_AND_CLAIRVOYANCE = 'Sword & Eye'
+ITEM_TREASURE_POINTER = 'Treasure Ptr.'
 
 CHAR_DRAGON = 'D'
-CHAR_TREASURE = 'G'
+CHAR_TREASURE = 'T'
 
 
 Point = Tuple[int, int]
@@ -146,8 +148,9 @@ MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind('a', 1, '', FOOD_AMOEBA),  # Amoeba
     MonsterKind('b', 3, ITEM_BISON_MEAT, FOOD_BISON),  # Bison
     MonsterKind('c', 6, ITEM_SWORD, FOOD_CHIMERA),  # Chimera
+    MonsterKind('d', 15, ITEM_POISONED, FOOD_COMODO_DRAGON),  # Comodo Dragon
     MonsterKind(CHAR_DRAGON, 15, ITEM_TREASURE_POINTER, FOOD_DRAGON),  # Dragon
-    MonsterKind('E', 20, ITEM_RANDOM_WARP, FOOD_ELEMENTAL),  # Elemental
+    MonsterKind('E', 20, ITEM_RANDOM_TRANSPORT, FOOD_ELEMENTAL),  # Elemental
 ]
 
 RARE_MONSTER_KINDS: List[MonsterKind] = [
@@ -160,7 +163,8 @@ MONSTER_KIND_POPULATION: Dict[str, int] = {
     'a': 20,
     'b': 5,
     'c': 5,
-    CHAR_DRAGON: 1,
+    'd': 4,
+    'D': 1,
     'E': 3,
 }
 
@@ -247,7 +251,7 @@ def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[st
                 continue
 
             ch = m.kind.char
-            if hide_on and m.kind.char.lower() not in encountered_types:
+            if hide_on and m.kind.char not in encountered_types:
                 stdscr.addstr(m.y, m.x, '?', curses.color_pair(3))
             else:
                 attr = curses.A_BOLD if 'A' <= ch <= 'Z' else 0
@@ -257,35 +261,46 @@ def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[st
             stdscr.addstr(player.y, player.x, '@', curses.color_pair(2) | curses.A_BOLD)
         elif isinstance(o, Treasure):
             t = o
-            if CHAR_TREASURE.lower() in encountered_types:
+            if CHAR_TREASURE in encountered_types:
                 stdscr.addstr(t.y, t.x, CHAR_TREASURE, curses.color_pair(4) | curses.A_BOLD)
 
 
-def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: Optional[str] = None) -> None:
-    player_level = player.level
+def player_attack_by_level(player: Player) -> int:
     if player.item == ITEM_SWORD:
-        player_level *= 3
+        return player.level * 3
+    elif player.item == ITEM_POISONED:
+        return (player.level + 2) // 3
+    else:
+        return player.level
 
-    beatable = MONSTER_KINDS[0]
+
+def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: Optional[str] = None) -> None:
+    if player.item == ITEM_SWORD:
+        level_str = "LVL: %d x3" % player.level
+        item_str = "ITEM: %s(%s)" % (player.item, player.item_taken_from)
+    elif player.item == ITEM_POISONED:
+        level_str = "LVL: %d /3" % player.level
+        item_str = "ITEM: %s(%s)" % (player.item, player.item_taken_from)
+    else:
+        level_str = "LVL: %d" % player.level
+        item_str = "ITEM: -"
+
+    beatable = None
     for mk in MONSTER_KINDS:
-        if mk.level > player_level:
+        if mk.level > player_attack_by_level(player):
             break
         beatable = mk
-    assert beatable.level <= player_level
+    assert beatable is None or beatable.level <= player_attack_by_level(player)
 
-    hours_str = "HRS: %d" % hours
-    item = player.item
-    if item == ITEM_SWORD:
-        level_str = "LVL: %d x3 > %s" % (player.level, beatable.char)
-    else:
-        level_str = "LVL: %d > %s" % (player.level, beatable.char)
-    food_str = "FOOD: %d" % player.food
-    if player.item:
-        item_str = "ITEM: %s(%s)" % (item, player.item_taken_from)
-    else:
-        item_str = "ITEM: -"
-    qm_str = '/ Press [Q] to exit'
-    stdscr.addstr(FIELD_HEIGHT, 0, "  ".join([hours_str, level_str, food_str, item_str, qm_str]))
+    buf = []
+    buf.append("HRS: %d" % hours)
+    buf.append(level_str)
+    if beatable is not None:
+        buf.append("> %s" % beatable.char)
+    buf.append("FOOD: %d" % player.food)
+    buf.append(item_str)
+    buf.append('/ Press [Q] to exit')
+    stdscr.addstr(FIELD_HEIGHT, 0, "  ".join(buf))
 
     if message:
         stdscr.addstr(FIELD_HEIGHT + 1, 0, message)
@@ -411,25 +426,23 @@ def main(stdscr: curses.window) -> None:
             continue  # while True
 
         if isinstance(enc_obj, Treasure):
-            if CHAR_DRAGON.lower() in encountered_types:
-                encountered_types.add(CHAR_TREASURE.lower())
+            if CHAR_DRAGON in encountered_types:
+                encountered_types.add(CHAR_TREASURE)
                 message = ">> Won the Treasure! <<"
                 break  # end game
         elif isinstance(enc_obj, Monster):
             m = enc_obj
-            encountered_types.add(m.kind.char.lower())
-            player_level = player.level
-            if player.item == ITEM_SWORD:
-                player_level *= 3
+            encountered_types.add(m.kind.char)
+            player_attak = player_attack_by_level(player)
 
-            if player_level < m.kind.level:
+            if player_attak < m.kind.level:
                 # respawn
                 player.x, player.y = find_random_place(objects, field, 2)
                 player.item = ''
                 player.item_taken_from = ''
                 player.food = min(player.food, FOOD_INIT)
             else:
-                if m.kind.item == ITEM_RANDOM_WARP:
+                if m.kind.item == ITEM_RANDOM_TRANSPORT:
                     pass
                 elif m.kind.item == ITEM_SPECIAL_EXP:
                     player.level += 7
@@ -440,11 +453,11 @@ def main(stdscr: curses.window) -> None:
                     update_torched(torched, player, torch_radius * 4)
 
                 if m.kind.item == ITEM_TREASURE_POINTER:
-                    encountered_types.add(CHAR_TREASURE.lower())
+                    encountered_types.add(CHAR_TREASURE)
 
                 player.food = min(FOOD_MAX, player.food + m.kind.feed)
 
-                if m.kind.item == ITEM_RANDOM_WARP:
+                if m.kind.item == ITEM_RANDOM_TRANSPORT:
                     player.x, player.y = find_random_place(objects, field, 2)
                     m.x, m.y = player.x + 1, player.y
                 else:
