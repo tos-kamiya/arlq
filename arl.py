@@ -33,6 +33,8 @@ ITEM_SPECIAL_BISON_MEAT = 'Bison Meat++'
 ITEM_SWORD_AND_CLAIRVOYANCE = 'Sword & Eye'
 ITEM_TREASURE_POINTER = 'Treasure Ptr.'
 
+COMPANION_FAIRY = 'Fairy'
+
 CHAR_DRAGON = 'D'
 CHAR_TREASURE = 'T'
 
@@ -127,6 +129,7 @@ class Player(Entity):
         self.food = food
         self.item = ""
         self.item_taken_from = ""
+        self.companion = ""
 
 
 class Monster(Entity):
@@ -136,27 +139,29 @@ class Monster(Entity):
 
 
 class MonsterKind:
-    def __init__(self, char, level, item, feed):
+    def __init__(self, char, level, feed, item = '', companion = ''):
         self.char = char
         self.level = level
         self.item = item
         self.feed = feed
+        self.companion = companion
 
 
 # Combine monster_data and item_data into a single dict
 MONSTER_KINDS: List[MonsterKind] = [
-    MonsterKind('a', 1, '', FOOD_AMOEBA),  # Amoeba
-    MonsterKind('b', 3, ITEM_BISON_MEAT, FOOD_BISON),  # Bison
-    MonsterKind('c', 6, ITEM_SWORD, FOOD_CHIMERA),  # Chimera
-    MonsterKind('d', 15, ITEM_POISONED, FOOD_COMODO_DRAGON),  # Comodo Dragon
-    MonsterKind(CHAR_DRAGON, 15, ITEM_TREASURE_POINTER, FOOD_DRAGON),  # Dragon
-    MonsterKind('E', 20, ITEM_RANDOM_TRANSPORT, FOOD_ELEMENTAL),  # Elemental
+    MonsterKind('a', 1, FOOD_AMOEBA),  # Amoeba
+    MonsterKind('b', 3, FOOD_BISON, item=ITEM_BISON_MEAT),  # Bison
+    MonsterKind('c', 6, FOOD_CHIMERA, item=ITEM_SWORD),  # Chimera
+    MonsterKind('d', 15, FOOD_COMODO_DRAGON, item=ITEM_POISONED),  # Comodo Dragon
+    MonsterKind(CHAR_DRAGON, 15, FOOD_DRAGON, item=ITEM_TREASURE_POINTER),  # Dragon
+    MonsterKind('E', 20, FOOD_ELEMENTAL, item=ITEM_RANDOM_TRANSPORT),  # Elemental
+    MonsterKind('f', 0, 0, companion=COMPANION_FAIRY),  # Fairy
 ]
 
 RARE_MONSTER_KINDS: List[MonsterKind] = [
-    MonsterKind('A', 1, ITEM_SPECIAL_EXP, FOOD_AMOEBA),  # Amoeba rare
-    MonsterKind('B', 3, ITEM_SPECIAL_BISON_MEAT, FOOD_SPECIAL_BISON),  # Bison rare
-    MonsterKind('C', 6, ITEM_SWORD_AND_CLAIRVOYANCE, FOOD_CHIMERA),  # Chimera rare
+    MonsterKind('A', 1, FOOD_AMOEBA, item=ITEM_SPECIAL_EXP),  # Amoeba rare
+    MonsterKind('B', 3, FOOD_SPECIAL_BISON, item=ITEM_SPECIAL_BISON_MEAT),  # Bison rare
+    MonsterKind('C', 6, FOOD_CHIMERA, item=ITEM_SWORD_AND_CLAIRVOYANCE),  # Chimera rare
 ]
 
 MONSTER_KIND_POPULATION: Dict[str, int] = {
@@ -166,6 +171,7 @@ MONSTER_KIND_POPULATION: Dict[str, int] = {
     'd': 4,
     'D': 1,
     'E': 3,
+    'f': 1,
 }
 
 
@@ -236,13 +242,21 @@ def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[st
     hide_on = not no_hide
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
-            if torched[y][x] == 0:
+            if (hide_on or cell == ' ') and torched[y][x] == 0:
                 stdscr.addstr(y, x, '.', curses.A_DIM)
             else:
                 if cell == '#':
                     stdscr.addstr(y, x, '#', curses.color_pair(1))
                 else:
-                    stdscr.addstr(y, x, cell)
+                    assert cell == ' '
+                    stdscr.addstr(y, x, ' ')
+
+    for o in objects:
+        if isinstance(o, Player):
+            player = o
+            stdscr.addstr(player.y, player.x, '@', curses.color_pair(2) | curses.A_BOLD)
+            if player.companion:
+                stdscr.addstr(player.y, player.x + 1, "'", curses.color_pair(2) | curses.A_BOLD)
 
     for o in objects:
         if isinstance(o, Monster):
@@ -256,9 +270,6 @@ def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[st
             else:
                 attr = curses.A_BOLD if 'A' <= ch <= 'Z' else 0
                 stdscr.addstr(m.y, m.x, ch, curses.color_pair(3) | attr)
-        elif isinstance(o, Player):
-            player = o
-            stdscr.addstr(player.y, player.x, '@', curses.color_pair(2) | curses.A_BOLD)
         elif isinstance(o, Treasure):
             t = o
             if CHAR_TREASURE in encountered_types:
@@ -286,8 +297,11 @@ def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: 
         item_str = "ITEM: -"
 
     beatable = None
+    atk = player_attack_by_level(player)
     for mk in MONSTER_KINDS:
-        if mk.level > player_attack_by_level(player):
+        if mk.level == 0:
+            continue
+        if mk.level > atk:
             break
         beatable = mk
     assert beatable is None or beatable.level <= player_attack_by_level(player)
@@ -322,6 +336,9 @@ def key_to_dir(key: int) -> Optional[Point]:
 
 
 def update_torched(torched: List[List[int]], player: Player, torch_radius: int) -> None:
+    if player.companion == COMPANION_FAIRY:
+        torch_radius += 1
+
     for dy in range(-torch_radius, torch_radius + 1):
         y = player.y + dy
         if 0 <= y < FIELD_HEIGHT:
@@ -457,6 +474,9 @@ def main(stdscr: curses.window) -> None:
 
                 player.food = min(FOOD_MAX, player.food + m.kind.feed)
 
+                if m.kind.companion:
+                    player.companion = m.kind.companion
+
                 if m.kind.item == ITEM_RANDOM_TRANSPORT:
                     player.x, player.y = find_random_place(objects, field, 2)
                     m.x, m.y = player.x + 1, player.y
@@ -483,6 +503,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='A Rogue-Like game.',
     )
+
+    parser.add_argument('--version', action='version', version='1.0')
 
     g = parser.add_mutually_exclusive_group()
     g.add_argument(
