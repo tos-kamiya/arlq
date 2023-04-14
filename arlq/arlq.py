@@ -3,9 +3,14 @@ from typing import Dict, List, Optional, Set, Tuple
 import argparse
 import curses
 import math
+import platform
 import random
 import sys
 
+try:
+    from ._version import __version__
+except:
+    __version__ = '(unknown)'
 
 ROOM_WIDTH = 5
 ROOM_HEIGHT = 4
@@ -356,7 +361,7 @@ class TerminalSizeSmall(ValueError):
     pass
 
 
-def main(stdscr: curses.window) -> None:
+def curses_main(stdscr: curses.window) -> None:
     sh, sw = stdscr.getmaxyx()
     if sh < FIELD_HEIGHT + 2 or sw < FIELD_WIDTH:
         raise TerminalSizeSmall()
@@ -499,12 +504,12 @@ def main(stdscr: curses.window) -> None:
             break
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(
         description='A Rogue-Like game.',
     )
 
-    parser.add_argument('--version', action='version', version='1.0')
+    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
 
     g = parser.add_mutually_exclusive_group()
     g.add_argument(
@@ -539,8 +544,12 @@ if __name__ == "__main__":
     curses.init_pair(4, curses.COLOR_YELLOW, -1)  # treasure
 
     try:
-        curses.wrapper(main)
+        curses.wrapper(curses_main)
     except TerminalSizeSmall as e:
         sys.exit("Error: Terminal size too small. Minimum size is: %d x %d" % (FIELD_WIDTH, FIELD_HEIGHT + 2))
     finally:
         curses.endwin()
+
+
+if __name__ == "__main__":
+    main()
