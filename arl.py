@@ -15,7 +15,7 @@ FIELD_WIDTH = (ROOM_WIDTH + 1) * ROOM_NUM_X + 1
 FIELD_HEIGHT = (ROOM_HEIGHT + 1) * ROOM_NUM_Y + 1
 
 FOOD_MAX = 120
-FOOD_INIT = 100
+FOOD_INIT = 90
 FOOD_BISON = 40
 FOOD_SPECIAL_BISON = 80
 FOOD_AMOEBA = 8
@@ -23,12 +23,12 @@ FOOD_CHIMERA = 8
 FOOD_DRAGON = 10
 FOOD_ELEMENTAL = 0
 
-ITEM_BISON_MEET = 'Bison Meet'
+ITEM_BISON_MEAT = 'Bison Meat'
 ITEM_SWORD = 'Sword'
 ITEM_TREASURE_POINTER = 'Treasure Ptr.'
 ITEM_RANDOM_WARP = 'Random Warp'
 ITEM_SPECIAL_EXP = 'Special Exp.'
-ITEM_SPECIAL_BISON_MEET = 'Bison Meet++'
+ITEM_SPECIAL_BISON_MEAT = 'Bison Meat++'
 ITEM_SWORD_AND_CLAIRVOYANCE = 'Sword & Eye'
 
 CHAR_DRAGON = 'D'
@@ -144,7 +144,7 @@ class MonsterKind:
 # Combine monster_data and item_data into a single dict
 MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind('a', 1, '', FOOD_AMOEBA),  # Amoeba
-    MonsterKind('b', 3, ITEM_BISON_MEET, FOOD_BISON),  # Bison
+    MonsterKind('b', 3, ITEM_BISON_MEAT, FOOD_BISON),  # Bison
     MonsterKind('c', 6, ITEM_SWORD, FOOD_CHIMERA),  # Chimera
     MonsterKind(CHAR_DRAGON, 15, ITEM_TREASURE_POINTER, FOOD_DRAGON),  # Dragon
     MonsterKind('E', 20, ITEM_RANDOM_WARP, FOOD_ELEMENTAL),  # Elemental
@@ -152,7 +152,7 @@ MONSTER_KINDS: List[MonsterKind] = [
 
 RARE_MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind('A', 1, ITEM_SPECIAL_EXP, FOOD_AMOEBA),  # Amoeba rare
-    MonsterKind('B', 3, ITEM_SPECIAL_BISON_MEET, FOOD_SPECIAL_BISON),  # Bison rare
+    MonsterKind('B', 3, ITEM_SPECIAL_BISON_MEAT, FOOD_SPECIAL_BISON),  # Bison rare
     MonsterKind('C', 6, ITEM_SWORD_AND_CLAIRVOYANCE, FOOD_CHIMERA),  # Chimera rare
 ]
 
@@ -352,7 +352,7 @@ def main(stdscr: curses.window) -> None:
     def consume_player_item(player: Player) -> str:
         item = player.item
         message = ''
-        if item in [ITEM_BISON_MEET, ITEM_SPECIAL_BISON_MEET]:
+        if item in [ITEM_BISON_MEAT, ITEM_SPECIAL_BISON_MEAT]:
             message = "-- Stuffed."
             player.item = ''
         elif item == ITEM_TREASURE_POINTER:
@@ -427,6 +427,7 @@ def main(stdscr: curses.window) -> None:
                 player.x, player.y = find_random_place(objects, field, 2)
                 player.item = ''
                 player.item_taken_from = ''
+                player.food = min(player.food, FOOD_INIT)
             else:
                 if m.kind.item == ITEM_RANDOM_WARP:
                     pass
