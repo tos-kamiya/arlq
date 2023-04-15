@@ -17,6 +17,9 @@ ROOM_NUM_X = 12
 ROOM_NUM_Y = 4
 FIELD_WIDTH = (ROOM_WIDTH + 1) * ROOM_NUM_X + 1
 FIELD_HEIGHT = (ROOM_HEIGHT + 1) * ROOM_NUM_Y + 1
+CORRIDOR_V_WIDTH = 3
+CORRIDOR_H_WIDTH = 2
+WALL_CHARS = "###"  # cross, horizontal, vertical
 
 FOOD_MAX = 120
 FOOD_INIT = 90
@@ -218,7 +221,7 @@ def spawn_monsters(objects: List[Entity], field: List[List[str]]) -> None:
     objects.append(m)
 
 
-def create_field() -> List[List[str]]:
+def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) -> List[List[str]]:
     # Create field filled with spaces
     field = [[" " for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
 
@@ -226,11 +229,16 @@ def create_field() -> List[List[str]]:
     for ry in range(ROOM_NUM_Y + 1):
         y = ry * (ROOM_HEIGHT + 1)
         for x in range(0, FIELD_WIDTH):
-            field[y][x] = "#"
+            field[y][x] = wall_chars[1]
     for rx in range(ROOM_NUM_X + 1):
         x = rx * (ROOM_WIDTH + 1)
         for y in range(0, FIELD_HEIGHT):
-            field[y][x] = "#"
+            field[y][x] = wall_chars[2]
+    for ry in range(ROOM_NUM_Y + 1):
+        y = ry * (ROOM_HEIGHT + 1)
+        for rx in range(ROOM_NUM_X + 1):
+            x = rx * (ROOM_WIDTH + 1)
+            field[y][x] = wall_chars[0]
 
     # Create corridors
     edges = gen_maze(ROOM_NUM_X, ROOM_NUM_Y)
@@ -238,13 +246,14 @@ def create_field() -> List[List[str]]:
         (x1, y1), (x2, y2) = sorted(edge)
         assert x1 <= x2
         assert y1 <= y2
-        d = random.randrange(3) + 1  # 1, 2, 3
         if y1 == y2:
-            for y in range(ROOM_HEIGHT - 2):
+            d = random.randrange(ROOM_HEIGHT + 1 - corridor_h_width) + 1
+            for y in range(corridor_h_width):
                 field[y1 * (ROOM_HEIGHT + 1) + d + y][x2 * (ROOM_WIDTH + 1)] = " "
         else:
             assert x1 == x2
-            for x in range(ROOM_WIDTH - 2):
+            d = random.randrange(ROOM_WIDTH + 1 - corridor_v_width) + 1
+            for x in range(corridor_v_width):
                 field[y2 * (ROOM_HEIGHT + 1)][x1 * (ROOM_WIDTH + 1) + d + x] = " "
 
     return field
@@ -272,8 +281,8 @@ def draw_stage(
         for x, cell in enumerate(row):
             if (not show_entities or cell == " ") and torched[y][x] == 0:
                 stdscr.addstr(y, x, ".", curses.A_DIM)
-            elif cell == "#":
-                stdscr.addstr(y, x, "#", curses.color_pair(1))
+            elif cell != " ":
+                stdscr.addstr(y, x, cell, curses.color_pair(1))
 
     stdscr.addstr(py, px, "@", curses.color_pair(2) | curses.A_BOLD)
 
@@ -402,7 +411,8 @@ def curses_main(stdscr: curses.window) -> None:
     args = args_box[0]
 
     # Set up the game
-    field: List[List[str]] = create_field()
+    corridor_h_width, corridor_v_width = (1, 2) if args.narrower_corridors else (CORRIDOR_H_WIDTH, CORRIDOR_V_WIDTH)
+    field: List[List[str]] = create_field(corridor_h_width, corridor_v_width, WALL_CHARS)
     torched: List[List[int]] = [[0 for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
     x, y = find_random_place([], field, 2)
     player: Player = Player(x, y, 1, FOOD_INIT)
@@ -578,7 +588,9 @@ def main():
     g = parser.add_mutually_exclusive_group()
     g.add_argument("-l", "--large-torch", action="store_true", help="Large torch.")
     g.add_argument("-s", "--small-torch", action="store_true", help="Small torch.")
-    g.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
+
+    parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
+    parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
 
     args = parser.parse_args()
     args_box.append(args)
