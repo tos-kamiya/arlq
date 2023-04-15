@@ -3,7 +3,6 @@ from typing import Dict, List, Optional, Set, Tuple
 import argparse
 import curses
 import math
-import platform
 import random
 import sys
 
@@ -28,6 +27,7 @@ FOOD_CHIMERA = 8
 FOOD_COMODO_DRAGON = 30
 FOOD_DRAGON = 10
 FOOD_ELEMENTAL = 0
+FOOD_GORGON = -48
 
 ITEM_BISON_MEAT = "Bison Meat"
 ITEM_SWORD = "Sword"
@@ -37,6 +37,7 @@ ITEM_SPECIAL_EXP = "Special Exp."
 ITEM_SPECIAL_BISON_MEAT = "Bison Meat++"
 ITEM_SWORD_AND_CLAIRVOYANCE = "Sword & Eye"
 ITEM_TREASURE_POINTER = "Treasure Ptr."
+ITEM_STONED = "Stoned"
 
 COMPANION_FAIRY = "Fairy"
 
@@ -161,6 +162,7 @@ MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind(CHAR_DRAGON, 15, FOOD_DRAGON, item=ITEM_TREASURE_POINTER),  # Dragon
     MonsterKind("E", 20, FOOD_ELEMENTAL, item=ITEM_RANDOM_TRANSPORT),  # Elemental
     MonsterKind("f", 0, 0, companion=COMPANION_FAIRY),  # Fairy
+    MonsterKind("g", 0, FOOD_GORGON, item=ITEM_STONED),  # Gorgon
 ]
 
 RARE_MONSTER_KINDS: List[MonsterKind] = [
@@ -177,6 +179,7 @@ MONSTER_KIND_POPULATION: Dict[str, int] = {
     "D": 1,
     "E": 2,
     "f": 1,
+    "g": 1,
 }
 
 
@@ -429,6 +432,9 @@ def curses_main(stdscr: curses.window) -> None:
         elif item == ITEM_SWORD_AND_CLAIRVOYANCE:
             message = "-- Clairvoyance."
             player.item = ITEM_SWORD
+        elif item == ITEM_STONED:
+            message = "-- Stoned."
+            player.item = ""
         return message
 
     stdscr.keypad(True)
@@ -512,7 +518,16 @@ def curses_main(stdscr: curses.window) -> None:
                     if m.kind.item == ITEM_TREASURE_POINTER:
                         encountered_types.add(CHAR_TREASURE)
 
-                    player.food = min(FOOD_MAX, player.food + m.kind.feed)
+                    if m.kind.item == ITEM_STONED:
+                        if player.companion == COMPANION_FAIRY:
+                            player.companion = ''
+                        else:
+                            hours += -m.kind.feed
+                            player.food += m.kind.feed
+                            if player.food < 1:
+                                player.food = 1
+                    else:
+                        player.food = min(FOOD_MAX, player.food + m.kind.feed)
 
                     if m.kind.companion:
                         player.companion = m.kind.companion
