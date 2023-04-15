@@ -298,6 +298,7 @@ def draw_stage(
                 stdscr.addstr(t.y, t.x, CHAR_TREASURE, curses.color_pair(4) | curses.A_BOLD)
 
     if show_entities:
+        attr = curses.A_DIM
         for o in objects:
             if isinstance(o, Monster):
                 m = o
@@ -305,11 +306,11 @@ def draw_stage(
                     continue
 
                 ch = m.kind.char
-                stdscr.addstr(m.y, m.x, ch)
+                stdscr.addstr(m.y, m.x, ch, attr)
             elif isinstance(o, Treasure):
                 t = o
                 if CHAR_TREASURE not in encountered_types:
-                    stdscr.addstr(t.y, t.x, CHAR_TREASURE)
+                    stdscr.addstr(t.y, t.x, CHAR_TREASURE, attr)
 
 
 def player_attack_by_level(player: Player) -> int:
@@ -349,7 +350,7 @@ def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: 
         buf.append("> %s" % beatable.char)
     buf.append("FOOD: %d" % player.food)
     buf.append(item_str)
-    buf.append("/ Press [Q] to exit")
+    buf.append("/ [Q] to exit")
     stdscr.addstr(FIELD_HEIGHT, 0, "  ".join(buf))
 
     if message:
@@ -591,7 +592,7 @@ def main():
     curses.use_default_colors()
     curses.init_pair(1, curses.COLOR_GREEN, -1)  # wall
     curses.init_pair(2, curses.COLOR_BLUE, -1)  # player
-    curses.init_pair(3, curses.COLOR_RED, -1)  # monster
+    curses.init_pair(3, curses.COLOR_WHITE, -1)  # monster
     curses.init_pair(4, curses.COLOR_YELLOW, -1)  # treasure
 
     try:
