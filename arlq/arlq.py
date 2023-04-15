@@ -23,6 +23,8 @@ WALL_CHARS = "###"  # cross, horizontal, vertical
 
 FOOD_MAX = 120
 FOOD_INIT = 90
+FOOD_STARVATION = 30
+
 FOOD_BISON = 40
 FOOD_SPECIAL_BISON = 80
 FOOD_AMOEBA = 8
@@ -458,6 +460,10 @@ def curses_main(stdscr: curses.window) -> None:
 
         # Starvation check
         player.food -= 1
+        if args.eating_frugal and player.food < FOOD_STARVATION and hours % 2 == 0:
+            player.food += 1
+        elif args.eating_excessive and player.food > FOOD_INIT and hours % 4 == 0:
+            player.food -= 1
         if player.food <= 0:
             message = ">> Starved to Death. <<"
             game_ends = True
@@ -586,11 +592,13 @@ def main():
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
     g = parser.add_mutually_exclusive_group()
-    g.add_argument("-l", "--large-torch", action="store_true", help="Large torch.")
-    g.add_argument("-s", "--small-torch", action="store_true", help="Small torch.")
+    g.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
+    g.add_argument("-t", "--small-torch", action="store_true", help="Small torch.")
 
     parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
     parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
+    parser.add_argument("-E", '--eating-frugal', action='store_true', help='Decrease rate of consuming food')
+    parser.add_argument("-e", '--eating-excessive', action='store_true', help='Increase rate of consuming food')
 
     args = parser.parse_args()
     args_box.append(args)
