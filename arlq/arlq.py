@@ -243,9 +243,7 @@ def create_field() -> List[List[str]]:
     return field
 
 
-def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[str]], torched: List[List[int]], encountered_types: Set[str], no_hide: Optional[bool] = False) -> None:
-    hide_on = not no_hide
-
+def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[str]], torched: List[List[int]], encountered_types: Set[str], show_entities: Optional[bool] = False) -> None:
     px, py = None, None
     for o in objects:
         if isinstance(o, Player):
@@ -258,7 +256,7 @@ def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[st
 
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
-            if (hide_on or cell == ' ') and torched[y][x] == 0:
+            if (not show_entities or cell == ' ') and torched[y][x] == 0:
                 stdscr.addstr(y, x, '.', curses.A_DIM)
             elif cell == '#':
                     stdscr.addstr(y, x, '#', curses.color_pair(1))
@@ -268,12 +266,15 @@ def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[st
     for o in objects:
         if isinstance(o, Monster):
             m = o
-            if hide_on and torched[m.y][m.x] == 0:
+            if torched[m.y][m.x] == 0:
                 continue
 
             ch = m.kind.char
-            if hide_on and m.kind.char not in encountered_types:
-                stdscr.addstr(m.y, m.x, '?', curses.color_pair(3))
+            if m.kind.char not in encountered_types:
+                if show_entities:
+                    stdscr.addstr(m.y, m.x, ch)
+                else:
+                    stdscr.addstr(m.y, m.x, '?', curses.color_pair(3))
             else:
                 attr = curses.A_BOLD if 'A' <= ch <= 'Z' else 0
                 stdscr.addstr(m.y, m.x, ch, curses.color_pair(3) | attr)
@@ -281,6 +282,20 @@ def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[st
             t = o
             if CHAR_TREASURE in encountered_types:
                 stdscr.addstr(t.y, t.x, CHAR_TREASURE, curses.color_pair(4) | curses.A_BOLD)
+
+    if show_entities:
+        for o in objects:
+            if isinstance(o, Monster):
+                m = o
+                if torched[m.y][m.x] != 0:
+                    continue
+
+                ch = m.kind.char
+                stdscr.addstr(m.y, m.x, ch)
+            elif isinstance(o, Treasure):
+                t = o
+                if CHAR_TREASURE not in encountered_types:
+                    stdscr.addstr(t.y, t.x, CHAR_TREASURE)
 
 
 def player_attack_by_level(player: Player) -> int:
@@ -422,7 +437,7 @@ def curses_main(stdscr: curses.window) -> None:
         update_torched(torched, player, torch_radius)
         temp_message = consume_player_item(player)
         stdscr.clear()
-        draw_stage(stdscr, objects, field, torched, encountered_types, no_hide=args.debug_no_hide)
+        draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities)
         draw_status_bar(stdscr, player, hours, message=message or temp_message)
         stdscr.refresh()
 
@@ -440,63 +455,71 @@ def curses_main(stdscr: curses.window) -> None:
                 break
 
         # Find encountered object
-        enc_obj: Optional[Entity] = None
-        enc_obj_i: int = -1
-        for enc_obj_i, o in enumerate(objects):
-            if (not isinstance(o, Player)) and o.x == player.x and o.y == player.y:
-                enc_obj = o
-                break
-        if enc_obj is None:
-            continue  # while True
+        enc_obj_infos: Optional[Tuple[int, Entity]] = []
+        sur_obj_infos: Optional[Tuple[int, Entity]] = []
+        for i, o in enumerate(objects):
+            if not isinstance(o, Player):
+                dx = abs(o.x - player.x)
+                dy = abs(o.y - player.y)
+                if dx == 0 and dy == 0:
+                    enc_obj_infos.append((i, o))
+                elif dx <= 1 and dy <= 1:
+                    sur_obj_infos.append((i, o))
 
-        if isinstance(enc_obj, Treasure):
-            if CHAR_DRAGON in encountered_types:
-                encountered_types.add(CHAR_TREASURE)
-                message = ">> Won the Treasure! <<"
-                break  # end game
-        elif isinstance(enc_obj, Monster):
-            m = enc_obj
-            encountered_types.add(m.kind.char)
-            player_attak = player_attack_by_level(player)
-
-            if player_attak < m.kind.level:
-                # respawn
-                player.x, player.y = find_random_place(objects, field, 2)
-                player.item = ''
-                player.item_taken_from = ''
-                player.food = min(player.food, FOOD_INIT)
-            else:
-                if m.kind.item == ITEM_RANDOM_TRANSPORT:
-                    pass
-                elif m.kind.item == ITEM_SPECIAL_EXP:
-                    player.level += 7
-                else:
-                    player.level += 1
-
-                if m.kind.item == ITEM_SWORD_AND_CLAIRVOYANCE:
-                    update_torched(torched, player, torch_radius * 4)
-
-                if m.kind.item == ITEM_TREASURE_POINTER:
+        for enc_obj_i, enc_obj in enc_obj_infos:
+            if isinstance(enc_obj, Treasure):
+                if CHAR_DRAGON in encountered_types:
                     encountered_types.add(CHAR_TREASURE)
+                    message = ">> Won the Treasure! <<"
+                    break  # end game
+            elif isinstance(enc_obj, Monster):
+                m = enc_obj
+                encountered_types.add(m.kind.char)
+                player_attak = player_attack_by_level(player)
 
-                player.food = min(FOOD_MAX, player.food + m.kind.feed)
-
-                if m.kind.companion:
-                    player.companion = m.kind.companion
-
-                if m.kind.item == ITEM_RANDOM_TRANSPORT:
+                if player_attak < m.kind.level:
+                    # respawn
                     player.x, player.y = find_random_place(objects, field, 2)
-                    m.x, m.y = player.x + 1, player.y
+                    player.item = ''
+                    player.item_taken_from = ''
+                    player.food = min(player.food, FOOD_INIT)
                 else:
-                    del objects[enc_obj_i]
-                    player.item = m.kind.item
-                    player.item_taken_from = m.kind.char
+                    if m.kind.item == ITEM_RANDOM_TRANSPORT:
+                        pass
+                    elif m.kind.item == ITEM_SPECIAL_EXP:
+                        player.level += 7
+                    else:
+                        player.level += 1
+
+                    if m.kind.item == ITEM_SWORD_AND_CLAIRVOYANCE:
+                        update_torched(torched, player, torch_radius * 4)
+
+                    if m.kind.item == ITEM_TREASURE_POINTER:
+                        encountered_types.add(CHAR_TREASURE)
+
+                    player.food = min(FOOD_MAX, player.food + m.kind.feed)
+
+                    if m.kind.companion:
+                        player.companion = m.kind.companion
+
+                    if m.kind.item == ITEM_RANDOM_TRANSPORT:
+                        player.x, player.y = find_random_place(objects, field, 2)
+                        m.x, m.y = player.x + 1, player.y
+                    else:
+                        del objects[enc_obj_i]
+                        player.item = m.kind.item
+                        player.item_taken_from = m.kind.char
+
+        for sur_obj_i, sur_obj in sur_obj_infos:
+            if isinstance(sur_obj, Treasure):
+                if CHAR_DRAGON in encountered_types:
+                    encountered_types.add(CHAR_TREASURE)
 
     update_torched(torched, player, torch_radius)
 
     temp_message = consume_player_item(player)
     stdscr.clear()
-    draw_stage(stdscr, objects, field, torched, encountered_types, no_hide=args.debug_no_hide)
+    draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities or args.reveal_on_end)
     draw_status_bar(stdscr, player, hours, message=message or temp_message)
     stdscr.refresh()
 
@@ -525,10 +548,11 @@ def main():
         help='Small torch.'
     )
     g.add_argument(
-        '--debug-no-hide',
+        '--debug-show-entities',
         action='store_true',
         help='Debug option.'
     )
+    parser.add_argument('-r', '--reveal-on-end', action='store_true', help='Show all entities on the map when game ends')
 
     args = parser.parse_args()
     args_box.append(args)
