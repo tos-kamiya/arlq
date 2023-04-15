@@ -477,6 +477,7 @@ def curses_main(stdscr: curses.window) -> None:
                 elif dx <= 1 and dy <= 1:
                     sur_obj_infos.append((i, o))
 
+        # Actions & events (combats, state changes, etc)
         for enc_obj_i, enc_obj in enc_obj_infos:
             if isinstance(enc_obj, Treasure):
                 if CHAR_DRAGON in encountered_types:
@@ -486,17 +487,20 @@ def curses_main(stdscr: curses.window) -> None:
             elif isinstance(enc_obj, Monster):
                 m = enc_obj
                 encountered_types.add(m.kind.char)
-                player_attak = player_attack_by_level(player)
+                player_attack = player_attack_by_level(player)
 
-                if player_attak < m.kind.level:
-                    # respawn
-                    player.x, player.y = find_random_place(objects, field, 2)
-                    player.item = ""
-                    player.item_taken_from = ""
-                    player.food = min(player.food, FOOD_INIT)
+                if player_attack < m.kind.level:
+                    if m.kind.item == ITEM_RANDOM_TRANSPORT:
+                        player.x, player.y = find_random_place(objects, field, 2)
+                    else:
+                        # respawn
+                        player.x, player.y = find_random_place(objects, field, 2)
+                        player.item = ""
+                        player.item_taken_from = ""
+                        player.food = min(player.food, FOOD_INIT)
                 else:
                     if m.kind.item == ITEM_RANDOM_TRANSPORT:
-                        pass
+                        pass  # do not change player level
                     elif m.kind.item == ITEM_SPECIAL_EXP:
                         player.level += 7
                     else:
