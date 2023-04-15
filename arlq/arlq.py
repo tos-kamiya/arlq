@@ -245,23 +245,25 @@ def create_field() -> List[List[str]]:
 
 def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[str]], torched: List[List[int]], encountered_types: Set[str], no_hide: Optional[bool] = False) -> None:
     hide_on = not no_hide
+
+    px, py = None, None
+    for o in objects:
+        if isinstance(o, Player):
+            player = o
+            px, py = player.x, player.y
+    assert px != None
+
+    if player.companion:
+        stdscr.addstr(py, px + 1, "'", curses.color_pair(2) | curses.A_BOLD)
+
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
             if (hide_on or cell == ' ') and torched[y][x] == 0:
                 stdscr.addstr(y, x, '.', curses.A_DIM)
-            else:
-                if cell == '#':
+            elif cell == '#':
                     stdscr.addstr(y, x, '#', curses.color_pair(1))
-                else:
-                    assert cell == ' '
-                    stdscr.addstr(y, x, ' ')
 
-    for o in objects:
-        if isinstance(o, Player):
-            player = o
-            stdscr.addstr(player.y, player.x, '@', curses.color_pair(2) | curses.A_BOLD)
-            if player.companion:
-                stdscr.addstr(player.y, player.x + 1, "'", curses.color_pair(2) | curses.A_BOLD)
+    stdscr.addstr(py, px, '@', curses.color_pair(2) | curses.A_BOLD)
 
     for o in objects:
         if isinstance(o, Monster):
