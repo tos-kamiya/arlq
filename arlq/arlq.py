@@ -10,7 +10,7 @@ import sys
 try:
     from ._version import __version__
 except:
-    __version__ = '(unknown)'
+    __version__ = "(unknown)"
 
 ROOM_WIDTH = 5
 ROOM_HEIGHT = 4
@@ -29,19 +29,19 @@ FOOD_COMODO_DRAGON = 30
 FOOD_DRAGON = 10
 FOOD_ELEMENTAL = 0
 
-ITEM_BISON_MEAT = 'Bison Meat'
-ITEM_SWORD = 'Sword'
-ITEM_POISONED = 'Poisoned'
-ITEM_RANDOM_TRANSPORT = 'Random Trans.'
-ITEM_SPECIAL_EXP = 'Special Exp.'
-ITEM_SPECIAL_BISON_MEAT = 'Bison Meat++'
-ITEM_SWORD_AND_CLAIRVOYANCE = 'Sword & Eye'
-ITEM_TREASURE_POINTER = 'Treasure Ptr.'
+ITEM_BISON_MEAT = "Bison Meat"
+ITEM_SWORD = "Sword"
+ITEM_POISONED = "Poisoned"
+ITEM_RANDOM_TRANSPORT = "Random Trans."
+ITEM_SPECIAL_EXP = "Special Exp."
+ITEM_SPECIAL_BISON_MEAT = "Bison Meat++"
+ITEM_SWORD_AND_CLAIRVOYANCE = "Sword & Eye"
+ITEM_TREASURE_POINTER = "Treasure Ptr."
 
-COMPANION_FAIRY = 'Fairy'
+COMPANION_FAIRY = "Fairy"
 
-CHAR_DRAGON = 'D'
-CHAR_TREASURE = 'T'
+CHAR_DRAGON = "D"
+CHAR_TREASURE = "T"
 
 
 Point = Tuple[int, int]
@@ -144,7 +144,7 @@ class Monster(Entity):
 
 
 class MonsterKind:
-    def __init__(self, char, level, feed, item = '', companion = ''):
+    def __init__(self, char, level, feed, item="", companion=""):
         self.char = char
         self.level = level
         self.item = item
@@ -154,29 +154,29 @@ class MonsterKind:
 
 # Combine monster_data and item_data into a single dict
 MONSTER_KINDS: List[MonsterKind] = [
-    MonsterKind('a', 1, FOOD_AMOEBA),  # Amoeba
-    MonsterKind('b', 3, FOOD_BISON, item=ITEM_BISON_MEAT),  # Bison
-    MonsterKind('c', 6, FOOD_CHIMERA, item=ITEM_SWORD),  # Chimera
-    MonsterKind('d', 15, FOOD_COMODO_DRAGON, item=ITEM_POISONED),  # Comodo Dragon
+    MonsterKind("a", 1, FOOD_AMOEBA),  # Amoeba
+    MonsterKind("b", 3, FOOD_BISON, item=ITEM_BISON_MEAT),  # Bison
+    MonsterKind("c", 6, FOOD_CHIMERA, item=ITEM_SWORD),  # Chimera
+    MonsterKind("d", 15, FOOD_COMODO_DRAGON, item=ITEM_POISONED),  # Comodo Dragon
     MonsterKind(CHAR_DRAGON, 15, FOOD_DRAGON, item=ITEM_TREASURE_POINTER),  # Dragon
-    MonsterKind('E', 20, FOOD_ELEMENTAL, item=ITEM_RANDOM_TRANSPORT),  # Elemental
-    MonsterKind('f', 0, 0, companion=COMPANION_FAIRY),  # Fairy
+    MonsterKind("E", 20, FOOD_ELEMENTAL, item=ITEM_RANDOM_TRANSPORT),  # Elemental
+    MonsterKind("f", 0, 0, companion=COMPANION_FAIRY),  # Fairy
 ]
 
 RARE_MONSTER_KINDS: List[MonsterKind] = [
-    MonsterKind('A', 1, FOOD_AMOEBA, item=ITEM_SPECIAL_EXP),  # Amoeba rare
-    MonsterKind('B', 3, FOOD_SPECIAL_BISON, item=ITEM_SPECIAL_BISON_MEAT),  # Bison rare
-    MonsterKind('C', 6, FOOD_CHIMERA, item=ITEM_SWORD_AND_CLAIRVOYANCE),  # Chimera rare
+    MonsterKind("A", 1, FOOD_AMOEBA, item=ITEM_SPECIAL_EXP),  # Amoeba rare
+    MonsterKind("B", 3, FOOD_SPECIAL_BISON, item=ITEM_SPECIAL_BISON_MEAT),  # Bison rare
+    MonsterKind("C", 6, FOOD_CHIMERA, item=ITEM_SWORD_AND_CLAIRVOYANCE),  # Chimera rare
 ]
 
 MONSTER_KIND_POPULATION: Dict[str, int] = {
-    'a': 20,
-    'b': 4,
-    'c': 4,
-    'd': 4,
-    'D': 1,
-    'E': 2,
-    'f': 1,
+    "a": 20,
+    "b": 4,
+    "c": 4,
+    "d": 4,
+    "D": 1,
+    "E": 2,
+    "f": 1,
 }
 
 
@@ -185,18 +185,22 @@ def find_random_place(objects: List[Entity], field: List[List[str]], distance: i
     while True:
         x = random.randint(1, FIELD_WIDTH - 2)
         y = random.randint(1, FIELD_HEIGHT - 2)
-        if field[y][x] == ' ' and field[y][x + 1] == ' ' and not any(abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places):
+        if (
+            field[y][x] == " "
+            and field[y][x + 1] == " "
+            and not any(abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places)
+        ):
             return x, y
 
 
 def spawn_monsters(objects: List[Entity], field: List[List[str]]) -> None:
     """
     Spawn monsters in the game by finding random places on the field.
-    
+
     Args:
     - objects: a list of objects in the game
     - field: the game field
-    
+
     This function modifies the objects list by adding newly spawned monsters.
     """
 
@@ -213,17 +217,17 @@ def spawn_monsters(objects: List[Entity], field: List[List[str]]) -> None:
 
 def create_field() -> List[List[str]]:
     # Create field filled with spaces
-    field = [[' ' for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
+    field = [[" " for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
 
     # Create walls
     for ry in range(ROOM_NUM_Y + 1):
         y = ry * (ROOM_HEIGHT + 1)
         for x in range(0, FIELD_WIDTH):
-            field[y][x] = '#'
+            field[y][x] = "#"
     for rx in range(ROOM_NUM_X + 1):
         x = rx * (ROOM_WIDTH + 1)
         for y in range(0, FIELD_HEIGHT):
-            field[y][x] = '#'
+            field[y][x] = "#"
 
     # Create corridors
     edges = gen_maze(ROOM_NUM_X, ROOM_NUM_Y)
@@ -234,34 +238,41 @@ def create_field() -> List[List[str]]:
         d = random.randrange(3) + 1  # 1, 2, 3
         if y1 == y2:
             for y in range(ROOM_HEIGHT - 2):
-                field[y1 * (ROOM_HEIGHT + 1) + d + y][x2 * (ROOM_WIDTH + 1)] = ' '
+                field[y1 * (ROOM_HEIGHT + 1) + d + y][x2 * (ROOM_WIDTH + 1)] = " "
         else:
             assert x1 == x2
             for x in range(ROOM_WIDTH - 2):
-                field[y2 * (ROOM_HEIGHT + 1)][x1 * (ROOM_WIDTH + 1) + d + x] = ' '
+                field[y2 * (ROOM_HEIGHT + 1)][x1 * (ROOM_WIDTH + 1) + d + x] = " "
 
     return field
 
 
-def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[str]], torched: List[List[int]], encountered_types: Set[str], show_entities: Optional[bool] = False) -> None:
-    px, py = None, None
+def draw_stage(
+    stdscr: curses.window,
+    objects: List[Entity],
+    field: List[List[str]],
+    torched: List[List[int]],
+    encountered_types: Set[str],
+    show_entities: Optional[bool] = False,
+) -> None:
+    player, px, py = None, None, None
     for o in objects:
         if isinstance(o, Player):
             player = o
             px, py = player.x, player.y
-    assert px != None
+    assert player is not None and px is not None and py is not None
 
     if player.companion:
         stdscr.addstr(py, px + 1, "'", curses.color_pair(2) | curses.A_BOLD)
 
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
-            if (not show_entities or cell == ' ') and torched[y][x] == 0:
-                stdscr.addstr(y, x, '.', curses.A_DIM)
-            elif cell == '#':
-                    stdscr.addstr(y, x, '#', curses.color_pair(1))
+            if (not show_entities or cell == " ") and torched[y][x] == 0:
+                stdscr.addstr(y, x, ".", curses.A_DIM)
+            elif cell == "#":
+                stdscr.addstr(y, x, "#", curses.color_pair(1))
 
-    stdscr.addstr(py, px, '@', curses.color_pair(2) | curses.A_BOLD)
+    stdscr.addstr(py, px, "@", curses.color_pair(2) | curses.A_BOLD)
 
     for o in objects:
         if isinstance(o, Monster):
@@ -274,9 +285,9 @@ def draw_stage(stdscr: curses.window, objects: List[Entity], field: List[List[st
                 if show_entities:
                     stdscr.addstr(m.y, m.x, ch)
                 else:
-                    stdscr.addstr(m.y, m.x, '?', curses.color_pair(3))
+                    stdscr.addstr(m.y, m.x, "?", curses.color_pair(3))
             else:
-                attr = curses.A_BOLD if 'A' <= ch <= 'Z' else 0
+                attr = curses.A_BOLD if "A" <= ch <= "Z" else 0
                 stdscr.addstr(m.y, m.x, ch, curses.color_pair(3) | attr)
         elif isinstance(o, Treasure):
             t = o
@@ -335,7 +346,7 @@ def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: 
         buf.append("> %s" % beatable.char)
     buf.append("FOOD: %d" % player.food)
     buf.append(item_str)
-    buf.append('/ Press [Q] to exit')
+    buf.append("/ Press [Q] to exit")
     stdscr.addstr(FIELD_HEIGHT, 0, "  ".join(buf))
 
     if message:
@@ -344,13 +355,13 @@ def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: 
 
 def key_to_dir(key: int) -> Optional[Point]:
     dx, dy = 0, 0
-    if key in [ord('w'), curses.KEY_UP]:
+    if key in [ord("w"), curses.KEY_UP]:
         dy = -1
-    elif key in [ord('a'), curses.KEY_LEFT]:
+    elif key in [ord("a"), curses.KEY_LEFT]:
         dx = -1
-    elif key in [ord('s'), curses.KEY_DOWN]:
+    elif key in [ord("s"), curses.KEY_DOWN]:
         dy = 1
-    elif key in [ord('d'), curses.KEY_RIGHT]:
+    elif key in [ord("d"), curses.KEY_RIGHT]:
         dx = 1
     else:
         return None
@@ -364,7 +375,7 @@ def update_torched(torched: List[List[int]], player: Player, torch_radius: int) 
     for dy in range(-torch_radius, torch_radius + 1):
         y = player.y + dy
         if 0 <= y < FIELD_HEIGHT:
-            w = int(math.sqrt((torch_radius*1.2)**2 - dy**2) + 0.5)
+            w = int(math.sqrt((torch_radius * 1.2) ** 2 - dy**2) + 0.5)
             for dx in range(-w, w + 1):
                 x = player.x + dx
                 if 0 <= x < FIELD_WIDTH:
@@ -405,16 +416,16 @@ def curses_main(stdscr: curses.window) -> None:
 
     def consume_player_item(player: Player) -> str:
         item = player.item
-        message = ''
+        message = ""
         if item in [ITEM_BISON_MEAT, ITEM_SPECIAL_BISON_MEAT]:
             message = "-- Stuffed."
-            player.item = ''
+            player.item = ""
         elif item == ITEM_TREASURE_POINTER:
             message = "-- Sparkle."
-            player.item = ''
+            player.item = ""
         elif item == ITEM_SPECIAL_EXP:
             message = "-- Special Exp."
-            player.item = ''
+            player.item = ""
         elif item == ITEM_SWORD_AND_CLAIRVOYANCE:
             message = "-- Clairvoyance."
             player.item = ITEM_SWORD
@@ -450,13 +461,13 @@ def curses_main(stdscr: curses.window) -> None:
 
             dx, dy = d
             new_x, new_y = player.x + dx, player.y + dy
-            if field[new_y][new_x] == ' ':  # if the cell is not a wall
+            if field[new_y][new_x] == " ":  # if the cell is not a wall
                 player.x, player.y = new_x, new_y
                 break
 
         # Find encountered object
-        enc_obj_infos: Optional[Tuple[int, Entity]] = []
-        sur_obj_infos: Optional[Tuple[int, Entity]] = []
+        enc_obj_infos: List[Tuple[int, Entity]] = []
+        sur_obj_infos: List[Tuple[int, Entity]] = []
         for i, o in enumerate(objects):
             if not isinstance(o, Player):
                 dx = abs(o.x - player.x)
@@ -480,8 +491,8 @@ def curses_main(stdscr: curses.window) -> None:
                 if player_attak < m.kind.level:
                     # respawn
                     player.x, player.y = find_random_place(objects, field, 2)
-                    player.item = ''
-                    player.item_taken_from = ''
+                    player.item = ""
+                    player.item_taken_from = ""
                     player.food = min(player.food, FOOD_INIT)
                 else:
                     if m.kind.item == ITEM_RANDOM_TRANSPORT:
@@ -519,40 +530,32 @@ def curses_main(stdscr: curses.window) -> None:
 
     temp_message = consume_player_item(player)
     stdscr.clear()
-    draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities or args.reveal_on_end)
+    draw_stage(
+        stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities or args.reveal_on_end
+    )
     draw_status_bar(stdscr, player, hours, message=message or temp_message)
     stdscr.refresh()
 
     while True:
         key = stdscr.getch()
-        if key == ord('q'):
+        if key == ord("q"):
             break
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='A Rogue-Like game.',
+        description="A Rogue-Like game.",
     )
 
-    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+    parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
     g = parser.add_mutually_exclusive_group()
-    g.add_argument(
-        '-l', '--large-torch',
-        action='store_true',
-        help='Large torch.'
+    g.add_argument("-l", "--large-torch", action="store_true", help="Large torch.")
+    g.add_argument("-s", "--small-torch", action="store_true", help="Small torch.")
+    g.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
+    parser.add_argument(
+        "-r", "--reveal-on-end", action="store_true", help="Show all entities on the map when game ends"
     )
-    g.add_argument(
-        '-s', '--small-torch',
-        action='store_true',
-        help='Small torch.'
-    )
-    g.add_argument(
-        '--debug-show-entities',
-        action='store_true',
-        help='Debug option.'
-    )
-    parser.add_argument('-r', '--reveal-on-end', action='store_true', help='Show all entities on the map when game ends')
 
     args = parser.parse_args()
     args_box.append(args)
