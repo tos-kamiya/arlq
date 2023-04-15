@@ -530,9 +530,7 @@ def curses_main(stdscr: curses.window) -> None:
 
     temp_message = consume_player_item(player)
     stdscr.clear()
-    draw_stage(
-        stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities or args.reveal_on_end
-    )
+    draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities)
     draw_status_bar(stdscr, player, hours, message=message or temp_message)
     stdscr.refresh()
 
@@ -540,6 +538,11 @@ def curses_main(stdscr: curses.window) -> None:
         key = stdscr.getch()
         if key == ord("q"):
             break
+        elif key == ord("r"):
+            stdscr.clear()
+            draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=True)
+            draw_status_bar(stdscr, player, hours, message=message or temp_message)
+            stdscr.refresh()
 
 
 def main():
@@ -553,9 +556,6 @@ def main():
     g.add_argument("-l", "--large-torch", action="store_true", help="Large torch.")
     g.add_argument("-s", "--small-torch", action="store_true", help="Small torch.")
     g.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
-    parser.add_argument(
-        "-r", "--reveal-on-end", action="store_true", help="Show all entities on the map when game ends"
-    )
 
     args = parser.parse_args()
     args_box.append(args)
