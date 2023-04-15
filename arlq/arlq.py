@@ -441,14 +441,16 @@ def curses_main(stdscr: curses.window) -> None:
 
     message: Optional[str] = None
     hours: int = -1
-    while True:
+    game_ends = False
+    while not game_ends:
         hours += 1
 
         # Starvation check
         player.food -= 1
         if player.food <= 0:
             message = ">> Starved to Death. <<"
-            break  # end game
+            game_ends = True
+            break
 
         # Show the field
         update_torched(torched, player, torch_radius)
@@ -489,7 +491,8 @@ def curses_main(stdscr: curses.window) -> None:
                 if CHAR_DRAGON in encountered_types:
                     encountered_types.add(CHAR_TREASURE)
                     message = ">> Won the Treasure! <<"
-                    break  # end game
+                    game_ends = True
+                    break
             elif isinstance(enc_obj, Monster):
                 m = enc_obj
                 encountered_types.add(m.kind.char)
