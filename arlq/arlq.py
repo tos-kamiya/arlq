@@ -3,8 +3,8 @@ from typing import Dict, List, Optional, Set, Tuple
 import argparse
 import curses
 import math
-import random
 import sys
+import time
 
 try:
     from ._version import __version__
@@ -43,6 +43,7 @@ ITEM_SPECIAL_BISON_MEAT = "Bison Meat++"
 ITEM_SWORD_AND_CLAIRVOYANCE = "Sword & Eye"
 ITEM_TREASURE_POINTER = "Treasure Ptr."
 ITEM_STONED = "Stoned"
+ITEM_TREASURE = "Treasure"
 
 COMPANION_FAIRY = "Fairy"
 
@@ -52,6 +53,22 @@ CHAR_TREASURE = "T"
 
 Point = Tuple[int, int]
 Edge = Tuple[Point, Point]
+
+
+class MyRandom:
+    def __init__(self, seed):
+        self._value = self.seed = seed
+
+    def randrange(self, r):
+        self._value = (1103515245 * self._value + 12345) % (2 ** 32)
+        return self._value % r
+
+    def choice(self, items):
+        i = self.randrange(len(items))
+        return items[i]
+
+
+rand: MyRandom = None
 
 
 def gen_maze(width: int, height: int) -> List[Edge]:
@@ -71,14 +88,14 @@ def gen_maze(width: int, height: int) -> List[Edge]:
     edges = []
 
     # Choose a random starting point
-    cur_p = random.choice(list(unconnected_point_set))
+    cur_p = rand.choice(list(unconnected_point_set))
     unconnected_point_set.remove(cur_p)
     connecting_points.append(cur_p)
 
     # Keep generating until all points have been connected
     while len(done_points) < width * height:
         # Choose a random connecting point
-        i = random.randrange(len(connecting_points))
+        i = rand.randrange(len(connecting_points))
         cur_p = connecting_points[i]
 
         # Find neighboring points that haven't been connected yet
@@ -92,7 +109,7 @@ def gen_maze(width: int, height: int) -> List[Edge]:
             continue
 
         # Choose a random unconnected neighboring point and connect it
-        selected_np = random.choice(unconnected_nps)
+        selected_np = rand.choice(unconnected_nps)
         unconnected_point_set.remove(selected_np)
         connecting_points.append(selected_np)
 
@@ -191,8 +208,8 @@ MONSTER_KIND_POPULATION: Dict[str, int] = {
 def find_random_place(objects: List[Entity], field: List[List[str]], distance: int) -> Point:
     places = [(o.x, o.y) for o in objects]
     while True:
-        x = random.randint(1, FIELD_WIDTH - 2)
-        y = random.randint(1, FIELD_HEIGHT - 2)
+        x = rand.randrange(FIELD_WIDTH - 2) + 1
+        y = rand.randrange(FIELD_HEIGHT - 2) + 1
         if (
             field[y][x] == " "
             and field[y][x + 1] == " "
@@ -217,7 +234,7 @@ def spawn_monsters(objects: List[Entity], field: List[List[str]]) -> None:
             x, y = find_random_place(objects, field, 2)
             m = Monster(x, y, kind)
             objects.append(m)
-    kind = random.choice(RARE_MONSTER_KINDS)
+    kind = rand.choice(RARE_MONSTER_KINDS)
     x, y = find_random_place(objects, field, 2)
     m = Monster(x, y, kind)
     objects.append(m)
@@ -249,12 +266,12 @@ def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) 
         assert x1 <= x2
         assert y1 <= y2
         if y1 == y2:
-            d = random.randrange(ROOM_HEIGHT + 1 - corridor_h_width) + 1
+            d = rand.randrange(ROOM_HEIGHT + 1 - corridor_h_width) + 1
             for y in range(corridor_h_width):
                 field[y1 * (ROOM_HEIGHT + 1) + d + y][x2 * (ROOM_WIDTH + 1)] = " "
         else:
             assert x1 == x2
-            d = random.randrange(ROOM_WIDTH + 1 - corridor_v_width) + 1
+            d = rand.randrange(ROOM_WIDTH + 1 - corridor_v_width) + 1
             for x in range(corridor_v_width):
                 field[y2 * (ROOM_HEIGHT + 1)][x1 * (ROOM_WIDTH + 1) + d + x] = " "
 
@@ -363,6 +380,11 @@ def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: 
     buf.append(item_str)
     buf.append("/ [Q] to exit")
     stdscr.addstr(FIELD_HEIGHT, 0, "  ".join(buf))
+
+    if player.item == ITEM_TREASURE or player.food <= 0:
+        if not message:
+            message = ''
+        message += "  SEED: %d" % rand.seed
 
     if message:
         stdscr.addstr(FIELD_HEIGHT + 1, 0, message)
@@ -509,6 +531,8 @@ def curses_main(stdscr: curses.window) -> None:
                     encountered_types.add(CHAR_TREASURE)
                     message = ">> Won the Treasure! <<"
                     game_ends = True
+                    player.item = ITEM_TREASURE
+                    player.item_taken_from = ''
                     break
             elif isinstance(enc_obj, Monster):
                 m = enc_obj
@@ -585,6 +609,8 @@ def curses_main(stdscr: curses.window) -> None:
 
 
 def main():
+    global rand
+
     parser = argparse.ArgumentParser(
         description="A Rogue-Like game.",
     )
@@ -599,9 +625,15 @@ def main():
     parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
     parser.add_argument("-E", '--eating-frugal', action='store_true', help='Decrease rate of consuming food')
     parser.add_argument("-e", '--eating-excessive', action='store_true', help='Increase rate of consuming food')
+    parser.add_argument("--seed", action='store', type=int, help='Seed value')
 
     args = parser.parse_args()
     args_box.append(args)
+
+    if args.seed is not None:
+        rand = MyRandom(args.seed)
+    else:
+        rand = MyRandom(int(time.time()) % 100000)
 
     curses.initscr()
     curses.noecho()
