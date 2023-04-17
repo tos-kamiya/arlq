@@ -46,6 +46,7 @@ ITEM_STONED = "Stoned"
 ITEM_TREASURE = "Treasure"
 
 COMPANION_FAIRY = "Fairy"
+FAIRY_TORCH_EXTENSION = 2
 
 CHAR_DRAGON = "D"
 CHAR_TREASURE = "T"
@@ -194,8 +195,8 @@ RARE_MONSTER_KINDS: List[MonsterKind] = [
 ]
 
 MONSTER_KIND_POPULATION: Dict[str, int] = {
-    "a": 20,
-    "b": 4,
+    "a": 22,
+    "b": 5,
     "c": 4,
     "d": 4,
     "D": 1,
@@ -406,12 +407,12 @@ def key_to_dir(key: int) -> Optional[Point]:
 
 def update_torched(torched: List[List[int]], player: Player, torch_radius: int) -> None:
     if player.companion == COMPANION_FAIRY:
-        torch_radius += 1
+        torch_radius += FAIRY_TORCH_EXTENSION
 
     for dy in range(-torch_radius, torch_radius + 1):
         y = player.y + dy
         if 0 <= y < FIELD_HEIGHT:
-            w = int(math.sqrt((torch_radius * 1.2) ** 2 - dy**2) + 0.5)
+            w = int(math.sqrt((torch_radius * 1.1) ** 2 - dy**2) + 0.5)
             for dx in range(-w, w + 1):
                 x = player.x + dx
                 if 0 <= x < FIELD_WIDTH:
