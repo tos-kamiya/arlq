@@ -25,25 +25,25 @@ FOOD_MAX = 120
 FOOD_INIT = 90
 FOOD_STARVATION = 30
 
-FOOD_BISON = 40
-FOOD_SPECIAL_BISON = 80
-FOOD_AMOEBA = 8
-FOOD_CHIMERA = 8
-FOOD_COMODO_DRAGON = 30
-FOOD_DRAGON = 10
-FOOD_ELEMENTAL = 0
-FOOD_GORGON = -48
+FEED_BISON = 40
+FEED_RARE_BISON = 80
+FEED_AMOEBA = 8
+FEED_CHIMERA = 8
+FEED_COMODO_DRAGON = 30
+FEED_DRAGON = 10
+FEED_ELEMENTAL = 0
+FEED_GORGON = -48
 
-ITEM_BISON_MEAT = "Bison Meat"
 ITEM_SWORD = "Sword"
-ITEM_POISONED = "Poisoned"
-ITEM_RANDOM_TRANSPORT = "Random Trans."
-ITEM_SPECIAL_EXP = "Special Exp."
-ITEM_SPECIAL_BISON_MEAT = "Bison Meat++"
-ITEM_SWORD_AND_CLAIRVOYANCE = "Sword & Eye"
-ITEM_TREASURE_POINTER = "Treasure Ptr."
-ITEM_STONED = "Stoned"
 ITEM_TREASURE = "Treasure"
+
+EFFECT_SPECIAL_EXP = "Special Exp."
+EFFECT_POISONED = "Poisoned"
+EFFECT_FEED_MUCH = "Bison Meat"
+EFFECT_RANDOM_TRANSPORT = "Random Trans."
+EFFECT_CLAIRVOYANCE = "Sword & Eye"
+EFFECT_TREASURE_POINTER = "Treasure Ptr."
+EFFECT_STONED = "Stoned"
 
 COMPANION_FAIRY = "Fairy"
 FAIRY_TORCH_EXTENSION = 2
@@ -168,30 +168,31 @@ class Monster(Entity):
 
 
 class MonsterKind:
-    def __init__(self, char, level, feed, item="", companion=""):
+    def __init__(self, char, level, feed, item="", effect="", companion=""):
         self.char = char
         self.level = level
         self.item = item
+        self.effect = effect
         self.feed = feed
         self.companion = companion
 
 
 # Combine monster_data and item_data into a single dict
 MONSTER_KINDS: List[MonsterKind] = [
-    MonsterKind("a", 1, FOOD_AMOEBA),  # Amoeba
-    MonsterKind("b", 3, FOOD_BISON, item=ITEM_BISON_MEAT),  # Bison
-    MonsterKind("c", 6, FOOD_CHIMERA, item=ITEM_SWORD),  # Chimera
-    MonsterKind("d", 15, FOOD_COMODO_DRAGON, item=ITEM_POISONED),  # Comodo Dragon
-    MonsterKind(CHAR_DRAGON, 15, FOOD_DRAGON, item=ITEM_TREASURE_POINTER),  # Dragon
-    MonsterKind("E", 20, FOOD_ELEMENTAL, item=ITEM_RANDOM_TRANSPORT),  # Elemental
+    MonsterKind("a", 1, FEED_AMOEBA),  # Amoeba
+    MonsterKind("b", 3, FEED_BISON, effect=EFFECT_FEED_MUCH),  # Bison
+    MonsterKind("c", 6, FEED_CHIMERA, item=ITEM_SWORD),  # Chimera
+    MonsterKind("d", 15, FEED_COMODO_DRAGON, effect=EFFECT_POISONED),  # Comodo Dragon
+    MonsterKind(CHAR_DRAGON, 15, FEED_DRAGON, effect=EFFECT_TREASURE_POINTER),  # Dragon
+    MonsterKind("E", 20, FEED_ELEMENTAL, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
     MonsterKind("f", 0, 0, companion=COMPANION_FAIRY),  # Fairy
 ]
 
 RARE_MONSTER_KINDS: List[MonsterKind] = [
-    MonsterKind("A", 1, FOOD_AMOEBA, item=ITEM_SPECIAL_EXP),  # Amoeba rare
-    MonsterKind("B", 3, FOOD_SPECIAL_BISON, item=ITEM_SPECIAL_BISON_MEAT),  # Bison rare
-    MonsterKind("C", 6, FOOD_CHIMERA, item=ITEM_SWORD_AND_CLAIRVOYANCE),  # Chimera rare
-    MonsterKind("G", 0, FOOD_GORGON, item=ITEM_STONED),  # Gorgon
+    MonsterKind("A", 1, FEED_AMOEBA, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
+    MonsterKind("B", 3, FEED_RARE_BISON, effect=EFFECT_FEED_MUCH),  # Bison rare
+    MonsterKind("C", 6, FEED_CHIMERA, item=ITEM_SWORD, effect=EFFECT_CLAIRVOYANCE),  # Chimera rare
+    MonsterKind("G", 0, FEED_GORGON, effect=EFFECT_STONED),  # Gorgon
 ]
 
 MONSTER_KIND_POPULATION: Dict[str, int] = {
@@ -344,7 +345,7 @@ def draw_stage(
 def player_attack_by_level(player: Player) -> int:
     if player.item == ITEM_SWORD:
         return player.level * 3
-    elif player.item == ITEM_POISONED:
+    elif player.item == EFFECT_POISONED:
         return (player.level + 2) // 3
     else:
         return player.level
@@ -353,13 +354,13 @@ def player_attack_by_level(player: Player) -> int:
 def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: Optional[str] = None) -> None:
     if player.item == ITEM_SWORD:
         level_str = "LVL: %d x3" % player.level
-        item_str = "ITEM: %s(%s)" % (player.item, player.item_taken_from)
-    elif player.item == ITEM_POISONED:
+        item_str = "+%s(%s)" % (player.item, player.item_taken_from)
+    elif player.item == EFFECT_POISONED:
         level_str = "LVL: %d /3" % player.level
-        item_str = "ITEM: %s(%s)" % (player.item, player.item_taken_from)
+        item_str = "+%s(%s)" % (player.item, player.item_taken_from)
     else:
         level_str = "LVL: %d" % player.level
-        item_str = "ITEM: -"
+        item_str = ""
 
     beatable = None
     atk = player_attack_by_level(player)
@@ -441,7 +442,7 @@ def curses_main(stdscr: curses.window) -> None:
     x, y = find_random_place([], field, 2)
     player: Player = Player(x, y, 1, FOOD_INIT)
     objects: List[Entity] = [player]
-    treasure: Treasure = Treasure(*find_random_place(objects, field, 2))
+    treasure: Treasure = Treasure(*find_random_place(objects, field, 3))
     objects.append(treasure)
     spawn_monsters(objects, field)
     encountered_types: Set[str] = set()
@@ -452,28 +453,9 @@ def curses_main(stdscr: curses.window) -> None:
     elif args.small_torch:
         torch_radius = 3
 
-    def consume_player_item(player: Player) -> str:
-        item = player.item
-        message = ""
-        if item in [ITEM_BISON_MEAT, ITEM_SPECIAL_BISON_MEAT]:
-            message = "-- Stuffed."
-            player.item = ""
-        elif item == ITEM_TREASURE_POINTER:
-            message = "-- Sparkle."
-            player.item = ""
-        elif item == ITEM_SPECIAL_EXP:
-            message = "-- Special Exp."
-            player.item = ""
-        elif item == ITEM_SWORD_AND_CLAIRVOYANCE:
-            message = "-- Clairvoyance."
-            player.item = ITEM_SWORD
-        elif item == ITEM_STONED:
-            message = "-- Stoned."
-            player.item = ""
-        return message
-
     stdscr.keypad(True)
 
+    flash_message: Optional[str] = None
     message: Optional[str] = None
     hours: int = -1
     game_ends = False
@@ -493,11 +475,12 @@ def curses_main(stdscr: curses.window) -> None:
 
         # Show the field
         update_torched(torched, player, torch_radius)
-        temp_message = consume_player_item(player)
         stdscr.clear()
         draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities)
-        draw_status_bar(stdscr, player, hours, message=message or temp_message)
+        draw_status_bar(stdscr, player, hours, message=message or flash_message)
         stdscr.refresh()
+        if flash_message:
+            flash_message = None
 
         # Move player
         while True:
@@ -539,8 +522,9 @@ def curses_main(stdscr: curses.window) -> None:
                 encountered_types.add(m.kind.char)
                 player_attack = player_attack_by_level(player)
 
+                effect = m.kind.effect
                 if player_attack < m.kind.level:
-                    if m.kind.item == ITEM_RANDOM_TRANSPORT:
+                    if effect == EFFECT_RANDOM_TRANSPORT:
                         player.x, player.y = find_random_place(objects, field, 2)
                     else:
                         # respawn
@@ -548,41 +532,45 @@ def curses_main(stdscr: curses.window) -> None:
                         player.item = ""
                         player.item_taken_from = ""
                         player.food = min(player.food, FOOD_INIT)
+                        # flash_message = "-- Respawn."
                 else:
-                    if m.kind.item == ITEM_RANDOM_TRANSPORT:
+                    if effect == EFFECT_RANDOM_TRANSPORT:
                         pass  # do not change player level
-                    elif m.kind.item == ITEM_SPECIAL_EXP:
+                    elif effect == EFFECT_SPECIAL_EXP:
                         player.level += 7
                     else:
                         player.level += 1
 
-                    if m.kind.item == ITEM_SWORD_AND_CLAIRVOYANCE:
-                        update_torched(torched, player, torch_radius * 4)
-
-                    if m.kind.item == ITEM_TREASURE_POINTER:
-                        encountered_types.add(CHAR_TREASURE)
-
-                    if m.kind.item == ITEM_STONED:
-                        if player.companion == COMPANION_FAIRY:
-                            player.companion = ''
-                        else:
-                            hours += -m.kind.feed
-                            player.food += m.kind.feed
-                            if player.food < 1:
-                                player.food = 1
-                    else:
-                        player.food = min(FOOD_MAX, player.food + m.kind.feed)
+                    if m.kind.feed < 0:
+                        hours += -m.kind.feed
+                    player.food += m.kind.feed
+                    player.food = max(1, min(FOOD_MAX, player.food + m.kind.feed))
 
                     if m.kind.companion:
                         player.companion = m.kind.companion
 
-                    if m.kind.item == ITEM_RANDOM_TRANSPORT:
+                    if effect == EFFECT_RANDOM_TRANSPORT:
                         player.x, player.y = find_random_place(objects, field, 2)
                         m.x, m.y = player.x + 1, player.y
                     else:
                         del objects[enc_obj_i]
                         player.item = m.kind.item
                         player.item_taken_from = m.kind.char
+
+                        if effect == EFFECT_CLAIRVOYANCE:
+                            update_torched(torched, player, torch_radius * 4)
+                            flash_message = "-- Clairvoyance."
+                        elif effect == EFFECT_TREASURE_POINTER:
+                            encountered_types.add(CHAR_TREASURE)
+                            flash_message = "-- Sparkle."
+                        elif effect == EFFECT_FEED_MUCH:
+                            flash_message = "-- Stuffed."
+                        elif effect == EFFECT_SPECIAL_EXP:
+                            flash_message = "-- Special Exp."
+                        elif effect == EFFECT_STONED:
+                            flash_message = "-- Stoned."
+                            if player.companion == COMPANION_FAIRY:
+                                player.companion = ''
 
         for sur_obj_i, sur_obj in sur_obj_infos:
             if isinstance(sur_obj, Treasure):
@@ -591,10 +579,9 @@ def curses_main(stdscr: curses.window) -> None:
 
     update_torched(torched, player, torch_radius)
 
-    temp_message = consume_player_item(player)
     stdscr.clear()
     draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities)
-    draw_status_bar(stdscr, player, hours, message=message or temp_message)
+    draw_status_bar(stdscr, player, hours, message=message or flash_message)
     stdscr.refresh()
 
     while True:
@@ -604,7 +591,7 @@ def curses_main(stdscr: curses.window) -> None:
         elif key == ord("r"):
             stdscr.clear()
             draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=True)
-            draw_status_bar(stdscr, player, hours, message=message or temp_message)
+            draw_status_bar(stdscr, player, hours, message=message or flash_message)
             stdscr.refresh()
 
 
