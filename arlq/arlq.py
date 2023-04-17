@@ -21,13 +21,13 @@ CORRIDOR_V_WIDTH = 3
 CORRIDOR_H_WIDTH = 2
 WALL_CHARS = "###"  # cross, horizontal, vertical
 
-FOOD_MAX = 120
+FOOD_MAX = 100
 FOOD_INIT = 90
 FOOD_STARVATION = 30
 
-FEED_BISON = 40
-FEED_RARE_BISON = 80
-FEED_AMOEBA = 8
+FEED_BISON = 30
+FEED_RARE_BISON = 60
+FEED_AMOEBA = 5
 FEED_CHIMERA = 8
 FEED_COMODO_DRAGON = 30
 FEED_DRAGON = 10
@@ -182,9 +182,9 @@ MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind("a", 1, FEED_AMOEBA),  # Amoeba
     MonsterKind("b", 3, FEED_BISON, effect=EFFECT_FEED_MUCH),  # Bison
     MonsterKind("c", 6, FEED_CHIMERA, item=ITEM_SWORD),  # Chimera
-    MonsterKind("d", 15, FEED_COMODO_DRAGON, effect=EFFECT_POISONED),  # Comodo Dragon
+    MonsterKind("d", 18, FEED_COMODO_DRAGON, effect=EFFECT_POISONED),  # Comodo Dragon
     MonsterKind(CHAR_DRAGON, 15, FEED_DRAGON, effect=EFFECT_TREASURE_POINTER),  # Dragon
-    MonsterKind("E", 20, FEED_ELEMENTAL, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
+    MonsterKind("E", 24, FEED_ELEMENTAL, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
     MonsterKind("f", 0, 0, companion=COMPANION_FAIRY),  # Fairy
 ]
 
@@ -201,7 +201,7 @@ MONSTER_KIND_POPULATION: Dict[str, int] = {
     "c": 4,
     "d": 4,
     "D": 1,
-    "E": 2,
+    "E": 1,
     "f": 1,
 }
 
@@ -466,8 +466,6 @@ def curses_main(stdscr: curses.window) -> None:
         player.food -= 1
         if args.eating_frugal and player.food < FOOD_STARVATION and hours % 2 == 0:
             player.food += 1
-        elif args.eating_excessive and player.food > FOOD_INIT and hours % 4 == 0:
-            player.food -= 1
         if player.food <= 0:
             message = ">> Starved to Death. <<"
             game_ends = True
@@ -611,7 +609,6 @@ def main():
     parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
     parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
     parser.add_argument("-E", '--eating-frugal', action='store_true', help='Decrease rate of consuming food')
-    parser.add_argument("-e", '--eating-excessive', action='store_true', help='Increase rate of consuming food')
     parser.add_argument("--seed", action='store', type=int, help='Seed value')
 
     args = parser.parse_args()
