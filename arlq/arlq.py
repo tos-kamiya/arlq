@@ -230,11 +230,11 @@ def spawn_monsters(objects: List[Entity], field: List[List[str]]) -> None:
 
     for kind in MONSTER_KINDS:
         for _ in range(MONSTER_KIND_POPULATION[kind.char]):
-            x, y = find_random_place(objects, field, 2)
+            x, y = find_random_place(objects, field, 3)
             m = Monster(x, y, kind)
             objects.append(m)
     kind = rand.choice(RARE_MONSTER_KINDS)
-    x, y = find_random_place(objects, field, 2)
+    x, y = find_random_place(objects, field, 3)
     m = Monster(x, y, kind)
     objects.append(m)
 
