@@ -184,13 +184,13 @@ MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind(CHAR_DRAGON, 15, FOOD_DRAGON, item=ITEM_TREASURE_POINTER),  # Dragon
     MonsterKind("E", 20, FOOD_ELEMENTAL, item=ITEM_RANDOM_TRANSPORT),  # Elemental
     MonsterKind("f", 0, 0, companion=COMPANION_FAIRY),  # Fairy
-    MonsterKind("g", 0, FOOD_GORGON, item=ITEM_STONED),  # Gorgon
 ]
 
 RARE_MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind("A", 1, FOOD_AMOEBA, item=ITEM_SPECIAL_EXP),  # Amoeba rare
     MonsterKind("B", 3, FOOD_SPECIAL_BISON, item=ITEM_SPECIAL_BISON_MEAT),  # Bison rare
     MonsterKind("C", 6, FOOD_CHIMERA, item=ITEM_SWORD_AND_CLAIRVOYANCE),  # Chimera rare
+    MonsterKind("G", 0, FOOD_GORGON, item=ITEM_STONED),  # Gorgon
 ]
 
 MONSTER_KIND_POPULATION: Dict[str, int] = {
@@ -201,7 +201,6 @@ MONSTER_KIND_POPULATION: Dict[str, int] = {
     "D": 1,
     "E": 2,
     "f": 1,
-    "g": 1,
 }
 
 
