@@ -427,7 +427,7 @@ class TerminalSizeSmall(ValueError):
     pass
 
 
-def curses_main(stdscr: curses.window) -> None:
+def curses_main(stdscr: curses.window) -> bool:
     sh, sw = stdscr.getmaxyx()
     if sh < FIELD_HEIGHT + 2 or sw < FIELD_WIDTH:
         raise TerminalSizeSmall()
@@ -485,7 +485,7 @@ def curses_main(stdscr: curses.window) -> None:
             key = stdscr.getch()
             d = key_to_dir(key)
             if d is None:
-                return
+                return False  # quit
 
             dx, dy = d
             new_x, new_y = player.x + dx, player.y + dy
@@ -585,8 +585,10 @@ def curses_main(stdscr: curses.window) -> None:
     while True:
         key = stdscr.getch()
         if key == ord("q"):
-            break
+            return False
         elif key == ord("r"):
+            return True
+        elif key == ord("m"):
             stdscr.clear()
             draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=True)
             draw_status_bar(stdscr, player, hours, message=message or flash_message)
@@ -614,10 +616,9 @@ def main():
     args = parser.parse_args()
     args_box.append(args)
 
-    if args.seed is not None:
-        rand = MyRandom(args.seed)
-    else:
-        rand = MyRandom(int(time.time()) % 100000)
+    seed = args.seed
+    if seed is None:
+        seed = int(time.time()) % 100000
 
     curses.initscr()
     curses.noecho()
@@ -632,7 +633,12 @@ def main():
     curses.init_pair(4, curses.COLOR_YELLOW, -1)  # treasure
 
     try:
-        curses.wrapper(curses_main)
+        while True:
+            rand = MyRandom(seed)
+
+            retry = curses.wrapper(curses_main)
+            if not retry:
+                break
     except TerminalSizeSmall as e:
         sys.exit("Error: Terminal size too small. Minimum size is: %d x %d" % (FIELD_WIDTH, FIELD_HEIGHT + 2))
     finally:
