@@ -11,6 +11,7 @@ try:
 except:
     __version__ = "(unknown)"
 
+
 ROOM_WIDTH = 5
 ROOM_HEIGHT = 4
 ROOM_NUM_X = 12
@@ -35,10 +36,10 @@ FEED_ELEMENTAL = 0
 FEED_GORGON = -48
 
 ITEM_SWORD = "Sword"
+ITEM_POISONED = "Poisoned"
 ITEM_TREASURE = "Treasure"
 
 EFFECT_SPECIAL_EXP = "Special Exp."
-EFFECT_POISONED = "Poisoned"
 EFFECT_FEED_MUCH = "Bison Meat"
 EFFECT_RANDOM_TRANSPORT = "Random Trans."
 EFFECT_CLAIRVOYANCE = "Sword & Eye"
@@ -182,7 +183,7 @@ MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind("a", 1, FEED_AMOEBA),  # Amoeba
     MonsterKind("b", 3, FEED_BISON, effect=EFFECT_FEED_MUCH),  # Bison
     MonsterKind("c", 6, FEED_CHIMERA, item=ITEM_SWORD),  # Chimera
-    MonsterKind("d", 18, FEED_COMODO_DRAGON, effect=EFFECT_POISONED),  # Comodo Dragon
+    MonsterKind("d", 18, FEED_COMODO_DRAGON, item=ITEM_POISONED),  # Comodo Dragon
     MonsterKind(CHAR_DRAGON, 15, FEED_DRAGON, effect=EFFECT_TREASURE_POINTER),  # Dragon
     MonsterKind("E", 24, FEED_ELEMENTAL, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
     MonsterKind("f", 0, 0, companion=COMPANION_FAIRY),  # Fairy
@@ -345,7 +346,7 @@ def draw_stage(
 def player_attack_by_level(player: Player) -> int:
     if player.item == ITEM_SWORD:
         return player.level * 3
-    elif player.item == EFFECT_POISONED:
+    elif player.item == ITEM_POISONED:
         return (player.level + 2) // 3
     else:
         return player.level
@@ -355,7 +356,7 @@ def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: 
     if player.item == ITEM_SWORD:
         level_str = "LVL: %d x3" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-    elif player.item == EFFECT_POISONED:
+    elif player.item == ITEM_POISONED:
         level_str = "LVL: %d /3" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
     else:
@@ -379,7 +380,7 @@ def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: 
         buf.append("> %s" % beatable.char)
     buf.append("FOOD: %d" % player.food)
     buf.append(item_str)
-    buf.append("/ [Q] to exit")
+    buf.append("/ [Q]uit [R]estart")
     stdscr.addstr(FIELD_HEIGHT, 0, "  ".join(buf))
 
     if player.item == ITEM_TREASURE or player.food <= 0:
@@ -483,6 +484,8 @@ def curses_main(stdscr: curses.window) -> bool:
         # Move player
         while True:
             key = stdscr.getch()
+            if key == ord('r'):
+                return True  # restart
             d = key_to_dir(key)
             if d is None:
                 return False  # quit
@@ -585,9 +588,9 @@ def curses_main(stdscr: curses.window) -> bool:
     while True:
         key = stdscr.getch()
         if key == ord("q"):
-            return False
+            return False  # quit
         elif key == ord("r"):
-            return True
+            return True  # restart
         elif key == ord("m"):
             stdscr.clear()
             draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=True)
