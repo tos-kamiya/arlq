@@ -26,12 +26,12 @@ FOOD_MAX = 100
 FOOD_INIT = 90
 FOOD_STARVATION = 30
 
-FEED_BISON = 30
-FEED_RARE_BISON = 60
-FEED_AMOEBA = 5
-FEED_CHIMERA = 8
+FEED_BISON = 40
+FEED_RARE_BISON = 80
+FEED_AMOEBA = 10
+FEED_CHIMERA = 10
 FEED_COMODO_DRAGON = 30
-FEED_DRAGON = 10
+FEED_DRAGON = 20
 FEED_ELEMENTAL = 0
 FEED_GORGON = -48
 
@@ -531,6 +531,7 @@ def curses_main(stdscr: curses.window) -> bool:
                     enc_obj_infos.append((i, o))
                 elif dx <= 1 and dy <= 1:
                     sur_obj_infos.append((i, o))
+        assert len(enc_obj_infos) <= 1
 
         # Actions & events (combats, state changes, etc)
         for enc_obj_i, enc_obj in enc_obj_infos:
@@ -568,7 +569,6 @@ def curses_main(stdscr: curses.window) -> bool:
 
                     if m.kind.feed < 0:
                         hours += -m.kind.feed
-                    player.food += m.kind.feed
                     player.food = max(1, min(FOOD_MAX, player.food + m.kind.feed))
 
                     if m.kind.companion:
