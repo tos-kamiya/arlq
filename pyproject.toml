@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arlq"
+description = "ARQL, another rogue-like quest game."
+authors = [{name = "Toshihiro Kamiya", email = "kamiya@mbj.nifty.com"}]
+license = {text = "BSD 2-Clause License"}
+classifiers = [
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+]
+urls = {Homepage = "https://github.com/tos-kamiya/arlq"}
+requires-python = ">=3.8"
+dependencies = ['windows-curses; sys_platform == "win32"']
+dynamic = ["version"]
+
+[project.readme]
+file = "README-pypi.md"
+content-type = "text/markdown"
+
+[project.scripts]
+arlq = "arlq:main"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages]
+find = {namespaces = false}
+
+[tool.setuptools.dynamic]
+version = {attr = "arlq._version.__version__"}
