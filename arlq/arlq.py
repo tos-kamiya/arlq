@@ -12,9 +12,9 @@ except:
     __version__ = "(unknown)"
 
 
-TILE_WIDTH = 5
+TILE_WIDTH = 6
 TILE_HEIGHT = 4
-TILE_NUM_X = 12
+TILE_NUM_X = 10
 TILE_NUM_Y = 4
 FIELD_WIDTH = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
