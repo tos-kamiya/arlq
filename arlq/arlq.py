@@ -377,7 +377,7 @@ def player_attack_by_level(player: Player) -> int:
         return player.level
 
 
-def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: Optional[str] = None) -> None:
+def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: Optional[str] = None, key_show_map: bool = False) -> None:
     if player.item == ITEM_SWORD:
         level_str = "LVL: %d x3" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
@@ -405,7 +405,10 @@ def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: 
         buf.append("> %s" % beatable.char)
     buf.append("FOOD: %d" % player.food)
     buf.append(item_str)
-    buf.append("/ [Q]uit [R]estart")
+    if key_show_map:
+        buf.append("/[Q]uit/[R]estart/Show [M]ap")
+    else:
+        buf.append("/[Q]uit/[R]estart")
     stdscr.addstr(FIELD_HEIGHT, 0, "  ".join(buf))
 
     if player.item == ITEM_TREASURE or player.food <= 0:
@@ -606,7 +609,7 @@ def curses_main(stdscr: curses.window) -> bool:
 
     stdscr.clear()
     draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities)
-    draw_status_bar(stdscr, player, hours, message=message or flash_message)
+    draw_status_bar(stdscr, player, hours, message=message or flash_message, key_show_map=True)
     stdscr.refresh()
 
     while True:
@@ -618,7 +621,7 @@ def curses_main(stdscr: curses.window) -> bool:
         elif key == ord("m"):
             stdscr.clear()
             draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=True)
-            draw_status_bar(stdscr, player, hours, message=message or flash_message)
+            draw_status_bar(stdscr, player, hours, message=message or flash_message, key_show_map=True)
             stdscr.refresh()
 
 
