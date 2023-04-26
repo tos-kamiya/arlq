@@ -12,6 +12,12 @@ except:
     __version__ = "(unknown)"
 
 
+CI_RED = 1
+CI_GREEN = 2
+CI_YELLOW = 3
+CI_BLUE = 4
+CI_CYAN = 6
+
 TILE_WIDTH = 6
 TILE_HEIGHT = 4
 TILE_NUM_X = 10
@@ -321,17 +327,18 @@ def draw_stage(
     assert player is not None and px is not None and py is not None
 
     if player.companion:
-        stdscr.addstr(py, px + 1, "'", curses.color_pair(2) | curses.A_BOLD)
+        stdscr.addstr(py, px + 1, "'", curses.A_BOLD)
 
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
             if (not show_entities or cell == " ") and torched[y][x] == 0:
                 stdscr.addstr(y, x, ".", curses.A_DIM)
             elif cell != " ":
-                stdscr.addstr(y, x, cell, curses.color_pair(1))
+                stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
 
-    stdscr.addstr(py, px, "@", curses.color_pair(2) | curses.A_BOLD)
+    stdscr.addstr(py, px, "@", curses.A_BOLD)
 
+    atk = player_attack_by_level(player)
     for o in objects:
         if isinstance(o, Monster):
             m = o
@@ -343,14 +350,15 @@ def draw_stage(
                 if show_entities:
                     stdscr.addstr(m.y, m.x, ch)
                 else:
-                    stdscr.addstr(m.y, m.x, "?", curses.color_pair(3))
+                    stdscr.addstr(m.y, m.x, "?")
             else:
                 attr = curses.A_BOLD if "A" <= ch <= "Z" else 0
-                stdscr.addstr(m.y, m.x, ch, curses.color_pair(3) | attr)
+                ci = CI_BLUE if m.kind.level <= atk else CI_RED
+                stdscr.addstr(m.y, m.x, ch, curses.color_pair(ci) | attr)
         elif isinstance(o, Treasure):
             t = o
             if CHAR_TREASURE in encountered_types:
-                stdscr.addstr(t.y, t.x, CHAR_TREASURE, curses.color_pair(4) | curses.A_BOLD)
+                stdscr.addstr(t.y, t.x, CHAR_TREASURE, curses.color_pair(CI_YELLOW) | curses.A_BOLD)
 
     if show_entities:
         attr = curses.A_DIM
@@ -657,10 +665,11 @@ def main():
 
     curses.start_color()
     curses.use_default_colors()
-    curses.init_pair(1, curses.COLOR_GREEN, -1)  # wall
-    curses.init_pair(2, curses.COLOR_BLUE, -1)  # player
-    curses.init_pair(3, curses.COLOR_WHITE, -1)  # monster
-    curses.init_pair(4, curses.COLOR_YELLOW, -1)  # treasure
+    curses.init_pair(CI_RED, curses.COLOR_RED, -1)  # treasure
+    curses.init_pair(CI_GREEN, curses.COLOR_GREEN, -1)  # wall
+    curses.init_pair(CI_YELLOW, curses.COLOR_YELLOW, -1)  # treasure
+    curses.init_pair(CI_BLUE, curses.COLOR_BLUE, -1)  # player
+    curses.init_pair(CI_CYAN, curses.COLOR_CYAN, -1)  # monster
 
     try:
         while True:
