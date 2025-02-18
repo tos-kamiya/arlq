@@ -46,7 +46,6 @@ For those curious, there's a more detailed monster description next! Feel free t
 |C Rare Chimera|In addition to the sword, it possesses clairvoyance.|
 |D Dragon|Strong. Defeating the Dragon reveals the treasure chest ("T") location. Even if you don't defeat it, you'll be able to recognize the chest.|
 |E Elemental|Not a foe. Teleports the player to a random location in the dungeon. Offers extra services for high-level players.|
-|G Gorgon|A monster that petrifies you instantly just by making eye contact. Without a fairy companion, your body will be petrified for 48 hours! Be careful!|
 
 ## License
 
