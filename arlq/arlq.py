@@ -31,6 +31,7 @@ WALL_CHARS = "###"  # cross, horizontal, vertical
 FOOD_MAX = 100
 FOOD_INIT = 90
 FOOD_STARVATION = 30
+MONSTER_RESPAWN_RATE = 70
 
 ITEM_SWORD = "Sword"
 ITEM_POISONED = "Poisoned"
@@ -41,10 +42,9 @@ EFFECT_FEED_MUCH = "Bison Meat"
 EFFECT_RANDOM_TRANSPORT = "Random Trans."
 EFFECT_CLAIRVOYANCE = "Sword & Eye"
 EFFECT_TREASURE_POINTER = "Treasure Ptr."
-EFFECT_STONED = "Stoned"
 
 COMPANION_FAIRY = "Fairy"
-FAIRY_TORCH_EXTENSION = 2
+FAIRY_TORCH_EXTENSION = 3
 
 CHAR_DRAGON = "D"
 CHAR_TREASURE = "T"
@@ -162,31 +162,29 @@ class MonsterKind:
 
 
 MONSTER_KINDS: List[MonsterKind] = [
-    MonsterKind("a", 1, 10),  # Amoeba
-    MonsterKind("b", 3, 40, effect=EFFECT_FEED_MUCH),  # Bison
-    MonsterKind("c", 6, 10, item=ITEM_SWORD),  # Chimera
-    MonsterKind("d", 18, 30, item=ITEM_POISONED),  # Comodo Dragon
-    MonsterKind(CHAR_DRAGON, 15, 20, effect=EFFECT_TREASURE_POINTER),  # Dragon
-    MonsterKind("E", 24, 0, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
+    MonsterKind("a", 1, 12),  # Amoeba
+    MonsterKind("b", 5, 20, effect=EFFECT_FEED_MUCH),  # Bison
+    MonsterKind("c", 10, 12, item=ITEM_SWORD),  # Chimera
+    MonsterKind("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
+    MonsterKind(CHAR_DRAGON, 40, 25, effect=EFFECT_TREASURE_POINTER),  # Dragon
+    MonsterKind("E", 80, 0, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
     MonsterKind("f", 0, 0, companion=COMPANION_FAIRY),  # Fairy
-    MonsterKind("A", 1, 10, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
-    MonsterKind("B", 3, 80, effect=EFFECT_FEED_MUCH),  # Bison rare
-    MonsterKind("C", 6, 10, item=ITEM_SWORD, effect=EFFECT_CLAIRVOYANCE),  # Chimera rare
-    MonsterKind("G", 0, -48, effect=EFFECT_STONED),  # Gorgon
+    MonsterKind("A", 2, 12, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
+    MonsterKind("B", 10, 30, effect=EFFECT_FEED_MUCH),  # Bison rare
+    MonsterKind("C", 20, 12, item=ITEM_SWORD, effect=EFFECT_CLAIRVOYANCE),  # Chimera rare
 ]
 
 MONSTER_KIND_POPULATION: Dict[str, Union[int, float]] = {
-    "a": 22,
+    "a": 20,
     "b": 5,
     "c": 4,
-    "d": 4,
-    "D": 1,
+    "d": 3,
+    CHAR_DRAGON: 1,
     "E": 1,
     "f": 1,
-    "A": 0.25,
-    "B": 0.25,
-    "C": 0.25,
-    "G": 0.25,
+    "A": 0.3,
+    "B": 0.3,
+    "C": 0.3,
 }
 
 
@@ -236,16 +234,31 @@ def spawn_monsters(objects: List[Entity], field: List[List[str]]) -> None:
 
     for kind in MONSTER_KINDS:
         p = MONSTER_KIND_POPULATION[kind.char]
+        if isinstance(p, float):
+            p = 1 if rand.randrange(100)/100 < p else 0
+        for _ in range(p):
+            x, y = find_random_place(objects, field, distance=3)
+            m = Monster(x, y, kind)
+            objects.append(m)
+
+
+def respawn_monster(objects: List[Entity], field: List[List[str]]) -> None:
+    rand = rand_box[0]
+    assert rand is not None
+
+    t = []
+    for k, p in MONSTER_KIND_POPULATION.items():
         if isinstance(p, int):
             for _ in range(p):
-                x, y = find_random_place(objects, field, distance=3)
-                m = Monster(x, y, kind)
-                objects.append(m)
-        else:
-            if rand.randrange(100)/100 < p:
-                x, y = find_random_place(objects, field, distance=3)
-                m = Monster(x, y, kind)
-                objects.append(m)
+                t.append(k)
+
+    c = rand.choice(t)
+    for kind in MONSTER_KINDS:
+        if kind.char == c:
+            x, y = find_random_place(objects, field, distance=3)
+            m = Monster(x, y, kind)
+            objects.append(m)
+            break
 
 
 def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) -> Tuple[List[List[str]], Point, Point]:
@@ -296,9 +309,10 @@ def draw_stage(
     stdscr: curses.window,
     objects: List[Entity],
     field: List[List[str]],
+    cur_torched: List[List[int]],
     torched: List[List[int]],
     encountered_types: Set[str],
-    show_entities: Optional[bool] = False,
+    show_entities: bool = False,
 ) -> None:
     player, px, py = None, None, None
     for o in objects:
@@ -312,12 +326,13 @@ def draw_stage(
 
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
-            if (not show_entities or cell == " ") and torched[y][x] == 0:
-                stdscr.addstr(y, x, ".", curses.A_DIM)
-            elif cell != " ":
+            if torched[y][x] and cell in WALL_CHARS:
                 stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
+            elif (not show_entities or cell == " ") and cur_torched[y][x] == 0:
+                if (x + y) % 2 == 1:
+                    stdscr.addstr(y, x, ".", curses.A_DIM)
 
-    stdscr.addstr(py, px, "@", curses.A_BOLD)
+    stdscr.addstr(py, px, "@", curses.A_BOLD | curses.color_pair(CI_YELLOW))
 
     atk = player_attack_by_level(player)
     for o in objects:
@@ -412,12 +427,7 @@ def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: 
         stdscr.addstr(FIELD_HEIGHT + 1, 0, message)
 
 
-# --- キー入力部分の変更 ---
 def key_to_dir(key: str) -> Optional[Point]:
-    """
-    引数 key は stdscr.getkey() で得られる文字列です。
-    矢印キーの場合は "KEY_UP" 等、または w,a,s,d などの文字で判定します。
-    """
     if key in ['w', 'W', 'KEY_UP']:
         return (0, -1)
     elif key in ['a', 'A', 'KEY_LEFT']:
@@ -427,7 +437,6 @@ def key_to_dir(key: str) -> Optional[Point]:
     elif key in ['d', 'D', 'KEY_RIGHT']:
         return (1, 0)
     return None
-# --- ここまで ---
 
 
 def update_torched(torched: List[List[int]], player: Player, torch_radius: int) -> None:
@@ -516,8 +525,10 @@ def curses_main(stdscr: curses.window) -> bool:
 
         # Show the field
         update_torched(torched, player, torch_radius)
+        cur_torched: List[List[int]] = [[0 for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
+        update_torched(cur_torched, player, torch_radius)
         stdscr.clear()
-        draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities)
+        draw_stage(stdscr, objects, field, cur_torched, torched, encountered_types, show_entities=args.debug_show_entities)
         draw_status_bar(stdscr, player, hours, message=message or flash_message)
         stdscr.refresh()
         if flash_message:
@@ -525,17 +536,29 @@ def curses_main(stdscr: curses.window) -> bool:
 
         # Move player
         while True:
-            key = stdscr.getkey()  # 標準のキー入力 (文字列)
-            if key.lower() == 'q':
+            key = stdscr.getkey()
+            if key == 27 or key.lower() == 'q':
                 return False  # quit
             d = key_to_dir(key)
             if d is None:
-                continue  # 不明なキーは無視
+                continue
             dx, dy = d
             new_x, new_y = player.x + dx, player.y + dy
-            if field[new_y][new_x] == " ":  # 壁でなければ移動
-                player.x, player.y = new_x, new_y
-                break
+            if 0 <= new_x < len(field[0]) and 0 <= new_y < len(field):
+                c = field[new_y][new_x]
+                if c == " ":
+                    player.x, player.y = new_x, new_y
+                    break
+                elif player.item == ITEM_SWORD and c in WALL_CHARS:
+                    # break the wall
+                    player.x, player.y = new_x, new_y
+                    field[player.y][player.x] = " "
+                    player.item = ''
+                    player.item_taken_from = ''
+                    break
+
+        if hours % MONSTER_RESPAWN_RATE == 0:
+            respawn_monster(objects, field)
 
         # Find encountered object
         enc_obj_infos: List[Tuple[int, Entity]] = []
@@ -608,10 +631,6 @@ def curses_main(stdscr: curses.window) -> bool:
                             flash_message = "-- Stuffed."
                         elif effect == EFFECT_SPECIAL_EXP:
                             flash_message = "-- Special Exp."
-                        elif effect == EFFECT_STONED:
-                            flash_message = "-- Stoned."
-                            if player.companion == COMPANION_FAIRY:
-                                player.companion = ''
 
         for sur_obj_i, sur_obj in sur_obj_infos:
             if isinstance(sur_obj, Treasure):
@@ -621,7 +640,7 @@ def curses_main(stdscr: curses.window) -> bool:
     update_torched(torched, player, torch_radius)
 
     stdscr.clear()
-    draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=args.debug_show_entities)
+    draw_stage(stdscr, objects, field, cur_torched, torched, encountered_types, show_entities=args.debug_show_entities)
     draw_status_bar(stdscr, player, hours, message=message or flash_message, key_show_map=True)
     stdscr.refresh()
 
@@ -631,7 +650,7 @@ def curses_main(stdscr: curses.window) -> bool:
             return False  # quit
         elif key.lower() == "m":
             stdscr.clear()
-            draw_stage(stdscr, objects, field, torched, encountered_types, show_entities=True)
+            draw_stage(stdscr, objects, field, cur_torched, torched, encountered_types, show_entities=True)
             draw_status_bar(stdscr, player, hours, message=message or flash_message, key_show_map=True)
             stdscr.refresh()
 
