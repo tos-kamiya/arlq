@@ -31,7 +31,7 @@ WALL_CHARS = "###"  # cross, horizontal, vertical
 FOOD_MAX = 100
 FOOD_INIT = 90
 FOOD_STARVATION = 30
-MONSTER_RESPAWN_RATE = 70
+MONSTER_RESPAWN_RATE = 100
 
 ITEM_SWORD = "Sword"
 ITEM_POISONED = "Poisoned"
@@ -167,7 +167,7 @@ MONSTER_KINDS: List[MonsterKind] = [
     MonsterKind("c", 10, 12, item=ITEM_SWORD),  # Chimera
     MonsterKind("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
     MonsterKind(CHAR_DRAGON, 40, 25, effect=EFFECT_TREASURE_POINTER),  # Dragon
-    MonsterKind("E", 80, 0, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
+    MonsterKind("E", 50, 0, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
     MonsterKind("f", 0, 0, companion=COMPANION_FAIRY),  # Fairy
     MonsterKind("A", 2, 12, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
     MonsterKind("B", 10, 30, effect=EFFECT_FEED_MUCH),  # Bison rare
@@ -175,9 +175,9 @@ MONSTER_KINDS: List[MonsterKind] = [
 ]
 
 MONSTER_KIND_POPULATION: Dict[str, Union[int, float]] = {
-    "a": 20,
+    "a": 25,
     "b": 5,
-    "c": 4,
+    "c": 5,
     "d": 3,
     CHAR_DRAGON: 1,
     "E": 1,
@@ -248,7 +248,7 @@ def respawn_monster(objects: List[Entity], field: List[List[str]]) -> None:
 
     t = []
     for k, p in MONSTER_KIND_POPULATION.items():
-        if isinstance(p, int):
+        if isinstance(p, int) and k != CHAR_DRAGON:
             for _ in range(p):
                 t.append(k)
 
@@ -602,7 +602,7 @@ def curses_main(stdscr: curses.window) -> bool:
                     if effect == EFFECT_RANDOM_TRANSPORT:
                         pass  # do not change player level
                     elif effect == EFFECT_SPECIAL_EXP:
-                        player.level += 7
+                        player.level += 10
                     else:
                         player.level += 1
 
