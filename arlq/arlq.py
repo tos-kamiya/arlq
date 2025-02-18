@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 import argparse
 import curses
@@ -32,15 +32,6 @@ FOOD_MAX = 100
 FOOD_INIT = 90
 FOOD_STARVATION = 30
 
-FEED_BISON = 40
-FEED_RARE_BISON = 80
-FEED_AMOEBA = 10
-FEED_CHIMERA = 10
-FEED_COMODO_DRAGON = 30
-FEED_DRAGON = 20
-FEED_ELEMENTAL = 0
-FEED_GORGON = -48
-
 ITEM_SWORD = "Sword"
 ITEM_POISONED = "Poisoned"
 ITEM_TREASURE = "Treasure"
@@ -67,7 +58,7 @@ class MyRandom:
     def __init__(self, seed):
         self._value = self.seed = seed
 
-    def randrange(self, r):
+    def randrange(self, r) -> int:
         self._value = (1103515245 * self._value + 12345) % (2 ** 32)
         return self._value % r
 
@@ -76,11 +67,12 @@ class MyRandom:
         return items[i]
 
 
-rand_box = [None]
+rand_box: List[Optional[MyRandom]] = [None]
 
 
-def gen_maze(width: int, height: int) -> List[Edge]:
+def gen_maze(width: int, height: int) -> Tuple[List[Edge], Point, Point]:
     rand = rand_box[0]
+    assert rand is not None
 
     # Returns a list of neighboring points given a point p
     def neighbor_points(p):
@@ -98,7 +90,9 @@ def gen_maze(width: int, height: int) -> List[Edge]:
     edges = []
 
     # Choose a random starting point
-    first_point = cur_p = rand.choice(list(unconnected_point_set))
+    unconnected_nps = list(unconnected_point_set)
+    first_point = cur_p = rand.choice(unconnected_nps)
+    last_point = rand.choice(unconnected_nps)  # dummy
     unconnected_point_set.remove(cur_p)
     connecting_points.append(cur_p)
 
@@ -167,25 +161,21 @@ class MonsterKind:
         self.companion = companion
 
 
-# Combine monster_data and item_data into a single dict
 MONSTER_KINDS: List[MonsterKind] = [
-    MonsterKind("a", 1, FEED_AMOEBA),  # Amoeba
-    MonsterKind("b", 3, FEED_BISON, effect=EFFECT_FEED_MUCH),  # Bison
-    MonsterKind("c", 6, FEED_CHIMERA, item=ITEM_SWORD),  # Chimera
-    MonsterKind("d", 18, FEED_COMODO_DRAGON, item=ITEM_POISONED),  # Comodo Dragon
-    MonsterKind(CHAR_DRAGON, 15, FEED_DRAGON, effect=EFFECT_TREASURE_POINTER),  # Dragon
-    MonsterKind("E", 24, FEED_ELEMENTAL, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
+    MonsterKind("a", 1, 10),  # Amoeba
+    MonsterKind("b", 3, 40, effect=EFFECT_FEED_MUCH),  # Bison
+    MonsterKind("c", 6, 10, item=ITEM_SWORD),  # Chimera
+    MonsterKind("d", 18, 30, item=ITEM_POISONED),  # Comodo Dragon
+    MonsterKind(CHAR_DRAGON, 15, 20, effect=EFFECT_TREASURE_POINTER),  # Dragon
+    MonsterKind("E", 24, 0, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
     MonsterKind("f", 0, 0, companion=COMPANION_FAIRY),  # Fairy
+    MonsterKind("A", 1, 10, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
+    MonsterKind("B", 3, 80, effect=EFFECT_FEED_MUCH),  # Bison rare
+    MonsterKind("C", 6, 10, item=ITEM_SWORD, effect=EFFECT_CLAIRVOYANCE),  # Chimera rare
+    MonsterKind("G", 0, -48, effect=EFFECT_STONED),  # Gorgon
 ]
 
-RARE_MONSTER_KINDS: List[MonsterKind] = [
-    MonsterKind("A", 1, FEED_AMOEBA, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
-    MonsterKind("B", 3, FEED_RARE_BISON, effect=EFFECT_FEED_MUCH),  # Bison rare
-    MonsterKind("C", 6, FEED_CHIMERA, item=ITEM_SWORD, effect=EFFECT_CLAIRVOYANCE),  # Chimera rare
-    MonsterKind("G", 0, FEED_GORGON, effect=EFFECT_STONED),  # Gorgon
-]
-
-MONSTER_KIND_POPULATION: Dict[str, int] = {
+MONSTER_KIND_POPULATION: Dict[str, Union[int, float]] = {
     "a": 22,
     "b": 5,
     "c": 4,
@@ -193,6 +183,10 @@ MONSTER_KIND_POPULATION: Dict[str, int] = {
     "D": 1,
     "E": 1,
     "f": 1,
+    "A": 0.25,
+    "B": 0.25,
+    "C": 0.25,
+    "G": 0.25,
 }
 
 
@@ -208,6 +202,7 @@ def tile_to_place_range(x: int, y: int) -> Tuple[Point, Point]:
 
 def find_random_place_in_range(field: List[List[str]], left_top: Point, right_bottom: Point) -> Point:
     rand = rand_box[0]
+    assert rand is not None
 
     assert left_top[0] < right_bottom[0]
     assert left_top[1] < right_bottom[1]
@@ -221,6 +216,7 @@ def find_random_place_in_range(field: List[List[str]], left_top: Point, right_bo
 
 def find_random_place(objects: List[Entity], field: List[List[str]], distance: int = 2, place_range: Optional[Tuple[Point, Point]] = None) -> Point:
     rand = rand_box[0]
+    assert rand is not None
 
     places = [(o.x, o.y) for o in objects]
     while True:
@@ -236,22 +232,27 @@ def find_random_place(objects: List[Entity], field: List[List[str]], distance: i
 
 def spawn_monsters(objects: List[Entity], field: List[List[str]]) -> None:
     rand = rand_box[0]
+    assert rand is not None
 
     for kind in MONSTER_KINDS:
-        for _ in range(MONSTER_KIND_POPULATION[kind.char]):
-            x, y = find_random_place(objects, field, distance=3)
-            m = Monster(x, y, kind)
-            objects.append(m)
-    kind = rand.choice(RARE_MONSTER_KINDS)
-    x, y = find_random_place(objects, field, distance=3)
-    m = Monster(x, y, kind)
-    objects.append(m)
+        p = MONSTER_KIND_POPULATION[kind.char]
+        if isinstance(p, int):
+            for _ in range(p):
+                x, y = find_random_place(objects, field, distance=3)
+                m = Monster(x, y, kind)
+                objects.append(m)
+        else:
+            if rand.randrange(100)/100 < p:
+                x, y = find_random_place(objects, field, distance=3)
+                m = Monster(x, y, kind)
+                objects.append(m)
 
 
 def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) -> Tuple[List[List[str]], Point, Point]:
     rand = rand_box[0]
+    assert rand is not None
 
-    field = [[" " for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
+    field: List[List[str]] = [[" " for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
 
     # Create walls
     for ty in range(TILE_NUM_Y + 1):
@@ -367,6 +368,7 @@ def player_attack_by_level(player: Player) -> int:
 
 def draw_status_bar(stdscr: curses.window, player: Player, hours: int, message: Optional[str] = None, key_show_map: bool = False) -> None:
     rand = rand_box[0]
+    assert rand is not None
 
     if player.item == ITEM_SWORD:
         level_str = "LVL: %d x3" % player.level
