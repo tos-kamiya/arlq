@@ -29,7 +29,6 @@ content-type = "text/markdown"
 
 [project.scripts]
 arlq = "arlq:main"
-arlq-pygame = "arlq:pygame_main"
 
 [tool.setuptools]
 include-package-data = false

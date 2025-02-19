@@ -88,3 +88,10 @@ MONSTER_TRIBES: List[MonsterTribe] = [
 ]
 
 
+def player_attack_by_level(player: Player) -> int:
+    if player.item == ITEM_SWORD:
+        return player.level * 3
+    elif player.item == ITEM_POISONED:
+        return (player.level + 2) // 3
+    else:
+        return player.level
