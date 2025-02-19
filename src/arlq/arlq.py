@@ -6,10 +6,7 @@ import math
 import sys
 import time
 
-try:
-    from ._version import __version__
-except:
-    __version__ = "(unknown)"
+from .__about__ import __version__
 
 from .utils import rand
 from .defs import *

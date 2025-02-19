@@ -1,6 +1,8 @@
-import pygame
 from typing import Optional, Tuple, List, Set
 
+import pygame
+
+from .__about__ import __version__
 from .defs import *
 
 # RGB colors corresponding to curses color numbers
@@ -35,7 +37,7 @@ class PygameUI:
         self.window_width = self.field_width * CELL_SIZE_X
         self.window_height = (self.field_height + 2) * CELL_SIZE_Y
         self.screen = pygame.display.set_mode((self.window_width, self.window_height))
-        pygame.display.set_caption("Pygame UI")
+        pygame.display.set_caption(f"Arlq (Pygame mix) v{__version__}")
         # Prepare monospace fonts (including a bold version)
         self.font = pygame.font.SysFont("Courier", CELL_SIZE_Y)
         self.font_bold = pygame.font.SysFont("Courier", CELL_SIZE_Y, bold=True)
