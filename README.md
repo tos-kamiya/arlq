@@ -68,7 +68,7 @@ For more details about the monsters, please refer to the Monster List below. You
 |-----------------|-------------|
 | a Amoeba        | Weak enough to defeat from the start. Good for leveling up. |
 | b Bison         | The second weakest. Defeating it gives you plenty of food. Hunt it when you are hungry. |
-| c Chimera       | Fairly strong. It carries a sword, which you can obtain upon defeating it. With the sword, your combat power triples in the next battle. |
+| c Chimera | Fairly strong. It carries a sword, which you can obtain upon defeating it. With the sword, your combat power triples in the next battle. It can also break walls. |
 | d Komodo Dragon | Strong. Defeating it gives you a lot of food, but you get poisoned, reducing your combat power to one-third in the next battle. |
 | f Fairy         | Not an enemy. When touched, it follows you and gives you a small benefit. |
 | A Rare Amoeba   | A rare amoeba that gives you a big level boost when defeated. |
