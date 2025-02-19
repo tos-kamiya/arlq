@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple
 
 import argparse
 import curses
@@ -13,8 +13,6 @@ except:
 
 from .utils import rand
 from .defs import *
-from .curses_funcs import *
-
 
 def gen_maze(width: int, height: int) -> Tuple[List[Edge], Point, Point]:
     # Returns a list of neighboring points given a point p
@@ -377,11 +375,6 @@ def run_game(ui) -> None:
         flash_message = ''
 
 
-def curses_main(stdscr):
-    ui = CursesUI(stdscr)
-    run_game(ui)
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="A Rogue-Like game.",
@@ -393,6 +386,7 @@ def main():
     g.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
     g.add_argument("-t", "--small-torch", action="store_true", help="Small torch.")
 
+    parser.add_argument("--curses", action="store_true", help="Use curses as UI framework.")
     parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
     parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
     parser.add_argument("-E", '--eating-frugal', action='store_true', help='Decrease rate of consuming food')
@@ -401,10 +395,22 @@ def main():
     args = parser.parse_args()
     args_box.append(args)
 
-    try:
-        curses.wrapper(curses_main)
-    except TerminalSizeSmall as e:
-        sys.exit("Error: Terminal size too small. Minimum size is: %d x %d" % (FIELD_WIDTH, FIELD_HEIGHT + 2))
+    if args.curses:
+        from .curses_funcs import CursesUI, TerminalSizeSmall
+
+        def curses_main(stdscr):
+            ui = CursesUI(stdscr)
+            run_game(ui)
+
+        try:
+            curses.wrapper(curses_main)
+        except TerminalSizeSmall as e:
+            sys.exit("Error: Terminal size too small. Minimum size is: %d x %d" % (FIELD_WIDTH, FIELD_HEIGHT + 2))
+    else:
+        from .pygame_funcs import PygameUI
+
+        ui = PygameUI()
+        run_game(ui)
 
 
 if __name__ == "__main__":
