@@ -1,7 +1,6 @@
 from typing import List, Optional, Set, Tuple
 
 import argparse
-import curses
 import math
 import sys
 import time
@@ -393,6 +392,8 @@ def main():
     args_box.append(args)
 
     if args.curses:
+        import curses
+
         from .curses_funcs import CursesUI, TerminalSizeSmall
 
         def curses_main(stdscr):
