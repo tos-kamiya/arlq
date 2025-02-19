@@ -18,7 +18,9 @@ classifiers = [
 ]
 urls = {Homepage = "https://github.com/tos-kamiya/arlq"}
 requires-python = ">=3.8"
-dependencies = ['windows-curses; sys_platform == "win32"']
+dependencies = [
+    'pygame'
+]
 dynamic = ["version"]
 
 [project.readme]
@@ -27,6 +29,7 @@ content-type = "text/markdown"
 
 [project.scripts]
 arlq = "arlq:main"
+arlq-pygame = "arlq:pygame_main"
 
 [tool.setuptools]
 include-package-data = false
