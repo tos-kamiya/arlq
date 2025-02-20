@@ -23,7 +23,7 @@ COLOR_MAP = {
 }
 
 CELL_SIZE_Y = 20
-CELL_SIZE_X = 15
+CELL_SIZE_X = 13
 
 
 # PygameUI is designed to have the same API as CursesUI.
