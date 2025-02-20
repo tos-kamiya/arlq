@@ -21,7 +21,8 @@ classifiers = [
 ]
 urls = {Homepage = "https://github.com/tos-kamiya/arlq"}
 dependencies = [
-    'pygame'
+    'pygame',
+    'cureses',
 ]
 
 [project.readme]
