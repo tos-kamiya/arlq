@@ -10,18 +10,32 @@ ARLQ (Another Rogue-Like Quest) is an experimental rogue-like game created throu
 
 ![](screenshot.png)
 
-## Installation
+## Installation Instructions
 
-Run the following command:
+Run the following command to install:
 
 ```bash
 pipx install git+https://github.com/tos-kamiya/arlq
 ```
 
-Once the installation is complete, the `arlq` command will be available.
+Once installed, you will have access to the `arlq` command.
 
-- Without any options, the game runs in a pygame window.
-- With the `--curses` option, the game will run in the terminal using the curses interface.
+- Without any options, a game window using Pygame will be executed.
+- With the `--curses` option, the game will run in the terminal using curses.
+
+To use the `--curses` option, you need to install the `curses` package separately:
+
+For Ubuntu 24.04:
+
+```bash
+sudo apt install python3-curses
+```
+
+For Windows:
+
+```bash
+pip install windows-curses
+```
 
 ## Game Description
 

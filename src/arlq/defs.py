@@ -13,7 +13,8 @@ WALL_CHARS = "###"  # cross, horizontal, vertical
 FOOD_MAX = 100
 FOOD_INIT = 90
 FOOD_STARVATION = 30
-MONSTER_RESPAWN_RATE = 120
+
+MONSTER_RESPAWN_RATE = 150
 
 ITEM_SWORD = "Sword"
 ITEM_POISONED = "Poisoned"
@@ -76,8 +77,8 @@ class MonsterTribe:
 
 MONSTER_TRIBES: List[MonsterTribe] = [
     MonsterTribe("a", 1, 12, 25),  # Amoeba
-    MonsterTribe("b", 5, 20, 5, effect=EFFECT_FEED_MUCH),  # Bison
-    MonsterTribe("c", 10, 12, 4, item=ITEM_SWORD),  # Chimera
+    MonsterTribe("b", 5, 20, 4, effect=EFFECT_FEED_MUCH),  # Bison
+    MonsterTribe("c", 10, 12, 3, item=ITEM_SWORD),  # Chimera
     MonsterTribe("d", 20, 20, 3, item=ITEM_POISONED),  # Comodo Dragon
     MonsterTribe(CHAR_DRAGON, 40, 12, 1, effect=EFFECT_TREASURE_POINTER),  # Dragon
     MonsterTribe("E", 50, 0, 1, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
