@@ -10,6 +10,7 @@ from .__about__ import __version__
 from .utils import rand
 from .defs import *
 
+
 def gen_maze(width: int, height: int) -> Tuple[List[Edge], Point, Point]:
     # Returns a list of neighboring points given a point p
     def neighbor_points(p):
@@ -273,11 +274,6 @@ def update_entities(move_direction, field, player, entities, encountered_types, 
                         flash_message = "-- Stuffed."
                     elif effect == EFFECT_SPECIAL_EXP:
                         flash_message = "-- Special Exp."
-
-    for sur_obj_i, sur_obj in sur_obj_infos:
-        if isinstance(sur_obj, Treasure):
-            if CHAR_DRAGON in encountered_types:
-                encountered_types.add(CHAR_TREASURE)
 
     return game_over, message, flash_message
 
