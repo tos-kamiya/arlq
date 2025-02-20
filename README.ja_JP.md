@@ -23,6 +23,20 @@ pipx install git+https://github.com/tos-kamiya/arlq
 - オプション無しの場合は、pygameのウィンドウでゲームが実行されます。
 - `--curses` オプションを付けると、ターミナルでcursesを使ってゲームが実行されます。
 
+オプション`--curses`を利用するには、別途、`curses`パッケージのインストールが必要です。
+
+Ubuntu 24.04の場合
+
+```bash
+sudo apt install python3-curses
+```
+
+Windowsの場合
+
+```bash
+pip install windows-curses
+```
+
 ## ゲームの説明
 
 * **ゲームの目的**  
