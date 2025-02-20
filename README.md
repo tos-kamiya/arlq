@@ -47,9 +47,10 @@ pip install windows-curses
 
 * **Monsters**  
   The dungeon is filled with various monsters.  
-  - For example:  
-    - `a`: Amoeba. It is easy to defeat at the beginning and helps you level up.  
-    - `b`: Bison. Defeating it gives you a lot of food.  
+  For example:  
+  - `a`: Weak enough to be defeated from the start. Useful for leveling up.  
+  - `b`: The second weakest. Defeating it provides plenty of food. Hunt it when you're hungry.  
+  
   Initially, monsters appear as “?”; when you come into contact with them, their type (such as `a`, `b`, `c`, etc.) is revealed.
 
 * **Fog System**  
@@ -63,9 +64,9 @@ pip install windows-curses
 
 * **Rare Types**  
   Some monsters have a rare type with special features that differ from the normal ones.  
-  - For example:  
-    - `A` (Rare Amoeba): Defeating it gives you a big level boost.  
-    - `B` (Rare Bison): You get more food than from a regular Bison.
+  For example:  
+  - `A` (Amoeba Rare): A rare amoeba that significantly boosts your level upon defeat.  
+  - `B` (Bison Rare): Tastier than a normal bison. Provides even more food.  
 
 * **Food System**  
   Every time the player moves, their food supply decreases.  
@@ -78,18 +79,19 @@ For more details about the monsters, please refer to the Monster List below. You
 
 ## Monster List
 
-| Display & Name  | Description |
-|-----------------|-------------|
-| a Amoeba        | Weak enough to defeat from the start. Good for leveling up. |
-| b Bison         | The second weakest. Defeating it gives you plenty of food. Hunt it when you are hungry. |
-| c Chimera | Fairly strong. It carries a sword, which you can obtain upon defeating it. With the sword, your combat power triples in the next battle. It can also break walls. |
-| d Komodo Dragon | Strong. Defeating it gives you a lot of food, but you get poisoned, reducing your combat power to one-third in the next battle. |
-| f Fairy         | Not an enemy. When touched, it follows you and gives you a small benefit. |
-| A Rare Amoeba   | A rare amoeba that gives you a big level boost when defeated. |
-| B Rare Bison    | Tastier than the regular Bison. Defeating it gives you even more food. |
-| C Rare Chimera  | In addition to the sword, it grants you the ability to see far away. |
-| D Dragon        | Strong. Defeating it reveals the location of the treasure chest (`T`). Even if you do not defeat it, you will be able to recognize the treasure chest. |
-| E Elemental     | Not an enemy. Touching it moves you to a random location within the dungeon. It is especially helpful for high-level players. |
+| Display & Name  | Description                                                                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                             |
+| b Bison         | The second weakest. Defeating it provides plenty of food. Hunt it when you're hungry.                                                                          |
+| c Chimera       | Moderately strong. It carries a sword, which can be obtained upon defeat. Holding the sword doubles combat power in the next battle and allows breaking walls. |
+| d Komodo Dragon | Strong. Defeating it provides a large amount of food, but you will be poisoned, reducing your combat power to one-third in the next battle.                    |
+| f Fairy         | Not an enemy. When touched, it follows the player and provides minor benefits.                                                                                 |
+| A Rare Amoeba   | A rare amoeba that significantly boosts your level upon defeat.                                                                                                |
+| B Rare Bison    | Tastier than a normal bison. Provides even more food.                                                                                                          |
+| C Rare Chimera  | Stronger than a normal chimera, carrying a sword that triples combat power.                                                                                    |
+| D Dragon        | Very strong. Defeating it reveals the location of a treasure chest. Even without defeating it, you will gain the ability to recognize treasure chests.         |
+| E Elemental     | Not an enemy. When touched, it moves the player. If the player's level is low, it teleports them to a random location.                                         |
+| F Rare Fairy    | Not an enemy. When touched, it grants the ability to see distant areas.                                                                                        |
 
 ## License
 
