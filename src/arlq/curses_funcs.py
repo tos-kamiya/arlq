@@ -227,7 +227,7 @@ class CursesUI:
 
         sh, sw = stdscr.getmaxyx()
         if sh < FIELD_HEIGHT + 2 or sw < FIELD_WIDTH:
-            raise TerminalSizeSmall()
+            raise TerminalSizeSmall("Terminal size too small. Minimum size is: %d x %d" % (FIELD_WIDTH, FIELD_HEIGHT + 2))
 
     def draw_stage(self, hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, message, key_show_map=False):
         """
