@@ -188,7 +188,7 @@ def get_torched(player: Player, torch_radius: int) -> List[List[int]]:
 
 def update_entities(move_direction, field, player, entities, encountered_types, torched, torch_radius):
     game_over = False
-    message = flash_message = None
+    message = (-1, "")
 
     # player move
     dx, dy = move_direction
@@ -197,7 +197,7 @@ def update_entities(move_direction, field, player, entities, encountered_types, 
         c = field[new_y][new_x]
         if c == " ":
             player.x, player.y = new_x, new_y
-        elif player.item == ITEM_SWORD and c in WALL_CHARS:
+        elif player.item in [ITEM_SWORD_X2, ITEM_SWORD_X3] and c in WALL_CHARS:
             # break the wall
             player.x, player.y = new_x, new_y
             field[player.y][player.x] = " "
@@ -222,7 +222,7 @@ def update_entities(move_direction, field, player, entities, encountered_types, 
         if isinstance(enc_obj, Treasure):
             if CHAR_DRAGON in encountered_types:
                 encountered_types.add(CHAR_TREASURE)
-                message = ">> Won the Treasure! <<"
+                message = (-1, ">> Won the Treasure! <<")
                 game_over = True
                 player.item = ITEM_TREASURE
                 player.item_taken_from = ''
@@ -236,12 +236,14 @@ def update_entities(move_direction, field, player, entities, encountered_types, 
             if player_attack < m.tribe.level:
                 if effect == EFFECT_RANDOM_TRANSPORT:
                     player.x, player.y = find_random_place(entities, field, distance=2)
+                    message = (3, "-- Transported.")
                 else:
                     # respawn
                     player.x, player.y = find_random_place(entities, field, distance=2)
                     player.item = ""
                     player.item_taken_from = ""
                     player.food = min(player.food, FOOD_INIT)
+                    message = (3, "-- Respawned.")
             else:
                 if effect == EFFECT_RANDOM_TRANSPORT:
                     pass  # do not change player level
@@ -258,6 +260,7 @@ def update_entities(move_direction, field, player, entities, encountered_types, 
                 if effect == EFFECT_RANDOM_TRANSPORT:
                     player.x, player.y = find_random_place(entities, field, distance=2)
                     m.x, m.y = player.x + 1, player.y
+                    message = (3, "-- Transported.")
                 else:
                     del entities[enc_obj_i]
                     player.item = m.tribe.item
@@ -266,16 +269,16 @@ def update_entities(move_direction, field, player, entities, encountered_types, 
                     if effect == EFFECT_CLAIRVOYANCE:
                         cur_torched = get_torched(player, torch_radius * 4)
                         update_torched(torched, cur_torched)
-                        flash_message = "-- Clairvoyance."
+                        message = (3, "-- Clairvoyance.")
                     elif effect == EFFECT_TREASURE_POINTER:
                         encountered_types.add(CHAR_TREASURE)
-                        flash_message = "-- Sparkle."
+                        message = (3, "-- Sparkle.")
                     elif effect == EFFECT_FEED_MUCH:
-                        flash_message = "-- Stuffed."
+                        message = (3, "-- Stuffed.")
                     elif effect == EFFECT_SPECIAL_EXP:
-                        flash_message = "-- Special Exp."
+                        message = (3, "-- Exp. Boost.")
 
-    return game_over, message, flash_message
+    return game_over, message
 
 
 args_box: List[argparse.Namespace] = []
@@ -290,7 +293,10 @@ def run_game(ui) -> None:
     rand.set_seed(seed)
 
     # Initialize field
-    corridor_h_width, corridor_v_width = (1, 2) if args.narrower_corridors else (CORRIDOR_H_WIDTH, CORRIDOR_V_WIDTH)
+    corridor_h_width, corridor_v_width = CORRIDOR_H_WIDTH, CORRIDOR_V_WIDTH
+    if args.narrower_corridors:
+        corridor_h_width -= 1
+        corridor_v_width -= 1
     field, first_p, last_p = create_field(corridor_h_width, corridor_v_width, WALL_CHARS)
 
     # Initialize entities
@@ -310,8 +316,7 @@ def run_game(ui) -> None:
         torch_radius = 5
     elif args.small_torch:
         torch_radius = 3
-    flash_message: Optional[str] = None
-    message: Optional[str] = None
+    message: Tuple[int, str] = (-1, "")
 
     # Initialize stage state
     hours: int = -1
@@ -326,7 +331,7 @@ def run_game(ui) -> None:
         if args.eating_frugal and player.food < FOOD_STARVATION and hours % 2 == 0:
             player.food += 1
         if player.food <= 0:
-            message = ">> Starved to Death. <<"
+            message = (-1, ">> Starved to Death. <<")
             game_over = True
             break
 
@@ -335,17 +340,22 @@ def run_game(ui) -> None:
         update_torched(torched, cur_torched)
 
         # Show the field
-        if flash_message:
-            flash_message = None
-
-        ui.draw_stage(hours, player, entities, field, cur_torched, torched, encountered_types, args.debug_show_entities, message, flash_message)
+        if message[0] >= 0:
+            remaining_tick = message[0] - 1
+            if remaining_tick < 0:
+                message = (-1, "")
+            else:
+                message = (remaining_tick, message[1])
+        ui.draw_stage(hours, player, entities, field, cur_torched, torched, encountered_types, args.debug_show_entities, message[1])
 
         move_direction = ui.input_direction()
         if move_direction is None:
             return
 
         # Player move, encounting, etc.
-        game_over, message, flash_message = update_entities(move_direction, field, player, entities, encountered_types, torched, torch_radius)
+        game_over, m = update_entities(move_direction, field, player, entities, encountered_types, torched, torch_radius)
+        if m is not None:
+            message = m
 
         if hours % MONSTER_RESPAWN_RATE == 0:
             respawn_monster(entities, field)
@@ -354,17 +364,15 @@ def run_game(ui) -> None:
     show_entities = args.debug_show_entities
 
     while True:
-        ui.draw_stage
-        ui.draw_stage(hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, message, flash_message, key_show_map=True)
+        ui.draw_stage(hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, message[1], key_show_map=True)
 
         c = ui.input_alphabet()
         if c is None:
             return
-        if c == "m":
+        elif c == "m":
             show_entities = True
-
-        message = "SEED: %d" % rand.get_seed()
-        flash_message = ''
+        elif c == "s":
+            message = (-1, "SEED: %d" % rand.get_seed())
 
 
 def main():

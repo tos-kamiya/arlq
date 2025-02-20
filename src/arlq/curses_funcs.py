@@ -115,7 +115,10 @@ def draw_status_bar(
         message: An optional message to display.
         key_show_map: Whether to display the map toggle key.
     """
-    if player.item == ITEM_SWORD:
+    if player.item == ITEM_SWORD_X2:
+        level_str = "LVL: %d x2" % player.level
+        item_str = "+%s(%s)" % (player.item, player.item_taken_from)
+    elif player.item == ITEM_SWORD_X3:
         level_str = "LVL: %d x3" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
     elif player.item == ITEM_POISONED:
@@ -168,7 +171,7 @@ def draw_status_bar(
     x += len(s)
 
     if message:
-        stdscr.addstr(FIELD_HEIGHT + 1, 0, message)
+        stdscr.addstr(FIELD_HEIGHT + 1, 0, message, curses.A_BOLD)
 
 
 def key_to_dir(key: str) -> Optional[Point]:
@@ -226,7 +229,7 @@ class CursesUI:
         if sh < FIELD_HEIGHT + 2 or sw < FIELD_WIDTH:
             raise TerminalSizeSmall()
 
-    def draw_stage(self, hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, message, flash_message, key_show_map=False):
+    def draw_stage(self, hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, message, key_show_map=False):
         """
         Draws the entire game stage including the status bar.
 
@@ -247,7 +250,8 @@ class CursesUI:
 
         stdscr.clear()
         draw_stage(stdscr, entities, field, cur_torched, torched, encountered_types, show_entities=show_entities)
-        draw_status_bar(stdscr, player, hours, message=message or flash_message, key_show_map=key_show_map)
+
+        draw_status_bar(stdscr, player, hours, message=message, key_show_map=key_show_map)
         stdscr.refresh()
 
     def input_direction(self) -> Optional[Point]:

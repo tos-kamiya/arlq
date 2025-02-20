@@ -14,11 +14,11 @@ CI_CYAN = 6
 
 # Color mapping for Pygame
 COLOR_MAP = {
-    CI_RED: (255, 80, 80),
+    CI_RED: (255, 80, 100),
     CI_GREEN: (80, 255, 80),
-    CI_YELLOW: (255, 255, 0),
-    CI_BLUE: (80, 80, 255),
-    CI_CYAN: (0, 255, 255),
+    CI_YELLOW: (240, 240, 0),
+    CI_BLUE: (80, 100, 255),
+    CI_CYAN: (0, 240, 240),
     "default": (255, 255, 255),
 }
 
@@ -77,7 +77,6 @@ class PygameUI:
         encountered_types: Set[str],
         show_entities: bool,
         message: Optional[str],
-        flash_message: Optional[str],
         key_show_map: bool = False,
     ):
         # Clear the entire screen with black
@@ -158,7 +157,7 @@ class PygameUI:
                         )
 
         # Draw the status bar (handled by draw_status_bar)
-        self.draw_status_bar(hours, player, message or flash_message, key_show_map)
+        self.draw_status_bar(hours, player, message, key_show_map)
 
         pygame.display.flip()
         # Control the FPS
@@ -168,7 +167,10 @@ class PygameUI:
         self, hours: int, player: Player, message: Optional[str], key_show_map: bool
     ):
         # Draw the existing status string
-        if player.item == ITEM_SWORD:
+        if player.item == ITEM_SWORD_X2:
+            level_str = "LVL: %d x2" % player.level
+            item_str = "+%s(%s)" % (player.item, player.item_taken_from)
+        elif player.item == ITEM_SWORD_X3:
             level_str = "LVL: %d x3" % player.level
             item_str = "+%s(%s)" % (player.item, player.item_taken_from)
         elif player.item == ITEM_POISONED:
@@ -232,7 +234,7 @@ class PygameUI:
         )
 
         if message:
-            self._draw_text((0, self.field_height + 1), message, COLOR_MAP["default"])
+            self._draw_text((0, self.field_height + 1), message, COLOR_MAP["default"], bold=True)
 
     def input_direction(self) -> Optional[Tuple[int, int]]:
         """
