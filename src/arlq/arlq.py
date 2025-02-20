@@ -177,7 +177,7 @@ def get_torched(player: Player, torch_radius: int) -> List[List[int]]:
     for dy in range(-torch_radius, torch_radius + 1):
         y = player.y + dy
         if 0 <= y < FIELD_HEIGHT:
-            w = int(math.sqrt((torch_radius * 1.1) ** 2 - dy**2) + 0.5)
+            w = int(math.sqrt((torch_radius * TORCH_WIDTH_EXPANSION_RATIO) ** 2 - dy**2) + 0.5)
             for dx in range(-w, w + 1):
                 x = player.x + dx
                 if 0 <= x < FIELD_WIDTH:
@@ -407,7 +407,7 @@ def main():
         try:
             curses.wrapper(curses_main)
         except TerminalSizeSmall as e:
-            sys.exit("Error: Terminal size too small. Minimum size is: %d x %d" % (FIELD_WIDTH, FIELD_HEIGHT + 2))
+            sys.exit("Error: " + str(e))
     else:
         from .pygame_funcs import PygameUI
 
