@@ -370,7 +370,7 @@ def run_game(ui) -> None:
         if c is None:
             return
         elif c == "m":
-            show_entities = True
+            show_entities = not show_entities
         elif c == "s":
             message = (-1, "SEED: %d" % rand.get_seed())
 

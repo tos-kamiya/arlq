@@ -102,7 +102,7 @@ def draw_stage(
 
 
 def draw_status_bar(
-    stdscr: curses.window, player: Player, hours: int, message: Optional[str] = None, key_show_map: bool = False
+    stdscr: curses.window, player: Player, hours: int, message: Optional[str] = None, extra_keys: bool = False
 ) -> None:
     """
     Draws the status bar at the bottom of the screen. This includes the game hours,
@@ -162,8 +162,8 @@ def draw_status_bar(
     x += 2
     buf = []
     buf.append(item_str)
-    if key_show_map:
-        buf.append("/[Q]uit/Show [M]ap")
+    if extra_keys:
+        buf.append("/[Q]uit/[M]ap/[S]eed")
     else:
         buf.append("/[Q]uit")
     s = "  ".join(buf)
@@ -229,7 +229,7 @@ class CursesUI:
         if sh < FIELD_HEIGHT + 2 or sw < FIELD_WIDTH:
             raise TerminalSizeSmall("Terminal size too small. Minimum size is: %d x %d" % (FIELD_WIDTH, FIELD_HEIGHT + 2))
 
-    def draw_stage(self, hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, message, key_show_map=False):
+    def draw_stage(self, hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, message, extra_keys=False):
         """
         Draws the entire game stage including the status bar.
 
@@ -251,7 +251,7 @@ class CursesUI:
         stdscr.clear()
         draw_stage(stdscr, entities, field, cur_torched, torched, encountered_types, show_entities=show_entities)
 
-        draw_status_bar(stdscr, player, hours, message=message, key_show_map=key_show_map)
+        draw_status_bar(stdscr, player, hours, message=message, extra_keys=extra_keys)
         stdscr.refresh()
 
     def input_direction(self) -> Optional[Point]:

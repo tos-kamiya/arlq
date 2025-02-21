@@ -164,7 +164,7 @@ class PygameUI:
         self.clock.tick(30)
 
     def draw_status_bar(
-        self, hours: int, player: Player, message: Optional[str], key_show_map: bool
+        self, hours: int, player: Player, message: Optional[str], extra_keys: bool
     ):
         # Draw the existing status string
         if player.item == ITEM_SWORD_X2:
@@ -224,7 +224,7 @@ class PygameUI:
         fill_rect = pygame.Rect(x_offset, y_offset, fill_width, bar_height)
         pygame.draw.rect(self.screen, food_color, fill_rect)
 
-        extra = "/[Q]uit/Show [M]ap" if key_show_map else "/[Q]uit"
+        extra = "/[Q]uit/[M]ap/[S]eed" if extra_keys else "/[Q]uit"
         item_status = "  ".join([item_str, extra])
         item_x_offset = x_offset + bar_width + 10
         self._draw_text(
