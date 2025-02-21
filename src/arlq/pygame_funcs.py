@@ -77,7 +77,7 @@ class PygameUI:
         encountered_types: Set[str],
         show_entities: bool,
         message: Optional[str],
-        key_show_map: bool = False,
+        extra_keys: bool = False,
     ):
         # Clear the entire screen with black
         self.screen.fill((0, 0, 0))
@@ -145,7 +145,7 @@ class PygameUI:
                         self._draw_text((t.x, t.y), defs.CHAR_TREASURE, self._dim_color(COLOR_MAP["default"]))
 
         # Draw the status bar (handled by draw_status_bar)
-        self.draw_status_bar(hours, player, message, key_show_map)
+        self.draw_status_bar(hours, player, message, extra_keys)
 
         pygame.display.flip()
         # Control the FPS
