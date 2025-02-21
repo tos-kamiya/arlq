@@ -8,10 +8,10 @@ import time
 from .__about__ import __version__
 
 from .utils import rand
-from .defs import *
+from . import defs
 
 
-def gen_maze(width: int, height: int) -> Tuple[List[Edge], Point, Point]:
+def gen_maze(width: int, height: int) -> Tuple[List[defs.Edge], defs.Point, defs.Point]:
     # Returns a list of neighboring points given a point p
     def neighbor_points(p):
         x, y = p
@@ -62,21 +62,21 @@ def gen_maze(width: int, height: int) -> Tuple[List[Edge], Point, Point]:
     return edges, first_point, last_point
 
 
-def place_to_tile(x: int, y: int) -> Point:
-    return (x - 1) // (TILE_WIDTH + 1), (y - 1) // (TILE_HEIGHT)
+def place_to_tile(x: int, y: int) -> defs.Point:
+    return (x - 1) // (defs.TILE_WIDTH + 1), (y - 1) // (defs.TILE_HEIGHT)
 
 
-def tile_to_place_range(x: int, y: int) -> Tuple[Point, Point]:
-    lt = (x * (TILE_WIDTH + 1) + 1, y * (TILE_HEIGHT + 1) + 1)
-    rb = (lt[0] + TILE_WIDTH, lt[1] + TILE_HEIGHT)
+def tile_to_place_range(x: int, y: int) -> Tuple[defs.Point, defs.Point]:
+    lt = (x * (defs.TILE_WIDTH + 1) + 1, y * (defs.TILE_HEIGHT + 1) + 1)
+    rb = (lt[0] + defs.TILE_WIDTH, lt[1] + defs.TILE_HEIGHT)
     return lt, rb
 
 
-def find_random_place(entities: List[Entity], field: List[List[str]], distance: int = 2) -> Point:
+def find_random_place(entities: List[defs.Entity], field: List[List[str]], distance: int = 2) -> defs.Point:
     places = [(e.x, e.y) for e in entities]
     while True:
-        x = rand.randrange(FIELD_WIDTH - 2) + 1
-        y = rand.randrange(FIELD_HEIGHT - 2) + 1
+        x = rand.randrange(defs.FIELD_WIDTH - 2) + 1
+        y = rand.randrange(defs.FIELD_HEIGHT - 2) + 1
         if (
             field[y][x] == " "
             and field[y][x + 1] == " "
@@ -85,34 +85,36 @@ def find_random_place(entities: List[Entity], field: List[List[str]], distance: 
             return x, y
 
 
-def spawn_monsters(entities: List[Entity], field: List[List[str]]) -> None:
-    for tribe in MONSTER_TRIBES:
+def spawn_monsters(entities: List[defs.Entity], field: List[List[str]]) -> None:
+    for tribe in defs.MONSTER_TRIBES:
         p = tribe.population
         if isinstance(p, float):
-            p = 1 if rand.randrange(100)/100 < p else 0
+            p = 1 if rand.randrange(100) / 100 < p else 0
         for _ in range(p):
             x, y = find_random_place(entities, field, distance=3)
-            m = Monster(x, y, tribe)
+            m = defs.Monster(x, y, tribe)
             entities.append(m)
 
 
-def respawn_monster(entities: List[Entity], field: List[List[str]]) -> None:
+def respawn_monster(entities: List[defs.Entity], field: List[List[str]]) -> None:
     chars = []
-    for tribe in MONSTER_TRIBES:
+    for tribe in defs.MONSTER_TRIBES:
         if tribe.population >= 2:
             chars.append(tribe.char)
 
     c = rand.choice(chars)
-    for tribe in MONSTER_TRIBES:
+    for tribe in defs.MONSTER_TRIBES:
         if tribe.char == c:
             x, y = find_random_place(entities, field, distance=3)
-            m = Monster(x, y, tribe)
+            m = defs.Monster(x, y, tribe)
             entities.append(m)
             break
 
 
-def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) -> Tuple[List[List[str]], Point, Point]:
-    def find_empty_cell(field: List[List[str]], left_top: Point, right_bottom: Point) -> Point:
+def create_field(
+    corridor_h_width: int, corridor_v_width: int, wall_chars: str
+) -> Tuple[List[List[str]], defs.Point, defs.Point]:
+    def find_empty_cell(field: List[List[str]], left_top: defs.Point, right_bottom: defs.Point) -> defs.Point:
         assert left_top[0] < right_bottom[0]
         assert left_top[1] < right_bottom[1]
 
@@ -122,38 +124,38 @@ def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) 
 
         return x, y
 
-    field: List[List[str]] = [[" " for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
+    field: List[List[str]] = [[" " for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
 
     # Create walls
-    for ty in range(TILE_NUM_Y + 1):
-        y = ty * (TILE_HEIGHT + 1)
-        for x in range(0, FIELD_WIDTH):
+    for ty in range(defs.TILE_NUM_Y + 1):
+        y = ty * (defs.TILE_HEIGHT + 1)
+        for x in range(0, defs.FIELD_WIDTH):
             field[y][x] = wall_chars[1]
-    for tx in range(TILE_NUM_X + 1):
-        x = tx * (TILE_WIDTH + 1)
-        for y in range(0, FIELD_HEIGHT):
+    for tx in range(defs.TILE_NUM_X + 1):
+        x = tx * (defs.TILE_WIDTH + 1)
+        for y in range(0, defs.FIELD_HEIGHT):
             field[y][x] = wall_chars[2]
-    for ty in range(TILE_NUM_Y + 1):
-        y = ty * (TILE_HEIGHT + 1)
-        for tx in range(TILE_NUM_X + 1):
-            x = tx * (TILE_WIDTH + 1)
+    for ty in range(defs.TILE_NUM_Y + 1):
+        y = ty * (defs.TILE_HEIGHT + 1)
+        for tx in range(defs.TILE_NUM_X + 1):
+            x = tx * (defs.TILE_WIDTH + 1)
             field[y][x] = wall_chars[0]
 
     # Create corridors
-    edges, first_p, last_p = gen_maze(TILE_NUM_X, TILE_NUM_Y)
+    edges, first_p, last_p = gen_maze(defs.TILE_NUM_X, defs.TILE_NUM_Y)
     for edge in edges:
         (x1, y1), (x2, y2) = sorted(edge)
         assert x1 <= x2
         assert y1 <= y2
         if y1 == y2:
-            d = rand.randrange(TILE_HEIGHT + 1 - corridor_h_width) + 1
+            d = rand.randrange(defs.TILE_HEIGHT + 1 - corridor_h_width) + 1
             for y in range(corridor_h_width):
-                field[y1 * (TILE_HEIGHT + 1) + d + y][x2 * (TILE_WIDTH + 1)] = " "
+                field[y1 * (defs.TILE_HEIGHT + 1) + d + y][x2 * (defs.TILE_WIDTH + 1)] = " "
         else:
             assert x1 == x2
-            d = rand.randrange(TILE_WIDTH + 1 - corridor_v_width) + 1
+            d = rand.randrange(defs.TILE_WIDTH + 1 - corridor_v_width) + 1
             for x in range(corridor_v_width):
-                field[y2 * (TILE_HEIGHT + 1)][x1 * (TILE_WIDTH + 1) + d + x] = " "
+                field[y2 * (defs.TILE_HEIGHT + 1)][x1 * (defs.TILE_WIDTH + 1) + d + x] = " "
 
     r = tile_to_place_range(*first_p)
     first_p = find_empty_cell(field, r[0], r[1])
@@ -163,52 +165,67 @@ def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) 
 
 
 def update_torched(torched: List[List[int]], added: List[List[int]]) -> None:
-    for y in range(FIELD_HEIGHT):
-        for x in range(FIELD_WIDTH):
+    for y in range(defs.FIELD_HEIGHT):
+        for x in range(defs.FIELD_WIDTH):
             torched[y][x] += added[y][x]
 
 
-def get_torched(player: Player, torch_radius: int) -> List[List[int]]:
-    torched: List[List[int]] = [[0 for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
+def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
+    torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
 
-    if player.companion == COMPANION_FAIRY:
-        torch_radius += FAIRY_TORCH_EXTENSION
+    if player.companion == defs.COMPANION_FAIRY:
+        torch_radius += defs.FAIRY_TORCH_EXTENSION
 
     for dy in range(-torch_radius, torch_radius + 1):
         y = player.y + dy
-        if 0 <= y < FIELD_HEIGHT:
-            w = int(math.sqrt((torch_radius * TORCH_WIDTH_EXPANSION_RATIO) ** 2 - dy**2) + 0.5)
+        if 0 <= y < defs.FIELD_HEIGHT:
+            w = int(math.sqrt((torch_radius * defs.TORCH_WIDTH_EXPANSION_RATIO) ** 2 - dy**2) + 0.5)
             for dx in range(-w, w + 1):
                 x = player.x + dx
-                if 0 <= x < FIELD_WIDTH:
+                if 0 <= x < defs.FIELD_WIDTH:
                     torched[y][x] = 1
 
     return torched
 
 
-def update_entities(move_direction, field, player, entities, encountered_types, torched, torch_radius):
+def update_entities(
+    move_direction: Tuple[int, int],
+    field: List[List[str]],
+    player: defs.Player,
+    entities: List[defs.Entity],
+    encountered_types: Set[str],
+    torched: List[List[int]],
+    torch_radius: int,
+):
     game_over = False
     message = (-1, "")
 
     # player move
     dx, dy = move_direction
-    new_x, new_y = player.x + dx, player.y + dy
-    if 0 <= new_x < len(field[0]) and 0 <= new_y < len(field):
-        c = field[new_y][new_x]
+
+    if 0 <= (nx := player.x + dx) < defs.FIELD_WIDTH and 0 <= (ny := player.y + dy) < defs.FIELD_HEIGHT:
+        c = field[ny][nx]
         if c == " ":
-            player.x, player.y = new_x, new_y
-        elif player.item in [ITEM_SWORD_X2, ITEM_SWORD_X3] and c in WALL_CHARS:
+            player.x, player.y = nx, ny
+        elif (
+            player.companion == defs.COMPANION_HIPPOGRIFF 
+            and 0 <= (n2x := player.x + dx * defs.HIPPOGRIFF_FLY_STEP) < defs.FIELD_WIDTH 
+            and 0 <= (n2y := player.y + dy * defs.HIPPOGRIFF_FLY_STEP) < defs.FIELD_HEIGHT
+            and field[n2y][n2x] == " "
+        ):
+            player.x, player.y = n2x, n2y
+        elif player.item in [defs.ITEM_SWORD_X2, defs.ITEM_SWORD_X3] and c in defs.WALL_CHARS:
             # break the wall
-            player.x, player.y = new_x, new_y
+            player.x, player.y = nx, ny
             field[player.y][player.x] = " "
-            player.item = ''
-            player.item_taken_from = ''
+            player.item = ""
+            player.item_taken_from = ""
 
     # Find encountered entity
-    enc_obj_infos: List[Tuple[int, Entity]] = []
-    sur_obj_infos: List[Tuple[int, Entity]] = []
+    enc_obj_infos: List[Tuple[int, defs.Entity]] = []
+    sur_obj_infos: List[Tuple[int, defs.Entity]] = []
     for i, e in enumerate(entities):
-        if not isinstance(e, Player):
+        if not isinstance(e, defs.Player):
             dx = abs(e.x - player.x)
             dy = abs(e.y - player.y)
             if dx == 0 and dy == 0:
@@ -219,106 +236,83 @@ def update_entities(move_direction, field, player, entities, encountered_types, 
 
     # Actions & events (combats, state changes, etc)
     for enc_obj_i, enc_obj in enc_obj_infos:
-        if isinstance(enc_obj, Treasure):
-            if CHAR_DRAGON in encountered_types:
-                encountered_types.add(CHAR_TREASURE)
+        if isinstance(enc_obj, defs.Treasure):
+            if defs.CHAR_DRAGON in encountered_types:
+                encountered_types.add(defs.CHAR_TREASURE)
                 message = (-1, ">> Won the Treasure! <<")
                 game_over = True
-                player.item = ITEM_TREASURE
-                player.item_taken_from = ''
+                player.item = defs.ITEM_TREASURE
+                player.item_taken_from = ""
                 break
-        elif isinstance(enc_obj, Monster):
+        elif isinstance(enc_obj, defs.Monster):
             m = enc_obj
             encountered_types.add(m.tribe.char)
-            player_attack = player_attack_by_level(player)
+            player_attack = defs.player_attack_by_level(player)
 
             effect = m.tribe.effect
             if player_attack < m.tribe.level:
-                if effect == EFFECT_RANDOM_TRANSPORT:
-                    player.x, player.y = find_random_place(entities, field, distance=2)
-                    message = (3, "-- Transported.")
-                else:
-                    # respawn
-                    player.x, player.y = find_random_place(entities, field, distance=2)
-                    player.item = ""
-                    player.item_taken_from = ""
-                    player.food = min(player.food, FOOD_INIT)
-                    message = (3, "-- Respawned.")
+                player.x, player.y = find_random_place(entities, field, distance=2)
+                player.item = ""
+                player.item_taken_from = ""
+                player.food = min(player.food, defs.FOOD_INIT)
+                player.companion = ""
+                message = (3, "-- Respawned.")
             else:
-                if effect == EFFECT_RANDOM_TRANSPORT:
-                    pass  # do not change player level
-                elif effect == EFFECT_SPECIAL_EXP:
+                if effect == defs.EFFECT_SPECIAL_EXP:
                     player.level += 10
                 else:
                     player.level += 1
 
-                player.food = max(1, min(FOOD_MAX, player.food + m.tribe.feed))
+                player.food = max(1, min(defs.FOOD_MAX, player.food + m.tribe.feed))
 
                 if m.tribe.companion:
                     player.companion = m.tribe.companion
 
-                if effect == EFFECT_RANDOM_TRANSPORT:
-                    player.x, player.y = find_random_place(entities, field, distance=2)
-                    m.x, m.y = player.x + 1, player.y
-                    message = (3, "-- Transported.")
-                else:
-                    del entities[enc_obj_i]
-                    player.item = m.tribe.item
-                    player.item_taken_from = m.tribe.char
+                del entities[enc_obj_i]
+                player.item = m.tribe.item
+                player.item_taken_from = m.tribe.char
 
-                    if effect == EFFECT_CLAIRVOYANCE:
-                        cur_torched = get_torched(player, torch_radius * 4)
-                        update_torched(torched, cur_torched)
-                        message = (3, "-- Clairvoyance.")
-                    elif effect == EFFECT_TREASURE_POINTER:
-                        encountered_types.add(CHAR_TREASURE)
-                        message = (3, "-- Sparkle.")
-                    elif effect == EFFECT_FEED_MUCH:
-                        message = (3, "-- Stuffed.")
-                    elif effect == EFFECT_SPECIAL_EXP:
-                        message = (3, "-- Exp. Boost.")
+                if effect == defs.EFFECT_CLAIRVOYANCE:
+                    cur_torched = get_torched(player, torch_radius + defs.CLAIRVOYANCE_TORCH_EXTENSION)
+                    update_torched(torched, cur_torched)
+                    message = (3, "-- Clairvoyance.")
+                elif effect == defs.EFFECT_TREASURE_POINTER:
+                    encountered_types.add(defs.CHAR_TREASURE)
+                    message = (3, "-- Sparkle.")
+                elif effect == defs.EFFECT_FEED_MUCH:
+                    message = (3, "-- Stuffed.")
+                elif effect == defs.EFFECT_SPECIAL_EXP:
+                    message = (3, "-- Exp. Boost.")
 
     return game_over, message
 
 
-args_box: List[argparse.Namespace] = []
-
-
-def run_game(ui) -> None:
-    args = args_box[0]
-    seed = args.seed
+def run_game(ui, seed: Optional[int], debug_show_entities: bool = False) -> None:
     if seed is None:
         seed = int(time.time()) % 100000
 
     rand.set_seed(seed)
 
     # Initialize field
-    corridor_h_width, corridor_v_width = CORRIDOR_H_WIDTH, CORRIDOR_V_WIDTH
-    if args.narrower_corridors:
-        corridor_h_width -= 1
-        corridor_v_width -= 1
-    field, first_p, last_p = create_field(corridor_h_width, corridor_v_width, WALL_CHARS)
+    field, first_p, last_p = create_field(defs.CORRIDOR_H_WIDTH, defs.CORRIDOR_V_WIDTH, defs.WALL_CHARS)
 
     # Initialize entities
-    entities: List[Entity] = []
-    player: Player = Player(first_p[0], first_p[1], 1, FOOD_INIT)
+    entities: List[defs.Entity] = []
+    player: defs.Player = defs.Player(first_p[0], first_p[1], 1, defs.FOOD_INIT)
     entities.append(player)
-    treasure: Treasure = Treasure(last_p[0], last_p[1])
+    treasure: defs.Treasure = defs.Treasure(last_p[0], last_p[1])
     entities.append(treasure)
     spawn_monsters(entities, field)
 
     # Initialize view/ui components
     encountered_types: Set[str] = set()
-    cur_torched: List[List[int]] = [[0 for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
-    torched: List[List[int]] = [[0 for _ in range(FIELD_WIDTH)] for _ in range(FIELD_HEIGHT)]
-    torch_radius: int = 4
-    if args.large_torch:
-        torch_radius = 5
-    elif args.small_torch:
-        torch_radius = 3
+    cur_torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
+    torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
+
     message: Tuple[int, str] = (-1, "")
 
     # Initialize stage state
+    torch_radius = defs.TORCH_RADIUS
     hours: int = -1
     game_over = False
     move_direction = None
@@ -328,8 +322,6 @@ def run_game(ui) -> None:
 
         # Starvation check
         player.food -= 1
-        if args.eating_frugal and player.food < FOOD_STARVATION and hours % 2 == 0:
-            player.food += 1
         if player.food <= 0:
             message = (-1, ">> Starved to Death. <<")
             game_over = True
@@ -346,25 +338,40 @@ def run_game(ui) -> None:
                 message = (-1, "")
             else:
                 message = (remaining_tick, message[1])
-        ui.draw_stage(hours, player, entities, field, cur_torched, torched, encountered_types, args.debug_show_entities, message[1])
+        ui.draw_stage(
+            hours, player, entities, field, cur_torched, torched, encountered_types, debug_show_entities, message[1]
+        )
 
         move_direction = ui.input_direction()
         if move_direction is None:
             return
 
         # Player move, encounting, etc.
-        game_over, m = update_entities(move_direction, field, player, entities, encountered_types, torched, torch_radius)
+        game_over, m = update_entities(
+            move_direction, field, player, entities, encountered_types, torched, torch_radius
+        )
         if m is not None:
             message = m
 
-        if hours % MONSTER_RESPAWN_RATE == 0:
+        if hours % defs.MONSTER_RESPAWN_RATE == 0:
             respawn_monster(entities, field)
 
     # Game over display
-    show_entities = args.debug_show_entities
+    show_entities = debug_show_entities
 
     while True:
-        ui.draw_stage(hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, message[1], key_show_map=True)
+        ui.draw_stage(
+            hours,
+            player,
+            entities,
+            field,
+            cur_torched,
+            torched,
+            encountered_types,
+            show_entities,
+            message[1],
+            key_show_map=True,
+        )
 
         c = ui.input_alphabet()
         if c is None:
@@ -383,17 +390,29 @@ def main():
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
     g = parser.add_mutually_exclusive_group()
+    g.add_argument("-F", "--large-field", action="store_true", help="Large field.")
     g.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
     g.add_argument("-t", "--small-torch", action="store_true", help="Small torch.")
+    parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
 
     parser.add_argument("--curses", action="store_true", help="Use curses as UI framework.")
     parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
-    parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
-    parser.add_argument("-E", '--eating-frugal', action='store_true', help='Decrease rate of consuming food')
-    parser.add_argument("--seed", action='store', type=int, help='Seed value')
+    parser.add_argument("--seed", action="store", type=int, help="Seed value")
 
     args = parser.parse_args()
-    args_box.append(args)
+
+    if args.large_field:
+        defs.TILE_NUM_Y += 1
+        defs.FIELD_HEIGHT = (defs.TILE_HEIGHT + 1) * defs.TILE_NUM_Y + 1
+
+    if args.large_torch:
+        defs.TORCH_RADIUS += 1
+    elif args.small_torch:
+        defs.TORCH_RADIUS -= 1
+
+    if args.narrower_corridors:
+        defs.CORRIDOR_H_WIDTH -= 1
+        defs.CORRIDOR_V_WIDTH -= 1
 
     if args.curses:
         import curses
@@ -402,7 +421,7 @@ def main():
 
         def curses_main(stdscr):
             ui = CursesUI(stdscr)
-            run_game(ui)
+            run_game(ui, args.seed, args.debug_show_entities)
 
         try:
             curses.wrapper(curses_main)
@@ -412,7 +431,7 @@ def main():
         from .pygame_funcs import PygameUI
 
         ui = PygameUI()
-        run_game(ui)
+        run_game(ui, args.seed, args.debug_show_entities)
 
 
 if __name__ == "__main__":

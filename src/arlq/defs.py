@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 TILE_WIDTH = 10
 TILE_HEIGHT = 4
@@ -10,7 +10,10 @@ CORRIDOR_V_WIDTH = 3
 CORRIDOR_H_WIDTH = 2
 WALL_CHARS = "###"  # cross, horizontal, vertical
 
+TORCH_RADIUS = 4
 TORCH_WIDTH_EXPANSION_RATIO = 1.5
+FAIRY_TORCH_EXTENSION = 2
+CLAIRVOYANCE_TORCH_EXTENSION = 6
 
 FOOD_MAX = 100
 FOOD_INIT = 90
@@ -24,13 +27,19 @@ ITEM_POISONED = "Poisoned"
 ITEM_TREASURE = "Treasure"
 
 EFFECT_SPECIAL_EXP = "Special Exp."
-EFFECT_FEED_MUCH = "Bison Meat"
-EFFECT_RANDOM_TRANSPORT = "Random Trans."
-EFFECT_CLAIRVOYANCE = "Sword & Eye"
+EFFECT_FEED_MUCH = "Feed Much"
+EFFECT_CLAIRVOYANCE = "Clairvoyance"
 EFFECT_TREASURE_POINTER = "Treasure Ptr."
 
 COMPANION_FAIRY = "Fairy"
-FAIRY_TORCH_EXTENSION = 2
+COMPANION_HIPPOGRIFF = "Hippogriff"
+
+COMPANION_TO_ATTR_CHAR = {
+    COMPANION_FAIRY: "f",
+    COMPANION_HIPPOGRIFF: "h",
+}
+
+HIPPOGRIFF_FLY_STEP = 9
 
 CHAR_DRAGON = "D"
 CHAR_TREASURE = "T"
@@ -89,10 +98,10 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH),  # Bison rare
     MonsterTribe("C", 10, 12, 0.7, item=ITEM_SWORD_X3),  # Chimera rare
 
-    MonsterTribe("E", 50, 0, 1, effect=EFFECT_RANDOM_TRANSPORT),  # Elemental
+    MonsterTribe("f", 0, 0, 0.7, companion=COMPANION_FAIRY),  # Fairy
+    MonsterTribe("F", 0, 0, 0.7, effect=EFFECT_CLAIRVOYANCE),  # Fairy rare
 
-    MonsterTribe("f", 0, 0, 1, companion=COMPANION_FAIRY),  # Fairy
-    MonsterTribe("F", 0, 0, 0.3, effect=EFFECT_CLAIRVOYANCE),  # Fairy rare
+    MonsterTribe("h", 0, 0, 0.7, companion=COMPANION_HIPPOGRIFF),  # Hippogriff
 ]
 
 
@@ -107,3 +116,16 @@ def player_attack_by_level(player: Player) -> int:
         return player.level
 
 
+def get_max_beatable_monster_tribe(player: Player) -> Optional[MonsterTribe]:
+    atk = player_attack_by_level(player)
+    max_beatable = None
+    for mk in MONSTER_TRIBES:
+        if mk.level == 0:
+            continue
+        if mk.level > atk:
+            break
+        b = mk
+        if max_beatable is None or b.level > max_beatable.level:
+            max_beatable = b
+    
+    return max_beatable
