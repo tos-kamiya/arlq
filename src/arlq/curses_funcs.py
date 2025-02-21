@@ -3,7 +3,7 @@ from typing import List, Optional, Set
 import curses
 
 from .utils import braille_progress_bar
-from .defs import *
+from . import defs
 
 
 CI_RED = 1
@@ -15,7 +15,7 @@ CI_CYAN = 6
 
 def draw_stage(
     stdscr: curses.window,
-    entities: List[Entity],
+    entities: List[defs.Entity],
     field: List[List[str]],
     cur_torched: List[List[int]],
     torched: List[List[int]],
@@ -37,19 +37,20 @@ def draw_stage(
     player, px, py = None, None, None
     # Find the player among the entities
     for e in entities:
-        if isinstance(e, Player):
+        if isinstance(e, defs.Player):
             player = e
             px, py = player.x, player.y
     assert player is not None and px is not None and py is not None
 
-    # If the player has a companion, draw an apostrophe ("'") to the right of the player
+    # If the player has a companion, draw it right of the player
     if player.companion:
-        stdscr.addstr(py, px + 1, "'", curses.A_BOLD)
+        ch = defs.COMPANION_TO_ATTR_CHAR[player.companion]
+        stdscr.addstr(py, px + 1, ch, curses.A_DIM)
 
     # Draw each cell in the field
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
-            if torched[y][x] and cell in WALL_CHARS:
+            if torched[y][x] and cell in defs.WALL_CHARS:
                 stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
             elif not show_entities or cell == " ":
                 if cur_torched[y][x] == 0:
@@ -61,10 +62,10 @@ def draw_stage(
     # Draw the player using "@" (in bold and yellow)
     stdscr.addstr(py, px, "@", curses.A_BOLD | curses.color_pair(CI_YELLOW))
 
-    atk = player_attack_by_level(player)
+    atk = defs.player_attack_by_level(player)
     # Draw each entity (monsters and treasures)
     for e in entities:
-        if isinstance(e, Monster):
+        if isinstance(e, defs.Monster):
             m = e
             if torched[m.y][m.x] == 0:
                 continue
@@ -74,35 +75,36 @@ def draw_stage(
                 if show_entities:
                     stdscr.addstr(m.y, m.x, ch)
                 else:
-                    stdscr.addstr(m.y, m.x, "?")
+                    ch = "!" if m.tribe.level == 0 else "?"
+                    stdscr.addstr(m.y, m.x, ch)
             else:
                 # Use bold attribute for uppercase letters (A-Z)
                 attr = curses.A_BOLD if "A" <= ch <= "Z" else 0
                 ci = CI_BLUE if m.tribe.level <= atk else CI_RED
                 stdscr.addstr(m.y, m.x, ch, curses.color_pair(ci) | attr)
-        elif isinstance(e, Treasure):
+        elif isinstance(e, defs.Treasure):
             t = e
-            if CHAR_TREASURE in encountered_types:
-                stdscr.addstr(t.y, t.x, CHAR_TREASURE, curses.color_pair(CI_YELLOW) | curses.A_BOLD)
+            if defs.CHAR_TREASURE in encountered_types:
+                stdscr.addstr(t.y, t.x, defs.CHAR_TREASURE, curses.color_pair(CI_YELLOW) | curses.A_BOLD)
 
     if show_entities:
         # Draw entities that are not torched (i.e., torched == 0) in a dim style
         attr = curses.A_DIM
         for e in entities:
-            if isinstance(e, Monster):
+            if isinstance(e, defs.Monster):
                 m = e
                 if torched[m.y][m.x] != 0:
                     continue
                 ch = m.tribe.char
                 stdscr.addstr(m.y, m.x, ch, attr)
-            elif isinstance(e, Treasure):
+            elif isinstance(e, defs.Treasure):
                 t = e
-                if CHAR_TREASURE not in encountered_types:
-                    stdscr.addstr(t.y, t.x, CHAR_TREASURE, attr)
+                if defs.CHAR_TREASURE not in encountered_types:
+                    stdscr.addstr(t.y, t.x, defs.CHAR_TREASURE, attr)
 
 
 def draw_status_bar(
-    stdscr: curses.window, player: Player, hours: int, message: Optional[str] = None, extra_keys: bool = False
+    stdscr: curses.window, player: defs.Player, hours: int, message: Optional[str] = None, extra_keys: bool = False
 ) -> None:
     """
     Draws the status bar at the bottom of the screen. This includes the game hours,
@@ -113,30 +115,22 @@ def draw_status_bar(
         player: The player object.
         hours: The current game hours.
         message: An optional message to display.
-        key_show_map: Whether to display the map toggle key.
+        extra_keys: Whether to display extra key hints.
     """
-    if player.item == ITEM_SWORD_X2:
+    if player.item == defs.ITEM_SWORD_X2:
         level_str = "LVL: %d x2" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-    elif player.item == ITEM_SWORD_X3:
+    elif player.item == defs.ITEM_SWORD_X3:
         level_str = "LVL: %d x3" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-    elif player.item == ITEM_POISONED:
+    elif player.item == defs.ITEM_POISONED:
         level_str = "LVL: %d /3" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
     else:
         level_str = "LVL: %d" % player.level
         item_str = ""
 
-    beatable = None
-    atk = player_attack_by_level(player)
-    for mk in MONSTER_TRIBES:
-        if mk.level == 0:
-            continue
-        if mk.level > atk:
-            break
-        beatable = mk
-    assert beatable is None or beatable.level <= player_attack_by_level(player)
+    beatable = defs.get_max_beatable_monster_tribe(player)
 
     x = 0
     buf = []
@@ -146,17 +140,17 @@ def draw_status_bar(
         buf.append("> %s" % beatable.char)
     buf.append("FOOD: %d" % player.food)
     s = "  ".join(buf)
-    stdscr.addstr(FIELD_HEIGHT, x, s)
+    stdscr.addstr(defs.FIELD_HEIGHT, x, s)
     x += len(s)
 
     x += 1
     bar_len = 4
-    s = braille_progress_bar(player.food, FOOD_MAX, bar_len)
+    s = braille_progress_bar(player.food, defs.FOOD_MAX, bar_len)
     if player.food < 20:
-        stdscr.addstr(FIELD_HEIGHT, x, s, curses.color_pair(CI_RED))
+        stdscr.addstr(defs.FIELD_HEIGHT, x, s, curses.color_pair(CI_RED))
     else:
-        stdscr.addstr(FIELD_HEIGHT, x, s)
-    stdscr.addstr(FIELD_HEIGHT, x + 1 + bar_len, "|")
+        stdscr.addstr(defs.FIELD_HEIGHT, x, s)
+    stdscr.addstr(defs.FIELD_HEIGHT, x + 1 + bar_len, "|")
     x += 1 + len(s) + 1
 
     x += 2
@@ -167,14 +161,14 @@ def draw_status_bar(
     else:
         buf.append("/[Q]uit")
     s = "  ".join(buf)
-    stdscr.addstr(FIELD_HEIGHT, x, s)
+    stdscr.addstr(defs.FIELD_HEIGHT, x, s)
     x += len(s)
 
     if message:
-        stdscr.addstr(FIELD_HEIGHT + 1, 0, message, curses.A_BOLD)
+        stdscr.addstr(defs.FIELD_HEIGHT + 1, 0, message, curses.A_BOLD)
 
 
-def key_to_dir(key: str) -> Optional[Point]:
+def key_to_dir(key: str) -> Optional[defs.Point]:
     """
     Converts a key string to a directional tuple (dx, dy).
 
@@ -226,8 +220,8 @@ class CursesUI:
         stdscr.keypad(True)
 
         sh, sw = stdscr.getmaxyx()
-        if sh < FIELD_HEIGHT + 2 or sw < FIELD_WIDTH:
-            raise TerminalSizeSmall("Terminal size too small. Minimum size is: %d x %d" % (FIELD_WIDTH, FIELD_HEIGHT + 2))
+        if sh < defs.FIELD_HEIGHT + 2 or sw < defs.FIELD_WIDTH:
+            raise TerminalSizeSmall("Terminal size too small. Minimum size is: %d x %d" % (defs.FIELD_WIDTH, defs.FIELD_HEIGHT + 2))
 
     def draw_stage(self, hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, message, extra_keys=False):
         """
@@ -243,8 +237,7 @@ class CursesUI:
             encountered_types: Set of encountered entity types.
             show_entities: Whether to display hidden entities.
             message: The message to display.
-            flash_message: A flash message to display if no regular message is provided.
-            key_show_map: Whether to display the map toggle key.
+            extra_keys: Whether to display extra key hints.
         """
         stdscr = self.stdscr
 
@@ -254,7 +247,7 @@ class CursesUI:
         draw_status_bar(stdscr, player, hours, message=message, extra_keys=extra_keys)
         stdscr.refresh()
 
-    def input_direction(self) -> Optional[Point]:
+    def input_direction(self) -> Optional[defs.Point]:
         """
         Waits for the user's directional input.
 
