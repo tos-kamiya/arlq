@@ -370,7 +370,7 @@ def run_game(ui, seed: Optional[int], debug_show_entities: bool = False) -> None
             encountered_types,
             show_entities,
             message[1],
-            key_show_map=True,
+            extra_keys=True,
         )
 
         c = ui.input_alphabet()
