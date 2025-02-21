@@ -18,10 +18,12 @@ Run the following command to install:
 pipx install git+https://github.com/tos-kamiya/arlq
 ```
 
-Once installed, you will have access to the `arlq` command.
+Once installed, the `arlq` command becomes available.
 
-- Without any options, a game window using Pygame will be executed.
-- With the `--curses` option, the game will run in the terminal using curses.
+- Without any options, the game will run in a Pygame window.  
+- To make the game easier, use the `-T` option (expands the visible area).  
+- To make the game more difficult, use the `-F` option (enlarges the field) or the `-t` option (reduces the visible area).  
+- With the `--curses` option, the game will run in the terminal using curses.  
 
 To use the `--curses` option, you need to install the `curses` package separately:
 
@@ -79,19 +81,19 @@ For more details about the monsters, please refer to the Monster List below. You
 
 ## Monster List
 
-| Display & Name  | Description                                                                                                                                                    |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| a Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                             |
-| b Bison         | The second weakest. Defeating it provides plenty of food. Hunt it when you're hungry.                                                                          |
-| c Chimera       | Moderately strong. It carries a sword, which can be obtained upon defeat. Holding the sword doubles combat power in the next battle and allows breaking walls. |
-| d Komodo Dragon | Strong. Defeating it provides a large amount of food, but you will be poisoned, reducing your combat power to one-third in the next battle.                    |
-| f Fairy         | Not an enemy. When touched, it follows the player and provides minor benefits.                                                                                 |
-| A Rare Amoeba   | A rare amoeba that significantly boosts your level upon defeat.                                                                                                |
-| B Rare Bison    | Tastier than a normal bison. Provides even more food.                                                                                                          |
-| C Rare Chimera  | Stronger than a normal chimera, carrying a sword that triples combat power.                                                                                    |
-| D Dragon        | Very strong. Defeating it reveals the location of a treasure chest. Even without defeating it, you will gain the ability to recognize treasure chests.         |
-| E Elemental     | Not an enemy. When touched, it moves the player. If the player's level is low, it teleports them to a random location.                                         |
-| F Rare Fairy    | Not an enemy. When touched, it grants the ability to see distant areas.                                                                                        |
+| Display & Name  | Description                                                                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                            |
+| A Rare Amoeba   | A rare amoeba that grants a significant level boost upon defeat.                                                                                              |
+| b Bison         | The second weakest. Defeating it provides plenty of food. Hunt it when you're hungry.                                                                         |
+| B Rare Bison    | Tastier than a normal bison. Provides even more food.                                                                                                         |
+| c Chimera       | Moderately strong. It wields a sword, which can be obtained upon defeat. Holding the sword doubles combat power in the next battle and allows breaking walls. |
+| C Rare Chimera  | Stronger than a normal chimera, wielding a sword that triples combat power.                                                                                   |
+| d Komodo Dragon | Strong. Defeating it provides a large amount of food, but you will be poisoned, reducing your combat power to one-third in the next battle.                   |
+| D Dragon        | Strong. Defeating it reveals the location of a treasure chest. Even without defeating it, you will gain the ability to distinguish treasure chests.           |
+| f Fairy         | Not an enemy. When touched, it follows the player and grants small benefits.                                                                                  |
+| F Rare Fairy    | Not an enemy. When touched, it grants the ability to see distant areas.                                                                                       |
+| h Hippogriff    | Not an enemy. When touched, it allows the player to pass over walls.                                                                                          |
 
 ## License
 
