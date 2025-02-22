@@ -157,9 +157,9 @@ def draw_status_bar(
     buf = []
     buf.append(item_str)
     if extra_keys:
-        buf.append("/[Q]uit/[M]ap/[S]eed")
+        buf.append("/ [q]uit/[m]ap/[s]eed")
     else:
-        buf.append("/[Q]uit")
+        buf.append("/ [q]uit")
     s = "  ".join(buf)
     stdscr.addstr(defs.FIELD_HEIGHT, x, s)
     x += len(s)

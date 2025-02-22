@@ -1,7 +1,8 @@
-from typing import List, Optional, Set, Tuple
+from typing import List, Set, Tuple
 
 import argparse
 import math
+import os.path
 import sys
 import time
 
@@ -287,12 +288,7 @@ def update_entities(
     return game_over, message
 
 
-def run_game(ui, seed: Optional[int], debug_show_entities: bool = False) -> None:
-    if seed is None:
-        seed = int(time.time()) % 100000
-
-    rand.set_seed(seed)
-
+def run_game(ui, seed_str: str, debug_show_entities: bool = False) -> None:
     # Initialize field
     field, first_p, last_p = create_field(defs.CORRIDOR_H_WIDTH, defs.CORRIDOR_V_WIDTH, defs.WALL_CHARS)
 
@@ -379,7 +375,57 @@ def run_game(ui, seed: Optional[int], debug_show_entities: bool = False) -> None
         elif c == "m":
             show_entities = not show_entities
         elif c == "s":
-            message = (-1, "SEED: %d" % rand.get_seed())
+            message = (-1, f"SEED: {seed_str}")
+
+
+def generate_seed_string(args):
+    flag_str = ""
+    if args.large_field:
+        flag_str += "F"
+    if args.large_torch:
+        flag_str += "T"
+    elif args.small_torch:
+        flag_str += "t"
+    if args.narrower_corridors:
+        flag_str += "n"
+    return f"v{__version__}-{flag_str}-{args.seed}"
+
+
+def parse_seed_string(args, seed_str):
+    parts = seed_str.split("-")
+    if len(parts) != 3:
+        exit("Error: Seed string format is invalid. Expected format: v<version>-<flags>-<seed>")
+    
+    version_part, flag_str, seed_value_str = parts
+
+    if not version_part.startswith("v"):
+        exit("Error: Seed string must start with 'v'.")
+    version = version_part[1:]
+    if version != __version__:
+        exit("Error: Seed string version does not match game version.")
+
+    # フラグの復元：指定されているかどうかで真偽値を設定する
+    args.large_field = ("F" in flag_str)
+
+    # -T と -t は排他的であることをチェック
+    if "T" in flag_str and "t" in flag_str:
+        exit("Error: Both large torch and small torch flags are present in seed string.")
+    elif "T" in flag_str:
+        args.large_torch = True
+        args.small_torch = False
+    elif "t" in flag_str:
+        args.large_torch = False
+        args.small_torch = True
+    else:
+        args.large_torch = False
+        args.small_torch = False
+
+    args.narrower_corridors = ("n" in flag_str)
+
+    try:
+        args.seed = int(seed_value_str)
+    except ValueError:
+        exit("Error: Seed value in seed string is not a valid integer.")
 
 
 def main():
@@ -395,11 +441,18 @@ def main():
     g.add_argument("-t", "--small-torch", action="store_true", help="Small torch.")
     parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
 
+    parser.add_argument("--seed", action="store", type=int, help="Seed value")
     parser.add_argument("--curses", action="store_true", help="Use curses as UI framework.")
     parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
-    parser.add_argument("--seed", action="store", type=int, help="Seed value")
 
     args = parser.parse_args()
+
+    if args.seed is not None:
+        if any(o is not None for o in [args.large_field, args.large_torch, args.small_torch, args.narrow_corridors]):
+            exit("Error: option --seed is mutually exclusive to options -F, -T, -t, -n")
+        parse_seed_string(args, args.seed)
+    else:
+        args.seed = int(time.time()) % 100000
 
     if args.large_field:
         defs.TILE_NUM_Y += 1
@@ -414,6 +467,9 @@ def main():
         defs.CORRIDOR_H_WIDTH -= 1
         defs.CORRIDOR_V_WIDTH -= 1
 
+    rand.set_seed(args.seed)
+    seed_str = generate_seed_string(args)
+
     if args.curses:
         import curses
 
@@ -421,7 +477,7 @@ def main():
 
         def curses_main(stdscr):
             ui = CursesUI(stdscr)
-            run_game(ui, args.seed, args.debug_show_entities)
+            run_game(ui, seed_str, args.debug_show_entities)
 
         try:
             curses.wrapper(curses_main)
@@ -431,7 +487,8 @@ def main():
         from .pygame_funcs import PygameUI
 
         ui = PygameUI()
-        run_game(ui, args.seed, args.debug_show_entities)
+        run_game(ui, seed_str, args.debug_show_entities)
+    
 
 
 if __name__ == "__main__":

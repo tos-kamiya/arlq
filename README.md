@@ -53,7 +53,7 @@ pip install windows-curses
   - `a`: Weak enough to be defeated from the start. Useful for leveling up.  
   - `b`: The second weakest. Defeating it provides plenty of food. Hunt it when you're hungry.  
   
-  Initially, monsters appear as “?”; when you come into contact with them, their type (such as `a`, `b`, `c`, etc.) is revealed.
+  Initially, monsters appear as “?” or "!"; when you come into contact with them, their type (such as `a`, `b`, `c`, etc.) is revealed.
 
 * **Fog System**  
   The game uses a fog system where only the areas the player has walked on are visible. In combination with auto-mapping, once an area is visited, it remains visible.
