@@ -28,15 +28,17 @@ ITEM_TREASURE = "Treasure"
 
 EFFECT_SPECIAL_EXP = "Special Exp."
 EFFECT_FEED_MUCH = "Feed Much"
-EFFECT_CLAIRVOYANCE = "Clairvoyance"
 EFFECT_TREASURE_POINTER = "Treasure Ptr."
+EFFECT_ENERGY_DRAIN = "Energy Drain"
 
 COMPANION_FAIRY = "Fairy"
 COMPANION_HIPPOGRIFF = "Hippogriff"
+COMPANION_GOBLIN = "Goblin"
 
 COMPANION_TO_ATTR_CHAR = {
     COMPANION_FAIRY: "f",
     COMPANION_HIPPOGRIFF: "h",
+    COMPANION_GOBLIN: "g",
 }
 
 HIPPOGRIFF_FLY_STEP = 9
@@ -93,14 +95,14 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     MonsterTribe("c", 10, 12, 4, item=ITEM_SWORD_X2),  # Chimera
     MonsterTribe("d", 20, 20, 4, item=ITEM_POISONED),  # Comodo Dragon
     MonsterTribe(CHAR_DRAGON, 40, 12, 1, effect=EFFECT_TREASURE_POINTER),  # Dragon
+    MonsterTribe("e", 1, -12, 1, effect=EFFECT_ENERGY_DRAIN),  # Erebus
 
     MonsterTribe("A", 1, 12, 0.7, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
     MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH),  # Bison rare
     MonsterTribe("C", 10, 12, 0.7, item=ITEM_SWORD_X3),  # Chimera rare
 
     MonsterTribe("f", 0, 0, 0.7, companion=COMPANION_FAIRY),  # Fairy
-    MonsterTribe("F", 0, 0, 0.7, effect=EFFECT_CLAIRVOYANCE),  # Fairy rare
-
+    MonsterTribe("g", 0, 0, 0.7, companion=COMPANION_GOBLIN),  # Goblin
     MonsterTribe("h", 0, 0, 0.7, companion=COMPANION_HIPPOGRIFF),  # Hippogriff
 ]
 
