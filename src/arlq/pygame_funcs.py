@@ -31,6 +31,8 @@ class PygameUI:
     def __init__(self):
         pygame.init()
 
+        pygame.key.set_repeat(300)
+
         # Hide mouse cursor
         pygame.mouse.set_visible(False)
 
