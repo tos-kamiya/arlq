@@ -205,7 +205,7 @@ class PygameUI:
         fill_rect = pygame.Rect(x_offset, y_offset, fill_width, bar_height)
         pygame.draw.rect(self.screen, food_color, fill_rect)
 
-        extra = "/[Q]uit/[M]ap/[S]eed" if extra_keys else "/[Q]uit"
+        extra = "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
         item_status = "  ".join([item_str, extra])
         item_x_offset = x_offset + bar_width + 10
         self._draw_text((item_x_offset // CELL_SIZE_X, self.field_height), item_status, COLOR_MAP["default"])
