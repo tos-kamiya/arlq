@@ -30,17 +30,24 @@ CELL_SIZE_X = 13
 class PygameUI:
     def __init__(self):
         pygame.init()
-        # Pixel size per cell (adjustable)
+
+        # Hide mouse cursor
+        pygame.mouse.set_visible(False)
+
+        # Pixel size per cell
         self.field_width = defs.FIELD_WIDTH
         self.field_height = defs.FIELD_HEIGHT
+
         # Window size to draw the stage plus the status bar (+2 rows)
         self.window_width = self.field_width * CELL_SIZE_X
         self.window_height = (self.field_height + 2) * CELL_SIZE_Y
         self.screen = pygame.display.set_mode((self.window_width, self.window_height))
         pygame.display.set_caption(f"Arlq (Pygame mix) v{__version__}")
+
         # Prepare monospace fonts (including a bold version)
         self.font = pygame.font.SysFont("Courier", CELL_SIZE_Y)
         self.font_bold = pygame.font.SysFont("Courier", CELL_SIZE_Y, bold=True)
+
         # Auxiliary clock for controlling FPS
         self.clock = pygame.time.Clock()
 
