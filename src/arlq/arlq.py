@@ -2,7 +2,6 @@ from typing import List, Set, Tuple
 
 import argparse
 import math
-import os.path
 import sys
 import time
 
@@ -73,7 +72,7 @@ def tile_to_place_range(x: int, y: int) -> Tuple[defs.Point, defs.Point]:
     return lt, rb
 
 
-def find_random_place(entities: List[defs.Entity], field: List[List[str]], distance: int = 2) -> defs.Point:
+def find_random_place(entities: List[defs.Entity], field: List[List[str]], distance: int = 1) -> defs.Point:
     places = [(e.x, e.y) for e in entities]
     while True:
         x = rand.randrange(defs.FIELD_WIDTH - 2) + 1
@@ -92,12 +91,12 @@ def spawn_monsters(entities: List[defs.Entity], field: List[List[str]]) -> None:
         if isinstance(p, float):
             p = 1 if rand.randrange(100) / 100 < p else 0
         for _ in range(p):
-            x, y = find_random_place(entities, field, distance=3)
+            x, y = find_random_place(entities, field, distance=2)
             m = defs.Monster(x, y, tribe)
             entities.append(m)
 
 
-def respawn_monster(entities: List[defs.Entity], field: List[List[str]]) -> None:
+def respawn_monster(entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]]) -> None:
     chars = []
     for tribe in defs.MONSTER_TRIBES:
         if tribe.population >= 2:
@@ -106,9 +105,10 @@ def respawn_monster(entities: List[defs.Entity], field: List[List[str]]) -> None
     c = rand.choice(chars)
     for tribe in defs.MONSTER_TRIBES:
         if tribe.char == c:
-            x, y = find_random_place(entities, field, distance=3)
+            x, y = find_random_place(entities, field, distance=2)
             m = defs.Monster(x, y, tribe)
             entities.append(m)
+            torched[y][x] = 0  # Visited places are marked as 1 in torched elements. To hide new monsters until revisited, set the corresponding place to 0.
             break
 
 
@@ -254,7 +254,6 @@ def update_entities(
                 player.item = ""
                 player.item_taken_from = ""
                 player.food = min(player.food, defs.FOOD_INIT)
-                player.companion = ""
                 message = (3, "-- Respawned.")
             else:
                 if effect == defs.EFFECT_SPECIAL_EXP:
@@ -266,6 +265,13 @@ def update_entities(
 
                 if m.tribe.companion:
                     player.companion = m.tribe.companion
+                    player.karma = 0
+                else:
+                    player.karma += 1
+                    if player.companion != "":
+                        if player.karma >= defs.COMPAION_KARMA_LIMIT:
+                            message = (3, "-- The companion vanishes.")
+                            player.companion = ""
 
                 del entities[eei]
                 player.item = m.tribe.item
@@ -350,7 +356,7 @@ def run_game(ui, seed_str: str, debug_show_entities: bool = False) -> None:
             message = m
 
         if hours % defs.MONSTER_RESPAWN_RATE == 0:
-            respawn_monster(entities, field)
+            respawn_monster(entities, field, torched)
 
     # Game over display
     show_entities = debug_show_entities
