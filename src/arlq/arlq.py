@@ -213,6 +213,7 @@ def update_entities(
             and field[n2y][n2x] == " "
         ):
             player.x, player.y = n2x, n2y
+            player.karma += 1
         elif player.item in [defs.ITEM_SWORD_X2, defs.ITEM_SWORD_X3] and c in defs.WALL_CHARS:
             # break the wall
             player.x, player.y = nx, ny
@@ -268,10 +269,6 @@ def update_entities(
                     player.karma = 0
                 else:
                     player.karma += 1
-                    if player.companion != "":
-                        if player.karma >= defs.COMPAION_KARMA_LIMIT:
-                            message = (3, "-- The companion vanishes.")
-                            player.companion = ""
 
                 del entities[eei]
                 player.item = m.tribe.item
@@ -291,7 +288,14 @@ def update_entities(
         for eei, ee in sur_entity_infos:
             if isinstance(ee, defs.Monster):
                 m: defs.Monster = ee
-                encountered_types.add(m.tribe.char)
+                if m.tribe.char not in encountered_types:
+                    encountered_types.add(m.tribe.char)
+                    player.karma += 1
+
+    if player.companion != "":
+        if player.karma >= defs.COMPAION_KARMA_LIMIT:
+            message = (3, "-- The companion vanishes.")
+            player.companion = ""
 
     return game_over, message
 
