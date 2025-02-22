@@ -389,8 +389,8 @@ def main():
 
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
+    parser.add_argument("-F", "--large-field", action="store_true", help="Large field.")
     g = parser.add_mutually_exclusive_group()
-    g.add_argument("-F", "--large-field", action="store_true", help="Large field.")
     g.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
     g.add_argument("-t", "--small-torch", action="store_true", help="Small torch.")
     parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
