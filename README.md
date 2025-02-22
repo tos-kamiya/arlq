@@ -91,8 +91,9 @@ For more details about the monsters, please refer to the Monster List below. You
 | C Rare Chimera  | Stronger than a normal chimera, wielding a sword that triples combat power.                                                                                   |
 | d Komodo Dragon | Strong. Defeating it provides a large amount of food, but you will be poisoned, reducing your combat power to one-third in the next battle.                   |
 | D Dragon        | Strong. Defeating it reveals the location of a treasure chest. Even without defeating it, you will gain the ability to distinguish treasure chests.           |
+| e Erebus        | Battling it drains your vitality.                                                                                                                             |
 | f Fairy         | Not an enemy. When touched, it follows the player and grants small benefits.                                                                                  |
-| F Rare Fairy    | Not an enemy. When touched, it grants the ability to see distant areas.                                                                                       |
+| g Goblin        | Not an enemy. When touched, it follows the player and identifies the type of monsters.                                                                        |
 | h Hippogriff    | Not an enemy. When touched, it allows the player to pass over walls.                                                                                          |
 
 ## License

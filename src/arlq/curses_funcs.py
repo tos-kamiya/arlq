@@ -66,7 +66,7 @@ def draw_stage(
     # Draw each entity (monsters and treasures)
     for e in entities:
         if isinstance(e, defs.Monster):
-            m = e
+            m: defs.Monster = e
             if torched[m.y][m.x] == 0:
                 continue
 
@@ -83,7 +83,7 @@ def draw_stage(
                 ci = CI_BLUE if m.tribe.level <= atk else CI_RED
                 stdscr.addstr(m.y, m.x, ch, curses.color_pair(ci) | attr)
         elif isinstance(e, defs.Treasure):
-            t = e
+            t: defs.Treasure = e
             if defs.CHAR_TREASURE in encountered_types:
                 stdscr.addstr(t.y, t.x, defs.CHAR_TREASURE, curses.color_pair(CI_YELLOW) | curses.A_BOLD)
 
@@ -92,13 +92,13 @@ def draw_stage(
         attr = curses.A_DIM
         for e in entities:
             if isinstance(e, defs.Monster):
-                m = e
+                m: defs.Monster = e
                 if torched[m.y][m.x] != 0:
                     continue
                 ch = m.tribe.char
                 stdscr.addstr(m.y, m.x, ch, attr)
             elif isinstance(e, defs.Treasure):
-                t = e
+                t: defs.Treasure = e
                 if defs.CHAR_TREASURE not in encountered_types:
                     stdscr.addstr(t.y, t.x, defs.CHAR_TREASURE, attr)
 

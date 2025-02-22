@@ -195,8 +195,6 @@ def update_entities(
     player: defs.Player,
     entities: List[defs.Entity],
     encountered_types: Set[str],
-    torched: List[List[int]],
-    torch_radius: int,
 ):
     game_over = False
     message = (-1, "")
@@ -223,21 +221,21 @@ def update_entities(
             player.item_taken_from = ""
 
     # Find encountered entity
-    enc_obj_infos: List[Tuple[int, defs.Entity]] = []
-    sur_obj_infos: List[Tuple[int, defs.Entity]] = []
+    enc_entity_infos: List[Tuple[int, defs.Entity]] = []
+    sur_entity_infos: List[Tuple[int, defs.Entity]] = []
     for i, e in enumerate(entities):
         if not isinstance(e, defs.Player):
             dx = abs(e.x - player.x)
             dy = abs(e.y - player.y)
             if dx == 0 and dy == 0:
-                enc_obj_infos.append((i, e))
+                enc_entity_infos.append((i, e))
             elif dx <= 1 and dy <= 1:
-                sur_obj_infos.append((i, e))
-    assert len(enc_obj_infos) <= 1
+                sur_entity_infos.append((i, e))
+    assert len(enc_entity_infos) <= 1
 
     # Actions & events (combats, state changes, etc)
-    for enc_obj_i, enc_obj in enc_obj_infos:
-        if isinstance(enc_obj, defs.Treasure):
+    for eei, ee in enc_entity_infos:
+        if isinstance(ee, defs.Treasure):
             if defs.CHAR_DRAGON in encountered_types:
                 encountered_types.add(defs.CHAR_TREASURE)
                 message = (-1, ">> Won the Treasure! <<")
@@ -245,8 +243,8 @@ def update_entities(
                 player.item = defs.ITEM_TREASURE
                 player.item_taken_from = ""
                 break
-        elif isinstance(enc_obj, defs.Monster):
-            m = enc_obj
+        elif isinstance(ee, defs.Monster):
+            m: defs.Monster = ee
             encountered_types.add(m.tribe.char)
             player_attack = defs.player_attack_by_level(player)
 
@@ -269,21 +267,25 @@ def update_entities(
                 if m.tribe.companion:
                     player.companion = m.tribe.companion
 
-                del entities[enc_obj_i]
+                del entities[eei]
                 player.item = m.tribe.item
                 player.item_taken_from = m.tribe.char
 
-                if effect == defs.EFFECT_CLAIRVOYANCE:
-                    cur_torched = get_torched(player, torch_radius + defs.CLAIRVOYANCE_TORCH_EXTENSION)
-                    update_torched(torched, cur_torched)
-                    message = (3, "-- Clairvoyance.")
-                elif effect == defs.EFFECT_TREASURE_POINTER:
+                if effect == defs.EFFECT_TREASURE_POINTER:
                     encountered_types.add(defs.CHAR_TREASURE)
                     message = (3, "-- Sparkle.")
                 elif effect == defs.EFFECT_FEED_MUCH:
                     message = (3, "-- Stuffed.")
                 elif effect == defs.EFFECT_SPECIAL_EXP:
                     message = (3, "-- Exp. Boost.")
+                elif effect == defs.EFFECT_ENERGY_DRAIN:
+                    message = (3, "-- Energy Draiend.")
+
+    if player.companion == defs.COMPANION_GOBLIN:
+        for eei, ee in sur_entity_infos:
+            if isinstance(ee, defs.Monster):
+                m: defs.Monster = ee
+                encountered_types.add(m.tribe.char)
 
     return game_over, message
 
@@ -343,9 +345,7 @@ def run_game(ui, seed_str: str, debug_show_entities: bool = False) -> None:
             return
 
         # Player move, encounting, etc.
-        game_over, m = update_entities(
-            move_direction, field, player, entities, encountered_types, torched, torch_radius
-        )
+        game_over, m = update_entities(move_direction, field, player, entities, encountered_types)
         if m is not None:
             message = m
 
