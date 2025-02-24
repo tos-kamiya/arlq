@@ -78,14 +78,12 @@ def draw_stage(
                     ch = "!" if m.tribe.level == 0 else "?"
                     stdscr.addstr(m.y, m.x, ch)
             else:
-                # Use bold attribute for uppercase letters (A-Z)
-                attr = curses.A_BOLD if "A" <= ch <= "Z" else 0
                 ci = CI_BLUE if m.tribe.level <= atk else CI_RED
-                stdscr.addstr(m.y, m.x, ch, curses.color_pair(ci) | attr)
+                stdscr.addstr(m.y, m.x, ch, curses.A_BOLD | curses.color_pair(ci))
         elif isinstance(e, defs.Treasure):
             t: defs.Treasure = e
             if defs.CHAR_TREASURE in encountered_types:
-                stdscr.addstr(t.y, t.x, defs.CHAR_TREASURE, curses.color_pair(CI_YELLOW) | curses.A_BOLD)
+                stdscr.addstr(t.y, t.x, defs.CHAR_TREASURE, curses.A_BOLD | curses.color_pair(CI_YELLOW))
 
     if show_entities:
         # Draw entities that are not torched (i.e., torched == 0) in a dim style

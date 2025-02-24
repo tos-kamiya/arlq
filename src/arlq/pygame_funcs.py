@@ -14,10 +14,10 @@ CI_CYAN = 6
 
 # Color mapping for Pygame
 COLOR_MAP = {
-    CI_RED: (255, 80, 100),
+    CI_RED: (255, 80, 120),
     CI_GREEN: (80, 255, 80),
     CI_YELLOW: (240, 240, 0),
-    CI_BLUE: (80, 100, 255),
+    CI_BLUE: (80, 120, 255),
     CI_CYAN: (0, 240, 240),
     "default": (255, 255, 255),
 }
@@ -131,10 +131,8 @@ class PygameUI:
                         ch = "!" if m.tribe.level == 0 else "?"
                         self._draw_text((m.x, m.y), ch, COLOR_MAP["default"])
                 else:
-                    # Use bold if the character is between A and Z
-                    bold_attr = "A" <= ch <= "Z"
                     col = COLOR_MAP[CI_BLUE] if m.tribe.level <= atk else COLOR_MAP[CI_RED]
-                    self._draw_text((m.x, m.y), ch, col, bold=bold_attr)
+                    self._draw_text((m.x, m.y), ch, col, bold=True)
             elif isinstance(e, defs.Treasure):
                 t: defs.Treasure = e
                 if defs.CHAR_TREASURE in encountered_types:
