@@ -254,7 +254,7 @@ def update_entities(
                 player.x, player.y = find_random_place(entities, field, distance=2)
                 player.item = ""
                 player.item_taken_from = ""
-                player.food = min(player.food, defs.FOOD_INIT)
+                player.food = max(defs.FOOD_RESPAWN_MIN, min(player.food, defs.FOOD_INIT))
                 message = (3, "-- Respawned.")
             else:
                 if effect == defs.EFFECT_SPECIAL_EXP:
