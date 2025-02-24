@@ -84,6 +84,7 @@ pip install windows-curses
 | **d** Komodo Dragon  | Powerful but dangerous. Defeating it provides a large amount of food, but you'll be poisoned—reducing your combat power to one-third in the next battle.               |
 | **D** Dragon         | Extremely strong. Defeating it reveals the location of the treasure chest. Even without defeating it, you gain the ability to distinguish treasure chests.           |
 | **e** Erebus         | Battling it drains your vitality.                                                                                                                                       |
+| **E** Eldritch | Too powerful to be defeated. |
 
 ## Companion List
 
