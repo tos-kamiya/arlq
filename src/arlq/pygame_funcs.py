@@ -129,7 +129,7 @@ class PygameUI:
                         self._draw_text((m.x, m.y), ch, COLOR_MAP["default"])
                     else:
                         ch = "!" if m.tribe.level == 0 else "?"
-                        self._draw_text((m.x, m.y), ch, COLOR_MAP["default"])
+                        self._draw_text((m.x, m.y), ch, COLOR_MAP["default"], bold=True)
                 else:
                     col = COLOR_MAP[CI_BLUE] if m.tribe.level <= atk else COLOR_MAP[CI_RED]
                     self._draw_text((m.x, m.y), ch, col, bold=True)
