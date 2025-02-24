@@ -76,7 +76,7 @@ def draw_stage(
                     stdscr.addstr(m.y, m.x, ch)
                 else:
                     ch = "!" if m.tribe.level == 0 else "?"
-                    stdscr.addstr(m.y, m.x, ch)
+                    stdscr.addstr(m.y, m.x, ch, curses.A_BOLD)
             else:
                 ci = CI_BLUE if m.tribe.level <= atk else CI_RED
                 stdscr.addstr(m.y, m.x, ch, curses.A_BOLD | curses.color_pair(ci))

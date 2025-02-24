@@ -17,7 +17,7 @@ CLAIRVOYANCE_TORCH_EXTENSION = 6
 
 FOOD_MAX = 100
 FOOD_INIT = 90
-FOOD_STARVATION = 30
+FOOD_RESPAWN_MIN = 20
 
 MONSTER_RESPAWN_RATE = 120
 
@@ -99,6 +99,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     MonsterTribe("d", 20, 20, 4, item=ITEM_POISONED),  # Comodo Dragon
     MonsterTribe(CHAR_DRAGON, 40, 12, 1, effect=EFFECT_TREASURE_POINTER),  # Dragon
     MonsterTribe("e", 1, -12, 4, effect=EFFECT_ENERGY_DRAIN),  # Erebus
+    MonsterTribe("E", 999, -12, 1, effect=EFFECT_ENERGY_DRAIN),  # Eldritch
 
     MonsterTribe("A", 1, 12, 0.7, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
     MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH),  # Bison rare
