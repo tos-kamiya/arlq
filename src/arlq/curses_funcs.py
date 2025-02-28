@@ -106,7 +106,7 @@ def draw_status_bar(
 ) -> None:
     """
     Draws the status bar at the bottom of the screen. This includes the game hours,
-    player level, food amount, and a progress bar for food.
+    player level, lp, and a progress bar for lp.
 
     Parameters:
         stdscr: The curses window to draw on.
@@ -136,15 +136,15 @@ def draw_status_bar(
     buf.append(level_str)
     if beatable is not None:
         buf.append("> %s" % beatable.char)
-    buf.append("FOOD: %d" % player.food)
+    buf.append("FOOD: %d" % player.lp)
     s = "  ".join(buf)
     stdscr.addstr(defs.FIELD_HEIGHT, x, s)
     x += len(s)
 
     x += 1
     bar_len = 4
-    s = braille_progress_bar(player.food, defs.FOOD_MAX, bar_len)
-    if player.food < 20:
+    s = braille_progress_bar(player.lp, defs.LP_MAX, bar_len)
+    if player.lp < 20:
         stdscr.addstr(defs.FIELD_HEIGHT, x, s, curses.color_pair(CI_RED))
     else:
         stdscr.addstr(defs.FIELD_HEIGHT, x, s)

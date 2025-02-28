@@ -182,7 +182,7 @@ class PygameUI:
         status_parts.append(level_str)
         if beatable is not None:
             status_parts.append("> %s" % beatable.char)
-        status_parts.append("FOOD: %d" % player.food)
+        status_parts.append("LP: %d" % player.lp)
         status_str = "  ".join(status_parts)
 
         # Draw the status string at the left edge
@@ -199,12 +199,12 @@ class PygameUI:
 
         y_offset = self.field_height * CELL_SIZE_Y + (CELL_SIZE_Y - bar_height) // 2
 
-        # Calculate the progress ratio for food
-        progress_ratio = player.food / defs.FOOD_MAX
+        # Calculate the progress ratio for lp
+        progress_ratio = player.lp / defs.LP_MAX
         fill_width = int(bar_width * progress_ratio)
 
         # Use red if food is less than 20, otherwise use the default color
-        food_color = COLOR_MAP[CI_RED] if player.food < 20 else COLOR_MAP["default"]
+        food_color = COLOR_MAP[CI_RED] if player.lp < 20 else COLOR_MAP["default"]
 
         border_rect = pygame.Rect(x_offset, y_offset, bar_width, bar_height)
         pygame.draw.rect(self.screen, COLOR_MAP["default"], border_rect, 1)
