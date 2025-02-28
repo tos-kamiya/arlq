@@ -15,9 +15,9 @@ TORCH_WIDTH_EXPANSION_RATIO = 1.5
 FAIRY_TORCH_EXTENSION = 2
 CLAIRVOYANCE_TORCH_EXTENSION = 6
 
-FOOD_MAX = 100
-FOOD_INIT = 90
-FOOD_RESPAWN_MIN = 20
+LP_MAX = 100
+LP_INIT = 90
+LP_RESPAWN_MIN = 20
 
 MONSTER_RESPAWN_RATE = 120
 
@@ -65,10 +65,10 @@ class Treasure(Entity):
 
 
 class Player(Entity):
-    def __init__(self, x, y, level, food):
+    def __init__(self, x, y, level, lp):
         super().__init__(x, y)
         self.level = level
-        self.food = food
+        self.lp = lp
         self.item = ""
         self.item_taken_from = ""
         self.companion = ""

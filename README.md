@@ -65,8 +65,9 @@ pip install windows-curses
   - `A` (Rare Amoeba): Significantly boosts your level upon defeat.  
   - `B` (Rare Bison): Provides even more food than a normal bison.
 
-* **Food System**  
-  Every move you make decreases your food supply. If your food reaches zero, you lose the game from hunger. Defeating monsters replenishes your food, so manage your supplies carefully.
+* **LP System**
+  The player has LP (Life Points) that decrease with every move.
+  If LP reaches zero, the game is lost due to starvation. Defeating monsters replenishes food, thereby restoring LP.
 
 * **Game End**  
   The game is cleared when you come into contact with the treasure chest (represented by `T`). Your objective is to obtain the treasure chest guarded by the dragon.

@@ -254,7 +254,7 @@ def update_entities(
                 player.x, player.y = find_random_place(entities, field, distance=2)
                 player.item = ""
                 player.item_taken_from = ""
-                player.food = max(defs.FOOD_RESPAWN_MIN, min(player.food, defs.FOOD_INIT))
+                player.lp = max(defs.LP_RESPAWN_MIN, min(player.lp, defs.LP_INIT))
                 message = (3, "-- Respawned.")
             else:
                 if effect == defs.EFFECT_SPECIAL_EXP:
@@ -262,7 +262,7 @@ def update_entities(
                 else:
                     player.level += 1
 
-                player.food = max(1, min(defs.FOOD_MAX, player.food + m.tribe.feed))
+                player.lp = max(1, min(defs.LP_MAX, player.lp + m.tribe.feed))
 
                 if m.tribe.companion:
                     player.companion = m.tribe.companion
@@ -306,7 +306,7 @@ def run_game(ui, seed_str: str, debug_show_entities: bool = False) -> None:
 
     # Initialize entities
     entities: List[defs.Entity] = []
-    player: defs.Player = defs.Player(first_p[0], first_p[1], 1, defs.FOOD_INIT)
+    player: defs.Player = defs.Player(first_p[0], first_p[1], 1, defs.LP_INIT)
     entities.append(player)
     treasure: defs.Treasure = defs.Treasure(last_p[0], last_p[1])
     entities.append(treasure)
@@ -329,8 +329,8 @@ def run_game(ui, seed_str: str, debug_show_entities: bool = False) -> None:
         hours += 1
 
         # Starvation check
-        player.food -= 1
-        if player.food <= 0:
+        player.lp -= 1
+        if player.lp <= 0:
             message = (-1, ">> Starved to Death. <<")
             game_over = True
             break
