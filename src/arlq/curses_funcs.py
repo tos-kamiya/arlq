@@ -14,7 +14,7 @@ CI_MAGENTA = 5
 CI_CYAN = 6
 
 
-def draw_stage(
+def curses_draw_stage(
     stdscr: curses.window,
     entities: List[defs.Entity],
     field: List[List[str]],
@@ -109,7 +109,7 @@ def draw_stage(
                     stdscr.addstr(t.y, t.x, defs.CHAR_TREASURE, attr)
 
 
-def draw_status_bar(
+def curses_draw_status_bar(
     stdscr: curses.window, player: defs.Player, hours: int, stage_num: int = 0, message: Optional[str] = None, extra_keys: bool = False
 ) -> None:
     """
@@ -186,19 +186,20 @@ def key_to_dir(key: str) -> Optional[defs.Point]:
     Returns:
         A tuple representing the direction (dx, dy), or None if no valid direction.
     """
-    if key in ['w', 'W', 'KEY_UP']:
+    if key in ["w", "W", "KEY_UP"]:
         return (0, -1)
-    elif key in ['a', 'A', 'KEY_LEFT']:
+    elif key in ["a", "A", "KEY_LEFT"]:
         return (-1, 0)
-    elif key in ['s', 'S', 'KEY_DOWN']:
+    elif key in ["s", "S", "KEY_DOWN"]:
         return (0, 1)
-    elif key in ['d', 'D', 'KEY_RIGHT']:
+    elif key in ["d", "D", "KEY_RIGHT"]:
         return (1, 0)
     return None
 
 
 class TerminalSizeSmall(ValueError):
     """Exception raised when the terminal size is too small."""
+
     pass
 
 
@@ -252,9 +253,9 @@ class CursesUI:
         stdscr = self.stdscr
 
         stdscr.clear()
-        draw_stage(stdscr, entities, field, cur_torched, torched, encountered_types, show_entities=show_entities)
+        curses_draw_stage(stdscr, entities, field, cur_torched, torched, encountered_types, show_entities=show_entities)
 
-        draw_status_bar(stdscr, player, hours, stage_num=stage_num, message=message, extra_keys=extra_keys)
+        curses_draw_status_bar(stdscr, player, hours, stage_num=stage_num, message=message, extra_keys=extra_keys)
         stdscr.refresh()
 
     def input_direction(self) -> Optional[defs.Point]:
@@ -271,7 +272,7 @@ class CursesUI:
         move_direction = None
         while move_direction is None:
             key = stdscr.getkey()
-            if key == 27 or key.lower() == 'q':
+            if key == 27 or key.lower() == "q":
                 return None
             else:
                 move_direction = key_to_dir(key)

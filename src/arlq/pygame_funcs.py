@@ -168,9 +168,7 @@ class PygameUI:
         # Control the FPS
         self.clock.tick(30)
 
-    def draw_status_bar(
-        self, hours: int, player: defs.Player, stage_num: int, message: Optional[str], extra_keys: bool
-    ):
+    def draw_status_bar(self, hours: int, player: defs.Player, stage_num: int, message: Optional[str], extra_keys: bool):
         # Draw the existing status string
         if player.item == defs.ITEM_SWORD_X2:
             level_str = "LVL: %d x2" % player.level

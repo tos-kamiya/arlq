@@ -113,7 +113,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     MonsterTribe("g", 0, 0, 0.7, companion=COMPANION_GOBLIN),  # Goblin
     MonsterTribe("h", 0, 0, 0.7, companion=COMPANION_HIPPOGRIFF),  # Hippogriff
 
-    MonsterTribe("X", 1, 0, 2, effect=EFFECT_CALTROP_SPREAD),  # Caltrop spreader
+    MonsterTribe("X", 1, 0, 2, effect=EFFECT_CALTROP_SPREAD),  # Caltrop Plant
 ]
 
 
@@ -139,5 +139,5 @@ def get_max_beatable_monster_tribe(player: Player) -> Optional[MonsterTribe]:
         b = mk
         if max_beatable is None or b.level > max_beatable.level:
             max_beatable = b
-    
+
     return max_beatable
