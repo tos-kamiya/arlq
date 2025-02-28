@@ -10,6 +10,7 @@ CI_RED = 1
 CI_GREEN = 2
 CI_YELLOW = 3
 CI_BLUE = 4
+CI_MAGENTA = 5
 CI_CYAN = 6
 
 # Color mapping for Pygame
@@ -18,6 +19,7 @@ COLOR_MAP = {
     CI_GREEN: (80, 255, 80),
     CI_YELLOW: (240, 240, 0),
     CI_BLUE: (80, 120, 255),
+    CI_MAGENTA: (240, 0, 240),
     CI_CYAN: (0, 240, 240),
     "default": (255, 255, 255),
 }
@@ -85,7 +87,8 @@ class PygameUI:
         torched: List[List[int]],
         encountered_types: Set[str],
         show_entities: bool,
-        message: Optional[str],
+        stage_num: int = 0,
+        message: Optional[str] = None,
         extra_keys: bool = False,
     ):
         # Clear the entire screen with black
@@ -102,14 +105,21 @@ class PygameUI:
         # Draw each cell of the field
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
-                if torched[y][x] and cell in defs.WALL_CHARS:
-                    self._draw_text((x, y), cell, COLOR_MAP[CI_GREEN])
-                elif (not show_entities) or cell == " ":
-                    if cur_torched[y][x] == 0:
-                        if (x + y) % 2 == 1:
-                            self._draw_text((x, y), ".", self._dim_color(COLOR_MAP["default"]))
+                if cur_torched[y][x]:
+                    if cell in defs.WALL_CHARS:
+                        self._draw_text((x, y), cell, COLOR_MAP[CI_GREEN])
+                    elif cell == defs.CHAR_CALTROP:
+                        self._draw_text((x, y), cell, COLOR_MAP[CI_MAGENTA])
+                    else:
+                        self._draw_text((x, y), cell, COLOR_MAP["default"])
+                elif torched[y][x] or show_entities:
+                    if cell == " " and (x + y) % 2 == 1:
+                        self._draw_text((x, y), ".", self._dim_color(COLOR_MAP["default"]))
+                    else:
+                        self._draw_text((x, y), cell, COLOR_MAP["default"])
                 else:
-                    self._draw_text((x, y), cell, COLOR_MAP["default"])
+                    if (x + y) % 2 == 1:
+                        self._draw_text((x, y), ".", self._dim_color(COLOR_MAP["default"]))
 
         # Draw the player as "@" (bold and yellow)
         self._draw_text((px, py), "@", COLOR_MAP[CI_YELLOW], bold=True)
@@ -152,14 +162,14 @@ class PygameUI:
                         self._draw_text((t.x, t.y), defs.CHAR_TREASURE, self._dim_color(COLOR_MAP["default"]))
 
         # Draw the status bar (handled by draw_status_bar)
-        self.draw_status_bar(hours, player, message, extra_keys)
+        self.draw_status_bar(hours, player, stage_num, message, extra_keys)
 
         pygame.display.flip()
         # Control the FPS
         self.clock.tick(30)
 
     def draw_status_bar(
-        self, hours: int, player: defs.Player, message: Optional[str], extra_keys: bool
+        self, hours: int, player: defs.Player, stage_num: int, message: Optional[str], extra_keys: bool
     ):
         # Draw the existing status string
         if player.item == defs.ITEM_SWORD_X2:
@@ -178,6 +188,8 @@ class PygameUI:
         beatable = defs.get_max_beatable_monster_tribe(player)
 
         status_parts = []
+        if stage_num != 0:
+            status_parts.append("ST: %d" % stage_num)
         status_parts.append("HRS: %d" % hours)
         status_parts.append(level_str)
         if beatable is not None:
