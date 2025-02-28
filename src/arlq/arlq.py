@@ -77,11 +77,7 @@ def find_random_place(entities: List[defs.Entity], field: List[List[str]], dista
     while True:
         x = rand.randrange(defs.FIELD_WIDTH - 2) + 1
         y = rand.randrange(defs.FIELD_HEIGHT - 2) + 1
-        if (
-            field[y][x] == " "
-            and field[y][x + 1] == " "
-            and not any(abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places)
-        ):
+        if field[y][x] == " " and field[y][x + 1] == " " and not any(abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places):
             return x, y
 
 
@@ -112,9 +108,7 @@ def respawn_monster(entities: List[defs.Entity], field: List[List[str]], torched
             break
 
 
-def create_field(
-    corridor_h_width: int, corridor_v_width: int, wall_chars: str
-) -> Tuple[List[List[str]], defs.Point, defs.Point]:
+def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) -> Tuple[List[List[str]], defs.Point, defs.Point]:
     def find_empty_cell(field: List[List[str]], left_top: defs.Point, right_bottom: defs.Point) -> defs.Point:
         assert left_top[0] < right_bottom[0]
         assert left_top[1] < right_bottom[1]
@@ -171,7 +165,7 @@ def update_torched(torched: List[List[int]], added: List[List[int]]) -> None:
             torched[y][x] += added[y][x]
 
 
-def ellipse_iter(center_y, center_x, radius, width_expansion_ratio, except_for_center=False):
+def ellipse_iter(center_x, center_y, radius, width_expansion_ratio, except_for_center=False):
     for dy in range(-radius, radius + 1):
         y = center_y + dy
         if 0 <= y < defs.FIELD_HEIGHT:
@@ -181,7 +175,7 @@ def ellipse_iter(center_y, center_x, radius, width_expansion_ratio, except_for_c
                 if 0 <= x < defs.FIELD_WIDTH:
                     if except_for_center and y == center_y and x == center_x:
                         continue
-                    yield y, x
+                    yield x, y
 
 
 def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
@@ -190,7 +184,7 @@ def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
     if player.companion == defs.COMPANION_FAIRY:
         torch_radius += defs.FAIRY_TORCH_EXTENSION
 
-    for y, x in ellipse_iter(player.y, player.x, torch_radius, defs.TORCH_WIDTH_EXPANSION_RATIO):
+    for x, y in ellipse_iter(player.x, player.y, torch_radius, defs.TORCH_WIDTH_EXPANSION_RATIO):
         torched[y][x] = 1
 
     return torched
@@ -214,8 +208,8 @@ def update_entities(
         if c in [" ", defs.CHAR_CALTROP]:
             player.x, player.y = nx, ny
         elif (
-            player.companion == defs.COMPANION_HIPPOGRIFF 
-            and 0 <= (n2x := player.x + dx * defs.HIPPOGRIFF_FLY_STEP) < defs.FIELD_WIDTH 
+            player.companion == defs.COMPANION_HIPPOGRIFF
+            and 0 <= (n2x := player.x + dx * defs.HIPPOGRIFF_FLY_STEP) < defs.FIELD_WIDTH
             and 0 <= (n2y := player.y + dy * defs.HIPPOGRIFF_FLY_STEP) < defs.FIELD_HEIGHT
             and field[n2y][n2x] in [" ", defs.CHAR_CALTROP]
         ):
@@ -276,7 +270,7 @@ def update_entities(
                 if effect == defs.EFFECT_TREASURE_POINTER:
                     encountered_types.add(defs.CHAR_TREASURE)
                 if effect == defs.EFFECT_CALTROP_SPREAD:
-                    for y, x in ellipse_iter(player.y, player.x, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True):
+                    for x, y in ellipse_iter(player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True):
                         if field[y][x] == " ":
                             field[y][x] = defs.CHAR_CALTROP
 
@@ -365,10 +359,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
                 message = (-1, "")
             else:
                 message = (remaining_tick, message[1])
-        ui.draw_stage(
-            hours, player, entities, field, cur_torched, torched, encountered_types, debug_show_entities,
-            stage_num = stage_num, message = message[1]
-        )
+        ui.draw_stage(hours, player, entities, field, cur_torched, torched, encountered_types, debug_show_entities, stage_num=stage_num, message=message[1])
 
         move_direction = ui.input_direction()
         if move_direction is None:
@@ -426,7 +417,7 @@ def parse_seed_string(args, seed_str):
     parts = seed_str.split("-")
     if len(parts) != 3:
         exit("Error: Seed string format is invalid. Expected format: v<version>-<flags>-<seed>")
-    
+
     version_part, flag_str, seed_value_str = parts
 
     if not version_part.startswith("v"):
@@ -436,7 +427,7 @@ def parse_seed_string(args, seed_str):
         exit("Error: Seed string version does not match game version.")
 
     # フラグの復元：指定されているかどうかで真偽値を設定する
-    args.large_field = ("F" in flag_str)
+    args.large_field = "F" in flag_str
 
     # -T と -t は排他的であることをチェック
     if "T" in flag_str and "t" in flag_str:
@@ -451,7 +442,7 @@ def parse_seed_string(args, seed_str):
         args.large_torch = False
         args.small_torch = False
 
-    args.narrower_corridors = ("n" in flag_str)
+    args.narrower_corridors = "n" in flag_str
 
     try:
         args.seed = int(seed_value_str)
