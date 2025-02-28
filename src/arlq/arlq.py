@@ -171,20 +171,27 @@ def update_torched(torched: List[List[int]], added: List[List[int]]) -> None:
             torched[y][x] += added[y][x]
 
 
+def ellipse_iter(center_y, center_x, radius, width_expansion_ratio, except_for_center=False):
+    for dy in range(-radius, radius + 1):
+        y = center_y + dy
+        if 0 <= y < defs.FIELD_HEIGHT:
+            w = int(math.sqrt((radius * width_expansion_ratio) ** 2 - dy**2) + 0.5)
+            for dx in range(-w, w + 1):
+                x = center_x + dx
+                if 0 <= x < defs.FIELD_WIDTH:
+                    if except_for_center and y == center_y and x == center_x:
+                        continue
+                    yield y, x
+
+
 def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
     torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
 
     if player.companion == defs.COMPANION_FAIRY:
         torch_radius += defs.FAIRY_TORCH_EXTENSION
 
-    for dy in range(-torch_radius, torch_radius + 1):
-        y = player.y + dy
-        if 0 <= y < defs.FIELD_HEIGHT:
-            w = int(math.sqrt((torch_radius * defs.TORCH_WIDTH_EXPANSION_RATIO) ** 2 - dy**2) + 0.5)
-            for dx in range(-w, w + 1):
-                x = player.x + dx
-                if 0 <= x < defs.FIELD_WIDTH:
-                    torched[y][x] = 1
+    for y, x in ellipse_iter(player.y, player.x, torch_radius, defs.TORCH_WIDTH_EXPANSION_RATIO):
+        torched[y][x] = 1
 
     return torched
 
@@ -204,13 +211,13 @@ def update_entities(
 
     if 0 <= (nx := player.x + dx) < defs.FIELD_WIDTH and 0 <= (ny := player.y + dy) < defs.FIELD_HEIGHT:
         c = field[ny][nx]
-        if c == " ":
+        if c in [" ", defs.CHAR_CALTROP]:
             player.x, player.y = nx, ny
         elif (
             player.companion == defs.COMPANION_HIPPOGRIFF 
             and 0 <= (n2x := player.x + dx * defs.HIPPOGRIFF_FLY_STEP) < defs.FIELD_WIDTH 
             and 0 <= (n2y := player.y + dy * defs.HIPPOGRIFF_FLY_STEP) < defs.FIELD_HEIGHT
-            and field[n2y][n2x] == " "
+            and field[n2y][n2x] in [" ", defs.CHAR_CALTROP]
         ):
             player.x, player.y = n2x, n2y
             player.karma += 1
@@ -220,6 +227,11 @@ def update_entities(
             field[player.y][player.x] = " "
             player.item = ""
             player.item_taken_from = ""
+
+    # Caltrop damage
+    if field[player.y][player.x] == defs.CHAR_CALTROP:
+        player.lp -= defs.CALTROP_LP_DAMAGE
+        field[player.y][player.x] = " "
 
     # Find encountered entity
     enc_entity_infos: List[Tuple[int, defs.Entity]] = []
@@ -263,6 +275,10 @@ def update_entities(
                     player.level += 1
                 if effect == defs.EFFECT_TREASURE_POINTER:
                     encountered_types.add(defs.CHAR_TREASURE)
+                if effect == defs.EFFECT_CALTROP_SPREAD:
+                    for y, x in ellipse_iter(player.y, player.x, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True):
+                        if field[y][x] == " ":
+                            field[y][x] = defs.CHAR_CALTROP
 
                 player.lp = max(1, min(defs.LP_MAX, player.lp + m.tribe.feed))
 
@@ -277,13 +293,15 @@ def update_entities(
                 player.item_taken_from = m.tribe.char
 
                 if effect == defs.EFFECT_TREASURE_POINTER:
-                    message = (3, "-- Sparkle.")
+                    message = (3, "-- Sparkle!")
                 elif effect == defs.EFFECT_FEED_MUCH:
-                    message = (3, "-- Stuffed.")
+                    message = (3, "-- Stuffed!")
                 elif effect == defs.EFFECT_SPECIAL_EXP:
-                    message = (3, "-- Exp. Boost.")
+                    message = (3, "-- Exp. Boost!")
                 elif effect == defs.EFFECT_ENERGY_DRAIN:
                     message = (3, "-- Energy Drained.")
+                elif effect == defs.EFFECT_CALTROP_SPREAD:
+                    message = (3, "-- Caltrops Scattered!")
 
     if player.companion == defs.COMPANION_GOBLIN:
         for eei, ee in sur_entity_infos:
@@ -301,7 +319,7 @@ def update_entities(
     return game_over, message
 
 
-def run_game(ui, seed_str: str, debug_show_entities: bool = False) -> None:
+def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = False) -> None:
     # Initialize field
     field, first_p, last_p = create_field(defs.CORRIDOR_H_WIDTH, defs.CORRIDOR_V_WIDTH, defs.WALL_CHARS)
 
@@ -348,7 +366,8 @@ def run_game(ui, seed_str: str, debug_show_entities: bool = False) -> None:
             else:
                 message = (remaining_tick, message[1])
         ui.draw_stage(
-            hours, player, entities, field, cur_torched, torched, encountered_types, debug_show_entities, message[1]
+            hours, player, entities, field, cur_torched, torched, encountered_types, debug_show_entities,
+            stage_num = stage_num, message = message[1]
         )
 
         move_direction = ui.input_direction()
@@ -376,7 +395,8 @@ def run_game(ui, seed_str: str, debug_show_entities: bool = False) -> None:
             torched,
             encountered_types,
             show_entities,
-            message[1],
+            stage_num=stage_num,
+            message=message[1],
             extra_keys=True,
         )
 
@@ -444,6 +464,8 @@ def main():
         description="A Rogue-Like game.",
     )
 
+    parser.add_argument("stage", nargs="?", type=int, default=1, help="Stage (1 or 2).")
+
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
     parser.add_argument("-F", "--large-field", action="store_true", help="Large field.")
@@ -478,6 +500,9 @@ def main():
         defs.CORRIDOR_H_WIDTH -= 1
         defs.CORRIDOR_V_WIDTH -= 1
 
+    if args.stage == 1:
+        defs.MONSTER_TRIBES[:] = [mt for mt in defs.MONSTER_TRIBES if mt.char not in ["e", "E", "X"]]
+
     rand.set_seed(args.seed)
     seed_str = generate_seed_string(args)
 
@@ -488,7 +513,7 @@ def main():
 
         def curses_main(stdscr):
             ui = CursesUI(stdscr)
-            run_game(ui, seed_str, args.debug_show_entities)
+            run_game(ui, seed_str, args.stage, args.debug_show_entities)
 
         try:
             curses.wrapper(curses_main)
@@ -498,8 +523,7 @@ def main():
         from .pygame_funcs import PygameUI
 
         ui = PygameUI()
-        run_game(ui, seed_str, args.debug_show_entities)
-    
+        run_game(ui, seed_str, args.stage, args.debug_show_entities)
 
 
 if __name__ == "__main__":

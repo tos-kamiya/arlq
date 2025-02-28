@@ -30,6 +30,7 @@ EFFECT_SPECIAL_EXP = "Special Exp."
 EFFECT_FEED_MUCH = "Feed Much"
 EFFECT_TREASURE_POINTER = "Treasure Ptr."
 EFFECT_ENERGY_DRAIN = "Energy Drain"
+EFFECT_CALTROP_SPREAD = "Caltrop"
 
 COMPANION_KARMA_LIMIT = 15
 
@@ -44,10 +45,13 @@ COMPANION_TO_ATTR_CHAR = {
 }
 
 HIPPOGRIFF_FLY_STEP = 9
+CALTROP_SPREAD_RADIUS = 3
+CALTROP_WIDTH_EXPANSION_RATIO = 1.5
+CALTROP_LP_DAMAGE = 3
 
 CHAR_DRAGON = "D"
 CHAR_TREASURE = "T"
-
+CHAR_CALTROP = "x"
 
 Point = Tuple[int, int]
 Edge = Tuple[Point, Point]
@@ -108,6 +112,8 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     MonsterTribe("f", 0, 0, 0.7, companion=COMPANION_FAIRY),  # Fairy
     MonsterTribe("g", 0, 0, 0.7, companion=COMPANION_GOBLIN),  # Goblin
     MonsterTribe("h", 0, 0, 0.7, companion=COMPANION_HIPPOGRIFF),  # Hippogriff
+
+    MonsterTribe("X", 1, 0, 2, effect=EFFECT_CALTROP_SPREAD),  # Caltrop spreader
 ]
 
 

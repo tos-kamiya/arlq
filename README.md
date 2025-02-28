@@ -74,26 +74,38 @@ pip install windows-curses
 
 ## Monster List
 
-| Display & Name   | Description                                                                                                                                                             |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **a** Amoeba         | Weak enough to be defeated from the start. Useful for leveling up.                                                                                                      |
-| **A** Rare Amoeba    | A rare amoeba that significantly boosts your level upon defeat.                                                                                                        |
-| **b** Bison          | The second weakest. Defeating it provides plenty of food. Hunt it when you're hungry.                                                                                   |
-| **B** Rare Bison     | Tastier than a normal bison and provides even more food.                                                                                                                |
-| **c** Chimera        | Moderately strong. It wields a sword, which can be obtained upon defeat. Holding the sword doubles your combat power in the next battle and lets you break walls.    |
-| **C** Rare Chimera   | Stronger than a normal chimera, wielding a sword that triples your combat power.                                                                                         |
-| **d** Komodo Dragon  | Powerful but dangerous. Defeating it provides a large amount of food, but you'll be poisoned—reducing your combat power to one-third in the next battle.               |
-| **D** Dragon         | Extremely strong. Defeating it reveals the location of the treasure chest. Even without defeating it, you gain the ability to distinguish treasure chests.           |
-| **e** Erebus         | Battling it drains your vitality.                                                                                                                                       |
-| **E** Eldritch | Too powerful to be defeated. |
+## Monster List
+
+**Stage 1**
+
+| Display & Name      | Description                                                                                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **a** Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                                |
+| **A** Rare Amoeba   | A rare amoeba that significantly boosts your level upon defeat.                                                                                                   |
+| **b** Bison         | The second weakest. Defeating it provides plenty of food. Hunt it when you're hungry.                                                                             |
+| **B** Rare Bison    | Tastier than a normal bison and provides even more food.                                                                                                          |
+| **c** Chimera       | Moderately strong. It wields a sword, which can be obtained upon defeat. Holding the sword doubles your combat power in the next battle and lets you break walls. |
+| **C** Rare Chimera  | Stronger than a normal chimera, wielding a sword that triples your combat power.                                                                                  |
+| **d** Komodo Dragon | Powerful but dangerous. Defeating it provides a large amount of food, but you'll be poisoned—reducing your combat power to one-third in the next battle.          |
+| **D** Dragon        | Extremely strong. Defeating it reveals the location of the treasure chest. Even without defeating it, you gain the ability to distinguish treasure chests.        |
+
+**Stage 2**
+
+In addition to the monsters from Stage 1, the following appear:
+
+| Display & Name      | Description                                                     |
+| ------------------- | --------------------------------------------------------------- |
+| **e** Erebus        | Battling it drains your vitality.                               |
+| **E** Eldritch      | Too powerful to be defeated.                                    |
+| **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you. |
 
 ## Companion List
 
-| Display & Name  | Description                                                                                                                     |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **f** Fairy         | The fairy slightly increases your field of view.                                                 |
-| **g** Goblin        | When you move adjacent to a monster, the goblin will identify that monster’s type for you.                                        |
-| **h** Hippogriff    | When you bump into a wall, the hippogriff helps you overcome it, allowing you to pass over obstacles.                            |
+| Display & Name   | Description                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------------- |
+| **f** Fairy      | The fairy slightly increases your field of view.                                                      |
+| **g** Goblin     | When you move adjacent to a monster, the goblin will identify that monster’s type for you.            |
+| **h** Hippogriff | When you bump into a wall, the hippogriff helps you overcome it, allowing you to pass over obstacles. |
 
 ## License
 

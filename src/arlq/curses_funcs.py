@@ -10,6 +10,7 @@ CI_RED = 1
 CI_GREEN = 2
 CI_YELLOW = 3
 CI_BLUE = 4
+CI_MAGENTA = 5
 CI_CYAN = 6
 
 
@@ -50,14 +51,21 @@ def draw_stage(
     # Draw each cell in the field
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
-            if torched[y][x] and cell in defs.WALL_CHARS:
-                stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
-            elif not show_entities or cell == " ":
-                if cur_torched[y][x] == 0:
-                    if (x + y) % 2 == 1:
-                        stdscr.addstr(y, x, ".", curses.A_DIM)
+            if cur_torched[y][x]:
+                if cell in defs.WALL_CHARS:
+                    stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
+                elif cell == defs.CHAR_CALTROP:
+                    stdscr.addstr(y, x, cell, curses.color_pair(CI_MAGENTA))
+                else:
+                    stdscr.addstr(y, x, cell)
+            elif torched[y][x] or show_entities:
+                if cell == " " and (x + y) % 2 == 1:
+                    stdscr.addstr(y, x, ".", curses.A_DIM)
+                else:
+                    stdscr.addstr(y, x, cell)
             else:
-                stdscr.addstr(y, x, cell)
+                if (x + y) % 2 == 1:
+                    stdscr.addstr(y, x, ".", curses.A_DIM)
 
     # Draw the player using "@" (in bold and yellow)
     stdscr.addstr(py, px, "@", curses.A_BOLD | curses.color_pair(CI_YELLOW))
@@ -102,7 +110,7 @@ def draw_stage(
 
 
 def draw_status_bar(
-    stdscr: curses.window, player: defs.Player, hours: int, message: Optional[str] = None, extra_keys: bool = False
+    stdscr: curses.window, player: defs.Player, hours: int, stage_num: int = 0, message: Optional[str] = None, extra_keys: bool = False
 ) -> None:
     """
     Draws the status bar at the bottom of the screen. This includes the game hours,
@@ -132,6 +140,8 @@ def draw_status_bar(
 
     x = 0
     buf = []
+    if stage_num != 0:
+        buf.append("ST: %d" % stage_num)
     buf.append("HRS: %d" % hours)
     buf.append(level_str)
     if beatable is not None:
@@ -213,6 +223,7 @@ class CursesUI:
         curses.init_pair(CI_GREEN, curses.COLOR_GREEN, -1)
         curses.init_pair(CI_YELLOW, curses.COLOR_YELLOW, -1)
         curses.init_pair(CI_BLUE, curses.COLOR_BLUE, -1)
+        curses.init_pair(CI_MAGENTA, curses.COLOR_MAGENTA, -1)
         curses.init_pair(CI_CYAN, curses.COLOR_CYAN, -1)
 
         stdscr.keypad(True)
@@ -221,7 +232,7 @@ class CursesUI:
         if sh < defs.FIELD_HEIGHT + 2 or sw < defs.FIELD_WIDTH:
             raise TerminalSizeSmall("Terminal size too small. Minimum size is: %d x %d" % (defs.FIELD_WIDTH, defs.FIELD_HEIGHT + 2))
 
-    def draw_stage(self, hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, message, extra_keys=False):
+    def draw_stage(self, hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, stage_num=0, message=None, extra_keys=False):
         """
         Draws the entire game stage including the status bar.
 
@@ -234,6 +245,7 @@ class CursesUI:
             torched: 2D list indicating cells that are permanently torched.
             encountered_types: Set of encountered entity types.
             show_entities: Whether to display hidden entities.
+            stage_num: Number of stage.
             message: The message to display.
             extra_keys: Whether to display extra key hints.
         """
@@ -242,7 +254,7 @@ class CursesUI:
         stdscr.clear()
         draw_stage(stdscr, entities, field, cur_torched, torched, encountered_types, show_entities=show_entities)
 
-        draw_status_bar(stdscr, player, hours, message=message, extra_keys=extra_keys)
+        draw_status_bar(stdscr, player, hours, stage_num=stage_num, message=message, extra_keys=extra_keys)
         stdscr.refresh()
 
     def input_direction(self) -> Optional[defs.Point]:
