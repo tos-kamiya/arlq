@@ -96,7 +96,23 @@ class MonsterTribe:
         self.companion = companion
 
 
-MONSTER_TRIBES: List[MonsterTribe] = [
+MONSTER_TRIBES_ST1: List[MonsterTribe] = [
+    MonsterTribe("a", 1, 12, 30),  # Amoeba
+    MonsterTribe("b", 5, 20, 4, effect=EFFECT_FEED_MUCH),  # Bison
+    MonsterTribe("c", 10, 12, 4, item=ITEM_SWORD_X2),  # Chimera
+    MonsterTribe("d", 20, 20, 4, item=ITEM_POISONED),  # Comodo Dragon
+    MonsterTribe(CHAR_DRAGON, 40, 12, 1, effect=EFFECT_TREASURE_POINTER),  # Dragon
+
+    MonsterTribe("A", 1, 12, 0.7, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
+    MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH),  # Bison rare
+    MonsterTribe("C", 10, 12, 0.7, item=ITEM_SWORD_X3),  # Chimera rare
+
+    MonsterTribe("f", 0, 0, 0.7, companion=COMPANION_FAIRY),  # Fairy
+    MonsterTribe("g", 0, 0, 0.7, companion=COMPANION_GOBLIN),  # Goblin
+    MonsterTribe("h", 0, 0, 0.7, companion=COMPANION_HIPPOGRIFF),  # Hippogriff
+]
+
+MONSTER_TRIBES_FULL: List[MonsterTribe] = [
     MonsterTribe("a", 1, 12, 30),  # Amoeba
     MonsterTribe("b", 5, 20, 4, effect=EFFECT_FEED_MUCH),  # Bison
     MonsterTribe("c", 10, 12, 4, item=ITEM_SWORD_X2),  # Chimera
@@ -116,6 +132,10 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     MonsterTribe("X", 1, 0, 2, effect=EFFECT_CALTROP_SPREAD),  # Caltrop Plant
 ]
 
+STAGE_TO_MONSTER_TRIBES = [
+    MONSTER_TRIBES_ST1,
+    MONSTER_TRIBES_FULL,
+]
 
 def player_attack_by_level(player: Player) -> int:
     if player.item == ITEM_SWORD_X2:
@@ -131,7 +151,7 @@ def player_attack_by_level(player: Player) -> int:
 def get_max_beatable_monster_tribe(player: Player) -> Optional[MonsterTribe]:
     atk = player_attack_by_level(player)
     max_beatable = None
-    for mk in MONSTER_TRIBES:
+    for mk in MONSTER_TRIBES_FULL:
         if mk.level == 0:
             continue
         if mk.level > atk:
