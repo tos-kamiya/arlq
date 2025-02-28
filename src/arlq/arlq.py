@@ -1,4 +1,4 @@
-from typing import List, Set, Tuple
+from typing import List, Set, Tuple, Optional
 
 import argparse
 import math
@@ -11,7 +11,7 @@ from .utils import rand
 from . import defs
 
 
-def gen_maze(width: int, height: int) -> Tuple[List[defs.Edge], defs.Point, defs.Point]:
+def generate_maze(width: int, height: int) -> Tuple[List[defs.Edge], defs.Point, defs.Point]:
     # Returns a list of neighboring points given a point p
     def neighbor_points(p):
         x, y = p
@@ -77,7 +77,9 @@ def find_random_place(entities: List[defs.Entity], field: List[List[str]], dista
     while True:
         x = rand.randrange(defs.FIELD_WIDTH - 2) + 1
         y = rand.randrange(defs.FIELD_HEIGHT - 2) + 1
-        if field[y][x] == " " and field[y][x + 1] == " " and not any(abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places):
+        if field[y][x] == " " and field[y][x + 1] == " " and not any(
+            abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places
+        ):
             return x, y
 
 
@@ -137,7 +139,7 @@ def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) 
             field[y][x] = wall_chars[0]
 
     # Create corridors
-    edges, first_p, last_p = gen_maze(defs.TILE_NUM_X, defs.TILE_NUM_Y)
+    edges, first_p, last_p = generate_maze(defs.TILE_NUM_X, defs.TILE_NUM_Y)
     for edge in edges:
         (x1, y1), (x2, y2) = sorted(edge)
         assert x1 <= x2
@@ -165,7 +167,7 @@ def update_torched(torched: List[List[int]], added: List[List[int]]) -> None:
             torched[y][x] += added[y][x]
 
 
-def ellipse_iter(center_x, center_y, radius, width_expansion_ratio, except_for_center=False):
+def iterate_ellipse_points(center_x, center_y, radius, width_expansion_ratio, except_for_center=False):
     for dy in range(-radius, radius + 1):
         y = center_y + dy
         if 0 <= y < defs.FIELD_HEIGHT:
@@ -184,7 +186,7 @@ def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
     if player.companion == defs.COMPANION_FAIRY:
         torch_radius += defs.FAIRY_TORCH_EXTENSION
 
-    for x, y in ellipse_iter(player.x, player.y, torch_radius, defs.TORCH_WIDTH_EXPANSION_RATIO):
+    for x, y in iterate_ellipse_points(player.x, player.y, torch_radius, defs.TORCH_WIDTH_EXPANSION_RATIO):
         torched[y][x] = 1
 
     return torched
@@ -196,7 +198,7 @@ def update_entities(
     player: defs.Player,
     entities: List[defs.Entity],
     encountered_types: Set[str],
-):
+) -> Tuple[bool, Optional[Tuple[int, str]]]:
     game_over = False
     message = (-1, "")
 
@@ -270,7 +272,7 @@ def update_entities(
                 if effect == defs.EFFECT_TREASURE_POINTER:
                     encountered_types.add(defs.CHAR_TREASURE)
                 if effect == defs.EFFECT_CALTROP_SPREAD:
-                    for x, y in ellipse_iter(player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True):
+                    for x, y in iterate_ellipse_points(player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True):
                         if field[y][x] == " ":
                             field[y][x] = defs.CHAR_CALTROP
 
@@ -365,7 +367,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         if move_direction is None:
             return
 
-        # Player move, encounting, etc.
+        # Player move, encountering, etc.
         game_over, m = update_entities(move_direction, field, player, entities, encountered_types)
         if m is not None:
             message = m
@@ -426,10 +428,10 @@ def parse_seed_string(args, seed_str):
     if version != __version__:
         exit("Error: Seed string version does not match game version.")
 
-    # フラグの復元：指定されているかどうかで真偽値を設定する
+    # Restore flags: set booleans based on whether they are specified.
     args.large_field = "F" in flag_str
 
-    # -T と -t は排他的であることをチェック
+    # Check that -T and -t flags are mutually exclusive.
     if "T" in flag_str and "t" in flag_str:
         exit("Error: Both large torch and small torch flags are present in seed string.")
     elif "T" in flag_str:
@@ -472,7 +474,8 @@ def main():
     args = parser.parse_args()
 
     if args.seed is not None:
-        if any(o is not None for o in [args.large_field, args.large_torch, args.small_torch, args.narrow_corridors]):
+        # Check if any conflicting flags are provided (use True instead of None for booleans)
+        if any([args.large_field, args.large_torch, args.small_torch, args.narrower_corridors]):
             exit("Error: option --seed is mutually exclusive to options -F, -T, -t, -n")
         parse_seed_string(args, args.seed)
     else:
