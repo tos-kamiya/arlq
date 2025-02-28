@@ -261,6 +261,8 @@ def update_entities(
                     player.level += 10
                 else:
                     player.level += 1
+                if effect == defs.EFFECT_TREASURE_POINTER:
+                    encountered_types.add(defs.CHAR_TREASURE)
 
                 player.lp = max(1, min(defs.LP_MAX, player.lp + m.tribe.feed))
 
@@ -275,14 +277,13 @@ def update_entities(
                 player.item_taken_from = m.tribe.char
 
                 if effect == defs.EFFECT_TREASURE_POINTER:
-                    encountered_types.add(defs.CHAR_TREASURE)
                     message = (3, "-- Sparkle.")
                 elif effect == defs.EFFECT_FEED_MUCH:
                     message = (3, "-- Stuffed.")
                 elif effect == defs.EFFECT_SPECIAL_EXP:
                     message = (3, "-- Exp. Boost.")
                 elif effect == defs.EFFECT_ENERGY_DRAIN:
-                    message = (3, "-- Energy Draiend.")
+                    message = (3, "-- Energy Drained.")
 
     if player.companion == defs.COMPANION_GOBLIN:
         for eei, ee in sur_entity_infos:
@@ -293,7 +294,7 @@ def update_entities(
                     player.karma += 1
 
     if player.companion != "":
-        if player.karma >= defs.COMPAION_KARMA_LIMIT:
+        if player.karma >= defs.COMPANION_KARMA_LIMIT:
             message = (3, "-- The companion vanishes.")
             player.companion = ""
 
