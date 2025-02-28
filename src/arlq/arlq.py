@@ -83,8 +83,9 @@ def find_random_place(entities: List[defs.Entity], field: List[List[str]], dista
             return x, y
 
 
-def spawn_monsters(entities: List[defs.Entity], field: List[List[str]]) -> None:
-    for tribe in defs.MONSTER_TRIBES:
+def spawn_monsters(stage_num: int, entities: List[defs.Entity], field: List[List[str]]) -> None:
+    mts = defs.STAGE_TO_MONSTER_TRIBES[stage_num - 1]
+    for tribe in mts:
         p = tribe.population
         if isinstance(p, float):
             p = 1 if rand.randrange(100) / 100 < p else 0
@@ -94,14 +95,15 @@ def spawn_monsters(entities: List[defs.Entity], field: List[List[str]]) -> None:
             entities.append(m)
 
 
-def respawn_monster(entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]]) -> None:
+def respawn_monster(stage_num: int, entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]]) -> None:
+    mts = defs.STAGE_TO_MONSTER_TRIBES[stage_num - 1]
     chars = []
-    for tribe in defs.MONSTER_TRIBES:
+    for tribe in mts:
         if tribe.population >= 2:
             chars.append(tribe.char)
 
     c = rand.choice(chars)
-    for tribe in defs.MONSTER_TRIBES:
+    for tribe in mts:
         if tribe.char == c:
             x, y = find_random_place(entities, field, distance=2)
             m = defs.Monster(x, y, tribe)
@@ -316,6 +318,12 @@ def update_entities(
 
 
 def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = False) -> None:
+    if stage_num == 0:  # if stage is not selected yet
+        r = ui.select_stage()
+        if r == 0:
+            return
+        stage_num = r
+
     # Initialize field
     field, first_p, last_p = create_field(defs.CORRIDOR_H_WIDTH, defs.CORRIDOR_V_WIDTH, defs.WALL_CHARS)
 
@@ -325,7 +333,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     entities.append(player)
     treasure: defs.Treasure = defs.Treasure(last_p[0], last_p[1])
     entities.append(treasure)
-    spawn_monsters(entities, field)
+    spawn_monsters(stage_num, entities, field)
 
     # Initialize view/ui components
     encountered_types: Set[str] = set()
@@ -373,7 +381,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             message = m
 
         if hours % defs.MONSTER_RESPAWN_RATE == 0:
-            respawn_monster(entities, field, torched)
+            respawn_monster(stage_num, entities, field, torched)
 
     # Game over display
     show_entities = debug_show_entities
@@ -412,15 +420,15 @@ def generate_seed_string(args):
         flag_str += "t"
     if args.narrower_corridors:
         flag_str += "n"
-    return f"v{__version__}-{flag_str}-{args.seed}"
+    return f"v{__version__}-{flag_str}-{args.stage}-{args.seed}"
 
 
 def parse_seed_string(args, seed_str):
     parts = seed_str.split("-")
-    if len(parts) != 3:
-        exit("Error: Seed string format is invalid. Expected format: v<version>-<flags>-<seed>")
+    if len(parts) != 4:
+        exit("Error: Seed string format is invalid. Expected format: v<version>-<flags>-<stage>-<seed>")
 
-    version_part, flag_str, seed_value_str = parts
+    version_part, flag_str, stage_str, seed_value_str = parts
 
     if not version_part.startswith("v"):
         exit("Error: Seed string must start with 'v'.")
@@ -446,6 +454,8 @@ def parse_seed_string(args, seed_str):
 
     args.narrower_corridors = "n" in flag_str
 
+    args.stage = int(stage_str)
+
     try:
         args.seed = int(seed_value_str)
     except ValueError:
@@ -457,7 +467,7 @@ def main():
         description="A Rogue-Like game.",
     )
 
-    parser.add_argument("stage", nargs="?", type=int, default=1, help="Stage (1 or 2).")
+    parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1 or 2).")
 
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
@@ -474,9 +484,9 @@ def main():
     args = parser.parse_args()
 
     if args.seed is not None:
-        # Check if any conflicting flags are provided (use True instead of None for booleans)
-        if any([args.large_field, args.large_torch, args.small_torch, args.narrower_corridors]):
-            exit("Error: option --seed is mutually exclusive to options -F, -T, -t, -n")
+        # Check if any conflicting flags are provided
+        if any([args.stage, args.large_field, args.large_torch, args.small_torch, args.narrower_corridors]):
+            exit("Error: option --seed is mutually exclusive to options --stage, -F, -T, -t, -n")
         parse_seed_string(args, args.seed)
     else:
         args.seed = int(time.time()) % 100000
@@ -493,9 +503,6 @@ def main():
     if args.narrower_corridors:
         defs.CORRIDOR_H_WIDTH -= 1
         defs.CORRIDOR_V_WIDTH -= 1
-
-    if args.stage == 1:
-        defs.MONSTER_TRIBES[:] = [mt for mt in defs.MONSTER_TRIBES if mt.char not in ["e", "E", "X"]]
 
     rand.set_seed(args.seed)
     seed_str = generate_seed_string(args)

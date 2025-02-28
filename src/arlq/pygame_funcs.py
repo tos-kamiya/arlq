@@ -261,3 +261,57 @@ class PygameUI:
     def quit(self):
         """Terminates the Pygame session."""
         pygame.quit()
+
+    def select_stage(self) -> int:
+        """
+        Displays a stage selection menu using Pygame where the user can navigate with arrow keys and confirm with Enter,
+        or directly press numeric keys or Q/ESC.
+        
+        The selected option is shown with a leading ">" and non-selected options with a blank.
+        
+        Returns:
+            int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
+        """
+        # Determine the number of stages from defs
+        num_stages = len(defs.STAGE_TO_MONSTER_TRIBES)
+        assert num_stages <= 9
+
+        # Build options list; index 0 is "Quit"
+        options = ["[Q]uit"]
+        for n in range(1, num_stages + 1):
+            options.append(f"stage [{n}]")
+        
+        current_index = 1  # Initial selection: stage 1
+
+        while True:
+            # Clear screen and draw menu background
+            self.screen.fill((0, 0, 0))
+            # Draw title
+            self._draw_text((10, 5), "Stage Selection", COLOR_MAP[CI_YELLOW], bold=True)
+            
+            base_x = 10
+            base_y = 8
+            # Draw each option with prefix ">" for the current selection
+            for i, option in enumerate(options):
+                prefix = ">" if i == current_index else " "
+                self._draw_text((base_x, base_y + i), f"{prefix} {option}", COLOR_MAP["default"], bold=(i == current_index))
+            
+            pygame.display.flip()
+
+            # Wait for a key event
+            event = pygame.event.wait()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    current_index = (current_index - 1) % len(options)
+                elif event.key == pygame.K_DOWN:
+                    current_index = (current_index + 1) % len(options)
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    return current_index  # Index 0 means Quit; 1,2,... correspond to stages.
+                elif event.key in (pygame.K_q, pygame.K_ESCAPE):
+                    return 0
+                # Check if a numeric key (1～9) is pressed.
+                elif pygame.K_1 <= event.key <= pygame.K_9:
+                    n = event.key - pygame.K_0  # Convert key code to corresponding number.
+                    if n <= num_stages:
+                        return n
+        # Should not reach here.

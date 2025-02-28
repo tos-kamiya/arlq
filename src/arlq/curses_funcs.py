@@ -294,3 +294,47 @@ class CursesUI:
             return None
 
         return key.lower()
+
+    def select_stage(self) -> int:
+        """
+        Displays a stage selection menu using curses where the user can navigate with arrow keys and confirm with Enter,
+        or directly press 1, 2, ... or Q.
+        
+        The selected option is prefixed with ">" (in bold) and non-selected options are prefixed with a blank.
+        
+        Returns:
+            int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
+        """
+
+        num_stages = len(defs.STAGE_TO_MONSTER_TRIBES)
+        assert num_stages <= 9
+
+        options = ["[q]uit"]
+        for n in range(1, num_stages + 1):
+            options.append(f"stage [{n}]")
+
+        current_index = 1
+        stdscr = self.stdscr
+
+        while True:
+            stdscr.clear()
+            stdscr.addstr(2, 2, "Stage Selection", curses.A_BOLD)
+            for i, option in enumerate(options):
+                # Use ">" for selected, otherwise a blank space.
+                prefix = ">" if i == current_index else " "
+                stdscr.addstr(4 + i, 4, f"{prefix} {option}")
+            stdscr.refresh()
+
+            key = stdscr.getch()
+            if key in (curses.KEY_UP,):
+                current_index = (current_index - 1) % len(options)
+            elif key in (curses.KEY_DOWN,):
+                current_index = (current_index + 1) % len(options)
+            elif key in (10, 13):  # Enter key (LF or CR)
+                return current_index
+            elif key in (ord('q'), 27):  # 'q' or ESC key
+                return 0
+            else:
+                for n in range(1, num_stages + 1):
+                    if key == ord("%d" % n):
+                        return n
