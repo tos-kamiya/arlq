@@ -28,31 +28,26 @@ CELL_SIZE_Y = 20
 CELL_SIZE_X = 13
 
 
-# PygameUI is designed to have the same API as CursesUI.
 class PygameUI:
     def __init__(self):
         pygame.init()
-
-        pygame.key.set_repeat(300)
-
-        # Hide mouse cursor
+        pygame.key.set_repeat(200)
         pygame.mouse.set_visible(False)
 
-        # Pixel size per cell
+        # Field dimensions from defs
         self.field_width = defs.FIELD_WIDTH
         self.field_height = defs.FIELD_HEIGHT
 
-        # Window size to draw the stage plus the status bar (+2 rows)
+        # Calculate window dimensions (including status bar area)
         self.window_width = self.field_width * CELL_SIZE_X
         self.window_height = (self.field_height + 2) * CELL_SIZE_Y
         self.screen = pygame.display.set_mode((self.window_width, self.window_height))
         pygame.display.set_caption(f"Arlq (Pygame mix) v{__version__}")
 
-        # Prepare monospace fonts (including a bold version)
+        # Prepare monospace fonts (normal and bold)
         self.font = pygame.font.SysFont("Courier", CELL_SIZE_Y)
         self.font_bold = pygame.font.SysFont("Courier", CELL_SIZE_Y, bold=True)
 
-        # Auxiliary clock for controlling FPS
         self.clock = pygame.time.Clock()
 
     def _draw_text(
@@ -63,8 +58,7 @@ class PygameUI:
         bold: bool = False,
     ):
         """
-        Draws the given text at the grid cell pos=(x, y).
-        If bold is True, a bold font is used.
+        Draws text at the grid cell defined by pos.
         """
         font = self.font_bold if bold else self.font
         surface = font.render(text, True, color)
@@ -73,9 +67,10 @@ class PygameUI:
 
     def _dim_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
         """
-        Returns a dimmed version of the given color (half brightness, similar to curses A_DIM).
+        Returns a dimmed version of the provided color.
         """
-        return (color[0] // 2, color[1] // 2, color[2] // 2)
+        DIM_FACTOR = 2  # You may adjust this factor for different dimming levels
+        return (color[0] // DIM_FACTOR, color[1] // DIM_FACTOR, color[2] // DIM_FACTOR)
 
     def draw_stage(
         self,
@@ -91,18 +86,22 @@ class PygameUI:
         message: Optional[str] = None,
         extra_keys: bool = False,
     ):
-        # Clear the entire screen with black
+        """
+        Renders the game stage:
+        - Clears the screen.
+        - Draws the field and its cells.
+        - Draws the player and entities with appropriate colors.
+        - Draws the status bar at the bottom.
+        """
         self.screen.fill((0, 0, 0))
-
-        # Determine the player's position
         px, py = player.x, player.y
 
-        # If the player has a companion, draw it right of the player
+        # Draw player's companion if present
         if player.companion:
-            ch = defs.COMPANION_TO_ATTR_CHAR[player.companion]
-            self._draw_text((px + 1, py), ch, self._dim_color(COLOR_MAP["default"]), bold=True)
+            comp_char = defs.COMPANION_TO_ATTR_CHAR[player.companion]
+            self._draw_text((px + 1, py), comp_char, self._dim_color(COLOR_MAP["default"]), bold=True)
 
-        # Draw each cell of the field
+        # Draw field cells
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
                 if cur_torched[y][x]:
@@ -121,13 +120,11 @@ class PygameUI:
                     if (x + y) % 2 == 1:
                         self._draw_text((x, y), ".", self._dim_color(COLOR_MAP["default"]))
 
-        # Draw the player as "@" (bold and yellow)
+        # Draw the player character
         self._draw_text((px, py), "@", COLOR_MAP[CI_YELLOW], bold=True)
 
-        # Calculate the player's attack power
-        atk = defs.player_attack_by_level(player)
-
-        # Draw each entity (monster, treasure)
+        # Draw entities (monsters, treasures)
+        player_attack = defs.player_attack_by_level(player)
         for e in entities:
             if isinstance(e, defs.Monster):
                 m: defs.Monster = e
@@ -138,18 +135,18 @@ class PygameUI:
                     if show_entities:
                         self._draw_text((m.x, m.y), ch, COLOR_MAP["default"])
                     else:
-                        ch = "!" if m.tribe.level == 0 else "?"
-                        self._draw_text((m.x, m.y), ch, COLOR_MAP["default"], bold=True)
+                        fallback = "!" if m.tribe.level == 0 else "?"
+                        self._draw_text((m.x, m.y), fallback, COLOR_MAP["default"], bold=True)
                 else:
-                    col = COLOR_MAP[CI_BLUE] if m.tribe.level <= atk else COLOR_MAP[CI_RED]
+                    col = COLOR_MAP[CI_BLUE] if m.tribe.level <= player_attack else COLOR_MAP[CI_RED]
                     self._draw_text((m.x, m.y), ch, col, bold=True)
             elif isinstance(e, defs.Treasure):
                 t: defs.Treasure = e
                 if defs.CHAR_TREASURE in encountered_types:
                     self._draw_text((t.x, t.y), defs.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], bold=True)
 
+        # Optionally draw dimmed entities not in torched area
         if show_entities:
-            # Draw entities that are not torched (torched == 0) in a dimmed style
             for e in entities:
                 if isinstance(e, defs.Monster):
                     m: defs.Monster = e
@@ -161,15 +158,16 @@ class PygameUI:
                     if defs.CHAR_TREASURE not in encountered_types:
                         self._draw_text((t.x, t.y), defs.CHAR_TREASURE, self._dim_color(COLOR_MAP["default"]))
 
-        # Draw the status bar (handled by draw_status_bar)
+        # Draw the status bar
         self.draw_status_bar(hours, player, stage_num, message, extra_keys)
 
         pygame.display.flip()
-        # Control the FPS
         self.clock.tick(30)
 
     def draw_status_bar(self, hours: int, player: defs.Player, stage_num: int, message: Optional[str], extra_keys: bool):
-        # Draw the existing status string
+        """
+        Draws the status bar at the bottom of the screen showing level, HP, progress bar, etc.
+        """
         if player.item == defs.ITEM_SWORD_X2:
             level_str = "LVL: %d x2" % player.level
             item_str = "+%s(%s)" % (player.item, player.item_taken_from)
@@ -184,7 +182,6 @@ class PygameUI:
             item_str = ""
 
         beatable = defs.get_max_beatable_monster_tribe(player)
-
         status_parts = []
         if stage_num != 0:
             status_parts.append("ST: %d" % stage_num)
@@ -195,30 +192,22 @@ class PygameUI:
         status_parts.append("LP: %d" % player.lp)
         status_str = "  ".join(status_parts)
 
-        # Draw the status string at the left edge
+        # Draw status text
         self._draw_text((0, self.field_height), status_str, COLOR_MAP["default"])
-
-        # Get the exact width of the drawn status string
         text_width, _ = self.font.size(status_str)
-        x_offset = text_width + 10  # Start drawing the progress bar from this position
+        x_offset = text_width + 10
 
-        # Draw the graphical progress bar
+        # Draw progress bar for player LP
         bar_cells = 4
         bar_width = bar_cells * CELL_SIZE_X
         bar_height = CELL_SIZE_Y // 2
-
         y_offset = self.field_height * CELL_SIZE_Y + (CELL_SIZE_Y - bar_height) // 2
-
-        # Calculate the progress ratio for lp
         progress_ratio = player.lp / defs.LP_MAX
         fill_width = int(bar_width * progress_ratio)
-
-        # Use red if food is less than 20, otherwise use the default color
         food_color = COLOR_MAP[CI_RED] if player.lp < 20 else COLOR_MAP["default"]
 
         border_rect = pygame.Rect(x_offset, y_offset, bar_width, bar_height)
         pygame.draw.rect(self.screen, COLOR_MAP["default"], border_rect, 1)
-
         fill_rect = pygame.Rect(x_offset, y_offset, fill_width, bar_height)
         pygame.draw.rect(self.screen, food_color, fill_rect)
 
@@ -232,9 +221,9 @@ class PygameUI:
 
     def input_direction(self) -> Optional[Tuple[int, int]]:
         """
-        Waits for the user's directional input.
-        Returns the movement direction (dx, dy) when an arrow key or WASD key is pressed.
-        Returns None if ESC or 'q' is pressed.
+        Waits for a directional input.
+        Returns a tuple (dx, dy) if an arrow or WASD key is pressed,
+        or None if ESC or 'q' is pressed.
         """
         while True:
             for event in pygame.event.get():
@@ -255,9 +244,8 @@ class PygameUI:
 
     def input_alphabet(self) -> Optional[str]:
         """
-        Waits for an alphabet key input from the user.
-        Returns None if ESC or 'q' is pressed.
-        Otherwise, returns the key in lowercase.
+        Waits for an alphabetic key input.
+        Returns the key in lowercase, or None if ESC or 'q' is pressed.
         """
         while True:
             for event in pygame.event.get():
@@ -266,11 +254,10 @@ class PygameUI:
                 if event.type == pygame.KEYDOWN:
                     if event.key in (pygame.K_ESCAPE, pygame.K_q):
                         return None
-                    # Get the key name using pygame.key.name()
                     key_name = pygame.key.name(event.key)
                     return key_name.lower()
             self.clock.tick(30)
 
     def quit(self):
-        """Terminates Pygame."""
+        """Terminates the Pygame session."""
         pygame.quit()
