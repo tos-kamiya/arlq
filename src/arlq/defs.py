@@ -86,50 +86,52 @@ class Monster(Entity):
 
 
 class MonsterTribe:
-    def __init__(self, char, level, feed, population, item="", effect="", companion=""):
+    def __init__(self, char, level, feed, population, item="", effect="", companion="", event_message=""):
         self.char = char
         self.level = level
         self.feed = feed
         self.population = population
         self.item = item
+        assert not (effect and companion)  # a tribe has either effect or companion, not both
         self.effect = effect
         self.companion = companion
+        self.event_message = event_message
 
 
 MONSTER_TRIBES_ST1: List[MonsterTribe] = [
     MonsterTribe("a", 1, 12, 30),  # Amoeba
-    MonsterTribe("b", 5, 20, 4, effect=EFFECT_FEED_MUCH),  # Bison
-    MonsterTribe("c", 10, 12, 4, item=ITEM_SWORD_X2),  # Chimera
+    MonsterTribe("b", 5, 20, 4, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
+    MonsterTribe("c", 10, 12, 4, item=ITEM_SWORD_X2, event_message="-- Got a strong sword!"),  # Chimera
     MonsterTribe("d", 20, 20, 4, item=ITEM_POISONED),  # Comodo Dragon
-    MonsterTribe(CHAR_DRAGON, 40, 12, 1, effect=EFFECT_TREASURE_POINTER),  # Dragon
+    MonsterTribe(CHAR_DRAGON, 40, 12, 1, effect=EFFECT_TREASURE_POINTER, event_message="-- Sparkle!"),  # Dragon
 
-    MonsterTribe("A", 1, 12, 0.7, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
-    MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH),  # Bison rare
+    MonsterTribe("A", 1, 12, 0.7, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
+    MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison rare
     MonsterTribe("C", 10, 12, 0.7, item=ITEM_SWORD_X3),  # Chimera rare
 
-    MonsterTribe("n", 0, 0, 0.7, companion=COMPANION_NOMICON),  # Nomicon
-    MonsterTribe("o", 0, 0, 0.7, companion=COMPANION_OCULAR),  # Ocular
-    MonsterTribe("p", 0, 0, 0.7, companion=COMPANION_PEGASUS),  # Pegasus
+    MonsterTribe("n", 0, 0, 0.7, companion=COMPANION_NOMICON, event_message="-- Nomicon joined."),  # Nomicon
+    MonsterTribe("o", 0, 0, 0.7, companion=COMPANION_OCULAR, event_message="-- Ocular joined."),  # Ocular
+    MonsterTribe("p", 0, 0, 0.7, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined."),  # Pegasus
 ]
 
 MONSTER_TRIBES_FULL: List[MonsterTribe] = [
     MonsterTribe("a", 1, 12, 30),  # Amoeba
-    MonsterTribe("b", 5, 20, 4, effect=EFFECT_FEED_MUCH),  # Bison
-    MonsterTribe("c", 10, 12, 4, item=ITEM_SWORD_X2),  # Chimera
+    MonsterTribe("b", 5, 20, 4, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
+    MonsterTribe("c", 10, 12, 4, item=ITEM_SWORD_X2, event_message="-- Got a strong sword!"),  # Chimera
     MonsterTribe("d", 20, 20, 4, item=ITEM_POISONED),  # Comodo Dragon
-    MonsterTribe(CHAR_DRAGON, 40, 12, 1, effect=EFFECT_TREASURE_POINTER),  # Dragon
-    MonsterTribe("e", 1, -12, 4, effect=EFFECT_ENERGY_DRAIN),  # Erebus
-    MonsterTribe("E", 999, -12, 1, effect=EFFECT_ENERGY_DRAIN),  # Eldritch
+    MonsterTribe(CHAR_DRAGON, 40, 12, 1, effect=EFFECT_TREASURE_POINTER, event_message="-- Sparkle!"),  # Dragon
+    MonsterTribe("e", 1, -12, 4, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained."),  # Erebus
+    MonsterTribe("E", 999, -12, 1),  # Eldritch
 
-    MonsterTribe("A", 1, 12, 0.7, effect=EFFECT_SPECIAL_EXP),  # Amoeba rare
-    MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH),  # Bison rare
-    MonsterTribe("C", 10, 12, 0.7, item=ITEM_SWORD_X3),  # Chimera rare
+    MonsterTribe("A", 1, 12, 0.7, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
+    MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison rare
+    MonsterTribe("C", 10, 12, 0.7, item=ITEM_SWORD_X3, event_message="-- Got a strong sword!"),  # Chimera rare
 
-    MonsterTribe("n", 0, 0, 0.7, companion=COMPANION_NOMICON),  # Nomicon
-    MonsterTribe("o", 0, 0, 0.7, companion=COMPANION_OCULAR),  # Ocular
-    MonsterTribe("p", 0, 0, 0.7, companion=COMPANION_PEGASUS),  # Pegasus
+    MonsterTribe("n", 0, 0, 0.7, companion=COMPANION_NOMICON, event_message="-- Nomicon joined."),  # Nomicon
+    MonsterTribe("o", 0, 0, 0.7, companion=COMPANION_OCULAR, event_message="-- Ocular joined."),  # Ocular
+    MonsterTribe("p", 0, 0, 0.7, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined."),  # Pegasus
 
-    MonsterTribe("X", 1, 0, 2, effect=EFFECT_CALTROP_SPREAD),  # Caltrop Plant
+    MonsterTribe("X", 1, 0, 2, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
 ]
 
 STAGE_TO_MONSTER_TRIBES = [
