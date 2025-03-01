@@ -123,39 +123,40 @@ class PygameUI:
         # Draw the player character
         self._draw_text((px, py), "@", COLOR_MAP[CI_YELLOW], bold=True)
 
-        # Draw entities (monsters, treasures)
+        # Draw entities (monster and treasures)
         player_attack = defs.player_attack_by_level(player)
-        for e in entities:
+        shown_entity_indexes = []
+        for ei, e in enumerate(entities):
+            if torched[e.y][e.x] == 0 or (e.x, e.y) == (px, py):
+                continue
+            shown_entity_indexes.append(ei)
             if isinstance(e, defs.Monster):
                 m: defs.Monster = e
-                if torched[m.y][m.x] == 0:
-                    continue
                 ch = m.tribe.char
                 if ch not in encountered_types:
-                    if show_entities:
-                        self._draw_text((m.x, m.y), ch, COLOR_MAP["default"])
-                    else:
-                        self._draw_text((m.x, m.y), "?", COLOR_MAP["default"], bold=True)
+                    self._draw_text((m.x, m.y), "?", COLOR_MAP["default"], bold=True)
                 else:
-                    col = COLOR_MAP[CI_BLUE] if m.tribe.level <= player_attack else COLOR_MAP[CI_RED]
-                    self._draw_text((m.x, m.y), ch, col, bold=True)
+                    ci = CI_BLUE if m.tribe.level <= player_attack else CI_RED
+                    self._draw_text((m.x, m.y), ch, COLOR_MAP[ci], bold=True)
             elif isinstance(e, defs.Treasure):
                 t: defs.Treasure = e
-                if defs.CHAR_TREASURE in encountered_types:
+                if defs.CHAR_TREASURE not in encountered_types:
+                    self._draw_text((t.x, t.y), "?", COLOR_MAP["default"], bold=True)
+                else:
                     self._draw_text((t.x, t.y), defs.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], bold=True)
 
-        # Optionally draw dimmed entities not in torched area
         if show_entities:
-            for e in entities:
+            for ei, e in enumerate(entities):
+                if ei in shown_entity_indexes or (e.x, e.y) == (px, py):
+                    continue
+                ch = None
                 if isinstance(e, defs.Monster):
                     m: defs.Monster = e
-                    if torched[m.y][m.x] != 0:
-                        continue
-                    self._draw_text((m.x, m.y), m.tribe.char, self._dim_color(COLOR_MAP["default"]))
+                    ch = m.tribe.char
                 elif isinstance(e, defs.Treasure):
-                    t: defs.Treasure = e
-                    if defs.CHAR_TREASURE not in encountered_types:
-                        self._draw_text((t.x, t.y), defs.CHAR_TREASURE, self._dim_color(COLOR_MAP["default"]))
+                    ch = defs.CHAR_TREASURE
+                if ch is not None:
+                    self._draw_text((e.x, e.y), ch, self._dim_color(COLOR_MAP["default"]))
 
         # Draw the status bar
         self.draw_status_bar(hours, player, stage_num, message, extra_keys)
@@ -272,7 +273,7 @@ class PygameUI:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
         """
         # Determine the number of stages from defs
-        num_stages = len(defs.STAGE_TO_MONSTER_TRIBES)
+        num_stages = len(defs.STAGE_TO_MONSTER_SPAWN_CONFIGS)
         assert num_stages <= 9
 
         # Build options list; index 0 is "Quit"

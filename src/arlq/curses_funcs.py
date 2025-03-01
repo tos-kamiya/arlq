@@ -67,45 +67,45 @@ def curses_draw_stage(
                 if (x + y) % 2 == 1:
                     stdscr.addstr(y, x, ".", curses.A_DIM)
 
-    # Draw the player using "@" (in bold and yellow)
+    # Draw the player character
     stdscr.addstr(py, px, "@", curses.A_BOLD | curses.color_pair(CI_YELLOW))
 
-    atk = defs.player_attack_by_level(player)
     # Draw each entity (monsters and treasures)
-    for e in entities:
+    player_attack = defs.player_attack_by_level(player)
+    shown_entity_indexes = []
+    for ei, e in enumerate(entities):
+        if torched[e.y][e.x] == 0 or (e.x, e.y) == (px, py):
+            continue
+        shown_entity_indexes.append(ei)
         if isinstance(e, defs.Monster):
             m: defs.Monster = e
-            if torched[m.y][m.x] == 0:
-                continue
-
             ch = m.tribe.char
             if m.tribe.char not in encountered_types:
-                if show_entities:
-                    stdscr.addstr(m.y, m.x, ch)
-                else:
-                    stdscr.addstr(m.y, m.x, ch, curses.A_BOLD)
+                stdscr.addstr(m.y, m.x, "?", curses.A_BOLD)
             else:
-                ci = CI_BLUE if m.tribe.level <= atk else CI_RED
+                ci = CI_BLUE if m.tribe.level <= player_attack else CI_RED
                 stdscr.addstr(m.y, m.x, ch, curses.A_BOLD | curses.color_pair(ci))
         elif isinstance(e, defs.Treasure):
             t: defs.Treasure = e
-            if defs.CHAR_TREASURE in encountered_types:
+            if defs.CHAR_TREASURE not in encountered_types:
+                stdscr.addstr(t.y, t.x, "?", curses.A_BOLD)
+            else:
                 stdscr.addstr(t.y, t.x, defs.CHAR_TREASURE, curses.A_BOLD | curses.color_pair(CI_YELLOW))
 
     if show_entities:
-        # Draw entities that are not torched (i.e., torched == 0) in a dim style
+        # Draw entities in a dim style
         attr = curses.A_DIM
-        for e in entities:
+        for ei, e in enumerate(entities):
+            if ei in shown_entity_indexes or (e.x, e.y) == (px, py):
+                continue
+            ch = None
             if isinstance(e, defs.Monster):
                 m: defs.Monster = e
-                if torched[m.y][m.x] != 0:
-                    continue
                 ch = m.tribe.char
-                stdscr.addstr(m.y, m.x, ch, attr)
             elif isinstance(e, defs.Treasure):
-                t: defs.Treasure = e
-                if defs.CHAR_TREASURE not in encountered_types:
-                    stdscr.addstr(t.y, t.x, defs.CHAR_TREASURE, attr)
+                ch = defs.CHAR_TREASURE
+            if ch is not None:
+                stdscr.addstr(e.y, e.x, ch, attr)
 
 
 def curses_draw_status_bar(
@@ -305,7 +305,7 @@ class CursesUI:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
         """
 
-        num_stages = len(defs.STAGE_TO_MONSTER_TRIBES)
+        num_stages = len(defs.STAGE_TO_MONSTER_SPAWN_CONFIGS)
         assert num_stages <= 9
 
         options = ["[q]uit"]
