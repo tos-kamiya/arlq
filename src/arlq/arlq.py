@@ -185,7 +185,7 @@ def iterate_ellipse_points(center_x, center_y, radius, width_expansion_ratio, ex
 def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
     torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
 
-    if player.companion == defs.COMPANION_FAIRY:
+    if player.companion == defs.COMPANION_OCULAR:
         torch_radius += defs.FAIRY_TORCH_EXTENSION
 
     for x, y in iterate_ellipse_points(player.x, player.y, torch_radius, defs.TORCH_WIDTH_EXPANSION_RATIO):
@@ -212,9 +212,9 @@ def update_entities(
         if c in [" ", defs.CHAR_CALTROP]:
             player.x, player.y = nx, ny
         elif (
-            player.companion == defs.COMPANION_HIPPOGRIFF
-            and 0 <= (n2x := player.x + dx * defs.HIPPOGRIFF_FLY_STEP) < defs.FIELD_WIDTH
-            and 0 <= (n2y := player.y + dy * defs.HIPPOGRIFF_FLY_STEP) < defs.FIELD_HEIGHT
+            player.companion == defs.COMPANION_PEGASUS
+            and 0 <= (n2x := player.x + dx * defs.PEGASUS_STEP) < defs.FIELD_WIDTH
+            and 0 <= (n2y := player.y + dy * defs.PEGASUS_STEP) < defs.FIELD_HEIGHT
             and field[n2y][n2x] in [" ", defs.CHAR_CALTROP]
         ):
             player.x, player.y = n2x, n2y
@@ -301,7 +301,7 @@ def update_entities(
                 elif effect == defs.EFFECT_CALTROP_SPREAD:
                     message = (3, "-- Caltrops Scattered!")
 
-    if player.companion == defs.COMPANION_GOBLIN:
+    if player.companion == defs.COMPANION_NOMICON:
         for eei, ee in sur_entity_infos:
             if isinstance(ee, defs.Monster):
                 m: defs.Monster = ee

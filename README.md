@@ -47,16 +47,16 @@ pip install windows-curses
 * **Player**  
   You control the character represented by “@” using the arrow keys to move up, down, left, and right.
 
-* **Monsters and Companions**  
-  The dungeon is populated with various monsters and companions. Initially, monsters are displayed as “?” while companions appear as “!”. When you come into contact with them, their true type (such as `a`, `b`, `c`, etc.) is revealed.
-
 * **Fog System**  
   The game uses a fog system where only the areas you have walked on are visible. Combined with auto-mapping, areas once visited remain visible on the map.
 
+* **Monsters and Companions**  
+  The dungeon is populated with various monsters and companions. At first, monsters and companions are displayed as `?`. Once you come into contact with one, its type (e.g., `a`, `b`, `c`, etc.) is revealed, and other creatures of the same kind will be represented by that character.
+
 * **Encounters**  
   - **Monsters:** Contacting a monster initiates combat. If the monster is at or below your level, you can defeat it, level up, and obtain any items it may be carrying. However, if you lose to a higher-level monster, you will respawn at a random location within the dungeon.
-  - **Companions:** When you come into contact with a companion, it will join you and provide its unique benefit. For example, a fairy will slightly increase your field of view, a goblin will help identify nearby monsters when you move adjacent to them, and a hippogriff will assist you in overcoming walls. After a short time, the companion will part ways with you.
-  
+  - **Companions:** When you come into contact with a companion, it will join you and provide its unique benefit.  
+
   Note: Neither monsters nor companions move on their own; they wait for you to approach.
 
 * **Rare Types**  
@@ -101,11 +101,11 @@ In addition to the monsters from Stage 1, the following appear:
 
 ## Companion List
 
-| Display & Name   | Description                                                                                           |
-| ---------------- | ----------------------------------------------------------------------------------------------------- |
-| **f** Fairy      | The fairy slightly increases your field of view.                                                      |
-| **g** Goblin     | When you move adjacent to a monster, the goblin will identify that monster’s type for you.            |
-| **h** Hippogriff | When you bump into a wall, the hippogriff helps you overcome it, allowing you to pass over obstacles. |
+| Display & Name | Description                                                      |
+| -------------- | ---------------------------------------------------------------- |
+| **n** Nomicon  | Reveals the type of a monster when the player is adjacent to it. |
+| **o** Ocular   | Slightly extends the player's field of vision.                   |
+| **p** Pegasus  | Helps the player overcome walls when a collision is imminent.    |
 
 ## License
 
