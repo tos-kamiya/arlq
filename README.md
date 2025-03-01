@@ -87,7 +87,7 @@ pip install windows-curses
 | **c** Chimera       | Moderately strong. It wields a sword, which can be obtained upon defeat. Holding the sword doubles your combat power in the next battle and lets you break walls. |
 | **C** Rare Chimera  | Stronger than a normal chimera, wielding a sword that triples your combat power.                                                                                  |
 | **d** Komodo Dragon | Powerful but dangerous. Defeating it provides a large amount of food, but you'll be poisoned—reducing your combat power to one-third in the next battle.          |
-| **D** Dragon        | Extremely strong. Defeating it reveals the location of the treasure chest. Even without defeating it, you gain the ability to distinguish treasure chests.        |
+| **D** Dragon | Very strong; defeating it unlocks a treasure chest. |
 
 **Stage 2**
 

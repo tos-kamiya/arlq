@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 TILE_WIDTH = 10
 TILE_HEIGHT = 4
@@ -58,17 +58,30 @@ Edge = Tuple[Point, Point]
 
 
 class Entity:
+    """Base class for game entities with x and y coordinates."""
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
 
 class Treasure(Entity):
+    """Treasure entity that inherits from Entity."""
     def __init__(self, x, y):
         super().__init__(x, y)
 
 
 class Player(Entity):
+    """
+    Player entity with additional attributes.
+    
+    Attributes:
+        level: The level of the player.
+        lp: Life points of the player.
+        item: Currently held item.
+        item_taken_from: Source of the item.
+        companion: Companion character.
+        karma: Player's karma.
+    """
     def __init__(self, x, y, level, lp):
         super().__init__(x, y)
         self.level = level
@@ -80,64 +93,104 @@ class Player(Entity):
 
 
 class Monster(Entity):
+    """
+    Monster entity belonging to a specific tribe.
+    
+    Attributes:
+        tribe: The monster's tribe information.
+    """
     def __init__(self, x, y, tribe):
         super().__init__(x, y)
         self.tribe = tribe
 
 
 class MonsterTribe:
-    def __init__(self, char, level, feed, population, item="", effect="", companion="", event_message=""):
+    """
+    Represents a monster tribe with inherent properties.
+    
+    Attributes:
+        char: Character representation of the tribe.
+        level: Level of the monster.
+        feed: Feed value (game-specific parameter).
+        item: Optional item that the monster may drop.
+        effect: Optional effect, mutually exclusive with companion.
+        companion: Optional companion, mutually exclusive with effect.
+        event_message: Message shown when an event occurs with this monster.
+    """
+    def __init__(self, char, level, feed, item="", effect="", companion="", event_message=""):
         self.char = char
         self.level = level
         self.feed = feed
-        self.population = population
         self.item = item
-        assert not (effect and companion)  # a tribe has either effect or companion, not both
+        # Ensure that effect and companion are not both provided.
+        assert not (effect and companion), "A tribe cannot have both effect and companion."
         self.effect = effect
         self.companion = companion
         self.event_message = event_message
 
 
-MONSTER_TRIBES_ST1: List[MonsterTribe] = [
-    MonsterTribe("a", 1, 12, 30),  # Amoeba
-    MonsterTribe("b", 5, 20, 4, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
-    MonsterTribe("c", 10, 12, 4, item=ITEM_SWORD_X2, event_message="-- Got a strong sword!"),  # Chimera
-    MonsterTribe("d", 20, 20, 4, item=ITEM_POISONED),  # Comodo Dragon
-    MonsterTribe(CHAR_DRAGON, 40, 12, 1, effect=EFFECT_TREASURE_POINTER, event_message="-- Sparkle!"),  # Dragon
+class MonsterSpawnConfig:
+    """
+    Holds the spawn configuration for a monster tribe.
+    
+    Attributes:
+        tribe: The MonsterTribe object.
+        population: Number of monsters to spawn or a probability (if float).
+    """
+    def __init__(self, tribe: MonsterTribe, population):
+        self.tribe = tribe
+        self.population = population
 
-    MonsterTribe("A", 1, 12, 0.7, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
-    MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison rare
-    MonsterTribe("C", 10, 12, 0.7, item=ITEM_SWORD_X3),  # Chimera rare
 
-    MonsterTribe("n", 0, 0, 0.7, companion=COMPANION_NOMICON, event_message="-- Nomicon joined."),  # Nomicon
-    MonsterTribe("o", 0, 0, 0.7, companion=COMPANION_OCULAR, event_message="-- Ocular joined."),  # Ocular
-    MonsterTribe("p", 0, 0, 0.7, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined."),  # Pegasus
+MONSTER_TRIBES_TABLE: Dict[str, MonsterTribe] = {
+    "a": MonsterTribe("a", 1, 12),  # Amoeba
+    "b": MonsterTribe("b", 5, 20, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
+    "c": MonsterTribe("c", 10, 12, item=ITEM_SWORD_X2, event_message="-- Got a strong sword!"),  # Chimera
+    "d": MonsterTribe("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
+    CHAR_DRAGON: MonsterTribe(CHAR_DRAGON, 40, 12, effect=EFFECT_TREASURE_POINTER, event_message="-- Sparkle!"),  # Dragon
+    "e": MonsterTribe("e", 1, -12, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained."),  # Erebus
+    "E": MonsterTribe("E", 999, -12),  # Eldritch
+
+    "A": MonsterTribe("A", 1, 12, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
+    "B": MonsterTribe("B", 5, 30, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison rare
+    "C": MonsterTribe("C", 10, 12, item=ITEM_SWORD_X3, event_message="-- Got a strong sword!"),  # Chimera rare
+
+    "n": MonsterTribe("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined."),  # Nomicon
+    "o": MonsterTribe("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined."),  # Ocular
+    "p": MonsterTribe("p", 0, 0, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined."),  # Pegasus
+
+    "X": MonsterTribe("X", 1, 0, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
+}
+
+
+# Stage 1 spawn configurations.
+MONSTER_SPAWN_CONFIGS_ST1: List[MonsterSpawnConfig] = [
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["a"], 30),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["b"], 4),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["c"], 4),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["d"], 4),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE[CHAR_DRAGON], 1),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["A"], 0.7),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["B"], 0.7),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["C"], 0.7),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["n"], 0.7),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["o"], 0.7),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["p"], 0.7),
 ]
 
-MONSTER_TRIBES_FULL: List[MonsterTribe] = [
-    MonsterTribe("a", 1, 12, 30),  # Amoeba
-    MonsterTribe("b", 5, 20, 4, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
-    MonsterTribe("c", 10, 12, 4, item=ITEM_SWORD_X2, event_message="-- Got a strong sword!"),  # Chimera
-    MonsterTribe("d", 20, 20, 4, item=ITEM_POISONED),  # Comodo Dragon
-    MonsterTribe(CHAR_DRAGON, 40, 12, 1, effect=EFFECT_TREASURE_POINTER, event_message="-- Sparkle!"),  # Dragon
-    MonsterTribe("e", 1, -12, 4, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained."),  # Erebus
-    MonsterTribe("E", 999, -12, 1),  # Eldritch
-
-    MonsterTribe("A", 1, 12, 0.7, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
-    MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison rare
-    MonsterTribe("C", 10, 12, 0.7, item=ITEM_SWORD_X3, event_message="-- Got a strong sword!"),  # Chimera rare
-
-    MonsterTribe("n", 0, 0, 0.7, companion=COMPANION_NOMICON, event_message="-- Nomicon joined."),  # Nomicon
-    MonsterTribe("o", 0, 0, 0.7, companion=COMPANION_OCULAR, event_message="-- Ocular joined."),  # Ocular
-    MonsterTribe("p", 0, 0, 0.7, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined."),  # Pegasus
-
-    MonsterTribe("X", 1, 0, 2, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
+# Stage 2 spawn configurations.
+MONSTER_SPAWN_CONFIGS_ST2: List[MonsterSpawnConfig] = MONSTER_SPAWN_CONFIGS_ST1 + [
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["e"], 4),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["E"], 1),
+    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["X"], 2),
 ]
 
-STAGE_TO_MONSTER_TRIBES = [
-    MONSTER_TRIBES_ST1,
-    MONSTER_TRIBES_FULL,
+# Mapping stages to their corresponding spawn configurations.
+STAGE_TO_MONSTER_SPAWN_CONFIGS = [
+    MONSTER_SPAWN_CONFIGS_ST1,
+    MONSTER_SPAWN_CONFIGS_ST2,
 ]
+
 
 def player_attack_by_level(player: Player) -> int:
     if player.item == ITEM_SWORD_X2:
@@ -153,12 +206,12 @@ def player_attack_by_level(player: Player) -> int:
 def get_max_beatable_monster_tribe(player: Player) -> Optional[MonsterTribe]:
     atk = player_attack_by_level(player)
     max_beatable = None
-    for mk in MONSTER_TRIBES_FULL:
-        if mk.level == 0:
+    for mt in MONSTER_TRIBES_TABLE.values():
+        if mt.level == 0:
             continue
-        if mk.level > atk:
+        if mt.level > atk:
             break
-        b = mk
+        b = mt
         if max_beatable is None or b.level > max_beatable.level:
             max_beatable = b
 

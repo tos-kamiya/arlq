@@ -82,33 +82,50 @@ def find_random_place(entities: List[defs.Entity], field: List[List[str]], dista
         ):
             return x, y
 
-
-def spawn_monsters(stage_num: int, entities: List[defs.Entity], field: List[List[str]]) -> None:
-    mts = defs.STAGE_TO_MONSTER_TRIBES[stage_num - 1]
-    for tribe in mts:
-        p = tribe.population
-        if isinstance(p, float):
-            p = 1 if rand.randrange(100) / 100 < p else 0
-        for _ in range(p):
+def spawn_monsters(entities: List[defs.Entity], field: List[List[str]], spawn_configs: List[defs.MonsterSpawnConfig]) -> None:
+    """
+    Spawns monsters on the field based on the provided spawn configurations.
+    
+    Args:
+        entities: List of current game entities.
+        field: 2D list representing the game field.
+        spawn_configs: List of MonsterSpawnConfig instances for the current stage.
+    """
+    for config in spawn_configs:
+        population = config.population
+        # If population is a float, treat it as a probability for spawning one monster.
+        if isinstance(population, float):
+            population = 1 if rand.randrange(100) / 100 < population else 0
+        for _ in range(population):
             x, y = find_random_place(entities, field, distance=2)
-            m = defs.Monster(x, y, tribe)
+            m = defs.Monster(x, y, config.tribe)
             entities.append(m)
 
 
-def respawn_monster(stage_num: int, entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]]) -> None:
-    mts = defs.STAGE_TO_MONSTER_TRIBES[stage_num - 1]
-    chars = []
-    for tribe in mts:
-        if tribe.population >= 2:
-            chars.append(tribe.char)
-
-    c = rand.choice(chars)
-    for tribe in mts:
-        if tribe.char == c:
+def respawn_monster(entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]], spawn_configs: List[defs.MonsterSpawnConfig]) -> None:
+    """
+    Respawns a single monster on the field based on the spawn configurations.
+    
+    Args:
+        entities: List of current game entities.
+        field: 2D list representing the game field.
+        torched: 2D list tracking visited or modified locations on the field.
+        spawn_configs: List of MonsterSpawnConfig instances for the current stage.
+    """
+    # Build a list of tribe characters that have a population of at least 2.
+    valid_chars = []
+    for config in spawn_configs:
+        if config.population >= 2:
+            valid_chars.append(config.tribe.char)
+    # Choose a random tribe character from the valid ones.
+    chosen_char = rand.choice(valid_chars)
+    for config in spawn_configs:
+        if config.tribe.char == chosen_char:
             x, y = find_random_place(entities, field, distance=2)
-            m = defs.Monster(x, y, tribe)
+            m = defs.Monster(x, y, config.tribe)
             entities.append(m)
-            torched[y][x] = 0  # Visited places are marked as 1 in torched elements. To hide new monsters until revisited, set the corresponding place to 0.
+            # Mark the new monster's position as unvisited (or hidden).
+            torched[y][x] = 0
             break
 
 
@@ -247,8 +264,7 @@ def update_entities(
     # Actions & events (combats, state changes, etc)
     for eei, ee in enc_entity_infos:
         if isinstance(ee, defs.Treasure):
-            if defs.CHAR_DRAGON in encountered_types:
-                encountered_types.add(defs.CHAR_TREASURE)
+            if defs.CHAR_TREASURE in encountered_types:
                 message = (-1, ">> Won the Treasure! <<")
                 game_over = True
                 player.item = defs.ITEM_TREASURE
@@ -272,7 +288,7 @@ def update_entities(
                 else:
                     player.level += 1
                 if effect == defs.EFFECT_TREASURE_POINTER:
-                    encountered_types.add(defs.CHAR_TREASURE)
+                    encountered_types.add(defs.CHAR_TREASURE)  # Unlock the treasure
                 if effect == defs.EFFECT_CALTROP_SPREAD:
                     for x, y in iterate_ellipse_points(player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True):
                         if field[y][x] == " ":
@@ -325,8 +341,10 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     entities.append(player)
     treasure: defs.Treasure = defs.Treasure(last_p[0], last_p[1])
     entities.append(treasure)
-    spawn_monsters(stage_num, entities, field)
 
+    spawn_configs = defs.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
+    spawn_monsters(entities, field, spawn_configs)
+    
     # Initialize view/ui components
     encountered_types: Set[str] = set()
     cur_torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
@@ -373,7 +391,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             message = m
 
         if hours % defs.MONSTER_RESPAWN_RATE == 0:
-            respawn_monster(stage_num, entities, field, torched)
+            respawn_monster(entities, field, torched, spawn_configs)
 
     # Game over display
     show_entities = debug_show_entities
