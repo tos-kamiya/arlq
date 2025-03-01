@@ -34,17 +34,17 @@ EFFECT_CALTROP_SPREAD = "Caltrop"
 
 COMPANION_KARMA_LIMIT = 18
 
-COMPANION_FAIRY = "Fairy"
-COMPANION_HIPPOGRIFF = "Hippogriff"
-COMPANION_GOBLIN = "Goblin"
+COMPANION_NOMICON = "Nomicon"
+COMPANION_OCULAR = "Ocular"
+COMPANION_PEGASUS = "Pegasus"
 
 COMPANION_TO_ATTR_CHAR = {
-    COMPANION_FAIRY: "f",
-    COMPANION_HIPPOGRIFF: "h",
-    COMPANION_GOBLIN: "g",
+    COMPANION_NOMICON: "n",
+    COMPANION_OCULAR: "o",
+    COMPANION_PEGASUS: "p",
 }
 
-HIPPOGRIFF_FLY_STEP = 9
+PEGASUS_STEP = 9
 CALTROP_SPREAD_RADIUS = 3
 CALTROP_WIDTH_EXPANSION_RATIO = 1.5
 CALTROP_LP_DAMAGE = 2
@@ -107,9 +107,9 @@ MONSTER_TRIBES_ST1: List[MonsterTribe] = [
     MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH),  # Bison rare
     MonsterTribe("C", 10, 12, 0.7, item=ITEM_SWORD_X3),  # Chimera rare
 
-    MonsterTribe("f", 0, 0, 0.7, companion=COMPANION_FAIRY),  # Fairy
-    MonsterTribe("g", 0, 0, 0.7, companion=COMPANION_GOBLIN),  # Goblin
-    MonsterTribe("h", 0, 0, 0.7, companion=COMPANION_HIPPOGRIFF),  # Hippogriff
+    MonsterTribe("n", 0, 0, 0.7, companion=COMPANION_NOMICON),  # Nomicon
+    MonsterTribe("o", 0, 0, 0.7, companion=COMPANION_OCULAR),  # Ocular
+    MonsterTribe("p", 0, 0, 0.7, companion=COMPANION_PEGASUS),  # Pegasus
 ]
 
 MONSTER_TRIBES_FULL: List[MonsterTribe] = [
@@ -125,9 +125,9 @@ MONSTER_TRIBES_FULL: List[MonsterTribe] = [
     MonsterTribe("B", 5, 30, 0.7, effect=EFFECT_FEED_MUCH),  # Bison rare
     MonsterTribe("C", 10, 12, 0.7, item=ITEM_SWORD_X3),  # Chimera rare
 
-    MonsterTribe("f", 0, 0, 0.7, companion=COMPANION_FAIRY),  # Fairy
-    MonsterTribe("g", 0, 0, 0.7, companion=COMPANION_GOBLIN),  # Goblin
-    MonsterTribe("h", 0, 0, 0.7, companion=COMPANION_HIPPOGRIFF),  # Hippogriff
+    MonsterTribe("n", 0, 0, 0.7, companion=COMPANION_NOMICON),  # Nomicon
+    MonsterTribe("o", 0, 0, 0.7, companion=COMPANION_OCULAR),  # Ocular
+    MonsterTribe("p", 0, 0, 0.7, companion=COMPANION_PEGASUS),  # Pegasus
 
     MonsterTribe("X", 1, 0, 2, effect=EFFECT_CALTROP_SPREAD),  # Caltrop Plant
 ]

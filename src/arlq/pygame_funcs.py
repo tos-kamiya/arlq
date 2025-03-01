@@ -135,8 +135,7 @@ class PygameUI:
                     if show_entities:
                         self._draw_text((m.x, m.y), ch, COLOR_MAP["default"])
                     else:
-                        fallback = "!" if m.tribe.level == 0 else "?"
-                        self._draw_text((m.x, m.y), fallback, COLOR_MAP["default"], bold=True)
+                        self._draw_text((m.x, m.y), "?", COLOR_MAP["default"], bold=True)
                 else:
                     col = COLOR_MAP[CI_BLUE] if m.tribe.level <= player_attack else COLOR_MAP[CI_RED]
                     self._draw_text((m.x, m.y), ch, col, bold=True)
