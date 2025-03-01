@@ -290,16 +290,8 @@ def update_entities(
                 player.item = m.tribe.item
                 player.item_taken_from = m.tribe.char
 
-                if effect == defs.EFFECT_TREASURE_POINTER:
-                    message = (3, "-- Sparkle!")
-                elif effect == defs.EFFECT_FEED_MUCH:
-                    message = (3, "-- Stuffed!")
-                elif effect == defs.EFFECT_SPECIAL_EXP:
-                    message = (3, "-- Exp. Boost!")
-                elif effect == defs.EFFECT_ENERGY_DRAIN:
-                    message = (3, "-- Energy Drained.")
-                elif effect == defs.EFFECT_CALTROP_SPREAD:
-                    message = (3, "-- Caltrops Scattered!")
+                if m.tribe.event_message:
+                    message = (3, m.tribe.event_message)
 
     if player.companion == defs.COMPANION_NOMICON:
         for eei, ee in sur_entity_infos:
