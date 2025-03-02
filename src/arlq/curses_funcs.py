@@ -292,9 +292,9 @@ class CursesUI:
         """
         Displays a stage selection menu using curses where the user can navigate with arrow keys and confirm with Enter,
         or directly press 1, 2, ... or Q.
-        
+
         The selected option is prefixed with ">" (in bold) and non-selected options are prefixed with a blank.
-        
+
         Returns:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
         """
@@ -328,7 +328,7 @@ class CursesUI:
                 current_index = (current_index + 1) % len(options)
             elif key in (10, 13):  # Enter key (LF or CR)
                 return current_index
-            elif key in (ord('q'), 27):  # 'q' or ESC key
+            elif key in (ord("q"), 27):  # 'q' or ESC key
                 return 0
             else:
                 for n in range(1, num_stages + 1):

@@ -53,11 +53,16 @@ CALTROP_LP_DAMAGE = 2
 FIRE_OFFSETS = [(0, -1), (0, 1), (-1, 0), (1, 0)]
 ROCK_SPREAD_OFFSETS = [
     (0, -3),
-    (-2, -2), (2, -2),
-    (-1, -1), (1, -1),
-    (-3, 0), (3, 0),
-    (-1, 1), (1, 1),
-    (-2, 2), (2, 2),
+    (-2, -2),
+    (2, -2),
+    (-1, -1),
+    (1, -1),
+    (-3, 0),
+    (3, 0),
+    (-1, 1),
+    (1, 1),
+    (-2, 2),
+    (2, 2),
     (0, 3),
 ]
 
@@ -72,6 +77,7 @@ Edge = Tuple[Point, Point]
 
 class Entity:
     """Base class for game entities with x and y coordinates."""
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -79,6 +85,7 @@ class Entity:
 
 class Treasure(Entity):
     """Treasure entity that inherits from Entity."""
+
     def __init__(self, x, y, encounter_type):
         super().__init__(x, y)
         self.encounter_type = encounter_type
@@ -87,7 +94,7 @@ class Treasure(Entity):
 class Player(Entity):
     """
     Player entity with additional attributes.
-    
+
     Attributes:
         level: The level of the player.
         lp: Life points of the player.
@@ -97,6 +104,7 @@ class Player(Entity):
         karma: Player's karma.
         treasure_remains: Number of remaining treasures.
     """
+
     def __init__(self, x, y, level, lp, treasure_remains):
         super().__init__(x, y)
         self.level = level
@@ -111,10 +119,11 @@ class Player(Entity):
 class Monster(Entity):
     """
     Monster entity belonging to a specific tribe.
-    
+
     Attributes:
         tribe: The monster's tribe information.
     """
+
     def __init__(self, x, y, tribe):
         super().__init__(x, y)
         self.tribe = tribe
@@ -123,7 +132,7 @@ class Monster(Entity):
 class MonsterTribe:
     """
     Represents a monster tribe with inherent properties.
-    
+
     Attributes:
         char: Character representation of the tribe.
         level: Level of the monster.
@@ -133,6 +142,7 @@ class MonsterTribe:
         companion: Optional companion, mutually exclusive with effect.
         event_message: Message shown when an event occurs with this monster.
     """
+
     def __init__(self, char, level, feed, item="", effect="", companion="", event_message=""):
         self.char = char
         self.level = level
@@ -148,14 +158,16 @@ class MonsterTribe:
 class MonsterSpawnConfig:
     """
     Holds the spawn configuration for a monster tribe.
-    
+
     Attributes:
         tribe: The MonsterTribe object.
         population: Number of monsters to spawn or a probability (if float).
     """
+
     def __init__(self, tribe: MonsterTribe, population):
         self.tribe = tribe
         self.population = population
+
 
 _MT = MonsterTribe
 
@@ -173,11 +185,9 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT(CHAR_FIRE_DRAKE, 60, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure box!"),  # Fire Drake
     _MT("g", 50, 12, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT("h", 999, 12),  # High elf
-
     _MT("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined."),  # Nomicon
     _MT("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined."),  # Ocular
     _MT("p", 0, 0, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined."),  # Pegasus
-
     _MT("X", 1, 12, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
 ]
 

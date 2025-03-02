@@ -79,16 +79,16 @@ def find_random_place(entities: List[defs.Entity], field: List[List[str]], dista
     while True:
         x = rand.randrange(defs.FIELD_WIDTH - 2) + 1
         y = rand.randrange(defs.FIELD_HEIGHT - 2) + 1
-        if (
-            all(c == " " for c in field[y][x - 1:x + 1 + 1])  # both left and right cells are spaces (not walls)
-            and not any(abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places)
+        if all(c == " " for c in field[y][x - 1 : x + 1 + 1]) and not any(  # both left and right cells are spaces (not walls)
+            abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places
         ):
             return x, y
+
 
 def spawn_monsters(entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]], spawn_configs: List[defs.MonsterSpawnConfig]) -> None:
     """
     Spawns monsters on the field based on the provided spawn configurations.
-    
+
     Args:
         entities: List of current game entities.
         field: 2D list representing the game field.
@@ -111,7 +111,7 @@ def spawn_monsters(entities: List[defs.Entity], field: List[List[str]], torched:
 def respawn_monster(entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]], spawn_configs: List[defs.MonsterSpawnConfig]) -> None:
     """
     Respawns a single monster on the field based on the spawn configurations.
-    
+
     Args:
         entities: List of current game entities.
         field: 2D list representing the game field.
@@ -305,7 +305,9 @@ def update_entities(
                 elif effect == defs.EFFECT_UNLOCK_TREASURE:
                     encountered_types.add(defs.CHAR_TREASURE + m.tribe.char)  # Unlock the treasure
                 elif effect == defs.EFFECT_CALTROP_SPREAD:
-                    for x, y in iterate_ellipse_points(player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True):
+                    for x, y in iterate_ellipse_points(
+                        player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True
+                    ):
                         if field[y][x] == " ":
                             field[y][x] = defs.CHAR_CALTROP
                 elif effect == defs.EFFECT_FIRE:
@@ -315,7 +317,7 @@ def update_entities(
                 elif effect == defs.EFFECT_ROCK_SPREAD:
                     for x, y in iterate_offsets(player.x, player.y, ROCK_SPREAD_OFFSETS):
                         if field[y][x] == " ":
-                            field[y][x] =  defs.WALL_CHARS[0]
+                            field[y][x] = defs.WALL_CHARS[0]
 
                 player.lp = max(1, min(defs.LP_MAX, player.lp + m.tribe.feed))
 
