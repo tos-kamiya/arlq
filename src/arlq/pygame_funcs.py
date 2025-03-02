@@ -99,7 +99,12 @@ class PygameUI:
         # Draw player's companion if present
         if player.companion and px + 1 < defs.FIELD_WIDTH:
             comp_char = defs.COMPANION_TO_ATTR_CHAR[player.companion]
-            self._draw_text((px + 1, py), comp_char, self._dim_color(COLOR_MAP["default"]), bold=True)
+            self._draw_text(
+                (px + 1, py),
+                comp_char,
+                self._dim_color(COLOR_MAP["default"]),
+                bold=True,
+            )
 
         # Draw field cells
         for y, row in enumerate(field):
@@ -164,7 +169,14 @@ class PygameUI:
         pygame.display.flip()
         self.clock.tick(30)
 
-    def draw_status_bar(self, hours: int, player: defs.Player, stage_num: int, message: Optional[str], extra_keys: bool):
+    def draw_status_bar(
+        self,
+        hours: int,
+        player: defs.Player,
+        stage_num: int,
+        message: Optional[str],
+        extra_keys: bool,
+    ):
         """
         Draws the status bar at the bottom of the screen showing level, HP, progress bar, etc.
         """
@@ -214,7 +226,11 @@ class PygameUI:
         extra = "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
         item_status = "  ".join([item_str, extra])
         item_x_offset = x_offset + bar_width + 10
-        self._draw_text((item_x_offset // CELL_SIZE_X, self.field_height), item_status, COLOR_MAP["default"])
+        self._draw_text(
+            (item_x_offset // CELL_SIZE_X, self.field_height),
+            item_status,
+            COLOR_MAP["default"],
+        )
 
         if message:
             self._draw_text((0, self.field_height + 1), message, COLOR_MAP["default"], bold=True)
@@ -266,9 +282,9 @@ class PygameUI:
         """
         Displays a stage selection menu using Pygame where the user can navigate with arrow keys and confirm with Enter,
         or directly press numeric keys or Q/ESC.
-        
+
         The selected option is shown with a leading ">" and non-selected options with a blank.
-        
+
         Returns:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
         """
@@ -280,7 +296,7 @@ class PygameUI:
         options = ["[q]uit"]
         for n in range(1, num_stages + 1):
             options.append(f"stage [{n}]")
-        
+
         current_index = 1  # Initial selection: stage 1
 
         while True:
@@ -288,14 +304,19 @@ class PygameUI:
             self.screen.fill((0, 0, 0))
             # Draw title
             self._draw_text((10, 5), "Stage Selection", COLOR_MAP[CI_YELLOW], bold=True)
-            
+
             base_x = 10
             base_y = 8
             # Draw each option with prefix ">" for the current selection
             for i, option in enumerate(options):
                 prefix = ">" if i == current_index else " "
-                self._draw_text((base_x, base_y + i), f"{prefix} {option}", COLOR_MAP["default"], bold=(i == current_index))
-            
+                self._draw_text(
+                    (base_x, base_y + i),
+                    f"{prefix} {option}",
+                    COLOR_MAP["default"],
+                    bold=(i == current_index),
+                )
+
             pygame.display.flip()
 
             # Wait for a key event
