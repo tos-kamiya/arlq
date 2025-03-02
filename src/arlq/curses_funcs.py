@@ -54,7 +54,9 @@ def curses_draw_stage(
                 else:
                     stdscr.addstr(y, x, cell)
             elif torched[y][x] or show_entities:
-                if cell == " " and (x + y) % 2 == 1:
+                if cell in defs.WALL_CHARS:
+                    stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
+                elif cell == " " and (x + y) % 2 == 1:
                     stdscr.addstr(y, x, ".", curses.A_DIM)
                 else:
                     stdscr.addstr(y, x, cell)
@@ -64,32 +66,8 @@ def curses_draw_stage(
 
     # Draw each entity (monsters and treasures)
     player_attack = defs.player_attack_by_level(player)
-    shown_entity_indexes = []
-    for ei, e in enumerate(entities):
-        if torched[e.y][e.x] == 0 or (e.x, e.y) == (px, py):
-            continue
-        shown_entity_indexes.append(ei)
-        if isinstance(e, defs.Monster):
-            m: defs.Monster = e
-            ch = m.tribe.char
-            if not show_entities and m.tribe.char not in encountered_types:
-                stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
-            else:
-                ci = CI_BLUE if m.tribe.level <= player_attack else CI_RED
-                stdscr.addstr(e.y, e.x, ch, curses.A_BOLD | curses.color_pair(ci))
-        elif isinstance(e, defs.Treasure):
-            t: defs.Treasure = e
-            if not show_entities and t.encounter_type not in encountered_types:
-                stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
-            else:
-                stdscr.addstr(e.y, e.x, defs.CHAR_TREASURE, curses.A_BOLD | curses.color_pair(CI_YELLOW))
-
     if show_entities:
-        # Draw entities in a dim style
-        attr = curses.A_DIM
         for ei, e in enumerate(entities):
-            if ei in shown_entity_indexes or (e.x, e.y) == (px, py):
-                continue
             ch = None
             if isinstance(e, defs.Monster):
                 m: defs.Monster = e
@@ -97,7 +75,23 @@ def curses_draw_stage(
             elif isinstance(e, defs.Treasure):
                 ch = defs.CHAR_TREASURE
             if ch is not None:
-                stdscr.addstr(e.y, e.x, ch, attr)
+                stdscr.addstr(e.y, e.x, ch, curses.A_DIM)
+
+    for ei, e in enumerate(entities):
+        if torched[e.y][e.x] == 0 or (e.x, e.y) == (px, py):
+            continue
+        if isinstance(e, defs.Monster):
+            m: defs.Monster = e
+            ch = m.tribe.char
+            if ch not in encountered_types:
+                stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
+            else:
+                ci = CI_BLUE if m.tribe.level <= player_attack else CI_RED
+                stdscr.addstr(e.y, e.x, ch, curses.A_BOLD | curses.color_pair(ci))
+        elif isinstance(e, defs.Treasure):
+            t: defs.Treasure = e
+            if t.encounter_type in encountered_types:
+                stdscr.addstr(e.y, e.x, defs.CHAR_TREASURE, curses.A_BOLD | curses.color_pair(CI_YELLOW))
 
     # Draw the player character
     stdscr.addstr(py, px, "@", curses.A_BOLD | curses.color_pair(CI_YELLOW))
@@ -321,7 +315,10 @@ class CursesUI:
             for i, option in enumerate(options):
                 # Use ">" for selected, otherwise a blank space.
                 prefix = ">" if i == current_index else " "
-                stdscr.addstr(4 + i, 4, f"{prefix} {option}")
+                if i == current_index:
+                    stdscr.addstr(4 + i, 4, f"{prefix} {option}", curses.A_BOLD)
+                else:
+                    stdscr.addstr(4 + i, 4, f"{prefix} {option}")
             stdscr.refresh()
 
             key = stdscr.getch()

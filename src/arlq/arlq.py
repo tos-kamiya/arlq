@@ -5,6 +5,8 @@ import math
 import sys
 import time
 
+from arlq.defs import FIRE_OFFSETS, ROCK_SPREAD_OFFSETS
+
 from .__about__ import __version__
 
 from .utils import rand
@@ -83,13 +85,14 @@ def find_random_place(entities: List[defs.Entity], field: List[List[str]], dista
         ):
             return x, y
 
-def spawn_monsters(entities: List[defs.Entity], field: List[List[str]], spawn_configs: List[defs.MonsterSpawnConfig]) -> None:
+def spawn_monsters(entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]], spawn_configs: List[defs.MonsterSpawnConfig]) -> None:
     """
     Spawns monsters on the field based on the provided spawn configurations.
     
     Args:
         entities: List of current game entities.
         field: 2D list representing the game field.
+        torched: 2D list tracking visited or modified locations on the field.
         spawn_configs: List of MonsterSpawnConfig instances for the current stage.
     """
     for config in spawn_configs:
@@ -101,6 +104,8 @@ def spawn_monsters(entities: List[defs.Entity], field: List[List[str]], spawn_co
             x, y = find_random_place(entities, field, distance=2)
             m = defs.Monster(x, y, config.tribe)
             entities.append(m)
+            # Mark the new monster's position as unvisited (or hidden).
+            torched[y][x] = 0
 
 
 def respawn_monster(entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]], spawn_configs: List[defs.MonsterSpawnConfig]) -> None:
@@ -147,16 +152,16 @@ def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) 
     for ty in range(defs.TILE_NUM_Y + 1):
         y = ty * (defs.TILE_HEIGHT + 1)
         for x in range(0, defs.FIELD_WIDTH):
-            field[y][x] = wall_chars[1]
+            field[y][x] = wall_chars[2]
     for tx in range(defs.TILE_NUM_X + 1):
         x = tx * (defs.TILE_WIDTH + 1)
         for y in range(0, defs.FIELD_HEIGHT):
-            field[y][x] = wall_chars[2]
+            field[y][x] = wall_chars[3]
     for ty in range(defs.TILE_NUM_Y + 1):
         y = ty * (defs.TILE_HEIGHT + 1)
         for tx in range(defs.TILE_NUM_X + 1):
             x = tx * (defs.TILE_WIDTH + 1)
-            field[y][x] = wall_chars[0]
+            field[y][x] = wall_chars[1]
 
     # Create corridors
     edges, first_p, last_p = generate_maze(defs.TILE_NUM_X, defs.TILE_NUM_Y)
@@ -187,7 +192,7 @@ def update_torched(torched: List[List[int]], added: List[List[int]]) -> None:
             torched[y][x] += added[y][x]
 
 
-def iterate_ellipse_points(center_x, center_y, radius, width_expansion_ratio, except_for_center=False):
+def iterate_ellipse_points(center_x: int, center_y: int, radius: int, width_expansion_ratio: float, except_for_center: bool = False):
     for dy in range(-radius, radius + 1):
         y = center_y + dy
         if 0 <= y < defs.FIELD_HEIGHT:
@@ -198,6 +203,14 @@ def iterate_ellipse_points(center_x, center_y, radius, width_expansion_ratio, ex
                     if except_for_center and y == center_y and x == center_x:
                         continue
                     yield x, y
+
+
+def iterate_offsets(center_x: int, center_y: int, offsets: List[defs.Point]):
+    for dx, dy in offsets:
+        x = center_x + dx
+        y = center_y + dy
+        if 0 <= x < defs.FIELD_WIDTH and 0 <= y < defs.FIELD_HEIGHT:
+            yield x, y
 
 
 def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
@@ -213,7 +226,7 @@ def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
 
 
 def update_entities(
-    move_direction: Tuple[int, int],
+    move_direction: defs.Point,
     field: List[List[str]],
     player: defs.Player,
     entities: List[defs.Entity],
@@ -267,15 +280,17 @@ def update_entities(
         if isinstance(ee, defs.Treasure):
             t: defs.Treasure = ee
             if t.encounter_type in encountered_types:
-                message = (10, ">> Won the Treasure! <<")
+                if player.treasure_remains == 1:
+                    message = (10, ">> Won all treasures! <<")
+                else:
+                    message = (10, "-- Got a treasure!")
                 del entities[eei]
-                player.won_treasures += 1
+                player.treasure_remains -= 1
         elif isinstance(ee, defs.Monster):
             m: defs.Monster = ee
             encountered_types.add(m.tribe.char)
             player_attack = defs.player_attack_by_level(player)
 
-            effect = m.tribe.effect
             if player_attack < m.tribe.level:
                 player.x, player.y = find_random_place(entities, field, distance=2)
                 player.item = ""
@@ -283,16 +298,24 @@ def update_entities(
                 player.lp = max(defs.LP_RESPAWN_MIN, min(player.lp, defs.LP_INIT))
                 message = (3, "-- Respawned.")
             else:
+                effect = m.tribe.effect
+                player.level += 1
                 if effect == defs.EFFECT_SPECIAL_EXP:
-                    player.level += 10
-                else:
-                    player.level += 1
-                if effect == defs.EFFECT_UNLOCK_TREASURE:
+                    player.level += 9
+                elif effect == defs.EFFECT_UNLOCK_TREASURE:
                     encountered_types.add(defs.CHAR_TREASURE + m.tribe.char)  # Unlock the treasure
-                if effect == defs.EFFECT_CALTROP_SPREAD:
+                elif effect == defs.EFFECT_CALTROP_SPREAD:
                     for x, y in iterate_ellipse_points(player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True):
                         if field[y][x] == " ":
                             field[y][x] = defs.CHAR_CALTROP
+                elif effect == defs.EFFECT_FIRE:
+                    for x, y in iterate_offsets(player.x, player.y, FIRE_OFFSETS):
+                        if field[y][x] in defs.WALL_CHARS:
+                            field[y][x] = " "
+                elif effect == defs.EFFECT_ROCK_SPREAD:
+                    for x, y in iterate_offsets(player.x, player.y, ROCK_SPREAD_OFFSETS):
+                        if field[y][x] == " ":
+                            field[y][x] =  defs.WALL_CHARS[0]
 
                 player.lp = max(1, min(defs.LP_MAX, player.lp + m.tribe.feed))
 
@@ -326,40 +349,59 @@ def update_entities(
 
 
 def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = False) -> None:
+    show_entities = debug_show_entities
+
     if stage_num == 0:  # if stage is not selected yet
         r = ui.select_stage()
         if r == 0:
             return
         stage_num = r
 
+    # Configuration
+    configs = defs.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
+    config_idx = 0
+
     # Initialize field
     field, first_p, last_p = create_field(defs.CORRIDOR_H_WIDTH, defs.CORRIDOR_V_WIDTH, defs.WALL_CHARS)
-
-    # Initialize entities
-    entities: List[defs.Entity] = []
-    player: defs.Player = defs.Player(first_p[0], first_p[1], 1, defs.LP_INIT)
-    entities.append(player)
-    treasure: defs.Treasure = defs.Treasure(last_p[0], last_p[1], defs.CHAR_TREASURE + defs.CHAR_DRAGON)
-    entities.append(treasure)
-
-    configs = defs.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
-    treasure_count = sum(len(c) > 0 for c in configs)
-    config_idx = 0
-    ms = configs[config_idx]
-    spawn_monsters(entities, field, ms)
 
     # Initialize view/ui components
     encountered_types: Set[str] = set()
     cur_torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
     torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
 
-    message: Tuple[int, str] = (-1, "")
+    # Initialize entities
+    entities: List[defs.Entity] = []
+
+    # 1. treasures
+    treasure_count = 0
+    for mss in configs:
+        for ms in mss:
+            mt = ms.tribe
+            if mt.effect == defs.EFFECT_UNLOCK_TREASURE:
+                assert ms.population == 1
+                treasure_count += 1
+                if treasure_count == 1:
+                    x, y = last_p[0], last_p[1]
+                else:
+                    x, y = find_random_place(entities, field, distance=2)
+                treasure: defs.Treasure = defs.Treasure(x, y, defs.CHAR_TREASURE + mt.char)
+                entities.append(treasure)
+
+    # 2. player
+    player: defs.Player = defs.Player(first_p[0], first_p[1], 1, defs.LP_INIT, treasure_count)
+    entities.append(player)
+
+    # 3. monsters
+    monster_spawn = configs[config_idx]
+    spawn_monsters(entities, field, torched, monster_spawn)
 
     # Initialize stage state
     torch_radius = defs.TORCH_RADIUS
     hours: int = -1
     game_over = False
     move_direction = None
+
+    message: Tuple[int, str] = (-1, "")
 
     while not game_over:
         hours += 1
@@ -382,7 +424,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
                 message = (-1, "")
             else:
                 message = (remaining_tick, message[1])
-        ui.draw_stage(hours, player, entities, field, cur_torched, torched, encountered_types, debug_show_entities, stage_num=stage_num, message=message[1])
+        ui.draw_stage(hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, stage_num=stage_num, message=message[1])
 
         move_direction = ui.input_direction()
         if move_direction is None:
@@ -393,7 +435,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         if m is not None:
             message = m
 
-        if player.won_treasures >= treasure_count:
+        if player.treasure_remains == 0:
             game_over = True
 
         if e == defs.EFFECT_UNLOCK_TREASURE:
@@ -401,14 +443,13 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             if config_idx < len(configs):
                 ms = configs[config_idx]
                 if ms:
-                    spawn_monsters(entities, field, ms)
+                    monster_spawn = ms
+                    spawn_monsters(entities, field, torched, monster_spawn)
 
         if hours % defs.MONSTER_RESPAWN_RATE == 0:
-            respawn_monster(entities, field, torched, ms)
+            respawn_monster(entities, field, torched, monster_spawn)
 
     # Game over display
-    show_entities = debug_show_entities
-
     while True:
         ui.draw_stage(
             hours,

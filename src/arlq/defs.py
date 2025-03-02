@@ -8,7 +8,7 @@ FIELD_WIDTH = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 CORRIDOR_V_WIDTH = 3
 CORRIDOR_H_WIDTH = 2
-WALL_CHARS = "###"  # cross, horizontal, vertical
+WALL_CHARS = "####"  # single, cross, horizontal, vertical
 
 TORCH_RADIUS = 4
 TORCH_WIDTH_EXPANSION_RATIO = 1.5
@@ -30,7 +30,8 @@ EFFECT_SPECIAL_EXP = "Special Exp."
 EFFECT_FEED_MUCH = "Feed Much"
 EFFECT_UNLOCK_TREASURE = "Unlock Treasure"
 EFFECT_ENERGY_DRAIN = "Energy Drain"
-EFFECT_CALTROP_SPREAD = "Caltrop"
+EFFECT_CALTROP_SPREAD = "Caltrop Spread"
+EFFECT_ROCK_SPREAD = "Rock Spread"
 EFFECT_FIRE = "Fire"
 
 COMPANION_KARMA_LIMIT = 18
@@ -46,11 +47,22 @@ COMPANION_TO_ATTR_CHAR = {
 }
 
 PEGASUS_STEP = 9
-CALTROP_SPREAD_RADIUS = 3
+CALTROP_SPREAD_RADIUS = 2
 CALTROP_WIDTH_EXPANSION_RATIO = 1.5
 CALTROP_LP_DAMAGE = 2
+FIRE_OFFSETS = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+ROCK_SPREAD_OFFSETS = [
+    (0, -3),
+    (-2, -2), (2, -2),
+    (-1, -1), (1, -1),
+    (-3, 0), (3, 0),
+    (-1, 1), (1, 1),
+    (-2, 2), (2, 2),
+    (0, 3),
+]
 
 CHAR_DRAGON = "D"
+CHAR_FIRE_DRAKE = "F"
 CHAR_TREASURE = "T"
 CHAR_CALTROP = "x"
 
@@ -83,8 +95,9 @@ class Player(Entity):
         item_taken_from: Source of the item.
         companion: Companion character.
         karma: Player's karma.
+        treasure_remains: Number of remaining treasures.
     """
-    def __init__(self, x, y, level, lp):
+    def __init__(self, x, y, level, lp, treasure_remains):
         super().__init__(x, y)
         self.level = level
         self.lp = lp
@@ -92,7 +105,7 @@ class Player(Entity):
         self.item_taken_from = ""
         self.companion = ""
         self.karma = 0
-        self.won_treasures = 0
+        self.treasure_remains = treasure_remains
 
 
 class Monster(Entity):
@@ -156,13 +169,16 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
     _MT(CHAR_DRAGON, 40, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure box!"),  # Dragon
     _MT("e", 1, -12, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained."),  # Erebus
+    _MT("f", 40, 12, effect=EFFECT_FIRE),  # Fire bird
+    _MT(CHAR_FIRE_DRAKE, 60, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure box!"),  # Fire Drake
+    _MT("g", 50, 12, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT("h", 999, 12),  # High elf
 
     _MT("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined."),  # Nomicon
     _MT("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined."),  # Ocular
     _MT("p", 0, 0, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined."),  # Pegasus
 
-    _MT("X", 1, 0, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
+    _MT("X", 1, 12, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
 ]
 
 m: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
@@ -173,6 +189,7 @@ MONSTER_LEVEL_GAUGE: List[MonsterTribe] = [
     m["c"],
     m["d"],
     m[CHAR_DRAGON],
+    m[CHAR_FIRE_DRAKE],
 ]
 
 _MSC = MonsterSpawnConfig
@@ -198,10 +215,17 @@ MONSTER_SPAWN_CONFIGS_ST1: List[List[MonsterSpawnConfig]] = [
 MONSTER_SPAWN_CONFIGS_ST2: List[List[MonsterSpawnConfig]] = [
     MONSTER_SPAWN_CONFIGS_ST1[0],
     [
+        _MSC(m["a"], 5),
         _MSC(m["B"], 1),
         _MSC(m["e"], 4),
+        _MSC(m["f"], 5),
+        _MSC(m[CHAR_FIRE_DRAKE], 1),
+        _MSC(m["g"], 3),
         _MSC(m["h"], 1),
-        _MSC(m["X"], 2),
+        _MSC(m["X"], 3),
+        _MSC(m["n"], 0.7),
+        _MSC(m["o"], 0.7),
+        _MSC(m["p"], 0.7),
     ],
 ]
 
