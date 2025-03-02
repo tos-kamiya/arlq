@@ -135,16 +135,16 @@ def respawn_monster(entities: List[defs.Entity], field: List[List[str]], torched
             break
 
 
-def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) -> Tuple[List[List[str]], defs.Point, defs.Point]:
+def create_field(corridor_h_width: int, corridor_v_width: int, wall_char: str) -> Tuple[List[List[str]], defs.Point, defs.Point]:
     def find_empty_cell(field: List[List[str]], left_top: defs.Point, right_bottom: defs.Point) -> defs.Point:
         assert left_top[0] < right_bottom[0]
         assert left_top[1] < right_bottom[1]
 
-        x = rand.randrange(right_bottom[0] - left_top[0]) + left_top[0]
-        y = rand.randrange(right_bottom[1] - left_top[1]) + left_top[1]
-        assert field[y][x] == " "
-
-        return x, y
+        while True:
+            x = rand.randrange(right_bottom[0] - left_top[0]) + left_top[0]
+            y = rand.randrange(right_bottom[1] - left_top[1]) + left_top[1]
+            if field[y][x] == " ":
+                return x, y
 
     field: List[List[str]] = [[" " for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
 
@@ -152,16 +152,32 @@ def create_field(corridor_h_width: int, corridor_v_width: int, wall_chars: str) 
     for ty in range(defs.TILE_NUM_Y + 1):
         y = ty * (defs.TILE_HEIGHT + 1)
         for x in range(0, defs.FIELD_WIDTH):
-            field[y][x] = wall_chars[2]
+            field[y][x] = wall_char
     for tx in range(defs.TILE_NUM_X + 1):
         x = tx * (defs.TILE_WIDTH + 1)
         for y in range(0, defs.FIELD_HEIGHT):
-            field[y][x] = wall_chars[3]
+            field[y][x] = wall_char
     for ty in range(defs.TILE_NUM_Y + 1):
         y = ty * (defs.TILE_HEIGHT + 1)
         for tx in range(defs.TILE_NUM_X + 1):
             x = tx * (defs.TILE_WIDTH + 1)
-            field[y][x] = wall_chars[1]
+            field[y][x] = wall_char
+
+    c = rand.randrange(17)
+    for ty in range(defs.TILE_NUM_Y):
+        y1 = ty * (defs.TILE_HEIGHT + 1) + 1
+        y2 = ty * (defs.TILE_HEIGHT + 1) + defs.TILE_HEIGHT
+        for tx in range(defs.TILE_NUM_X):
+            x1 = tx * (defs.TILE_WIDTH + 1) + 1
+            x2 = tx * (defs.TILE_WIDTH + 1) + defs.TILE_WIDTH
+            if (c := c + 3) % 17 < 5:
+                field[y1][x1] = wall_char
+            if (c := c + 3) % 17 < 5:
+                field[y1][x2] = wall_char
+            if (c := c + 3) % 17 < 5:
+                field[y2][x1] = wall_char
+            if (c := c + 3) % 17 < 5:
+                field[y2][x2] = wall_char
 
     # Create corridors
     edges, first_p, last_p = generate_maze(defs.TILE_NUM_X, defs.TILE_NUM_Y)
@@ -250,7 +266,7 @@ def update_entities(
         ):
             player.x, player.y = n2x, n2y
             player.karma += 1
-        elif player.item in [defs.ITEM_SWORD_X2, defs.ITEM_SWORD_X3] and c in defs.WALL_CHARS:
+        elif player.item in [defs.ITEM_SWORD_X2, defs.ITEM_SWORD_X3] and c == defs.WALL_CHAR:
             # break the wall
             player.x, player.y = nx, ny
             field[player.y][player.x] = " "
@@ -308,16 +324,16 @@ def update_entities(
                     for x, y in iterate_ellipse_points(
                         player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True
                     ):
-                        if field[y][x] == " ":
+                        if (x + y) % 2 == 0 and field[y][x] in [" ", defs.WALL_CHAR]:
                             field[y][x] = defs.CHAR_CALTROP
                 elif effect == defs.EFFECT_FIRE:
                     for x, y in iterate_offsets(player.x, player.y, FIRE_OFFSETS):
-                        if field[y][x] in defs.WALL_CHARS:
+                        if field[y][x] == defs.WALL_CHAR:
                             field[y][x] = " "
                 elif effect == defs.EFFECT_ROCK_SPREAD:
                     for x, y in iterate_offsets(player.x, player.y, ROCK_SPREAD_OFFSETS):
                         if field[y][x] == " ":
-                            field[y][x] = defs.WALL_CHARS[0]
+                            field[y][x] = defs.WALL_CHAR
 
                 player.lp = max(1, min(defs.LP_MAX, player.lp + m.tribe.feed))
 
@@ -364,7 +380,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     config_idx = 0
 
     # Initialize field
-    field, first_p, last_p = create_field(defs.CORRIDOR_H_WIDTH, defs.CORRIDOR_V_WIDTH, defs.WALL_CHARS)
+    field, first_p, last_p = create_field(defs.CORRIDOR_H_WIDTH, defs.CORRIDOR_V_WIDTH, defs.WALL_CHAR)
 
     # Initialize view/ui components
     encountered_types: Set[str] = set()
