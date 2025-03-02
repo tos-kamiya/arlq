@@ -277,7 +277,7 @@ class PygameUI:
         assert num_stages <= 9
 
         # Build options list; index 0 is "Quit"
-        options = ["[Q]uit"]
+        options = ["[q]uit"]
         for n in range(1, num_stages + 1):
             options.append(f"stage [{n}]")
         

@@ -83,11 +83,10 @@ pip install windows-curses
 | **a** Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                                |
 | **A** Rare Amoeba   | A rare amoeba that significantly boosts your level upon defeat.                                                                                                   |
 | **b** Bison         | The second weakest. Defeating it provides plenty of food. Hunt it when you're hungry.                                                                             |
-| **B** Rare Bison    | Tastier than a normal bison and provides even more food.                                                                                                          |
 | **c** Chimera       | Moderately strong. It wields a sword, which can be obtained upon defeat. Holding the sword doubles your combat power in the next battle and lets you break walls. |
 | **C** Rare Chimera  | Stronger than a normal chimera, wielding a sword that triples your combat power.                                                                                  |
 | **d** Komodo Dragon | Powerful but dangerous. Defeating it provides a large amount of food, but you'll be poisoned—reducing your combat power to one-third in the next battle.          |
-| **D** Dragon | Very strong; defeating it unlocks a treasure chest. |
+| **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
 
 **Stage 2**
 
@@ -95,8 +94,9 @@ In addition to the monsters from Stage 1, the following appear:
 
 | Display & Name      | Description                                                     |
 | ------------------- | --------------------------------------------------------------- |
+| **B** Rare Bison    | Tastier than a normal bison and provides even more food.        |
 | **e** Erebus        | Battling it drains your vitality.                               |
-| **E** Eldritch      | Too powerful to be defeated.                                    |
+| **h** High Elf      | Too powerful to be defeated.                                    |
 | **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you. |
 
 ## Companion List
