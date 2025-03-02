@@ -77,8 +77,9 @@ def find_random_place(entities: List[defs.Entity], field: List[List[str]], dista
     while True:
         x = rand.randrange(defs.FIELD_WIDTH - 2) + 1
         y = rand.randrange(defs.FIELD_HEIGHT - 2) + 1
-        if field[y][x] == " " and field[y][x + 1] == " " and not any(
-            abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places
+        if (
+            all(c == " " for c in field[y][x - 1:x + 1 + 1])  # both left and right cells are spaces (not walls)
+            and not any(abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places)
         ):
             return x, y
 
@@ -287,7 +288,7 @@ def update_entities(
                     player.level += 10
                 else:
                     player.level += 1
-                if effect == defs.EFFECT_TREASURE_POINTER:
+                if effect == defs.EFFECT_UNLOCK_TREASURE:
                     encountered_types.add(defs.CHAR_TREASURE)  # Unlock the treasure
                 if effect == defs.EFFECT_CALTROP_SPREAD:
                     for x, y in iterate_ellipse_points(player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True):

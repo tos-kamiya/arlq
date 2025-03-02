@@ -28,7 +28,7 @@ ITEM_TREASURE = "Treasure"
 
 EFFECT_SPECIAL_EXP = "Special Exp."
 EFFECT_FEED_MUCH = "Feed Much"
-EFFECT_TREASURE_POINTER = "Treasure Ptr."
+EFFECT_UNLOCK_TREASURE = "Unlock Treasure"
 EFFECT_ENERGY_DRAIN = "Energy Drain"
 EFFECT_CALTROP_SPREAD = "Caltrop"
 
@@ -141,48 +141,59 @@ class MonsterSpawnConfig:
         self.tribe = tribe
         self.population = population
 
+_MT = MonsterTribe
 
-MONSTER_TRIBES_TABLE: Dict[str, MonsterTribe] = {
-    "a": MonsterTribe("a", 1, 12),  # Amoeba
-    "b": MonsterTribe("b", 5, 20, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
-    "c": MonsterTribe("c", 10, 12, item=ITEM_SWORD_X2, event_message="-- Got a strong sword!"),  # Chimera
-    "d": MonsterTribe("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
-    CHAR_DRAGON: MonsterTribe(CHAR_DRAGON, 40, 12, effect=EFFECT_TREASURE_POINTER, event_message="-- Sparkle!"),  # Dragon
-    "e": MonsterTribe("e", 1, -12, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained."),  # Erebus
-    "E": MonsterTribe("E", 999, -12),  # Eldritch
+MONSTER_TRIBES: List[MonsterTribe] = [
+    _MT("a", 1, 12),  # Amoeba
+    _MT("A", 2, 12, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
+    _MT("b", 5, 20, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
+    _MT("B", 10, 30, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison rare
+    _MT("c", 10, 12, item=ITEM_SWORD_X2, event_message="-- Got a strong sword!"),  # Chimera
+    _MT("C", 15, 12, item=ITEM_SWORD_X3, event_message="-- Got a strong sword!"),  # Chimera rare
+    _MT("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
+    _MT(CHAR_DRAGON, 40, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Treasure unlocked!"),  # Dragon
+    _MT("e", 1, -12, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained."),  # Erebus
+    _MT("h", 999, 12),  # High elf
 
-    "A": MonsterTribe("A", 1, 12, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
-    "B": MonsterTribe("B", 5, 30, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison rare
-    "C": MonsterTribe("C", 10, 12, item=ITEM_SWORD_X3, event_message="-- Got a strong sword!"),  # Chimera rare
+    _MT("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined."),  # Nomicon
+    _MT("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined."),  # Ocular
+    _MT("p", 0, 0, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined."),  # Pegasus
 
-    "n": MonsterTribe("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined."),  # Nomicon
-    "o": MonsterTribe("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined."),  # Ocular
-    "p": MonsterTribe("p", 0, 0, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined."),  # Pegasus
+    _MT("X", 1, 0, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
+]
 
-    "X": MonsterTribe("X", 1, 0, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
-}
+m: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
 
+MONSTER_LEVEL_GAUGE: List[MonsterTribe] = [
+    m["a"],
+    m["b"],
+    m["c"],
+    m["d"],
+    m[CHAR_DRAGON],
+]
+
+_MSC = MonsterSpawnConfig
 
 # Stage 1 spawn configurations.
 MONSTER_SPAWN_CONFIGS_ST1: List[MonsterSpawnConfig] = [
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["a"], 30),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["b"], 4),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["c"], 4),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["d"], 4),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE[CHAR_DRAGON], 1),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["A"], 0.7),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["B"], 0.7),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["C"], 0.7),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["n"], 0.7),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["o"], 0.7),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["p"], 0.7),
+    _MSC(m["a"], 30),
+    _MSC(m["b"], 4),
+    _MSC(m["c"], 4),
+    _MSC(m["C"], 1),
+    _MSC(m["d"], 4),
+    _MSC(m[CHAR_DRAGON], 1),
+    _MSC(m["A"], 0.7),
+    _MSC(m["n"], 0.7),
+    _MSC(m["o"], 0.7),
+    _MSC(m["p"], 0.7),
 ]
 
 # Stage 2 spawn configurations.
 MONSTER_SPAWN_CONFIGS_ST2: List[MonsterSpawnConfig] = MONSTER_SPAWN_CONFIGS_ST1 + [
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["e"], 4),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["E"], 1),
-    MonsterSpawnConfig(MONSTER_TRIBES_TABLE["X"], 2),
+    _MSC(m["B"], 1),
+    _MSC(m["e"], 4),
+    _MSC(m["h"], 1),
+    _MSC(m["X"], 2),
 ]
 
 # Mapping stages to their corresponding spawn configurations.
@@ -205,14 +216,7 @@ def player_attack_by_level(player: Player) -> int:
 
 def get_max_beatable_monster_tribe(player: Player) -> Optional[MonsterTribe]:
     atk = player_attack_by_level(player)
-    max_beatable = None
-    for mt in MONSTER_TRIBES_TABLE.values():
-        if mt.level == 0:
-            continue
-        if mt.level > atk:
-            break
-        b = mt
-        if max_beatable is None or b.level > max_beatable.level:
-            max_beatable = b
-
-    return max_beatable
+    for mt in MONSTER_LEVEL_GAUGE[::-1]:
+        if mt.level <= atk:
+            return mt
+    return None
