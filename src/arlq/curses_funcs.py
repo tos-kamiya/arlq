@@ -86,7 +86,13 @@ def curses_draw_stage(
             if ch not in encountered_types:
                 stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
             else:
-                ci = CI_BLUE if m.tribe.level <= player_attack else CI_RED
+                if m.tribe.level <= player_attack:
+                    if m.tribe.effect == defs.EFFECT_UNLOCK_TREASURE:
+                        ci = CI_YELLOW
+                    else:
+                        ci = CI_BLUE
+                else:
+                    ci = CI_RED
                 stdscr.addstr(e.y, e.x, ch, curses.A_BOLD | curses.color_pair(ci))
         elif isinstance(e, defs.Treasure):
             t: defs.Treasure = e
