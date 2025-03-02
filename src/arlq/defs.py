@@ -50,19 +50,19 @@ PEGASUS_STEP = 9
 CALTROP_SPREAD_RADIUS = 2
 CALTROP_WIDTH_EXPANSION_RATIO = 1.5
 CALTROP_LP_DAMAGE = 2
-FIRE_OFFSETS = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+FIRE_OFFSETS = [
+    (0, -2), (0, -1),
+    (0, 1), (0, 2),
+    (-2, 0), (-1, 0),
+    (1, 0), (2, 0),
+]
 ROCK_SPREAD_OFFSETS = [
     (0, -3),
-    (-2, -2),
-    (2, -2),
-    (-1, -1),
-    (1, -1),
-    (-3, 0),
-    (3, 0),
-    (-1, 1),
-    (1, 1),
-    (-2, 2),
-    (2, 2),
+    (-2, -2), (2, -2),
+    (-1, -1), (1, -1),
+    (-3, 0), (3, 0),
+    (-1, 1), (1, 1),
+    (-2, 2), (2, 2),
     (0, 3),
 ]
 
@@ -179,15 +179,15 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("c", 10, 12, item=ITEM_SWORD_X2, event_message="-- Got a sword!"),  # Chimera
     _MT("C", 15, 12, item=ITEM_SWORD_X3, event_message="-- Got a sword!"),  # Chimera rare
     _MT("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
-    _MT(CHAR_DRAGON, 40, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure box!"),  # Dragon
-    _MT("e", 1, -12, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained."),  # Erebus
-    _MT("f", 40, 12, effect=EFFECT_FIRE),  # Fire bird
-    _MT(CHAR_FIRE_DRAKE, 60, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure box!"),  # Fire Drake
+    _MT(CHAR_DRAGON, 40, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"),  # Dragon
+    _MT("e", 1, -12, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained!"),  # Erebus
+    _MT("f", 40, 6, effect=EFFECT_FIRE),  # Firebird
+    _MT(CHAR_FIRE_DRAKE, 60, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"),  # Fire Drake
     _MT("g", 50, 12, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT("h", 999, 12),  # High elf
-    _MT("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined."),  # Nomicon
-    _MT("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined."),  # Ocular
-    _MT("p", 0, 0, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined."),  # Pegasus
+    _MT("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined!"),  # Nomicon
+    _MT("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined!"),  # Ocular
+    _MT("p", 0, 0, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined!"),  # Pegasus
     _MT("X", 1, 12, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
 ]
 
@@ -225,10 +225,11 @@ MONSTER_SPAWN_CONFIGS_ST1: List[List[MonsterSpawnConfig]] = [
 MONSTER_SPAWN_CONFIGS_ST2: List[List[MonsterSpawnConfig]] = [
     MONSTER_SPAWN_CONFIGS_ST1[0],
     [
-        _MSC(m["a"], 5),
+        _MSC(m["a"], 6),
+        _MSC(m["b"], 2),
         _MSC(m["B"], 1),
         _MSC(m["e"], 4),
-        _MSC(m["f"], 5),
+        _MSC(m["f"], 3),
         _MSC(m[CHAR_FIRE_DRAKE], 1),
         _MSC(m["g"], 3),
         _MSC(m["h"], 1),

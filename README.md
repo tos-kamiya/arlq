@@ -42,7 +42,8 @@ pip install windows-curses
 ## Game Description
 
 * **Objective**  
-  The goal of the game is to explore a dungeon with uniquely generated corridors every time and locate the treasure chest hidden by the dragon.
+  The goal of the game is to explore a dungeon with uniquely generated corridors every time and locate the treasure chest(s) hidden by the dragon(s).
+  In Stage 1, find the dragon's treasure chest; in Stage 2, find both the dragon's and the fire drake's treasure chests.
 
 * **Player**  
   You control the character represented by “@” using the arrow keys to move up, down, left, and right.
@@ -92,12 +93,15 @@ pip install windows-curses
 
 In addition to the monsters from Stage 1, the following appear:
 
-| Display & Name      | Description                                                     |
-| ------------------- | --------------------------------------------------------------- |
-| **B** Rare Bison    | Tastier than a normal bison and provides even more food.        |
-| **e** Erebus        | Battling it drains your vitality.                               |
-| **h** High Elf      | Too powerful to be defeated.                                    |
-| **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you. |
+| Display & Name      | Description                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **B** Rare Bison    | Tastier than a normal bison and provides even more food.                                                                |
+| **e** Erebus        | Battling it drains your vitality.                                                                                       |
+| **f** Firebird      | A monster that breathes fire when approached.                                                                           |
+| **F** Fire Drake    | A monster that breathes fire when approached. Extremely powerful; defeating it unseals the Fire Drake's treasure chest. |
+| **g** Golem         | When defeated, rocks scatter. It yields no food.                                                                        |
+| **h** High Elf      | Too powerful to be defeated.                                                                                            |
+| **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you.                                                         |
 
 ## Companion List
 

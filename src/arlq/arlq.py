@@ -281,9 +281,9 @@ def update_entities(
             t: defs.Treasure = ee
             if t.encounter_type in encountered_types:
                 if player.treasure_remains == 1:
-                    message = (10, ">> Won all treasures! <<")
+                    message = (10, ">> All treasures collected! <<")
                 else:
-                    message = (10, "-- Got a treasure!")
+                    message = (10, "-- Treasure collected!")
                 del entities[eei]
                 player.treasure_remains -= 1
         elif isinstance(ee, defs.Monster):
@@ -296,7 +296,7 @@ def update_entities(
                 player.item = ""
                 player.item_taken_from = ""
                 player.lp = max(defs.LP_RESPAWN_MIN, min(player.lp, defs.LP_INIT))
-                message = (3, "-- Respawned.")
+                message = (3, "-- Respawned!")
             else:
                 effect = m.tribe.effect
                 player.level += 1
