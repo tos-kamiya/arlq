@@ -8,7 +8,7 @@ FIELD_WIDTH = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 CORRIDOR_V_WIDTH = 3
 CORRIDOR_H_WIDTH = 2
-WALL_CHARS = "####"  # single, cross, horizontal, vertical
+WALL_CHAR = "#"
 
 TORCH_RADIUS = 4
 TORCH_WIDTH_EXPANSION_RATIO = 1.5
@@ -47,23 +47,20 @@ COMPANION_TO_ATTR_CHAR = {
 }
 
 PEGASUS_STEP = 9
-CALTROP_SPREAD_RADIUS = 2
+CALTROP_SPREAD_RADIUS = 3
 CALTROP_WIDTH_EXPANSION_RATIO = 1.5
 CALTROP_LP_DAMAGE = 2
 FIRE_OFFSETS = [
-    (0, -2), (0, -1),
-    (0, 1), (0, 2),
-    (-2, 0), (-1, 0),
-    (1, 0), (2, 0),
-]
-ROCK_SPREAD_OFFSETS = [
-    (0, -3),
     (-2, -2), (2, -2),
     (-1, -1), (1, -1),
-    (-3, 0), (3, 0),
     (-1, 1), (1, 1),
     (-2, 2), (2, 2),
-    (0, 3),
+]
+ROCK_SPREAD_OFFSETS = [
+    (-2, -2), (2, -2),
+    (-1, -1), (1, -1),
+    (-1, 1), (1, 1),
+    (-2, 2), (2, 2),
 ]
 
 CHAR_DRAGON = "D"

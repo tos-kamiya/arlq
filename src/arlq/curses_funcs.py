@@ -47,14 +47,14 @@ def curses_draw_stage(
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
             if cur_torched[y][x]:
-                if cell in defs.WALL_CHARS:
+                if cell == defs.WALL_CHAR:
                     stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
                 elif cell == defs.CHAR_CALTROP:
                     stdscr.addstr(y, x, cell, curses.color_pair(CI_MAGENTA))
                 else:
                     stdscr.addstr(y, x, cell)
             elif torched[y][x] or show_entities:
-                if cell in defs.WALL_CHARS:
+                if cell == defs.WALL_CHAR:
                     stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
                 elif cell == " " and (x + y) % 2 == 1:
                     stdscr.addstr(y, x, ".", curses.A_DIM)
@@ -84,7 +84,8 @@ def curses_draw_stage(
             m: defs.Monster = e
             ch = m.tribe.char
             if ch not in encountered_types:
-                stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
+                if not show_entities:
+                    stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
             else:
                 if m.tribe.level <= player_attack:
                     if m.tribe.effect == defs.EFFECT_UNLOCK_TREASURE:

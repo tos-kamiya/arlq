@@ -111,14 +111,14 @@ class PygameUI:
             for x, cell in enumerate(row):
                 pos = x, y
                 if cur_torched[y][x]:
-                    if cell in defs.WALL_CHARS:
+                    if cell == defs.WALL_CHAR:
                         self._draw_text(pos, cell, COLOR_MAP[CI_GREEN])
                     elif cell == defs.CHAR_CALTROP:
                         self._draw_text(pos, cell, COLOR_MAP[CI_MAGENTA])
                     else:
                         self._draw_text(pos, cell, COLOR_MAP["default"])
                 elif torched[y][x] or show_entities:
-                    if cell in defs.WALL_CHARS:
+                    if cell == defs.WALL_CHAR:
                         self._draw_text(pos, cell, COLOR_MAP[CI_GREEN])
                     elif cell == " " and (x + y) % 2 == 1:
                         self._draw_text(pos, ".", self._dim_color(COLOR_MAP["default"]))
@@ -154,7 +154,8 @@ class PygameUI:
                 m: defs.Monster = e
                 ch = m.tribe.char
                 if ch not in encountered_types:
-                    self._draw_text(pos, "?", COLOR_MAP["default"], bold=True)
+                    if not show_entities:
+                        self._draw_text(pos, "?", COLOR_MAP["default"], bold=True)
                 else:
                     if m.tribe.level <= player_attack:
                         if m.tribe.effect == defs.EFFECT_UNLOCK_TREASURE:
