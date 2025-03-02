@@ -43,11 +43,6 @@ def curses_draw_stage(
             px, py = player.x, player.y
     assert player is not None and px is not None and py is not None
 
-    # If the player has a companion, draw it right of the player
-    if player.companion:
-        ch = defs.COMPANION_TO_ATTR_CHAR[player.companion]
-        stdscr.addstr(py, px + 1, ch, curses.A_DIM)
-
     # Draw each cell in the field
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
@@ -67,9 +62,6 @@ def curses_draw_stage(
                 if (x + y) % 2 == 1:
                     stdscr.addstr(y, x, ".", curses.A_DIM)
 
-    # Draw the player character
-    stdscr.addstr(py, px, "@", curses.A_BOLD | curses.color_pair(CI_YELLOW))
-
     # Draw each entity (monsters and treasures)
     player_attack = defs.player_attack_by_level(player)
     shown_entity_indexes = []
@@ -80,17 +72,17 @@ def curses_draw_stage(
         if isinstance(e, defs.Monster):
             m: defs.Monster = e
             ch = m.tribe.char
-            if m.tribe.char not in encountered_types:
-                stdscr.addstr(m.y, m.x, "?", curses.A_BOLD)
+            if not show_entities and m.tribe.char not in encountered_types:
+                stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
             else:
                 ci = CI_BLUE if m.tribe.level <= player_attack else CI_RED
-                stdscr.addstr(m.y, m.x, ch, curses.A_BOLD | curses.color_pair(ci))
+                stdscr.addstr(e.y, e.x, ch, curses.A_BOLD | curses.color_pair(ci))
         elif isinstance(e, defs.Treasure):
             t: defs.Treasure = e
-            if defs.CHAR_TREASURE not in encountered_types:
-                stdscr.addstr(t.y, t.x, "?", curses.A_BOLD)
+            if not show_entities and t.encounter_type not in encountered_types:
+                stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
             else:
-                stdscr.addstr(t.y, t.x, defs.CHAR_TREASURE, curses.A_BOLD | curses.color_pair(CI_YELLOW))
+                stdscr.addstr(e.y, e.x, defs.CHAR_TREASURE, curses.A_BOLD | curses.color_pair(CI_YELLOW))
 
     if show_entities:
         # Draw entities in a dim style
@@ -106,6 +98,14 @@ def curses_draw_stage(
                 ch = defs.CHAR_TREASURE
             if ch is not None:
                 stdscr.addstr(e.y, e.x, ch, attr)
+
+    # Draw the player character
+    stdscr.addstr(py, px, "@", curses.A_BOLD | curses.color_pair(CI_YELLOW))
+
+    # If the player has a companion, draw it right of the player
+    if player.companion and px + 1 < defs.FIELD_WIDTH:
+        ch = defs.COMPANION_TO_ATTR_CHAR[player.companion]
+        stdscr.addstr(py, px + 1, ch, curses.A_DIM)
 
 
 def curses_draw_status_bar(

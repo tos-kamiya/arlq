@@ -218,9 +218,9 @@ def update_entities(
     player: defs.Player,
     entities: List[defs.Entity],
     encountered_types: Set[str],
-) -> Tuple[bool, Optional[Tuple[int, str]]]:
-    game_over = False
-    message = (-1, "")
+) -> Tuple[Optional[str], Optional[Tuple[int, str]]]:
+    effect = None
+    message = None
 
     # player move
     dx, dy = move_direction
@@ -265,12 +265,11 @@ def update_entities(
     # Actions & events (combats, state changes, etc)
     for eei, ee in enc_entity_infos:
         if isinstance(ee, defs.Treasure):
-            if defs.CHAR_TREASURE in encountered_types:
-                message = (-1, ">> Won the Treasure! <<")
-                game_over = True
-                player.item = defs.ITEM_TREASURE
-                player.item_taken_from = ""
-                break
+            t: defs.Treasure = ee
+            if t.encounter_type in encountered_types:
+                message = (10, ">> Won the Treasure! <<")
+                del entities[eei]
+                player.won_treasures += 1
         elif isinstance(ee, defs.Monster):
             m: defs.Monster = ee
             encountered_types.add(m.tribe.char)
@@ -289,7 +288,7 @@ def update_entities(
                 else:
                     player.level += 1
                 if effect == defs.EFFECT_UNLOCK_TREASURE:
-                    encountered_types.add(defs.CHAR_TREASURE)  # Unlock the treasure
+                    encountered_types.add(defs.CHAR_TREASURE + m.tribe.char)  # Unlock the treasure
                 if effect == defs.EFFECT_CALTROP_SPREAD:
                     for x, y in iterate_ellipse_points(player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True):
                         if field[y][x] == " ":
@@ -323,7 +322,7 @@ def update_entities(
             message = (3, "-- The companion vanishes.")
             player.companion = ""
 
-    return game_over, message
+    return effect, message
 
 
 def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = False) -> None:
@@ -340,12 +339,15 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     entities: List[defs.Entity] = []
     player: defs.Player = defs.Player(first_p[0], first_p[1], 1, defs.LP_INIT)
     entities.append(player)
-    treasure: defs.Treasure = defs.Treasure(last_p[0], last_p[1])
+    treasure: defs.Treasure = defs.Treasure(last_p[0], last_p[1], defs.CHAR_TREASURE + defs.CHAR_DRAGON)
     entities.append(treasure)
 
-    spawn_configs = defs.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
-    spawn_monsters(entities, field, spawn_configs)
-    
+    configs = defs.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
+    treasure_count = sum(len(c) > 0 for c in configs)
+    config_idx = 0
+    ms = configs[config_idx]
+    spawn_monsters(entities, field, ms)
+
     # Initialize view/ui components
     encountered_types: Set[str] = set()
     cur_torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
@@ -387,12 +389,22 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             return
 
         # Player move, encountering, etc.
-        game_over, m = update_entities(move_direction, field, player, entities, encountered_types)
+        e, m = update_entities(move_direction, field, player, entities, encountered_types)
         if m is not None:
             message = m
 
+        if player.won_treasures >= treasure_count:
+            game_over = True
+
+        if e == defs.EFFECT_UNLOCK_TREASURE:
+            config_idx += 1
+            if config_idx < len(configs):
+                ms = configs[config_idx]
+                if ms:
+                    spawn_monsters(entities, field, ms)
+
         if hours % defs.MONSTER_RESPAWN_RATE == 0:
-            respawn_monster(entities, field, torched, spawn_configs)
+            respawn_monster(entities, field, torched, ms)
 
     # Game over display
     show_entities = debug_show_entities

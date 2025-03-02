@@ -97,28 +97,29 @@ class PygameUI:
         px, py = player.x, player.y
 
         # Draw player's companion if present
-        if player.companion:
+        if player.companion and px + 1 < defs.FIELD_WIDTH:
             comp_char = defs.COMPANION_TO_ATTR_CHAR[player.companion]
             self._draw_text((px + 1, py), comp_char, self._dim_color(COLOR_MAP["default"]), bold=True)
 
         # Draw field cells
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
+                pos = x, y
                 if cur_torched[y][x]:
                     if cell in defs.WALL_CHARS:
-                        self._draw_text((x, y), cell, COLOR_MAP[CI_GREEN])
+                        self._draw_text(pos, cell, COLOR_MAP[CI_GREEN])
                     elif cell == defs.CHAR_CALTROP:
-                        self._draw_text((x, y), cell, COLOR_MAP[CI_MAGENTA])
+                        self._draw_text(pos, cell, COLOR_MAP[CI_MAGENTA])
                     else:
-                        self._draw_text((x, y), cell, COLOR_MAP["default"])
+                        self._draw_text(pos, cell, COLOR_MAP["default"])
                 elif torched[y][x] or show_entities:
                     if cell == " " and (x + y) % 2 == 1:
-                        self._draw_text((x, y), ".", self._dim_color(COLOR_MAP["default"]))
+                        self._draw_text(pos, ".", self._dim_color(COLOR_MAP["default"]))
                     else:
-                        self._draw_text((x, y), cell, COLOR_MAP["default"])
+                        self._draw_text(pos, cell, COLOR_MAP["default"])
                 else:
                     if (x + y) % 2 == 1:
-                        self._draw_text((x, y), ".", self._dim_color(COLOR_MAP["default"]))
+                        self._draw_text(pos, ".", self._dim_color(COLOR_MAP["default"]))
 
         # Draw the player character
         self._draw_text((px, py), "@", COLOR_MAP[CI_YELLOW], bold=True)
@@ -127,27 +128,29 @@ class PygameUI:
         player_attack = defs.player_attack_by_level(player)
         shown_entity_indexes = []
         for ei, e in enumerate(entities):
-            if torched[e.y][e.x] == 0 or (e.x, e.y) == (px, py):
+            pos = e.x, e.y
+            if torched[e.y][e.x] == 0 or pos == (px, py):
                 continue
             shown_entity_indexes.append(ei)
             if isinstance(e, defs.Monster):
                 m: defs.Monster = e
                 ch = m.tribe.char
-                if ch not in encountered_types:
-                    self._draw_text((m.x, m.y), "?", COLOR_MAP["default"], bold=True)
+                if not show_entities and ch not in encountered_types:
+                    self._draw_text(pos, "?", COLOR_MAP["default"], bold=True)
                 else:
                     ci = CI_BLUE if m.tribe.level <= player_attack else CI_RED
-                    self._draw_text((m.x, m.y), ch, COLOR_MAP[ci], bold=True)
+                    self._draw_text(pos, ch, COLOR_MAP[ci], bold=True)
             elif isinstance(e, defs.Treasure):
                 t: defs.Treasure = e
-                if defs.CHAR_TREASURE not in encountered_types:
-                    self._draw_text((t.x, t.y), "?", COLOR_MAP["default"], bold=True)
+                if not show_entities and t.encounter_type not in encountered_types:
+                    self._draw_text(pos, "?", COLOR_MAP["default"], bold=True)
                 else:
-                    self._draw_text((t.x, t.y), defs.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], bold=True)
+                    self._draw_text(pos, defs.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], bold=True)
 
         if show_entities:
             for ei, e in enumerate(entities):
-                if ei in shown_entity_indexes or (e.x, e.y) == (px, py):
+                pos = e.x, e.y
+                if ei in shown_entity_indexes or pos == (px, py):
                     continue
                 ch = None
                 if isinstance(e, defs.Monster):
@@ -156,7 +159,7 @@ class PygameUI:
                 elif isinstance(e, defs.Treasure):
                     ch = defs.CHAR_TREASURE
                 if ch is not None:
-                    self._draw_text((e.x, e.y), ch, self._dim_color(COLOR_MAP["default"]))
+                    self._draw_text(pos, ch, self._dim_color(COLOR_MAP["default"]))
 
         # Draw the status bar
         self.draw_status_bar(hours, player, stage_num, message, extra_keys)
