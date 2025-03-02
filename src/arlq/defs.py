@@ -31,6 +31,7 @@ EFFECT_FEED_MUCH = "Feed Much"
 EFFECT_UNLOCK_TREASURE = "Unlock Treasure"
 EFFECT_ENERGY_DRAIN = "Energy Drain"
 EFFECT_CALTROP_SPREAD = "Caltrop"
+EFFECT_FIRE = "Fire"
 
 COMPANION_KARMA_LIMIT = 18
 
@@ -66,8 +67,9 @@ class Entity:
 
 class Treasure(Entity):
     """Treasure entity that inherits from Entity."""
-    def __init__(self, x, y):
+    def __init__(self, x, y, encounter_type):
         super().__init__(x, y)
+        self.encounter_type = encounter_type
 
 
 class Player(Entity):
@@ -90,6 +92,7 @@ class Player(Entity):
         self.item_taken_from = ""
         self.companion = ""
         self.karma = 0
+        self.won_treasures = 0
 
 
 class Monster(Entity):
@@ -148,10 +151,10 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("A", 2, 12, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
     _MT("b", 5, 20, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
     _MT("B", 10, 30, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison rare
-    _MT("c", 10, 12, item=ITEM_SWORD_X2, event_message="-- Got a strong sword!"),  # Chimera
-    _MT("C", 15, 12, item=ITEM_SWORD_X3, event_message="-- Got a strong sword!"),  # Chimera rare
+    _MT("c", 10, 12, item=ITEM_SWORD_X2, event_message="-- Got a sword!"),  # Chimera
+    _MT("C", 15, 12, item=ITEM_SWORD_X3, event_message="-- Got a sword!"),  # Chimera rare
     _MT("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
-    _MT(CHAR_DRAGON, 40, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Treasure unlocked!"),  # Dragon
+    _MT(CHAR_DRAGON, 40, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure box!"),  # Dragon
     _MT("e", 1, -12, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained."),  # Erebus
     _MT("h", 999, 12),  # High elf
 
@@ -175,25 +178,31 @@ MONSTER_LEVEL_GAUGE: List[MonsterTribe] = [
 _MSC = MonsterSpawnConfig
 
 # Stage 1 spawn configurations.
-MONSTER_SPAWN_CONFIGS_ST1: List[MonsterSpawnConfig] = [
-    _MSC(m["a"], 30),
-    _MSC(m["b"], 4),
-    _MSC(m["c"], 4),
-    _MSC(m["C"], 1),
-    _MSC(m["d"], 4),
-    _MSC(m[CHAR_DRAGON], 1),
-    _MSC(m["A"], 0.7),
-    _MSC(m["n"], 0.7),
-    _MSC(m["o"], 0.7),
-    _MSC(m["p"], 0.7),
+MONSTER_SPAWN_CONFIGS_ST1: List[List[MonsterSpawnConfig]] = [
+    [
+        _MSC(m["a"], 30),
+        _MSC(m["b"], 5),
+        _MSC(m["c"], 4),
+        _MSC(m["C"], 1),
+        _MSC(m["d"], 4),
+        _MSC(m[CHAR_DRAGON], 1),
+        _MSC(m["A"], 1),
+        _MSC(m["n"], 0.7),
+        _MSC(m["o"], 0.7),
+        _MSC(m["p"], 0.7),
+    ],
+    [],
 ]
 
 # Stage 2 spawn configurations.
-MONSTER_SPAWN_CONFIGS_ST2: List[MonsterSpawnConfig] = MONSTER_SPAWN_CONFIGS_ST1 + [
-    _MSC(m["B"], 1),
-    _MSC(m["e"], 4),
-    _MSC(m["h"], 1),
-    _MSC(m["X"], 2),
+MONSTER_SPAWN_CONFIGS_ST2: List[List[MonsterSpawnConfig]] = [
+    MONSTER_SPAWN_CONFIGS_ST1[0],
+    [
+        _MSC(m["B"], 1),
+        _MSC(m["e"], 4),
+        _MSC(m["h"], 1),
+        _MSC(m["X"], 2),
+    ],
 ]
 
 # Mapping stages to their corresponding spawn configurations.
