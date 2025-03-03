@@ -124,10 +124,10 @@ def curses_draw_status_bar(
         message: An optional message to display.
         extra_keys: Whether to display extra key hints.
     """
-    if player.item == defs.ITEM_SWORD_X2:
-        level_str = "LVL: %d x2" % player.level
+    if player.item == defs.ITEM_SWORD_X1_5:
+        level_str = "LVL: %d x1.5" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-    elif player.item == defs.ITEM_SWORD_X3:
+    elif player.item == defs.ITEM_SWORD_CURSED:
         level_str = "LVL: %d x3" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
     elif player.item == defs.ITEM_POISONED:
@@ -146,7 +146,7 @@ def curses_draw_status_bar(
     buf.append("HRS: %d" % hours)
     buf.append(level_str)
     if beatable:
-        buf.append("> %s" % ",".join(b.char for b in beatable))
+        buf.append(">%s" % ",".join(b.char for b in beatable))
     buf.append("FOOD: %d" % player.lp)
     s = "  ".join(buf)
     stdscr.addstr(defs.FIELD_HEIGHT, x, s)

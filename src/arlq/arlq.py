@@ -233,7 +233,7 @@ def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
     torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
 
     if player.companion == defs.COMPANION_OCULAR:
-        torch_radius += defs.FAIRY_TORCH_EXTENSION
+        torch_radius += defs.OCULAR_TORCH_EXTENSION
 
     for x, y in iterate_ellipse_points(player.x, player.y, torch_radius, defs.TORCH_WIDTH_EXPANSION_RATIO):
         torched[y][x] = 1
@@ -260,13 +260,13 @@ def update_entities(
             player.x, player.y = nx, ny
         elif (
             player.companion == defs.COMPANION_PEGASUS
-            and 0 <= (n2x := player.x + dx * defs.PEGASUS_STEP) < defs.FIELD_WIDTH
-            and 0 <= (n2y := player.y + dy * defs.PEGASUS_STEP) < defs.FIELD_HEIGHT
+            and 0 <= (n2x := player.x + dx * defs.PEGASUS_STEP_X) < defs.FIELD_WIDTH
+            and 0 <= (n2y := player.y + dy * defs.PEGASUS_STEP_Y) < defs.FIELD_HEIGHT
             and field[n2y][n2x] in [" ", defs.CHAR_CALTROP]
         ):
             player.x, player.y = n2x, n2y
             player.karma += 1
-        elif player.item in [defs.ITEM_SWORD_X2, defs.ITEM_SWORD_X3] and c == defs.WALL_CHAR:
+        elif player.item in [defs.ITEM_SWORD_X1_5, defs.ITEM_SWORD_CURSED] and c == defs.WALL_CHAR:
             # break the wall
             player.x, player.y = nx, ny
             field[player.y][player.x] = " "
@@ -345,6 +345,9 @@ def update_entities(
                 player.item = m.tribe.item
                 player.item_taken_from = m.tribe.char
 
+                if player.item == defs.ITEM_SWORD_CURSED:
+                    player.lp = (player.lp + 1) // 2
+
                 if m.tribe.event_message:
                     message = (3, m.tribe.event_message)
 
@@ -374,7 +377,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         stage_num = r
 
     # Configuration
-    configs = defs.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
+    stage_config = defs.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
 
     # Initialize field
     field, first_p, last_p = create_field(defs.CORRIDOR_H_WIDTH, defs.CORRIDOR_V_WIDTH, defs.WALL_CHAR)
@@ -387,20 +390,17 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     # Initialize entities
     entities: List[defs.Entity] = []
 
-    # 1. treasures
+    # 1. treasure
     treasure_count = 0
-    for mss in configs:
-        for ms in mss:
-            mt = ms.tribe
-            if mt.effect == defs.EFFECT_UNLOCK_TREASURE:
-                assert ms.population == 1
-                treasure_count += 1
-                if treasure_count == 1:
-                    x, y = last_p[0], last_p[1]
-                else:
-                    x, y = find_random_place(entities, field, distance=2)
-                treasure: defs.Treasure = defs.Treasure(x, y, defs.CHAR_TREASURE + mt.char)
-                entities.append(treasure)
+    for ms in stage_config.init_spawn_cfg:
+        mt = ms.tribe
+        if mt.effect == defs.EFFECT_UNLOCK_TREASURE:
+            assert ms.population == 1
+            assert treasure_count == 0
+            treasure_count += 1
+            x, y = last_p[0], last_p[1]
+            treasure: defs.Treasure = defs.Treasure(x, y, defs.CHAR_TREASURE + mt.char)
+            entities.append(treasure)
     assert treasure_count == 1
 
     # 2. player
@@ -408,8 +408,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     entities.append(player)
 
     # 3. monsters
-    spawn_monsters(entities, field, torched, configs[0])
-    monster_spawn = configs[1]
+    spawn_monsters(entities, field, torched, stage_config.init_spawn_cfg)
 
     # Initialize stage state
     torch_radius = defs.TORCH_RADIUS
@@ -449,8 +448,8 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         if e == defs.EVENT_GOT_TREASURE:
             break
 
-        if hours % defs.MONSTER_RESPAWN_RATE == 0:
-            respawn_monster(entities, field, torched, monster_spawn)
+        if hours % stage_config.respawn_rate == 0:
+            respawn_monster(entities, field, torched, stage_config.respawn_cfg)
 
         hours += 1
         player.lp -= 1
