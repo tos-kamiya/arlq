@@ -18,8 +18,9 @@ CLAIRVOYANCE_TORCH_EXTENSION = 6
 LP_MAX = 100
 LP_INIT = 90
 LP_RESPAWN_MIN = 20
+LP_RESPAWN_COST = 2
 
-MONSTER_RESPAWN_RATE = 120
+MONSTER_RESPAWN_RATE = 70
 
 ITEM_SWORD_X2 = "Swordx2"
 ITEM_SWORD_X3 = "Swordx3"
@@ -33,6 +34,8 @@ EFFECT_ENERGY_DRAIN = "Energy Drain"
 EFFECT_CALTROP_SPREAD = "Caltrop Spread"
 EFFECT_ROCK_SPREAD = "Rock Spread"
 EFFECT_FIRE = "Fire"
+
+EVENT_GOT_TREASURE = "Got Treasure"
 
 COMPANION_KARMA_LIMIT = 18
 
@@ -99,10 +102,9 @@ class Player(Entity):
         item_taken_from: Source of the item.
         companion: Companion character.
         karma: Player's karma.
-        treasure_remains: Number of remaining treasures.
     """
 
-    def __init__(self, x, y, level, lp, treasure_remains):
+    def __init__(self, x, y, level, lp):
         super().__init__(x, y)
         self.level = level
         self.lp = lp
@@ -110,7 +112,6 @@ class Player(Entity):
         self.item_taken_from = ""
         self.companion = ""
         self.karma = 0
-        self.treasure_remains = treasure_remains
 
 
 class Monster(Entity):
@@ -178,9 +179,9 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
     _MT(CHAR_DRAGON, 40, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"),  # Dragon
     _MT("e", 1, -12, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained!"),  # Erebus
-    _MT("f", 40, 6, effect=EFFECT_FIRE),  # Firebird
+    _MT("f", 30, 12, effect=EFFECT_FIRE),  # Firebird
     _MT(CHAR_FIRE_DRAKE, 60, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"),  # Fire Drake
-    _MT("g", 50, 12, effect=EFFECT_ROCK_SPREAD),  # Golem
+    _MT("g", 35, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT("h", 999, 12),  # High elf
     _MT("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined!"),  # Nomicon
     _MT("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined!"),  # Ocular
@@ -190,11 +191,16 @@ MONSTER_TRIBES: List[MonsterTribe] = [
 
 m: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
 
-MONSTER_LEVEL_GAUGE: List[MonsterTribe] = [
+MONSTER_LEVEL_GAUGE1: List[MonsterTribe] = [
     m["a"],
     m["b"],
     m["c"],
     m["d"],
+    m["f"],
+    m["g"],
+]
+
+MONSTER_LEVEL_GAUGE2: List[MonsterTribe] = [
     m[CHAR_DRAGON],
     m[CHAR_FIRE_DRAKE],
 ]
@@ -202,40 +208,55 @@ MONSTER_LEVEL_GAUGE: List[MonsterTribe] = [
 _MSC = MonsterSpawnConfig
 
 # Stage 1 spawn configurations.
-MONSTER_SPAWN_CONFIGS_ST1: List[List[MonsterSpawnConfig]] = [
+MONSTER_SPAWN_CONFIGS_ST1: Tuple[List[MonsterSpawnConfig], List[MonsterSpawnConfig]] = (
     [
         _MSC(m["a"], 30),
+        _MSC(m["A"], 1),
+        _MSC(m["b"], 5),
+        _MSC(m["c"], 3),
+        _MSC(m["d"], 4),
+        _MSC(m[CHAR_DRAGON], 1),
+        _MSC(m["n"], 0.7),
+        _MSC(m["o"], 0.7),
+        _MSC(m["p"], 0.7),
+    ],
+    [
+        _MSC(m["a"], 25),
+        _MSC(m["b"], 5),
+        _MSC(m["c"], 4),
+        _MSC(m["d"], 4),
+    ]
+)
+
+# Stage 2 spawn configurations.
+MONSTER_SPAWN_CONFIGS_ST2: Tuple[List[MonsterSpawnConfig], List[MonsterSpawnConfig]] = (
+    [
+        _MSC(m["a"], 30),
+        _MSC(m["A"], 1),
         _MSC(m["b"], 5),
         _MSC(m["c"], 4),
         _MSC(m["C"], 1),
         _MSC(m["d"], 4),
-        _MSC(m[CHAR_DRAGON], 1),
-        _MSC(m["A"], 1),
-        _MSC(m["n"], 0.7),
-        _MSC(m["o"], 0.7),
-        _MSC(m["p"], 0.7),
+        _MSC(m[CHAR_FIRE_DRAKE], 1),
+        _MSC(m["f"], 0.7),
+        _MSC(m["g"], 0.7),
+        _MSC(m["h"], 1),
+        _MSC(m["X"], 0.7),
+        _MSC(m["n"], 1),
+        _MSC(m["o"], 1),
+        _MSC(m["p"], 1),
     ],
-    [],
-]
-
-# Stage 2 spawn configurations.
-MONSTER_SPAWN_CONFIGS_ST2: List[List[MonsterSpawnConfig]] = [
-    MONSTER_SPAWN_CONFIGS_ST1[0],
     [
-        _MSC(m["a"], 6),
-        _MSC(m["b"], 2),
-        _MSC(m["B"], 1),
+        _MSC(m["a"], 10),
+        _MSC(m["b"], 4),
+        _MSC(m["B"], 2),
+        _MSC(m["C"], 3),
         _MSC(m["e"], 4),
         _MSC(m["f"], 3),
-        _MSC(m[CHAR_FIRE_DRAKE], 1),
         _MSC(m["g"], 3),
-        _MSC(m["h"], 1),
         _MSC(m["X"], 3),
-        _MSC(m["n"], 0.7),
-        _MSC(m["o"], 0.7),
-        _MSC(m["p"], 0.7),
-    ],
-]
+    ]
+)
 
 # Mapping stages to their corresponding spawn configurations.
 STAGE_TO_MONSTER_SPAWN_CONFIGS = [
@@ -255,9 +276,15 @@ def player_attack_by_level(player: Player) -> int:
         return player.level
 
 
-def get_max_beatable_monster_tribe(player: Player) -> Optional[MonsterTribe]:
+def get_max_beatable_monster_tribe(player: Player) -> List[MonsterTribe]:
     atk = player_attack_by_level(player)
-    for mt in MONSTER_LEVEL_GAUGE[::-1]:
+    r = []
+    for mt in MONSTER_LEVEL_GAUGE1[::-1]:
         if mt.level <= atk:
-            return mt
-    return None
+            r.append(mt)
+            break
+    for mt in MONSTER_LEVEL_GAUGE2[::-1]:
+        if mt.level <= atk:
+            r.append(mt)
+            break
+    return r

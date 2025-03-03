@@ -85,7 +85,8 @@ def curses_draw_stage(
             ch = m.tribe.char
             if ch not in encountered_types:
                 if not show_entities:
-                    stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
+                    ch = "!" if m.tribe.level == 0 else "?"
+                    stdscr.addstr(e.y, e.x, ch, curses.A_BOLD)
             else:
                 if m.tribe.level <= player_attack:
                     if m.tribe.effect == defs.EFFECT_UNLOCK_TREASURE:
@@ -144,8 +145,8 @@ def curses_draw_status_bar(
         buf.append("ST: %d" % stage_num)
     buf.append("HRS: %d" % hours)
     buf.append(level_str)
-    if beatable is not None:
-        buf.append("> %s" % beatable.char)
+    if beatable:
+        buf.append("> %s" % ",".join(b.char for b in beatable))
     buf.append("FOOD: %d" % player.lp)
     s = "  ".join(buf)
     stdscr.addstr(defs.FIELD_HEIGHT, x, s)
