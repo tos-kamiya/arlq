@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 TILE_WIDTH = 10
 TILE_HEIGHT = 4
@@ -10,10 +10,9 @@ CORRIDOR_V_WIDTH = 3
 CORRIDOR_H_WIDTH = 2
 WALL_CHAR = "#"
 
-TORCH_RADIUS = 4
-TORCH_WIDTH_EXPANSION_RATIO = 1.5
-FAIRY_TORCH_EXTENSION = 2
-CLAIRVOYANCE_TORCH_EXTENSION = 6
+TORCH_RADIUS = 3
+TORCH_WIDTH_EXPANSION_RATIO = 1.7
+OCULAR_TORCH_EXTENSION = 2
 
 LP_MAX = 100
 LP_INIT = 90
@@ -22,8 +21,8 @@ LP_RESPAWN_COST = 2
 
 MONSTER_RESPAWN_RATE = 70
 
-ITEM_SWORD_X2 = "Swordx2"
-ITEM_SWORD_X3 = "Swordx3"
+ITEM_SWORD_X1_5 = "Sword"
+ITEM_SWORD_CURSED = "Cursed Sword"
 ITEM_POISONED = "Poisoned"
 ITEM_TREASURE = "Treasure"
 
@@ -49,9 +48,11 @@ COMPANION_TO_ATTR_CHAR = {
     COMPANION_PEGASUS: "p",
 }
 
-PEGASUS_STEP = 9
+PEGASUS_STEP_X = 9
+PEGASUS_STEP_Y = 4
+
 CALTROP_SPREAD_RADIUS = 3
-CALTROP_WIDTH_EXPANSION_RATIO = 1.5
+CALTROP_WIDTH_EXPANSION_RATIO = 1.7
 CALTROP_LP_DAMAGE = 2
 FIRE_OFFSETS = [
     (-2, -2), (2, -2),
@@ -167,6 +168,13 @@ class MonsterSpawnConfig:
         self.population = population
 
 
+class StageConfig:
+    def __init__(self, init_spawn_cfg, respawn_cfg, respawn_rate):
+        self.init_spawn_cfg = init_spawn_cfg
+        self.respawn_cfg = respawn_cfg
+        self.respawn_rate = respawn_rate
+
+
 _MT = MonsterTribe
 
 MONSTER_TRIBES: List[MonsterTribe] = [
@@ -174,14 +182,14 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("A", 2, 12, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
     _MT("b", 5, 20, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
     _MT("B", 10, 30, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison rare
-    _MT("c", 10, 12, item=ITEM_SWORD_X2, event_message="-- Got a sword!"),  # Chimera
-    _MT("C", 15, 12, item=ITEM_SWORD_X3, event_message="-- Got a sword!"),  # Chimera rare
+    _MT("c", 10, 12, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
+    _MT("C", 15, 12, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
     _MT("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
     _MT(CHAR_DRAGON, 40, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"),  # Dragon
     _MT("e", 1, -12, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained!"),  # Erebus
     _MT("f", 30, 12, effect=EFFECT_FIRE),  # Firebird
     _MT(CHAR_FIRE_DRAKE, 60, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"),  # Fire Drake
-    _MT("g", 35, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
+    _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT("h", 999, 12),  # High elf
     _MT("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined!"),  # Nomicon
     _MT("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined!"),  # Ocular
@@ -208,7 +216,7 @@ MONSTER_LEVEL_GAUGE2: List[MonsterTribe] = [
 _MSC = MonsterSpawnConfig
 
 # Stage 1 spawn configurations.
-MONSTER_SPAWN_CONFIGS_ST1: Tuple[List[MonsterSpawnConfig], List[MonsterSpawnConfig]] = (
+MONSTER_SPAWN_CONFIGS_ST1: StageConfig = StageConfig(
     [
         _MSC(m["a"], 30),
         _MSC(m["A"], 1),
@@ -225,37 +233,41 @@ MONSTER_SPAWN_CONFIGS_ST1: Tuple[List[MonsterSpawnConfig], List[MonsterSpawnConf
         _MSC(m["b"], 5),
         _MSC(m["c"], 4),
         _MSC(m["d"], 4),
-    ]
+    ],
+    80
 )
 
 # Stage 2 spawn configurations.
-MONSTER_SPAWN_CONFIGS_ST2: Tuple[List[MonsterSpawnConfig], List[MonsterSpawnConfig]] = (
+MONSTER_SPAWN_CONFIGS_ST2: StageConfig = StageConfig(
     [
-        _MSC(m["a"], 30),
-        _MSC(m["A"], 1),
-        _MSC(m["b"], 5),
+        _MSC(m["a"], 25),
+        _MSC(m["A"], 2),
+        _MSC(m["b"], 4),
+        _MSC(m["B"], 4),
         _MSC(m["c"], 4),
         _MSC(m["C"], 1),
         _MSC(m["d"], 4),
         _MSC(m[CHAR_FIRE_DRAKE], 1),
+        _MSC(m["e"], 1),
         _MSC(m["f"], 0.7),
         _MSC(m["g"], 0.7),
         _MSC(m["h"], 1),
         _MSC(m["X"], 0.7),
-        _MSC(m["n"], 1),
-        _MSC(m["o"], 1),
-        _MSC(m["p"], 1),
+        _MSC(m["n"], 0.7),
+        _MSC(m["o"], 0.7),
+        _MSC(m["p"], 0.7),
     ],
     [
-        _MSC(m["a"], 10),
-        _MSC(m["b"], 4),
-        _MSC(m["B"], 2),
-        _MSC(m["C"], 3),
+        _MSC(m["a"], 2),
+        _MSC(m["b"], 3),
+        _MSC(m["B"], 3),
+        _MSC(m["c"], 2),
         _MSC(m["e"], 4),
-        _MSC(m["f"], 3),
-        _MSC(m["g"], 3),
-        _MSC(m["X"], 3),
-    ]
+        _MSC(m["f"], 8),
+        _MSC(m["g"], 8),
+        _MSC(m["X"], 8),
+    ],
+    80
 )
 
 # Mapping stages to their corresponding spawn configurations.
@@ -266,9 +278,9 @@ STAGE_TO_MONSTER_SPAWN_CONFIGS = [
 
 
 def player_attack_by_level(player: Player) -> int:
-    if player.item == ITEM_SWORD_X2:
-        return player.level * 2
-    elif player.item == ITEM_SWORD_X3:
+    if player.item == ITEM_SWORD_X1_5:
+        return player.level * 3 // 2
+    elif player.item == ITEM_SWORD_CURSED:
         return player.level * 3
     elif player.item == ITEM_POISONED:
         return (player.level + 2) // 3

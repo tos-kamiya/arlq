@@ -188,10 +188,10 @@ class PygameUI:
         """
         Draws the status bar at the bottom of the screen showing level, HP, progress bar, etc.
         """
-        if player.item == defs.ITEM_SWORD_X2:
-            level_str = "LVL: %d x2" % player.level
+        if player.item == defs.ITEM_SWORD_X1_5:
+            level_str = "LVL: %d x1.5" % player.level
             item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-        elif player.item == defs.ITEM_SWORD_X3:
+        elif player.item == defs.ITEM_SWORD_CURSED:
             level_str = "LVL: %d x3" % player.level
             item_str = "+%s(%s)" % (player.item, player.item_taken_from)
         elif player.item == defs.ITEM_POISONED:
@@ -208,7 +208,7 @@ class PygameUI:
         status_parts.append("HRS: %d" % hours)
         status_parts.append(level_str)
         if beatable:
-            status_parts.append("> %s" % ",".join(b.char for b in beatable))
+            status_parts.append(">%s" % ",".join(b.char for b in beatable))
         status_parts.append("LP: %d" % player.lp)
         status_str = "  ".join(status_parts)
 

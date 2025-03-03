@@ -95,7 +95,7 @@ In addition to the monsters from Stage 1 except for Dragon, the following appear
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | **B** Rare Bison    | Tastier than a normal bison and provides even more food.                                                                |
-| **C** Rare Chimera  | Stronger than a normal chimera, wielding a sword that triples your combat power.                                        |
+| **C** Rare Chimera  | Wields a cursed sword. Triples combat power, but loses life points upon equipping.                                     |
 | **e** Erebus        | Battling it drains your vitality.                                                                                       |
 | **f** Firebird      | A monster that breathes fire when approached.                                                                           |
 | **F** Fire Drake    | A monster that breathes fire when approached. Extremely powerful; defeating it unseals the Fire Drake's treasure chest. |
