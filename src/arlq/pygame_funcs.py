@@ -155,7 +155,8 @@ class PygameUI:
                 ch = m.tribe.char
                 if ch not in encountered_types:
                     if not show_entities:
-                        self._draw_text(pos, "?", COLOR_MAP["default"], bold=True)
+                        ch = "!" if m.tribe.level == 0 else "?"
+                        self._draw_text(pos, ch, COLOR_MAP["default"], bold=True)
                 else:
                     if m.tribe.level <= player_attack:
                         if m.tribe.effect == defs.EFFECT_UNLOCK_TREASURE:
@@ -206,8 +207,8 @@ class PygameUI:
             status_parts.append("ST: %d" % stage_num)
         status_parts.append("HRS: %d" % hours)
         status_parts.append(level_str)
-        if beatable is not None:
-            status_parts.append("> %s" % beatable.char)
+        if beatable:
+            status_parts.append("> %s" % ",".join(b.char for b in beatable))
         status_parts.append("LP: %d" % player.lp)
         status_str = "  ".join(status_parts)
 

@@ -43,16 +43,16 @@ pip install windows-curses
 
 * **Objective**  
   The goal of the game is to explore a dungeon with uniquely generated corridors every time and locate the treasure chest(s) hidden by the dragon(s).
-  In Stage 1, find the dragon's treasure chest; in Stage 2, find both the dragon's and the fire drake's treasure chests.
+  In Stage 1, find the dragon's treasure chest; in Stage 2, find the fire drake's treasure chest.
 
 * **Player**  
-  You control the character represented by “@” using the arrow keys to move up, down, left, and right.
+  You control the character represented by `@` using the arrow keys to move up, down, left, and right.
 
 * **Fog System**  
   The game uses a fog system where only the areas you have walked on are visible. Combined with auto-mapping, areas once visited remain visible on the map.
 
 * **Monsters and Companions**  
-  The dungeon is populated with various monsters and companions. At first, monsters and companions are displayed as `?`. Once you come into contact with one, its type (e.g., `a`, `b`, `c`, etc.) is revealed, and other creatures of the same kind will be represented by that character.
+  The dungeon is populated with various monsters and companions. At first, monsters are displayed as `?` and companions as `!`. Once you encounter one, its type (e.g., `a`, `b`, `c`, etc.) is revealed, and other creatures of the same kind will be represented by that character.
 
 * **Encounters**  
   - **Monsters:** Contacting a monster initiates combat. If the monster is at or below your level, you can defeat it, level up, and obtain any items it may be carrying. However, if you lose to a higher-level monster, you will respawn at a random location within the dungeon.
@@ -85,17 +85,17 @@ pip install windows-curses
 | **A** Rare Amoeba   | A rare amoeba that significantly boosts your level upon defeat.                                                                                                   |
 | **b** Bison         | The second weakest. Defeating it provides plenty of food. Hunt it when you're hungry.                                                                             |
 | **c** Chimera       | Moderately strong. It wields a sword, which can be obtained upon defeat. Holding the sword doubles your combat power in the next battle and lets you break walls. |
-| **C** Rare Chimera  | Stronger than a normal chimera, wielding a sword that triples your combat power.                                                                                  |
-| **d** Komodo Dragon | Powerful but dangerous. Defeating it provides a large amount of food, but you'll be poisoned—reducing your combat power to one-third in the next battle.          |
+| **d** Komodo Dragon | Powerful but dangerous. Defeating it provides a large amount of food, but you'll be poisoned -- reducing your combat power to one-third in the next battle.       |
 | **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
 
 **Stage 2**
 
-In addition to the monsters from Stage 1, the following appear:
+In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | **B** Rare Bison    | Tastier than a normal bison and provides even more food.                                                                |
+| **C** Rare Chimera  | Stronger than a normal chimera, wielding a sword that triples your combat power.                                        |
 | **e** Erebus        | Battling it drains your vitality.                                                                                       |
 | **f** Firebird      | A monster that breathes fire when approached.                                                                           |
 | **F** Fire Drake    | A monster that breathes fire when approached. Extremely powerful; defeating it unseals the Fire Drake's treasure chest. |
