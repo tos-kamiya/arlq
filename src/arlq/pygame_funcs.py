@@ -31,8 +31,15 @@ CELL_SIZE_X = 13
 class PygameUI:
     def __init__(self):
         pygame.init()
-        pygame.key.set_repeat(200)
+        pygame.key.set_repeat(210)
         pygame.mouse.set_visible(False)
+
+        if pygame.joystick.get_count() > 0:
+            joystick = pygame.joystick.Joystick(0)
+            joystick.init()
+        else:
+            joystick = None
+        self.joystick = joystick
 
         # Field dimensions from defs
         self.field_width = defs.FIELD_WIDTH
@@ -49,6 +56,8 @@ class PygameUI:
         self.font_bold = pygame.font.SysFont("Courier", CELL_SIZE_Y, bold=True)
 
         self.clock = pygame.time.Clock()
+        self.joystick_interval_timer = 0
+        self.joystick_previous_direction = None
 
     def _draw_text(
         self,
@@ -246,13 +255,15 @@ class PygameUI:
     def input_direction(self) -> Optional[Tuple[int, int]]:
         """
         Waits for a directional input.
-        Returns a tuple (dx, dy) if an arrow or WASD key is pressed,
-        or None if ESC or 'q' is pressed.
+        Returns a tuple (dx, dy) if an arrow key, WASD key, or D-pad.
+        Returns if ESC or 'q' is pressed.
         """
         while True:
+            # Scan keyboard
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return None
+
                 if event.type == pygame.KEYDOWN:
                     if event.key in (pygame.K_ESCAPE, pygame.K_q):
                         return None
@@ -264,6 +275,21 @@ class PygameUI:
                         return (-1, 0)
                     if event.key in (pygame.K_RIGHT, pygame.K_d):
                         return (1, 0)
+
+            if self.joystick:
+                # Scan joystick
+                current_direction = (0, 0)
+                hat = self.joystick.get_hat(0)
+                current_direction = (hat[0], -hat[1])
+
+                if current_direction != self.joystick_previous_direction:
+                    self.joystick_previous_direction = current_direction
+                    self.joystick_interval_timer = 0
+                else:
+                    self.joystick_interval_timer = (self.joystick_interval_timer + 1) % 7
+                if self.joystick_interval_timer == 0 and current_direction != (0, 0):
+                    return current_direction
+
             self.clock.tick(30)
 
     def input_alphabet(self) -> Optional[str]:
@@ -288,8 +314,8 @@ class PygameUI:
 
     def select_stage(self) -> int:
         """
-        Displays a stage selection menu using Pygame where the user can navigate with arrow keys and confirm with Enter,
-        or directly press numeric keys or Q/ESC.
+        Displays a stage selection menu using Pygame where the user can navigate with arrow keys or D-pad,
+        and confirm with Enter (or gamepad button 0), or directly press numeric keys or Q/ESC.
 
         The selected option is shown with a leading ">" and non-selected options with a blank.
 
@@ -327,7 +353,7 @@ class PygameUI:
 
             pygame.display.flip()
 
-            # Wait for a key event
+            # Wait for an event
             event = pygame.event.wait()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
@@ -343,4 +369,19 @@ class PygameUI:
                     n = event.key - pygame.K_0  # Convert key code to corresponding number.
                     if n <= num_stages:
                         return n
-        # Should not reach here.
+
+            elif event.type == pygame.JOYHATMOTION:
+                # D-pad入力: 上下のみを処理 (自動リピートは不要)
+                hat = event.value  # (x, y)のタプル
+                # pygameでは、上なら (0, 1) で下なら (0, -1) となるため、
+                # 上: current_indexを減算、下: 加算する。
+                if hat[1] == 1:
+                    current_index = (current_index - 1) % len(options)
+                elif hat[1] == -1:
+                    current_index = (current_index + 1) % len(options)
+
+            elif event.type == pygame.JOYBUTTONDOWN:
+                # ゲームパッドのボタン（例としてボタン0）で選択確定とする
+                if event.button == 0:
+                    return current_index
+                # キャンセル（例：ボタン1）など、必要に応じた処理も追加可能
