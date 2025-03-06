@@ -253,7 +253,7 @@ class CursesUI:
         """
         stdscr = self.stdscr
 
-        stdscr.clear()
+        stdscr.erase()
         curses_draw_stage(stdscr, entities, field, cur_torched, torched, encountered_types, show_entities=show_entities)
 
         curses_draw_status_bar(stdscr, player, hours, stage_num=stage_num, message=message, extra_keys=extra_keys)
@@ -318,8 +318,8 @@ class CursesUI:
         stdscr = self.stdscr
 
         while True:
-            stdscr.clear()
-            stdscr.addstr(2, 2, "Stage Selection", curses.A_BOLD)
+            stdscr.erase()
+            stdscr.addstr(2, 2, "Stage Selection", curses.color_pair(CI_YELLOW) | curses.A_BOLD)
             for i, option in enumerate(options):
                 # Use ">" for selected, otherwise a blank space.
                 prefix = ">" if i == current_index else " "
