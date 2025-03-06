@@ -1,9 +1,9 @@
 from typing import Dict, List, Tuple
 
-TILE_WIDTH = 10
-TILE_HEIGHT = 4
-TILE_NUM_X = 7
-TILE_NUM_Y = 4
+TILE_WIDTH = 12
+TILE_HEIGHT = 6
+TILE_NUM_X = 6
+TILE_NUM_Y = 3
 FIELD_WIDTH = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 CORRIDOR_V_WIDTH = 3
@@ -17,7 +17,7 @@ OCULAR_TORCH_EXTENSION = 2
 LP_MAX = 100
 LP_INIT = 90
 LP_RESPAWN_MIN = 20
-LP_RESPAWN_COST = 2
+LP_RESPAWN_COST = 6
 
 MONSTER_RESPAWN_RATE = 70
 
@@ -32,11 +32,10 @@ EFFECT_UNLOCK_TREASURE = "Unlock Treasure"
 EFFECT_ENERGY_DRAIN = "Energy Drain"
 EFFECT_CALTROP_SPREAD = "Caltrop Spread"
 EFFECT_ROCK_SPREAD = "Rock Spread"
-EFFECT_FIRE = "Fire"
 
 EVENT_GOT_TREASURE = "Got Treasure"
 
-COMPANION_KARMA_LIMIT = 18
+COMPANION_KARMA_LIMIT = 12
 
 COMPANION_NOMICON = "Nomicon"
 COMPANION_OCULAR = "Ocular"
@@ -53,18 +52,15 @@ PEGASUS_STEP_Y = 4
 
 CALTROP_SPREAD_RADIUS = 3
 CALTROP_WIDTH_EXPANSION_RATIO = 1.7
-CALTROP_LP_DAMAGE = 2
-FIRE_OFFSETS = [
-    (-2, -2), (2, -2),
-    (-1, -1), (1, -1),
-    (-1, 1), (1, 1),
-    (-2, 2), (2, 2),
-]
+CALTROP_LP_DAMAGE = 3
+
 ROCK_SPREAD_OFFSETS = [
+    (-3, -3), (3, -3),
     (-2, -2), (2, -2),
     (-1, -1), (1, -1),
     (-1, 1), (1, 1),
     (-2, 2), (2, 2),
+    (-3, 3), (3, 3),
 ]
 
 CHAR_DRAGON = "D"
@@ -178,23 +174,21 @@ class StageConfig:
 _MT = MonsterTribe
 
 MONSTER_TRIBES: List[MonsterTribe] = [
-    _MT("a", 1, 12),  # Amoeba
-    _MT("A", 2, 12, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
+    _MT("a", 1, 6),  # Amoeba
+    _MT("A", 2, 6, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
     _MT("b", 5, 20, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
-    _MT("B", 10, 30, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison rare
-    _MT("c", 10, 12, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
-    _MT("C", 15, 12, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
+    _MT("c", 10, 6, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
+    _MT("C", 15, 6, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
     _MT("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
-    _MT(CHAR_DRAGON, 40, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"),  # Dragon
-    _MT("e", 1, -12, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained!"),  # Erebus
-    _MT("f", 30, 12, effect=EFFECT_FIRE),  # Firebird
-    _MT(CHAR_FIRE_DRAKE, 60, 12, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"),  # Fire Drake
+    _MT(CHAR_DRAGON, 40, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"),  # Dragon
+    _MT("e", 1, -6, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained!"),  # Erebus
+    _MT(CHAR_FIRE_DRAKE, 60, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"),  # Fire Drake
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
-    _MT("h", 999, 12),  # High elf
+    _MT("h", 999, 6),  # High elf
     _MT("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined!"),  # Nomicon
     _MT("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined!"),  # Ocular
     _MT("p", 0, 0, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined!"),  # Pegasus
-    _MT("X", 1, 12, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
+    _MT("X", 1, 6, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
 ]
 
 m: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
@@ -204,8 +198,6 @@ MONSTER_LEVEL_GAUGE1: List[MonsterTribe] = [
     m["b"],
     m["c"],
     m["d"],
-    m["f"],
-    m["g"],
 ]
 
 MONSTER_LEVEL_GAUGE2: List[MonsterTribe] = [
@@ -220,7 +212,7 @@ MONSTER_SPAWN_CONFIGS_ST1: StageConfig = StageConfig(
     [
         _MSC(m["a"], 30),
         _MSC(m["A"], 1),
-        _MSC(m["b"], 5),
+        _MSC(m["b"], 15),
         _MSC(m["c"], 3),
         _MSC(m["d"], 4),
         _MSC(m[CHAR_DRAGON], 1),
@@ -229,8 +221,8 @@ MONSTER_SPAWN_CONFIGS_ST1: StageConfig = StageConfig(
         _MSC(m["p"], 0.7),
     ],
     [
-        _MSC(m["a"], 25),
-        _MSC(m["b"], 5),
+        _MSC(m["a"], 2),
+        _MSC(m["b"], 4),
         _MSC(m["c"], 4),
         _MSC(m["d"], 4),
     ],
@@ -242,14 +234,12 @@ MONSTER_SPAWN_CONFIGS_ST2: StageConfig = StageConfig(
     [
         _MSC(m["a"], 25),
         _MSC(m["A"], 2),
-        _MSC(m["b"], 4),
-        _MSC(m["B"], 4),
+        _MSC(m["b"], 20),
         _MSC(m["c"], 4),
         _MSC(m["C"], 1),
         _MSC(m["d"], 4),
         _MSC(m[CHAR_FIRE_DRAKE], 1),
         _MSC(m["e"], 1),
-        _MSC(m["f"], 0.7),
         _MSC(m["g"], 0.7),
         _MSC(m["h"], 1),
         _MSC(m["X"], 0.7),
@@ -259,12 +249,10 @@ MONSTER_SPAWN_CONFIGS_ST2: StageConfig = StageConfig(
     ],
     [
         _MSC(m["a"], 2),
-        _MSC(m["b"], 3),
-        _MSC(m["B"], 3),
+        _MSC(m["b"], 4),
         _MSC(m["c"], 2),
         _MSC(m["e"], 4),
-        _MSC(m["f"], 8),
-        _MSC(m["g"], 8),
+        _MSC(m["g"], 4),
         _MSC(m["X"], 8),
     ],
     80

@@ -5,7 +5,7 @@ import math
 import sys
 import time
 
-from arlq.defs import FIRE_OFFSETS, ROCK_SPREAD_OFFSETS
+from arlq.defs import ROCK_SPREAD_OFFSETS
 
 from .__about__ import __version__
 
@@ -170,13 +170,13 @@ def create_field(corridor_h_width: int, corridor_v_width: int, wall_char: str) -
         for tx in range(defs.TILE_NUM_X):
             x1 = tx * (defs.TILE_WIDTH + 1) + 1
             x2 = tx * (defs.TILE_WIDTH + 1) + defs.TILE_WIDTH
-            if (c := c + 3) % 17 < 3:
+            if (c := c + 3) % 17 < 5:
                 field[y1][x1] = wall_char
-            if (c := c + 3) % 17 < 3:
+            if (c := c + 3) % 17 < 5:
                 field[y1][x2] = wall_char
-            if (c := c + 3) % 17 < 3:
+            if (c := c + 3) % 17 < 5:
                 field[y2][x1] = wall_char
-            if (c := c + 3) % 17 < 3:
+            if (c := c + 3) % 17 < 5:
                 field[y2][x2] = wall_char
 
     # Create corridors
@@ -324,10 +324,6 @@ def update_entities(
                     ):
                         if (x + y) % 2 == 0 and field[y][x] in [" ", defs.WALL_CHAR]:
                             field[y][x] = defs.CHAR_CALTROP
-                elif event == defs.EFFECT_FIRE:
-                    for x, y in iterate_offsets(player.x, player.y, FIRE_OFFSETS):
-                        if field[y][x] == defs.WALL_CHAR:
-                            field[y][x] = " "
                 elif event == defs.EFFECT_ROCK_SPREAD:
                     for x, y in iterate_offsets(player.x, player.y, ROCK_SPREAD_OFFSETS):
                         if field[y][x] == " ":

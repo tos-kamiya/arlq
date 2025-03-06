@@ -13,7 +13,7 @@ authors = [
   { name = "Toshihiro Kamiya", email = "kamiya@mbj.nifty.com" },
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
