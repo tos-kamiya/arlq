@@ -3,7 +3,7 @@ from typing import Optional, Tuple, List, Set
 import pygame
 
 from .__about__ import __version__
-from . import defs
+from . import defs as d
 
 # RGB colors corresponding to curses color numbers
 CI_RED = 1
@@ -42,8 +42,8 @@ class PygameUI:
         self.joystick = joystick
 
         # Field dimensions from defs
-        self.field_width = defs.FIELD_WIDTH
-        self.field_height = defs.FIELD_HEIGHT
+        self.field_width = d.FIELD_WIDTH
+        self.field_height = d.FIELD_HEIGHT
 
         # Calculate window dimensions (including status bar area)
         self.window_width = self.field_width * CELL_SIZE_X
@@ -61,7 +61,7 @@ class PygameUI:
 
     def _draw_text(
         self,
-        pos: defs.Point,
+        pos: d.Point,
         text: str,
         color: Tuple[int, int, int],
         bold: bool = False,
@@ -84,8 +84,8 @@ class PygameUI:
     def draw_stage(
         self,
         hours: int,
-        player: defs.Player,
-        entities: List[defs.Entity],
+        player: d.Player,
+        entities: List[d.Entity],
         field: List[List[str]],
         cur_torched: List[List[int]],
         torched: List[List[int]],
@@ -106,8 +106,8 @@ class PygameUI:
         px, py = player.x, player.y
 
         # Draw player's companion if present
-        if player.companion and px + 1 < defs.FIELD_WIDTH:
-            comp_char = defs.COMPANION_TO_ATTR_CHAR[player.companion]
+        if player.companion and px + 1 < d.FIELD_WIDTH:
+            comp_char = d.COMPANION_TO_ATTR_CHAR[player.companion]
             self._draw_text(
                 (px + 1, py),
                 comp_char,
@@ -120,14 +120,14 @@ class PygameUI:
             for x, cell in enumerate(row):
                 pos = x, y
                 if cur_torched[y][x]:
-                    if cell == defs.WALL_CHAR:
+                    if cell == d.WALL_CHAR:
                         self._draw_text(pos, cell, COLOR_MAP[CI_GREEN])
-                    elif cell == defs.CHAR_CALTROP:
+                    elif cell == d.CHAR_CALTROP:
                         self._draw_text(pos, cell, COLOR_MAP[CI_MAGENTA])
                     else:
                         self._draw_text(pos, cell, COLOR_MAP["default"])
                 elif torched[y][x] or show_entities:
-                    if cell == defs.WALL_CHAR:
+                    if cell == d.WALL_CHAR:
                         self._draw_text(pos, cell, COLOR_MAP[CI_GREEN])
                     elif cell == " " and (x + y) % 2 == 1:
                         self._draw_text(pos, ".", self._dim_color(COLOR_MAP["default"]))
@@ -141,17 +141,17 @@ class PygameUI:
         self._draw_text((px, py), "@", COLOR_MAP[CI_YELLOW], bold=True)
 
         # Draw entities (monster and treasures)
-        player_attack = defs.player_attack_by_level(player)
+        player_attack = d.player_attack_by_level(player)
 
         if show_entities:
             for ei, e in enumerate(entities):
                 pos = e.x, e.y
                 ch = None
-                if isinstance(e, defs.Monster):
-                    m: defs.Monster = e
+                if isinstance(e, d.Monster):
+                    m: d.Monster = e
                     ch = m.tribe.char
-                elif isinstance(e, defs.Treasure):
-                    ch = defs.CHAR_TREASURE
+                elif isinstance(e, d.Treasure):
+                    ch = d.CHAR_TREASURE
                 if ch is not None:
                     self._draw_text(pos, ch, self._dim_color(COLOR_MAP["default"]))
 
@@ -159,8 +159,8 @@ class PygameUI:
             pos = e.x, e.y
             if torched[e.y][e.x] == 0 or pos == (px, py):
                 continue
-            if isinstance(e, defs.Monster):
-                m: defs.Monster = e
+            if isinstance(e, d.Monster):
+                m: d.Monster = e
                 ch = m.tribe.char
                 if ch not in encountered_types:
                     if not show_entities:
@@ -168,17 +168,17 @@ class PygameUI:
                         self._draw_text(pos, ch, COLOR_MAP["default"], bold=True)
                 else:
                     if m.tribe.level <= player_attack:
-                        if m.tribe.effect == defs.EFFECT_UNLOCK_TREASURE:
+                        if m.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
                             ci = CI_YELLOW
                         else:
                             ci = CI_BLUE
                     else:
                         ci = CI_RED
                     self._draw_text(pos, ch, COLOR_MAP[ci], bold=True)
-            elif isinstance(e, defs.Treasure):
-                t: defs.Treasure = e
+            elif isinstance(e, d.Treasure):
+                t: d.Treasure = e
                 if t.encounter_type in encountered_types:
-                    self._draw_text(pos, defs.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], bold=True)
+                    self._draw_text(pos, d.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], bold=True)
 
         # Draw the status bar
         self.draw_status_bar(hours, player, stage_num, message, extra_keys)
@@ -189,7 +189,7 @@ class PygameUI:
     def draw_status_bar(
         self,
         hours: int,
-        player: defs.Player,
+        player: d.Player,
         stage_num: int,
         message: Optional[str],
         extra_keys: bool,
@@ -197,20 +197,20 @@ class PygameUI:
         """
         Draws the status bar at the bottom of the screen showing level, HP, progress bar, etc.
         """
-        if player.item == defs.ITEM_SWORD_X1_5:
+        if player.item == d.ITEM_SWORD_X1_5:
             level_str = "LVL: %d x1.5" % player.level
             item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-        elif player.item == defs.ITEM_SWORD_CURSED:
+        elif player.item == d.ITEM_SWORD_CURSED:
             level_str = "LVL: %d x3" % player.level
             item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-        elif player.item == defs.ITEM_POISONED:
+        elif player.item == d.ITEM_POISONED:
             level_str = "LVL: %d /3" % player.level
             item_str = "+%s(%s)" % (player.item, player.item_taken_from)
         else:
             level_str = "LVL: %d" % player.level
             item_str = ""
 
-        beatable = defs.get_max_beatable_monster_tribe(player)
+        beatable = d.get_max_beatable_monster_tribe(player)
         status_parts = []
         if stage_num != 0:
             status_parts.append("ST: %d" % stage_num)
@@ -231,7 +231,7 @@ class PygameUI:
         bar_width = bar_cells * CELL_SIZE_X
         bar_height = CELL_SIZE_Y // 2
         y_offset = self.field_height * CELL_SIZE_Y + (CELL_SIZE_Y - bar_height) // 2
-        progress_ratio = player.lp / defs.LP_MAX
+        progress_ratio = player.lp / d.LP_MAX
         fill_width = int(bar_width * progress_ratio)
         food_color = COLOR_MAP[CI_RED] if player.lp < 20 else COLOR_MAP["default"]
 
@@ -323,7 +323,7 @@ class PygameUI:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
         """
         # Determine the number of stages from defs
-        num_stages = len(defs.STAGE_TO_MONSTER_SPAWN_CONFIGS)
+        num_stages = len(d.STAGE_TO_MONSTER_SPAWN_CONFIGS)
         assert num_stages <= 9
 
         # Build options list; index 0 is "Quit"

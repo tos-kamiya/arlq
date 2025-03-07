@@ -5,15 +5,13 @@ import math
 import sys
 import time
 
-from arlq.defs import ROCK_SPREAD_OFFSETS
-
 from .__about__ import __version__
 
 from .utils import rand
-from . import defs
+from . import defs as d
 
 
-def generate_maze(width: int, height: int) -> Tuple[List[defs.Edge], defs.Point, defs.Point]:
+def generate_maze(width: int, height: int) -> Tuple[List[d.Edge], d.Point, d.Point]:
     # Returns a list of neighboring points given a point p
     def neighbor_points(p):
         x, y = p
@@ -64,28 +62,35 @@ def generate_maze(width: int, height: int) -> Tuple[List[defs.Edge], defs.Point,
     return edges, first_point, last_point
 
 
-def place_to_tile(x: int, y: int) -> defs.Point:
-    return (x - 1) // (defs.TILE_WIDTH + 1), (y - 1) // (defs.TILE_HEIGHT)
+def place_to_tile(x: int, y: int) -> d.Point:
+    return (x - 1) // (d.TILE_WIDTH + 1), (y - 1) // (d.TILE_HEIGHT)
 
 
-def tile_to_place_range(x: int, y: int) -> Tuple[defs.Point, defs.Point]:
-    lt = (x * (defs.TILE_WIDTH + 1) + 1, y * (defs.TILE_HEIGHT + 1) + 1)
-    rb = (lt[0] + defs.TILE_WIDTH, lt[1] + defs.TILE_HEIGHT)
+def tile_to_place_range(x: int, y: int) -> Tuple[d.Point, d.Point]:
+    lt = (x * (d.TILE_WIDTH + 1) + 1, y * (d.TILE_HEIGHT + 1) + 1)
+    rb = (lt[0] + d.TILE_WIDTH, lt[1] + d.TILE_HEIGHT)
     return lt, rb
 
 
-def find_random_place(entities: List[defs.Entity], field: List[List[str]], distance: int = 1) -> defs.Point:
+def find_random_place(entities: List[d.Entity], field: List[List[str]], distance: int = 1) -> d.Point:
     places = [(e.x, e.y) for e in entities]
     while True:
-        x = rand.randrange(defs.FIELD_WIDTH - 2) + 1
-        y = rand.randrange(defs.FIELD_HEIGHT - 2) + 1
-        if all(c == " " for c in field[y][x - 1 : x + 1 + 1]) and not any(  # both left and right cells are spaces (not walls)
+        x = rand.randrange(d.FIELD_WIDTH - 2) + 1
+        y = rand.randrange(d.FIELD_HEIGHT - 2) + 1
+        if all(
+            c == " " for c in field[y][x - 1 : x + 1 + 1]
+        ) and not any(  # both left and right cells are spaces (not walls)
             abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places
         ):
             return x, y
 
 
-def spawn_monsters(entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]], spawn_configs: List[defs.MonsterSpawnConfig]) -> None:
+def spawn_monsters(
+    entities: List[d.Entity],
+    field: List[List[str]],
+    torched: List[List[int]],
+    spawn_configs: List[d.MonsterSpawnConfig],
+) -> None:
     """
     Spawns monsters on the field based on the provided spawn configurations.
 
@@ -102,13 +107,18 @@ def spawn_monsters(entities: List[defs.Entity], field: List[List[str]], torched:
             population = 1 if rand.randrange(100) / 100 < population else 0
         for _ in range(population):
             x, y = find_random_place(entities, field, distance=2)
-            m = defs.Monster(x, y, config.tribe)
+            m = d.Monster(x, y, config.tribe)
             entities.append(m)
             # Mark the new monster's position as unvisited (or hidden).
             torched[y][x] = 0
 
 
-def respawn_monster(entities: List[defs.Entity], field: List[List[str]], torched: List[List[int]], spawn_configs: List[defs.MonsterSpawnConfig]) -> None:
+def respawn_monster(
+    entities: List[d.Entity],
+    field: List[List[str]],
+    torched: List[List[int]],
+    spawn_configs: List[d.MonsterSpawnConfig],
+) -> None:
     """
     Respawns a single monster on the field based on the spawn configurations.
 
@@ -128,15 +138,17 @@ def respawn_monster(entities: List[defs.Entity], field: List[List[str]], torched
     for config in spawn_configs:
         if config.tribe.char == chosen_char:
             x, y = find_random_place(entities, field, distance=2)
-            m = defs.Monster(x, y, config.tribe)
+            m = d.Monster(x, y, config.tribe)
             entities.append(m)
             # Mark the new monster's position as unvisited (or hidden).
             torched[y][x] = 0
             break
 
 
-def create_field(corridor_h_width: int, corridor_v_width: int, wall_char: str) -> Tuple[List[List[str]], defs.Point, defs.Point]:
-    def find_empty_cell(field: List[List[str]], left_top: defs.Point, right_bottom: defs.Point) -> defs.Point:
+def create_field(
+    corridor_h_width: int, corridor_v_width: int, wall_char: str
+) -> Tuple[List[List[str]], d.Point, d.Point]:
+    def find_empty_cell(field: List[List[str]], left_top: d.Point, right_bottom: d.Point) -> d.Point:
         assert left_top[0] < right_bottom[0]
         assert left_top[1] < right_bottom[1]
 
@@ -146,30 +158,30 @@ def create_field(corridor_h_width: int, corridor_v_width: int, wall_char: str) -
             if field[y][x] == " ":
                 return x, y
 
-    field: List[List[str]] = [[" " for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
+    field: List[List[str]] = [[" " for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
 
     # Create walls
-    for ty in range(defs.TILE_NUM_Y + 1):
-        y = ty * (defs.TILE_HEIGHT + 1)
-        for x in range(0, defs.FIELD_WIDTH):
+    for ty in range(d.TILE_NUM_Y + 1):
+        y = ty * (d.TILE_HEIGHT + 1)
+        for x in range(0, d.FIELD_WIDTH):
             field[y][x] = wall_char
-    for tx in range(defs.TILE_NUM_X + 1):
-        x = tx * (defs.TILE_WIDTH + 1)
-        for y in range(0, defs.FIELD_HEIGHT):
+    for tx in range(d.TILE_NUM_X + 1):
+        x = tx * (d.TILE_WIDTH + 1)
+        for y in range(0, d.FIELD_HEIGHT):
             field[y][x] = wall_char
-    for ty in range(defs.TILE_NUM_Y + 1):
-        y = ty * (defs.TILE_HEIGHT + 1)
-        for tx in range(defs.TILE_NUM_X + 1):
-            x = tx * (defs.TILE_WIDTH + 1)
+    for ty in range(d.TILE_NUM_Y + 1):
+        y = ty * (d.TILE_HEIGHT + 1)
+        for tx in range(d.TILE_NUM_X + 1):
+            x = tx * (d.TILE_WIDTH + 1)
             field[y][x] = wall_char
 
     c = rand.randrange(17)
-    for ty in range(defs.TILE_NUM_Y):
-        y1 = ty * (defs.TILE_HEIGHT + 1) + 1
-        y2 = ty * (defs.TILE_HEIGHT + 1) + defs.TILE_HEIGHT
-        for tx in range(defs.TILE_NUM_X):
-            x1 = tx * (defs.TILE_WIDTH + 1) + 1
-            x2 = tx * (defs.TILE_WIDTH + 1) + defs.TILE_WIDTH
+    for ty in range(d.TILE_NUM_Y):
+        y1 = ty * (d.TILE_HEIGHT + 1) + 1
+        y2 = ty * (d.TILE_HEIGHT + 1) + d.TILE_HEIGHT
+        for tx in range(d.TILE_NUM_X):
+            x1 = tx * (d.TILE_WIDTH + 1) + 1
+            x2 = tx * (d.TILE_WIDTH + 1) + d.TILE_WIDTH
             if (c := c + 3) % 17 < 5:
                 field[y1][x1] = wall_char
             if (c := c + 3) % 17 < 5:
@@ -180,20 +192,20 @@ def create_field(corridor_h_width: int, corridor_v_width: int, wall_char: str) -
                 field[y2][x2] = wall_char
 
     # Create corridors
-    edges, first_p, last_p = generate_maze(defs.TILE_NUM_X, defs.TILE_NUM_Y)
+    edges, first_p, last_p = generate_maze(d.TILE_NUM_X, d.TILE_NUM_Y)
     for edge in edges:
         (x1, y1), (x2, y2) = sorted(edge)
         assert x1 <= x2
         assert y1 <= y2
         if y1 == y2:
-            d = rand.randrange(defs.TILE_HEIGHT + 1 - corridor_h_width) + 1
+            offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
             for y in range(corridor_h_width):
-                field[y1 * (defs.TILE_HEIGHT + 1) + d + y][x2 * (defs.TILE_WIDTH + 1)] = " "
+                field[y1 * (d.TILE_HEIGHT + 1) + offset + y][x2 * (d.TILE_WIDTH + 1)] = " "
         else:
             assert x1 == x2
-            d = rand.randrange(defs.TILE_WIDTH + 1 - corridor_v_width) + 1
+            offset = rand.randrange(d.TILE_WIDTH + 1 - corridor_v_width) + 1
             for x in range(corridor_v_width):
-                field[y2 * (defs.TILE_HEIGHT + 1)][x1 * (defs.TILE_WIDTH + 1) + d + x] = " "
+                field[y2 * (d.TILE_HEIGHT + 1)][x1 * (d.TILE_WIDTH + 1) + offset + x] = " "
 
     r = tile_to_place_range(*first_p)
     first_p = find_empty_cell(field, r[0], r[1])
@@ -203,53 +215,62 @@ def create_field(corridor_h_width: int, corridor_v_width: int, wall_char: str) -
 
 
 def update_torched(torched: List[List[int]], added: List[List[int]]) -> None:
-    for y in range(defs.FIELD_HEIGHT):
-        for x in range(defs.FIELD_WIDTH):
+    for y in range(d.FIELD_HEIGHT):
+        for x in range(d.FIELD_WIDTH):
             torched[y][x] += added[y][x]
 
 
-def iterate_ellipse_points(center_x: int, center_y: int, radius: int, width_expansion_ratio: float, except_for_center: bool = False, except_for_entities: Optional[List[defs.Entity]] = None):
+def iterate_ellipse_points(
+    center_x: int,
+    center_y: int,
+    radius: int,
+    width_expansion_ratio: float,
+    except_for_center: bool = False,
+    except_for_entities: Optional[List[d.Entity]] = None,
+):
     entity_coordinates = set((e.x, e.y) for e in except_for_entities) if except_for_entities else set()
     for dy in range(-radius, radius + 1):
         y = center_y + dy
-        if 0 <= y < defs.FIELD_HEIGHT:
+        if 0 <= y < d.FIELD_HEIGHT:
             w = int(math.sqrt((radius * width_expansion_ratio) ** 2 - dy**2) + 0.5)
             for dx in range(-w, w + 1):
                 x = center_x + dx
-                if 0 <= x < defs.FIELD_WIDTH:
+                if 0 <= x < d.FIELD_WIDTH:
                     if except_for_center and y == center_y and x == center_x:
                         continue
                     if (x, y) not in entity_coordinates:
                         yield x, y
 
 
-def iterate_offsets(center_x: int, center_y: int, offsets: List[defs.Point], except_for_entities: Optional[List[defs.Entity]] = None):
+def iterate_offsets(
+    center_x: int, center_y: int, offsets: List[d.Point], except_for_entities: Optional[List[d.Entity]] = None
+):
     entity_coordinates = set((e.x, e.y) for e in except_for_entities) if except_for_entities else set()
     for dx, dy in offsets:
         x = center_x + dx
         y = center_y + dy
-        if 0 <= x < defs.FIELD_WIDTH and 0 <= y < defs.FIELD_HEIGHT:
+        if 0 <= x < d.FIELD_WIDTH and 0 <= y < d.FIELD_HEIGHT:
             if (x, y) not in entity_coordinates:
                 yield x, y
 
 
-def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
-    torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
+def get_torched(player: d.Player, torch_radius: int) -> List[List[int]]:
+    torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
 
-    if player.companion == defs.COMPANION_OCULAR:
-        torch_radius += defs.OCULAR_TORCH_EXTENSION
+    if player.companion == d.COMPANION_OCULAR:
+        torch_radius += d.OCULAR_TORCH_EXTENSION
 
-    for x, y in iterate_ellipse_points(player.x, player.y, torch_radius, defs.TORCH_WIDTH_EXPANSION_RATIO):
+    for x, y in iterate_ellipse_points(player.x, player.y, torch_radius, d.TORCH_WIDTH_EXPANSION_RATIO):
         torched[y][x] = 1
 
     return torched
 
 
 def update_entities(
-    move_direction: defs.Point,
+    move_direction: d.Point,
     field: List[List[str]],
-    player: defs.Player,
-    entities: List[defs.Entity],
+    player: d.Player,
+    entities: List[d.Entity],
     encountered_types: Set[str],
 ) -> Tuple[Optional[str], Optional[Tuple[int, str]]]:
     event = None
@@ -258,19 +279,19 @@ def update_entities(
     # player move
     dx, dy = move_direction
 
-    if 0 <= (nx := player.x + dx) < defs.FIELD_WIDTH and 0 <= (ny := player.y + dy) < defs.FIELD_HEIGHT:
+    if 0 <= (nx := player.x + dx) < d.FIELD_WIDTH and 0 <= (ny := player.y + dy) < d.FIELD_HEIGHT:
         c = field[ny][nx]
-        if c in [" ", defs.CHAR_CALTROP]:
+        if c in (" ", d.CHAR_CALTROP):
             player.x, player.y = nx, ny
         elif (
-            player.companion == defs.COMPANION_PEGASUS
-            and 0 <= (n2x := player.x + dx * defs.PEGASUS_STEP_X) < defs.FIELD_WIDTH
-            and 0 <= (n2y := player.y + dy * defs.PEGASUS_STEP_Y) < defs.FIELD_HEIGHT
-            and field[n2y][n2x] in [" ", defs.CHAR_CALTROP]
+            player.companion == d.COMPANION_PEGASUS
+            and 0 <= (n2x := player.x + dx * d.PEGASUS_STEP_X) < d.FIELD_WIDTH
+            and 0 <= (n2y := player.y + dy * d.PEGASUS_STEP_Y) < d.FIELD_HEIGHT
+            and field[n2y][n2x] in (" ", d.CHAR_CALTROP)
         ):
             player.x, player.y = n2x, n2y
             player.karma += 1
-        elif player.item in [defs.ITEM_SWORD_X1_5, defs.ITEM_SWORD_CURSED] and c == defs.WALL_CHAR:
+        elif player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) and c == d.WALL_CHAR:
             # break the wall
             player.x, player.y = nx, ny
             field[player.y][player.x] = " "
@@ -278,15 +299,15 @@ def update_entities(
             player.item_taken_from = ""
 
     # Caltrop damage
-    if field[player.y][player.x] == defs.CHAR_CALTROP:
-        player.lp -= defs.CALTROP_LP_DAMAGE
+    if field[player.y][player.x] == d.CHAR_CALTROP:
+        player.lp -= d.CALTROP_LP_DAMAGE
         field[player.y][player.x] = " "
 
     # Find encountered entity
-    enc_entity_infos: List[Tuple[int, defs.Entity]] = []
-    sur_entity_infos: List[Tuple[int, defs.Entity]] = []
+    enc_entity_infos: List[Tuple[int, d.Entity]] = []
+    sur_entity_infos: List[Tuple[int, d.Entity]] = []
     for i, e in enumerate(entities):
-        if not isinstance(e, defs.Player):
+        if not isinstance(e, d.Player):
             dx = abs(e.x - player.x)
             dy = abs(e.y - player.y)
             if dx == 0 and dy == 0:
@@ -297,44 +318,50 @@ def update_entities(
 
     # Actions & events (combats, state changes, etc)
     for eei, ee in enc_entity_infos:
-        if isinstance(ee, defs.Treasure):
-            t: defs.Treasure = ee
+        if isinstance(ee, d.Treasure):
+            t: d.Treasure = ee
             if t.encounter_type in encountered_types:
                 message = (10, ">> Treasures collected! <<")
                 del entities[eei]
-                event = defs.EVENT_GOT_TREASURE
-        elif isinstance(ee, defs.Monster):
-            m: defs.Monster = ee
+                event = d.EVENT_GOT_TREASURE
+        elif isinstance(ee, d.Monster):
+            m: d.Monster = ee
             encountered_types.add(m.tribe.char)
-            player_attack = defs.player_attack_by_level(player)
+            player_attack = d.player_attack_by_level(player)
 
             if player_attack < m.tribe.level:
                 player.x, player.y = find_random_place(entities, field, distance=2)
                 player.item = ""
                 player.item_taken_from = ""
-                player.lp -= defs.LP_RESPAWN_COST
-                player.lp = max(defs.LP_RESPAWN_MIN, min(player.lp, defs.LP_INIT))
+                player.lp -= d.LP_RESPAWN_COST
+                player.lp = max(d.LP_RESPAWN_MIN, min(player.lp, d.LP_INIT))
                 message = (3, "-- Respawned!")
             else:
                 event = m.tribe.effect
                 player.level += 1
-                if event == defs.EFFECT_SPECIAL_EXP:
+                if event == d.EFFECT_SPECIAL_EXP:
                     player.level += 9
-                elif event == defs.EFFECT_UNLOCK_TREASURE:
-                    encountered_types.add(defs.CHAR_TREASURE + m.tribe.char)  # Unlock the treasure
-                elif event == defs.EFFECT_CALTROP_SPREAD:
+                elif event == d.EFFECT_UNLOCK_TREASURE:
+                    encountered_types.add(d.CHAR_TREASURE + m.tribe.char)  # Unlock the treasure
+                elif event == d.EFFECT_CALTROP_SPREAD:
                     for x, y in iterate_ellipse_points(
-                        player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, 
-                        except_for_center=True, except_for_entities=entities
+                        player.x,
+                        player.y,
+                        d.CALTROP_SPREAD_RADIUS,
+                        d.CALTROP_WIDTH_EXPANSION_RATIO,
+                        except_for_center=True,
+                        except_for_entities=entities,
                     ):
-                        if (x + y) % 2 == 0 and field[y][x] in [" ", defs.WALL_CHAR]:
-                            field[y][x] = defs.CHAR_CALTROP
-                elif event == defs.EFFECT_ROCK_SPREAD:
-                    for x, y in iterate_offsets(player.x, player.y, ROCK_SPREAD_OFFSETS, except_for_entities=entities):
+                        if (x + y) % 2 == 0 and field[y][x] in (" ", d.WALL_CHAR):
+                            field[y][x] = d.CHAR_CALTROP
+                elif event == d.EFFECT_ROCK_SPREAD:
+                    for x, y in iterate_offsets(
+                        player.x, player.y, d.ROCK_SPREAD_OFFSETS, except_for_entities=entities
+                    ):
                         if field[y][x] == " ":
-                            field[y][x] = defs.WALL_CHAR
+                            field[y][x] = d.WALL_CHAR
 
-                player.lp = max(1, min(defs.LP_MAX, player.lp + m.tribe.feed))
+                player.lp = max(1, min(d.LP_MAX, player.lp + m.tribe.feed))
 
                 if m.tribe.companion:
                     player.companion = m.tribe.companion
@@ -346,22 +373,22 @@ def update_entities(
                 player.item = m.tribe.item
                 player.item_taken_from = m.tribe.char
 
-                if player.item == defs.ITEM_SWORD_CURSED:
+                if player.item == d.ITEM_SWORD_CURSED:
                     player.lp = (player.lp + 1) // 2
 
                 if m.tribe.event_message:
                     message = (3, m.tribe.event_message)
 
-    if player.companion == defs.COMPANION_NOMICON:
+    if player.companion == d.COMPANION_NOMICON:
         for eei, ee in sur_entity_infos:
-            if isinstance(ee, defs.Monster):
-                m: defs.Monster = ee
+            if isinstance(ee, d.Monster):
+                m: d.Monster = ee
                 if m.tribe.char not in encountered_types:
                     encountered_types.add(m.tribe.char)
                     player.karma += 1
 
     if player.companion != "":
-        if player.karma >= defs.COMPANION_KARMA_LIMIT:
+        if player.karma >= d.COMPANION_KARMA_LIMIT:
             message = (3, "-- The companion vanishes.")
             player.companion = ""
 
@@ -378,41 +405,41 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         stage_num = r
 
     # Configuration
-    stage_config = defs.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
+    stage_config = d.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
 
     # Initialize field
-    field, first_p, last_p = create_field(defs.CORRIDOR_H_WIDTH, defs.CORRIDOR_V_WIDTH, defs.WALL_CHAR)
+    field, first_p, last_p = create_field(d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH, d.WALL_CHAR)
 
     # Initialize view/ui components
     encountered_types: Set[str] = set()
-    cur_torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
-    torched: List[List[int]] = [[0 for _ in range(defs.FIELD_WIDTH)] for _ in range(defs.FIELD_HEIGHT)]
+    cur_torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
+    torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
 
     # Initialize entities
-    entities: List[defs.Entity] = []
+    entities: List[d.Entity] = []
 
     # 1. treasure
     treasure_count = 0
     for ms in stage_config.init_spawn_cfg:
         mt = ms.tribe
-        if mt.effect == defs.EFFECT_UNLOCK_TREASURE:
+        if mt.effect == d.EFFECT_UNLOCK_TREASURE:
             assert ms.population == 1
             assert treasure_count == 0
             treasure_count += 1
             x, y = last_p[0], last_p[1]
-            treasure: defs.Treasure = defs.Treasure(x, y, defs.CHAR_TREASURE + mt.char)
+            treasure: d.Treasure = d.Treasure(x, y, d.CHAR_TREASURE + mt.char)
             entities.append(treasure)
     assert treasure_count == 1
 
     # 2. player
-    player: defs.Player = defs.Player(first_p[0], first_p[1], 1, defs.LP_INIT)
+    player: d.Player = d.Player(first_p[0], first_p[1], 1, d.LP_INIT)
     entities.append(player)
 
     # 3. monsters
     spawn_monsters(entities, field, torched, stage_config.init_spawn_cfg)
 
     # Initialize stage state
-    torch_radius = defs.TORCH_RADIUS
+    torch_radius = d.TORCH_RADIUS
     hours: int = -1
     move_direction = None
 
@@ -435,7 +462,18 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
                 message = (-1, "")
             else:
                 message = (remaining_tick, message[1])
-        ui.draw_stage(hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, stage_num=stage_num, message=message[1])
+        ui.draw_stage(
+            hours,
+            player,
+            entities,
+            field,
+            cur_torched,
+            torched,
+            encountered_types,
+            show_entities,
+            stage_num=stage_num,
+            message=message[1],
+        )
 
         move_direction = ui.input_direction()
         if move_direction is None:
@@ -446,7 +484,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         if m is not None:
             message = m
 
-        if e == defs.EVENT_GOT_TREASURE:
+        if e == d.EVENT_GOT_TREASURE:
             break
 
         if hours % stage_config.respawn_rate == 0:
@@ -562,17 +600,17 @@ def main():
         args.seed = int(time.time()) % 100000
 
     if args.large_field:
-        defs.TILE_NUM_Y += 1
-        defs.FIELD_HEIGHT = (defs.TILE_HEIGHT + 1) * defs.TILE_NUM_Y + 1
+        d.TILE_NUM_Y += 1
+        d.FIELD_HEIGHT = (d.TILE_HEIGHT + 1) * d.TILE_NUM_Y + 1
 
     if args.large_torch:
-        defs.TORCH_RADIUS += 1
+        d.TORCH_RADIUS += 1
     elif args.small_torch:
-        defs.TORCH_RADIUS -= 1
+        d.TORCH_RADIUS -= 1
 
     if args.narrower_corridors:
-        defs.CORRIDOR_H_WIDTH -= 1
-        defs.CORRIDOR_V_WIDTH -= 1
+        d.CORRIDOR_H_WIDTH -= 1
+        d.CORRIDOR_V_WIDTH -= 1
 
     rand.set_seed(args.seed)
     seed_str = generate_seed_string(args)
