@@ -144,42 +144,43 @@ def curses_draw_status_bar(
 
     beatable = d.get_max_beatable_monster_tribe(player)
 
-    x = 0
-    buf = []
-    if stage_num != 0:
-        buf.append("ST: %d" % stage_num)
-    buf.append("HRS: %d" % hours)
-    buf.append(level_str)
-    if beatable:
-        buf.append(">%s" % ",".join(b.char for b in beatable))
-    buf.append("FOOD: %d" % player.lp)
-    s = "  ".join(buf)
-    stdscr.addstr(d.FIELD_HEIGHT, x, s)
-    x += len(s)
+    x, y = 0, d.FIELD_HEIGHT
+    def addstr_w_len(s, attr=None):
+        nonlocal x, y
+        if attr is None:
+            stdscr.addstr(y, x, s)
+        else:
+            stdscr.addstr(y, x, s, attr)
+        x += len(s)
 
-    x += 1
+    if stage_num != 0:
+        addstr_w_len("ST: %d  " % stage_num)
+    addstr_w_len("HRS: %d  " % hours)
+
+    addstr_w_len(level_str + "  ")
+    addstr_w_len(item_str + "  ")
+
+    if beatable:
+        addstr_w_len(">%s  " % ",".join(b.char for b in beatable))
+
+    hp_color = curses.color_pair(CI_RED) if player.lp < 20 else None
+    addstr_w_len("HP: ")
+    addstr_w_len("%d " % player.lp, hp_color)
     bar_len = 4
     s = braille_progress_bar(player.lp, d.LP_MAX, bar_len)
-    if player.lp < 20:
-        stdscr.addstr(d.FIELD_HEIGHT, x, s, curses.color_pair(CI_RED))
-    else:
-        stdscr.addstr(d.FIELD_HEIGHT, x, s)
-    stdscr.addstr(d.FIELD_HEIGHT, x + 1 + bar_len, "|")
-    x += 1 + len(s) + 1
+    addstr_w_len("|")
+    addstr_w_len(s, hp_color)
+    addstr_w_len("|  ")
 
-    x += 2
-    buf = []
-    buf.append(item_str)
     if extra_keys:
-        buf.append("/ [q]uit/[m]ap/[s]eed")
+        addstr_w_len("/ [q]uit/[m]ap/[s]eed")
     else:
-        buf.append("/ [q]uit")
-    s = "  ".join(buf)
-    stdscr.addstr(d.FIELD_HEIGHT, x, s)
-    x += len(s)
+        addstr_w_len("/ [q]uit")
 
+    y += 1
+    x = 0
     if message:
-        stdscr.addstr(d.FIELD_HEIGHT + 1, 0, message, curses.A_BOLD)
+        addstr_w_len(message, curses.A_BOLD)
 
 
 def key_to_dir(key: str) -> Optional[d.Point]:

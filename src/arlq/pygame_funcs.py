@@ -195,7 +195,9 @@ class PygameUI:
         extra_keys: bool,
     ):
         """
-        Draws the status bar at the bottom of the screen showing level, HP, progress bar, etc.
+        Draws the status bar at the bottom of the screen similar to the curses version.
+        This includes stage, hours, level (with item modifiers), item info,
+        beatable monsters, HP value, and a rectangular HP bar (using original pygame drawing).
         """
         if player.item == d.ITEM_SWORD_X1_5:
             level_str = "LVL: %d x1.5" % player.level
@@ -211,43 +213,44 @@ class PygameUI:
             item_str = ""
 
         beatable = d.get_max_beatable_monster_tribe(player)
-        status_parts = []
-        if stage_num != 0:
-            status_parts.append("ST: %d" % stage_num)
-        status_parts.append("HRS: %d" % hours)
-        status_parts.append(level_str)
-        if beatable:
-            status_parts.append(">%s" % ",".join(b.char for b in beatable))
-        status_parts.append("LP: %d" % player.lp)
-        status_str = "  ".join(status_parts)
 
-        # Draw status text
-        self._draw_text((0, self.field_height), status_str, COLOR_MAP["default"])
-        text_width, _ = self.font.size(status_str)
+        status_line = ""
+        if stage_num != 0:
+            status_line += "ST: %d  " % stage_num
+        status_line += "HRS: %d  " % hours
+        status_line += level_str + "  "
+        status_line += item_str + "  "
+        if beatable:
+            status_line += ">%s  " % ",".join(b.char for b in beatable)
+        status_line += "HP: "
+
+        self._draw_text((0, self.field_height), status_line, COLOR_MAP["default"])
+        text_width, _ = self.font.size(status_line)
         x_offset = text_width + 10
 
-        # Draw progress bar for player LP
+        hp_str = "%d " % player.lp
+        hp_x_cell = x_offset // CELL_SIZE_X
+        self._draw_text((hp_x_cell, self.field_height), hp_str, COLOR_MAP["default"])
+        hp_width, _ = self.font.size(hp_str)
+        x_offset += hp_width
+
         bar_cells = 4
         bar_width = bar_cells * CELL_SIZE_X
         bar_height = CELL_SIZE_Y // 2
         y_offset = self.field_height * CELL_SIZE_Y + (CELL_SIZE_Y - bar_height) // 2
         progress_ratio = player.lp / d.LP_MAX
         fill_width = int(bar_width * progress_ratio)
-        food_color = COLOR_MAP[CI_RED] if player.lp < 20 else COLOR_MAP["default"]
+        lp_color = COLOR_MAP[CI_RED] if player.lp < 20 else COLOR_MAP["default"]
 
         border_rect = pygame.Rect(x_offset, y_offset, bar_width, bar_height)
         pygame.draw.rect(self.screen, COLOR_MAP["default"], border_rect, 1)
         fill_rect = pygame.Rect(x_offset, y_offset, fill_width, bar_height)
-        pygame.draw.rect(self.screen, food_color, fill_rect)
+        pygame.draw.rect(self.screen, lp_color, fill_rect)
 
         extra = "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
         item_status = "  ".join([item_str, extra])
         item_x_offset = x_offset + bar_width + 10
-        self._draw_text(
-            (item_x_offset // CELL_SIZE_X, self.field_height),
-            item_status,
-            COLOR_MAP["default"],
-        )
+        self._draw_text((item_x_offset // CELL_SIZE_X, self.field_height), item_status, COLOR_MAP["default"])
 
         if message:
             self._draw_text((0, self.field_height + 1), message, COLOR_MAP["default"], bold=True)
