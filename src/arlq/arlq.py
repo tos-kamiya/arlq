@@ -208,7 +208,8 @@ def update_torched(torched: List[List[int]], added: List[List[int]]) -> None:
             torched[y][x] += added[y][x]
 
 
-def iterate_ellipse_points(center_x: int, center_y: int, radius: int, width_expansion_ratio: float, except_for_center: bool = False):
+def iterate_ellipse_points(center_x: int, center_y: int, radius: int, width_expansion_ratio: float, except_for_center: bool = False, except_for_entities: Optional[List[defs.Entity]] = None):
+    entity_coordinates = set((e.x, e.y) for e in except_for_entities) if except_for_entities else set()
     for dy in range(-radius, radius + 1):
         y = center_y + dy
         if 0 <= y < defs.FIELD_HEIGHT:
@@ -218,15 +219,18 @@ def iterate_ellipse_points(center_x: int, center_y: int, radius: int, width_expa
                 if 0 <= x < defs.FIELD_WIDTH:
                     if except_for_center and y == center_y and x == center_x:
                         continue
-                    yield x, y
+                    if (x, y) not in entity_coordinates:
+                        yield x, y
 
 
-def iterate_offsets(center_x: int, center_y: int, offsets: List[defs.Point]):
+def iterate_offsets(center_x: int, center_y: int, offsets: List[defs.Point], except_for_entities: Optional[List[defs.Entity]] = None):
+    entity_coordinates = set((e.x, e.y) for e in except_for_entities) if except_for_entities else set()
     for dx, dy in offsets:
         x = center_x + dx
         y = center_y + dy
         if 0 <= x < defs.FIELD_WIDTH and 0 <= y < defs.FIELD_HEIGHT:
-            yield x, y
+            if (x, y) not in entity_coordinates:
+                yield x, y
 
 
 def get_torched(player: defs.Player, torch_radius: int) -> List[List[int]]:
@@ -320,12 +324,13 @@ def update_entities(
                     encountered_types.add(defs.CHAR_TREASURE + m.tribe.char)  # Unlock the treasure
                 elif event == defs.EFFECT_CALTROP_SPREAD:
                     for x, y in iterate_ellipse_points(
-                        player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, except_for_center=True
+                        player.x, player.y, defs.CALTROP_SPREAD_RADIUS, defs.CALTROP_WIDTH_EXPANSION_RATIO, 
+                        except_for_center=True, except_for_entities=entities
                     ):
                         if (x + y) % 2 == 0 and field[y][x] in [" ", defs.WALL_CHAR]:
                             field[y][x] = defs.CHAR_CALTROP
                 elif event == defs.EFFECT_ROCK_SPREAD:
-                    for x, y in iterate_offsets(player.x, player.y, ROCK_SPREAD_OFFSETS):
+                    for x, y in iterate_offsets(player.x, player.y, ROCK_SPREAD_OFFSETS, except_for_entities=entities):
                         if field[y][x] == " ":
                             field[y][x] = defs.WALL_CHAR
 
