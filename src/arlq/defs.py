@@ -55,12 +55,18 @@ CALTROP_WIDTH_EXPANSION_RATIO = 1.7
 CALTROP_LP_DAMAGE = 3
 
 ROCK_SPREAD_OFFSETS = [
-    (-3, -3), (3, -3),
-    (-2, -2), (2, -2),
-    (-1, -1), (1, -1),
-    (-1, 1), (1, 1),
-    (-2, 2), (2, 2),
-    (-3, 3), (3, 3),
+    (-3, -3),
+    (3, -3),
+    (-2, -2),
+    (2, -2),
+    (-1, -1),
+    (1, -1),
+    (-1, 1),
+    (1, 1),
+    (-2, 2),
+    (2, 2),
+    (-3, 3),
+    (3, 3),
 ]
 
 CHAR_DRAGON = "D"
@@ -180,9 +186,13 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("c", 10, 6, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
     _MT("C", 15, 6, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
     _MT("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
-    _MT(CHAR_DRAGON, 40, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"),  # Dragon
+    _MT(
+        CHAR_DRAGON, 40, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"
+    ),  # Dragon
     _MT("e", 1, -6, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained!"),  # Erebus
-    _MT(CHAR_FIRE_DRAKE, 60, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"),  # Fire Drake
+    _MT(
+        CHAR_FIRE_DRAKE, 60, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"
+    ),  # Fire Drake
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT("h", 999, 6),  # High elf
     _MT("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined!"),  # Nomicon
@@ -226,7 +236,7 @@ MONSTER_SPAWN_CONFIGS_ST1: StageConfig = StageConfig(
         _MSC(m["c"], 4),
         _MSC(m["d"], 4),
     ],
-    80
+    80,
 )
 
 # Stage 2 spawn configurations.
@@ -255,7 +265,7 @@ MONSTER_SPAWN_CONFIGS_ST2: StageConfig = StageConfig(
         _MSC(m["g"], 4),
         _MSC(m["X"], 8),
     ],
-    80
+    80,
 )
 
 # Mapping stages to their corresponding spawn configurations.

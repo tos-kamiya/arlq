@@ -3,7 +3,7 @@ from typing import List, Optional, Set
 import curses
 
 from .utils import braille_progress_bar
-from . import defs
+from . import defs as d
 
 
 CI_RED = 1
@@ -16,7 +16,7 @@ CI_CYAN = 6
 
 def curses_draw_stage(
     stdscr: curses.window,
-    entities: List[defs.Entity],
+    entities: List[d.Entity],
     field: List[List[str]],
     cur_torched: List[List[int]],
     torched: List[List[int]],
@@ -38,7 +38,7 @@ def curses_draw_stage(
     player, px, py = None, None, None
     # Find the player among the entities
     for e in entities:
-        if isinstance(e, defs.Player):
+        if isinstance(e, d.Player):
             player = e
             px, py = player.x, player.y
     assert player is not None and px is not None and py is not None
@@ -47,14 +47,14 @@ def curses_draw_stage(
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
             if cur_torched[y][x]:
-                if cell == defs.WALL_CHAR:
+                if cell == d.WALL_CHAR:
                     stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
-                elif cell == defs.CHAR_CALTROP:
+                elif cell == d.CHAR_CALTROP:
                     stdscr.addstr(y, x, cell, curses.color_pair(CI_MAGENTA))
                 else:
                     stdscr.addstr(y, x, cell)
             elif torched[y][x] or show_entities:
-                if cell == defs.WALL_CHAR:
+                if cell == d.WALL_CHAR:
                     stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
                 elif cell == " " and (x + y) % 2 == 1:
                     stdscr.addstr(y, x, ".", curses.A_DIM)
@@ -65,23 +65,23 @@ def curses_draw_stage(
                     stdscr.addstr(y, x, ".", curses.A_DIM)
 
     # Draw each entity (monsters and treasures)
-    player_attack = defs.player_attack_by_level(player)
+    player_attack = d.player_attack_by_level(player)
     if show_entities:
         for ei, e in enumerate(entities):
             ch = None
-            if isinstance(e, defs.Monster):
-                m: defs.Monster = e
+            if isinstance(e, d.Monster):
+                m: d.Monster = e
                 ch = m.tribe.char
-            elif isinstance(e, defs.Treasure):
-                ch = defs.CHAR_TREASURE
+            elif isinstance(e, d.Treasure):
+                ch = d.CHAR_TREASURE
             if ch is not None:
                 stdscr.addstr(e.y, e.x, ch, curses.A_DIM)
 
     for ei, e in enumerate(entities):
         if torched[e.y][e.x] == 0 or (e.x, e.y) == (px, py):
             continue
-        if isinstance(e, defs.Monster):
-            m: defs.Monster = e
+        if isinstance(e, d.Monster):
+            m: d.Monster = e
             ch = m.tribe.char
             if ch not in encountered_types:
                 if not show_entities:
@@ -89,29 +89,34 @@ def curses_draw_stage(
                     stdscr.addstr(e.y, e.x, ch, curses.A_BOLD)
             else:
                 if m.tribe.level <= player_attack:
-                    if m.tribe.effect == defs.EFFECT_UNLOCK_TREASURE:
+                    if m.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
                         ci = CI_YELLOW
                     else:
                         ci = CI_BLUE
                 else:
                     ci = CI_RED
                 stdscr.addstr(e.y, e.x, ch, curses.A_BOLD | curses.color_pair(ci))
-        elif isinstance(e, defs.Treasure):
-            t: defs.Treasure = e
+        elif isinstance(e, d.Treasure):
+            t: d.Treasure = e
             if t.encounter_type in encountered_types:
-                stdscr.addstr(e.y, e.x, defs.CHAR_TREASURE, curses.A_BOLD | curses.color_pair(CI_YELLOW))
+                stdscr.addstr(e.y, e.x, d.CHAR_TREASURE, curses.A_BOLD | curses.color_pair(CI_YELLOW))
 
     # Draw the player character
     stdscr.addstr(py, px, "@", curses.A_BOLD | curses.color_pair(CI_YELLOW))
 
     # If the player has a companion, draw it right of the player
-    if player.companion and px + 1 < defs.FIELD_WIDTH:
-        ch = defs.COMPANION_TO_ATTR_CHAR[player.companion]
+    if player.companion and px + 1 < d.FIELD_WIDTH:
+        ch = d.COMPANION_TO_ATTR_CHAR[player.companion]
         stdscr.addstr(py, px + 1, ch, curses.A_DIM)
 
 
 def curses_draw_status_bar(
-    stdscr: curses.window, player: defs.Player, hours: int, stage_num: int = 0, message: Optional[str] = None, extra_keys: bool = False
+    stdscr: curses.window,
+    player: d.Player,
+    hours: int,
+    stage_num: int = 0,
+    message: Optional[str] = None,
+    extra_keys: bool = False,
 ) -> None:
     """
     Draws the status bar at the bottom of the screen. This includes the game hours,
@@ -124,20 +129,20 @@ def curses_draw_status_bar(
         message: An optional message to display.
         extra_keys: Whether to display extra key hints.
     """
-    if player.item == defs.ITEM_SWORD_X1_5:
+    if player.item == d.ITEM_SWORD_X1_5:
         level_str = "LVL: %d x1.5" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-    elif player.item == defs.ITEM_SWORD_CURSED:
+    elif player.item == d.ITEM_SWORD_CURSED:
         level_str = "LVL: %d x3" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-    elif player.item == defs.ITEM_POISONED:
+    elif player.item == d.ITEM_POISONED:
         level_str = "LVL: %d /3" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
     else:
         level_str = "LVL: %d" % player.level
         item_str = ""
 
-    beatable = defs.get_max_beatable_monster_tribe(player)
+    beatable = d.get_max_beatable_monster_tribe(player)
 
     x = 0
     buf = []
@@ -149,17 +154,17 @@ def curses_draw_status_bar(
         buf.append(">%s" % ",".join(b.char for b in beatable))
     buf.append("FOOD: %d" % player.lp)
     s = "  ".join(buf)
-    stdscr.addstr(defs.FIELD_HEIGHT, x, s)
+    stdscr.addstr(d.FIELD_HEIGHT, x, s)
     x += len(s)
 
     x += 1
     bar_len = 4
-    s = braille_progress_bar(player.lp, defs.LP_MAX, bar_len)
+    s = braille_progress_bar(player.lp, d.LP_MAX, bar_len)
     if player.lp < 20:
-        stdscr.addstr(defs.FIELD_HEIGHT, x, s, curses.color_pair(CI_RED))
+        stdscr.addstr(d.FIELD_HEIGHT, x, s, curses.color_pair(CI_RED))
     else:
-        stdscr.addstr(defs.FIELD_HEIGHT, x, s)
-    stdscr.addstr(defs.FIELD_HEIGHT, x + 1 + bar_len, "|")
+        stdscr.addstr(d.FIELD_HEIGHT, x, s)
+    stdscr.addstr(d.FIELD_HEIGHT, x + 1 + bar_len, "|")
     x += 1 + len(s) + 1
 
     x += 2
@@ -170,14 +175,14 @@ def curses_draw_status_bar(
     else:
         buf.append("/ [q]uit")
     s = "  ".join(buf)
-    stdscr.addstr(defs.FIELD_HEIGHT, x, s)
+    stdscr.addstr(d.FIELD_HEIGHT, x, s)
     x += len(s)
 
     if message:
-        stdscr.addstr(defs.FIELD_HEIGHT + 1, 0, message, curses.A_BOLD)
+        stdscr.addstr(d.FIELD_HEIGHT + 1, 0, message, curses.A_BOLD)
 
 
-def key_to_dir(key: str) -> Optional[defs.Point]:
+def key_to_dir(key: str) -> Optional[d.Point]:
     """
     Converts a key string to a directional tuple (dx, dy).
 
@@ -187,13 +192,13 @@ def key_to_dir(key: str) -> Optional[defs.Point]:
     Returns:
         A tuple representing the direction (dx, dy), or None if no valid direction.
     """
-    if key in ["w", "W", "KEY_UP"]:
+    if key in ("w", "W", "KEY_UP"):
         return (0, -1)
-    elif key in ["a", "A", "KEY_LEFT"]:
+    elif key in ("a", "A", "KEY_LEFT"):
         return (-1, 0)
-    elif key in ["s", "S", "KEY_DOWN"]:
+    elif key in ("s", "S", "KEY_DOWN"):
         return (0, 1)
-    elif key in ["d", "D", "KEY_RIGHT"]:
+    elif key in ("d", "D", "KEY_RIGHT"):
         return (1, 0)
     return None
 
@@ -231,10 +236,25 @@ class CursesUI:
         stdscr.keypad(True)
 
         sh, sw = stdscr.getmaxyx()
-        if sh < defs.FIELD_HEIGHT + 2 or sw < defs.FIELD_WIDTH:
-            raise TerminalSizeSmall("Terminal size too small. Minimum size is: %d x %d" % (defs.FIELD_WIDTH, defs.FIELD_HEIGHT + 2))
+        if sh < d.FIELD_HEIGHT + 2 or sw < d.FIELD_WIDTH:
+            raise TerminalSizeSmall(
+                "Terminal size too small. Minimum size is: %d x %d" % (d.FIELD_WIDTH, d.FIELD_HEIGHT + 2)
+            )
 
-    def draw_stage(self, hours, player, entities, field, cur_torched, torched, encountered_types, show_entities, stage_num=0, message=None, extra_keys=False):
+    def draw_stage(
+        self,
+        hours,
+        player,
+        entities,
+        field,
+        cur_torched,
+        torched,
+        encountered_types,
+        show_entities,
+        stage_num=0,
+        message=None,
+        extra_keys=False,
+    ):
         """
         Draws the entire game stage including the status bar.
 
@@ -259,7 +279,7 @@ class CursesUI:
         curses_draw_status_bar(stdscr, player, hours, stage_num=stage_num, message=message, extra_keys=extra_keys)
         stdscr.refresh()
 
-    def input_direction(self) -> Optional[defs.Point]:
+    def input_direction(self) -> Optional[d.Point]:
         """
         Waits for the user's directional input.
 
@@ -307,7 +327,7 @@ class CursesUI:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
         """
 
-        num_stages = len(defs.STAGE_TO_MONSTER_SPAWN_CONFIGS)
+        num_stages = len(d.STAGE_TO_MONSTER_SPAWN_CONFIGS)
         assert num_stages <= 9
 
         options = ["[q]uit"]
