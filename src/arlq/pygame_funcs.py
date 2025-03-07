@@ -371,17 +371,10 @@ class PygameUI:
                         return n
 
             elif event.type == pygame.JOYHATMOTION:
-                # D-pad入力: 上下のみを処理 (自動リピートは不要)
-                hat = event.value  # (x, y)のタプル
-                # pygameでは、上なら (0, 1) で下なら (0, -1) となるため、
-                # 上: current_indexを減算、下: 加算する。
-                if hat[1] == 1:
-                    current_index = (current_index - 1) % len(options)
-                elif hat[1] == -1:
-                    current_index = (current_index + 1) % len(options)
+                hat = event.value  # (x, y)
+                if hat[1] != 0:
+                    current_index = (current_index - hat[1]) % len(options)
 
             elif event.type == pygame.JOYBUTTONDOWN:
-                # ゲームパッドのボタン（例としてボタン0）で選択確定とする
                 if event.button == 0:
                     return current_index
-                # キャンセル（例：ボタン1）など、必要に応じた処理も追加可能
