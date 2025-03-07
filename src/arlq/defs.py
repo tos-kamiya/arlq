@@ -182,7 +182,7 @@ _MT = MonsterTribe
 MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("a", 1, 6),  # Amoeba
     _MT("A", 2, 6, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
-    _MT("b", 5, 20, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
+    _MT("b", 5, 30, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
     _MT("c", 10, 6, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
     _MT("C", 15, 6, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
     _MT("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
@@ -222,7 +222,7 @@ MONSTER_SPAWN_CONFIGS_ST1: StageConfig = StageConfig(
     [
         _MSC(m["a"], 30),
         _MSC(m["A"], 1),
-        _MSC(m["b"], 15),
+        _MSC(m["b"], 12),
         _MSC(m["c"], 3),
         _MSC(m["d"], 4),
         _MSC(m[CHAR_DRAGON], 1),
@@ -244,7 +244,7 @@ MONSTER_SPAWN_CONFIGS_ST2: StageConfig = StageConfig(
     [
         _MSC(m["a"], 25),
         _MSC(m["A"], 2),
-        _MSC(m["b"], 20),
+        _MSC(m["b"], 15),
         _MSC(m["c"], 4),
         _MSC(m["C"], 1),
         _MSC(m["d"], 4),
@@ -259,11 +259,11 @@ MONSTER_SPAWN_CONFIGS_ST2: StageConfig = StageConfig(
     ],
     [
         _MSC(m["a"], 2),
-        _MSC(m["b"], 4),
+        _MSC(m["b"], 3),
         _MSC(m["c"], 2),
         _MSC(m["e"], 4),
         _MSC(m["g"], 4),
-        _MSC(m["X"], 8),
+        _MSC(m["X"], 6),
     ],
     80,
 )
