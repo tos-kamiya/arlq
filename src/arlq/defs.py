@@ -19,7 +19,7 @@ LP_INIT = 90
 LP_RESPAWN_MIN = 20
 LP_RESPAWN_COST = 6
 
-MONSTER_RESPAWN_INTERVAL = 20
+MONSTER_RESPAWN_INTERVAL = 60
 
 ITEM_SWORD_X1_5 = "Sword"
 ITEM_SWORD_CURSED = "Cursed Sword"
@@ -174,10 +174,10 @@ _MT = MonsterTribe
 MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("a", 1, 6),  # Amoeba
     _MT("A", 2, 6, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
-    _MT("b", 5, 30, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
+    _MT("b", 5, 35, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
     _MT("c", 10, 6, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
     _MT("C", 15, 6, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
-    _MT("d", 20, 20, item=ITEM_POISONED),  # Comodo Dragon
+    _MT("d", 20, 25, item=ITEM_POISONED),  # Comodo Dragon
     _MT(
         CHAR_DRAGON, 40, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"
     ),  # Dragon
@@ -213,7 +213,7 @@ _MSC = MonsterSpawnConfig
 MONSTER_SPAWN_CONFIGS_ST1 = [
     _MSC(CHAR_TO_MONSTER_TRIBE["a"], 15),
     _MSC(CHAR_TO_MONSTER_TRIBE["A"], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["b"], 15),
+    _MSC(CHAR_TO_MONSTER_TRIBE["b"], 10),
     _MSC(CHAR_TO_MONSTER_TRIBE["c"], 2),
     _MSC(CHAR_TO_MONSTER_TRIBE["d"], 2),
     _MSC(CHAR_TO_MONSTER_TRIBE[CHAR_DRAGON], 1),
@@ -226,7 +226,7 @@ MONSTER_SPAWN_CONFIGS_ST1 = [
 MONSTER_SPAWN_CONFIGS_ST2 = [
     _MSC(CHAR_TO_MONSTER_TRIBE["a"], 15),
     _MSC(CHAR_TO_MONSTER_TRIBE["A"], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["b"], 15),
+    _MSC(CHAR_TO_MONSTER_TRIBE["b"], 10),
     _MSC(CHAR_TO_MONSTER_TRIBE["c"], 2),
     _MSC(CHAR_TO_MONSTER_TRIBE["C"], 1),
     _MSC(CHAR_TO_MONSTER_TRIBE["d"], 2),
