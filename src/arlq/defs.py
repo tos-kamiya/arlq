@@ -19,7 +19,7 @@ LP_INIT = 90
 LP_RESPAWN_MIN = 20
 LP_RESPAWN_COST = 6
 
-MONSTER_RESPAWN_RATE = 70
+MONSTER_RESPAWN_INTERVAL = 20
 
 ITEM_SWORD_X1_5 = "Sword"
 ITEM_SWORD_CURSED = "Cursed Sword"
@@ -32,8 +32,7 @@ EFFECT_UNLOCK_TREASURE = "Unlock Treasure"
 EFFECT_ENERGY_DRAIN = "Energy Drain"
 EFFECT_CALTROP_SPREAD = "Caltrop Spread"
 EFFECT_ROCK_SPREAD = "Rock Spread"
-
-EVENT_GOT_TREASURE = "Got Treasure"
+EFFECT_GOT_TREASURE = "Got Treasure"
 
 COMPANION_KARMA_LIMIT = 12
 
@@ -94,42 +93,6 @@ class Treasure(Entity):
         self.encounter_type = encounter_type
 
 
-class Player(Entity):
-    """
-    Player entity with additional attributes.
-
-    Attributes:
-        level: The level of the player.
-        lp: Life points of the player.
-        item: Currently held item.
-        item_taken_from: Source of the item.
-        companion: Companion character.
-        karma: Player's karma.
-    """
-
-    def __init__(self, x, y, level, lp):
-        super().__init__(x, y)
-        self.level = level
-        self.lp = lp
-        self.item = ""
-        self.item_taken_from = ""
-        self.companion = ""
-        self.karma = 0
-
-
-class Monster(Entity):
-    """
-    Monster entity belonging to a specific tribe.
-
-    Attributes:
-        tribe: The monster's tribe information.
-    """
-
-    def __init__(self, x, y, tribe):
-        super().__init__(x, y)
-        self.tribe = tribe
-
-
 class MonsterTribe:
     """
     Represents a monster tribe with inherent properties.
@@ -144,7 +107,7 @@ class MonsterTribe:
         event_message: Message shown when an event occurs with this monster.
     """
 
-    def __init__(self, char, level, feed, item="", effect="", companion="", event_message=""):
+    def __init__(self, char, level, feed, item="", effect="", companion=None, event_message=""):
         self.char = char
         self.level = level
         self.feed = feed
@@ -154,6 +117,42 @@ class MonsterTribe:
         self.effect = effect
         self.companion = companion
         self.event_message = event_message
+
+
+class Monster(Entity):
+    """
+    Monster entity belonging to a specific tribe.
+
+    Attributes:
+        tribe: The monster's tribe information.
+    """
+
+    def __init__(self, x: int, y: int, tribe: MonsterTribe):
+        super().__init__(x, y)
+        self.tribe: MonsterTribe = tribe
+
+
+class Player(Entity):
+    """
+    Player entity with additional attributes.
+
+    Attributes:
+        level: The level of the player.
+        lp: Life points of the player.
+        item: Currently held item.
+        item_taken_from: Source of the item.
+        companion: Companion monster.
+        karma: Player's karma.
+    """
+
+    def __init__(self, x: int, y: int, level: int, lp: int):
+        super().__init__(x, y)
+        self.level: int = level
+        self.lp: int = lp
+        self.item: str = ""
+        self.item_taken_from: str = ""
+        self.companion: str = ""
+        self.karma: int = 0
 
 
 class MonsterSpawnConfig:
@@ -168,13 +167,6 @@ class MonsterSpawnConfig:
     def __init__(self, tribe: MonsterTribe, population):
         self.tribe = tribe
         self.population = population
-
-
-class StageConfig:
-    def __init__(self, init_spawn_cfg, respawn_cfg, respawn_rate):
-        self.init_spawn_cfg = init_spawn_cfg
-        self.respawn_cfg = respawn_cfg
-        self.respawn_rate = respawn_rate
 
 
 _MT = MonsterTribe
@@ -201,72 +193,52 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("X", 1, 6, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
 ]
 
-m: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
+CHAR_TO_MONSTER_TRIBE: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
 
 MONSTER_LEVEL_GAUGE1: List[MonsterTribe] = [
-    m["a"],
-    m["b"],
-    m["c"],
-    m["d"],
+    CHAR_TO_MONSTER_TRIBE["a"],
+    CHAR_TO_MONSTER_TRIBE["b"],
+    CHAR_TO_MONSTER_TRIBE["c"],
+    CHAR_TO_MONSTER_TRIBE["d"],
 ]
 
 MONSTER_LEVEL_GAUGE2: List[MonsterTribe] = [
-    m[CHAR_DRAGON],
-    m[CHAR_FIRE_DRAKE],
+    CHAR_TO_MONSTER_TRIBE[CHAR_DRAGON],
+    CHAR_TO_MONSTER_TRIBE[CHAR_FIRE_DRAKE],
 ]
 
 _MSC = MonsterSpawnConfig
 
 # Stage 1 spawn configurations.
-MONSTER_SPAWN_CONFIGS_ST1: StageConfig = StageConfig(
-    [
-        _MSC(m["a"], 30),
-        _MSC(m["A"], 1),
-        _MSC(m["b"], 12),
-        _MSC(m["c"], 3),
-        _MSC(m["d"], 4),
-        _MSC(m[CHAR_DRAGON], 1),
-        _MSC(m["n"], 0.7),
-        _MSC(m["o"], 0.7),
-        _MSC(m["p"], 0.7),
-    ],
-    [
-        _MSC(m["a"], 2),
-        _MSC(m["b"], 4),
-        _MSC(m["c"], 4),
-        _MSC(m["d"], 4),
-    ],
-    80,
-)
+MONSTER_SPAWN_CONFIGS_ST1 = [
+    _MSC(CHAR_TO_MONSTER_TRIBE["a"], 15),
+    _MSC(CHAR_TO_MONSTER_TRIBE["A"], 1),
+    _MSC(CHAR_TO_MONSTER_TRIBE["b"], 15),
+    _MSC(CHAR_TO_MONSTER_TRIBE["c"], 2),
+    _MSC(CHAR_TO_MONSTER_TRIBE["d"], 2),
+    _MSC(CHAR_TO_MONSTER_TRIBE[CHAR_DRAGON], 1),
+    _MSC(CHAR_TO_MONSTER_TRIBE["n"], 0.7),
+    _MSC(CHAR_TO_MONSTER_TRIBE["o"], 0.7),
+    _MSC(CHAR_TO_MONSTER_TRIBE["p"], 0.7),
+]
 
 # Stage 2 spawn configurations.
-MONSTER_SPAWN_CONFIGS_ST2: StageConfig = StageConfig(
-    [
-        _MSC(m["a"], 25),
-        _MSC(m["A"], 2),
-        _MSC(m["b"], 15),
-        _MSC(m["c"], 4),
-        _MSC(m["C"], 1),
-        _MSC(m["d"], 4),
-        _MSC(m[CHAR_FIRE_DRAKE], 1),
-        _MSC(m["e"], 1),
-        _MSC(m["g"], 0.7),
-        _MSC(m["h"], 1),
-        _MSC(m["X"], 0.7),
-        _MSC(m["n"], 0.7),
-        _MSC(m["o"], 0.7),
-        _MSC(m["p"], 0.7),
-    ],
-    [
-        _MSC(m["a"], 2),
-        _MSC(m["b"], 3),
-        _MSC(m["c"], 2),
-        _MSC(m["e"], 4),
-        _MSC(m["g"], 4),
-        _MSC(m["X"], 6),
-    ],
-    80,
-)
+MONSTER_SPAWN_CONFIGS_ST2 = [
+    _MSC(CHAR_TO_MONSTER_TRIBE["a"], 15),
+    _MSC(CHAR_TO_MONSTER_TRIBE["A"], 1),
+    _MSC(CHAR_TO_MONSTER_TRIBE["b"], 15),
+    _MSC(CHAR_TO_MONSTER_TRIBE["c"], 2),
+    _MSC(CHAR_TO_MONSTER_TRIBE["C"], 1),
+    _MSC(CHAR_TO_MONSTER_TRIBE["d"], 2),
+    _MSC(CHAR_TO_MONSTER_TRIBE[CHAR_FIRE_DRAKE], 1),
+    _MSC(CHAR_TO_MONSTER_TRIBE["e"], 1),
+    _MSC(CHAR_TO_MONSTER_TRIBE["g"], 1),
+    _MSC(CHAR_TO_MONSTER_TRIBE["h"], 1),
+    _MSC(CHAR_TO_MONSTER_TRIBE["X"], 1),
+    _MSC(CHAR_TO_MONSTER_TRIBE["n"], 0.7),
+    _MSC(CHAR_TO_MONSTER_TRIBE["o"], 0.7),
+    _MSC(CHAR_TO_MONSTER_TRIBE["p"], 0.7),
+]
 
 # Mapping stages to their corresponding spawn configurations.
 STAGE_TO_MONSTER_SPAWN_CONFIGS = [

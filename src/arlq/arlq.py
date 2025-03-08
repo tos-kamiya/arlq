@@ -114,35 +114,27 @@ def spawn_monsters(
 
 
 def respawn_monster(
+    tribe: d.MonsterTribe,
     entities: List[d.Entity],
     field: List[List[str]],
     torched: List[List[int]],
-    spawn_configs: List[d.MonsterSpawnConfig],
 ) -> None:
     """
     Respawns a single monster on the field based on the spawn configurations.
 
     Args:
-        entities: List of current game entities.
+        tribe: tribe of entity being respawned.
+        entities: existing entities.
         field: 2D list representing the game field.
         torched: 2D list tracking visited or modified locations on the field.
         spawn_configs: List of MonsterSpawnConfig instances for the current stage.
     """
-    # Build a list of tribe characters that have a population of at least 2.
-    valid_chars = []
-    for config in spawn_configs:
-        if config.population >= 2:
-            valid_chars.append(config.tribe.char)
-    # Choose a random tribe character from the valid ones.
-    chosen_char = rand.choice(valid_chars)
-    for config in spawn_configs:
-        if config.tribe.char == chosen_char:
-            x, y = find_random_place(entities, field, distance=2)
-            m = d.Monster(x, y, config.tribe)
-            entities.append(m)
-            # Mark the new monster's position as unvisited (or hidden).
-            torched[y][x] = 0
-            break
+    x, y = find_random_place(entities, field, distance=2)
+    m = d.Monster(x, y, tribe)
+    entities.append(m)
+
+    # Mark the new monster's position as unvisited (or hidden).
+    torched[y][x] = 0
 
 
 def create_field(
@@ -272,16 +264,17 @@ def update_entities(
     player: d.Player,
     entities: List[d.Entity],
     encountered_types: Set[str],
-) -> Tuple[Optional[str], Optional[Tuple[int, str]]]:
-    event = None
+) -> Tuple[Optional[str], List[d.MonsterTribe], Optional[Tuple[int, str]]]:
+    effect = None
+    tribes_to_be_respawned = []
     message = None
 
     # player move
     dx, dy = move_direction
 
     if 0 <= (nx := player.x + dx) < d.FIELD_WIDTH and 0 <= (ny := player.y + dy) < d.FIELD_HEIGHT:
-        c = field[ny][nx]
-        if c in (" ", d.CHAR_CALTROP):
+        ch = field[ny][nx]
+        if ch in (" ", d.CHAR_CALTROP):
             player.x, player.y = nx, ny
         elif (
             player.companion == d.COMPANION_PEGASUS
@@ -291,7 +284,7 @@ def update_entities(
         ):
             player.x, player.y = n2x, n2y
             player.karma += 1
-        elif player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) and c == d.WALL_CHAR:
+        elif player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) and ch == d.WALL_CHAR:
             # break the wall
             player.x, player.y = nx, ny
             field[player.y][player.x] = " "
@@ -316,14 +309,14 @@ def update_entities(
                 sur_entity_infos.append((i, e))
     assert len(enc_entity_infos) <= 1
 
-    # Actions & events (combats, state changes, etc)
+    # Actions (combats, state changes, etc)
     for eei, ee in enc_entity_infos:
         if isinstance(ee, d.Treasure):
             t: d.Treasure = ee
             if t.encounter_type in encountered_types:
                 message = (10, ">> Treasures collected! <<")
                 del entities[eei]
-                event = d.EVENT_GOT_TREASURE
+                effect = d.EFFECT_GOT_TREASURE
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
             encountered_types.add(m.tribe.char)
@@ -337,13 +330,16 @@ def update_entities(
                 player.lp = max(d.LP_RESPAWN_MIN, min(player.lp, d.LP_INIT))
                 message = (3, "-- Respawned!")
             else:
-                event = m.tribe.effect
+                if m.tribe.level > 0 and m.tribe.effect != d.EFFECT_UNLOCK_TREASURE:
+                    tribes_to_be_respawned.append(m.tribe)
+
+                effect = m.tribe.effect
                 player.level += 1
-                if event == d.EFFECT_SPECIAL_EXP:
+                if effect == d.EFFECT_SPECIAL_EXP:
                     player.level += 9
-                elif event == d.EFFECT_UNLOCK_TREASURE:
+                elif effect == d.EFFECT_UNLOCK_TREASURE:
                     encountered_types.add(d.CHAR_TREASURE + m.tribe.char)  # Unlock the treasure
-                elif event == d.EFFECT_CALTROP_SPREAD:
+                elif effect == d.EFFECT_CALTROP_SPREAD:
                     for x, y in iterate_ellipse_points(
                         player.x,
                         player.y,
@@ -354,7 +350,7 @@ def update_entities(
                     ):
                         if (x + y) % 2 == 0 and field[y][x] in (" ", d.WALL_CHAR):
                             field[y][x] = d.CHAR_CALTROP
-                elif event == d.EFFECT_ROCK_SPREAD:
+                elif effect == d.EFFECT_ROCK_SPREAD:
                     for x, y in iterate_offsets(
                         player.x, player.y, d.ROCK_SPREAD_OFFSETS, except_for_entities=entities
                     ):
@@ -387,12 +383,14 @@ def update_entities(
                     encountered_types.add(m.tribe.char)
                     player.karma += 1
 
-    if player.companion != "":
-        if player.karma >= d.COMPANION_KARMA_LIMIT:
-            message = (3, "-- The companion vanishes.")
-            player.companion = ""
+    if player.companion != "" and player.karma >= d.COMPANION_KARMA_LIMIT:
+        message = (3, "-- The companion vanishes.")
+        ch = d.COMPANION_TO_ATTR_CHAR[player.companion]
+        mt = d.CHAR_TO_MONSTER_TRIBE[ch]
+        tribes_to_be_respawned.append(mt)
+        player.companion = ""
 
-    return event, message
+    return effect, tribes_to_be_respawned, message
 
 
 def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = False) -> None:
@@ -405,7 +403,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         stage_num = r
 
     # Configuration
-    stage_config = d.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
+    spawn_config = d.STAGE_TO_MONSTER_SPAWN_CONFIGS[stage_num - 1]
 
     # Initialize field
     field, first_p, last_p = create_field(d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH, d.WALL_CHAR)
@@ -420,7 +418,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
 
     # 1. treasure
     treasure_count = 0
-    for ms in stage_config.init_spawn_cfg:
+    for ms in spawn_config:
         mt = ms.tribe
         if mt.effect == d.EFFECT_UNLOCK_TREASURE:
             assert ms.population == 1
@@ -436,7 +434,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     entities.append(player)
 
     # 3. monsters
-    spawn_monsters(entities, field, torched, stage_config.init_spawn_cfg)
+    spawn_monsters(entities, field, torched, spawn_config)
 
     # Initialize stage state
     torch_radius = d.TORCH_RADIUS
@@ -444,6 +442,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     move_direction = None
 
     message: Tuple[int, str] = (-1, "")
+    respawn_tribe_queue = []
 
     while True:
         # Starvation check
@@ -480,15 +479,16 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             return
 
         # Player move, encountering, etc.
-        e, m = update_entities(move_direction, field, player, entities, encountered_types)
+        effect, tribes_to_be_respawned, m = update_entities(move_direction, field, player, entities, encountered_types)
         if m is not None:
             message = m
 
-        if e == d.EVENT_GOT_TREASURE:
-            break
+        respawn_tribe_queue.extend(tribes_to_be_respawned)
+        if respawn_tribe_queue and hours % d.MONSTER_RESPAWN_INTERVAL == 0:
+            respawn_monster(respawn_tribe_queue.pop(0), entities, field, torched)
 
-        if hours % stage_config.respawn_rate == 0:
-            respawn_monster(entities, field, torched, stage_config.respawn_cfg)
+        if effect == d.EFFECT_GOT_TREASURE:
+            break
 
         hours += 1
         player.lp -= 1
