@@ -1,5 +1,6 @@
 from typing import List, Set, Tuple, Optional
 
+from collections import Counter
 import argparse
 import math
 import sys
@@ -264,7 +265,7 @@ def update_entities(
     player: d.Player,
     entities: List[d.Entity],
     encountered_types: Set[str],
-) -> Tuple[Optional[str], List[d.MonsterTribe], Optional[Tuple[int, str]]]:
+) -> Tuple[Optional[str], List[str], Optional[Tuple[int, str]]]:
     effect = None
     tribes_to_be_respawned = []
     message = None
@@ -331,7 +332,7 @@ def update_entities(
                 message = (3, "-- Respawned!")
             else:
                 if m.tribe.level > 0 and m.tribe.effect != d.EFFECT_UNLOCK_TREASURE:
-                    tribes_to_be_respawned.append(m.tribe)
+                    tribes_to_be_respawned.append(m.tribe.char)
 
                 effect = m.tribe.effect
                 player.level += 1
@@ -386,8 +387,7 @@ def update_entities(
     if player.companion != "" and player.karma >= d.COMPANION_KARMA_LIMIT:
         message = (3, "-- The companion vanishes.")
         ch = d.COMPANION_TO_ATTR_CHAR[player.companion]
-        mt = d.CHAR_TO_MONSTER_TRIBE[ch]
-        tribes_to_be_respawned.append(mt)
+        tribes_to_be_respawned.append(ch)
         player.companion = ""
 
     return effect, tribes_to_be_respawned, message
@@ -442,7 +442,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     move_direction = None
 
     message: Tuple[int, str] = (-1, "")
-    respawn_tribe_queue = []
+    respawn_queue = Counter()
 
     while True:
         # Starvation check
@@ -483,9 +483,14 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         if m is not None:
             message = m
 
-        respawn_tribe_queue.extend(tribes_to_be_respawned)
-        if respawn_tribe_queue and hours % d.MONSTER_RESPAWN_INTERVAL == 0:
-            respawn_monster(respawn_tribe_queue.pop(0), entities, field, torched)
+        for t in tribes_to_be_respawned:
+            respawn_queue[t] += 1
+
+        if hours % d.MONSTER_RESPAWN_INTERVAL == 0:
+            for t in list(respawn_queue.keys()):
+                if respawn_queue[t] > 0:
+                    respawn_monster(d.CHAR_TO_MONSTER_TRIBE[t], entities, field, torched)
+                    respawn_queue[t] -= 1
 
         if effect == d.EFFECT_GOT_TREASURE:
             break
