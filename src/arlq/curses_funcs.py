@@ -163,13 +163,13 @@ def curses_draw_status_bar(
     if beatable:
         addstr_w_len(">%s  " % ",".join(b.char for b in beatable))
 
-    hp_color = curses.color_pair(CI_RED) if player.lp < 20 else None
-    addstr_w_len("HP: ")
-    addstr_w_len("%d " % player.lp, hp_color)
+    lp_color = curses.color_pair(CI_RED) if player.lp < 20 else None
+    addstr_w_len("LP: ")
+    addstr_w_len("%d " % player.lp, lp_color)
     bar_len = 4
     s = braille_progress_bar(player.lp, d.LP_MAX, bar_len)
     addstr_w_len("|")
-    addstr_w_len(s, hp_color)
+    addstr_w_len(s, lp_color)
     addstr_w_len("|  ")
 
     if extra_keys:

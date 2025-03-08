@@ -197,7 +197,7 @@ class PygameUI:
         """
         Draws the status bar at the bottom of the screen similar to the curses version.
         This includes stage, hours, level (with item modifiers), item info,
-        beatable monsters, HP value, and a rectangular HP bar (using original pygame drawing).
+        beatable monsters, LP value, and a rectangular LP bar (using original pygame drawing).
         """
         if player.item == d.ITEM_SWORD_X1_5:
             level_str = "LVL: %d x1.5" % player.level
@@ -222,17 +222,17 @@ class PygameUI:
         status_line += item_str + "  "
         if beatable:
             status_line += ">%s  " % ",".join(b.char for b in beatable)
-        status_line += "HP: "
+        status_line += "LP: "
 
         self._draw_text((0, self.field_height), status_line, COLOR_MAP["default"])
         text_width, _ = self.font.size(status_line)
         x_offset = text_width + 10
 
-        hp_str = "%d " % player.lp
-        hp_x_cell = x_offset // CELL_SIZE_X
-        self._draw_text((hp_x_cell, self.field_height), hp_str, COLOR_MAP["default"])
-        hp_width, _ = self.font.size(hp_str)
-        x_offset += hp_width
+        lp_str = "%d " % player.lp
+        lp_x_cell = x_offset // CELL_SIZE_X
+        self._draw_text((lp_x_cell, self.field_height), lp_str, COLOR_MAP["default"])
+        lp_width, _ = self.font.size(lp_str)
+        x_offset += lp_width
 
         bar_cells = 4
         bar_width = bar_cells * CELL_SIZE_X
