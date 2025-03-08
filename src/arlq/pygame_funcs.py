@@ -281,9 +281,8 @@ class PygameUI:
 
             if self.joystick:
                 # Scan joystick
-                current_direction = (0, 0)
                 hat = self.joystick.get_hat(0)
-                current_direction = (hat[0], -hat[1])
+                current_direction: Tuple[int, int] = (int(hat[0]), int(-hat[1]))
 
                 if current_direction != self.joystick_previous_direction:
                     self.joystick_previous_direction = current_direction
