@@ -331,6 +331,8 @@ def update_entities(
                 player.lp = max(d.LP_RESPAWN_MIN, min(player.lp, d.LP_INIT))
                 message = (3, "-- Respawned!")
             else:
+                del entities[eei]
+
                 if m.tribe.level > 0 and m.tribe.effect != d.EFFECT_UNLOCK_TREASURE:
                     tribes_to_be_respawned.append(m.tribe.char)
 
@@ -366,12 +368,10 @@ def update_entities(
                 else:
                     player.karma += 1
 
-                del entities[eei]
-                player.item = m.tribe.item
-                player.item_taken_from = m.tribe.char
-
-                if player.item == d.ITEM_SWORD_CURSED:
-                    player.lp = (player.lp + 1) // 2
+                    player.item = m.tribe.item
+                    player.item_taken_from = m.tribe.char
+                    if player.item == d.ITEM_SWORD_CURSED:
+                        player.lp = (player.lp + 1) // 2
 
                 if m.tribe.event_message:
                     message = (3, m.tribe.event_message)
