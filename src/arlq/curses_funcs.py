@@ -69,9 +69,8 @@ def curses_draw_stage(
     if show_entities:
         for ei, e in enumerate(entities):
             ch = None
-            if isinstance(e, d.Monster):
-                m: d.Monster = e
-                ch = m.tribe.char
+            if isinstance(e, (d.Companion, d.Monster)):
+                ch = e.tribe.char
             elif isinstance(e, d.Treasure):
                 ch = d.CHAR_TREASURE
             if ch is not None:
@@ -80,7 +79,13 @@ def curses_draw_stage(
     for ei, e in enumerate(entities):
         if torched[e.y][e.x] == 0 or (e.x, e.y) == (px, py):
             continue
-        if isinstance(e, d.Monster):
+        if isinstance(e, d.Companion):
+            c: d.Companion = e
+            ch = c.tribe.char
+            if ch not in encountered_types and not show_entities:
+                ch = "!"
+            stdscr.addstr(e.y, e.x, ch, curses.A_BOLD)
+        elif isinstance(e, d.Monster):
             m: d.Monster = e
             ch = m.tribe.char
             if ch not in encountered_types:
@@ -106,8 +111,8 @@ def curses_draw_stage(
 
     # If the player has a companion, draw it right of the player
     if player.companion and px + 1 < d.FIELD_WIDTH:
-        ch = d.COMPANION_TO_ATTR_CHAR[player.companion]
-        stdscr.addstr(py, px + 1, ch, curses.A_DIM)
+        char = player.companion.tribe.char
+        stdscr.addstr(py, px + 1, char, curses.A_DIM)
 
 
 def curses_draw_status_bar(
@@ -328,7 +333,7 @@ class CursesUI:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
         """
 
-        num_stages = len(d.STAGE_TO_MONSTER_SPAWN_CONFIGS)
+        num_stages = len(d.STAGE_TO_SPAWN_CONFIGS)
         assert num_stages <= 9
 
         options = ["[q]uit"]

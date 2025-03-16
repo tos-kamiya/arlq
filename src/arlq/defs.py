@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 TILE_WIDTH = 12
 TILE_HEIGHT = 6
@@ -34,18 +34,6 @@ EFFECT_CALTROP_SPREAD = "Caltrop Spread"
 EFFECT_ROCK_SPREAD = "Rock Spread"
 EFFECT_GOT_TREASURE = "Got Treasure"
 
-COMPANION_KARMA_LIMIT = 12
-
-COMPANION_NOMICON = "Nomicon"
-COMPANION_OCULAR = "Ocular"
-COMPANION_PEGASUS = "Pegasus"
-
-COMPANION_TO_ATTR_CHAR = {
-    COMPANION_NOMICON: "n",
-    COMPANION_OCULAR: "o",
-    COMPANION_PEGASUS: "p",
-}
-
 PEGASUS_STEP_X = 9
 PEGASUS_STEP_Y = 4
 
@@ -78,55 +66,79 @@ Edge = Tuple[Point, Point]
 
 
 class Entity:
-    """Base class for game entities with x and y coordinates."""
-
+    """x, y 座標を持つゲーム内エンティティの基底クラス。"""
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
 
 class Treasure(Entity):
-    """Treasure entity that inherits from Entity."""
-
+    """Entity を継承する宝物エンティティ。"""
     def __init__(self, x, y, encounter_type):
         super().__init__(x, y)
         self.encounter_type = encounter_type
 
 
-class MonsterTribe:
+class Tribe:
     """
-    Represents a monster tribe with inherent properties.
-
+    部族の基底クラス。
+    
     Attributes:
-        char: Character representation of the tribe.
-        level: Level of the monster.
-        feed: Feed value (game-specific parameter).
-        item: Optional item that the monster may drop.
-        effect: Optional effect, mutually exclusive with companion.
-        companion: Optional companion, mutually exclusive with effect.
-        event_message: Message shown when an event occurs with this monster.
+        char: 部族の文字表現。
+        event_message: 部族固有のイベントメッセージ。
     """
+    def __init__(self, char: str, event_message: Optional[str]):
+        self.char: str = char
+        self.event_message: Optional[str] = event_message
 
-    def __init__(self, char, level, feed, item="", effect="", companion=None, event_message=""):
-        self.char = char
-        self.level = level
-        self.feed = feed
-        self.item = item
-        # Ensure that effect and companion are not both provided.
-        assert not (effect and companion), "A tribe cannot have both effect and companion."
-        self.effect = effect
-        self.companion = companion
-        self.event_message = event_message
+
+class MonsterTribe(Tribe):
+    """
+    モンスター部族を表すクラス。
+    
+    Attributes:
+        level: モンスターのレベル。
+        feed: 餌の値（ゲーム固有のパラメータ）。
+        item: ドロップする可能性のあるアイテム。
+        effect: 付加効果（companion と排他）。
+    """
+    def __init__(self, char: str, level: int, feed: int, event_message: Optional[str] = None, item: Optional[str] = None, effect: Optional[str] = None):
+        super().__init__(char, event_message)
+        self.level: int = level
+        self.feed: int = feed
+        self.item: Optional[str] = item
+        self.effect: Optional[str] = effect
+
+
+class CompanionTribe(Tribe):
+    """
+    コンパニオン部族を表すクラス。
+    """
+    def __init__(self, char: str, durability: int = 1, event_message: Optional[str] = None):
+        super().__init__(char, event_message)
+        self.durability: int = durability
+
+
+class Companion(Entity):
+    """
+    コンパニオンを表すクラス。
+    
+    Attributes:
+        attribute: コンパニオン固有の属性（例: 特殊能力やステータス）。
+    """
+    def __init__(self, x, y, tribe: CompanionTribe):
+        super().__init__(x, y)
+        self.tribe: CompanionTribe = tribe
 
 
 class Monster(Entity):
     """
-    Monster entity belonging to a specific tribe.
-
+    モンスターエンティティ。
+    
     Attributes:
-        tribe: The monster's tribe information.
+        tribe: モンスターの部族情報（MonsterTribe のインスタンス）。
+        companion: （オプション）モンスターに紐づくコンパニオン（Companion のインスタンス）。
     """
-
     def __init__(self, x: int, y: int, tribe: MonsterTribe):
         super().__init__(x, y)
         self.tribe: MonsterTribe = tribe
@@ -134,42 +146,42 @@ class Monster(Entity):
 
 class Player(Entity):
     """
-    Player entity with additional attributes.
-
+    プレイヤーエンティティ。
+    
     Attributes:
-        level: The level of the player.
-        lp: Life points of the player.
-        item: Currently held item.
-        item_taken_from: Source of the item.
-        companion: Companion monster.
-        karma: Player's karma.
+        level: プレイヤーのレベル。
+        lp: ライフポイント。
+        item: 所持アイテム。
+        item_taken_from: アイテムの取得元。
+        companion: （オプション）プレイヤーに付くコンパニオン（Companion のインスタンス）。
+        karma: カルマ値。
     """
-
-    def __init__(self, x: int, y: int, level: int, lp: int):
+    def __init__(self, x: int, y: int, level: int, lp: int, companion: Optional[Companion] = None):
         super().__init__(x, y)
         self.level: int = level
         self.lp: int = lp
-        self.item: str = ""
-        self.item_taken_from: str = ""
-        self.companion: str = ""
+        self.item: Optional[str] = None
+        self.item_taken_from: Optional[str] = None
+        self.companion: Optional[Companion] = companion
         self.karma: int = 0
 
 
-class MonsterSpawnConfig:
+class SpawnConfig:
     """
-    Holds the spawn configuration for a monster tribe.
+    Holds the spawn configuration for a monster or companion tribe.
 
     Attributes:
-        tribe: The MonsterTribe object.
-        population: Number of monsters to spawn or a probability (if float).
+        tribe: The Tribe object.
+        population: Number of monsters/companions to spawn or a probability (if float).
     """
 
-    def __init__(self, tribe: MonsterTribe, population):
+    def __init__(self, tribe: Tribe, population: Union[float, int]):
         self.tribe = tribe
         self.population = population
 
 
 _MT = MonsterTribe
+_CT = CompanionTribe
 
 MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("a", 1, 6),  # Amoeba
@@ -187,13 +199,18 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     ),  # Fire Drake
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT("h", 999, 6),  # High elf
-    _MT("n", 0, 0, companion=COMPANION_NOMICON, event_message="-- Nomicon joined!"),  # Nomicon
-    _MT("o", 0, 0, companion=COMPANION_OCULAR, event_message="-- Ocular joined!"),  # Ocular
-    _MT("p", 0, 0, companion=COMPANION_PEGASUS, event_message="-- Pegasus joined!"),  # Pegasus
     _MT("X", 1, 6, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
 ]
 
+COMPANION_TRIBES: List[CompanionTribe] = [
+    _CT("n", 10, event_message="-- Nomicon joined!"),  # Nomicon
+    _CT("o", 20, event_message="-- Ocular joined!"),  # Ocular
+    _CT("p", 5, event_message="-- Pegasus joined!"),  # Pegasus
+]
+
+CHAR_TO_TRIBE: Dict[str, Tribe] = {mt.char: mt for mt in MONSTER_TRIBES + COMPANION_TRIBES}
 CHAR_TO_MONSTER_TRIBE: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
+CHAR_TO_COMPANION_TRIBE: Dict[str, CompanionTribe] = {mt.char: mt for mt in COMPANION_TRIBES}
 
 MONSTER_LEVEL_GAUGE1: List[MonsterTribe] = [
     CHAR_TO_MONSTER_TRIBE["a"],
@@ -207,43 +224,43 @@ MONSTER_LEVEL_GAUGE2: List[MonsterTribe] = [
     CHAR_TO_MONSTER_TRIBE[CHAR_FIRE_DRAKE],
 ]
 
-_MSC = MonsterSpawnConfig
+_SC = SpawnConfig
 
 # Stage 1 spawn configurations.
-MONSTER_SPAWN_CONFIGS_ST1 = [
-    _MSC(CHAR_TO_MONSTER_TRIBE["a"], 15),
-    _MSC(CHAR_TO_MONSTER_TRIBE["A"], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["b"], 8),
-    _MSC(CHAR_TO_MONSTER_TRIBE["c"], 2),
-    _MSC(CHAR_TO_MONSTER_TRIBE["d"], 2),
-    _MSC(CHAR_TO_MONSTER_TRIBE[CHAR_DRAGON], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["n"], 0.7),
-    _MSC(CHAR_TO_MONSTER_TRIBE["o"], 0.7),
-    _MSC(CHAR_TO_MONSTER_TRIBE["p"], 0.7),
+SPAWN_CONFIGS_ST1 = [
+    _SC(CHAR_TO_TRIBE["a"], 15),
+    _SC(CHAR_TO_TRIBE["A"], 1),
+    _SC(CHAR_TO_TRIBE["b"], 8),
+    _SC(CHAR_TO_TRIBE["c"], 2),
+    _SC(CHAR_TO_TRIBE["d"], 2),
+    _SC(CHAR_TO_TRIBE[CHAR_DRAGON], 1),
+    _SC(CHAR_TO_TRIBE["n"], 0.7),
+    _SC(CHAR_TO_TRIBE["o"], 0.7),
+    _SC(CHAR_TO_TRIBE["p"], 0.7),
 ]
 
 # Stage 2 spawn configurations.
-MONSTER_SPAWN_CONFIGS_ST2 = [
-    _MSC(CHAR_TO_MONSTER_TRIBE["a"], 15),
-    _MSC(CHAR_TO_MONSTER_TRIBE["A"], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["b"], 8),
-    _MSC(CHAR_TO_MONSTER_TRIBE["c"], 2),
-    _MSC(CHAR_TO_MONSTER_TRIBE["C"], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["d"], 2),
-    _MSC(CHAR_TO_MONSTER_TRIBE[CHAR_FIRE_DRAKE], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["e"], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["g"], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["h"], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["X"], 1),
-    _MSC(CHAR_TO_MONSTER_TRIBE["n"], 0.7),
-    _MSC(CHAR_TO_MONSTER_TRIBE["o"], 0.7),
-    _MSC(CHAR_TO_MONSTER_TRIBE["p"], 0.7),
+SPAWN_CONFIGS_ST2 = [
+    _SC(CHAR_TO_TRIBE["a"], 15),
+    _SC(CHAR_TO_TRIBE["A"], 1),
+    _SC(CHAR_TO_TRIBE["b"], 8),
+    _SC(CHAR_TO_TRIBE["c"], 2),
+    _SC(CHAR_TO_TRIBE["C"], 1),
+    _SC(CHAR_TO_TRIBE["d"], 2),
+    _SC(CHAR_TO_TRIBE[CHAR_FIRE_DRAKE], 1),
+    _SC(CHAR_TO_TRIBE["e"], 1),
+    _SC(CHAR_TO_TRIBE["g"], 1),
+    _SC(CHAR_TO_TRIBE["h"], 1),
+    _SC(CHAR_TO_TRIBE["X"], 1),
+    _SC(CHAR_TO_TRIBE["n"], 0.7),
+    _SC(CHAR_TO_TRIBE["o"], 0.7),
+    _SC(CHAR_TO_TRIBE["p"], 0.7),
 ]
 
 # Mapping stages to their corresponding spawn configurations.
-STAGE_TO_MONSTER_SPAWN_CONFIGS = [
-    MONSTER_SPAWN_CONFIGS_ST1,
-    MONSTER_SPAWN_CONFIGS_ST2,
+STAGE_TO_SPAWN_CONFIGS = [
+    SPAWN_CONFIGS_ST1,
+    SPAWN_CONFIGS_ST2,
 ]
 
 
