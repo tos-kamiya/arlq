@@ -106,11 +106,11 @@ class PygameUI:
         px, py = player.x, player.y
 
         # Draw player's companion if present
-        if player.companion and px + 1 < d.FIELD_WIDTH:
-            comp_char = d.COMPANION_TO_ATTR_CHAR[player.companion]
+        if player.companion is not None and px + 1 < d.FIELD_WIDTH:
+            char = player.companion.tribe.char
             self._draw_text(
                 (px + 1, py),
-                comp_char,
+                char,
                 self._dim_color(COLOR_MAP["default"]),
                 bold=True,
             )
@@ -147,9 +147,8 @@ class PygameUI:
             for ei, e in enumerate(entities):
                 pos = e.x, e.y
                 ch = None
-                if isinstance(e, d.Monster):
-                    m: d.Monster = e
-                    ch = m.tribe.char
+                if isinstance(e, (d.Companion, d.Monster)):
+                    ch = e.tribe.char
                 elif isinstance(e, d.Treasure):
                     ch = d.CHAR_TREASURE
                 if ch is not None:
@@ -159,7 +158,13 @@ class PygameUI:
             pos = e.x, e.y
             if torched[e.y][e.x] == 0 or pos == (px, py):
                 continue
-            if isinstance(e, d.Monster):
+            if isinstance(e, d.Companion):
+                c: d.Companion = e
+                ch = c.tribe.char
+                if ch not in encountered_types and not show_entities:
+                    ch = "!"
+                self._draw_text(pos, ch, COLOR_MAP["default"], bold=True)
+            elif isinstance(e, d.Monster):
                 m: d.Monster = e
                 ch = m.tribe.char
                 if ch not in encountered_types:
@@ -325,7 +330,7 @@ class PygameUI:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
         """
         # Determine the number of stages from defs
-        num_stages = len(d.STAGE_TO_MONSTER_SPAWN_CONFIGS)
+        num_stages = len(d.STAGE_TO_SPAWN_CONFIGS)
         assert num_stages <= 9
 
         # Build options list; index 0 is "Quit"
