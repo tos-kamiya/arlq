@@ -287,7 +287,8 @@ def update_entities(
         if ch in (" ", d.CHAR_CALTROP):
             player.x, player.y = nx, ny
         elif (
-            player.companion is not None and player.companion.tribe is d.CHAR_TO_COMPANION_TRIBE["p"]
+            player.companion is not None
+            and player.companion.tribe is d.CHAR_TO_COMPANION_TRIBE["p"]
             and 0 <= (n2x := player.x + dx * d.PEGASUS_STEP_X) < d.FIELD_WIDTH
             and 0 <= (n2y := player.y + dy * d.PEGASUS_STEP_Y) < d.FIELD_HEIGHT
             and field[n2y][n2x] in (" ", d.CHAR_CALTROP)
