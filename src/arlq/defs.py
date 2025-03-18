@@ -186,10 +186,10 @@ _CT = CompanionTribe
 MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("a", 1, 6),  # Amoeba
     _MT("A", 2, 6, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
-    _MT("b", 5, 35, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
+    _MT("b", 5, 40, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
     _MT("c", 10, 6, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
     _MT("C", 15, 6, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
-    _MT("d", 20, 25, item=ITEM_POISONED),  # Comodo Dragon
+    _MT("d", 20, 30, item=ITEM_POISONED),  # Comodo Dragon
     _MT(
         CHAR_DRAGON, 40, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"
     ),  # Dragon
@@ -230,7 +230,7 @@ _SC = SpawnConfig
 SPAWN_CONFIGS_ST1 = [
     _SC(CHAR_TO_TRIBE["a"], 15),
     _SC(CHAR_TO_TRIBE["A"], 1),
-    _SC(CHAR_TO_TRIBE["b"], 8),
+    _SC(CHAR_TO_TRIBE["b"], 7),
     _SC(CHAR_TO_TRIBE["c"], 2),
     _SC(CHAR_TO_TRIBE["d"], 2),
     _SC(CHAR_TO_TRIBE[CHAR_DRAGON], 1),
@@ -243,7 +243,7 @@ SPAWN_CONFIGS_ST1 = [
 SPAWN_CONFIGS_ST2 = [
     _SC(CHAR_TO_TRIBE["a"], 15),
     _SC(CHAR_TO_TRIBE["A"], 1),
-    _SC(CHAR_TO_TRIBE["b"], 8),
+    _SC(CHAR_TO_TRIBE["b"], 7),
     _SC(CHAR_TO_TRIBE["c"], 2),
     _SC(CHAR_TO_TRIBE["C"], 1),
     _SC(CHAR_TO_TRIBE["d"], 2),
