@@ -66,14 +66,16 @@ Edge = Tuple[Point, Point]
 
 
 class Entity:
-    """x, y 座標を持つゲーム内エンティティの基底クラス。"""
+    """Base class for entities in the game that have x and y coordinates."""
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
 
 class Treasure(Entity):
-    """Entity を継承する宝物エンティティ。"""
+    """Entity that inherits from the Treasure class."""
+
     def __init__(self, x, y, encounter_type):
         super().__init__(x, y)
         self.encounter_type = encounter_type
@@ -81,12 +83,13 @@ class Treasure(Entity):
 
 class Tribe:
     """
-    部族の基底クラス。
-    
+    Base class for tribes in the game.
+
     Attributes:
-        char: 部族の文字表現。
-        event_message: 部族固有のイベントメッセージ。
+        char: Character representation of the tribe.
+        event_message: Event message specific to the tribe.
     """
+
     def __init__(self, char: str, event_message: Optional[str]):
         self.char: str = char
         self.event_message: Optional[str] = event_message
@@ -94,15 +97,24 @@ class Tribe:
 
 class MonsterTribe(Tribe):
     """
-    モンスター部族を表すクラス。
-    
+    Class representing monster tribes in the game.
+
     Attributes:
-        level: モンスターのレベル。
-        feed: 餌の値（ゲーム固有のパラメータ）。
-        item: ドロップする可能性のあるアイテム。
-        effect: 付加効果（companion と排他）。
+        level: Level of the monster.
+        feed: Feed value (game-specific parameter).
+        item: Item that can be dropped.
+        effect: Additional effect (exclusive with companion).
     """
-    def __init__(self, char: str, level: int, feed: int, event_message: Optional[str] = None, item: Optional[str] = None, effect: Optional[str] = None):
+
+    def __init__(
+        self,
+        char: str,
+        level: int,
+        feed: int,
+        event_message: Optional[str] = None,
+        item: Optional[str] = None,
+        effect: Optional[str] = None,
+    ):
         super().__init__(char, event_message)
         self.level: int = level
         self.feed: int = feed
@@ -112,8 +124,12 @@ class MonsterTribe(Tribe):
 
 class CompanionTribe(Tribe):
     """
-    コンパニオン部族を表すクラス。
+    Class representing companion tribes in the game.
+
+    Attributes:
+        durability: Durability of the companion.
     """
+
     def __init__(self, char: str, durability: int = 1, event_message: Optional[str] = None):
         super().__init__(char, event_message)
         self.durability: int = durability
@@ -121,11 +137,12 @@ class CompanionTribe(Tribe):
 
 class Companion(Entity):
     """
-    コンパニオンを表すクラス。
-    
+    Class representing companions in the game.
+
     Attributes:
-        attribute: コンパニオン固有の属性（例: 特殊能力やステータス）。
+        tribe: Tribe information of the companion (CompanionTribe instance).
     """
+
     def __init__(self, x, y, tribe: CompanionTribe):
         super().__init__(x, y)
         self.tribe: CompanionTribe = tribe
@@ -133,12 +150,12 @@ class Companion(Entity):
 
 class Monster(Entity):
     """
-    モンスターエンティティ。
-    
+    Class representing monster entities in the game.
+
     Attributes:
-        tribe: モンスターの部族情報（MonsterTribe のインスタンス）。
-        companion: （オプション）モンスターに紐づくコンパニオン（Companion のインスタンス）。
+        tribe: Tribe information of the monster (MonsterTribe instance).
     """
+
     def __init__(self, x: int, y: int, tribe: MonsterTribe):
         super().__init__(x, y)
         self.tribe: MonsterTribe = tribe
@@ -146,16 +163,17 @@ class Monster(Entity):
 
 class Player(Entity):
     """
-    プレイヤーエンティティ。
-    
+    Class representing player entities in the game.
+
     Attributes:
-        level: プレイヤーのレベル。
-        lp: ライフポイント。
-        item: 所持アイテム。
-        item_taken_from: アイテムの取得元。
-        companion: （オプション）プレイヤーに付くコンパニオン（Companion のインスタンス）。
-        karma: カルマ値。
+        level: Level of the player.
+        lp: Life points.
+        item: Item held by the player.
+        item_taken_from: Source from which the item was taken.
+        companion: (Optional) Companion associated with the player (Companion instance).
+        karma: Karma value.
     """
+
     def __init__(self, x: int, y: int, level: int, lp: int, companion: Optional[Companion] = None):
         super().__init__(x, y)
         self.level: int = level

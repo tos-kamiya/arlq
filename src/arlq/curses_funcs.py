@@ -150,6 +150,7 @@ def curses_draw_status_bar(
     beatable = d.get_max_beatable_monster_tribe(player)
 
     x, y = 0, d.FIELD_HEIGHT
+
     def addstr_w_len(s, attr=None):
         nonlocal x, y
         if attr is None:
