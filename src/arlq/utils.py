@@ -20,47 +20,48 @@ class MyRandom:
 rand = MyRandom()
 
 
-def braille_progress_bar(current: int, maximum: int, bar_length: int = 20) -> str:
-    """
-    Generates a progress bar using Unicode Braille Patterns.
-
-    Args:
-        current (int): The current progress value.
-        maximum (int): The maximum progress value.
-        bar_length (int): The length of the progress bar in characters (default is 20).
-
-    Returns:
-        str: A string representing the progress bar using Braille characters.
-    """
-    # Bit masks corresponding to different fill levels of a Braille cell.
-    # Bit mapping: dot1=0x01, dot2=0x02, dot3=0x04, dot7=0x40,
-    #              dot4=0x08, dot5=0x10, dot6=0x20, dot8=0x80.
-    braille_map = [
-        0x00,  # 0: cell is completely empty.
-        0x40,  # 1: dot1
-        0x40 | 0x04,  # 2: dots 1 and 2.
-        0x40 | 0x04 | 0x02,  # 3: dots 1, 2, and 3.
-        0x40 | 0x04 | 0x02 | 0x01,  # 4: left column complete (dots 1, 2, 3, 7).
-        0x40 | 0x04 | 0x02 | 0x01 | 0x80,  # 5: left column + dot4.
-        0x40 | 0x04 | 0x02 | 0x01 | 0x80 | 0x20,  # 6: left column + dots4 and 5.
-        0x40 | 0x04 | 0x02 | 0x01 | 0x80 | 0x20 | 0x10,  # 7: left column + dots4, 5, and 6.
-        0x40 | 0x04 | 0x02 | 0x01 | 0x80 | 0x20 | 0x10 | 0x08,  # 8: fully filled.
-    ]
+def block_progress_cells(
+    current: int,
+    maximum: int,
+    bar_length: int,
+    bar_attr: int,
+) -> list[tuple[str, int]]:
+    block_chars = {
+        0: ".",
+        1: "\u258F",
+        2: "\u258E",
+        3: "\u258D",
+        4: "\u258C",
+        5: "\u258B",
+        6: "\u258A",
+        7: "\u2589",
+        8: "\u2588",
+    }
 
     if maximum <= 0:
-        return " " * bar_length
+        return [(block_chars[0], bar_attr)] * bar_length
 
-    # Total number of subunits (each cell has 8 levels of fill)
-    total_subunits = bar_length * 8
-    fraction = current / maximum
-    filled_subunits = int(round(fraction * total_subunits))
+    current = max(0, current)
+    frac = max(0.0, min(current / maximum, 1.0))
+    total_units = bar_length * 8
+    filled = int(round(frac * total_units))
 
-    cells = []
+    cells: list[tuple[str, int]] = []
     for i in range(bar_length):
-        # Determine the number of subunits to fill in this cell (0 to 8)
-        cell_units = min(max(filled_subunits - i * 8, 0), 8)
-        # Retrieve the corresponding Braille character based on the fill level.
-        cell_char = chr(0x2800 + braille_map[cell_units])
-        cells.append(cell_char)
+        units = min(max(filled - i * 8, 0), 8)
+        ch = block_chars[units]
+        cells.append((ch, bar_attr))
+    return cells
 
-    return "".join(cells) + " " * (bar_length - len(cells))
+
+def draw_block_progress_bar(stdscr, x, y, bar_len, value, attr_thresholds):
+    for threshold, color in attr_thresholds:
+        if value <= threshold:
+            attr = color
+            break
+    else:
+        attr = attr_thresholds[-1][1]
+    maximum = attr_thresholds[-1][0]
+    cells = block_progress_cells(value, maximum, bar_len, attr)
+    for i, (ch, attr) in enumerate(cells):
+        stdscr.addstr(y, x + i, ch, attr)

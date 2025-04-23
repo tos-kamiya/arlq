@@ -2,16 +2,17 @@ from typing import List, Optional, Set
 
 import curses
 
-from .utils import braille_progress_bar
+from .utils import draw_block_progress_bar
 from . import defs as d
 
-
+CI_BLACK = 0
 CI_RED = 1
 CI_GREEN = 2
 CI_YELLOW = 3
 CI_BLUE = 4
 CI_MAGENTA = 5
 CI_CYAN = 6
+CI_WHITE = 7
 
 
 def curses_draw_stage(
@@ -169,14 +170,15 @@ def curses_draw_status_bar(
     if beatable:
         addstr_w_len(">%s  " % ",".join(b.char for b in beatable))
 
-    lp_color = curses.color_pair(CI_RED) if player.lp < 20 else None
-    addstr_w_len("LP: ")
-    addstr_w_len("%d " % player.lp, lp_color)
+    addstr_w_len("LP: %d [" % player.lp)
     bar_len = 4
-    s = braille_progress_bar(player.lp, d.LP_MAX, bar_len)
-    addstr_w_len("|")
-    addstr_w_len(s, lp_color)
-    addstr_w_len("|  ")
+    attr_thresholds = [
+        (20, curses.color_pair(CI_RED)),
+        (d.LP_MAX, curses.color_pair(CI_WHITE)),
+    ]
+    draw_block_progress_bar(stdscr, x, y, bar_len, player.lp, attr_thresholds)
+    x += bar_len
+    addstr_w_len("]  ")
 
     if extra_keys:
         addstr_w_len("/ [q]uit/[m]ap/[s]eed")
@@ -233,12 +235,14 @@ class CursesUI:
 
         curses.start_color()
         curses.use_default_colors()
+        curses.init_pair(CI_BLACK, curses.COLOR_BLACK, -1)
         curses.init_pair(CI_RED, curses.COLOR_RED, -1)
         curses.init_pair(CI_GREEN, curses.COLOR_GREEN, -1)
         curses.init_pair(CI_YELLOW, curses.COLOR_YELLOW, -1)
         curses.init_pair(CI_BLUE, curses.COLOR_BLUE, -1)
         curses.init_pair(CI_MAGENTA, curses.COLOR_MAGENTA, -1)
         curses.init_pair(CI_CYAN, curses.COLOR_CYAN, -1)
+        curses.init_pair(CI_WHITE, curses.COLOR_WHITE, -1)
 
         stdscr.keypad(True)
 
