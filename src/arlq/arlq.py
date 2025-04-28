@@ -658,5 +658,10 @@ def main():
         run_game(ui, seed_str, args.stage, args.debug_show_entities)
 
 
+def main_cli():
+    sys.argv.append("--curses")
+    main()
+
+
 if __name__ == "__main__":
     main()

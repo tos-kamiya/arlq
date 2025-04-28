@@ -10,18 +10,18 @@ requires-python = ">=3.10"
 license = {text = "BSD 2-Clause License"}
 keywords = []
 authors = [
-  { name = "Toshihiro Kamiya", email = "kamiya@mbj.nifty.com" },
+  { name = "Toshihiro Kamiya", email = "kamiya@mbj.nifty.com" }
 ]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: CPython"
 ]
 urls = {Homepage = "https://github.com/tos-kamiya/arlq"}
 dependencies = [
-  'pygame',
+  'pygame'
 ]
 
 [project.readme]
@@ -31,5 +31,8 @@ content-type = "text/markdown"
 [tool.hatch.version]
 path = "src/arlq/__about__.py"
 
-[project.scripts]
+[project.gui-scripts]
 arlq = "arlq:main"
+
+[project.scripts]
+arlq-cli = "arlq:main_cli"
