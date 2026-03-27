@@ -14,7 +14,7 @@ from .solver import apply_runtime_flags, build_simulation
 @dataclass(frozen=True)
 class Candidate:
     entity_index: int
-    label: str
+    entity_id: int
     distance: int
 
 
@@ -46,10 +46,11 @@ class SearchBudget:
 
 
 @dataclass
-class PoolMember:
+class BeamState:
     state: object
-    first_choice: str | None = None
-    generation: int = 0
+    first_choice: int | None = None
+    depth: int = 0
+    choice_history: tuple[int, ...] = ()
 
 
 LP_SAFETY_MARGIN = 1
@@ -58,6 +59,17 @@ LP_SAFETY_MARGIN = 1
 def ensure_branch_metadata(state) -> None:
     if not hasattr(state, "lost_monsters"):
         state.lost_monsters = set()
+    if not hasattr(state, "next_entity_id"):
+        state.next_entity_id = 1
+    if not hasattr(state, "entity_id_to_label"):
+        state.entity_id_to_label = {}
+    for entity in state.entities:
+        if isinstance(entity, d.Player):
+            continue
+        if not hasattr(entity, "entity_id"):
+            entity.entity_id = state.next_entity_id
+            state.next_entity_id += 1
+        state.entity_id_to_label[entity.entity_id] = entity_label(entity)
 
 
 def structural_state_key(state) -> tuple[int, int, tuple[str, ...], frozenset[str]]:
@@ -134,6 +146,16 @@ def entity_label(entity: d.Entity) -> str:
     return "unknown"
 
 
+def entity_label_by_id(state, entity_id: int) -> str:
+    ensure_branch_metadata(state)
+    for entity in state.entities:
+        if getattr(entity, "entity_id", None) == entity_id:
+            return f"{entity_label(entity)}#{entity_id}"
+    if entity_id in state.entity_id_to_label:
+        return f"{state.entity_id_to_label[entity_id]}#{entity_id}"
+    return f"unknown#{entity_id}"
+
+
 def monster_signature(entity: d.Monster) -> tuple[str, int, int]:
     return (entity.tribe.char, entity.x, entity.y)
 
@@ -154,6 +176,7 @@ def is_branch_target(state, entity: d.Entity) -> bool:
 
 
 def rank_nearest_targets(state, limit: int, path_cache) -> list[Candidate]:
+    ensure_branch_metadata(state)
     ranked: list[Candidate] = []
     for index, entity in enumerate(state.entities):
         if not is_branch_target(state, entity):
@@ -164,8 +187,8 @@ def rank_nearest_targets(state, limit: int, path_cache) -> list[Candidate]:
         distance = len(path) - 1
         if distance + LP_SAFETY_MARGIN >= state.player.lp:
             continue
-        ranked.append(Candidate(index, entity_label(entity), distance))
-    ranked.sort(key=lambda item: (item.distance, item.label, item.entity_index))
+        ranked.append(Candidate(index, entity.entity_id, distance))
+    ranked.sort(key=lambda item: (item.distance, item.entity_id, item.entity_index))
     return ranked[:limit]
 
 
@@ -201,6 +224,7 @@ def apply_move(state, move_direction: d.Point) -> None:
             if state.respawn_queue[tribe_char] > 0:
                 respawn_entity(d.CHAR_TO_TRIBE[tribe_char], state.entities, state.field, state.torched)
                 state.respawn_queue[tribe_char] -= 1
+    ensure_branch_metadata(state)
 
     if effect == d.EFFECT_GOT_TREASURE:
         state.won = True
@@ -338,13 +362,13 @@ def load_seed_file(path: str) -> list[int]:
     return seeds
 
 
-def evaluate_state(member: PoolMember, lp_weight: float, level_weight: float) -> float:
-    state = member.state
+def evaluate_state(beam_state: BeamState, lp_weight: float, level_weight: float) -> float:
+    state = beam_state.state
     return state.player.lp * lp_weight + state.player.level * level_weight
 
 
-def pool_member_key(member: PoolMember) -> tuple:
-    state = member.state
+def beam_state_key(beam_state: BeamState) -> tuple:
+    state = beam_state.state
     return (
         state.player.x,
         state.player.y,
@@ -354,78 +378,79 @@ def pool_member_key(member: PoolMember) -> tuple:
         tuple("".join(row) for row in state.field),
         frozenset(state.encountered_types),
         tuple(sorted(getattr(state, "lost_monsters", set()))),
-        member.first_choice,
+        beam_state.first_choice,
     )
 
 
-def dedupe_pool(pool: list[PoolMember], lp_weight: float, level_weight: float) -> list[PoolMember]:
-    best_by_key: dict[tuple, PoolMember] = {}
-    for member in pool:
-        key = pool_member_key(member)
-        if key not in best_by_key or evaluate_state(member, lp_weight, level_weight) > evaluate_state(
+def dedupe_beam(beam: list[BeamState], lp_weight: float, level_weight: float) -> list[BeamState]:
+    best_by_key: dict[tuple, BeamState] = {}
+    for beam_state in beam:
+        key = beam_state_key(beam_state)
+        if key not in best_by_key or evaluate_state(beam_state, lp_weight, level_weight) > evaluate_state(
             best_by_key[key], lp_weight, level_weight
         ):
-            best_by_key[key] = member
+            best_by_key[key] = beam_state
     return list(best_by_key.values())
 
 
-def select_top_pool(
-    pool: list[PoolMember],
-    pool_size: int,
+def select_top_beam(
+    beam: list[BeamState],
+    beam_width: int,
     lp_weight: float,
     level_weight: float,
-) -> list[PoolMember]:
-    deduped = dedupe_pool(pool, lp_weight, level_weight)
+) -> list[BeamState]:
+    deduped = dedupe_beam(beam, lp_weight, level_weight)
     deduped.sort(
-        key=lambda member: (
-            evaluate_state(member, lp_weight, level_weight),
-            member.state.player.level,
-            member.state.player.lp,
+        key=lambda beam_state: (
+            evaluate_state(beam_state, lp_weight, level_weight),
+            beam_state.state.player.level,
+            beam_state.state.player.lp,
         ),
         reverse=True,
     )
-    return deduped[:pool_size]
+    return deduped[:beam_width]
 
 
-def analyze_seed_with_pool(
+def analyze_seed_with_beam(
     *,
     stage_num: int,
     seed: int,
     top_k: int,
-    max_generations: int,
-    pool_size: int,
+    max_depth: int,
+    beam_width: int,
     node_budget: int,
     max_travel_steps: int,
     lp_weight: float,
     level_weight: float,
-) -> tuple[dict[str, AggregateRow], AnalysisStats, int]:
+) -> tuple[dict[str, AggregateRow], AnalysisStats, int, list[tuple[int, ...]]]:
     path_cache: dict[
         tuple[int, int, tuple[str, ...], frozenset[str]],
         tuple[dict[d.Point, int], dict[d.Point, d.Point]],
     ] = {}
     initial_state = build_simulation(stage_num, seed)
     ensure_branch_metadata(initial_state)
-    pool: list[PoolMember] = [PoolMember(state=initial_state)]
+    beam: list[BeamState] = [BeamState(state=initial_state)]
     budget = SearchBudget(nodes_left=node_budget)
     rows: dict[str, AggregateRow] = defaultdict(AggregateRow)
     stats = AnalysisStats()
+    winning_histories: list[tuple[int, ...]] = []
 
-    for generation in range(max_generations):
-        if not pool or budget.nodes_left <= 0:
+    for depth in range(max_depth):
+        if not beam or budget.nodes_left <= 0:
             break
-        next_pool: list[PoolMember] = []
-        for member in pool:
+        next_beam: list[BeamState] = []
+        for beam_state in beam:
             if budget.nodes_left <= 0:
                 break
-            state = member.state
+            state = beam_state.state
             if state.won:
-                label = member.first_choice or "(initial)"
+                label = entity_label_by_id(state, beam_state.first_choice) if beam_state.first_choice is not None else "(initial)"
                 rows[label].add(AnalysisStats(leaves=1, wins=1))
                 stats.leaves += 1
                 stats.wins += 1
                 continue
             if state.ended:
-                label = member.first_choice or "(initial)"
+                label = entity_label_by_id(state, beam_state.first_choice) if beam_state.first_choice is not None else "(initial)"
                 rows[label].add(AnalysisStats(leaves=1, losses=1))
                 stats.leaves += 1
                 stats.losses += 1
@@ -433,7 +458,7 @@ def analyze_seed_with_pool(
 
             candidates = rank_nearest_targets(state, top_k, path_cache)
             if not candidates:
-                label = member.first_choice or "(initial)"
+                label = entity_label_by_id(state, beam_state.first_choice) if beam_state.first_choice is not None else "(initial)"
                 rows[label].add(AnalysisStats(leaves=1, stalled=1))
                 stats.leaves += 1
                 stats.stalled += 1
@@ -446,40 +471,105 @@ def analyze_seed_with_pool(
                 child_state = deepcopy(state)
                 ensure_branch_metadata(child_state)
                 contacted = advance_until_contact(child_state, candidate.entity_index, max_travel_steps, path_cache)
-                child = PoolMember(
+                child = BeamState(
                     state=child_state,
-                    first_choice=member.first_choice or candidate.label,
-                    generation=generation + 1,
+                    first_choice=beam_state.first_choice or candidate.entity_id,
+                    depth=depth + 1,
+                    choice_history=beam_state.choice_history + (candidate.entity_id,),
                 )
                 if not contacted:
-                    rows[child.first_choice or "(initial)"].add(AnalysisStats(leaves=1, stalled=1))
+                    label = entity_label_by_id(child_state, child.first_choice) if child.first_choice is not None else "(initial)"
+                    rows[label].add(AnalysisStats(leaves=1, stalled=1))
                     stats.leaves += 1
                     stats.stalled += 1
                 elif child_state.won:
-                    rows[child.first_choice or "(initial)"].add(AnalysisStats(leaves=1, wins=1))
+                    label = entity_label_by_id(child_state, child.first_choice) if child.first_choice is not None else "(initial)"
+                    rows[label].add(AnalysisStats(leaves=1, wins=1))
                     stats.leaves += 1
                     stats.wins += 1
+                    winning_histories.append(child.choice_history)
                 elif child_state.ended:
-                    rows[child.first_choice or "(initial)"].add(AnalysisStats(leaves=1, losses=1))
+                    label = entity_label_by_id(child_state, child.first_choice) if child.first_choice is not None else "(initial)"
+                    rows[label].add(AnalysisStats(leaves=1, losses=1))
                     stats.leaves += 1
                     stats.losses += 1
                 else:
-                    next_pool.append(child)
+                    next_beam.append(child)
 
-        pool = select_top_pool(next_pool, pool_size, lp_weight, level_weight)
+        beam = select_top_beam(next_beam, beam_width, lp_weight, level_weight)
 
-    if pool:
-        for member in pool:
-            label = member.first_choice or "(initial)"
+    if beam:
+        for beam_state in beam:
+            label = entity_label_by_id(beam_state.state, beam_state.first_choice) if beam_state.first_choice is not None else "(initial)"
             rows[label].add(AnalysisStats(leaves=1, stalled=1))
             stats.leaves += 1
             stats.stalled += 1
 
-    return rows, stats, budget.nodes_left
+    return rows, stats, budget.nodes_left, winning_histories
+
+
+def find_candidate_by_entity_id(candidates: list[Candidate], entity_id: int) -> Candidate | None:
+    for candidate in candidates:
+        if candidate.entity_id == entity_id:
+            return candidate
+    return None
+
+
+def summarize_priority_rows(rows: dict[str, tuple[int, int]]) -> list[str]:
+    ordered = sorted(
+        rows.items(),
+        key=lambda item: (
+            (item[1][0] / (item[1][0] + item[1][1])) if (item[1][0] + item[1][1]) else -1.0,
+            item[1][0] + item[1][1],
+            item[0],
+        ),
+        reverse=True,
+    )
+    lines: list[str] = []
+    for label, (wins, losses) in ordered:
+        total = wins + losses
+        ratio = wins / total if total else 0.0
+        lines.append(f"{label:14s} preferred={wins:6d} deferred={losses:6d} preference_rate={ratio:.3f}")
+    return lines
+
+
+def base_label_with_id(label_with_id: str) -> str:
+    return label_with_id.split("#", 1)[0]
+
+
+def replay_win_history(
+    stage_num: int,
+    seed: int,
+    history: tuple[int, ...],
+    top_k: int,
+    max_travel_steps: int,
+    path_cache,
+    preference_rows: dict[str, list[int]],
+) -> None:
+    state = build_simulation(stage_num, seed)
+    ensure_branch_metadata(state)
+    for entity_id in history:
+        candidates = rank_nearest_targets(state, top_k, path_cache)
+        chosen = find_candidate_by_entity_id(candidates, entity_id)
+        if chosen is None:
+            break
+        chosen_entity = state.entities[chosen.entity_index]
+        if isinstance(chosen_entity, d.Monster):
+            chosen_label = base_label_with_id(entity_label_by_id(state, entity_id))
+            for candidate in candidates:
+                candidate_entity = state.entities[candidate.entity_index]
+                if not isinstance(candidate_entity, d.Monster) or candidate.entity_id == entity_id:
+                    continue
+                candidate_label = base_label_with_id(entity_label_by_id(state, candidate.entity_id))
+                preference_rows[chosen_label][0] += 1
+                preference_rows[candidate_label][1] += 1
+        advance_until_contact(state, chosen.entity_index, max_travel_steps, path_cache)
+        if state.ended:
+            break
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Analyze branch choices for ARLQ with a pool-based evolutionary search.")
+    parser = argparse.ArgumentParser(description="Analyze branch choices for ARLQ with beam search.")
     parser.add_argument("--stage", type=int, default=1, help="Stage number to analyze.")
     parser.add_argument("--seeds", type=int, default=10, help="Number of seeds to analyze.")
     parser.add_argument("--seed-start", type=int, default=1, help="First seed value to use.")
@@ -488,14 +578,14 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         help="Path to a file containing explicit seed values. Whitespace and commas are accepted.",
     )
-    parser.add_argument("--top-k", type=int, default=5, help="Branch on the nearest K targets.")
-    parser.add_argument("--max-depth", type=int, default=12, help="Maximum generations to evolve the pool.")
-    parser.add_argument("--pool-size", type=int, default=64, help="Maximum number of states kept for the next generation.")
+    parser.add_argument("--top-k", type=int, default=5, help="Expand the nearest K targets from each beam state.")
+    parser.add_argument("--max-depth", type=int, default=12, help="Maximum beam-search depth.")
+    parser.add_argument("--beam-width", type=int, default=64, help="Maximum number of states kept at each depth.")
     parser.add_argument(
         "--node-budget",
         type=int,
         default=5000,
-        help="Maximum expanded children per seed to keep the search tractable.",
+        help="Maximum expanded child states per seed to keep the search tractable.",
     )
     parser.add_argument(
         "--max-travel-steps",
@@ -522,16 +612,17 @@ def main() -> None:
     )
 
     overall_rows: dict[str, AggregateRow] = defaultdict(AggregateRow)
+    preference_rows: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     seed_summaries: list[str] = []
     aggregate_terminal = Counter()
 
     for seed_index, seed in enumerate(seed_values, start=1):
-        rows, stats, nodes_left = analyze_seed_with_pool(
+        rows, stats, nodes_left, winning_histories = analyze_seed_with_beam(
             stage_num=args.stage,
             seed=seed,
             top_k=args.top_k,
-            max_generations=args.max_depth,
-            pool_size=args.pool_size,
+            max_depth=args.max_depth,
+            beam_width=args.beam_width,
             node_budget=args.node_budget,
             max_travel_steps=args.max_travel_steps,
             lp_weight=args.lp_weight,
@@ -542,6 +633,20 @@ def main() -> None:
             overall_rows[label].wins += row.wins
             overall_rows[label].losses += row.losses
             overall_rows[label].stalled += row.stalled
+        replay_path_cache: dict[
+            tuple[int, int, tuple[str, ...], frozenset[str]],
+            tuple[dict[d.Point, int], dict[d.Point, d.Point]],
+        ] = {}
+        for history in winning_histories:
+            replay_win_history(
+                args.stage,
+                seed,
+                history,
+                args.top_k,
+                args.max_travel_steps,
+                replay_path_cache,
+                preference_rows,
+            )
         aggregate_terminal["leaves"] += stats.leaves
         aggregate_terminal["wins"] += stats.wins
         aggregate_terminal["losses"] += stats.losses
@@ -562,7 +667,7 @@ def main() -> None:
 
     print(
         f"stage={args.stage} seeds={len(seed_values)} top_k={args.top_k} max_depth={args.max_depth} "
-        f"pool_size={args.pool_size} node_budget={args.node_budget}"
+        f"beam_width={args.beam_width} node_budget={args.node_budget}"
     )
     print(
         f"aggregate leaves={aggregate_terminal['leaves']} wins={aggregate_terminal['wins']} "
@@ -572,6 +677,10 @@ def main() -> None:
     print("")
     print("[first choice stats]")
     for line in summarize_rows(overall_rows):
+        print(line)
+    print("")
+    print("[winning path monster priority]")
+    for line in summarize_priority_rows({label: (counts[0], counts[1]) for label, counts in preference_rows.items()}):
         print(line)
     print("")
     print("[seed summaries]")
