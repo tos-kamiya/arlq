@@ -94,9 +94,10 @@ Useful options:
 - `--max-travel-steps`: movement cap while advancing to a chosen target
 - `--lp-weight`: weight of LP in the pool evaluation score
 - `--level-weight`: weight of level in the pool evaluation score
+- `--jobs`: number of worker processes to use across seeds
 
 The output includes aggregate win rate.
-When wins are found, the analyzer also replays each winning path from the initial seed state and aggregates which monster kinds were preferred over other visible monster candidates.
+When wins are found, the analyzer also replays each winning path from the initial seed state and aggregates which monster kinds were preferred over other visible monster candidates, as well as which distance-rank among visible monster candidates was chosen.
 
 Typical workflow:
 
