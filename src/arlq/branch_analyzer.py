@@ -319,11 +319,28 @@ def summarize_rows(rows: dict[str, AggregateRow]) -> list[str]:
     return lines
 
 
+def load_seed_file(path: str) -> list[int]:
+    seeds: list[int] = []
+    with open(path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            for token in stripped.replace(",", " ").split():
+                seeds.append(int(token))
+    return seeds
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Analyze branch choices for ARLQ with full-map visibility.")
     parser.add_argument("--stage", type=int, default=1, help="Stage number to analyze.")
     parser.add_argument("--seeds", type=int, default=10, help="Number of seeds to analyze.")
     parser.add_argument("--seed-start", type=int, default=1, help="First seed value to use.")
+    parser.add_argument(
+        "--seed-file",
+        type=str,
+        help="Path to a file containing explicit seed values. Whitespace and commas are accepted.",
+    )
     parser.add_argument("--top-k", type=int, default=5, help="Branch on the nearest K targets.")
     parser.add_argument("--max-depth", type=int, default=12, help="Maximum contact depth per branch.")
     parser.add_argument(
@@ -350,13 +367,16 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
     apply_runtime_flags(args)
+    seed_values = load_seed_file(args.seed_file) if args.seed_file else list(
+        range(args.seed_start, args.seed_start + args.seeds)
+    )
 
     overall_rows: dict[str, AggregateRow] = defaultdict(AggregateRow)
     root_rows: dict[str, AggregateRow] = defaultdict(AggregateRow)
     seed_summaries: list[str] = []
     aggregate_terminal = Counter()
 
-    for seed_index, seed in enumerate(range(args.seed_start, args.seed_start + args.seeds), start=1):
+    for seed_index, seed in enumerate(seed_values, start=1):
         state = build_simulation(args.stage, seed)
         ensure_branch_metadata(state)
         budget = SearchBudget(nodes_left=args.node_budget)
@@ -382,9 +402,9 @@ def main() -> None:
             f"seed={seed} leaves={stats.leaves} wins={stats.wins} "
             f"losses={stats.losses} stalled={stats.stalled} nodes_left={budget.nodes_left}"
         )
-        progress_ratio = seed_index / args.seeds
+        progress_ratio = seed_index / len(seed_values) if seed_values else 1.0
         print(
-            f"[progress] seeds={seed_index}/{args.seeds} "
+            f"[progress] seeds={seed_index}/{len(seed_values)} "
             f"({progress_ratio:.0%}) current_seed={seed} "
             f"wins={aggregate_terminal['wins']} leaves={aggregate_terminal['leaves']}"
         )
@@ -393,7 +413,7 @@ def main() -> None:
     total_win_rate = aggregate_terminal["wins"] / total_leaves if total_leaves else 0.0
 
     print(
-        f"stage={args.stage} seeds={args.seeds} top_k={args.top_k} max_depth={args.max_depth} "
+        f"stage={args.stage} seeds={len(seed_values)} top_k={args.top_k} max_depth={args.max_depth} "
         f"node_budget={args.node_budget}"
     )
     print(
