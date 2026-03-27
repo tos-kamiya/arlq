@@ -48,6 +48,11 @@ class SearchBudget:
 LP_SAFETY_MARGIN = 1
 
 
+def ensure_branch_metadata(state) -> None:
+    if not hasattr(state, "lost_monsters"):
+        state.lost_monsters = set()
+
+
 def structural_state_key(state) -> tuple[int, int, tuple[str, ...], frozenset[str]]:
     return (
         state.player.x,
@@ -122,10 +127,17 @@ def entity_label(entity: d.Entity) -> str:
     return "unknown"
 
 
+def monster_signature(entity: d.Monster) -> tuple[str, int, int]:
+    return (entity.tribe.char, entity.x, entity.y)
+
+
 def is_branch_target(state, entity: d.Entity) -> bool:
+    ensure_branch_metadata(state)
     if entity is state.player:
         return False
     if isinstance(entity, d.Monster):
+        if d.player_attack_by_level(state.player) < entity.tribe.level and monster_signature(entity) in state.lost_monsters:
+            return False
         return True
     if isinstance(entity, d.Companion):
         return True
@@ -151,6 +163,19 @@ def rank_nearest_targets(state, limit: int, path_cache) -> list[Candidate]:
 
 
 def apply_move(state, move_direction: d.Point) -> None:
+    ensure_branch_metadata(state)
+    target_x = state.player.x + move_direction[0]
+    target_y = state.player.y + move_direction[1]
+    losing_monster_signature = None
+    for entity in state.entities:
+        if (
+            isinstance(entity, d.Monster)
+            and (entity.x, entity.y) == (target_x, target_y)
+            and d.player_attack_by_level(state.player) < entity.tribe.level
+        ):
+            losing_monster_signature = monster_signature(entity)
+            break
+
     effect, tribes_to_be_respawned, _ = update_entities(
         move_direction,
         state.field,
@@ -158,6 +183,8 @@ def apply_move(state, move_direction: d.Point) -> None:
         state.entities,
         state.encountered_types,
     )
+    if losing_monster_signature is not None:
+        state.lost_monsters.add(losing_monster_signature)
 
     for tribe_char in tribes_to_be_respawned:
         state.respawn_queue[tribe_char] += 1
@@ -180,6 +207,7 @@ def apply_move(state, move_direction: d.Point) -> None:
 
 
 def advance_until_contact(state, entity_index: int, max_travel_steps: int, path_cache) -> bool:
+    ensure_branch_metadata(state)
     travel_steps = 0
     while not state.ended and travel_steps < max_travel_steps:
         if entity_index >= len(state.entities):
@@ -330,6 +358,7 @@ def main() -> None:
 
     for seed in range(args.seed_start, args.seed_start + args.seeds):
         state = build_simulation(args.stage, seed)
+        ensure_branch_metadata(state)
         budget = SearchBudget(nodes_left=args.node_budget)
         path_cache: dict[
             tuple[int, int, tuple[str, ...], frozenset[str]],
