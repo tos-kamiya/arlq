@@ -39,6 +39,25 @@ Windows の場合:
 pip install windows-curses
 ```
 
+## バランス調整用ソルバ
+
+このリポジトリには、ゲームバランス確認用の単純なヒューリスティックソルバも含まれています。
+これは盤面の完全情報を使って固定戦略で多数回シミュレーションするため、人間らしいプレイの再現ではなく、内部的な難易度調整向けです。
+
+例:
+
+```bash
+uv run -p .venv/bin/python arlq-solver --stage 1 --games 500 --seed-start 1
+```
+
+または:
+
+```bash
+uv run -p .venv/bin/python python -m arlq.solver --stage 2 --games 500 --seed-start 1001
+```
+
+出力には、勝利回数、勝率、終了時ステータスの平均値などが表示されます。
+
 ## ゲームの説明
 
 * **ゲームの目的**  

@@ -39,6 +39,25 @@ For Windows:
 pip install windows-curses
 ```
 
+## Solver For Balance Experiments
+
+This repository also includes a simple heuristic solver for balance testing.
+It uses full game-state information and repeatedly simulates runs with a fixed strategy, so it is intended for internal tuning rather than as a human-like player model.
+
+Example:
+
+```bash
+uv run -p .venv/bin/python arlq-solver --stage 1 --games 500 --seed-start 1
+```
+
+Or:
+
+```bash
+uv run -p .venv/bin/python python -m arlq.solver --stage 2 --games 500 --seed-start 1001
+```
+
+The command prints aggregate results such as win count, win rate, and average ending stats.
+
 ## Game Description
 
 * **Objective**  
