@@ -356,7 +356,7 @@ def main() -> None:
     seed_summaries: list[str] = []
     aggregate_terminal = Counter()
 
-    for seed in range(args.seed_start, args.seed_start + args.seeds):
+    for seed_index, seed in enumerate(range(args.seed_start, args.seed_start + args.seeds), start=1):
         state = build_simulation(args.stage, seed)
         ensure_branch_metadata(state)
         budget = SearchBudget(nodes_left=args.node_budget)
@@ -381,6 +381,12 @@ def main() -> None:
         seed_summaries.append(
             f"seed={seed} leaves={stats.leaves} wins={stats.wins} "
             f"losses={stats.losses} stalled={stats.stalled} nodes_left={budget.nodes_left}"
+        )
+        progress_ratio = seed_index / args.seeds
+        print(
+            f"[progress] seeds={seed_index}/{args.seeds} "
+            f"({progress_ratio:.0%}) current_seed={seed} "
+            f"wins={aggregate_terminal['wins']} leaves={aggregate_terminal['leaves']}"
         )
 
     total_leaves = aggregate_terminal["leaves"]
