@@ -68,6 +68,7 @@ This tool assumes the whole map is visible from the start, takes the nearest `K`
 
 For tractability, its path search uses an approximation: monsters and companions are treated as pass-through for routing purposes.
 Distance maps are therefore reusable until a structural event changes the field or encounter state, such as wall breaking, rock or caltrop spread, or treasure unlock state changes.
+It also prunes branches that would intentionally re-contact the same monster and lose a second time without first becoming strong enough to beat it.
 
 Run via the script entrypoint:
 
