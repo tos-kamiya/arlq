@@ -36,3 +36,4 @@ arlq = "arlq:main"
 
 [project.scripts]
 arlq-cli = "arlq:main_cli"
+arlq-solver = "arlq.solver:main"
