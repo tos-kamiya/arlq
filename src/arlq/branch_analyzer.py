@@ -611,13 +611,12 @@ def main() -> None:
         range(args.seed_start, args.seed_start + args.seeds)
     )
 
-    overall_rows: dict[str, AggregateRow] = defaultdict(AggregateRow)
     preference_rows: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     seed_summaries: list[str] = []
     aggregate_terminal = Counter()
 
     for seed_index, seed in enumerate(seed_values, start=1):
-        rows, stats, nodes_left, winning_histories = analyze_seed_with_beam(
+        _, stats, nodes_left, winning_histories = analyze_seed_with_beam(
             stage_num=args.stage,
             seed=seed,
             top_k=args.top_k,
@@ -628,11 +627,6 @@ def main() -> None:
             lp_weight=args.lp_weight,
             level_weight=args.level_weight,
         )
-        for label, row in rows.items():
-            overall_rows[label].leaves += row.leaves
-            overall_rows[label].wins += row.wins
-            overall_rows[label].losses += row.losses
-            overall_rows[label].stalled += row.stalled
         replay_path_cache: dict[
             tuple[int, int, tuple[str, ...], frozenset[str]],
             tuple[dict[d.Point, int], dict[d.Point, d.Point]],
@@ -674,10 +668,6 @@ def main() -> None:
         f"losses={aggregate_terminal['losses']} stalled={aggregate_terminal['stalled']} "
         f"win_rate={total_win_rate:.3f}"
     )
-    print("")
-    print("[first choice stats]")
-    for line in summarize_rows(overall_rows):
-        print(line)
     print("")
     print("[winning path monster priority]")
     for line in summarize_priority_rows({label: (counts[0], counts[1]) for label, counts in preference_rows.items()}):

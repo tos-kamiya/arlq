@@ -32,6 +32,7 @@ class SimulationState:
     torch_radius: int = d.TORCH_RADIUS
     respawn_queue: Counter[str] | None = None
     planned_target: Optional[d.Entity] = None
+    contacts: int = 0
     won: bool = False
     ended: bool = False
 
@@ -47,6 +48,7 @@ class SimulationResult:
     hours: int
     lp: int
     level: int
+    contacts: int
 
 
 def apply_runtime_flags(args: argparse.Namespace) -> None:
@@ -468,13 +470,15 @@ def step_simulation(state: SimulationState) -> None:
             state.torched[y][x] += cur_torched[y][x]
 
     move_direction = choose_move_direction(state)
-    effect, tribes_to_be_respawned, _ = update_entities(
+    effect, tribes_to_be_respawned, _, contact_happened = update_entities(
         move_direction,
         state.field,
         state.player,
         state.entities,
         state.encountered_types,
     )
+    if contact_happened:
+        state.contacts += 1
     if state.planned_target is not None and state.planned_target not in state.entities:
         state.planned_target = None
 
@@ -510,6 +514,7 @@ def simulate_game(stage_num: int, seed: int, max_steps: int = 10_000) -> Simulat
         hours=state.hours,
         lp=state.player.lp,
         level=state.player.level,
+        contacts=state.contacts,
     )
 
 
@@ -520,6 +525,7 @@ def summarize_results(results: Iterable[SimulationResult]) -> dict[str, float | 
     avg_hours = sum(result.hours for result in items) / total if total else 0.0
     avg_level = sum(result.level for result in items) / total if total else 0.0
     avg_lp = sum(result.lp for result in items) / total if total else 0.0
+    avg_contacts = sum(result.contacts for result in items) / total if total else 0.0
     return {
         "games": total,
         "wins": wins,
@@ -527,6 +533,7 @@ def summarize_results(results: Iterable[SimulationResult]) -> dict[str, float | 
         "avg_hours": avg_hours,
         "avg_level": avg_level,
         "avg_lp": avg_lp,
+        "avg_contacts": avg_contacts,
     }
 
 
@@ -562,7 +569,8 @@ def main() -> None:
 
     print(f"stage={args.stage} games={summary['games']} wins={summary['wins']} win_rate={summary['win_rate']:.3f}")
     print(
-        f"avg_hours={summary['avg_hours']:.1f} avg_level={summary['avg_level']:.1f} avg_lp={summary['avg_lp']:.1f}"
+        f"avg_hours={summary['avg_hours']:.1f} avg_level={summary['avg_level']:.1f} "
+        f"avg_lp={summary['avg_lp']:.1f} avg_contacts={summary['avg_contacts']:.1f}"
     )
     if args.print_winning_seeds:
         winning_seeds = [str(result.seed) for result in results if result.won]

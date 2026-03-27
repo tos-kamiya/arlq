@@ -95,7 +95,7 @@ Useful options:
 - `--lp-weight`: weight of LP in the pool evaluation score
 - `--level-weight`: weight of level in the pool evaluation score
 
-The output includes aggregate win rate plus per-type statistics for the first chosen target kind.
+The output includes aggregate win rate.
 When wins are found, the analyzer also replays each winning path from the initial seed state and aggregates which monster kinds were preferred over other visible monster candidates.
 
 Typical workflow:
