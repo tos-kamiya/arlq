@@ -536,6 +536,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--games", type=int, default=100, help="Number of games to simulate.")
     parser.add_argument("--seed-start", type=int, default=1, help="First seed value to use.")
     parser.add_argument("--max-steps", type=int, default=10_000, help="Maximum turns per game.")
+    parser.add_argument(
+        "--print-winning-seeds",
+        action="store_true",
+        help="Print the seed values of winning runs after the summary.",
+    )
     parser.add_argument("-F", "--large-field", action="store_true", help="Large field.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
@@ -559,6 +564,14 @@ def main() -> None:
     print(
         f"avg_hours={summary['avg_hours']:.1f} avg_level={summary['avg_level']:.1f} avg_lp={summary['avg_lp']:.1f}"
     )
+    if args.print_winning_seeds:
+        winning_seeds = [str(result.seed) for result in results if result.won]
+        print("")
+        print("[winning seeds]")
+        if winning_seeds:
+            print(" ".join(winning_seeds))
+        else:
+            print("(none)")
 
 
 if __name__ == "__main__":
