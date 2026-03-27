@@ -274,7 +274,7 @@ def update_entities(
     player: d.Player,
     entities: List[d.Entity],
     encountered_types: Set[str],
-) -> Tuple[Optional[str], List[str], Optional[Tuple[int, str]]]:
+) -> Tuple[Optional[str], List[str], Optional[Tuple[int, str]], bool]:
     effect = None
     tribes_to_be_respawned = []
     message = None
@@ -319,6 +319,7 @@ def update_entities(
             elif dx <= 1 and dy <= 1:
                 sur_entity_infos.append((i, e))
     assert len(enc_entity_infos) <= 1
+    contact_happened = bool(enc_entity_infos)
 
     # Actions (combats, state changes, etc)
     for eei, ee in enc_entity_infos:
@@ -407,7 +408,7 @@ def update_entities(
         tribes_to_be_respawned.append(char)
         player.companion = None
 
-    return effect, tribes_to_be_respawned, message
+    return effect, tribes_to_be_respawned, message, contact_happened
 
 
 def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = False) -> None:
@@ -497,7 +498,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             return
 
         # Player move, encountering, etc.
-        effect, tribes_to_be_respawned, m = update_entities(move_direction, field, player, entities, encountered_types)
+        effect, tribes_to_be_respawned, m, _ = update_entities(move_direction, field, player, entities, encountered_types)
         if m is not None:
             message = m
 
