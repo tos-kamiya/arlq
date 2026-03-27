@@ -106,6 +106,40 @@ uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 100 --seed-st
 uv run -p .venv/bin/python python -m arlq.branch_analyzer --stage 1 --seed-file winning_seeds.txt
 ```
 
+## Balance Search
+
+The repository also includes a Stage 1 balance-search helper at [src/arlq/balance_search.py](/home/toshihiro/playground/arlq/src/arlq/balance_search.py).
+
+This command performs a small hill-climb around the current constants and only changes:
+
+- `b` LP recovery
+- `SPAWN_CONFIGS_ST1` counts for `a`, `A`, `b`, `c`, and `d`
+
+The score ignores `A` and `D` and tries to flatten the winning-path monster priority for `b`, `d`, `a`, and `c`.
+At each round it tests `+/- step` neighbors of the current best setting and adopts the best improvement.
+
+Run via the script entrypoint:
+
+```bash
+uv run -p .venv/bin/python arlq-balance-search --seeds 10 --seed-start 1
+```
+
+Useful options:
+
+- `--seed-file`: read explicit seed values from a file
+- `--top-k`, `--max-depth`, `--beam-width`, `--node-budget`: analyzer settings reused for each evaluation
+- `--jobs`: number of worker processes to use across seeds inside each evaluation
+- `--rounds`: maximum hill-climb rounds
+- `--feed-step`: step size for `b` LP recovery
+- `--spawn-step`: step size for Stage 1 spawn counts
+
+Typical workflow:
+
+```bash
+uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 100 --seed-start 1 --print-winning-seeds > winning_seeds.txt
+uv run -p .venv/bin/python arlq-balance-search --seed-file winning_seeds.txt --top-k 4 --beam-width 110 --node-budget 10000 --max-depth 30 --jobs 4
+```
+
 ## Validation
 
 Lightweight validation:
