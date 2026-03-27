@@ -60,6 +60,36 @@ Useful options:
 
 The solver prints aggregate metrics including win count, win rate, and average ending stats.
 
+## Branch Analyzer
+
+The repository also includes a branch-based analyzer at [src/arlq/branch_analyzer.py](/home/toshihiro/playground/arlq/src/arlq/branch_analyzer.py).
+
+This tool assumes the whole map is visible from the start, takes the nearest `K` contact targets, branches on each choice, and continues expanding the contact tree until terminal states or the configured search budget is exhausted.
+
+For tractability, its path search uses an approximation: monsters and companions are treated as pass-through for routing purposes.
+Distance maps are therefore reusable until a structural event changes the field or encounter state, such as wall breaking, rock or caltrop spread, or treasure unlock state changes.
+
+Run via the script entrypoint:
+
+```bash
+uv run -p .venv/bin/python arlq-branch-analyzer --stage 1 --seeds 10 --seed-start 1
+```
+
+Run via module execution:
+
+```bash
+uv run -p .venv/bin/python python -m arlq.branch_analyzer --stage 2 --seeds 10 --seed-start 1001
+```
+
+Useful options:
+
+- `--top-k`: number of nearest targets to branch on at each decision
+- `--max-depth`: maximum contact depth in the branch tree
+- `--node-budget`: maximum expanded branch nodes per seed
+- `--max-travel-steps`: movement cap while advancing to a chosen target
+
+The output includes aggregate win rate plus per-type statistics for root choices and all explored choices.
+
 ## Validation
 
 Lightweight validation:
@@ -74,4 +104,5 @@ If solver logic changes, rerun a small batch first:
 ```bash
 uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 20 --seed-start 1
 uv run -p .venv/bin/python python -m arlq.solver --stage 2 --games 20 --seed-start 1001
+uv run -p .venv/bin/python python -m arlq.branch_analyzer --stage 1 --seeds 3 --seed-start 1 --node-budget 500
 ```

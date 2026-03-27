@@ -37,3 +37,4 @@ arlq = "arlq:main"
 [project.scripts]
 arlq-cli = "arlq:main_cli"
 arlq-solver = "arlq.solver:main"
+arlq-branch-analyzer = "arlq.branch_analyzer:main"
