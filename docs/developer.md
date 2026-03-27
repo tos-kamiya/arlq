@@ -63,10 +63,10 @@ The solver prints aggregate metrics including win count, win rate, and average e
 
 ## Branch Analyzer
 
-The repository also includes a pool-based branch analyzer at [src/arlq/branch_analyzer.py](/home/toshihiro/playground/arlq/src/arlq/branch_analyzer.py).
+The repository also includes a beam-search based analyzer at [src/arlq/branch_analyzer.py](/home/toshihiro/playground/arlq/src/arlq/branch_analyzer.py).
 
-This tool assumes the whole map is visible from the start and evolves a pool of candidate states generation by generation.
-For each state in the pool, it selects the nearest `K` contact targets, advances to each contact, and keeps only the top-scoring next states when the pool would otherwise grow too large.
+This tool assumes the whole map is visible from the start.
+At each depth it expands the nearest `K` contact targets from each beam state, evaluates the resulting states, and keeps only the top-scoring states for the next depth.
 
 For tractability, its path search uses an approximation: monsters and companions are treated as pass-through for routing purposes.
 Distance maps are therefore reusable until a structural event changes the field or encounter state, such as wall breaking, rock or caltrop spread, or treasure unlock state changes.
@@ -87,15 +87,16 @@ uv run -p .venv/bin/python python -m arlq.branch_analyzer --stage 2 --seeds 10 -
 Useful options:
 
 - `--seed-file`: read explicit seed values from a file instead of using `--seeds` and `--seed-start`
-- `--top-k`: number of nearest targets to branch on at each decision
-- `--max-depth`: maximum number of generations
-- `--pool-size`: maximum number of states kept for the next generation
+- `--top-k`: number of nearest targets to expand from each beam state
+- `--max-depth`: maximum beam-search depth
+- `--beam-width`: maximum number of states kept at each depth
 - `--node-budget`: maximum expanded child states per seed
 - `--max-travel-steps`: movement cap while advancing to a chosen target
 - `--lp-weight`: weight of LP in the pool evaluation score
 - `--level-weight`: weight of level in the pool evaluation score
 
 The output includes aggregate win rate plus per-type statistics for the first chosen target kind.
+When wins are found, the analyzer also replays each winning path from the initial seed state and aggregates which monster kinds were preferred over other visible monster candidates.
 
 Typical workflow:
 
