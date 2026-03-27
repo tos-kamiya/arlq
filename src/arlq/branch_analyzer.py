@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter, defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from copy import deepcopy
 from dataclasses import dataclass
 import heapq
@@ -533,6 +534,16 @@ def summarize_priority_rows(rows: dict[str, tuple[int, int]]) -> list[str]:
     return lines
 
 
+def summarize_rank_rows(rank_rows: dict[int, int]) -> list[str]:
+    total = sum(rank_rows.values())
+    lines: list[str] = []
+    for rank in sorted(rank_rows):
+        count = rank_rows[rank]
+        share = count / total if total else 0.0
+        lines.append(f"rank={rank:2d} chosen={count:6d} share={share:.3f}")
+    return lines
+
+
 def base_label_with_id(label_with_id: str) -> str:
     return label_with_id.split("#", 1)[0]
 
@@ -545,6 +556,7 @@ def replay_win_history(
     max_travel_steps: int,
     path_cache,
     preference_rows: dict[str, list[int]],
+    rank_rows: dict[int, int],
 ) -> None:
     state = build_simulation(stage_num, seed)
     ensure_branch_metadata(state)
@@ -555,6 +567,15 @@ def replay_win_history(
             break
         chosen_entity = state.entities[chosen.entity_index]
         if isinstance(chosen_entity, d.Monster):
+            monster_candidates = [
+                candidate
+                for candidate in candidates
+                if isinstance(state.entities[candidate.entity_index], d.Monster)
+            ]
+            for rank_index, candidate in enumerate(monster_candidates, start=1):
+                if candidate.entity_id == entity_id:
+                    rank_rows[rank_index] += 1
+                    break
             chosen_label = base_label_with_id(entity_label_by_id(state, entity_id))
             for candidate in candidates:
                 candidate_entity = state.entities[candidate.entity_index]
@@ -566,6 +587,71 @@ def replay_win_history(
         advance_until_contact(state, chosen.entity_index, max_travel_steps, path_cache)
         if state.ended:
             break
+
+
+def analyze_single_seed(task: tuple[int, int, int, int, int, int, float, float, bool, bool, bool, bool]):
+    (
+        stage_num,
+        seed,
+        top_k,
+        max_depth,
+        beam_width,
+        node_budget,
+        max_travel_steps,
+        lp_weight,
+        level_weight,
+        large_field,
+        large_torch,
+        small_torch,
+        narrower_corridors,
+    ) = task
+
+    parser = build_parser()
+    args = parser.parse_args([])
+    args.stage = stage_num
+    args.large_field = large_field
+    args.large_torch = large_torch
+    args.small_torch = small_torch
+    args.narrower_corridors = narrower_corridors
+    apply_runtime_flags(args)
+
+    _, stats, nodes_left, winning_histories = analyze_seed_with_beam(
+        stage_num=stage_num,
+        seed=seed,
+        top_k=top_k,
+        max_depth=max_depth,
+        beam_width=beam_width,
+        node_budget=node_budget,
+        max_travel_steps=max_travel_steps,
+        lp_weight=lp_weight,
+        level_weight=level_weight,
+    )
+
+    preference_rows: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    rank_rows: dict[int, int] = defaultdict(int)
+    replay_path_cache: dict[
+        tuple[int, int, tuple[str, ...], frozenset[str]],
+        tuple[dict[d.Point, int], dict[d.Point, d.Point]],
+    ] = {}
+    for history in winning_histories:
+        replay_win_history(
+            stage_num,
+            seed,
+            history,
+            top_k,
+            max_travel_steps,
+            replay_path_cache,
+            preference_rows,
+            rank_rows,
+        )
+
+    return {
+        "seed": seed,
+        "stats": stats,
+        "nodes_left": nodes_left,
+        "preference_rows": dict(preference_rows),
+        "rank_rows": dict(rank_rows),
+    }
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -595,6 +681,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--lp-weight", type=float, default=1.0, help="Weight for LP in the pool evaluation score.")
     parser.add_argument("--level-weight", type=float, default=10.0, help="Weight for level in the pool evaluation score.")
+    parser.add_argument("--jobs", type=int, default=1, help="Number of worker processes to use across seeds.")
     parser.add_argument("-F", "--large-field", action="store_true", help="Large field.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
@@ -612,49 +699,67 @@ def main() -> None:
     )
 
     preference_rows: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    rank_rows: dict[int, int] = defaultdict(int)
     seed_summaries: list[str] = []
     aggregate_terminal = Counter()
+    tasks = [
+        (
+            args.stage,
+            seed,
+            args.top_k,
+            args.max_depth,
+            args.beam_width,
+            args.node_budget,
+            args.max_travel_steps,
+            args.lp_weight,
+            args.level_weight,
+            args.large_field,
+            args.large_torch,
+            args.small_torch,
+            args.narrower_corridors,
+        )
+        for seed in seed_values
+    ]
 
-    for seed_index, seed in enumerate(seed_values, start=1):
-        _, stats, nodes_left, winning_histories = analyze_seed_with_beam(
-            stage_num=args.stage,
-            seed=seed,
-            top_k=args.top_k,
-            max_depth=args.max_depth,
-            beam_width=args.beam_width,
-            node_budget=args.node_budget,
-            max_travel_steps=args.max_travel_steps,
-            lp_weight=args.lp_weight,
-            level_weight=args.level_weight,
-        )
-        replay_path_cache: dict[
-            tuple[int, int, tuple[str, ...], frozenset[str]],
-            tuple[dict[d.Point, int], dict[d.Point, d.Point]],
-        ] = {}
-        for history in winning_histories:
-            replay_win_history(
-                args.stage,
-                seed,
-                history,
-                args.top_k,
-                args.max_travel_steps,
-                replay_path_cache,
-                preference_rows,
+    completed = 0
+    if args.jobs <= 1:
+        results = [analyze_single_seed(task) for task in tasks]
+        iterator = results
+    else:
+        executor = ProcessPoolExecutor(max_workers=args.jobs)
+        iterator = as_completed(executor.submit(analyze_single_seed, task) for task in tasks)
+
+    try:
+        for item in iterator:
+            result = item.result() if args.jobs > 1 else item
+            seed = result["seed"]
+            stats = result["stats"]
+            nodes_left = result["nodes_left"]
+            for label, counts in result["preference_rows"].items():
+                preference_rows[label][0] += counts[0]
+                preference_rows[label][1] += counts[1]
+            for rank, count in result["rank_rows"].items():
+                rank_rows[rank] += count
+            aggregate_terminal["leaves"] += stats.leaves
+            aggregate_terminal["wins"] += stats.wins
+            aggregate_terminal["losses"] += stats.losses
+            aggregate_terminal["stalled"] += stats.stalled
+            seed_summaries.append(
+                f"seed={seed} leaves={stats.leaves} wins={stats.wins} "
+                f"losses={stats.losses} stalled={stats.stalled} nodes_left={nodes_left}"
             )
-        aggregate_terminal["leaves"] += stats.leaves
-        aggregate_terminal["wins"] += stats.wins
-        aggregate_terminal["losses"] += stats.losses
-        aggregate_terminal["stalled"] += stats.stalled
-        seed_summaries.append(
-            f"seed={seed} leaves={stats.leaves} wins={stats.wins} "
-            f"losses={stats.losses} stalled={stats.stalled} nodes_left={nodes_left}"
-        )
-        progress_ratio = seed_index / len(seed_values) if seed_values else 1.0
-        print(
-            f"[progress] seeds={seed_index}/{len(seed_values)} "
-            f"({progress_ratio:.0%}) current_seed={seed} "
-            f"wins={aggregate_terminal['wins']} leaves={aggregate_terminal['leaves']}"
-        )
+            completed += 1
+            progress_ratio = completed / len(seed_values) if seed_values else 1.0
+            print(
+                f"[progress] seeds={completed}/{len(seed_values)} "
+                f"({progress_ratio:.0%}) current_seed={seed} "
+                f"wins={aggregate_terminal['wins']} leaves={aggregate_terminal['leaves']}"
+            )
+    finally:
+        if args.jobs > 1:
+            executor.shutdown()
+
+    seed_summaries.sort(key=lambda line: int(line.split()[0].split("=")[1]))
 
     total_leaves = aggregate_terminal["leaves"]
     total_win_rate = aggregate_terminal["wins"] / total_leaves if total_leaves else 0.0
@@ -671,6 +776,10 @@ def main() -> None:
     print("")
     print("[winning path monster priority]")
     for line in summarize_priority_rows({label: (counts[0], counts[1]) for label, counts in preference_rows.items()}):
+        print(line)
+    print("")
+    print("[winning path monster choice rank]")
+    for line in summarize_rank_rows(rank_rows):
         print(line)
     print("")
     print("[seed summaries]")
