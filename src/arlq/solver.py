@@ -548,6 +548,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print the seed values of winning runs after the summary.",
     )
+    parser.add_argument(
+        "--print-winning-seeds-only",
+        action="store_true",
+        help="Print only the seed values of winning runs, one per line.",
+    )
     parser.add_argument("-F", "--large-field", action="store_true", help="Large field.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
@@ -566,6 +571,12 @@ def main() -> None:
         for game_index in range(args.games)
     ]
     summary = summarize_results(results)
+    winning_seeds = [str(result.seed) for result in results if result.won]
+
+    if args.print_winning_seeds_only:
+        if winning_seeds:
+            print("\n".join(winning_seeds))
+        return
 
     print(f"stage={args.stage} games={summary['games']} wins={summary['wins']} win_rate={summary['win_rate']:.3f}")
     print(
@@ -573,7 +584,6 @@ def main() -> None:
         f"avg_lp={summary['avg_lp']:.1f} avg_contacts={summary['avg_contacts']:.1f}"
     )
     if args.print_winning_seeds:
-        winning_seeds = [str(result.seed) for result in results if result.won]
         print("")
         print("[winning seeds]")
         if winning_seeds:

@@ -57,6 +57,7 @@ Useful options:
 - `--seed-start`: first seed value in the batch
 - `--max-steps`: cap per-run turns
 - `--print-winning-seeds`: print only the seed values that ended in a win
+- `--print-winning-seeds-only`: print only winning seed values, one per line, with no summary
 - `-F`, `-T`, `-t`, `-n`: same field and visibility modifiers used by the game
 
 The solver prints aggregate metrics including win count, win rate, and average ending stats.
@@ -102,7 +103,7 @@ When wins are found, the analyzer also replays each winning path from the initia
 Typical workflow:
 
 ```bash
-uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 100 --seed-start 1 --print-winning-seeds
+uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 100 --seed-start 1 --print-winning-seeds-only > winning_seeds.txt
 uv run -p .venv/bin/python python -m arlq.branch_analyzer --stage 1 --seed-file winning_seeds.txt
 ```
 
@@ -136,7 +137,7 @@ Useful options:
 Typical workflow:
 
 ```bash
-uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 100 --seed-start 1 --print-winning-seeds > winning_seeds.txt
+uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 100 --seed-start 1 --print-winning-seeds-only > winning_seeds.txt
 uv run -p .venv/bin/python arlq-balance-search --seed-file winning_seeds.txt --top-k 4 --beam-width 110 --node-budget 10000 --max-depth 30 --jobs 4
 ```
 
