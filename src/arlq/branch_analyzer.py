@@ -45,6 +45,13 @@ class SearchBudget:
     nodes_left: int
 
 
+@dataclass
+class PoolMember:
+    state: object
+    first_choice: str | None = None
+    generation: int = 0
+
+
 LP_SAFETY_MARGIN = 1
 
 
@@ -176,7 +183,7 @@ def apply_move(state, move_direction: d.Point) -> None:
             losing_monster_signature = monster_signature(entity)
             break
 
-    effect, tribes_to_be_respawned, _ = update_entities(
+    effect, tribes_to_be_respawned, _, _ = update_entities(
         move_direction,
         state.field,
         state.player,
@@ -331,8 +338,148 @@ def load_seed_file(path: str) -> list[int]:
     return seeds
 
 
+def evaluate_state(member: PoolMember, lp_weight: float, level_weight: float) -> float:
+    state = member.state
+    return state.player.lp * lp_weight + state.player.level * level_weight
+
+
+def pool_member_key(member: PoolMember) -> tuple:
+    state = member.state
+    return (
+        state.player.x,
+        state.player.y,
+        state.player.lp,
+        state.player.level,
+        state.player.item,
+        tuple("".join(row) for row in state.field),
+        frozenset(state.encountered_types),
+        tuple(sorted(getattr(state, "lost_monsters", set()))),
+        member.first_choice,
+    )
+
+
+def dedupe_pool(pool: list[PoolMember], lp_weight: float, level_weight: float) -> list[PoolMember]:
+    best_by_key: dict[tuple, PoolMember] = {}
+    for member in pool:
+        key = pool_member_key(member)
+        if key not in best_by_key or evaluate_state(member, lp_weight, level_weight) > evaluate_state(
+            best_by_key[key], lp_weight, level_weight
+        ):
+            best_by_key[key] = member
+    return list(best_by_key.values())
+
+
+def select_top_pool(
+    pool: list[PoolMember],
+    pool_size: int,
+    lp_weight: float,
+    level_weight: float,
+) -> list[PoolMember]:
+    deduped = dedupe_pool(pool, lp_weight, level_weight)
+    deduped.sort(
+        key=lambda member: (
+            evaluate_state(member, lp_weight, level_weight),
+            member.state.player.level,
+            member.state.player.lp,
+        ),
+        reverse=True,
+    )
+    return deduped[:pool_size]
+
+
+def analyze_seed_with_pool(
+    *,
+    stage_num: int,
+    seed: int,
+    top_k: int,
+    max_generations: int,
+    pool_size: int,
+    node_budget: int,
+    max_travel_steps: int,
+    lp_weight: float,
+    level_weight: float,
+) -> tuple[dict[str, AggregateRow], AnalysisStats, int]:
+    path_cache: dict[
+        tuple[int, int, tuple[str, ...], frozenset[str]],
+        tuple[dict[d.Point, int], dict[d.Point, d.Point]],
+    ] = {}
+    initial_state = build_simulation(stage_num, seed)
+    ensure_branch_metadata(initial_state)
+    pool: list[PoolMember] = [PoolMember(state=initial_state)]
+    budget = SearchBudget(nodes_left=node_budget)
+    rows: dict[str, AggregateRow] = defaultdict(AggregateRow)
+    stats = AnalysisStats()
+
+    for generation in range(max_generations):
+        if not pool or budget.nodes_left <= 0:
+            break
+        next_pool: list[PoolMember] = []
+        for member in pool:
+            if budget.nodes_left <= 0:
+                break
+            state = member.state
+            if state.won:
+                label = member.first_choice or "(initial)"
+                rows[label].add(AnalysisStats(leaves=1, wins=1))
+                stats.leaves += 1
+                stats.wins += 1
+                continue
+            if state.ended:
+                label = member.first_choice or "(initial)"
+                rows[label].add(AnalysisStats(leaves=1, losses=1))
+                stats.leaves += 1
+                stats.losses += 1
+                continue
+
+            candidates = rank_nearest_targets(state, top_k, path_cache)
+            if not candidates:
+                label = member.first_choice or "(initial)"
+                rows[label].add(AnalysisStats(leaves=1, stalled=1))
+                stats.leaves += 1
+                stats.stalled += 1
+                continue
+
+            for candidate in candidates:
+                if budget.nodes_left <= 0:
+                    break
+                budget.nodes_left -= 1
+                child_state = deepcopy(state)
+                ensure_branch_metadata(child_state)
+                contacted = advance_until_contact(child_state, candidate.entity_index, max_travel_steps, path_cache)
+                child = PoolMember(
+                    state=child_state,
+                    first_choice=member.first_choice or candidate.label,
+                    generation=generation + 1,
+                )
+                if not contacted:
+                    rows[child.first_choice or "(initial)"].add(AnalysisStats(leaves=1, stalled=1))
+                    stats.leaves += 1
+                    stats.stalled += 1
+                elif child_state.won:
+                    rows[child.first_choice or "(initial)"].add(AnalysisStats(leaves=1, wins=1))
+                    stats.leaves += 1
+                    stats.wins += 1
+                elif child_state.ended:
+                    rows[child.first_choice or "(initial)"].add(AnalysisStats(leaves=1, losses=1))
+                    stats.leaves += 1
+                    stats.losses += 1
+                else:
+                    next_pool.append(child)
+
+        pool = select_top_pool(next_pool, pool_size, lp_weight, level_weight)
+
+    if pool:
+        for member in pool:
+            label = member.first_choice or "(initial)"
+            rows[label].add(AnalysisStats(leaves=1, stalled=1))
+            stats.leaves += 1
+            stats.stalled += 1
+
+    return rows, stats, budget.nodes_left
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Analyze branch choices for ARLQ with full-map visibility.")
+    parser = argparse.ArgumentParser(description="Analyze branch choices for ARLQ with a pool-based evolutionary search.")
     parser.add_argument("--stage", type=int, default=1, help="Stage number to analyze.")
     parser.add_argument("--seeds", type=int, default=10, help="Number of seeds to analyze.")
     parser.add_argument("--seed-start", type=int, default=1, help="First seed value to use.")
@@ -342,12 +489,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to a file containing explicit seed values. Whitespace and commas are accepted.",
     )
     parser.add_argument("--top-k", type=int, default=5, help="Branch on the nearest K targets.")
-    parser.add_argument("--max-depth", type=int, default=12, help="Maximum contact depth per branch.")
+    parser.add_argument("--max-depth", type=int, default=12, help="Maximum generations to evolve the pool.")
+    parser.add_argument("--pool-size", type=int, default=64, help="Maximum number of states kept for the next generation.")
     parser.add_argument(
         "--node-budget",
         type=int,
         default=5000,
-        help="Maximum expanded branch nodes per seed to keep the search tractable.",
+        help="Maximum expanded children per seed to keep the search tractable.",
     )
     parser.add_argument(
         "--max-travel-steps",
@@ -355,6 +503,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=500,
         help="Maximum movement steps allowed while advancing to a chosen target.",
     )
+    parser.add_argument("--lp-weight", type=float, default=1.0, help="Weight for LP in the pool evaluation score.")
+    parser.add_argument("--level-weight", type=float, default=10.0, help="Weight for level in the pool evaluation score.")
     parser.add_argument("-F", "--large-field", action="store_true", help="Large field.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
@@ -372,35 +522,33 @@ def main() -> None:
     )
 
     overall_rows: dict[str, AggregateRow] = defaultdict(AggregateRow)
-    root_rows: dict[str, AggregateRow] = defaultdict(AggregateRow)
     seed_summaries: list[str] = []
     aggregate_terminal = Counter()
 
     for seed_index, seed in enumerate(seed_values, start=1):
-        state = build_simulation(args.stage, seed)
-        ensure_branch_metadata(state)
-        budget = SearchBudget(nodes_left=args.node_budget)
-        path_cache: dict[
-            tuple[int, int, tuple[str, ...], frozenset[str]],
-            tuple[dict[d.Point, int], dict[d.Point, d.Point]],
-        ] = {}
-        stats = explore_tree(
-            state,
+        rows, stats, nodes_left = analyze_seed_with_pool(
+            stage_num=args.stage,
+            seed=seed,
             top_k=args.top_k,
-            max_depth=args.max_depth,
+            max_generations=args.max_depth,
+            pool_size=args.pool_size,
+            node_budget=args.node_budget,
             max_travel_steps=args.max_travel_steps,
-            budget=budget,
-            overall_rows=overall_rows,
-            root_rows=root_rows,
-            path_cache=path_cache,
+            lp_weight=args.lp_weight,
+            level_weight=args.level_weight,
         )
+        for label, row in rows.items():
+            overall_rows[label].leaves += row.leaves
+            overall_rows[label].wins += row.wins
+            overall_rows[label].losses += row.losses
+            overall_rows[label].stalled += row.stalled
         aggregate_terminal["leaves"] += stats.leaves
         aggregate_terminal["wins"] += stats.wins
         aggregate_terminal["losses"] += stats.losses
         aggregate_terminal["stalled"] += stats.stalled
         seed_summaries.append(
             f"seed={seed} leaves={stats.leaves} wins={stats.wins} "
-            f"losses={stats.losses} stalled={stats.stalled} nodes_left={budget.nodes_left}"
+            f"losses={stats.losses} stalled={stats.stalled} nodes_left={nodes_left}"
         )
         progress_ratio = seed_index / len(seed_values) if seed_values else 1.0
         print(
@@ -414,7 +562,7 @@ def main() -> None:
 
     print(
         f"stage={args.stage} seeds={len(seed_values)} top_k={args.top_k} max_depth={args.max_depth} "
-        f"node_budget={args.node_budget}"
+        f"pool_size={args.pool_size} node_budget={args.node_budget}"
     )
     print(
         f"aggregate leaves={aggregate_terminal['leaves']} wins={aggregate_terminal['wins']} "
@@ -422,11 +570,7 @@ def main() -> None:
         f"win_rate={total_win_rate:.3f}"
     )
     print("")
-    print("[root choice stats]")
-    for line in summarize_rows(root_rows):
-        print(line)
-    print("")
-    print("[all choice stats]")
+    print("[first choice stats]")
     for line in summarize_rows(overall_rows):
         print(line)
     print("")

@@ -63,9 +63,10 @@ The solver prints aggregate metrics including win count, win rate, and average e
 
 ## Branch Analyzer
 
-The repository also includes a branch-based analyzer at [src/arlq/branch_analyzer.py](/home/toshihiro/playground/arlq/src/arlq/branch_analyzer.py).
+The repository also includes a pool-based branch analyzer at [src/arlq/branch_analyzer.py](/home/toshihiro/playground/arlq/src/arlq/branch_analyzer.py).
 
-This tool assumes the whole map is visible from the start, takes the nearest `K` contact targets, branches on each choice, and continues expanding the contact tree until terminal states or the configured search budget is exhausted.
+This tool assumes the whole map is visible from the start and evolves a pool of candidate states generation by generation.
+For each state in the pool, it selects the nearest `K` contact targets, advances to each contact, and keeps only the top-scoring next states when the pool would otherwise grow too large.
 
 For tractability, its path search uses an approximation: monsters and companions are treated as pass-through for routing purposes.
 Distance maps are therefore reusable until a structural event changes the field or encounter state, such as wall breaking, rock or caltrop spread, or treasure unlock state changes.
@@ -87,11 +88,14 @@ Useful options:
 
 - `--seed-file`: read explicit seed values from a file instead of using `--seeds` and `--seed-start`
 - `--top-k`: number of nearest targets to branch on at each decision
-- `--max-depth`: maximum contact depth in the branch tree
-- `--node-budget`: maximum expanded branch nodes per seed
+- `--max-depth`: maximum number of generations
+- `--pool-size`: maximum number of states kept for the next generation
+- `--node-budget`: maximum expanded child states per seed
 - `--max-travel-steps`: movement cap while advancing to a chosen target
+- `--lp-weight`: weight of LP in the pool evaluation score
+- `--level-weight`: weight of level in the pool evaluation score
 
-The output includes aggregate win rate plus per-type statistics for root choices and all explored choices.
+The output includes aggregate win rate plus per-type statistics for the first chosen target kind.
 
 Typical workflow:
 
