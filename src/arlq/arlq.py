@@ -392,7 +392,7 @@ def update_entities(
                 player.karma += 1
 
                 player.item = m.tribe.item
-                player.item_uses = 2 if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) else 0
+                player.item_uses = 3 if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) else 0
                 player.item_taken_from = m.tribe.char
                 if player.item == d.ITEM_SWORD_CURSED:
                     player.lp = (player.lp * 3 + 3) // 4

@@ -203,23 +203,25 @@ class SpawnConfig:
 _MT = MonsterTribe
 _CT = CompanionTribe
 
+MIN_FOOD = 8
+
 MONSTER_TRIBES: List[MonsterTribe] = [
-    _MT("a", 1, 6),  # Amoeba
-    _MT("A", 2, 6, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
+    _MT("a", 1, MIN_FOOD),  # Amoeba
+    _MT("A", 2, MIN_FOOD, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
     _MT("b", 5, 40, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
-    _MT("c", 10, 6, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
-    _MT("C", 15, 6, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
+    _MT("c", 10, MIN_FOOD, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
+    _MT("C", 15, MIN_FOOD, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
     _MT("d", 20, 40, item=ITEM_POISONED),  # Comodo Dragon
     _MT(
-        CHAR_DRAGON, 40, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"
+        CHAR_DRAGON, 40, MIN_FOOD, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"
     ),  # Dragon
-    _MT("e", 1, -6, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained!"),  # Erebus
+    _MT("e", 1, -5, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained!"),  # Erebus
     _MT(
-        CHAR_FIRE_DRAKE, 60, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"
+        CHAR_FIRE_DRAKE, 60, MIN_FOOD, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"
     ),  # Fire Drake
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
-    _MT("h", 999, 6),  # High elf
-    _MT("X", 1, 6, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
+    _MT("h", 999, MIN_FOOD),  # High elf
+    _MT("X", 1, MIN_FOOD, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
 ]
 
 COMPANION_TRIBES: List[CompanionTribe] = [
