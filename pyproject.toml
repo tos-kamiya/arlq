@@ -24,18 +24,25 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Topic :: Games/Entertainment"
 ]
-urls = {
-  Homepage = "https://github.com/tos-kamiya/arlq",
-  Repository = "https://github.com/tos-kamiya/arlq",
-  Issues = "https://github.com/tos-kamiya/arlq/issues",
-}
 dependencies = [
   "pygame>=2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.0",
+  "pytest>=8.0",
+  "ruff>=0.6",
 ]
 
 [project.readme]
 file = "README-pypi.md"
 content-type = "text/markdown"
+
+[project.urls]
+Homepage = "https://github.com/tos-kamiya/arlq"
+Repository = "https://github.com/tos-kamiya/arlq"
+Issues = "https://github.com/tos-kamiya/arlq/issues"
 
 [tool.hatch.version]
 path = "src/arlq/__about__.py"
