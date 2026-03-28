@@ -246,11 +246,11 @@ _SC = SpawnConfig
 
 # Stage 1 spawn configurations.
 SPAWN_CONFIGS_ST1 = [
-    _SC(CHAR_TO_TRIBE["a"], 15),
+    _SC(CHAR_TO_TRIBE["a"], 14),
     _SC(CHAR_TO_TRIBE["A"], 1),
     _SC(CHAR_TO_TRIBE["b"], 7),
-    _SC(CHAR_TO_TRIBE["c"], 2),
-    _SC(CHAR_TO_TRIBE["d"], 2),
+    _SC(CHAR_TO_TRIBE["c"], 3),
+    _SC(CHAR_TO_TRIBE["d"], 4),
     _SC(CHAR_TO_TRIBE[CHAR_DRAGON], 1),
     _SC(CHAR_TO_TRIBE["n"], 0.7),
     _SC(CHAR_TO_TRIBE["o"], 0.7),
@@ -288,7 +288,7 @@ def player_attack_by_level(player: Player) -> int:
     elif player.item == ITEM_SWORD_CURSED:
         return player.level * 3
     elif player.item == ITEM_POISONED:
-        return (player.level + 2) // 3
+        return (player.level + 2) // 2
     else:
         return player.level
 
