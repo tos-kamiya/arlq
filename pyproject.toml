@@ -5,23 +5,32 @@ build-backend = "hatchling.build"
 [project]
 name = "arlq"
 dynamic = ["version"]
-description = "ARQL, another rogue-like quest game."
+description = "ARLQ, another rogue-like quest game."
 requires-python = ">=3.10"
 license = {text = "BSD 2-Clause License"}
-keywords = []
+keywords = ["game", "roguelike", "pygame", "curses"]
 authors = [
   { name = "Toshihiro Kamiya", email = "kamiya@mbj.nifty.com" }
 ]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: Implementation :: CPython"
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Games/Entertainment"
 ]
-urls = {Homepage = "https://github.com/tos-kamiya/arlq"}
+urls = {
+  Homepage = "https://github.com/tos-kamiya/arlq",
+  Repository = "https://github.com/tos-kamiya/arlq",
+  Issues = "https://github.com/tos-kamiya/arlq/issues",
+}
 dependencies = [
-  'pygame'
+  "pygame>=2",
 ]
 
 [project.readme]
