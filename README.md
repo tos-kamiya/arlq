@@ -83,7 +83,7 @@ The command prints aggregate results such as win count, win rate, and average en
   Some monsters have rare variants with special features that differ from the normal ones.  
   For example:  
   - `A` (Rare Amoeba): Significantly boosts your level upon defeat.  
-  - `B` (Rare Bison): Provides even more food than a normal bison.
+  - `C` (Rare Chimera): Grants a cursed sword that greatly increases combat power at the cost of LP.
 
 * **LP System**
   The player has LP (Life Points) that decrease with every move.
@@ -102,9 +102,9 @@ The command prints aggregate results such as win count, win rate, and average en
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **a** Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                                |
 | **A** Rare Amoeba   | A rare amoeba that significantly boosts your level upon defeat.                                                                                                   |
-| **b** Bison         | The second weakest. Defeating it provides plenty of food. Hunt it when you're hungry.                                                                             |
-| **c** Chimera       | Moderately strong. It wields a sword, which can be obtained upon defeat. Holding the sword doubles your combat power in the next battle and lets you break walls. |
-| **d** Komodo Dragon | Powerful but dangerous. Defeating it provides a large amount of food, but you'll be poisoned -- reducing your combat power to one-third in the next battle.       |
+| **b** Bison         | The second weakest. Defeating it restores a large amount of LP. Hunt it when you're hungry.                                                                       |
+| **c** Chimera       | Moderately strong. It carries a sword. Taking it raises combat power to 1.5x and lets you break up to three walls.                                               |
+| **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to about three-quarters until replaced.        |
 | **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
 
 **Stage 2**
@@ -113,9 +113,9 @@ In addition to the monsters from Stage 1 except for Dragon, the following appear
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **C** Rare Chimera  | Wields a cursed sword. Triples combat power, but loses life points upon equipping.                                     |
-| **e** Erebus        | Battling it drains your vitality.                                                                                       |
-| **F** Fire Drake    | A monster that breathes fire when approached. Extremely powerful; defeating it unseals the Fire Drake's treasure chest. |
+| **C** Rare Chimera  | Wields a cursed sword. It triples combat power, lets you break up to three walls, and immediately reduces LP when equipped. |
+| **e** Erebus        | Battling it drains your vitality by a small amount.                                                                     |
+| **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
 | **g** Golem         | When defeated, rocks scatter. It yields no food.                                                                        |
 | **h** High Elf      | Too powerful to be defeated.                                                                                            |
 | **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you.                                                         |
