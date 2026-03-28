@@ -98,7 +98,7 @@ Useful options:
 - `--jobs`: number of worker processes to use across seeds
 
 The output includes aggregate win rate.
-When wins are found, the analyzer also replays each winning path from the initial seed state and aggregates which monster kinds were preferred over other visible monster candidates, as well as which distance-rank among visible monster candidates was chosen.
+When wins are found, the analyzer also replays each winning path from the initial seed state and aggregates which monster kinds were preferred over other visible monster candidates, reported as `preference_score = (preferred - deferred) / (preferred + deferred)`, as well as which distance-rank among visible monster candidates was chosen.
 
 Typical workflow:
 
@@ -127,6 +127,7 @@ For Stage 2 it adjusts:
 The default Stage 2 flattening targets are `a`, `A`, `b`, `c`, `C`, and `d`.
 
 At each round it tests `+/- step` neighbors of the current best setting and adopts the best improvement.
+The optimization target is the variance of the same `preference_score` metric across the selected monster set.
 
 Run via the script entrypoint:
 

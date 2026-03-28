@@ -520,7 +520,7 @@ def summarize_priority_rows(rows: dict[str, tuple[int, int]]) -> list[str]:
     ordered = sorted(
         rows.items(),
         key=lambda item: (
-            (item[1][0] / (item[1][0] + item[1][1])) if (item[1][0] + item[1][1]) else -1.0,
+            ((item[1][0] - item[1][1]) / (item[1][0] + item[1][1])) if (item[1][0] + item[1][1]) else -2.0,
             item[1][0] + item[1][1],
             item[0],
         ),
@@ -529,8 +529,8 @@ def summarize_priority_rows(rows: dict[str, tuple[int, int]]) -> list[str]:
     lines: list[str] = []
     for label, (wins, losses) in ordered:
         total = wins + losses
-        ratio = wins / total if total else 0.0
-        lines.append(f"{label:14s} preferred={wins:6d} deferred={losses:6d} preference_rate={ratio:.3f}")
+        score = (wins - losses) / total if total else 0.0
+        lines.append(f"{label:14s} preferred={wins:6d} deferred={losses:6d} preference_score={score:.3f}")
     return lines
 
 
