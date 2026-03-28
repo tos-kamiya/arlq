@@ -19,7 +19,7 @@ LP_INIT: int = 90
 LP_RESPAWN_MIN: int = 20
 LP_RESPAWN_COST: int = 6
 
-MONSTER_RESPAWN_INTERVAL: int = 60
+MONSTER_RESPAWN_INTERVAL: int = 65
 
 ITEM_SWORD_X1_5: str = "Sword"
 ITEM_SWORD_CURSED: str = "Cursed Sword"
@@ -169,6 +169,7 @@ class Player(Entity):
         level: Level of the player.
         lp: Life points.
         item: Item held by the player.
+        item_uses: Remaining uses for consumable item effects.
         item_taken_from: Source from which the item was taken.
         companion: (Optional) Companion associated with the player (Companion instance).
         karma: Karma value.
@@ -179,6 +180,7 @@ class Player(Entity):
         self.level: int = level
         self.lp: int = lp
         self.item: Optional[str] = None
+        self.item_uses: int = 0
         self.item_taken_from: Optional[str] = None
         self.companion: Optional[Companion] = companion
         self.karma: int = 0
@@ -207,7 +209,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("b", 5, 40, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
     _MT("c", 10, 6, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
     _MT("C", 15, 6, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
-    _MT("d", 20, 30, item=ITEM_POISONED),  # Comodo Dragon
+    _MT("d", 20, 40, item=ITEM_POISONED),  # Comodo Dragon
     _MT(
         CHAR_DRAGON, 40, 6, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"
     ),  # Dragon
@@ -250,7 +252,7 @@ SPAWN_CONFIGS_ST1 = [
     _SC(CHAR_TO_TRIBE["A"], 1),
     _SC(CHAR_TO_TRIBE["b"], 7),
     _SC(CHAR_TO_TRIBE["c"], 3),
-    _SC(CHAR_TO_TRIBE["d"], 4),
+    _SC(CHAR_TO_TRIBE["d"], 3),
     _SC(CHAR_TO_TRIBE[CHAR_DRAGON], 1),
     _SC(CHAR_TO_TRIBE["n"], 0.7),
     _SC(CHAR_TO_TRIBE["o"], 0.7),
@@ -259,12 +261,12 @@ SPAWN_CONFIGS_ST1 = [
 
 # Stage 2 spawn configurations.
 SPAWN_CONFIGS_ST2 = [
-    _SC(CHAR_TO_TRIBE["a"], 15),
+    _SC(CHAR_TO_TRIBE["a"], 14),
     _SC(CHAR_TO_TRIBE["A"], 1),
     _SC(CHAR_TO_TRIBE["b"], 7),
-    _SC(CHAR_TO_TRIBE["c"], 2),
+    _SC(CHAR_TO_TRIBE["c"], 3),
     _SC(CHAR_TO_TRIBE["C"], 1),
-    _SC(CHAR_TO_TRIBE["d"], 2),
+    _SC(CHAR_TO_TRIBE["d"], 3),
     _SC(CHAR_TO_TRIBE[CHAR_FIRE_DRAKE], 1),
     _SC(CHAR_TO_TRIBE["e"], 1),
     _SC(CHAR_TO_TRIBE["g"], 1),
@@ -288,7 +290,7 @@ def player_attack_by_level(player: Player) -> int:
     elif player.item == ITEM_SWORD_CURSED:
         return player.level * 3
     elif player.item == ITEM_POISONED:
-        return (player.level + 2) // 2
+        return (player.level * 3 + 3) // 4
     else:
         return player.level
 

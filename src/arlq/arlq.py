@@ -299,8 +299,12 @@ def update_entities(
             # break the wall
             player.x, player.y = nx, ny
             field[player.y][player.x] = " "
-            player.item = ""
-            player.item_taken_from = ""
+            if player.item_uses > 0:
+                player.item_uses -= 1
+            if player.item_uses <= 0:
+                player.item = ""
+                player.item_uses = 0
+                player.item_taken_from = ""
 
     # Caltrop damage
     if field[player.y][player.x] == d.CHAR_CALTROP:
@@ -348,6 +352,7 @@ def update_entities(
             if player_attack < m.tribe.level:
                 player.x, player.y = find_random_place(entities, field, distance=2)
                 player.item = ""
+                player.item_uses = 0
                 player.item_taken_from = ""
                 player.lp -= d.LP_RESPAWN_COST
                 player.lp = max(d.LP_RESPAWN_MIN, min(player.lp, d.LP_INIT))
@@ -387,9 +392,10 @@ def update_entities(
                 player.karma += 1
 
                 player.item = m.tribe.item
+                player.item_uses = 2 if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) else 0
                 player.item_taken_from = m.tribe.char
                 if player.item == d.ITEM_SWORD_CURSED:
-                    player.lp = (player.lp + 1) // 2
+                    player.lp = (player.lp * 3 + 3) // 4
 
                 if m.tribe.event_message:
                     message = (3, m.tribe.event_message)
