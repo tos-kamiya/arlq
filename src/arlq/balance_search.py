@@ -49,7 +49,7 @@ class EvaluationResult:
     wins: int
     leaves: int
     preference_rows: dict[str, tuple[int, int]]
-    preference_rates: dict[str, float]
+    preference_scores: dict[str, float]
     comparison_totals: dict[str, int]
     variance: float
     target_labels: tuple[str, ...]
@@ -189,23 +189,23 @@ def evaluate_seed(
     }
 
 
-def compute_rates(
+def compute_scores(
     preference_rows: dict[str, tuple[int, int]],
     target_labels: tuple[str, ...],
 ) -> tuple[dict[str, float], dict[str, int], float]:
-    rates: dict[str, float] = {}
+    scores: dict[str, float] = {}
     totals: dict[str, int] = {}
     for label in target_labels:
         preferred, deferred = preference_rows.get(label, (0, 0))
         total = preferred + deferred
         totals[label] = total
         if total > 0:
-            rates[label] = preferred / total
-    if len(rates) != len(target_labels):
-        return rates, totals, float("inf")
-    mean_rate = sum(rates.values()) / len(rates)
-    variance = sum((rate - mean_rate) ** 2 for rate in rates.values()) / len(rates)
-    return rates, totals, variance
+            scores[label] = (preferred - deferred) / total
+    if len(scores) != len(target_labels):
+        return scores, totals, float("inf")
+    mean_score = sum(scores.values()) / len(scores)
+    variance = sum((score - mean_score) ** 2 for score in scores.values()) / len(scores)
+    return scores, totals, variance
 
 
 def evaluate_tuning(
@@ -259,13 +259,13 @@ def evaluate_tuning(
                     aggregate_rows[label][1] += counts[1]
 
     normalized_rows = {label: (counts[0], counts[1]) for label, counts in aggregate_rows.items()}
-    rates, totals, variance = compute_rates(normalized_rows, target_labels)
+    scores, totals, variance = compute_scores(normalized_rows, target_labels)
     return EvaluationResult(
         tuning=tuning,
         wins=wins,
         leaves=leaves,
         preference_rows=normalized_rows,
-        preference_rates=rates,
+        preference_scores=scores,
         comparison_totals=totals,
         variance=variance,
         target_labels=target_labels,
@@ -275,8 +275,8 @@ def evaluate_tuning(
 def format_result(result: EvaluationResult) -> str:
     leaves = result.leaves or 1
     win_rate = result.wins / leaves
-    rates_text = " ".join(
-        f"{label.split(':', 1)[1]}={result.preference_rates.get(label, float('nan')):.3f}/{result.comparison_totals[label]}"
+    scores_text = " ".join(
+        f"{label.split(':', 1)[1]}={result.preference_scores.get(label, float('nan')):.3f}/{result.comparison_totals[label]}"
         for label in result.target_labels
     )
     variance_text = "inf" if result.variance == float("inf") else f"{result.variance:.6f}"
@@ -287,7 +287,7 @@ def format_result(result: EvaluationResult) -> str:
     parts.extend(f"{char}={count}" for char, count in tuning.counts)
     return (
         f"{' '.join(parts)} wins={result.wins} leaves={result.leaves} "
-        f"win_rate={win_rate:.3f} variance={variance_text} {rates_text}"
+        f"win_rate={win_rate:.3f} variance={variance_text} {scores_text}"
     )
 
 
