@@ -176,11 +176,13 @@ def is_branch_target(state, entity: d.Entity) -> bool:
     return False
 
 
-def rank_nearest_targets(state, limit: int, path_cache) -> list[Candidate]:
+def rank_nearest_targets(state, limit: int, path_cache, forbidden_chars: frozenset[str] = frozenset()) -> list[Candidate]:
     ensure_branch_metadata(state)
     ranked: list[Candidate] = []
     for index, entity in enumerate(state.entities):
         if not is_branch_target(state, entity):
+            continue
+        if isinstance(entity, d.Monster) and entity.tribe.char in forbidden_chars:
             continue
         path = find_path_ignoring_entities(state, entity, path_cache)
         if path is None:
@@ -423,6 +425,7 @@ def analyze_seed_with_beam(
     max_travel_steps: int,
     lp_weight: float,
     level_weight: float,
+    forbidden_chars: frozenset[str] = frozenset(),
 ) -> tuple[dict[str, AggregateRow], AnalysisStats, int, list[tuple[int, ...]]]:
     path_cache: dict[
         tuple[int, int, tuple[str, ...], frozenset[str]],
@@ -457,7 +460,7 @@ def analyze_seed_with_beam(
                 stats.losses += 1
                 continue
 
-            candidates = rank_nearest_targets(state, top_k, path_cache)
+            candidates = rank_nearest_targets(state, top_k, path_cache, forbidden_chars)
             if not candidates:
                 label = entity_label_by_id(state, beam_state.first_choice) if beam_state.first_choice is not None else "(initial)"
                 rows[label].add(AnalysisStats(leaves=1, stalled=1))
@@ -557,11 +560,12 @@ def replay_win_history(
     path_cache,
     preference_rows: dict[str, list[int]],
     rank_rows: dict[int, int],
+    forbidden_chars: frozenset[str] = frozenset(),
 ) -> None:
     state = build_simulation(stage_num, seed)
     ensure_branch_metadata(state)
     for entity_id in history:
-        candidates = rank_nearest_targets(state, top_k, path_cache)
+        candidates = rank_nearest_targets(state, top_k, path_cache, forbidden_chars)
         chosen = find_candidate_by_entity_id(candidates, entity_id)
         if chosen is None:
             break
@@ -589,7 +593,7 @@ def replay_win_history(
             break
 
 
-def analyze_single_seed(task: tuple[int, int, int, int, int, int, float, float, bool, bool, bool, bool]):
+def analyze_single_seed(task: tuple[int, int, int, int, int, int, float, float, bool, bool, bool, bool, tuple[str, ...]]):
     (
         stage_num,
         seed,
@@ -604,7 +608,9 @@ def analyze_single_seed(task: tuple[int, int, int, int, int, int, float, float, 
         large_torch,
         small_torch,
         narrower_corridors,
+        forbidden_chars_tuple,
     ) = task
+    forbidden_chars = frozenset(forbidden_chars_tuple)
 
     parser = build_parser()
     args = parser.parse_args([])
@@ -625,6 +631,7 @@ def analyze_single_seed(task: tuple[int, int, int, int, int, int, float, float, 
         max_travel_steps=max_travel_steps,
         lp_weight=lp_weight,
         level_weight=level_weight,
+        forbidden_chars=forbidden_chars,
     )
 
     preference_rows: dict[str, list[int]] = defaultdict(lambda: [0, 0])
@@ -643,6 +650,7 @@ def analyze_single_seed(task: tuple[int, int, int, int, int, int, float, float, 
             replay_path_cache,
             preference_rows,
             rank_rows,
+            forbidden_chars,
         )
 
     return {
@@ -682,6 +690,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lp-weight", type=float, default=1.0, help="Weight for LP in the pool evaluation score.")
     parser.add_argument("--level-weight", type=float, default=10.0, help="Weight for level in the pool evaluation score.")
     parser.add_argument("--jobs", type=int, default=1, help="Number of worker processes to use across seeds.")
+    parser.add_argument(
+        "--forbid-char",
+        action="append",
+        default=[],
+        help="Monster char to exclude from candidate choices. Repeat to forbid multiple chars.",
+    )
     parser.add_argument("-F", "--large-field", action="store_true", help="Large field.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
@@ -717,6 +731,7 @@ def main() -> None:
             args.large_torch,
             args.small_torch,
             args.narrower_corridors,
+            tuple(args.forbid_char),
         )
         for seed in seed_values
     ]
@@ -768,6 +783,8 @@ def main() -> None:
         f"stage={args.stage} seeds={len(seed_values)} top_k={args.top_k} max_depth={args.max_depth} "
         f"beam_width={args.beam_width} node_budget={args.node_budget}"
     )
+    if args.forbid_char:
+        print(f"forbidden_chars={' '.join(args.forbid_char)}")
     print(
         f"aggregate leaves={aggregate_terminal['leaves']} wins={aggregate_terminal['wins']} "
         f"losses={aggregate_terminal['losses']} stalled={aggregate_terminal['stalled']} "
