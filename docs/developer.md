@@ -96,6 +96,7 @@ Useful options:
 - `--lp-weight`: weight of LP in the pool evaluation score
 - `--level-weight`: weight of level in the pool evaluation score
 - `--jobs`: number of worker processes to use across seeds
+- `--forbid-char`: monster char to exclude from candidate choices; repeat to forbid multiple chars
 
 The output includes aggregate win rate.
 When wins are found, the analyzer also replays each winning path from the initial seed state and aggregates which monster kinds were preferred over other visible monster candidates, reported as `preference_score = (preferred - deferred) / (preferred + deferred)`, as well as which distance-rank among visible monster candidates was chosen.
@@ -105,6 +106,12 @@ Typical workflow:
 ```bash
 uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 100 --seed-start 1 --print-winning-seeds-only > winning_seeds.txt
 uv run -p .venv/bin/python python -m arlq.branch_analyzer --stage 1 --seed-file winning_seeds.txt
+```
+
+To compare against a world where a specific monster is never chosen, repeat `--forbid-char`:
+
+```bash
+uv run -p .venv/bin/python python -m arlq.branch_analyzer --stage 2 --seeds 50 --seed-start 1001 --top-k 5 --beam-width 110 --node-budget 20000 --max-depth 60 --forbid-char C
 ```
 
 ## Balance Search
@@ -158,25 +165,6 @@ Stage 2 example:
 uv run -p .venv/bin/python python -m arlq.solver --stage 2 --games 100 --seed-start 1001 --print-winning-seeds-only > winning_seeds_st2.txt
 uv run -p .venv/bin/python arlq-balance-search --stage 2 --seed-file winning_seeds_st2.txt --top-k 4 --beam-width 110 --node-budget 10000 --max-depth 30 --jobs 4
 ```
-
-## Required Choice Probe
-
-The repository also includes a focused probe for required `C` choices at [src/arlq/c_required_probe.py](/home/toshihiro/playground/arlq/src/arlq/c_required_probe.py).
-
-This script scans beam-search states where a focus monster is currently selectable, first checks whether any winning continuation exists when that choice is skipped, and only if none exists, reruns a local search forcing that focus choice. It reports both `required_cases` and `neglected_cases`, plus `decision_score = (required_cases - neglected_cases) / (required_cases + neglected_cases)`. This is useful for questions such as whether `C` is ever required to keep a winning line alive.
-
-Example:
-
-```bash
-uv run -p .venv/bin/python arlq-c-required-probe --stage 2 --focus-char C --seeds 50 --seed-start 1001 --top-k 5 --beam-width 110 --node-budget 20000 --max-depth 60
-```
-
-Useful options:
-
-- `--focus-char`: monster char to test, default `C`
-- `--probe-beam-width`: beam width for the local counterfactual probe
-- `--probe-node-budget`: node budget for the local counterfactual probe
-- `--probe-max-depth`: max depth for the local counterfactual probe
 
 ## Validation
 
