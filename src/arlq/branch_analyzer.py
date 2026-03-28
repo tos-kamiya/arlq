@@ -55,6 +55,7 @@ class BeamState:
 
 
 LP_SAFETY_MARGIN = 1
+MANHATTAN_CANDIDATE_POOL = 10
 
 
 def ensure_branch_metadata(state) -> None:
@@ -73,68 +74,117 @@ def ensure_branch_metadata(state) -> None:
         state.entity_id_to_label[entity.entity_id] = entity_label(entity)
 
 
-def structural_state_key(state) -> tuple[int, int, tuple[str, ...], frozenset[str]]:
+def structural_state_key(state) -> tuple[int, int, str | None, int, tuple[str, ...], frozenset[str]]:
     return (
         state.player.x,
         state.player.y,
+        state.player.item,
+        getattr(state.player, "item_uses", 0),
         tuple("".join(row) for row in state.field),
         frozenset(state.encountered_types),
     )
 
 
-def get_distance_map(state, cache: dict[tuple[int, int, tuple[str, ...], frozenset[str]], tuple[dict[d.Point, int], dict[d.Point, d.Point]]]):
-    key = structural_state_key(state)
-    if key in cache:
-        return cache[key]
+PathCache = dict[
+    tuple[int, int, str | None, int, tuple[str, ...], frozenset[str], tuple[d.Point, ...]],
+    dict[d.Point, tuple[d.Point, ...]],
+]
 
-    start = (state.player.x, state.player.y)
-    queue: list[tuple[int, d.Point]] = [(0, start)]
-    best_cost: dict[d.Point, int] = {start: 0}
-    previous: dict[d.Point, d.Point] = {}
+
+def path_query_key(
+    state,
+    goals: tuple[d.Point, ...],
+) -> tuple[int, int, str | None, int, tuple[str, ...], frozenset[str], tuple[d.Point, ...]]:
+    return (
+        state.player.x,
+        state.player.y,
+        state.player.item,
+        getattr(state.player, "item_uses", 0),
+        tuple("".join(row) for row in state.field),
+        frozenset(state.encountered_types),
+        goals,
+    )
+
+
+def build_paths_from_source(
+    state,
+    source: d.Point,
+    goals: set[d.Point],
+) -> dict[d.Point, tuple[d.Point, ...]]:
+    sword_uses = (
+        getattr(state.player, "item_uses", 0)
+        if state.player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
+        else 0
+    )
+    start_state = (source, sword_uses)
+    queue: list[tuple[int, d.Point, int]] = [(0, source, sword_uses)]
+    best_cost_by_state: dict[tuple[d.Point, int], int] = {start_state: 0}
+    previous: dict[tuple[d.Point, int], tuple[d.Point, int]] = {}
 
     while queue:
-        cost, current = heapq.heappop(queue)
-        if cost != best_cost.get(current):
+        cost, current, breaks_left = heapq.heappop(queue)
+        state_key = (current, breaks_left)
+        if cost != best_cost_by_state.get(state_key):
             continue
         cx, cy = current
         for dx, dy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
             nx, ny = cx + dx, cy + dy
             if not (0 <= nx < d.FIELD_WIDTH and 0 <= ny < d.FIELD_HEIGHT):
                 continue
-            if state.field[ny][nx] not in (" ", d.CHAR_CALTROP):
-                continue
+            tile = state.field[ny][nx]
+            next_breaks_left = breaks_left
+            if tile not in (" ", d.CHAR_CALTROP):
+                if tile != d.WALL_CHAR or breaks_left <= 0:
+                    continue
+                next_breaks_left -= 1
             next_point = (nx, ny)
-            step_cost = 4 if state.field[ny][nx] == d.CHAR_CALTROP else 1
+            step_cost = 4 if tile == d.CHAR_CALTROP else 1
             next_cost = cost + step_cost
-            if next_cost >= best_cost.get(next_point, 10**9):
+            next_state_key = (next_point, next_breaks_left)
+            if next_cost >= best_cost_by_state.get(next_state_key, 10**9):
                 continue
-            best_cost[next_point] = next_cost
-            previous[next_point] = current
-            heapq.heappush(queue, (next_cost, next_point))
+            best_cost_by_state[next_state_key] = next_cost
+            previous[next_state_key] = state_key
+            heapq.heappush(queue, (next_cost, next_point, next_breaks_left))
 
-    cache[key] = (best_cost, previous)
-    return best_cost, previous
+    paths: dict[d.Point, tuple[d.Point, ...]] = {}
+    for goal in goals:
+        goal_states = [state_key for state_key in best_cost_by_state if state_key[0] == goal]
+        if not goal_states:
+            continue
+        goal_state = min(goal_states, key=lambda state_key: best_cost_by_state[state_key])
+        path_states = [goal_state]
+        while path_states[-1][0] != source:
+            path_states.append(previous[path_states[-1]])
+        path = tuple(point for point, _breaks_left in reversed(path_states))
+        paths[goal] = path
+    return paths
 
 
-def reconstruct_path(previous: dict[d.Point, d.Point], start: d.Point, goal: d.Point) -> list[d.Point]:
-    path = [goal]
-    while path[-1] != start:
-        path.append(previous[path[-1]])
-    path.reverse()
-    return path
+def get_paths_from_current(
+    state,
+    goals: tuple[d.Point, ...],
+    cache: PathCache,
+) -> dict[d.Point, tuple[d.Point, ...]]:
+    key = path_query_key(state, goals)
+    if key in cache:
+        return cache[key]
+    source = (state.player.x, state.player.y)
+    paths = build_paths_from_source(state, source, set(goals))
+    cache[key] = paths
+    return paths
 
 
 def find_path_ignoring_entities(
     state,
     entity: d.Entity,
-    cache: dict[tuple[int, int, tuple[str, ...], frozenset[str]], tuple[dict[d.Point, int], dict[d.Point, d.Point]]],
+    cache: PathCache,
 ) -> list[d.Point] | None:
-    best_cost, previous = get_distance_map(state, cache)
-    start = (state.player.x, state.player.y)
     goal = (entity.x, entity.y)
-    if goal not in best_cost:
+    paths = get_paths_from_current(state, (goal,), cache)
+    if goal not in paths:
         return None
-    return reconstruct_path(previous, start, goal)
+    return list(paths[goal])
 
 
 def entity_label(entity: d.Entity) -> str:
@@ -176,15 +226,25 @@ def is_branch_target(state, entity: d.Entity) -> bool:
     return False
 
 
-def rank_nearest_targets(state, limit: int, path_cache, forbidden_chars: frozenset[str] = frozenset()) -> list[Candidate]:
+def rank_nearest_targets(state, limit: int, path_cache: PathCache, forbidden_chars: frozenset[str] = frozenset()) -> list[Candidate]:
     ensure_branch_metadata(state)
-    ranked: list[Candidate] = []
+    preliminary: list[tuple[int, int, int, d.Entity]] = []
     for index, entity in enumerate(state.entities):
         if not is_branch_target(state, entity):
             continue
         if isinstance(entity, d.Monster) and entity.tribe.char in forbidden_chars:
             continue
-        path = find_path_ignoring_entities(state, entity, path_cache)
+        manhattan = abs(entity.x - state.player.x) + abs(entity.y - state.player.y)
+        preliminary.append((manhattan, getattr(entity, "entity_id", 10**9), index, entity))
+
+    preliminary.sort(key=lambda item: (item[0], item[1], item[2]))
+    shortlist = preliminary[:MANHATTAN_CANDIDATE_POOL]
+    goals = tuple((entity.x, entity.y) for _manhattan, _entity_id, _index, entity in shortlist)
+    paths = get_paths_from_current(state, goals, path_cache)
+
+    ranked: list[Candidate] = []
+    for _manhattan, _entity_id, index, entity in shortlist:
+        path = paths.get((entity.x, entity.y))
         if path is None:
             continue
         distance = len(path) - 1
@@ -240,7 +300,7 @@ def apply_move(state, move_direction: d.Point) -> None:
         state.ended = True
 
 
-def advance_until_contact(state, entity_index: int, max_travel_steps: int, path_cache) -> bool:
+def advance_until_contact(state, entity_index: int, max_travel_steps: int, path_cache: PathCache) -> bool:
     ensure_branch_metadata(state)
     travel_steps = 0
     while not state.ended and travel_steps < max_travel_steps:
@@ -290,7 +350,7 @@ def explore_tree(
     budget: SearchBudget,
     overall_rows: dict[str, AggregateRow],
     root_rows: dict[str, AggregateRow],
-    path_cache: dict[tuple[int, int, tuple[str, ...], frozenset[str]], tuple[dict[d.Point, int], dict[d.Point, d.Point]]],
+    path_cache: PathCache,
     depth: int = 0,
 ) -> AnalysisStats:
     if state.ended:
@@ -427,10 +487,7 @@ def analyze_seed_with_beam(
     level_weight: float,
     forbidden_chars: frozenset[str] = frozenset(),
 ) -> tuple[dict[str, AggregateRow], AnalysisStats, int, list[tuple[int, ...]]]:
-    path_cache: dict[
-        tuple[int, int, tuple[str, ...], frozenset[str]],
-        tuple[dict[d.Point, int], dict[d.Point, d.Point]],
-    ] = {}
+    path_cache: PathCache = {}
     initial_state = build_simulation(stage_num, seed)
     ensure_branch_metadata(initial_state)
     beam: list[BeamState] = [BeamState(state=initial_state)]
@@ -557,7 +614,7 @@ def replay_win_history(
     history: tuple[int, ...],
     top_k: int,
     max_travel_steps: int,
-    path_cache,
+    path_cache: PathCache,
     preference_rows: dict[str, list[int]],
     rank_rows: dict[int, int],
     forbidden_chars: frozenset[str] = frozenset(),
@@ -636,10 +693,7 @@ def analyze_single_seed(task: tuple[int, int, int, int, int, int, float, float, 
 
     preference_rows: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     rank_rows: dict[int, int] = defaultdict(int)
-    replay_path_cache: dict[
-        tuple[int, int, tuple[str, ...], frozenset[str]],
-        tuple[dict[d.Point, int], dict[d.Point, d.Point]],
-    ] = {}
+    replay_path_cache: PathCache = {}
     for history in winning_histories:
         replay_win_history(
             stage_num,
