@@ -17,14 +17,14 @@
 
 ```bash
 uv run -p .venv/bin/python arlq-balance-tuner \
-  --write-default-config balance-tuning.json
+  --write-default-config dev-samples/balance-tuning.json
 ```
 
 スクリプトエントリーポイントがまだ仮想環境へ反映されていない場合は、モジュールとして実行できます。
 
 ```bash
 uv run -p .venv/bin/python python -m arlq.balance_tuner \
-  --write-default-config balance-tuning.json
+  --write-default-config dev-samples/balance-tuning.json
 ```
 
 生成したファイルは、実験ごとにコピーして保存してください。設定ファイル自体が、どの条件で結果を得たかを示す記録になります。
@@ -34,10 +34,10 @@ uv run -p .venv/bin/python python -m arlq.balance_tuner \
 本評価の前に、前節で作成した標準設定をコピーし、評価数を減らします。
 
 ```bash
-cp balance-tuning.json balance-tuning-smoke.json
+cp dev-samples/balance-tuning.json dev-samples/balance-tuning-smoke.json
 ```
 
-次に、`balance-tuning-smoke.json` の該当項目を編集します。以下は設定ファイル全体の例です。これをそのまま `balance-tuning-smoke.json` として保存しても実行できます。
+次に、`dev-samples/balance-tuning-smoke.json` の該当項目を編集します。以下は設定ファイル全体の例です。これをそのまま `dev-samples/balance-tuning-smoke.json` として保存しても実行できます。
 
 ```json
 {
@@ -94,7 +94,7 @@ search.candidates × search.seeds × ステージ数 × 方針数
 
 ```bash
 uv run -p .venv/bin/python python -m arlq.balance_tuner \
-  --config balance-tuning-smoke.json \
+  --config dev-samples/balance-tuning-smoke.json \
   --output balance-results-smoke
 ```
 
@@ -174,11 +174,11 @@ uv run -p .venv/bin/python python -m arlq.balance_tuner \
 
 `nearest − discovery` が大きい場合は、状況判断ではなく発見順方針の余分な移動が差を作っている可能性があります。順位だけで採用せず、後述の比較手順で内容を確認します。
 
-Stage 2を基準に共通モンスターの条件を探索し、`situational`を優先したい場合は、リポジトリルートの`balance-tuning-situational.json`を使えます。この設定は`a`と`b`だけを両ステージで調整し、Stage 1のDとStage 2のFは現行値のまま固定します。`a`、`A`、`b`、`c`、`C`はリスポーンなし、Cの剣は6回の壁破壊として評価します。
+Stage 2を基準に共通モンスターの条件を探索し、`situational`を優先したい場合は、リポジトリルートの`dev-samples/balance-tuning-situational.json`を使えます。この設定は`a`と`b`だけを両ステージで調整し、Stage 1のDとStage 2のFは現行値のまま固定します。`a`、`A`、`b`、`c`、`C`はリスポーンなし、Cの剣は6回の壁破壊として評価します。
 
 ```bash
 uv run -p .venv/bin/python python -m arlq.balance_tuner \
-  --config balance-tuning-situational.json \
+  --config dev-samples/balance-tuning-situational.json \
   --output balance-results-situational
 ```
 
@@ -201,7 +201,7 @@ uv run -p .venv/bin/python python -m arlq.balance_tuner \
 
 ```bash
 uv run -p .venv/bin/python python -m arlq.balance_tuner \
-  --config balance-tuning.json \
+  --config dev-samples/balance-tuning.json \
   --output balance-results-20260906 \
   --random-seed 20260906
 ```
@@ -212,7 +212,7 @@ uv run -p .venv/bin/python python -m arlq.balance_tuner \
 
 ```bash
 uv run -p .venv/bin/python python -m arlq.balance_tuner \
-  --config balance-tuning.json \
+  --config dev-samples/balance-tuning.json \
   --output balance-results-20260906 \
   --jobs 4
 ```
@@ -223,7 +223,7 @@ uv run -p .venv/bin/python python -m arlq.balance_tuner \
 
 ```bash
 uv run -p .venv/bin/python python -m arlq.balance_tuner \
-  --config balance-tuning.json \
+  --config dev-samples/balance-tuning.json \
   --output balance-results > balance-tuning.log
 ```
 

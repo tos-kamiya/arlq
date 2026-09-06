@@ -176,8 +176,8 @@ player, not internal spawn order.
 Create a starting configuration, edit its ranges and budgets, and run it:
 
 ```bash
-uv run -p .venv/bin/python arlq-balance-tuner --write-default-config balance-tuning.json
-uv run -p .venv/bin/python arlq-balance-tuner --config balance-tuning.json --output balance-results
+uv run -p .venv/bin/python arlq-balance-tuner --write-default-config dev-samples/balance-tuning.json
+uv run -p .venv/bin/python arlq-balance-tuner --config dev-samples/balance-tuning.json --output balance-results
 ```
 
 The command keeps search, validation, and final seeds disjoint. It writes
