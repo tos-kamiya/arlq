@@ -252,7 +252,7 @@ _SC = SpawnConfig
 
 # Stage 1 spawn configurations.
 SPAWN_CONFIGS_ST1 = [
-    _SC(CHAR_TO_TRIBE["a"], 25),
+    _SC(CHAR_TO_TRIBE["a"], 20),
     _SC(CHAR_TO_TRIBE["A"], 1),
     _SC(CHAR_TO_TRIBE["b"], 12),
     _SC(CHAR_TO_TRIBE["c"], 3),
@@ -265,7 +265,7 @@ SPAWN_CONFIGS_ST1 = [
 
 # Stage 2 spawn configurations.
 SPAWN_CONFIGS_ST2 = [
-    _SC(CHAR_TO_TRIBE["a"], 25),
+    _SC(CHAR_TO_TRIBE["a"], 20),
     _SC(CHAR_TO_TRIBE["A"], 1),
     _SC(CHAR_TO_TRIBE["b"], 12),
     _SC(CHAR_TO_TRIBE["c"], 3),
