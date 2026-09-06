@@ -32,36 +32,6 @@ CLI entrypoint:
 uv run -p .venv/bin/python arlq-cli
 ```
 
-## Solver
-
-The repository includes a heuristic solver for balance experiments at [src/arlq/solver.py](/home/toshihiro/playground/arlq/src/arlq/solver.py).
-
-It is not intended to mimic human play. Instead, it uses full game-state information and a fixed strategy to simulate many runs and estimate clear rates.
-
-Run via the script entrypoint:
-
-```bash
-uv run -p .venv/bin/python arlq-solver --stage 1 --games 100 --seed-start 1
-```
-
-Run via module execution:
-
-```bash
-uv run -p .venv/bin/python python -m arlq.solver --stage 2 --games 100 --seed-start 1001
-```
-
-Useful options:
-
-- `--stage`: target stage to simulate
-- `--games`: number of runs
-- `--seed-start`: first seed value in the batch
-- `--max-steps`: cap per-run turns
-- `--print-winning-seeds`: print only the seed values that ended in a win
-- `--print-winning-seeds-only`: print only winning seed values, one per line, with no summary
-- `-F`, `-T`, `-t`, `-n`: same field and visibility modifiers used by the game
-
-The solver prints aggregate metrics including win count, win rate, and average ending stats.
-
 ## Branch Analyzer
 
 The repository also includes a beam-search based analyzer at [src/arlq/branch_analyzer.py](/home/toshihiro/playground/arlq/src/arlq/branch_analyzer.py).
@@ -100,13 +70,6 @@ Useful options:
 
 The output includes aggregate win rate.
 When wins are found, the analyzer also replays each winning path from the initial seed state and aggregates which monster kinds were preferred over other visible monster candidates, reported as `preference_score = (preferred - deferred) / (preferred + deferred)`, as well as which distance-rank among visible monster candidates was chosen.
-
-Typical workflow:
-
-```bash
-uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 100 --seed-start 1 --print-winning-seeds-only > winning_seeds.txt
-uv run -p .venv/bin/python python -m arlq.branch_analyzer --stage 1 --seed-file winning_seeds.txt
-```
 
 To compare against a world where a specific monster is never chosen, repeat `--forbid-char`:
 
@@ -151,20 +114,6 @@ Useful options:
 - `--rounds`: maximum hill-climb rounds
 - `--feed-step`: step size for `b` LP recovery where supported
 - `--spawn-step`: step size for spawn counts
-
-Typical workflow:
-
-```bash
-uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 100 --seed-start 1 --print-winning-seeds-only > winning_seeds.txt
-uv run -p .venv/bin/python arlq-balance-search --stage 1 --seed-file winning_seeds.txt --top-k 4 --beam-width 110 --node-budget 10000 --max-depth 30 --jobs 4
-```
-
-Stage 2 example:
-
-```bash
-uv run -p .venv/bin/python python -m arlq.solver --stage 2 --games 100 --seed-start 1001 --print-winning-seeds-only > winning_seeds_st2.txt
-uv run -p .venv/bin/python arlq-balance-search --stage 2 --seed-file winning_seeds_st2.txt --top-k 4 --beam-width 110 --node-budget 10000 --max-depth 30 --jobs 4
-```
 
 ## Static Balance Tuner
 
@@ -213,10 +162,8 @@ uv run -p .venv/bin/python python -m compileall src
 uv run -p .venv/bin/python python -c "import arlq"
 ```
 
-If solver logic changes, rerun a small batch first:
+If analysis logic changes, rerun a small batch first:
 
 ```bash
-uv run -p .venv/bin/python python -m arlq.solver --stage 1 --games 20 --seed-start 1
-uv run -p .venv/bin/python python -m arlq.solver --stage 2 --games 20 --seed-start 1001
 uv run -p .venv/bin/python python -m arlq.branch_analyzer --stage 1 --seeds 3 --seed-start 1 --node-budget 500
 ```
