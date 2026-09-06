@@ -94,6 +94,7 @@ class PygameUI:
         stage_num: int = 0,
         message: Optional[str] = None,
         extra_keys: bool = False,
+        checkpoint: Optional[d.Point] = None,
     ):
         """
         Renders the game stage:
@@ -136,6 +137,9 @@ class PygameUI:
                 else:
                     if (x + y) % 2 == 1:
                         self._draw_text(pos, ".", self._dim_color(COLOR_MAP["default"]))
+
+        if checkpoint is not None and checkpoint != (px, py):
+            self._draw_text(checkpoint, "+", COLOR_MAP[CI_YELLOW], bold=True)
 
         # Draw the player character
         self._draw_text((px, py), "@", COLOR_MAP[CI_YELLOW], bold=True)

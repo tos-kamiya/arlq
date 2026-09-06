@@ -23,6 +23,7 @@ def curses_draw_stage(
     torched: List[List[int]],
     encountered_types: Set[str],
     show_entities: bool = False,
+    checkpoint: Optional[d.Point] = None,
 ) -> None:
     """
     Draws the game stage on the provided curses window.
@@ -64,6 +65,14 @@ def curses_draw_stage(
             else:
                 if (x + y) % 2 == 1:
                     stdscr.addstr(y, x, ".", curses.A_DIM)
+
+    if checkpoint is not None and checkpoint != (px, py):
+        stdscr.addstr(
+            checkpoint[1],
+            checkpoint[0],
+            "+",
+            curses.A_BOLD | curses.color_pair(CI_YELLOW),
+        )
 
     # Draw each entity (monsters and treasures)
     player_attack = d.player_attack_by_level(player)
@@ -265,6 +274,7 @@ class CursesUI:
         stage_num=0,
         message=None,
         extra_keys=False,
+        checkpoint=None,
     ):
         """
         Draws the entire game stage including the status bar.
@@ -285,7 +295,16 @@ class CursesUI:
         stdscr = self.stdscr
 
         stdscr.erase()
-        curses_draw_stage(stdscr, entities, field, cur_torched, torched, encountered_types, show_entities=show_entities)
+        curses_draw_stage(
+            stdscr,
+            entities,
+            field,
+            cur_torched,
+            torched,
+            encountered_types,
+            show_entities=show_entities,
+            checkpoint=checkpoint,
+        )
 
         curses_draw_status_bar(stdscr, player, hours, stage_num=stage_num, message=message, extra_keys=extra_keys)
         stdscr.refresh()
