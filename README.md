@@ -74,7 +74,7 @@ The command prints aggregate results such as win count, win rate, and average en
   The dungeon is populated with various monsters and companions. At first, monsters are displayed as `?` and companions as `!`. Once you encounter one, its type (e.g., `a`, `b`, `c`, etc.) is revealed, and other creatures of the same kind will be represented by that character.
 
 * **Encounters**  
-  - **Monsters:** Contacting a monster initiates combat. If the monster is at or below your level, you can defeat it, level up, and obtain any items it may be carrying. However, if you lose to a higher-level monster, you will respawn at a random location within the dungeon.
+  - **Monsters:** Contacting a monster initiates combat. If the monster is at or below your level, you can defeat it, level up, and obtain any items it may be carrying. However, if you lose to a higher-level monster, you will respawn at the initial spawn point or at the location where you most recently defeated a monster. Monsters `a`, `A`, `b`, `c`, and `C` do not respawn after being defeated.
   - **Companions:** When you come into contact with a companion, it will join you and provide its unique benefit.  
 
   Note: Neither monsters nor companions move on their own; they wait for you to approach.
