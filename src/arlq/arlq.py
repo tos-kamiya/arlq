@@ -503,6 +503,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             show_entities,
             stage_num=stage_num,
             message=message[1],
+            checkpoint=checkpoint,
         )
 
         move_direction = ui.input_direction()
@@ -554,6 +555,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             stage_num=stage_num,
             message=message[1],
             extra_keys=True,
+            checkpoint=checkpoint,
         )
 
         c = ui.input_alphabet()
