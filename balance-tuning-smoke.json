@@ -1,0 +1,37 @@
+{
+  "stages": [1, 2],
+  "policies": ["discovery", "nearest", "situational"],
+  "max_steps": 1000,
+  "stalled_steps": 50,
+  "early_turn": 100,
+  "search": {
+    "seed_start": 1,
+    "seeds": 10,
+    "candidates": 4
+  },
+  "validation": {
+    "seed_start": 100001,
+    "seeds": 20,
+    "keep": 2
+  },
+  "final": {
+    "seed_start": 200001,
+    "seeds": 50,
+    "keep": 2
+  },
+  "parameters": {
+    "feed": {
+      "b": {"min": 35, "max": 45, "step": 5}
+    },
+    "spawn": {
+      "1": {
+        "a": {"min": 12, "max": 16, "step": 2}
+      },
+      "2": {
+        "a": {"min": 12, "max": 16, "step": 2}
+      }
+    },
+    "max_total_population": {"1": 40, "2": 48}
+  },
+  "targets": {}
+}

@@ -20,6 +20,8 @@ LP_RESPAWN_MIN: int = 20
 LP_RESPAWN_COST: int = 6
 
 MONSTER_RESPAWN_INTERVAL: int = 65
+SWORD_USES: int = 3
+NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
 
 ITEM_SWORD_X1_5: str = "Sword"
 ITEM_SWORD_CURSED: str = "Cursed Sword"
@@ -206,9 +208,9 @@ _CT = CompanionTribe
 MIN_FOOD = 8
 
 MONSTER_TRIBES: List[MonsterTribe] = [
-    _MT("a", 1, MIN_FOOD),  # Amoeba
+    _MT("a", 1, 10),  # Amoeba
     _MT("A", 2, MIN_FOOD, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
-    _MT("b", 5, 40, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
+    _MT("b", 5, 60, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
     _MT("c", 10, MIN_FOOD, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
     _MT("C", 15, MIN_FOOD, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
     _MT("d", 20, 40, item=ITEM_POISONED),  # Comodo Dragon
@@ -250,9 +252,9 @@ _SC = SpawnConfig
 
 # Stage 1 spawn configurations.
 SPAWN_CONFIGS_ST1 = [
-    _SC(CHAR_TO_TRIBE["a"], 14),
+    _SC(CHAR_TO_TRIBE["a"], 25),
     _SC(CHAR_TO_TRIBE["A"], 1),
-    _SC(CHAR_TO_TRIBE["b"], 7),
+    _SC(CHAR_TO_TRIBE["b"], 12),
     _SC(CHAR_TO_TRIBE["c"], 3),
     _SC(CHAR_TO_TRIBE["d"], 3),
     _SC(CHAR_TO_TRIBE[CHAR_DRAGON], 1),
@@ -263,9 +265,9 @@ SPAWN_CONFIGS_ST1 = [
 
 # Stage 2 spawn configurations.
 SPAWN_CONFIGS_ST2 = [
-    _SC(CHAR_TO_TRIBE["a"], 14),
+    _SC(CHAR_TO_TRIBE["a"], 25),
     _SC(CHAR_TO_TRIBE["A"], 1),
-    _SC(CHAR_TO_TRIBE["b"], 7),
+    _SC(CHAR_TO_TRIBE["b"], 12),
     _SC(CHAR_TO_TRIBE["c"], 3),
     _SC(CHAR_TO_TRIBE["C"], 1),
     _SC(CHAR_TO_TRIBE["d"], 3),

@@ -166,6 +166,44 @@ uv run -p .venv/bin/python python -m arlq.solver --stage 2 --games 100 --seed-st
 uv run -p .venv/bin/python arlq-balance-search --stage 2 --seed-file winning_seeds_st2.txt --top-k 4 --beam-width 110 --node-budget 10000 --max-depth 30 --jobs 4
 ```
 
+## Static Balance Tuner
+
+`arlq-balance-tuner` compares static food and spawn candidates without editing
+`defs.py`. Its policies share an exploration rule and use only mapped terrain and
+observed entities. In reports, discovery order means first observation by the
+player, not internal spawn order.
+
+Create a starting configuration, edit its ranges and budgets, and run it:
+
+```bash
+uv run -p .venv/bin/python arlq-balance-tuner --write-default-config balance-tuning.json
+uv run -p .venv/bin/python arlq-balance-tuner --config balance-tuning.json --output balance-results
+```
+
+The command keeps search, validation, and final seeds disjoint. It writes
+`manifest.json`, `runs.jsonl`, `candidates.jsonl`, `decision_examples.jsonl`, and
+`report.md`. Candidate values are proposals only. `decision_examples.jsonl` is
+reserved for the more expensive branch diagnosis and is empty in this initial
+measurement and static-search implementation.
+
+The default budget is deliberately modest but still performs many plays. Reduce
+the seed and candidate counts for a smoke test before starting a long run.
+
+評価プレイは `jobs` 設定または `--jobs` でプロセス並列化できます。たとえば
+`--jobs 4` は4ワーカーで実行します。結果の集約とファイル出力は親プロセスが
+行い、シード単位の結果順は保たれます。
+
+See [balance-tuning-guide.md](balance-tuning-guide.md) for the complete Japanese
+workflow, configuration reference, and guidance for interpreting the outputs.
+
+For a small same-seed comparison of respawn rules, use
+`arlq-respawn-compare`. It compares the current rule with no respawn for `a`,
+no respawn for `b`, and no respawn for `a/A/b`:
+
+```bash
+uv run -p .venv/bin/python arlq-respawn-compare --seeds 5 --jobs 4
+```
+
 ## Validation
 
 Lightweight validation:
