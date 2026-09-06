@@ -274,6 +274,8 @@ def update_entities(
     player: d.Player,
     entities: List[d.Entity],
     encountered_types: Set[str],
+    sword_uses: int = d.SWORD_USES,
+    respawn_point: Optional[d.Point] = None,
 ) -> Tuple[Optional[str], List[str], Optional[Tuple[int, str]], bool]:
     effect = None
     tribes_to_be_respawned = []
@@ -350,7 +352,10 @@ def update_entities(
             player_attack = d.player_attack_by_level(player)
 
             if player_attack < m.tribe.level:
-                player.x, player.y = find_random_place(entities, field, distance=2)
+                if respawn_point is None:
+                    player.x, player.y = find_random_place(entities, field, distance=2)
+                else:
+                    player.x, player.y = respawn_point
                 player.item = ""
                 player.item_uses = 0
                 player.item_taken_from = ""
@@ -392,7 +397,7 @@ def update_entities(
                 player.karma += 1
 
                 player.item = m.tribe.item
-                player.item_uses = 3 if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) else 0
+                player.item_uses = sword_uses if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) else 0
                 player.item_taken_from = m.tribe.char
                 if player.item == d.ITEM_SWORD_CURSED:
                     player.lp = (player.lp * 3 + 3) // 4
@@ -468,6 +473,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
 
     message: Tuple[int, str] = (-1, "")
     respawn_queue = Counter()
+    checkpoint = (player.x, player.y)
 
     while True:
         # Starvation check
@@ -504,12 +510,23 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             return
 
         # Player move, encountering, etc.
-        effect, tribes_to_be_respawned, m, _ = update_entities(move_direction, field, player, entities, encountered_types)
+        effect, tribes_to_be_respawned, m, _ = update_entities(
+            move_direction,
+            field,
+            player,
+            entities,
+            encountered_types,
+            respawn_point=checkpoint,
+        )
         if m is not None:
             message = m
 
+        if tribes_to_be_respawned:
+            checkpoint = (player.x, player.y)
+
         for t in tribes_to_be_respawned:
-            respawn_queue[t] += 1
+            if t not in d.NO_RESPAWN_MONSTERS:
+                respawn_queue[t] += 1
 
         if hours % d.MONSTER_RESPAWN_INTERVAL == 0:
             for t in list(respawn_queue.keys()):
@@ -659,6 +676,11 @@ def main():
         except TerminalSizeSmall as e:
             sys.exit("Error: " + str(e))
     else:
+        if sys.version_info >= (3, 14):
+            sys.exit(
+                "Pygame GUI is not supported on Python 3.14 yet; "
+                "run arlq with Python 3.13 or use --curses."
+            )
         from .pygame_funcs import PygameUI
 
         ui = PygameUI()

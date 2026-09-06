@@ -483,7 +483,8 @@ def step_simulation(state: SimulationState) -> None:
         state.planned_target = None
 
     for tribe_char in tribes_to_be_respawned:
-        state.respawn_queue[tribe_char] += 1
+        if tribe_char not in d.NO_RESPAWN_MONSTERS:
+            state.respawn_queue[tribe_char] += 1
 
     if state.hours % d.MONSTER_RESPAWN_INTERVAL == 0:
         for tribe_char in list(state.respawn_queue.keys()):

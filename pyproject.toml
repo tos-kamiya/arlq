@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "arlq"
 dynamic = ["version"]
 description = "ARLQ, another rogue-like quest game."
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 license = {text = "BSD 2-Clause License"}
 keywords = ["game", "roguelike", "pygame", "curses"]
 authors = [
@@ -47,6 +47,9 @@ Issues = "https://github.com/tos-kamiya/arlq/issues"
 [tool.hatch.version]
 path = "src/arlq/__about__.py"
 
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
 [project.gui-scripts]
 arlq = "arlq:main"
 
@@ -55,3 +58,5 @@ arlq-cli = "arlq:main_cli"
 arlq-solver = "arlq.solver:main"
 arlq-branch-analyzer = "arlq.branch_analyzer:main"
 arlq-balance-search = "arlq.balance_search:main"
+arlq-balance-tuner = "arlq.balance_tuner:main"
+arlq-respawn-compare = "arlq.respawn_compare:main"
