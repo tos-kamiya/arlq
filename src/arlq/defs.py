@@ -268,7 +268,7 @@ SPAWN_CONFIGS_ST2 = [
     _SC(CHAR_TO_TRIBE["a"], 20),
     _SC(CHAR_TO_TRIBE["A"], 1),
     _SC(CHAR_TO_TRIBE["b"], 12),
-    _SC(CHAR_TO_TRIBE["c"], 3),
+    _SC(CHAR_TO_TRIBE["c"], 2),
     _SC(CHAR_TO_TRIBE["C"], 1),
     _SC(CHAR_TO_TRIBE["d"], 3),
     _SC(CHAR_TO_TRIBE[CHAR_FIRE_DRAKE], 1),
