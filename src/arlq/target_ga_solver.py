@@ -50,6 +50,8 @@ class _TargetEvaluationCheckpoint:
     steps: int
     move_log: str
     rand_value: int
+    df_defeated_with_sword: bool
+    df_defeat_level: int | None
 
 
 def _walkable(state, point: Point, can_break_walls: bool) -> int | None:
@@ -127,6 +129,8 @@ def _make_target_checkpoint(
     score: float,
     steps: int,
     move_log: list[str],
+    df_defeated_with_sword: bool,
+    df_defeat_level: int | None,
 ) -> _TargetEvaluationCheckpoint:
     return _TargetEvaluationCheckpoint(
         deepcopy(state),
@@ -138,6 +142,8 @@ def _make_target_checkpoint(
         steps,
         "".join(move_log),
         rand._value,
+        df_defeated_with_sword,
+        df_defeat_level,
     )
 
 
@@ -147,6 +153,7 @@ def _evaluate_target_genome_from_checkpoint(
     max_steps: int,
     start: _TargetEvaluationCheckpoint,
     save_at: int | None = None,
+    no_sword_df: bool = False,
 ) -> tuple[TargetEvaluation, _TargetEvaluationCheckpoint | None]:
     state = deepcopy(start.state)
     checkpoint = start.checkpoint
@@ -156,6 +163,8 @@ def _evaluate_target_genome_from_checkpoint(
     score = start.score
     steps = start.steps
     move_log = list(start.move_log)
+    df_defeated_with_sword = start.df_defeated_with_sword
+    df_defeat_level = start.df_defeat_level
     rand._value = start.rand_value
     saved = (
         _make_target_checkpoint(
@@ -167,6 +176,8 @@ def _evaluate_target_genome_from_checkpoint(
             score,
             steps,
             move_log,
+            df_defeated_with_sword,
+            df_defeat_level,
         )
         if save_at == target_index
         else None
@@ -191,11 +202,14 @@ def _evaluate_target_genome_from_checkpoint(
                 break
             before_level = state.player.level
             before_lp = state.player.lp
+            before_item = state.player.item
             before_df_defeated = not any(
                 isinstance(item, d.Monster) and item.tribe.effect == d.EFFECT_UNLOCK_TREASURE
                 for item in state.entities
             )
-            before_entities = {(item.x, item.y) for item in state.entities if isinstance(item, d.Monster)}
+            before_entities = {
+                (item.x, item.y): item for item in state.entities if isinstance(item, d.Monster)
+            }
             checkpoint = apply_ga_move(state, move, checkpoint)
             move_log.append(move)
             steps += 1
@@ -209,7 +223,18 @@ def _evaluate_target_genome_from_checkpoint(
             after_entities = {
                 (item.x, item.y): item for item in state.entities if isinstance(item, d.Monster)
             }
-            removed = before_entities - set(after_entities)
+            removed = set(before_entities) - set(after_entities)
+            if any(
+                before_entities[point].tribe.effect == d.EFFECT_UNLOCK_TREASURE
+                and before_item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
+                for point in removed
+            ):
+                df_defeated_with_sword = True
+            if any(
+                before_entities[point].tribe.effect == d.EFFECT_UNLOCK_TREASURE
+                for point in removed
+            ):
+                df_defeat_level = state.player.level
             if target in removed:
                 score += 250
                 if entity.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
@@ -237,9 +262,20 @@ def _evaluate_target_genome_from_checkpoint(
                 score,
                 steps,
                 move_log,
+                df_defeated_with_sword,
+                df_defeat_level,
             )
 
-    if state.won:
+    # A sword-assisted D/F defeat is accepted only if the player was above the
+    # natural level threshold at the moment of that defeat.  The strict
+    # comparison excludes reaching exactly 60 from the D/F defeat level-up.
+    invalid_sword_win = no_sword_df and df_defeated_with_sword and (df_defeat_level or 0) <= 60
+    valid_win = state.won and not invalid_sword_win
+    if invalid_sword_win:
+        # Do not let a sword-based clear become a useful stepping stone when
+        # searching specifically for a no-sword D/F defeat.
+        score = -1_000_000.0 - steps
+    elif valid_win:
         route_score = score
         score = 1_000_000 + route_score / max(steps, 1) + state.player.lp * 20
     elif state.player.lp <= 0:
@@ -252,7 +288,7 @@ def _evaluate_target_genome_from_checkpoint(
     return (
         TargetEvaluation(
             score,
-            state.won,
+            valid_win,
             df_defeated,
             steps,
             state.player.lp,
@@ -264,7 +300,13 @@ def _evaluate_target_genome_from_checkpoint(
     )
 
 
-def evaluate_target_genome(genome: tuple[Point, ...], stage: int, seed: int, max_steps: int) -> TargetEvaluation:
+def evaluate_target_genome(
+    genome: tuple[Point, ...],
+    stage: int,
+    seed: int,
+    max_steps: int,
+    no_sword_df: bool = False,
+) -> TargetEvaluation:
     state = build_simulation(stage, seed)
     initial = _make_target_checkpoint(
         state,
@@ -275,13 +317,17 @@ def evaluate_target_genome(genome: tuple[Point, ...], stage: int, seed: int, max
         0.0,
         0,
         [],
+        False,
+        None,
     )
-    result, _ = _evaluate_target_genome_from_checkpoint(genome, stage, max_steps, initial)
+    result, _ = _evaluate_target_genome_from_checkpoint(
+        genome, stage, max_steps, initial, no_sword_df=no_sword_df
+    )
     return result
 
 
-def _target_worker(task: tuple[list[tuple[Point, ...]], int, int, int]):
-    genomes, stage, seed, max_steps = task
+def _target_worker(task: tuple[list[tuple[Point, ...]], int, int, int, bool]):
+    genomes, stage, seed, max_steps, no_sword_df = task
     initial_state = build_simulation(stage, seed)
     initial = _make_target_checkpoint(
         initial_state,
@@ -292,6 +338,8 @@ def _target_worker(task: tuple[list[tuple[Point, ...]], int, int, int]):
         0.0,
         0,
         [],
+        False,
+        None,
     )
     previous_genome: tuple[Point, ...] = ()
     previous_checkpoint = initial
@@ -318,6 +366,7 @@ def _target_worker(task: tuple[list[tuple[Point, ...]], int, int, int]):
             max_steps,
             previous_checkpoint,
             next_common,
+            no_sword_df,
         )
         results.append((genome, result))
         previous_genome = genome if saved is not None else ()
@@ -351,6 +400,7 @@ def run_ga(
     max_steps: int = 500,
     random_seed: int | None = None,
     stop_on_win: bool = False,
+    no_sword_df: bool = False,
     progress: bool = True,
 ):
     pool = initial_target_pool(stage, seed)
@@ -358,7 +408,11 @@ def run_ga(
         raise ValueError("No target entities were found.")
     rng = random.Random(seed if random_seed is None else random_seed)
     population = [random_genome(pool, target_length, rng) for _ in range(population_size)]
-    best = (population[0], evaluate_target_genome(population[0], stage, seed, max_steps), 0)
+    best = (
+        population[0],
+        evaluate_target_genome(population[0], stage, seed, max_steps, no_sword_df),
+        0,
+    )
     runtime_config = (d.TILE_NUM_Y, d.FIELD_HEIGHT, d.TORCH_RADIUS, d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH)
     executor = ProcessPoolExecutor(max_workers=workers, initializer=_worker_init, initargs=(runtime_config,)) if workers > 1 else None
     try:
@@ -367,11 +421,11 @@ def run_ga(
             chunk_count = workers if executor is not None else 1
             chunk_size = (len(ordered) + chunk_count - 1) // chunk_count
             chunks = [ordered[i : i + chunk_size] for i in range(0, len(ordered), chunk_size)]
-            tasks = [(chunk, stage, seed, max_steps) for chunk in chunks]
+            tasks = [(chunk, stage, seed, max_steps, no_sword_df) for chunk in chunks]
             if executor is None:
-                evaluated = [item for task in tasks for item in _evaluate_target_chunk(task)]
+                evaluated = [item for task in tasks for item in _target_worker(task)]
             else:
-                evaluated = [item for result in executor.map(_evaluate_target_chunk, tasks) for item in result]
+                evaluated = [item for result in executor.map(_target_worker, tasks) for item in result]
             evaluated.sort(key=lambda item: item[1].score, reverse=True)
             if evaluated[0][1].score > best[1].score:
                 best = (evaluated[0][0], evaluated[0][1], generation)
@@ -396,11 +450,6 @@ def run_ga(
     return best
 
 
-def _evaluate_target_chunk(task: tuple[list[tuple[Point, ...]], int, int, int]):
-    genomes, stage, seed, max_steps = task
-    return [(genome, evaluate_target_genome(genome, stage, seed, max_steps)) for genome in genomes]
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Solve ARLQ with absolute-coordinate target genes.")
     parser.add_argument("--stage", type=int, default=1)
@@ -412,6 +461,11 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--random-seed", type=int)
     parser.add_argument("--stop-on-win", action="store_true", help="Stop immediately after finding a winning genome.")
+    parser.add_argument(
+        "--no-sword-df",
+        action="store_true",
+        help="Ignore sword-assisted D/F wins unless level is above 60 at defeat.",
+    )
     parser.add_argument("-F", "--large-field", action="store_true")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-T", "--large-torch", action="store_true")
@@ -429,6 +483,7 @@ def main() -> None:
         args.max_steps,
         args.random_seed,
         args.stop_on_win,
+        args.no_sword_df,
     )
     print(f"stage={args.stage} seed={args.seed} generation={generation} df_defeated={result.df_defeated} won={result.won}")
     print(f"score={result.score:.1f} steps={result.steps} lp={result.lp} level={result.level}")

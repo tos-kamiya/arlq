@@ -34,6 +34,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Stop each seed immediately after finding a winning genome.",
     )
+    parser.add_argument(
+        "--no-sword-df",
+        action="store_true",
+        help="Ignore sword-assisted D/F wins unless level is above 60 at defeat.",
+    )
     parser.add_argument("-F", "--large-field", action="store_true")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-T", "--large-torch", action="store_true")
@@ -93,6 +98,7 @@ def _run_seed(job):
         max_steps=args.max_steps,
         random_seed=random_seed,
         stop_on_win=args.stop_on_win,
+        no_sword_df=args.no_sword_df,
         progress=False,
     )
     return index, seed, result
