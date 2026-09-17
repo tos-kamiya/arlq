@@ -238,7 +238,7 @@ def strategy_bonus(state: SimulationState, entity: d.Monster) -> int:
             return -2_500
         if ch == "e":
             return -4_000
-        if ch == "h":
+        if ch == "H":
             return -10_000
 
     return 0

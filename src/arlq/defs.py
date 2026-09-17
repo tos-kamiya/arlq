@@ -230,7 +230,6 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         CHAR_FIRE_DRAKE, 60, MIN_FOOD, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"
     ),  # Fire Drake
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
-    _MT("h", 999, MIN_FOOD),  # High elf
     _MT("X", 1, MIN_FOOD, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
     _MT("I", 0, 0, event_message="-- The Isolated Elf told you about the history of the elves."),
     _MT("J", 0, 0, event_message="-- The Javelin Elf joins your hunt for the Dread Wyrm!"),
@@ -290,7 +289,7 @@ SPAWN_CONFIGS_ST2 = [
     _SC(CHAR_TO_TRIBE[CHAR_FIRE_DRAKE], 1),
     _SC(CHAR_TO_TRIBE["e"], 1),
     _SC(CHAR_TO_TRIBE["g"], 1),
-    _SC(CHAR_TO_TRIBE["h"], 1),
+    _SC(CHAR_TO_TRIBE["H"], 1),
     _SC(CHAR_TO_TRIBE["X"], 1),
     _SC(CHAR_TO_TRIBE["n"], 0.7),
     _SC(CHAR_TO_TRIBE["o"], 0.7),

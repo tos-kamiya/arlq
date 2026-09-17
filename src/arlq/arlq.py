@@ -378,6 +378,14 @@ def update_entities(
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
             encountered_types.add(m.tribe.char)
+
+            # High Elf is a Stage 3-style gatekeeper in Stage 2 as well. It
+            # remains in place until the required elf progress is available,
+            # and must not establish a respawn checkpoint on contact.
+            if m.tribe.char == "H":
+                message = (MESSAGE_TICKS, "-- The High Elf does not recognize you.")
+                continue
+
             player_attack = d.player_attack_by_level(player)
 
             if player_attack < m.tribe.level:

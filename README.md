@@ -103,7 +103,7 @@ In addition to the monsters from Stage 1 except for Dragon, the following appear
 | **e** Erebus        | Battling it drains your vitality by a small amount.                                                                     |
 | **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
 | **g** Golem         | When defeated, rocks scatter. It yields no food.                                                                        |
-| **h** High Elf      | Too powerful to be defeated.                                                                                            |
+| **H** High Elf      | Does not recognize you until you have earned enough elf progress.                                                       |
 | **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you.                                                         |
 
 **Stage 3**
