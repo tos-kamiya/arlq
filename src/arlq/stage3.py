@@ -238,7 +238,8 @@ def _step(direction, floors, player, floor, checkpoint, queue, history, hours):
             else:
                 # A successful monster defeat establishes the next respawn
                 # point, matching the legacy stages and the Rust port.
-                checkpoint[0] = (player.x, player.y)
+                if ch not in {"I", "J", "K", "H"}:
+                    checkpoint[0] = (player.x, player.y)
                 # Every ordinary monster replaces the current item. This is
                 # important for d (Poisoned): defeating another monster with
                 # no item must clear the poison and identify the new source.
@@ -252,7 +253,6 @@ def _step(direction, floors, player, floor, checkpoint, queue, history, hours):
                 if ch == "K": player.stage3_flags |= STAGE3_K; player.item = None
                 if ch == "H": player.stage3_flags |= STAGE3_H
                 if ch == "m": player.stage3_spores = True
-                if entity.tribe.item: player.item = entity.tribe.item; player.item_uses = d.SWORD_USES
                 if ch == "C": player.stage3_flags |= STAGE3_C
                 player.level += 10 if ch == "A" else 1; player.lp = max(1, min(100, player.lp + entity.tribe.feed)); player.karma += 1
                 if ch == "D" or ch == "F": player.stage3_unlocked.add(ch)
