@@ -23,7 +23,7 @@ ARLQ is a compact rogue-like game. Most gameplay logic lives in a small number o
 - `src/arlq/utils.py`: shared helpers
 - `src/arlq/__init__.py`: public package entrypoints
 - `src/arlq/__about__.py`: version source for packaging
-- `README.md` and `README.ja_JP.md`: user-facing documentation in English and Japanese
+- `README.md` and `README-ja_JP.md`: user-facing documentation in English and Japanese
 - `pyproject.toml`: package metadata and script entrypoints
 
 ## Entry Points And Local Run Commands
@@ -66,7 +66,7 @@ When working in a headless or non-interactive environment:
 Update documentation when behavior visible to players changes:
 
 - `README.md` for English docs
-- `README.ja_JP.md` for Japanese docs
+- `README-ja_JP.md` for Japanese docs
 - `README-pypi.md` only when package summary or install-facing text changes
 
 Keep English and Japanese gameplay descriptions reasonably aligned.
