@@ -25,6 +25,7 @@ classifiers = [
   "Topic :: Games/Entertainment"
 ]
 dependencies = [
+  "appdirs>=1.4",
   "pygame>=2",
 ]
 

@@ -5,14 +5,21 @@ import argparse
 import math
 import sys
 import time
+from pathlib import Path
+
+from appdirs import user_cache_dir
 
 from .__about__ import __version__
 
 from .utils import rand
 from . import defs as d
 
+MESSAGE_TICKS = 8
 
-def generate_maze(width: int, height: int) -> Tuple[List[d.Edge], d.Point, d.Point]:
+
+def generate_maze(
+    width: int, height: int, excluded_tile: Optional[d.Point] = None
+) -> Tuple[List[d.Edge], d.Point, d.Point]:
     # Returns a list of neighboring points given a point p
     def neighbor_points(p):
         x, y = p
@@ -24,6 +31,9 @@ def generate_maze(width: int, height: int) -> Tuple[List[d.Edge], d.Point, d.Poi
 
     # Initialize the maze generation process
     unconnected_point_set = set((x, y) for y in range(height) for x in range(width))
+    if excluded_tile is not None:
+        unconnected_point_set.remove(excluded_tile)
+    tile_count = len(unconnected_point_set)
     connecting_points = []
     done_points = []
     edges = []
@@ -36,7 +46,7 @@ def generate_maze(width: int, height: int) -> Tuple[List[d.Edge], d.Point, d.Poi
     connecting_points.append(cur_p)
 
     # Keep generating until all points have been connected
-    while len(done_points) < width * height:
+    while len(done_points) < tile_count:
         # Choose a random connecting point
         i = rand.randrange(len(connecting_points))
         cur_p = connecting_points[i]
@@ -116,7 +126,8 @@ def spawn_entities(
                 c = d.Companion(x, y, config.tribe)
                 entities.append(c)
             # Mark the new spawned's position as unvisited (or hidden).
-            torched[y][x] = 0
+            # A respawn in an already mapped square remains known to the
+            # player; Rust's renderer reveals it immediately in that case.
 
 
 def respawn_entity(
@@ -144,11 +155,13 @@ def respawn_entity(
         entities.append(c)
 
     # Mark the new monster's position as unvisited (or hidden).
-    torched[y][x] = 0
 
 
 def create_field(
-    corridor_h_width: int, corridor_v_width: int, wall_char: str
+    corridor_h_width: int,
+    corridor_v_width: int,
+    wall_char: str,
+    excluded_tile: Optional[d.Point] = None,
 ) -> Tuple[List[List[str]], d.Point, d.Point]:
     def find_empty_cell(field: List[List[str]], left_top: d.Point, right_bottom: d.Point) -> d.Point:
         assert left_top[0] < right_bottom[0]
@@ -194,7 +207,7 @@ def create_field(
                 field[y2][x2] = wall_char
 
     # Create corridors
-    edges, first_p, last_p = generate_maze(d.TILE_NUM_X, d.TILE_NUM_Y)
+    edges, first_p, last_p = generate_maze(d.TILE_NUM_X, d.TILE_NUM_Y, excluded_tile)
     for edge in edges:
         (x1, y1), (x2, y2) = sorted(edge)
         assert x1 <= x2
@@ -208,6 +221,19 @@ def create_field(
             offset = rand.randrange(d.TILE_WIDTH + 1 - corridor_v_width) + 1
             for x in range(corridor_v_width):
                 field[y2 * (d.TILE_HEIGHT + 1)][x1 * (d.TILE_WIDTH + 1) + offset + x] = " "
+
+    # The sealed tile can interrupt a direct route between its neighbors.
+    # Rust's stage 3 adds a short bypass on the adjacent row at an outer edge.
+    if excluded_tile is not None:
+        island_x, island_y = excluded_tile
+        if 0 < island_x < d.TILE_NUM_X - 1:
+            bypass_y = 1 if island_y == 0 else d.TILE_NUM_Y - 2 if island_y == d.TILE_NUM_Y - 1 else None
+            if bypass_y is not None:
+                offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
+                for y in range(corridor_h_width):
+                    row = bypass_y * (d.TILE_HEIGHT + 1) + offset + y
+                    field[row][island_x * (d.TILE_WIDTH + 1)] = " "
+                    field[row][(island_x + 1) * (d.TILE_WIDTH + 1)] = " "
 
     r = tile_to_place_range(*first_p)
     first_p = find_empty_cell(field, r[0], r[1])
@@ -259,10 +285,13 @@ def iterate_offsets(
 def get_torched(player: d.Player, torch_radius: int) -> List[List[int]]:
     torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
 
-    if player.companion is not None and player.companion.tribe is d.CHAR_TO_COMPANION_TRIBE["o"]:
+    has_ocular = player.companion is not None and player.companion.tribe.char == "o"
+    if player.stage3_spores:
+        torch_radius = 2 if has_ocular else 1
+    elif has_ocular:
         torch_radius += d.OCULAR_TORCH_EXTENSION
 
-    for x, y in iterate_ellipse_points(player.x, player.y, torch_radius, d.TORCH_WIDTH_EXPANSION_RATIO):
+    for x, y in iterate_ellipse_points(player.x, player.y, torch_radius, d.FOV_WIDTH_EXPANSION_RATIO):
         torched[y][x] = 1
 
     return torched
@@ -345,7 +374,7 @@ def update_entities(
             player.karma = 0
 
             if c.tribe.event_message:
-                message = (3, c.tribe.event_message)
+                message = (MESSAGE_TICKS, c.tribe.event_message)
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
             encountered_types.add(m.tribe.char)
@@ -361,7 +390,7 @@ def update_entities(
                 player.item_taken_from = ""
                 player.lp -= d.LP_RESPAWN_COST
                 player.lp = max(d.LP_RESPAWN_MIN, min(player.lp, d.LP_INIT))
-                message = (3, "-- Respawned!")
+                message = (MESSAGE_TICKS, "-- Respawned!")
             else:
                 del entities[eei]
 
@@ -403,7 +432,7 @@ def update_entities(
                     player.lp = (player.lp * 3 + 3) // 4
 
                 if m.tribe.event_message:
-                    message = (3, m.tribe.event_message)
+                    message = (MESSAGE_TICKS, m.tribe.event_message)
 
     if player.companion is not None and player.companion.tribe is d.CHAR_TO_COMPANION_TRIBE["n"]:
         for eei, ee in sur_entity_infos:
@@ -414,7 +443,7 @@ def update_entities(
                     player.karma += 1
 
     if player.companion is not None and player.karma >= player.companion.tribe.durability:
-        message = (3, "-- The companion vanishes.")
+        message = (MESSAGE_TICKS, "-- The companion vanishes.")
         char = player.companion.tribe.char
         tribes_to_be_respawned.append(char)
         player.companion = None
@@ -422,7 +451,37 @@ def update_entities(
     return effect, tribes_to_be_respawned, message, contact_happened
 
 
-def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = False) -> None:
+def last_seed_path() -> Path:
+    return Path(user_cache_dir("arlq")) / "last-seed"
+
+
+def remember_seed(stage: int, seed: int) -> None:
+    try:
+        path = last_seed_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"{stage} {seed}\n", encoding="utf-8")
+    except OSError as error:
+        print(f"Warning: cannot save game seed: {error}", file=sys.stderr)
+
+
+def read_last_seed() -> Tuple[int, int]:
+    path = last_seed_path()
+    try:
+        parts = path.read_text(encoding="utf-8").split()
+    except OSError as error:
+        raise ValueError(f"cannot read rematch seed from {path}: {error}") from error
+    if len(parts) != 2:
+        raise ValueError(f"invalid rematch stage or seed in {path}")
+    try:
+        stage, seed = int(parts[0]), int(parts[1])
+    except ValueError as error:
+        raise ValueError(f"invalid rematch stage or seed in {path}") from error
+    if stage not in (1, 2, 3):
+        raise ValueError(f"invalid rematch stage or seed in {path}")
+    return stage, seed
+
+
+def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = False, seed_value: Optional[int] = None) -> None:
     show_entities = debug_show_entities
 
     if stage_num == 0:  # if stage is not selected yet
@@ -430,6 +489,15 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         if r == 0:
             return
         stage_num = r
+
+    if seed_value is not None:
+        remember_seed(stage_num, seed_value)
+
+    if stage_num == 3:
+        from .stage3 import run_game as run_stage3
+
+        run_stage3(ui, seed_str, debug_show_entities)
+        return
 
     # Configuration
     spawn_config = d.STAGE_TO_SPAWN_CONFIGS[stage_num - 1]
@@ -492,6 +560,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
                 message = (-1, "")
             else:
                 message = (remaining_tick, message[1])
+        show_entities = show_entities or getattr(ui, "map_mode", False)
         ui.draw_stage(
             hours,
             player,
@@ -509,6 +578,8 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         move_direction = ui.input_direction()
         if move_direction is None:
             return
+        if move_direction == (0, 0):
+            continue
 
         # Player move, encountering, etc.
         effect, tribes_to_be_respawned, m, _ = update_entities(
@@ -562,15 +633,15 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         if c is None:
             return
         elif c == "m":
-            show_entities = not show_entities
+            show_entities = True
+            if hasattr(ui, "map_mode"):
+                ui.map_mode = True
         elif c == "s":
             message = (-1, f"SEED: {seed_str}")
 
 
 def generate_seed_string(args):
     flag_str = ""
-    if args.large_field:
-        flag_str += "F"
     if args.large_torch:
         flag_str += "T"
     elif args.small_torch:
@@ -594,8 +665,6 @@ def parse_seed_string(args, seed_str):
         exit("Error: Seed string version does not match game version.")
 
     # Restore flags: set booleans based on whether they are specified.
-    args.large_field = "F" in flag_str
-
     # Check that -T and -t flags are mutually exclusive.
     if "T" in flag_str and "t" in flag_str:
         exit("Error: Both large torch and small torch flags are present in seed string.")
@@ -611,7 +680,12 @@ def parse_seed_string(args, seed_str):
 
     args.narrower_corridors = "n" in flag_str
 
-    args.stage = int(stage_str)
+    try:
+        args.stage = int(stage_str)
+    except ValueError:
+        exit("Error: Stage value in seed string is not a valid integer.")
+    if args.stage not in (1, 2, 3):
+        exit("Error: Stage value in seed string must be 1, 2, or 3.")
 
     try:
         args.seed = int(seed_value_str)
@@ -624,33 +698,43 @@ def main():
         description="A Rogue-Like game.",
     )
 
-    parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1 or 2).")
+    parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1, 2, or 3).")
 
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
-    parser.add_argument("-F", "--large-field", action="store_true", help="Large field.")
     g = parser.add_mutually_exclusive_group()
     g.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
     g.add_argument("-t", "--small-torch", action="store_true", help="Small torch.")
     parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
 
-    parser.add_argument("--seed", action="store", type=int, help="Seed value")
+    parser.add_argument("--seed", action="store", help="Seed value or seed string")
+    parser.add_argument("--rematch", action="store_true", help="Replay the last stage with the same seed.")
     parser.add_argument("--curses", action="store_true", help="Use curses as UI framework.")
     parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
 
     args = parser.parse_args()
 
-    if args.seed is not None:
+    if args.rematch and (args.seed is not None or args.stage):
+        parser.error("--rematch cannot be combined with --seed or --stage")
+
+    if args.rematch:
+        try:
+            args.stage, args.seed = read_last_seed()
+        except ValueError as error:
+            parser.error(str(error))
+    elif args.seed is not None:
         # Check if any conflicting flags are provided
-        if any([args.stage, args.large_field, args.large_torch, args.small_torch, args.narrower_corridors]):
-            exit("Error: option --seed is mutually exclusive to options --stage, -F, -T, -t, -n")
-        parse_seed_string(args, args.seed)
+        if any([args.stage, args.large_torch, args.small_torch, args.narrower_corridors]):
+            exit("Error: option --seed is mutually exclusive to options --stage, -T, -t, -n")
+        if isinstance(args.seed, str) and args.seed.startswith("v"):
+            parse_seed_string(args, args.seed)
+        else:
+            try:
+                args.seed = int(args.seed)
+            except (TypeError, ValueError):
+                parser.error("--seed must be an integer or a versioned seed string")
     else:
         args.seed = int(time.time()) % 100000
-
-    if args.large_field:
-        d.TILE_NUM_Y += 1
-        d.FIELD_HEIGHT = (d.TILE_HEIGHT + 1) * d.TILE_NUM_Y + 1
 
     if args.large_torch:
         d.TORCH_RADIUS += 1
@@ -671,7 +755,7 @@ def main():
 
         def curses_main(stdscr):
             ui = CursesUI(stdscr)
-            run_game(ui, seed_str, args.stage, args.debug_show_entities)
+            run_game(ui, seed_str, args.stage, args.debug_show_entities, args.seed)
 
         try:
             curses.wrapper(curses_main)
@@ -686,7 +770,7 @@ def main():
         from .pygame_funcs import PygameUI
 
         ui = PygameUI()
-        run_game(ui, seed_str, args.stage, args.debug_show_entities)
+        run_game(ui, seed_str, args.stage, args.debug_show_entities, args.seed)
 
 
 def main_cli():

@@ -24,6 +24,7 @@ def curses_draw_stage(
     encountered_types: Set[str],
     show_entities: bool = False,
     checkpoint: Optional[d.Point] = None,
+    monochrome: bool = False,
 ) -> None:
     """
     Draws the game stage on the provided curses window.
@@ -37,6 +38,9 @@ def curses_draw_stage(
         encountered_types: Set of encountered entity types.
         show_entities: Whether to show hidden entities.
     """
+    def color_pair(index):
+        return 0 if monochrome else curses.color_pair(index)
+
     player, px, py = None, None, None
     # Find the player among the entities
     for e in entities:
@@ -50,14 +54,14 @@ def curses_draw_stage(
         for x, cell in enumerate(row):
             if cur_torched[y][x]:
                 if cell == d.WALL_CHAR:
-                    stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
+                    stdscr.addstr(y, x, cell, color_pair(CI_GREEN))
                 elif cell == d.CHAR_CALTROP:
-                    stdscr.addstr(y, x, cell, curses.color_pair(CI_MAGENTA))
+                    stdscr.addstr(y, x, cell, color_pair(CI_MAGENTA))
                 else:
                     stdscr.addstr(y, x, cell)
             elif torched[y][x] or show_entities:
                 if cell == d.WALL_CHAR:
-                    stdscr.addstr(y, x, cell, curses.color_pair(CI_GREEN))
+                    stdscr.addstr(y, x, cell, color_pair(CI_GREEN))
                 elif cell == " " and (x + y) % 2 == 1:
                     stdscr.addstr(y, x, ".", curses.A_DIM)
                 else:
@@ -71,7 +75,7 @@ def curses_draw_stage(
             checkpoint[1],
             checkpoint[0],
             "+",
-            curses.A_BOLD | curses.color_pair(CI_YELLOW),
+            curses.A_BOLD | color_pair(CI_YELLOW),
         )
 
     # Draw each entity (monsters and treasures)
@@ -100,8 +104,7 @@ def curses_draw_stage(
             ch = m.tribe.char
             if ch not in encountered_types:
                 if not show_entities:
-                    ch = "!" if m.tribe.level == 0 else "?"
-                    stdscr.addstr(e.y, e.x, ch, curses.A_BOLD)
+                    stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
             else:
                 if m.tribe.level <= player_attack:
                     if m.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
@@ -110,11 +113,11 @@ def curses_draw_stage(
                         ci = CI_BLUE
                 else:
                     ci = CI_RED
-                stdscr.addstr(e.y, e.x, ch, curses.A_BOLD | curses.color_pair(ci))
+                stdscr.addstr(e.y, e.x, ch, curses.A_BOLD | color_pair(ci))
         elif isinstance(e, d.Treasure):
             t: d.Treasure = e
             if t.encounter_type in encountered_types:
-                stdscr.addstr(e.y, e.x, d.CHAR_TREASURE, curses.A_BOLD | curses.color_pair(CI_YELLOW))
+                stdscr.addstr(e.y, e.x, d.CHAR_TREASURE, curses.A_BOLD | color_pair(CI_YELLOW))
 
     # Draw the player character
     stdscr.addstr(py, px, "@", curses.A_BOLD | curses.color_pair(CI_YELLOW))
@@ -169,7 +172,9 @@ def curses_draw_status_bar(
             stdscr.addstr(y, x, s, attr)
         x += len(s)
 
-    if stage_num != 0:
+    if stage_num == 3:
+        addstr_w_len("ST: 3 F:%d  " % (getattr(player, "stage3_floor", 0) + 1))
+    elif stage_num != 0:
         addstr_w_len("ST: %d  " % stage_num)
     addstr_w_len("HRS: %d  " % hours)
 
@@ -196,8 +201,16 @@ def curses_draw_status_bar(
 
     y += 1
     x = 0
+    if stage_num == 3:
+        for label, bit in (("C", 1), ("I", 2), ("J", 64), ("K", 4), ("H", 8), ("W", 16)):
+            attr = curses.A_BOLD if player.stage3_flags & bit else curses.A_DIM
+            addstr_w_len(label + " ", attr)
+        addstr_w_len("T", curses.A_BOLD if getattr(player, "stage3_won", False) else curses.A_DIM)
+        x = 16
     if message:
-        addstr_w_len(message, curses.A_BOLD)
+        available = stdscr.getmaxyx()[1] - x - 1
+        if available > 0:
+            addstr_w_len(message[:available], curses.A_BOLD)
 
 
 def key_to_dir(key: str) -> Optional[d.Point]:
@@ -236,6 +249,7 @@ class CursesUI:
             stdscr: The curses window to be used for display.
         """
         self.stdscr: curses.window = stdscr
+        self.map_mode = False
 
         curses.initscr()
         curses.noecho()
@@ -292,6 +306,7 @@ class CursesUI:
             message: The message to display.
             extra_keys: Whether to display extra key hints.
         """
+        show_entities = show_entities or self.map_mode
         stdscr = self.stdscr
 
         stdscr.erase()
@@ -304,6 +319,7 @@ class CursesUI:
             encountered_types,
             show_entities=show_entities,
             checkpoint=checkpoint,
+            monochrome=self.map_mode,
         )
 
         curses_draw_status_bar(stdscr, player, hours, stage_num=stage_num, message=message, extra_keys=extra_keys)
@@ -325,6 +341,9 @@ class CursesUI:
             key = stdscr.getkey()
             if key == 27 or key.lower() == "q":
                 return None
+            elif key.lower() == "m":
+                self.map_mode = True
+                return (0, 0)
             else:
                 move_direction = key_to_dir(key)
         assert move_direction is not None
