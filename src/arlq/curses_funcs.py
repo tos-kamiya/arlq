@@ -147,6 +147,10 @@ def curses_draw_status_bar(
         message: An optional message to display.
         extra_keys: Whether to display extra key hints.
     """
+    has_stage3_k = stage_num == 3 and getattr(player, "stage3_flags", 0) & d.STAGE3_K_FLAG
+    has_stage3_j = stage_num == 3 and any(
+        follower[3] == "J" for follower in getattr(player, "persistent_followers", [])
+    )
     if player.item == d.ITEM_SWORD_X1_5:
         level_str = "LVL: %d x1.5" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
@@ -155,12 +159,18 @@ def curses_draw_status_bar(
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
     elif player.item == d.ITEM_POISONED:
         level_str = "LVL: %d /3" % player.level
+        if has_stage3_k:
+            level_str += " x1.2"
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
     else:
         level_str = "LVL: %d" % player.level
+        if has_stage3_k:
+            level_str += " x1.2"
         item_str = ""
+    if has_stage3_j:
+        level_str += " +25%"
 
-    beatable = d.get_max_beatable_monster_tribe(player)
+    beatable = d.get_max_beatable_monster_tribe(player, include_stage3_boss=stage_num == 3)
 
     x, y = 0, d.FIELD_HEIGHT
 

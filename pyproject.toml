@@ -56,7 +56,3 @@ arlq = "arlq:main"
 
 [project.scripts]
 arlq-cli = "arlq:main_cli"
-arlq-branch-analyzer = "arlq.branch_analyzer:main"
-arlq-ga = "arlq.ga_solver:main"
-arlq-target-ga = "arlq.target_ga_solver:main"
-arlq-target-ga-batch = "arlq.target_ga_batch:main"
