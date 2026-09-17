@@ -23,6 +23,7 @@ LP_RESPAWN_COST: int = 6
 MONSTER_RESPAWN_INTERVAL: int = 65
 SWORD_USES: int = 3
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
+STAGE3_K_FLAG: int = 4
 
 ITEM_SWORD_X1_5: str = "Sword"
 ITEM_SWORD_CURSED: str = "Cursed Sword"
@@ -315,7 +316,7 @@ def player_attack_by_level(player: Player) -> int:
         return player.level
 
 
-def get_max_beatable_monster_tribe(player: Player) -> List[MonsterTribe]:
+def get_max_beatable_monster_tribe(player: Player, include_stage3_boss: bool = False) -> List[MonsterTribe]:
     atk = player_attack_by_level(player)
     r = []
     for mt in MONSTER_LEVEL_GAUGE1[::-1]:
@@ -326,4 +327,6 @@ def get_max_beatable_monster_tribe(player: Player) -> List[MonsterTribe]:
         if mt.level <= atk:
             r.append(mt)
             break
+    if include_stage3_boss and CHAR_TO_MONSTER_TRIBE["W"].level <= atk:
+        r.append(CHAR_TO_MONSTER_TRIBE["W"])
     return r

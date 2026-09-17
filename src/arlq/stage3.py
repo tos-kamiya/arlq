@@ -196,11 +196,21 @@ def _step(direction, floors, player, floor, checkpoint, queue, history, hours):
             event_message = entity.tribe.event_message
         else:
             ch = entity.tribe.char; player.stage3_known.add(ch); current["entities"].pop(hit)
+            # Contact with any monster clears the spores. The Rust version
+            # resets this before resolving the encounter, so defeating a
+            # different monster restores the normal FOV immediately.
+            player.stage3_spores = False
             if ch == "l" and history:
                 known = player.stage3_known
                 unlocked = player.stage3_unlocked
+                seen = [floor_data["seen"] for floor_data in floors]
                 old_floors, old_player, old_floor, old_checkpoint = history[0]
                 floors[:] = old_floors
+                # Mapping is persistent knowledge, not part of the rewindable
+                # world state. Restore the rewound fields while retaining the
+                # current seen map for every floor.
+                for floor_data, preserved_seen in zip(floors, seen):
+                    floor_data["seen"] = preserved_seen
                 player.__dict__.update(old_player.__dict__)
                 player.stage3_known = known
                 player.stage3_unlocked = unlocked
@@ -223,12 +233,21 @@ def _step(direction, floors, player, floor, checkpoint, queue, history, hours):
                 # Rust resolves combat before removing the monster; keeping
                 # the entity here prevents a failed attack from deleting it.
                 current["entities"].append(entity)
-                player.x, player.y = checkpoint[0]; player.lp = max(20, min(90, player.lp - 6)); player.item = None; player.item_uses = 0
+                player.x, player.y = checkpoint[0]; player.lp = max(20, min(90, player.lp - 6)); player.item = None; player.item_uses = 0; player.item_taken_from = None
                 event_message = "-- Respawned!"
             else:
                 # A successful monster defeat establishes the next respawn
                 # point, matching the legacy stages and the Rust port.
                 checkpoint[0] = (player.x, player.y)
+                # Every ordinary monster replaces the current item. This is
+                # important for d (Poisoned): defeating another monster with
+                # no item must clear the poison and identify the new source.
+                if ch != "H":
+                    player.item = entity.tribe.item
+                    player.item_taken_from = ch
+                    player.item_uses = d.SWORD_USES if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) else 0
+                    if player.item == d.ITEM_SWORD_CURSED:
+                        player.lp = (player.lp * 3 + 3) // 4
                 if ch == "W": player.stage3_flags |= STAGE3_W; player.stage3_unlocked.add("W")
                 if ch == "K": player.stage3_flags |= STAGE3_K; player.item = None
                 if ch == "H": player.stage3_flags |= STAGE3_H
@@ -284,7 +303,11 @@ def run_game(ui, seed_str, debug=False):
             remaining_tick = message[0] - 1
             message = (-1, "") if remaining_tick < 0 else (remaining_tick, message[1])
         show_entities = debug or getattr(ui, "map_mode", False)
-        ui.draw_stage(hours, player, current["entities"], current["field"], cur, current["seen"], player.stage3_known, show_entities, 3, message[1], checkpoint=checkpoint[0])
+        # The curses renderer discovers the player from the entity list, while
+        # the pygame renderer receives it separately. Keep the Stage 3 state
+        # model separate and provide a render-only combined list.
+        render_entities = [player, *current["entities"]]
+        ui.draw_stage(hours, player, render_entities, current["field"], cur, current["seen"], player.stage3_known, show_entities, 3, message[1], checkpoint=checkpoint[0])
         move = ui.input_direction()
         if move is None: return
         if move == (0, 0):
@@ -297,7 +320,8 @@ def run_game(ui, seed_str, debug=False):
     message = (-1, ">> Treasures collected! <<" if player.stage3_won else ">> Starved to Death. <<")
     while True:
         current = floors[floor[0]]; cur = get_torched(player, d.TORCH_RADIUS)
-        ui.draw_stage(hours, player, current["entities"], current["field"], cur, current["seen"], player.stage3_known, debug, 3, message[1], True, checkpoint[0])
+        render_entities = [player, *current["entities"]]
+        ui.draw_stage(hours, player, render_entities, current["field"], cur, current["seen"], player.stage3_known, debug, 3, message[1], True, checkpoint[0])
         key = ui.input_alphabet()
         if key is None:
             return
