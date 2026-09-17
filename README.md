@@ -22,8 +22,11 @@ Once installed, the `arlq` command becomes available.
 
 - Without any options, the game will run in a Pygame window.
 - To make the game easier, use the `-T` option (expands the visible area).
-- To make the game more challenging, use the `-F` option (enlarges the field) or the `-t` option (reduces the visible area).
+- To make the game more challenging, use the `-t` option (reduces the visible area).
 - With the `--curses` option, the game will run in the terminal using curses.
+- Use `--rematch` to replay the most recently started stage with the same seed.
+
+The last stage and seed are saved in `arlq/last-seed` under the user cache directory.
 
 To use the `--curses` option, you need to install the `curses` package separately:
 
@@ -44,6 +47,8 @@ pip install windows-curses
 * **Objective**  
   The goal of the game is to explore a dungeon with uniquely generated corridors every time and locate the treasure chest(s) hidden by the dragon(s).
   In Stage 1, find the dragon's treasure chest; in Stage 2, find the fire drake's treasure chest.
+  Stage 3 is a three-floor hunt for the Dread Wyrm and its treasure. It adds stairs, elves,
+  persistent followers, barriers, spores, and an 80-turn time loop.
 
 * **Player**  
   You control the character represented by `@` using the arrow keys to move up, down, left, and right.
@@ -100,6 +105,15 @@ In addition to the monsters from Stage 1 except for Dragon, the following appear
 | **g** Golem         | When defeated, rocks scatter. It yields no food.                                                                        |
 | **h** High Elf      | Too powerful to be defeated.                                                                                            |
 | **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you.                                                         |
+
+**Stage 3**
+
+Stage 3 has three connected floors. Explore the elves (`I`, `J`, `K`, `H`) to gain their
+abilities, defeat the Dread Wyrm (`W`), and collect the unlocked treasure. The `l` monster
+rewinds the recorded past, while `m` temporarily narrows vision. In every stage, a respawned
+monster is shown immediately if its square has already been mapped.
+The Isolated Elf (`I`) is inside a sealed room; you need a wall-breaking sword to reach it.
+The special monsters `m`, `X`, `e`, and `g` are each assigned to one randomly selected floor.
 
 ## Companion List
 

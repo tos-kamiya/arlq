@@ -12,6 +12,7 @@ WALL_CHAR: str = "#"
 
 TORCH_RADIUS: int = 3
 TORCH_WIDTH_EXPANSION_RATIO: float = 1.7
+FOV_WIDTH_EXPANSION_RATIO: float = 1.4
 OCULAR_TORCH_EXTENSION: int = 3
 
 LP_MAX: int = 100
@@ -62,6 +63,7 @@ CHAR_DRAGON: str = "D"
 CHAR_FIRE_DRAKE: str = "F"
 CHAR_TREASURE: str = "T"
 CHAR_CALTROP: str = "x"
+CHAR_BARRIER: str = "="
 
 Point = Tuple[int, int]
 Edge = Tuple[Point, Point]
@@ -186,6 +188,11 @@ class Player(Entity):
         self.item_taken_from: Optional[str] = None
         self.companion: Optional[Companion] = companion
         self.karma: int = 0
+        # Stage 3 state. Keeping these on Player preserves the small shared
+        # entity model used by both frontends.
+        self.stage3_flags: int = 0
+        self.stage3_spores: bool = False
+        self.persistent_followers: List[Tuple[int, int, int, str]] = []
 
 
 class SpawnConfig:
@@ -224,6 +231,14 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT("h", 999, MIN_FOOD),  # High elf
     _MT("X", 1, MIN_FOOD, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
+    _MT("I", 0, 0, event_message="-- The Isolated Elf told you about the history of the elves."),
+    _MT("J", 0, 0, event_message="-- The Javelin Elf joins your hunt for the Dread Wyrm!"),
+    _MT("K", 0, 0, event_message="-- The Collector Elf gave you a rustless blade for your Cursed Sword!"),
+    _MT("H", 0, 0, event_message="-- The High Elf bestowed the talisman upon you!"),
+    _MT("l", 999, 0, event_message="-- Something went terribly wrong..."),
+    _MT("m", 5, MIN_FOOD, event_message="-- Spores cloud your vision!"),
+    _MT("w", 50, MIN_FOOD),
+    _MT("W", 150, MIN_FOOD, event_message="-- Dread Wyrm defeated!"),
 ]
 
 COMPANION_TRIBES: List[CompanionTribe] = [
@@ -285,6 +300,7 @@ SPAWN_CONFIGS_ST2 = [
 STAGE_TO_SPAWN_CONFIGS = [
     SPAWN_CONFIGS_ST1,
     SPAWN_CONFIGS_ST2,
+    [],  # Stage 3 uses its per-floor roster in stage3.py.
 ]
 
 
