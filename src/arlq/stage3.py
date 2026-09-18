@@ -294,7 +294,6 @@ def _rewind_to_history(
     """Handle contact with the Loop Companion ('l'): rewind to the oldest recorded state."""
     known = player.known_monsters
     unlocked = player.unlocked_treasures
-    met_elves = player.stage3_met_elves
     elf_floors = player.stage3_elf_floors
     seen = [floor_data["seen"] for floor_data in floors]
     known_companions = [floor_data["known_companions"] for floor_data in floors]
@@ -309,11 +308,16 @@ def _rewind_to_history(
         floor_data["known_companions"] = preserved_known
 
     player.__dict__.update(old_player.__dict__)
-    # Monster/treasure/elf knowledge survives the rewind; everything else
-    # (position, level, LP, floor, ...) reverts to the recorded past.
+    # Monster/treasure knowledge and elf floor locations survive the rewind;
+    # everything else (position, level, LP, floor, stage3_flags, ...)
+    # reverts to the recorded past. stage3_met_elves must revert together
+    # with stage3_flags: it gates re-processing of an elf encounter
+    # (_resolve_monster_contact), so keeping it "met" while stage3_flags
+    # reverts to not-yet-met would permanently block earning that elf's
+    # flag again, and would render it on the field as already resolved
+    # while the status bar (driven by stage3_flags) still shows it unmet.
     player.known_monsters = known
     player.unlocked_treasures = unlocked
-    player.stage3_met_elves = met_elves
     player.stage3_elf_floors = elf_floors
 
     floor[0], checkpoint[0] = old_floor, old_checkpoint

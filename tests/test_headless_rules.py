@@ -195,7 +195,10 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     assert player.known_monsters == {"a", "W"}
     assert player.unlocked_treasures == {"TW"}
     assert not player.stage3_treasure_collected
-    assert player.stage3_met_elves == {"I"}
+    # stage3_met_elves must revert with stage3_flags (it gates re-processing
+    # of elf encounters), unlike the elf floor locations, which are pure map
+    # knowledge and survive the rewind.
+    assert player.stage3_met_elves == set()
     assert player.stage3_elf_floors == {"I": 1, "J": 3, "K": 2, "H": 1}
     assert not player.stage3_won
     assert len(current_floors[0]["entities"]) == 2
@@ -205,6 +208,39 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     )
     assert any(isinstance(entity, d.Treasure) for entity in current_floors[0]["entities"])
     assert not history
+
+
+def test_rewind_reverts_met_elves_together_with_stage3_flags(monkeypatch):
+    """Rewinding to a point before an elf flag (e.g. STAGE3_H) was earned
+    must also drop that elf from stage3_met_elves. Otherwise the field
+    renders the elf as already resolved (dimmed, via stage3_met_elves)
+    while the status bar shows the flag as not yet earned (via
+    stage3_flags), and the player can never legitimately earn it again
+    since met_elves short-circuits future contact."""
+    player = d.Player(2, 2, 100, 90)
+    player.stage3_flags = STAGE3_H
+    player.stage3_met_elves = {"H"}
+    loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
+    current_floors, _ = stage3_state(player, [loop])
+
+    old_player = d.Player(5, 5, 7, 60)
+    old_player.stage3_flags = 0
+    old_player.stage3_met_elves = set()
+    old_loop = d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"])
+    old_floors, _ = stage3_state(old_player, [old_loop])
+    history = deque([(old_floors, old_player, 0, (4, 5), Counter())])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue: "Counter" = Counter()
+
+    def spawn_loop(entities, _field, _char, _avoid, _island, _floor_index=None):
+        entities.append(d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"]))
+
+    monkeypatch.setattr(stage3_module, "_spawn", spawn_loop)
+    run_stage3_keys("R", current_floors, player, floor, checkpoint, queue, history)
+
+    assert not (player.stage3_flags & STAGE3_H)
+    assert player.stage3_met_elves == set()
 
 
 def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():
