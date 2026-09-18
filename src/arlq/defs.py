@@ -313,9 +313,9 @@ _SC = SpawnConfig
 SPAWN_CONFIGS_ST1 = [
     _SC(CHAR_TO_TRIBE["a"], 20),
     _SC(CHAR_TO_TRIBE["A"], 1),
-    _SC(CHAR_TO_TRIBE["b"], 9),
+    _SC(CHAR_TO_TRIBE["b"], 10),
     _SC(CHAR_TO_TRIBE["c"], 3),
-    _SC(CHAR_TO_TRIBE["d"], 3),
+    _SC(CHAR_TO_TRIBE["d"], 2),
     _SC(CHAR_TO_TRIBE[CHAR_DRAGON], 1),
     _SC(CHAR_TO_TRIBE["n"], 0.7),
     _SC(CHAR_TO_TRIBE["o"], 0.7),

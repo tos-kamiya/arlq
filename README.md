@@ -127,7 +127,7 @@ Stage 2 contains three ordinary `b` Bison and three empowered `b` Bison. Empower
 **Stage 3**
 
 Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
-Some monsters are empowered and have three times their normal level. On floor 1, empowered individuals are `c` and `d`; on floor 2, they are `b`, `c`, and `d`; on floor 3, they are `b` and `d`. Empowered monsters are displayed with an apostrophe to the right, such as `d'`, and their identities are learned separately from ordinary `d` monsters. Floor 3 contains one ordinary `f` Fire Lizard.
+Some monsters are empowered and have three times their normal level. On floor 1, empowered individuals are `c` and `d`; on floor 2, they are `b`, `c`, and `d`; on floor 3, they are `b` and `d`. Empowered monsters are displayed with an apostrophe to the right, such as `d'`, and their identities are learned separately from ordinary `d` monsters.
 
 **Stage 3 Monsters**
 
@@ -135,7 +135,6 @@ Some monsters are empowered and have three times their normal level. On floor 1,
 | -------------- | ----------- |
 | **m** Myconid | Temporarily reduces vision until another monster is contacted. |
 | **w** Wyrm | Protected by a barrier. |
-| **f** Fire Lizard | A slightly weaker relative of the Fire Drake. |
 | **W** Dread Wyrm | Protected by a barrier and unlocks the treasure chest when defeated. |
 
 **Elves**
