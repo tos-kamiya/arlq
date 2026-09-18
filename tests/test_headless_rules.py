@@ -1,0 +1,336 @@
+from collections import Counter, deque
+
+import pytest
+
+from arlq import defs as d
+from arlq import stage3 as stage3_module
+from arlq.arlq import respawn_entity, update_entities
+from arlq.stage3 import STAGE3_C, STAGE3_H, STAGE3_I, STAGE3_J, STAGE3_K, _step
+
+KEYS = {
+    "U": (0, -1),
+    "D": (0, 1),
+    "L": (-1, 0),
+    "R": (1, 0),
+}
+
+
+def blank_field():
+    return [[" " for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
+
+
+def stage3_state(player, entities):
+    field = blank_field()
+    return [{
+        "field": field,
+        "entities": entities,
+        "seen": [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        "known_companions": set(),
+        "up": (1, 1),
+        "down": (d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        "island": None,
+    }], field
+
+
+def run_stage3_keys(keys, floors, player, floor, checkpoint, queue, history):
+    messages = []
+    for key in keys:
+        result = _step(KEYS[key], floors, player, floor, checkpoint, queue, history, 1)
+        messages.append(result[1] if result is not None else None)
+    return messages
+
+
+@pytest.mark.parametrize(
+    ("level", "expected_message", "expected_position"),
+    [
+        (1, "-- Respawned!", (2, 2)),
+        (200, "-- Dread Wyrm defeated!", (3, 2)),
+    ],
+)
+def test_stage3_wyrm_combat_updates_message_position_and_state(level, expected_message, expected_position):
+    player = d.Player(2, 2, level, 90)
+    wyrm = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
+    floors, _ = stage3_state(player, [wyrm])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+
+    assert messages == [expected_message]
+    assert (player.x, player.y) == expected_position
+    if level == 1:
+        assert floors[0]["entities"] == [wyrm]
+        assert player.item is None
+        assert player.lp == 84
+        assert not player.unlocked_treasures
+        assert not queue
+    else:
+        assert floors[0]["entities"] == []
+        assert player.level == 201
+        assert player.karma == 1
+        assert player.unlocked_treasures == {"TW"}
+        assert not queue
+        assert floors[0]["entities"] == []
+
+
+def test_stage3_treasure_requires_current_timeline_w_defeat():
+    player = d.Player(2, 2, 200, 90)
+    player.unlocked_treasures.add("TW")
+    treasure = d.Treasure(3, 2, "TW")
+    wyrm = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
+    floors, _ = stage3_state(player, [treasure, wyrm])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history)
+
+    assert messages[0] == "-- You took the treasure, but the King's request remains."
+    assert messages[1] == "-- Dread Wyrm defeated!"
+    assert player.stage3_treasure_collected
+    assert player.stage3_won
+    assert floors[0]["entities"] == []
+
+
+def test_legacy_defeat_applies_item_and_caltrop_field_effect():
+    player = d.Player(2, 2, 100, 90)
+    player.item = d.ITEM_SWORD_CURSED
+    player.item_uses = 3
+    plant = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["X"])
+    field = blank_field()
+    entities = [player, plant]
+
+    effect, respawns, message, contact = update_entities(
+        KEYS["R"], field, player, entities, set(), respawn_point=(2, 2)
+    )
+
+    assert effect == d.EFFECT_CALTROP_SPREAD
+    assert respawns == ["X"]
+    assert message == (8, "-- Caltrops Scattered!")
+    assert contact
+    assert player.item is None
+    assert player.item_taken_from == "X"
+    assert player.level == 101
+    assert player.karma == 1
+    assert any(d.CHAR_CALTROP in row for row in field)
+
+
+def test_legacy_respawn_queue_controls_actual_respawn(monkeypatch):
+    player = d.Player(2, 2, 100, 90)
+    plant = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["X"])
+    field = blank_field()
+    entities = [player, plant]
+
+    _, respawns, _, _ = update_entities(
+        KEYS["R"], field, player, entities, set(), respawn_point=(2, 2)
+    )
+
+    assert respawns == ["X"]
+    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_args, **_kwargs: (5, 2))
+    respawn_entity(d.CHAR_TO_MONSTER_TRIBE["X"], entities, field, [])
+
+    assert [(e.x, e.y, e.tribe.char) for e in entities if isinstance(e, d.Monster)] == [(5, 2, "X")]
+
+
+def test_legacy_non_respawning_monster_does_not_enter_respawn_queue():
+    player = d.Player(2, 2, 100, 90)
+    amoeba = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
+    field = blank_field()
+    entities = [player, amoeba]
+
+    _, respawns, _, _ = update_entities(
+        KEYS["R"], field, player, entities, set(), respawn_point=(2, 2)
+    )
+
+    respawn_queue = Counter(t for t in respawns if t not in d.NO_RESPAWN_MONSTERS)
+    assert respawn_queue == Counter()
+    assert entities == [player]
+
+
+def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
+    player = d.Player(2, 2, 100, 90)
+    player.known_monsters = {"a", "W"}
+    player.unlocked_treasures = {"TW"}
+    player.stage3_treasure_collected = True
+    player.stage3_met_elves = {"I"}
+    player.stage3_elf_floors = {"I": 1, "J": 3, "K": 2, "H": 1}
+    loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
+    current_floors, current_field = stage3_state(player, [loop])
+    current_floors[0]["known_companions"] = {"n"}
+    current_floors[0]["seen"][1][1] = 9
+    current_field[10][10] = d.WALL_CHAR
+
+    old_player = d.Player(5, 5, 7, 60)
+    old_player.stage3_won = False
+    old_loop = d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"])
+    old_treasure = d.Treasure(7, 5, "TW")
+    old_floors, old_field = stage3_state(old_player, [old_loop, old_treasure])
+    old_field[10][10] = " "
+    old_queue = Counter({(0, "a"): 2})
+    current_queue = Counter({(0, "X"): 3})
+    history = deque([(old_floors, old_player, 0, (4, 5), old_queue)])
+    floor = [0]
+    checkpoint = [(2, 2)]
+
+    def spawn_loop(entities, _field, _char, _avoid, _island):
+        entities.append(d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"]))
+
+    monkeypatch.setattr(stage3_module, "_spawn", spawn_loop)
+    messages = run_stage3_keys(
+        "R", current_floors, player, floor, checkpoint, current_queue, history
+    )
+
+    assert messages == ["-- Time folds back to the beginning of the recorded past."]
+    assert (player.x, player.y) == (5, 5)
+    assert player.level == 7
+    assert player.lp == 60
+    assert checkpoint == [(4, 5)]
+    assert current_queue == Counter({(0, "a"): 2})
+    assert current_floors[0]["field"][10][10] == " "
+    assert current_floors[0]["seen"][1][1] == 9
+    assert current_floors[0]["known_companions"] == {"l", "n"}
+    assert player.known_monsters == {"a", "W"}
+    assert player.unlocked_treasures == {"TW"}
+    assert not player.stage3_treasure_collected
+    assert player.stage3_met_elves == {"I"}
+    assert player.stage3_elf_floors == {"I": 1, "J": 3, "K": 2, "H": 1}
+    assert not player.stage3_won
+    assert len(current_floors[0]["entities"]) == 2
+    assert any(
+        isinstance(entity, d.Companion) and entity.tribe.char == "l"
+        for entity in current_floors[0]["entities"]
+    )
+    assert any(isinstance(entity, d.Treasure) for entity in current_floors[0]["entities"])
+    assert not history
+
+
+def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
+    player = d.Player(2, 2, 100, 90)
+    first_floors, _ = stage3_state(player, [])
+    second_player = d.Player(2, 2, 100, 90)
+    second_floors, _ = stage3_state(second_player, [])
+    floors = first_floors + second_floors
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter({(0, "p"): 1, (0, "X"): 1, (1, "p"): 1})
+    history = deque()
+    spawned = []
+
+    def record_spawn(entities, _field, char, _avoid, _island):
+        spawned.append((entities, char))
+
+    monkeypatch.setattr(stage3_module, "_spawn", record_spawn)
+    _step(KEYS["U"], floors, player, floor, checkpoint, queue, history, 0)
+
+    assert [(entities is floors[0]["entities"], char) for entities, char in spawned] == [
+        (True, "p"),
+        (True, "X"),
+        (False, "p"),
+    ]
+    assert queue[(0, "p")] == 0
+    assert queue[(0, "X")] == 0
+    assert queue[(1, "p")] == 0
+
+
+@pytest.mark.parametrize(
+    ("item", "expected_attack"),
+    [
+        (None, 10),
+        (d.ITEM_SWORD_X1_5, 15),
+        (d.ITEM_SWORD_CURSED, 30),
+        (d.ITEM_POISONED, 8),
+    ],
+)
+def test_sword_and_poison_attack_modifiers(item, expected_attack):
+    player = d.Player(2, 2, 10, 90)
+    player.item = item
+
+    assert d.player_attack_by_level(player) == expected_attack
+
+
+def test_sword_breaks_wall_and_consumes_one_use():
+    player = d.Player(2, 2, 10, 90)
+    player.item = d.ITEM_SWORD_CURSED
+    player.item_uses = 2
+    field = blank_field()
+    field[2][3] = d.WALL_CHAR
+
+    effect, respawns, message, contact = update_entities(
+        KEYS["R"], field, player, [player], set(), respawn_point=(2, 2)
+    )
+
+    assert effect is None
+    assert respawns == []
+    assert message is None
+    assert not contact
+    assert (player.x, player.y) == (3, 2)
+    assert field[2][3] == " "
+    assert player.item == d.ITEM_SWORD_CURSED
+    assert player.item_uses == 1
+
+
+@pytest.mark.parametrize(
+    ("elf", "initial_flags", "expected_flags", "expected_message"),
+    [
+        ("I", 0, STAGE3_I, "-- The Isolated Elf told you about the history of the elves."),
+        ("J", 0, STAGE3_J, "-- The Javelin Elf joins your hunt for the Dread Wyrm!"),
+        ("K", STAGE3_C, STAGE3_C | STAGE3_K, "-- The Collector Elf gave you a rustless blade for your Cursed Sword!"),
+        ("H", STAGE3_I | STAGE3_J, STAGE3_I | STAGE3_J | STAGE3_H, "-- The High Elf bestowed the talisman upon you!"),
+    ],
+)
+def test_elf_encounters_apply_their_conditions(elf, initial_flags, expected_flags, expected_message):
+    player = d.Player(2, 2, 100, 90)
+    player.stage3_flags = initial_flags
+    entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[elf])
+    floors, _ = stage3_state(player, [entity])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+
+    assert messages == [expected_message]
+    assert player.stage3_flags == expected_flags
+    if elf == "J":
+        assert player.persistent_followers == [(2, 2, 0, "J")]
+        assert floors[0]["entities"] == []
+    elif elf == "H":
+        assert player.stage3_flags & STAGE3_H
+        assert floors[0]["entities"] == [entity]
+    else:
+        assert floors[0]["entities"] == [entity]
+
+
+def test_collector_and_javelin_elves_increase_stage3_attack():
+    player = d.Player(2, 2, 100, 90)
+    player.stage3_flags = STAGE3_K
+    player.persistent_followers = [(2, 2, 0, "J")]
+
+    assert d.player_attack_by_level(player, include_stage3_bonuses=True) == 150
+
+
+@pytest.mark.parametrize(
+    ("elf", "initial_flags"),
+    [("I", 0), ("K", STAGE3_C), ("H", STAGE3_I | STAGE3_J)],
+)
+def test_elf_repeat_contact_shows_follow_up_message(elf, initial_flags):
+    player = d.Player(2, 2, 100, 90)
+    player.stage3_flags = initial_flags
+    entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[elf])
+    floors, _ = stage3_state(player, [entity])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    messages = run_stage3_keys("RLR", floors, player, floor, checkpoint, queue, history)
+
+    assert messages[0] is not None
+    assert messages[1] is None
+    assert messages[2] is not None
+    assert messages[2] != messages[0]
+    assert len(floors[0]["entities"]) == 1

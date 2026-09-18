@@ -21,10 +21,12 @@ def curses_draw_stage(
     field: List[List[str]],
     cur_torched: List[List[int]],
     torched: List[List[int]],
-    encountered_types: Set[str],
+    known_types: Set[str],
     show_entities: bool = False,
     checkpoint: Optional[d.Point] = None,
     monochrome: bool = False,
+    unlocked_treasures: Optional[Set[str]] = None,
+    dim_types: Optional[Set[str]] = None,
 ) -> None:
     """
     Draws the game stage on the provided curses window.
@@ -35,7 +37,7 @@ def curses_draw_stage(
         field: 2D list representing the game field.
         cur_torched: 2D list indicating cells that are currently torched.
         torched: 2D list indicating cells that are permanently torched.
-        encountered_types: Set of encountered entity types.
+        known_types: Set of known monster and companion types.
         show_entities: Whether to show hidden entities.
     """
     def color_pair(index):
@@ -96,13 +98,13 @@ def curses_draw_stage(
         if isinstance(e, d.Companion):
             c: d.Companion = e
             ch = c.tribe.char
-            if ch not in encountered_types and not show_entities:
+            if ch not in known_types and not show_entities:
                 ch = "!"
             stdscr.addstr(e.y, e.x, ch, curses.A_BOLD)
         elif isinstance(e, d.Monster):
             m: d.Monster = e
             ch = m.tribe.char
-            if ch not in encountered_types:
+            if ch not in known_types:
                 if not show_entities:
                     stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
             else:
@@ -113,10 +115,14 @@ def curses_draw_stage(
                         ci = CI_BLUE
                 else:
                     ci = CI_RED
-                stdscr.addstr(e.y, e.x, ch, curses.A_BOLD | color_pair(ci))
+                attr = curses.A_BOLD | color_pair(ci)
+                if dim_types and ch in dim_types:
+                    attr |= curses.A_DIM
+                stdscr.addstr(e.y, e.x, ch, attr)
         elif isinstance(e, d.Treasure):
             t: d.Treasure = e
-            if t.encounter_type in encountered_types:
+            treasure_unlocked = unlocked_treasures is not None and t.unlock_key in unlocked_treasures
+            if treasure_unlocked:
                 stdscr.addstr(e.y, e.x, d.CHAR_TREASURE, curses.A_BOLD | color_pair(CI_YELLOW))
 
     # Draw the player character
@@ -170,7 +176,11 @@ def curses_draw_status_bar(
     if has_stage3_j:
         level_str += " +25%"
 
-    beatable = d.get_max_beatable_monster_tribe(player, include_stage3_boss=stage_num == 3)
+    beatable = d.get_max_beatable_monster_tribe(
+        player,
+        include_stage3_boss=stage_num == 3,
+        include_stage3_bonuses=stage_num == 3,
+    )
 
     x, y = 0, d.FIELD_HEIGHT
 
@@ -183,7 +193,7 @@ def curses_draw_status_bar(
         x += len(s)
 
     if stage_num == 3:
-        addstr_w_len("ST: 3 F:%d  " % (getattr(player, "stage3_floor", 0) + 1))
+        addstr_w_len("ST: 3 F:%d  " % (player.stage3_floor + 1))
     elif stage_num != 0:
         addstr_w_len("ST: %d  " % stage_num)
     addstr_w_len("HRS: %d  " % hours)
@@ -195,7 +205,7 @@ def curses_draw_status_bar(
         addstr_w_len(">%s  " % ",".join(b.char for b in beatable))
 
     addstr_w_len("LP: %d [" % player.lp)
-    bar_len = 4
+    bar_len = 8
     attr_thresholds = [
         (20, curses.color_pair(CI_RED)),
         (d.LP_MAX, curses.color_pair(CI_WHITE)),
@@ -212,11 +222,15 @@ def curses_draw_status_bar(
     y += 1
     x = 0
     if stage_num == 3:
+        elf_floors = getattr(player, "stage3_elf_floors", {})
+        show_elf_floors = getattr(player, "stage3_flags", 0) & d.STAGE3_I_FLAG
         for label, bit in (("C", 1), ("I", 2), ("J", 64), ("K", 4), ("H", 8), ("W", 16)):
             attr = curses.A_BOLD if player.stage3_flags & bit else curses.A_DIM
-            addstr_w_len(label + " ", attr)
-        addstr_w_len("T", curses.A_BOLD if getattr(player, "stage3_won", False) else curses.A_DIM)
-        x = 16
+            progress_label = label
+            if show_elf_floors and label in elf_floors:
+                progress_label += str(elf_floors[label])
+            addstr_w_len(progress_label + " ", attr)
+        addstr_w_len("T", curses.A_BOLD if player.stage3_won else curses.A_DIM)
     if message:
         available = stdscr.getmaxyx()[1] - x - 1
         if available > 0:
@@ -293,12 +307,14 @@ class CursesUI:
         field,
         cur_torched,
         torched,
-        encountered_types,
+        known_types,
         show_entities,
         stage_num=0,
         message=None,
         extra_keys=False,
         checkpoint=None,
+        unlocked_treasures: Optional[Set[str]] = None,
+        dim_types: Optional[Set[str]] = None,
     ):
         """
         Draws the entire game stage including the status bar.
@@ -310,7 +326,7 @@ class CursesUI:
             field: 2D list representing the game field.
             cur_torched: 2D list indicating cells that are currently torched.
             torched: 2D list indicating cells that are permanently torched.
-            encountered_types: Set of encountered entity types.
+            known_types: Set of known monster and companion types.
             show_entities: Whether to display hidden entities.
             stage_num: Number of stage.
             message: The message to display.
@@ -326,10 +342,12 @@ class CursesUI:
             field,
             cur_torched,
             torched,
-            encountered_types,
+            known_types,
             show_entities=show_entities,
             checkpoint=checkpoint,
             monochrome=self.map_mode,
+            unlocked_treasures=unlocked_treasures,
+            dim_types=dim_types,
         )
 
         curses_draw_status_bar(stdscr, player, hours, stage_num=stage_num, message=message, extra_keys=extra_keys)
@@ -349,7 +367,7 @@ class CursesUI:
         move_direction = None
         while move_direction is None:
             key = stdscr.getkey()
-            if key == 27 or key.lower() == "q":
+            if key == chr(27) or key.lower() == "q":
                 return None
             elif key.lower() == "m":
                 self.map_mode = True
@@ -370,7 +388,7 @@ class CursesUI:
         stdscr = self.stdscr
 
         key = stdscr.getkey()
-        if key == 27 or key.lower() == "q":
+        if key == chr(27) or key.lower() == "q":
             return None
 
         return key.lower()

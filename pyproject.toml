@@ -51,6 +51,9 @@ path = "src/arlq/__about__.py"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 
+[tool.mypy]
+ignore_missing_imports = true
+
 [project.gui-scripts]
 arlq = "arlq:main"
 

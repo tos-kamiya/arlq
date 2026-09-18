@@ -35,7 +35,7 @@ def generate_maze(
         unconnected_point_set.remove(excluded_tile)
     tile_count = len(unconnected_point_set)
     connecting_points = []
-    done_points = []
+    done_points: List[d.Point] = []
     edges = []
 
     # Choose a random starting point
@@ -297,19 +297,47 @@ def get_torched(player: d.Player, torch_radius: int) -> List[List[int]]:
     return torched
 
 
+def unlock_treasure_for_defeat(
+    monster: d.Monster,
+    unlocked_treasures: Set[str],
+) -> None:
+    """Record the treasure unlocked by defeating a monster."""
+    treasure_key = monster.tribe.treasure_key
+    if treasure_key is None:
+        return
+    unlocked_treasures.add(treasure_key)
+
+
+def reveal_entities_in_fov(
+    player: d.Player,
+    entities: List[d.Entity],
+    torch_radius: int = d.TORCH_RADIUS,
+) -> None:
+    """Reveal every monster currently inside the player's FOV."""
+    if player.companion is None or player.companion.tribe.char != "n":
+        return
+    torched = get_torched(player, torch_radius)
+    for entity in entities:
+        if not (0 <= entity.y < d.FIELD_HEIGHT and 0 <= entity.x < d.FIELD_WIDTH):
+            continue
+        if not torched[entity.y][entity.x]:
+            continue
+        if isinstance(entity, d.Monster):
+            player.known_monsters.add(entity.tribe.char)
+
+
 def update_entities(
     move_direction: d.Point,
     field: List[List[str]],
     player: d.Player,
     entities: List[d.Entity],
-    encountered_types: Set[str],
+    unlocked_treasures: Set[str],
     sword_uses: int = d.SWORD_USES,
     respawn_point: Optional[d.Point] = None,
 ) -> Tuple[Optional[str], List[str], Optional[Tuple[int, str]], bool]:
     effect = None
     tribes_to_be_respawned = []
     message = None
-
     # player move
     dx, dy = move_direction
 
@@ -344,15 +372,12 @@ def update_entities(
 
     # Find encountered entity
     enc_entity_infos: List[Tuple[int, d.Entity]] = []
-    sur_entity_infos: List[Tuple[int, d.Entity]] = []
     for i, e in enumerate(entities):
         if not isinstance(e, d.Player):
             dx = abs(e.x - player.x)
             dy = abs(e.y - player.y)
             if dx == 0 and dy == 0:
                 enc_entity_infos.append((i, e))
-            elif dx <= 1 and dy <= 1:
-                sur_entity_infos.append((i, e))
     assert len(enc_entity_infos) <= 1
     contact_happened = bool(enc_entity_infos)
 
@@ -360,13 +385,13 @@ def update_entities(
     for eei, ee in enc_entity_infos:
         if isinstance(ee, d.Treasure):
             t: d.Treasure = ee
-            if t.encounter_type in encountered_types:
+            if t.unlock_key in unlocked_treasures:
                 message = (10, ">> Treasures collected! <<")
                 del entities[eei]
                 effect = d.EFFECT_GOT_TREASURE
         elif isinstance(ee, d.Companion):
             c: d.Companion = ee
-            encountered_types.add(c.tribe.char)
+            player.known_companions.add(c.tribe.char)
 
             del entities[eei]
 
@@ -377,7 +402,7 @@ def update_entities(
                 message = (MESSAGE_TICKS, c.tribe.event_message)
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
-            encountered_types.add(m.tribe.char)
+            player.known_monsters.add(m.tribe.char)
 
             # High Elf is a Stage 3-style gatekeeper in Stage 2 as well. It
             # remains in place until the required elf progress is available,
@@ -410,7 +435,7 @@ def update_entities(
                 if effect == d.EFFECT_SPECIAL_EXP:
                     player.level += 9
                 elif effect == d.EFFECT_UNLOCK_TREASURE:
-                    encountered_types.add(d.CHAR_TREASURE + m.tribe.char)  # Unlock the treasure
+                    unlock_treasure_for_defeat(m, unlocked_treasures)
                 elif effect == d.EFFECT_CALTROP_SPREAD:
                     for x, y in iterate_ellipse_points(
                         player.x,
@@ -442,13 +467,7 @@ def update_entities(
                 if m.tribe.event_message:
                     message = (MESSAGE_TICKS, m.tribe.event_message)
 
-    if player.companion is not None and player.companion.tribe is d.CHAR_TO_COMPANION_TRIBE["n"]:
-        for eei, ee in sur_entity_infos:
-            if isinstance(ee, d.Monster):
-                m: d.Monster = ee
-                if m.tribe.char not in encountered_types:
-                    encountered_types.add(m.tribe.char)
-                    player.karma += 1
+    reveal_entities_in_fov(player, entities)
 
     if player.companion is not None and player.karma >= player.companion.tribe.durability:
         message = (MESSAGE_TICKS, "-- The companion vanishes.")
@@ -514,7 +533,6 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     field, first_p, last_p = create_field(d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH, d.WALL_CHAR)
 
     # Initialize view/ui components
-    encountered_types: Set[str] = set()
     cur_torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
     torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
 
@@ -531,7 +549,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
                 assert treasure_count == 0
                 treasure_count += 1
                 x, y = last_p[0], last_p[1]
-                treasure: d.Treasure = d.Treasure(x, y, d.CHAR_TREASURE + mt.char)
+                treasure: d.Treasure = d.Treasure(x, y, mt.treasure_key)
                 entities.append(treasure)
     assert treasure_count == 1
 
@@ -548,7 +566,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     move_direction = None
 
     message: Tuple[int, str] = (-1, "")
-    respawn_queue = Counter()
+    respawn_queue: Counter[str] = Counter()
     checkpoint = (player.x, player.y)
 
     while True:
@@ -576,11 +594,12 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             field,
             cur_torched,
             torched,
-            encountered_types,
+            player.known_monsters | player.known_companions,
             show_entities,
             stage_num=stage_num,
             message=message[1],
             checkpoint=checkpoint,
+            unlocked_treasures=player.unlocked_treasures,
         )
 
         move_direction = ui.input_direction()
@@ -595,7 +614,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             field,
             player,
             entities,
-            encountered_types,
+            player.unlocked_treasures,
             respawn_point=checkpoint,
         )
         if m is not None:
@@ -629,12 +648,13 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             field,
             cur_torched,
             torched,
-            encountered_types,
+            player.known_monsters | player.known_companions,
             show_entities,
             stage_num=stage_num,
             message=message[1],
             extra_keys=True,
             checkpoint=checkpoint,
+            unlocked_treasures=player.unlocked_treasures,
         )
 
         c = ui.input_alphabet()

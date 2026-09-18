@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 TILE_WIDTH: int = 12
 TILE_HEIGHT: int = 6
@@ -24,6 +24,7 @@ MONSTER_RESPAWN_INTERVAL: int = 65
 SWORD_USES: int = 3
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
 STAGE3_K_FLAG: int = 4
+STAGE3_I_FLAG: int = 2
 
 ITEM_SWORD_X1_5: str = "Sword"
 ITEM_SWORD_CURSED: str = "Cursed Sword"
@@ -81,9 +82,10 @@ class Entity:
 class Treasure(Entity):
     """Entity that inherits from the Treasure class."""
 
-    def __init__(self, x, y, encounter_type):
+    def __init__(self, x, y, encounter_type, unlock_key: Optional[str] = None):
         super().__init__(x, y)
         self.encounter_type = encounter_type
+        self.unlock_key = unlock_key or encounter_type
 
 
 class Tribe:
@@ -119,12 +121,16 @@ class MonsterTribe(Tribe):
         event_message: Optional[str] = None,
         item: Optional[str] = None,
         effect: Optional[str] = None,
+        treasure_key: Optional[str] = None,
+        is_elf: bool = False,
     ):
         super().__init__(char, event_message)
         self.level: int = level
         self.feed: int = feed
         self.item: Optional[str] = item
         self.effect: Optional[str] = effect
+        self.treasure_key: Optional[str] = treasure_key
+        self.is_elf: bool = is_elf
 
 
 class CompanionTribe(Tribe):
@@ -189,10 +195,20 @@ class Player(Entity):
         self.item_taken_from: Optional[str] = None
         self.companion: Optional[Companion] = companion
         self.karma: int = 0
+        # Monster identities are known globally across all floors and stages.
+        self.known_monsters: Set[str] = set()
+        # Stages 1 and 2 have one floor, while Stage 3 keeps this per floor.
+        self.known_companions: Set[str] = set()
+        self.unlocked_treasures: Set[str] = set()
+        self.stage3_met_elves: Set[str] = set()
+        self.stage3_elf_floors: Dict[str, int] = {}
         # Stage 3 state. Keeping these on Player preserves the small shared
         # entity model used by both frontends.
         self.stage3_flags: int = 0
         self.stage3_spores: bool = False
+        self.stage3_treasure_collected: bool = False
+        self.stage3_won: bool = False
+        self.stage3_floor: int = 0
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
 
 
@@ -223,25 +239,35 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("C", 15, MIN_FOOD, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
     _MT("d", 20, 40, item=ITEM_POISONED),  # Comodo Dragon
     _MT(
-        CHAR_DRAGON, 40, MIN_FOOD, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Dragon's treasure chest!"
+        CHAR_DRAGON,
+        40,
+        MIN_FOOD,
+        effect=EFFECT_UNLOCK_TREASURE,
+        event_message="-- Unlocked Dragon's treasure chest!",
+        treasure_key=CHAR_TREASURE + CHAR_DRAGON,
     ),  # Dragon
     _MT("e", 1, -5, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained!"),  # Erebus
     _MT(
-        CHAR_FIRE_DRAKE, 60, MIN_FOOD, effect=EFFECT_UNLOCK_TREASURE, event_message="-- Unlocked Fire Drake's treasure chest!"
+        CHAR_FIRE_DRAKE,
+        60,
+        MIN_FOOD,
+        effect=EFFECT_UNLOCK_TREASURE,
+        event_message="-- Unlocked Fire Drake's treasure chest!",
+        treasure_key=CHAR_TREASURE + CHAR_FIRE_DRAKE,
     ),  # Fire Drake
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT("X", 1, MIN_FOOD, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
-    _MT("I", 0, 0, event_message="-- The Isolated Elf told you about the history of the elves."),
-    _MT("J", 0, 0, event_message="-- The Javelin Elf joins your hunt for the Dread Wyrm!"),
-    _MT("K", 0, 0, event_message="-- The Collector Elf gave you a rustless blade for your Cursed Sword!"),
-    _MT("H", 0, 0, event_message="-- The High Elf bestowed the talisman upon you!"),
-    _MT("l", 999, 0, event_message="-- Something went terribly wrong..."),
+    _MT("I", 0, 0, event_message="-- The Isolated Elf told you about the history of the elves.", is_elf=True),
+    _MT("J", 0, 0, event_message="-- The Javelin Elf joins your hunt for the Dread Wyrm!", is_elf=True),
+    _MT("K", 0, 0, event_message="-- The Collector Elf gave you a rustless blade for your Cursed Sword!", is_elf=True),
+    _MT("H", 0, 0, event_message="-- The High Elf bestowed the talisman upon you!", is_elf=True),
     _MT("m", 5, MIN_FOOD, event_message="-- Spores cloud your vision!"),
     _MT("w", 50, MIN_FOOD),
-    _MT("W", 150, MIN_FOOD, event_message="-- Dread Wyrm defeated!"),
+    _MT("W", 150, MIN_FOOD, event_message="-- Dread Wyrm defeated!", treasure_key=CHAR_TREASURE + "W"),
 ]
 
 COMPANION_TRIBES: List[CompanionTribe] = [
+    _CT("l", event_message="-- Something went terribly wrong..."),  # Looping companion
     _CT("n", 10, event_message="-- Nomicon joined!"),  # Nomicon
     _CT("o", 20, event_message="-- Ocular joined!"),  # Ocular
     _CT("p", 5, event_message="-- Pegasus joined!"),  # Pegasus
@@ -304,19 +330,30 @@ STAGE_TO_SPAWN_CONFIGS = [
 ]
 
 
-def player_attack_by_level(player: Player) -> int:
+def player_attack_by_level(player: Player, include_stage3_bonuses: bool = False) -> int:
     if player.item == ITEM_SWORD_X1_5:
-        return player.level * 3 // 2
+        value = player.level * 3 // 2
     elif player.item == ITEM_SWORD_CURSED:
-        return player.level * 3
+        value = player.level * 3
     elif player.item == ITEM_POISONED:
-        return (player.level * 3 + 3) // 4
+        value = (player.level * 3 + 3) // 4
     else:
-        return player.level
+        value = player.level
+
+    if include_stage3_bonuses:
+        if player.stage3_flags & STAGE3_K_FLAG:
+            value = (value * 6 + 1) // 5
+        if any(follower[3] == "J" for follower in player.persistent_followers):
+            value = (value * 5 + 2) // 4
+    return value
 
 
-def get_max_beatable_monster_tribe(player: Player, include_stage3_boss: bool = False) -> List[MonsterTribe]:
-    atk = player_attack_by_level(player)
+def get_max_beatable_monster_tribe(
+    player: Player,
+    include_stage3_boss: bool = False,
+    include_stage3_bonuses: bool = False,
+) -> List[MonsterTribe]:
+    atk = player_attack_by_level(player, include_stage3_bonuses=include_stage3_bonuses)
     r = []
     for mt in MONSTER_LEVEL_GAUGE1[::-1]:
         if mt.level <= atk:

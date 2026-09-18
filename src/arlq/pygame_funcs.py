@@ -103,12 +103,14 @@ class PygameUI:
         field: List[List[str]],
         cur_torched: List[List[int]],
         torched: List[List[int]],
-        encountered_types: Set[str],
+        known_types: Set[str],
         show_entities: bool,
         stage_num: int = 0,
         message: Optional[str] = None,
         extra_keys: bool = False,
         checkpoint: Optional[d.Point] = None,
+        unlocked_treasures: Optional[Set[str]] = None,
+        dim_types: Optional[Set[str]] = None,
     ):
         """
         Renders the game stage:
@@ -187,13 +189,13 @@ class PygameUI:
             if isinstance(e, d.Companion):
                 c: d.Companion = e
                 ch = c.tribe.char
-                if ch not in encountered_types and not show_entities:
+                if ch not in known_types and not show_entities:
                     ch = "!"
                 self._draw_text(pos, ch, COLOR_MAP[CI_GREEN], bold=True)
             elif isinstance(e, d.Monster):
                 m: d.Monster = e
                 ch = m.tribe.char
-                if ch not in encountered_types:
+                if ch not in known_types:
                     if not show_entities:
                         self._draw_text(pos, "?", COLOR_MAP[CI_YELLOW], bold=True)
                 else:
@@ -204,16 +206,18 @@ class PygameUI:
                             ci = CI_BLUE
                     else:
                         ci = CI_RED
-                    self._draw_text(pos, ch, COLOR_MAP[ci], bold=True)
+                    color = self._dim_color(COLOR_MAP[ci]) if dim_types and ch in dim_types else COLOR_MAP[ci]
+                    self._draw_text(pos, ch, color, bold=True)
             elif isinstance(e, d.Treasure):
                 t: d.Treasure = e
-                if t.encounter_type in encountered_types:
+                treasure_unlocked = unlocked_treasures is not None and t.unlock_key in unlocked_treasures
+                if treasure_unlocked:
                     self._draw_text(pos, d.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], bold=True)
 
         # Stage 3 followers persist across floor changes and are rendered
         # independently of the temporary companion slot.
         for fx, fy, ffloor, fchar in getattr(player, "persistent_followers", []):
-            if ffloor == getattr(player, "stage3_floor", 0) and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
+            if ffloor == player.stage3_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
                 self._draw_text((fx, fy), fchar, COLOR_MAP[CI_GREEN], bold=True)
 
         # Draw the status bar
@@ -258,11 +262,15 @@ class PygameUI:
         if has_stage3_j:
             level_str += " +25%"
 
-        beatable = d.get_max_beatable_monster_tribe(player, include_stage3_boss=stage_num == 3)
+        beatable = d.get_max_beatable_monster_tribe(
+            player,
+            include_stage3_boss=stage_num == 3,
+            include_stage3_bonuses=stage_num == 3,
+        )
 
         status_line = ""
         if stage_num == 3:
-            status_line += "ST: 3 F:%d  " % (getattr(player, "stage3_floor", 0) + 1)
+            status_line += "ST: 3 F:%d  " % (player.stage3_floor + 1)
         elif stage_num != 0:
             status_line += "ST: %d  " % stage_num
         status_line += "HRS: %d  " % hours
@@ -282,7 +290,7 @@ class PygameUI:
         lp_width, _ = self.font.size(lp_str)
         x_offset += lp_width
 
-        bar_cells = 4
+        bar_cells = 8
         bar_width = bar_cells * CELL_SIZE_X
         bar_height = CELL_SIZE_Y // 2
         y_offset = self.field_height * CELL_SIZE_Y + (CELL_SIZE_Y - bar_height) // 2
@@ -302,12 +310,19 @@ class PygameUI:
 
         if stage_num == 3:
             progress = (("C", 1), ("I", 2), ("J", 64), ("K", 4), ("H", 8), ("W", 16))
-            for index, (label, bit) in enumerate(progress):
+            elf_floors = getattr(player, "stage3_elf_floors", {})
+            show_elf_floors = getattr(player, "stage3_flags", 0) & d.STAGE3_I_FLAG
+            progress_x = 0
+            for label, bit in progress:
                 color = COLOR_MAP["default"] if player.stage3_flags & bit else (100, 106, 118)
-                self._draw_text((index * 2, self.field_height + 1), label, color, bold=True)
-            treasure_collected = getattr(player, "stage3_won", False)
+                progress_label = label
+                if show_elf_floors and label in elf_floors:
+                    progress_label += str(elf_floors[label])
+                self._draw_text((progress_x, self.field_height + 1), progress_label, color, bold=True)
+                progress_x += len(progress_label) + 1
+            treasure_collected = player.stage3_won
             self._draw_text(
-                (len(progress) * 2, self.field_height + 1),
+                (progress_x, self.field_height + 1),
                 "T",
                 COLOR_MAP["default"] if treasure_collected else (100, 106, 118),
                 bold=True,

@@ -50,7 +50,11 @@ If `python -m arlq` does not work in the current environment, fall back to:
 
 ## Validation Expectations
 
-There is currently no dedicated test suite in the repository. For most changes, validate with targeted local checks:
+A headless test suite covers core gameplay rules (legacy stage combat/respawn rules and Stage 3 rules) in `tests/`. Run it after any change to `arlq.py`, `defs.py`, or `stage3.py`:
+
+- Run tests: `uv run -p .venv/bin/python pytest`
+
+For most changes, also validate with targeted local checks:
 
 - Syntax/import check: `uv run -p .venv/bin/python python -m compileall src`
 - Basic import check: `uv run -p .venv/bin/python python -c "import arlq"`
@@ -58,7 +62,7 @@ There is currently no dedicated test suite in the repository. For most changes, 
 
 When working in a headless or non-interactive environment:
 
-- Prefer `python -m compileall src` and import checks first.
+- Prefer `pytest`, `python -m compileall src`, and import checks first.
 - State clearly if GUI or curses runtime validation could not be performed.
 
 ## Documentation Expectations
