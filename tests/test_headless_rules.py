@@ -75,9 +75,9 @@ def test_stage3_wyrm_combat_updates_message_position_and_state(level, expected_m
         assert floors[0]["entities"] == []
 
 
-def test_stage3_includes_fire_lizard_as_a_weaker_fire_drake():
+def test_stage3_excludes_fire_lizard():
     assert d.CHAR_TO_MONSTER_TRIBE["f"].level < d.CHAR_TO_MONSTER_TRIBE[d.CHAR_FIRE_DRAKE].level
-    assert ("f", 1, 1) in stage3_module.ROSTER[2]
+    assert all(ch != "f" for floor in stage3_module.ROSTER for ch, _, _ in floor)
 
 
 def test_empowered_monsters_triple_level_and_have_separate_identity():
