@@ -2,44 +2,81 @@
 
 from collections import Counter, deque
 from copy import deepcopy
-from typing import List, Set, Tuple
+from typing import Any, Container, Deque, Dict, List, Optional, Tuple
 
 from . import defs as d
-from .arlq import MESSAGE_TICKS, create_field, find_random_place, get_torched, iterate_ellipse_points, iterate_offsets
+from .arlq import (
+    MESSAGE_TICKS,
+    create_field,
+    find_random_place,
+    get_torched,
+    iterate_ellipse_points,
+    reveal_entities_in_fov,
+    unlock_treasure_for_defeat,
+)
 from .utils import rand
 
 FLOORS = 3
 LOOP_TURNS = 80
 STAGE3_C, STAGE3_I, STAGE3_K, STAGE3_H, STAGE3_W, STAGE3_J = 1, 2, 4, 8, 16, 64
 
-ROSTER = [
+ELF_REPEAT_MESSAGES = {
+    "I": "-- The elf watches you in silence.",
+    "K": "-- The cursed sword has served its purpose.",
+    "H": "-- Keep the talisman close to your skin.",
+}
+
+# Each entry is [(tribe_char, population), ...] for one floor.
+ROSTER: List[List[Tuple[str, int]]] = [
     [("a", 20), ("A", 2), ("b", 12), ("c", 2), ("C", 1), ("d", 3), ("l", 1), ("I", 1), ("J", 1), ("o", 1), ("p", 1)],
     [("a", 20), ("A", 2), ("b", 12), ("c", 2), ("C", 1), ("d", 3), ("l", 1), ("K", 1), ("o", 1), ("p", 1)],
     [("A", 2), ("b", 12), ("d", 3), ("l", 1), ("w", 1), ("W", 1), ("H", 1), ("n", 1), ("o", 1), ("p", 1)],
 ]
 
+# A per-floor game state. Keeping this as a plain dict (rather than a new
+# class) matches how legacy stages pass field/entities/torched around.
+Floor = Dict[str, Any]
 
-def _place_barrier(field, center):
+# History entries snapshot everything the Loop Companion can rewind.
+HistoryEntry = Tuple[List[Floor], d.Player, int, d.Point, "Counter[Tuple[int, str]]"]
+
+
+class _StepDone(Exception):
+    """Internal signal: skip the rest of `_step` and return `result` now."""
+
+    def __init__(self, result: Optional[Tuple[int, str]]) -> None:
+        self.result = result
+
+
+def _place_barrier(field: List[List[str]], center: d.Point) -> None:
     for dx in (-1, 0, 1):
         for dy in (-1, 0, 1):
-            if dx or dy:
-                x, y = center[0] + dx, center[1] + dy
-                if 0 <= y < len(field) and 0 <= x < len(field[0]):
-                    # Never punch through the sealed Isolated Elf room's
-                    # perimeter when another Stage 3 feature is nearby.
-                    if field[y][x] == " ":
-                        field[y][x] = d.CHAR_BARRIER
+            if not (dx or dy):
+                continue
+            x, y = center[0] + dx, center[1] + dy
+            if not (0 <= y < len(field) and 0 <= x < len(field[0])):
+                continue
+            # Never punch through the sealed Isolated Elf room's
+            # perimeter when another Stage 3 feature is nearby.
+            if field[y][x] == " ":
+                field[y][x] = d.CHAR_BARRIER
 
 
-def _inside_island(point, island_tile):
-    if island_tile is None:
+def _inside_island(point: Optional[d.Point], island_tile: Optional[d.Point]) -> bool:
+    if point is None or island_tile is None:
         return False
     left = island_tile[0] * (d.TILE_WIDTH + 1)
     top = island_tile[1] * (d.TILE_HEIGHT + 1)
     return left < point[0] < left + d.TILE_WIDTH + 1 and top < point[1] < top + d.TILE_HEIGHT + 1
 
 
-def _spawn(entities, field, ch, avoid=(), island_tile=None):
+def _spawn(
+    entities: List[d.Entity],
+    field: List[List[str]],
+    ch: str,
+    avoid: Container[d.Point] = (),
+    island_tile: Optional[d.Point] = None,
+) -> d.Point:
     while True:
         x, y = find_random_place(entities, field, distance=2)
         if (x, y) not in avoid and not _inside_island((x, y), island_tile):
@@ -48,13 +85,14 @@ def _spawn(entities, field, ch, avoid=(), island_tile=None):
     if isinstance(tribe, d.CompanionTribe):
         entities.append(d.Companion(x, y, tribe))
     else:
+        assert isinstance(tribe, d.MonsterTribe)
         entities.append(d.Monster(x, y, tribe))
     return x, y
 
 
-def _main_connected(field, start, island_tile):
+def _main_connected(field: List[List[str]], start: d.Point, island_tile: Optional[d.Point]) -> bool:
     reached = {start}
-    pending = deque([start])
+    pending: Deque[d.Point] = deque([start])
     while pending:
         x, y = pending.popleft()
         for dx, dy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
@@ -77,29 +115,58 @@ def _main_connected(field, start, island_tile):
     )
 
 
-def _build_floor(index, special_floors, elf_floors):
-    island_tile = (
-        (rand.randrange(d.TILE_NUM_X), rand.randrange(d.TILE_NUM_Y))
-        if index == elf_floors["I"]
-        else None
-    )
+def _build_floor(
+    index: int,
+    special_floors: Dict[str, int],
+    elf_floors: Dict[str, int],
+    entry_point: Optional[d.Point] = None,
+) -> Floor:
+    island_tile = None
+    if index == elf_floors["I"]:
+        while island_tile is None or _inside_island(entry_point, island_tile):
+            island_tile = (rand.randrange(d.TILE_NUM_X), rand.randrange(d.TILE_NUM_Y))
     for _ in range(1000):
         field, up, down = create_field(d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH, d.WALL_CHAR, island_tile)
+        if entry_point is not None:
+            entry_x, entry_y = entry_point
+            if not (0 <= entry_y < len(field) and 0 <= entry_x < len(field[0])):
+                continue
+            if _inside_island(entry_point, island_tile):
+                continue
+            generated_up = up
+            if not _main_connected(field, generated_up, island_tile):
+                continue
+            # Preserve the exit coordinates from the previous floor. If the
+            # corresponding cell is a wall on this floor, carve a short
+            # connection to the generated main corridor.
+            x, y = entry_point
+            target_x, target_y = generated_up
+            while x != target_x:
+                field[y][x] = " "
+                x += 1 if target_x > x else -1
+            while y != target_y:
+                field[y][x] = " "
+                y += 1 if target_y > y else -1
+            field[y][x] = " "
+            up = entry_point
         if _main_connected(field, up, island_tile):
             break
     else:
         raise RuntimeError("could not generate a connected Stage 3 floor")
+
     if index < FLOORS - 1:
         field[down[1]][down[0]] = "v"
     if index:
         field[up[1]][up[0]] = "^"
-    entities = []
+
+    entities: List[d.Entity] = []
     reserved = {up, down}
     for ch, count in ROSTER[index]:
         if ch in {"W", "w", "I", "J", "K", "H"}:
             continue
         for _ in range(count):
             _spawn(entities, field, ch, reserved, island_tile)
+
     if island_tile is not None:
         left = island_tile[0] * (d.TILE_WIDTH + 1) + 1
         top = island_tile[1] * (d.TILE_HEIGHT + 1) + 1
@@ -111,31 +178,43 @@ def _build_floor(index, special_floors, elf_floors):
         ]
         x, y = rand.choice(spots)
         entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE["I"]))
+
     for ch in ("J", "K", "H"):
         if index == elf_floors[ch]:
             _spawn(entities, field, ch, reserved, island_tile)
+
     if index == 2:
         _spawn(entities, field, "w", reserved)
         weak = next(e for e in entities if isinstance(e, d.Monster) and e.tribe.char == "w")
         _place_barrier(field, (weak.x, weak.y))
         entities.append(d.Monster(down[0], down[1], d.CHAR_TO_MONSTER_TRIBE["W"]))
         _place_barrier(field, down)
-        entities.append(d.Treasure(*_treasure_spot(entities, field, reserved), "W"))
+        entities.append(d.Treasure(*_treasure_spot(entities, field, reserved), d.CHAR_TREASURE + "W"))
+
     for ch, assigned_floor in special_floors.items():
         if index == assigned_floor:
             for _ in range(2 if ch == "m" else 1):
                 _spawn(entities, field, ch, reserved, island_tile)
-    return {"field": field, "entities": entities, "seen": [[0] * len(field[0]) for _ in field], "up": up, "down": down, "island": island_tile}
+
+    return {
+        "field": field,
+        "entities": entities,
+        "seen": [[0] * len(field[0]) for _ in field],
+        "known_companions": set(),
+        "up": up,
+        "down": down,
+        "island": island_tile,
+    }
 
 
-def _treasure_spot(entities, field, reserved):
+def _treasure_spot(entities: List[d.Entity], field: List[List[str]], reserved: Container[d.Point]) -> d.Point:
     while True:
         p = find_random_place(entities, field, distance=2)
         if p not in reserved:
             return p
 
 
-def build():
+def build() -> Tuple[List[Floor], d.Player]:
     elf_floors = {
         "I": rand.randrange(FLOORS),
         "J": rand.randrange(FLOORS),
@@ -143,185 +222,460 @@ def build():
         "H": rand.randrange(FLOORS),
     }
     special_floors = {ch: rand.randrange(FLOORS) for ch in ("m", "X", "e", "g")}
-    floors = [_build_floor(i, special_floors, elf_floors) for i in range(FLOORS)]
+    floors: List[Floor] = []
+    entry_point = None
+    for index in range(FLOORS):
+        floor = _build_floor(index, special_floors, elf_floors, entry_point)
+        floors.append(floor)
+        entry_point = floor["down"]
     player = d.Player(floors[0]["up"][0], floors[0]["up"][1], 1, d.LP_INIT)
+    player.stage3_elf_floors = {char: floor + 1 for char, floor in elf_floors.items()}
     return floors, player
 
 
-def _attack(player):
-    value = d.player_attack_by_level(player)
-    if player.stage3_flags & STAGE3_K:
-        value = (value * 6 + 1) // 5
-    if any(f[3] == "J" for f in player.persistent_followers):
-        value = (value * 5 + 2) // 4
-    return value
+def _attack(player: d.Player) -> int:
+    return d.player_attack_by_level(player, include_stage3_bonuses=True)
 
 
-def _known_monster(player, ch):
-    return ch in getattr(player, "stage3_known", set())
-
-
-def _step(direction, floors, player, floor, checkpoint, queue, history, hours):
-    current = floors[floor[0]]
-    event_message = None
-    history.append((deepcopy(floors), deepcopy(player), floor[0], checkpoint[0]))
-    if len(history) > LOOP_TURNS:
-        history.popleft()
-    previous = (player.x, player.y)
+def _move_player(direction: d.Point, current: Floor, player: d.Player) -> None:
+    """Apply one step of player movement, including sword-breaking and Pegasus jumps."""
     dx, dy = direction
     nx, ny = player.x + dx, player.y + dy
-    if 0 <= ny < len(current["field"]) and 0 <= nx < len(current["field"][0]):
-        cell = current["field"][ny][nx]
-        if cell in (" ", d.CHAR_CALTROP, "^", "v", d.CHAR_BARRIER):
-            player.x, player.y = nx, ny
-        elif player.companion and player.companion.tribe.char == "p":
-            jx, jy = player.x + dx * d.PEGASUS_STEP_X, player.y + dy * d.PEGASUS_STEP_Y
-            if 0 <= jy < len(current["field"]) and 0 <= jx < len(current["field"][0]) and current["field"][jy][jx] in (" ", d.CHAR_CALTROP):
-                player.x, player.y = jx, jy; player.karma += 1
-        elif player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) and player.item_uses:
-            player.x, player.y = nx, ny; current["field"][ny][nx] = " "; player.item_uses -= 1
-            if not player.item_uses: player.item = None
-    if current["field"][player.y][player.x] == d.CHAR_BARRIER and not (player.stage3_flags & STAGE3_H) and (player.x, player.y) != previous:
+    field = current["field"]
+    if not (0 <= ny < len(field) and 0 <= nx < len(field[0])):
+        return
+
+    cell = field[ny][nx]
+    if cell in (" ", d.CHAR_CALTROP, "^", "v", d.CHAR_BARRIER):
+        player.x, player.y = nx, ny
+        return
+
+    if player.companion and player.companion.tribe.char == "p":
+        jx, jy = player.x + dx * d.PEGASUS_STEP_X, player.y + dy * d.PEGASUS_STEP_Y
+        if 0 <= jy < len(field) and 0 <= jx < len(field[0]) and field[jy][jx] in (" ", d.CHAR_CALTROP):
+            player.x, player.y = jx, jy
+            player.karma += 1
+        return
+
+    if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) and player.item_uses:
+        player.x, player.y = nx, ny
+        field[ny][nx] = " "
+        player.item_uses -= 1
+        if not player.item_uses:
+            player.item = None
+
+
+def _apply_terrain_hazards(current: Floor, player: d.Player, previous: d.Point) -> Optional[str]:
+    """Apply barrier/caltrop damage for the player's current cell.
+
+    Returns an event message for the barrier case, or None otherwise (caltrop
+    damage never produces a message, matching the legacy stages).
+    """
+    field = current["field"]
+    event_message = None
+    if field[player.y][player.x] == d.CHAR_BARRIER and not (player.stage3_flags & STAGE3_H) and (player.x, player.y) != previous:
         player.lp -= 30
         event_message = "-- The barrier burns you."
-    if current["field"][player.y][player.x] == d.CHAR_CALTROP:
-        player.lp -= 3; current["field"][player.y][player.x] = " "
+    if field[player.y][player.x] == d.CHAR_CALTROP:
+        player.lp -= 3
+        field[player.y][player.x] = " "
+    return event_message
+
+
+def _rewind_to_history(
+    floors: List[Floor],
+    player: d.Player,
+    floor: List[int],
+    checkpoint: List[d.Point],
+    queue: "Counter[Tuple[int, str]]",
+    history: Deque[HistoryEntry],
+) -> Tuple[int, str]:
+    """Handle contact with the Loop Companion ('l'): rewind to the oldest recorded state."""
+    known = player.known_monsters
+    unlocked = player.unlocked_treasures
+    met_elves = player.stage3_met_elves
+    elf_floors = player.stage3_elf_floors
+    seen = [floor_data["seen"] for floor_data in floors]
+    known_companions = [floor_data["known_companions"] for floor_data in floors]
+
+    old_floors, old_player, old_floor, old_checkpoint, old_queue = history[0]
+    floors[:] = old_floors
+    queue.clear()
+    queue.update(old_queue)
+    for floor_data, preserved_seen in zip(floors, seen, strict=True):
+        floor_data["seen"] = preserved_seen
+    for floor_data, preserved_known in zip(floors, known_companions, strict=True):
+        floor_data["known_companions"] = preserved_known
+
+    player.__dict__.update(old_player.__dict__)
+    # Monster/treasure/elf knowledge survives the rewind; everything else
+    # (position, level, LP, floor, ...) reverts to the recorded past.
+    player.known_monsters = known
+    player.unlocked_treasures = unlocked
+    player.stage3_met_elves = met_elves
+    player.stage3_elf_floors = elf_floors
+
+    floor[0], checkpoint[0] = old_floor, old_checkpoint
+    history.clear()
+
+    restored_entities = floors[floor[0]]["entities"]
+    for index, restored in enumerate(restored_entities):
+        if isinstance(restored, d.Companion) and restored.tribe.char == "l":
+            del restored_entities[index]
+            break
+    _spawn(restored_entities, floors[floor[0]]["field"], "l", {(player.x, player.y)}, floors[floor[0]]["island"])
+
+    return (5, "-- Time folds back to the beginning of the recorded past.")
+
+
+def _defeat_monster(
+    entity: d.Monster,
+    current: Floor,
+    player: d.Player,
+    floor: List[int],
+    checkpoint: List[d.Point],
+    queue: "Counter[Tuple[int, str]]",
+) -> None:
+    """Apply the effects of successfully defeating `entity` in combat."""
+    ch = entity.tribe.char
+
+    # A successful monster defeat establishes the next respawn point,
+    # matching the legacy stages and the Rust port.
+    if not entity.tribe.is_elf:
+        checkpoint[0] = (player.x, player.y)
+
+    # Every ordinary monster replaces the current item. This is important
+    # for d (Poisoned): defeating another monster with no item must clear
+    # the poison and identify the new source.
+    if ch != "H":
+        player.item = entity.tribe.item
+        player.item_taken_from = ch
+        player.item_uses = d.SWORD_USES if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) else 0
+        if player.item == d.ITEM_SWORD_CURSED:
+            player.lp = (player.lp * 3 + 3) // 4
+
+    if ch == "W":
+        player.stage3_flags |= STAGE3_W
+        unlock_treasure_for_defeat(entity, player.unlocked_treasures)
+        player.known_monsters.add(ch)
+        if player.stage3_treasure_collected:
+            player.stage3_won = True
+    if ch == "K":
+        player.stage3_flags |= STAGE3_K
+        player.item = None
+    if ch == "H":
+        player.stage3_flags |= STAGE3_H
+    if ch == "m":
+        player.stage3_spores = True
+    if ch == "C":
+        player.stage3_flags |= STAGE3_C
+
+    player.level += 10 if ch == "A" else 1
+    player.lp = max(1, min(100, player.lp + entity.tribe.feed))
+    player.karma += 1
+
+    if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
+        for x, y in iterate_ellipse_points(player.x, player.y, 3, 1.7, True, current["entities"]):
+            if (x + y) % 2 == 0 and current["field"][y][x] in (" ", d.WALL_CHAR):
+                current["field"][y][x] = d.CHAR_CALTROP
+
+    if entity.tribe.level > 0 and ch not in {"a", "A", "b", "c", "C", "W", "w"}:
+        spawn_key = (floor[0], ch)
+        queue[spawn_key] = queue.get(spawn_key, 0) + 1
+
+
+def _resolve_monster_contact(
+    hit: int,
+    entity: d.Monster,
+    current: Floor,
+    player: d.Player,
+    floor: List[int],
+    checkpoint: List[d.Point],
+    queue: "Counter[Tuple[int, str]]",
+    event_message: Optional[str],
+) -> Optional[str]:
+    """Resolve contact with a monster (including elves). May raise `_StepDone`
+    for a repeated encounter with an already-met elf, which ends the turn
+    immediately without the usual end-of-turn processing."""
+    ch = entity.tribe.char
+
+    if entity.tribe.is_elf:
+        player.stage3_elf_floors.setdefault(ch, floor[0] + 1)
+
+    if ch in player.stage3_met_elves:
+        current["entities"].pop(hit)
+        if ch in ELF_REPEAT_MESSAGES:
+            current["entities"].append(entity)
+            raise _StepDone((MESSAGE_TICKS, ELF_REPEAT_MESSAGES[ch]))
+        raise _StepDone(None)
+
+    # The W treasure must remain hidden until W is actually defeated. Other
+    # monsters are revealed on contact, but revealing W here would also make
+    # the renderer show its locked treasure.
+    if ch != "W":
+        player.known_monsters.add(ch)
+    current["entities"].pop(hit)
+
+    # Contact with any monster clears the spores. The Rust version resets
+    # this before resolving the encounter, so defeating a different monster
+    # restores the normal FOV immediately.
+    player.stage3_spores = False
+
+    if ch == "I":
+        player.stage3_flags |= STAGE3_I
+    elif ch == "J":
+        player.stage3_flags |= STAGE3_J
+        player.persistent_followers.append((player.x, player.y, floor[0], "J"))
+    elif ch == "K" and not (player.stage3_flags & STAGE3_C):
+        current["entities"].append(entity)
+        event_message = "-- Bring the cursed sword."
+    elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2:
+        current["entities"].append(entity)
+        event_message = "-- The High Elf does not recognize you."
+    elif _attack(player) < entity.tribe.level:
+        # The encounter remains on the map when the player loses. Rust
+        # resolves combat before removing the monster; keeping the entity
+        # here prevents a failed attack from deleting it.
+        current["entities"].append(entity)
+        player.x, player.y = checkpoint[0]
+        player.lp = max(20, min(90, player.lp - 6))
+        player.item = None
+        player.item_uses = 0
+        player.item_taken_from = None
+        event_message = "-- Respawned!"
+    else:
+        _defeat_monster(entity, current, player, floor, checkpoint, queue)
+
+    if entity.tribe.is_elf and ch != "J" and entity not in current["entities"]:
+        player.stage3_met_elves.add(ch)
+        current["entities"].append(entity)
+    elif entity.tribe.is_elf and entity not in current["entities"]:
+        player.stage3_met_elves.add(ch)
+
+    if event_message is None:
+        event_message = entity.tribe.event_message
+
+    return event_message
+
+
+def _resolve_contact(
+    hit: int,
+    current: Floor,
+    floors: List[Floor],
+    player: d.Player,
+    floor: List[int],
+    checkpoint: List[d.Point],
+    queue: "Counter[Tuple[int, str]]",
+    history: Deque[HistoryEntry],
+    event_message: Optional[str],
+) -> Optional[str]:
+    """Resolve contact with the entity at `hit` in current["entities"].
+
+    Returns the event message to report for this turn (which may be
+    `event_message` unchanged). May raise `_StepDone` for encounters that end
+    the turn immediately, bypassing the usual end-of-turn processing (Loop
+    Companion rewind, repeated elf contact).
+    """
+    entity = current["entities"][hit]
+
+    if isinstance(entity, d.Treasure):
+        if entity.unlock_key in player.unlocked_treasures:
+            current["entities"].pop(hit)
+            player.stage3_treasure_collected = True
+            if player.stage3_flags & STAGE3_W:
+                player.stage3_won = True
+            else:
+                event_message = "-- You took the treasure, but the King's request remains."
+        return event_message
+
+    if isinstance(entity, d.Companion):
+        ch = entity.tribe.char
+        current["known_companions"].add(ch)
+        current["entities"].pop(hit)
+        # l is a companion whose contact rewinds the recorded past.
+        if ch == "l" and history:
+            raise _StepDone(_rewind_to_history(floors, player, floor, checkpoint, queue, history))
+        player.companion = entity
+        player.karma = 0
+        return entity.tribe.event_message
+
+    return _resolve_monster_contact(hit, entity, current, player, floor, checkpoint, queue, event_message)
+
+
+def _advance_persistent_followers(player: d.Player, floor_index: int, moved: bool, previous: d.Point) -> None:
+    """The Javelin Elf follows one step behind; keep its recorded position in sync."""
+    for i, follower in enumerate(player.persistent_followers):
+        if follower[2] == floor_index and moved:
+            player.persistent_followers[i] = (previous[0], previous[1], follower[2], follower[3])
+
+
+def _handle_floor_transition(
+    current: Floor,
+    floors: List[Floor],
+    player: d.Player,
+    floor: List[int],
+    checkpoint: List[d.Point],
+) -> Optional[str]:
+    if floor[0] < 2 and (player.x, player.y) == current["down"]:
+        floor[0] += 1
+        player.x, player.y = floors[floor[0]]["up"]
+        checkpoint[0] = (player.x, player.y)
+        player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
+        return f"-- Descended to floor {floor[0] + 1}/3."
+    if floor[0] > 0 and (player.x, player.y) == current["up"]:
+        floor[0] -= 1
+        player.x, player.y = floors[floor[0]]["down"]
+        checkpoint[0] = (player.x, player.y)
+        player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
+        return f"-- Ascended to floor {floor[0] + 1}/3."
+    return None
+
+
+def _process_respawn_queue(
+    floors: List[Floor],
+    player: d.Player,
+    floor: List[int],
+    queue: "Counter[Tuple[int, str]]",
+    hours: int,
+) -> None:
+    if hours % d.MONSTER_RESPAWN_INTERVAL != 0:
+        return
+    for (spawn_floor, ch), count in list(queue.items()):
+        if not count:
+            continue
+        avoid = {(player.x, player.y)} if spawn_floor == floor[0] else set()
+        _spawn(floors[spawn_floor]["entities"], floors[spawn_floor]["field"], ch, avoid, floors[spawn_floor]["island"])
+        queue[(spawn_floor, ch)] -= 1
+
+
+def _step(
+    direction: d.Point,
+    floors: List[Floor],
+    player: d.Player,
+    floor: List[int],
+    checkpoint: List[d.Point],
+    queue: "Counter[Tuple[int, str]]",
+    history: Deque[HistoryEntry],
+    hours: int,
+) -> Optional[Tuple[int, str]]:
+    current = floors[floor[0]]
+    history.append((deepcopy(floors), deepcopy(player), floor[0], checkpoint[0], deepcopy(queue)))
+    if len(history) > LOOP_TURNS:
+        history.popleft()
+
+    previous = (player.x, player.y)
+    _move_player(direction, current, player)
+    event_message = _apply_terrain_hazards(current, player, previous)
+
     hit = next((i for i, e in enumerate(current["entities"]) if (e.x, e.y) == (player.x, player.y)), None)
     if hit is not None:
-        entity = current["entities"][hit]
-        if isinstance(entity, d.Treasure):
-            if entity.encounter_type in getattr(player, "stage3_unlocked", set()): current["entities"].pop(hit); player.stage3_won = True
-        elif isinstance(entity, d.Companion):
-            player.companion = entity; player.karma = 0; current["entities"].pop(hit)
-            event_message = entity.tribe.event_message
-        else:
-            ch = entity.tribe.char; player.stage3_known.add(ch); current["entities"].pop(hit)
-            # Contact with any monster clears the spores. The Rust version
-            # resets this before resolving the encounter, so defeating a
-            # different monster restores the normal FOV immediately.
-            player.stage3_spores = False
-            if ch == "l" and history:
-                known = player.stage3_known
-                unlocked = player.stage3_unlocked
-                seen = [floor_data["seen"] for floor_data in floors]
-                old_floors, old_player, old_floor, old_checkpoint = history[0]
-                floors[:] = old_floors
-                # Mapping is persistent knowledge, not part of the rewindable
-                # world state. Restore the rewound fields while retaining the
-                # current seen map for every floor.
-                for floor_data, preserved_seen in zip(floors, seen):
-                    floor_data["seen"] = preserved_seen
-                player.__dict__.update(old_player.__dict__)
-                player.stage3_known = known
-                player.stage3_unlocked = unlocked
-                floor[0], checkpoint[0] = old_floor, old_checkpoint
-                history.clear()
-                restored_entities = floors[floor[0]]["entities"]
-                for index, restored in enumerate(restored_entities):
-                    if isinstance(restored, d.Monster) and restored.tribe.char == "l":
-                        del restored_entities[index]
-                        break
-                _spawn(restored_entities, floors[floor[0]]["field"], "l", {(player.x, player.y)}, floors[floor[0]]["island"])
-                return (5, "-- Time folds back to the beginning of the recorded past.")
-            if ch == "I": player.stage3_flags |= STAGE3_I
-            elif ch == "J": player.stage3_flags |= STAGE3_J; player.persistent_followers.append((player.x, player.y, floor[0], "J"))
-            elif ch == "K" and not (player.stage3_flags & STAGE3_C): current["entities"].append(entity); event_message = "-- Bring the cursed sword."
-            elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2: current["entities"].append(entity); event_message = "-- The High Elf does not recognize you."
-            elif ch == "l": current["entities"].append(entity)
-            elif _attack(player) < entity.tribe.level:
-                # The encounter remains on the map when the player loses.
-                # Rust resolves combat before removing the monster; keeping
-                # the entity here prevents a failed attack from deleting it.
-                current["entities"].append(entity)
-                player.x, player.y = checkpoint[0]; player.lp = max(20, min(90, player.lp - 6)); player.item = None; player.item_uses = 0; player.item_taken_from = None
-                event_message = "-- Respawned!"
-            else:
-                # A successful monster defeat establishes the next respawn
-                # point, matching the legacy stages and the Rust port.
-                if ch not in {"I", "J", "K", "H"}:
-                    checkpoint[0] = (player.x, player.y)
-                # Every ordinary monster replaces the current item. This is
-                # important for d (Poisoned): defeating another monster with
-                # no item must clear the poison and identify the new source.
-                if ch != "H":
-                    player.item = entity.tribe.item
-                    player.item_taken_from = ch
-                    player.item_uses = d.SWORD_USES if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) else 0
-                    if player.item == d.ITEM_SWORD_CURSED:
-                        player.lp = (player.lp * 3 + 3) // 4
-                if ch == "W": player.stage3_flags |= STAGE3_W; player.stage3_unlocked.add("W")
-                if ch == "K": player.stage3_flags |= STAGE3_K; player.item = None
-                if ch == "H": player.stage3_flags |= STAGE3_H
-                if ch == "m": player.stage3_spores = True
-                if ch == "C": player.stage3_flags |= STAGE3_C
-                player.level += 10 if ch == "A" else 1; player.lp = max(1, min(100, player.lp + entity.tribe.feed)); player.karma += 1
-                if ch == "D" or ch == "F": player.stage3_unlocked.add(ch)
-                if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
-                    for x, y in iterate_ellipse_points(player.x, player.y, 3, 1.7, True, current["entities"]):
-                        if (x + y) % 2 == 0 and current["field"][y][x] in (" ", d.WALL_CHAR): current["field"][y][x] = d.CHAR_CALTROP
-                if entity.tribe.level > 0 and ch not in {"a", "A", "b", "c", "C", "W", "w"}:
-                    queue[ch] = queue.get(ch, 0) + 1
-            if event_message is None and ch not in ("K", "H", "l"):
-                event_message = entity.tribe.event_message
-            elif event_message is None and ch in ("K", "H") and entity not in current["entities"]:
-                event_message = entity.tribe.event_message
+        try:
+            event_message = _resolve_contact(hit, current, floors, player, floor, checkpoint, queue, history, event_message)
+        except _StepDone as done:
+            return done.result
+
     if player.companion is not None and player.karma >= player.companion.tribe.durability:
         ch = player.companion.tribe.char
-        queue[ch] = queue.get(ch, 0) + 1
+        spawn_key = (floor[0], ch)
+        queue[spawn_key] = queue.get(spawn_key, 0) + 1
         player.companion = None
         event_message = "-- The companion vanishes."
-    for f in player.persistent_followers:
-        if f[2] == floor[0] and (player.x, player.y) != previous: player.persistent_followers[player.persistent_followers.index(f)] = (previous[0], previous[1], f[2], f[3])
-    if floor[0] < 2 and (player.x, player.y) == current["down"]:
-        floor[0] += 1; player.x, player.y = floors[floor[0]]["up"]; checkpoint[0] = (player.x, player.y)
-        player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
-        event_message = f"-- Descended to floor {floor[0] + 1}/3."
-    elif floor[0] > 0 and (player.x, player.y) == current["up"]:
-        floor[0] -= 1; player.x, player.y = floors[floor[0]]["down"]; checkpoint[0] = (player.x, player.y)
-        player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
-        event_message = f"-- Ascended to floor {floor[0] + 1}/3."
-    if hours % d.MONSTER_RESPAWN_INTERVAL == 0:
-        for ch, count in list(queue.items()):
-            if count:
-                _spawn(floors[floor[0]]["entities"], floors[floor[0]]["field"], ch, {(player.x, player.y)}, floors[floor[0]]["island"])
-                queue[ch] -= 1
+
+    reveal_entities_in_fov(player, current["entities"])
+    _advance_persistent_followers(player, floor[0], (player.x, player.y) != previous, previous)
+
+    transition_message = _handle_floor_transition(current, floors, player, floor, checkpoint)
+    if transition_message is not None:
+        event_message = transition_message
+
+    _process_respawn_queue(floors, player, floor, queue, hours)
+
     return (MESSAGE_TICKS, event_message) if event_message else None
 
 
-def run_game(ui, seed_str, debug=False):
+def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
     floors, player = build()
-    player.stage3_known, player.stage3_unlocked, player.stage3_won = set(), set(), False
-    floor, checkpoint = [0], [floors[0]["up"]]
+    player.known_monsters = set()
+    player.unlocked_treasures = set()
+    player.stage3_won = False
+    player.stage3_treasure_collected = False
+    player.stage3_met_elves = set()
+    floor = [0]
+    checkpoint = [floors[0]["up"]]
     player.stage3_floor = 0
-    queue, history, hours = Counter(), deque(), 0
-    message = (5, "-- The King has ordered the Dread Wyrm slain.")
+    queue: "Counter[Tuple[int, str]]" = Counter()
+    history: Deque[HistoryEntry] = deque()
+    hours = 0
+    message: Tuple[int, str] = (5, "-- The King has ordered the Dread Wyrm slain.")
+
     while player.lp > 0 and not player.stage3_won:
-        current = floors[floor[0]]; cur = get_torched(player, d.TORCH_RADIUS)
+        current = floors[floor[0]]
+        cur = get_torched(player, d.TORCH_RADIUS)
         for y in range(len(cur)):
-            for x in range(len(cur[0])): current["seen"][y][x] |= cur[y][x]
+            for x in range(len(cur[0])):
+                current["seen"][y][x] |= cur[y][x]
+
         if message[0] >= 0:
             remaining_tick = message[0] - 1
             message = (-1, "") if remaining_tick < 0 else (remaining_tick, message[1])
+
         show_entities = debug or getattr(ui, "map_mode", False)
         # The curses renderer discovers the player from the entity list, while
         # the pygame renderer receives it separately. Keep the Stage 3 state
         # model separate and provide a render-only combined list.
         render_entities = [player, *current["entities"]]
-        ui.draw_stage(hours, player, render_entities, current["field"], cur, current["seen"], player.stage3_known, show_entities, 3, message[1], checkpoint=checkpoint[0])
+        known_types = player.known_monsters | current["known_companions"]
+        ui.draw_stage(
+            hours,
+            player,
+            render_entities,
+            current["field"],
+            cur,
+            current["seen"],
+            known_types,
+            show_entities,
+            3,
+            message[1],
+            checkpoint=checkpoint[0],
+            unlocked_treasures=player.unlocked_treasures,
+            dim_types=player.stage3_met_elves,
+        )
+
         move = ui.input_direction()
-        if move is None: return
+        if move is None:
+            return
         if move == (0, 0):
             continue
+
         event_message = _step(move, floors, player, floor, checkpoint, queue, history, hours)
         player.stage3_floor = floor[0]
         if event_message is not None:
             message = event_message
-        hours += 1; player.lp -= 1
+        hours += 1
+        player.lp -= 1
+
     message = (-1, ">> Treasures collected! <<" if player.stage3_won else ">> Starved to Death. <<")
     while True:
-        current = floors[floor[0]]; cur = get_torched(player, d.TORCH_RADIUS)
+        current = floors[floor[0]]
+        cur = get_torched(player, d.TORCH_RADIUS)
         render_entities = [player, *current["entities"]]
-        ui.draw_stage(hours, player, render_entities, current["field"], cur, current["seen"], player.stage3_known, debug, 3, message[1], True, checkpoint[0])
+        known_types = player.known_monsters | current["known_companions"]
+        ui.draw_stage(
+            hours,
+            player,
+            render_entities,
+            current["field"],
+            cur,
+            current["seen"],
+            known_types,
+            debug,
+            3,
+            message[1],
+            True,
+            checkpoint[0],
+            player.unlocked_treasures,
+            player.stage3_met_elves,
+        )
         key = ui.input_alphabet()
         if key is None:
             return

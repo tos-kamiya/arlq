@@ -62,7 +62,7 @@ pip install windows-curses
 
 * **Objective**  
   The goal of the game is to explore a dungeon with procedurally generated corridors and find the treasure chest hidden by the dragon. In Stage 1, find the dragon's chest; in Stage 2, find the fire drake's chest.
-  Stage 3 is a three-floor expedition against the `W` Dread Wyrm. The Isolated Elf provides information, the Javelin Elf follows the player and improves attack power, and the Collector Elf exchanges the cursed sword for a permanent weapon enhancement. The High Elf grants the talisman needed to cross the Dread Wyrm's barrier after the player has earned the elves' trust. After defeating `W`, contact the unlocked `T` treasure on floor 3 to win.
+  In Stage 3, the two objectives are to defeat the `W` Dread Wyrm, as requested by the king, and to claim its treasure chest. The elves' help is useful for accomplishing these objectives.
 
   In normal play, one each of the Isolated Elf (`I`), Javelin Elf (`J`), Collector Elf (`K`), and High Elf (`H`) is placed on a seed-selected floor. The `K` elf is placed on floor 1 or 2. Floor 3 contains two `A` monsters and no `c` or `C`. Floor transitions use `v` to descend and `^` to ascend. Stage 3 places one `o` on every floor. Each of `m`, `X`, `e`, and `g` is assigned to one randomly selected floor per game and does not appear on the other floors.
 
@@ -74,6 +74,7 @@ pip install windows-curses
 
 * **Monsters and Companions**  
   The dungeon is populated with various monsters and companions. At first, monsters are displayed as `?` and companions as `!`. Once you encounter one, its type (e.g., `a`, `b`, `c`, etc.) is revealed, and other creatures of the same kind will be represented by that character.
+  Monster identities remain known across floors. In Stage 3, companion identities are learned separately on each floor, so an unencountered companion is shown as `!` again on a new floor.
   Ordinary monsters and temporary companions do not move on their own. The Javelin Elf is a persistent follower and moves to the player's previous position after each successful move.
 
 * **Encounters**  
@@ -123,24 +124,31 @@ In addition to the monsters from Stage 1 except for Dragon, the following appear
 
 **Stage 3**
 
-Stage 3 has three connected floors. Explore the elves (`I`, `J`, `K`, `H`) to gain their abilities, defeat the Dread Wyrm (`W`), and collect the unlocked treasure. The `l` monster rewinds the recorded past by 80 turns while retaining known monster identities, and `m` temporarily narrows vision until another monster is contacted. The Isolated Elf (`I`) is inside a sealed room; you need a wall-breaking sword to reach it. The special monsters `m`, `X`, `e`, and `g` are each assigned to one randomly selected floor. In every stage, a respawned monster is shown immediately if its square has already been mapped.
+Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
+
+**Stage 3 Monsters**
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **l** Loop | Sends the world back 80 turns; monster identities remain known. |
 | **m** Myconid | Temporarily reduces vision until another monster is contacted. |
+| **w** Wyrm | Protected by a barrier. |
+| **W** Dread Wyrm | Protected by a barrier and unlocks the treasure chest when defeated. |
+
+**Elves**
+
+| Display & Name | Description |
+| -------------- | ----------- |
 | **I** Isolated Elf | Reveals information about the other elves. It is inside a sealed room, so a wall-breaking sword is needed to reach it. |
 | **J** Javelin Elf | Follows the player and increases attack power by 25%. |
 | **K** Collector Elf | Exchanges the cursed sword for a permanent 1.2x attack enhancement; it cannot break walls. |
 | **H** High Elf | Grants the talisman after meeting any two of `I`, `J`, and `K`. |
-| **w** Wyrm | Protected by a barrier. |
-| **W** Dread Wyrm | Protected by a barrier and unlocks the treasure chest when defeated. |
 
 ## Companion List
 
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
-| **n** Nomicon  | Reveals the type of a monster when the player is adjacent to it. |
+| **l** Loop Companion | Appears only in Stage 3. Sends the world back 80 turns; monster identities remain known. |
+| **n** Nomicon  | Reveals the type of every monster within the player's FOV. |
 | **o** Ocular   | Slightly extends the player's field of vision.                   |
 | **p** Pegasus  | Helps the player overcome walls when a collision is imminent.    |
 
