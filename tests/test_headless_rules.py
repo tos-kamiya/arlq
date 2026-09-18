@@ -175,7 +175,7 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     floor = [0]
     checkpoint = [(2, 2)]
 
-    def spawn_loop(entities, _field, _char, _avoid, _island):
+    def spawn_loop(entities, _field, _char, _avoid, _island, _floor_index=None):
         entities.append(d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"]))
 
     monkeypatch.setattr(stage3_module, "_spawn", spawn_loop)
@@ -207,6 +207,64 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     assert not history
 
 
+def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():
+    """A companion carried to another floor before it expires must respawn
+    where it came from. Otherwise the floor it expired on can end up with
+    two of the same kind once the queued respawn fires (e.g. two Pegasus
+    companions on one floor)."""
+    player = d.Player(2, 2, 100, 90)
+    origin_pegasus = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["p"], origin_floor=0)
+    other_pegasus = d.Companion(7, 7, d.CHAR_TO_COMPANION_TRIBE["p"], origin_floor=1)
+    floors = [
+        {
+            "field": blank_field(),
+            "entities": [origin_pegasus],
+            "seen": [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            "known_companions": set(),
+            "up": (1, 1),
+            "down": (4, 2),
+            "island": None,
+        },
+        {
+            "field": blank_field(),
+            "entities": [other_pegasus],
+            "seen": [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            "known_companions": set(),
+            "up": (5, 5),
+            "down": (50, 50),
+            "island": None,
+        },
+    ]
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    # Pick up floor 0's own Pegasus, then descend to floor 1 while carrying it.
+    _step(KEYS["R"], floors, player, floor, checkpoint, queue, history, 1)
+    _step(KEYS["R"], floors, player, floor, checkpoint, queue, history, 2)
+    assert floor[0] == 1
+    assert player.companion is origin_pegasus
+
+    # Force the carried companion to expire while it is on floor 1.
+    player.karma = origin_pegasus.tribe.durability
+    _step((0, 0), floors, player, floor, checkpoint, queue, history, 3)
+    assert player.companion is None
+    assert queue[(0, "p")] == 1  # queued for its origin floor, not floor 1
+
+    # Advance to the next respawn tick: the respawn must land on floor 0,
+    # leaving floor 1's own untouched Pegasus alone.
+    interval = d.MONSTER_RESPAWN_INTERVAL
+    next_boundary = ((3 // interval) + 1) * interval
+    _step((0, 0), floors, player, floor, checkpoint, queue, history, next_boundary)
+
+    def companion_count(entities, char):
+        return sum(1 for e in entities if isinstance(e, d.Companion) and e.tribe.char == char)
+
+    assert companion_count(floors[0]["entities"], "p") == 1
+    assert companion_count(floors[1]["entities"], "p") == 1
+
+
 def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     first_floors, _ = stage3_state(player, [])
@@ -219,16 +277,16 @@ def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
     history = deque()
     spawned = []
 
-    def record_spawn(entities, _field, char, _avoid, _island):
-        spawned.append((entities, char))
+    def record_spawn(entities, _field, char, _avoid, _island, floor_index=None):
+        spawned.append((entities, char, floor_index))
 
     monkeypatch.setattr(stage3_module, "_spawn", record_spawn)
     _step(KEYS["U"], floors, player, floor, checkpoint, queue, history, 0)
 
-    assert [(entities is floors[0]["entities"], char) for entities, char in spawned] == [
-        (True, "p"),
-        (True, "X"),
-        (False, "p"),
+    assert [(entities is floors[0]["entities"], char, floor_index) for entities, char, floor_index in spawned] == [
+        (True, "p", 0),
+        (True, "X", 0),
+        (False, "p", 1),
     ]
     assert queue[(0, "p")] == 0
     assert queue[(0, "X")] == 0

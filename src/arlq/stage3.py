@@ -76,6 +76,7 @@ def _spawn(
     ch: str,
     avoid: Container[d.Point] = (),
     island_tile: Optional[d.Point] = None,
+    floor_index: Optional[int] = None,
 ) -> d.Point:
     while True:
         x, y = find_random_place(entities, field, distance=2)
@@ -83,7 +84,7 @@ def _spawn(
             break
     tribe = d.CHAR_TO_TRIBE[ch]
     if isinstance(tribe, d.CompanionTribe):
-        entities.append(d.Companion(x, y, tribe))
+        entities.append(d.Companion(x, y, tribe, origin_floor=floor_index))
     else:
         assert isinstance(tribe, d.MonsterTribe)
         entities.append(d.Monster(x, y, tribe))
@@ -165,7 +166,7 @@ def _build_floor(
         if ch in {"W", "w", "I", "J", "K", "H"}:
             continue
         for _ in range(count):
-            _spawn(entities, field, ch, reserved, island_tile)
+            _spawn(entities, field, ch, reserved, island_tile, index)
 
     if island_tile is not None:
         left = island_tile[0] * (d.TILE_WIDTH + 1) + 1
@@ -181,10 +182,10 @@ def _build_floor(
 
     for ch in ("J", "K", "H"):
         if index == elf_floors[ch]:
-            _spawn(entities, field, ch, reserved, island_tile)
+            _spawn(entities, field, ch, reserved, island_tile, index)
 
     if index == 2:
-        _spawn(entities, field, "w", reserved)
+        _spawn(entities, field, "w", reserved, floor_index=index)
         weak = next(e for e in entities if isinstance(e, d.Monster) and e.tribe.char == "w")
         _place_barrier(field, (weak.x, weak.y))
         entities.append(d.Monster(down[0], down[1], d.CHAR_TO_MONSTER_TRIBE["W"]))
@@ -194,7 +195,7 @@ def _build_floor(
     for ch, assigned_floor in special_floors.items():
         if index == assigned_floor:
             for _ in range(2 if ch == "m" else 1):
-                _spawn(entities, field, ch, reserved, island_tile)
+                _spawn(entities, field, ch, reserved, island_tile, index)
 
     return {
         "field": field,
@@ -323,7 +324,7 @@ def _rewind_to_history(
         if isinstance(restored, d.Companion) and restored.tribe.char == "l":
             del restored_entities[index]
             break
-    _spawn(restored_entities, floors[floor[0]]["field"], "l", {(player.x, player.y)}, floors[floor[0]]["island"])
+    _spawn(restored_entities, floors[floor[0]]["field"], "l", {(player.x, player.y)}, floors[floor[0]]["island"], floor[0])
 
     return (5, "-- Time folds back to the beginning of the recorded past.")
 
@@ -544,7 +545,7 @@ def _process_respawn_queue(
         if not count:
             continue
         avoid = {(player.x, player.y)} if spawn_floor == floor[0] else set()
-        _spawn(floors[spawn_floor]["entities"], floors[spawn_floor]["field"], ch, avoid, floors[spawn_floor]["island"])
+        _spawn(floors[spawn_floor]["entities"], floors[spawn_floor]["field"], ch, avoid, floors[spawn_floor]["island"], spawn_floor)
         queue[(spawn_floor, ch)] -= 1
 
 
@@ -576,7 +577,13 @@ def _step(
 
     if player.companion is not None and player.karma >= player.companion.tribe.durability:
         ch = player.companion.tribe.char
-        spawn_key = (floor[0], ch)
+        # Respawn on the floor the companion came from, not wherever it was
+        # carried to and expired: otherwise a floor that never lost its own
+        # copy can end up with two once the queued respawn fires.
+        origin_floor = player.companion.origin_floor
+        if origin_floor is None:
+            origin_floor = floor[0]
+        spawn_key = (origin_floor, ch)
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
         player.companion = None
         event_message = "-- The companion vanishes."
