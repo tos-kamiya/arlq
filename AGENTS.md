@@ -7,7 +7,7 @@ This file gives repository-specific guidance to coding agents working in this pr
 - Project name: `arlq`
 - Type: small Python game package
 - Runtime: Python 3.10+
-- Main dependency: `pygame`
+- Main dependency: `pyglet`
 - Alternate UI: terminal mode via `curses`
 - Packaging: `hatchling`
 - Source root: `src/arlq`
@@ -18,7 +18,7 @@ ARLQ is a compact rogue-like game. Most gameplay logic lives in a small number o
 
 - `src/arlq/arlq.py`: main game loop, maze generation, spawning, field creation, visibility handling, CLI entry flow
 - `src/arlq/defs.py`: constants, entity classes, tribe definitions, spawn tables
-- `src/arlq/pygame_funcs.py`: Pygame rendering and input handling
+- `src/arlq/pyglet_funcs.py`: Pyglet rendering and input handling
 - `src/arlq/curses_funcs.py`: curses rendering and input handling
 - `src/arlq/utils.py`: shared helpers
 - `src/arlq/__init__.py`: public package entrypoints
@@ -42,7 +42,7 @@ If `python -m arlq` does not work in the current environment, fall back to:
 
 - Preserve the current architecture. Do not introduce heavy abstractions for a small codebase unless they remove clear duplication.
 - Keep gameplay constants and tribe/spawn definitions centralized in `src/arlq/defs.py`.
-- Keep renderer-specific behavior in `pygame_funcs.py` or `curses_funcs.py`; avoid pushing UI-specific logic into shared game logic unless both frontends need it.
+- Keep renderer-specific behavior in `pyglet_funcs.py` or `curses_funcs.py`; avoid pushing UI-specific logic into shared game logic unless both frontends need it.
 - When changing gameplay behavior, verify whether README text also needs to change.
 - Prefer small, local edits. This project is easier to maintain when the control flow stays explicit.
 - Maintain compatibility with both GUI and curses modes unless the task explicitly targets only one frontend.
