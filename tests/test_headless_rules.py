@@ -75,6 +75,46 @@ def test_stage3_wyrm_combat_updates_message_position_and_state(level, expected_m
         assert floors[0]["entities"] == []
 
 
+def test_stage3_includes_fire_lizard_as_a_weaker_fire_drake():
+    assert d.CHAR_TO_MONSTER_TRIBE["f"].level < d.CHAR_TO_MONSTER_TRIBE[d.CHAR_FIRE_DRAKE].level
+    assert ("f", 1, 1) in stage3_module.ROSTER[2]
+
+
+def test_empowered_monsters_triple_level_and_have_separate_identity():
+    normal = d.Monster(2, 2, d.CHAR_TO_MONSTER_TRIBE["d"])
+    empowered = d.Monster(2, 2, d.CHAR_TO_MONSTER_TRIBE["d"], empowered=2)
+
+    assert d.monster_level(normal) == 20
+    assert d.monster_level(empowered) == 60
+    assert d.monster_type_key(normal) == "d"
+    assert d.monster_type_key(empowered) == "d2"
+    assert d.CHAR_TO_MONSTER_TRIBE["d"].feed == 60
+
+
+def test_stage2_rebalances_bison_and_comodo_dragon_counts():
+    b_configs = [config for config in d.SPAWN_CONFIGS_ST2 if config.tribe.char == "b"]
+    populations = {config.tribe.char: config.population for config in d.SPAWN_CONFIGS_ST2 if config.tribe.char != "b"}
+
+    assert [(config.population, config.empowered) for config in b_configs] == [(3, 1), (3, 2)]
+    assert populations["d"] == 6
+
+
+def test_stage3_empowered_roster_counts_are_rounded_down():
+    assert [(ch, count, power) for ch, count, power in stage3_module.ROSTER[0] if power == 2] == [
+        ("c", 1, 2),
+        ("d", 3, 2),
+    ]
+    assert [(ch, count, power) for ch, count, power in stage3_module.ROSTER[1] if power == 2] == [
+        ("b", 3, 2),
+        ("c", 1, 2),
+        ("d", 3, 2),
+    ]
+    assert [(ch, count, power) for ch, count, power in stage3_module.ROSTER[2] if power == 2] == [
+        ("b", 3, 2),
+        ("d", 3, 2),
+    ]
+
+
 def test_stage3_treasure_requires_current_timeline_w_defeat():
     player = d.Player(2, 2, 200, 90)
     player.unlocked_treasures.add("TW")
@@ -335,7 +375,7 @@ def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
         (None, 10),
         (d.ITEM_SWORD_X1_5, 15),
         (d.ITEM_SWORD_CURSED, 30),
-        (d.ITEM_POISONED, 8),
+        (d.ITEM_POISONED, 5),
     ],
 )
 def test_sword_and_poison_attack_modifiers(item, expected_attack):

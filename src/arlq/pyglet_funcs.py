@@ -259,6 +259,8 @@ class PygletUI:
                     ch = d.CHAR_TREASURE
                 if ch is not None:
                     self._draw_text(pos, ch, self._dim_color(COLOR_MAP["default"]))
+                    if isinstance(e, d.Monster) and e.empowered > 1:
+                        self._draw_text((e.x + 1, e.y), "'", self._dim_color(COLOR_MAP["default"]))
 
         for ei, e in enumerate(entities):
             pos = e.x, e.y
@@ -273,11 +275,12 @@ class PygletUI:
             elif isinstance(e, d.Monster):
                 m: d.Monster = e
                 ch = m.tribe.char
-                if ch not in known_types:
+                type_key = d.monster_type_key(m)
+                if type_key not in known_types:
                     if not show_entities:
                         self._draw_text(pos, "?", COLOR_MAP[CI_YELLOW], bold=True)
                 else:
-                    if m.tribe.level <= player_attack:
+                    if d.monster_level(m) <= player_attack:
                         if m.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
                             ci = CI_YELLOW
                         else:
@@ -286,6 +289,8 @@ class PygletUI:
                         ci = CI_RED
                     color = self._dim_color(COLOR_MAP[ci]) if dim_types and ch in dim_types else COLOR_MAP[ci]
                     self._draw_text(pos, ch, color, bold=True)
+                    if m.empowered > 1:
+                        self._draw_text((m.x + 1, m.y), "'", color, bold=True)
             elif isinstance(e, d.Treasure):
                 t: d.Treasure = e
                 treasure_unlocked = unlocked_treasures is not None and t.unlock_key in unlocked_treasures
@@ -327,7 +332,7 @@ class PygletUI:
             level_str = "LVL: %d x3" % player.level
             item_str = "+%s(%s)" % (player.item, player.item_taken_from)
         elif player.item == d.ITEM_POISONED:
-            level_str = "LVL: %d /3" % player.level
+            level_str = "LVL: %d /2" % player.level
             if has_stage3_k:
                 level_str += " x1.2"
             item_str = "+%s(%s)" % (player.item, player.item_taken_from)
