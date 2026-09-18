@@ -152,11 +152,15 @@ class Companion(Entity):
 
     Attributes:
         tribe: Tribe information of the companion (CompanionTribe instance).
+        origin_floor: (Stage 3 only) index of the floor this companion was
+            spawned on, used to respawn it there after it is carried to
+            another floor and expires.
     """
 
-    def __init__(self, x, y, tribe: CompanionTribe):
+    def __init__(self, x, y, tribe: CompanionTribe, origin_floor: Optional[int] = None):
         super().__init__(x, y)
         self.tribe: CompanionTribe = tribe
+        self.origin_floor: Optional[int] = origin_floor
 
 
 class Monster(Entity):
