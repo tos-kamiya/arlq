@@ -106,12 +106,14 @@ pip install windows-curses
 | **A** Rare Amoeba   | A rare amoeba that significantly boosts your level upon defeat.                                                                                                   |
 | **b** Bison         | The second weakest. Defeating it restores a large amount of LP. Hunt it when you're hungry.                                                                       |
 | **c** Chimera       | Moderately strong. It carries a sword. Taking it raises combat power to 1.5x and lets you break up to three walls.                                               |
-| **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to about three-quarters until replaced.        |
+| **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to about half until replaced.        |
 | **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
 
 **Stage 2**
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
+
+Stage 2 contains three ordinary `b` Bison and three empowered `b'` Bison.
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -125,6 +127,7 @@ In addition to the monsters from Stage 1 except for Dragon, the following appear
 **Stage 3**
 
 Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
+On floors 2 and 3, some `b`, `c`, and `d` monsters are empowered and have three times their normal level. On floor 1, only `c` and `d` have empowered individuals. They are displayed with an apostrophe to the right, such as `d'`; their identities are learned separately from ordinary `d` monsters. Floor 3 contains one ordinary `f` Fire Lizard.
 
 **Stage 3 Monsters**
 
@@ -132,6 +135,7 @@ Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm
 | -------------- | ----------- |
 | **m** Myconid | Temporarily reduces vision until another monster is contacted. |
 | **w** Wyrm | Protected by a barrier. |
+| **f** Fire Lizard | A slightly weaker relative of the Fire Drake. |
 | **W** Dread Wyrm | Protected by a barrier and unlocks the treasure chest when defeated. |
 
 **Elves**

@@ -91,6 +91,8 @@ def curses_draw_stage(
                 ch = d.CHAR_TREASURE
             if ch is not None:
                 stdscr.addstr(e.y, e.x, ch, curses.A_DIM)
+                if isinstance(e, d.Monster) and e.empowered > 1:
+                    stdscr.addstr(e.y, e.x + 1, "'", curses.A_DIM)
 
     for ei, e in enumerate(entities):
         if torched[e.y][e.x] == 0 or (e.x, e.y) == (px, py):
@@ -104,11 +106,12 @@ def curses_draw_stage(
         elif isinstance(e, d.Monster):
             m: d.Monster = e
             ch = m.tribe.char
-            if ch not in known_types:
+            type_key = d.monster_type_key(m)
+            if type_key not in known_types:
                 if not show_entities:
                     stdscr.addstr(e.y, e.x, "?", curses.A_BOLD)
             else:
-                if m.tribe.level <= player_attack:
+                if d.monster_level(m) <= player_attack:
                     if m.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
                         ci = CI_YELLOW
                     else:
@@ -119,6 +122,8 @@ def curses_draw_stage(
                 if dim_types and ch in dim_types:
                     attr |= curses.A_DIM
                 stdscr.addstr(e.y, e.x, ch, attr)
+                if m.empowered > 1:
+                    stdscr.addstr(e.y, e.x + 1, "'", attr)
         elif isinstance(e, d.Treasure):
             t: d.Treasure = e
             treasure_unlocked = unlocked_treasures is not None and t.unlock_key in unlocked_treasures
@@ -164,7 +169,7 @@ def curses_draw_status_bar(
         level_str = "LVL: %d x3" % player.level
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)
     elif player.item == d.ITEM_POISONED:
-        level_str = "LVL: %d /3" % player.level
+        level_str = "LVL: %d /2" % player.level
         if has_stage3_k:
             level_str += " x1.2"
         item_str = "+%s(%s)" % (player.item, player.item_taken_from)

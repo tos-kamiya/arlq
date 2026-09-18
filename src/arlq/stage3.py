@@ -26,11 +26,11 @@ ELF_REPEAT_MESSAGES = {
     "H": "-- Keep the talisman close to your skin.",
 }
 
-# Each entry is [(tribe_char, population), ...] for one floor.
-ROSTER: List[List[Tuple[str, int]]] = [
-    [("a", 20), ("A", 2), ("b", 12), ("c", 2), ("C", 1), ("d", 3), ("l", 1), ("I", 1), ("J", 1), ("n", 1), ("o", 1), ("p", 1)],
-    [("a", 20), ("A", 2), ("b", 12), ("c", 2), ("C", 1), ("d", 3), ("l", 1), ("K", 1), ("n", 1), ("o", 1), ("p", 1)],
-    [("A", 2), ("b", 12), ("d", 3), ("l", 1), ("w", 1), ("W", 1), ("H", 1), ("n", 1), ("o", 1), ("p", 1)],
+# Each entry is [(tribe_char, population, empowered), ...] for one floor.
+ROSTER: List[List[Tuple[str, int, int]]] = [
+    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("I", 1, 1), ("J", 1, 1), ("n", 1, 1), ("o", 1, 1), ("p", 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("K", 1, 1), ("n", 1, 1), ("o", 1, 1), ("p", 1, 1)],
+    [("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("w", 1, 1), ("f", 1, 1), ("W", 1, 1), ("H", 1, 1), ("n", 1, 1), ("o", 1, 1), ("p", 1, 1)],
 ]
 
 # A per-floor game state. Keeping this as a plain dict (rather than a new
@@ -77,6 +77,7 @@ def _spawn(
     avoid: Container[d.Point] = (),
     island_tile: Optional[d.Point] = None,
     floor_index: Optional[int] = None,
+    empowered: int = 1,
 ) -> d.Point:
     while True:
         x, y = find_random_place(entities, field, distance=2)
@@ -87,7 +88,7 @@ def _spawn(
         entities.append(d.Companion(x, y, tribe, origin_floor=floor_index))
     else:
         assert isinstance(tribe, d.MonsterTribe)
-        entities.append(d.Monster(x, y, tribe))
+        entities.append(d.Monster(x, y, tribe, empowered=empowered))
     return x, y
 
 
@@ -162,11 +163,11 @@ def _build_floor(
 
     entities: List[d.Entity] = []
     reserved = {up, down}
-    for ch, count in ROSTER[index]:
+    for ch, count, empowered in ROSTER[index]:
         if ch in {"W", "w", "I", "J", "K", "H"}:
             continue
         for _ in range(count):
-            _spawn(entities, field, ch, reserved, island_tile, index)
+            _spawn(entities, field, ch, reserved, island_tile, index, empowered)
 
     if island_tile is not None:
         left = island_tile[0] * (d.TILE_WIDTH + 1) + 1
@@ -362,7 +363,7 @@ def _defeat_monster(
     if ch == "W":
         player.stage3_flags |= STAGE3_W
         unlock_treasure_for_defeat(entity, player.unlocked_treasures)
-        player.known_monsters.add(ch)
+        player.known_monsters.add(d.monster_type_key(entity))
         if player.stage3_treasure_collected:
             player.stage3_won = True
     if ch == "K":
@@ -384,8 +385,8 @@ def _defeat_monster(
             if (x + y) % 2 == 0 and current["field"][y][x] in (" ", d.WALL_CHAR):
                 current["field"][y][x] = d.CHAR_CALTROP
 
-    if entity.tribe.level > 0 and ch not in {"a", "A", "b", "c", "C", "W", "w"}:
-        spawn_key = (floor[0], ch)
+    if d.monster_level(entity) > 0 and ch not in {"a", "A", "b", "c", "C", "W", "w"}:
+        spawn_key = (floor[0], d.monster_type_key(entity))
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
 
 
@@ -418,7 +419,7 @@ def _resolve_monster_contact(
     # monsters are revealed on contact, but revealing W here would also make
     # the renderer show its locked treasure.
     if ch != "W":
-        player.known_monsters.add(ch)
+        player.known_monsters.add(d.monster_type_key(entity))
     current["entities"].pop(hit)
 
     # Contact with any monster clears the spores. The Rust version resets
@@ -437,7 +438,7 @@ def _resolve_monster_contact(
     elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2:
         current["entities"].append(entity)
         event_message = "-- The High Elf does not recognize you."
-    elif _attack(player) < entity.tribe.level:
+    elif _attack(player) < d.monster_level(entity):
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity
         # here prevents a failed attack from deleting it.
@@ -545,12 +546,22 @@ def _process_respawn_queue(
 ) -> None:
     if hours % d.MONSTER_RESPAWN_INTERVAL != 0:
         return
-    for (spawn_floor, ch), count in list(queue.items()):
+    for (spawn_floor, type_key), count in list(queue.items()):
         if not count:
             continue
         avoid = {(player.x, player.y)} if spawn_floor == floor[0] else set()
-        _spawn(floors[spawn_floor]["entities"], floors[spawn_floor]["field"], ch, avoid, floors[spawn_floor]["island"], spawn_floor)
-        queue[(spawn_floor, ch)] -= 1
+        if type_key[-1].isdigit():
+            ch = type_key[:-1]
+            empowered = int(type_key[-1])
+        else:
+            ch = type_key
+            empowered = 1
+        args = (floors[spawn_floor]["entities"], floors[spawn_floor]["field"], ch, avoid, floors[spawn_floor]["island"], spawn_floor)
+        if empowered == 1:
+            _spawn(*args)
+        else:
+            _spawn(*args, empowered)
+        queue[(spawn_floor, type_key)] -= 1
 
 
 def _step(

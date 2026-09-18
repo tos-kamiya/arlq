@@ -119,7 +119,7 @@ def spawn_entities(
         for _ in range(population):
             x, y = find_random_place(entities, field, distance=2)
             if isinstance(config.tribe, d.MonsterTribe):
-                m = d.Monster(x, y, config.tribe)
+                m = d.Monster(x, y, config.tribe, empowered=config.empowered)
                 entities.append(m)
             else:
                 assert isinstance(config.tribe, d.CompanionTribe)
@@ -323,7 +323,7 @@ def reveal_entities_in_fov(
         if not torched[entity.y][entity.x]:
             continue
         if isinstance(entity, d.Monster):
-            player.known_monsters.add(entity.tribe.char)
+            player.known_monsters.add(d.monster_type_key(entity))
 
 
 def update_entities(
@@ -402,7 +402,7 @@ def update_entities(
                 message = (MESSAGE_TICKS, c.tribe.event_message)
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
-            player.known_monsters.add(m.tribe.char)
+            player.known_monsters.add(d.monster_type_key(m))
 
             # High Elf is a Stage 3-style gatekeeper in Stage 2 as well. It
             # remains in place until the required elf progress is available,
@@ -413,7 +413,7 @@ def update_entities(
 
             player_attack = d.player_attack_by_level(player)
 
-            if player_attack < m.tribe.level:
+            if player_attack < d.monster_level(m):
                 if respawn_point is None:
                     player.x, player.y = find_random_place(entities, field, distance=2)
                 else:
@@ -427,7 +427,7 @@ def update_entities(
             else:
                 del entities[eei]
 
-                if m.tribe.level > 0 and m.tribe.effect != d.EFFECT_UNLOCK_TREASURE:
+                if d.monster_level(m) > 0 and m.tribe.effect != d.EFFECT_UNLOCK_TREASURE:
                     tribes_to_be_respawned.append(m.tribe.char)
 
                 effect = m.tribe.effect

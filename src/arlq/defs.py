@@ -169,11 +169,23 @@ class Monster(Entity):
 
     Attributes:
         tribe: Tribe information of the monster (MonsterTribe instance).
+        empowered: Level multiplier for an enhanced monster instance.
     """
 
-    def __init__(self, x: int, y: int, tribe: MonsterTribe):
+    def __init__(self, x: int, y: int, tribe: MonsterTribe, empowered: int = 1):
         super().__init__(x, y)
         self.tribe: MonsterTribe = tribe
+        if empowered < 1:
+            raise ValueError("empowered must be positive")
+        self.empowered: int = empowered
+
+
+def monster_level(monster: Monster) -> int:
+    return monster.tribe.level * (1 if monster.empowered == 1 else 3)
+
+
+def monster_type_key(monster: Monster) -> str:
+    return monster.tribe.char if monster.empowered == 1 else f"{monster.tribe.char}{monster.empowered}"
 
 
 class Player(Entity):
@@ -225,9 +237,10 @@ class SpawnConfig:
         population: Number of monsters/companions to spawn or a probability (if float).
     """
 
-    def __init__(self, tribe: Tribe, population: Union[float, int]):
+    def __init__(self, tribe: Tribe, population: Union[float, int], empowered: int = 1):
         self.tribe = tribe
         self.population = population
+        self.empowered = empowered
 
 
 _MT = MonsterTribe
@@ -241,7 +254,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("b", 5, 60, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
     _MT("c", 10, MIN_FOOD, item=ITEM_SWORD_X1_5, event_message="-- Got a sword!"),  # Chimera
     _MT("C", 15, MIN_FOOD, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword!"),  # Chimera rare
-    _MT("d", 20, 40, item=ITEM_POISONED),  # Comodo Dragon
+    _MT("d", 20, 60, item=ITEM_POISONED),  # Comodo Dragon
     _MT(
         CHAR_DRAGON,
         40,
@@ -259,6 +272,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         event_message="-- Unlocked Fire Drake's treasure chest!",
         treasure_key=CHAR_TREASURE + CHAR_FIRE_DRAKE,
     ),  # Fire Drake
+    _MT("f", 50, MIN_FOOD),  # Fire Lizard
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT("X", 1, MIN_FOOD, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
     _MT("I", 0, 0, event_message="-- The Isolated Elf told you about the history of the elves.", is_elf=True),
@@ -299,7 +313,7 @@ _SC = SpawnConfig
 SPAWN_CONFIGS_ST1 = [
     _SC(CHAR_TO_TRIBE["a"], 20),
     _SC(CHAR_TO_TRIBE["A"], 1),
-    _SC(CHAR_TO_TRIBE["b"], 12),
+    _SC(CHAR_TO_TRIBE["b"], 9),
     _SC(CHAR_TO_TRIBE["c"], 3),
     _SC(CHAR_TO_TRIBE["d"], 3),
     _SC(CHAR_TO_TRIBE[CHAR_DRAGON], 1),
@@ -312,10 +326,11 @@ SPAWN_CONFIGS_ST1 = [
 SPAWN_CONFIGS_ST2 = [
     _SC(CHAR_TO_TRIBE["a"], 20),
     _SC(CHAR_TO_TRIBE["A"], 2),
-    _SC(CHAR_TO_TRIBE["b"], 12),
+    _SC(CHAR_TO_TRIBE["b"], 3),
+    _SC(CHAR_TO_TRIBE["b"], 3, empowered=2),
     _SC(CHAR_TO_TRIBE["c"], 2),
     _SC(CHAR_TO_TRIBE["C"], 1),
-    _SC(CHAR_TO_TRIBE["d"], 3),
+    _SC(CHAR_TO_TRIBE["d"], 6),
     _SC(CHAR_TO_TRIBE[CHAR_FIRE_DRAKE], 1),
     _SC(CHAR_TO_TRIBE["e"], 1),
     _SC(CHAR_TO_TRIBE["g"], 1),
@@ -340,7 +355,7 @@ def player_attack_by_level(player: Player, include_stage3_bonuses: bool = False)
     elif player.item == ITEM_SWORD_CURSED:
         value = player.level * 3
     elif player.item == ITEM_POISONED:
-        value = (player.level * 3 + 3) // 4
+        value = (player.level + 1) // 2
     else:
         value = player.level
 
