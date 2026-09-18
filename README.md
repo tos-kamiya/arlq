@@ -64,7 +64,7 @@ pip install windows-curses
   The goal of the game is to explore a dungeon with procedurally generated corridors and find the treasure chest hidden by the dragon. In Stage 1, find the dragon's chest; in Stage 2, find the fire drake's chest.
   In Stage 3, the two objectives are to defeat the `W` Dread Wyrm, as requested by the king, and to claim its treasure chest. The elves' help is useful for accomplishing these objectives.
 
-  In normal play, one each of the Isolated Elf (`I`), Javelin Elf (`J`), Collector Elf (`K`), and High Elf (`H`) is placed on a seed-selected floor. The `K` elf is placed on floor 1 or 2. Floor 3 contains two `A` monsters and no `c` or `C`. Floor transitions use `v` to descend and `^` to ascend. Stage 3 places one `o` on every floor. Each of `m`, `X`, `e`, and `g` is assigned to one randomly selected floor per game and does not appear on the other floors.
+  Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Four elves, `I`, `J`, `K`, and `H`, appear.
 
 * **Player**  
   You control the character represented by `@` using the arrow keys or WASD.
@@ -106,14 +106,14 @@ pip install windows-curses
 | **A** Rare Amoeba   | A rare amoeba that significantly boosts your level upon defeat.                                                                                                   |
 | **b** Bison         | The second weakest. Defeating it restores a large amount of LP. Hunt it when you're hungry.                                                                       |
 | **c** Chimera       | Moderately strong. It carries a sword. Taking it raises combat power to 1.5x and lets you break up to three walls.                                               |
-| **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to about half until replaced.        |
+| **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to half until replaced.        |
 | **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
 
 **Stage 2**
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 contains three ordinary `b` Bison and three empowered `b'` Bison.
+Stage 2 contains three ordinary `b` Bison and three empowered `b` Bison. Empowered monsters have three times their normal level and are displayed with an apostrophe to the right, such as `b'`; they are treated as a separate monster type for discovery.
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -127,7 +127,7 @@ Stage 2 contains three ordinary `b` Bison and three empowered `b'` Bison.
 **Stage 3**
 
 Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
-On floors 2 and 3, some `b`, `c`, and `d` monsters are empowered and have three times their normal level. On floor 1, only `c` and `d` have empowered individuals. They are displayed with an apostrophe to the right, such as `d'`; their identities are learned separately from ordinary `d` monsters. Floor 3 contains one ordinary `f` Fire Lizard.
+Some monsters are empowered and have three times their normal level. On floor 1, empowered individuals are `c` and `d`; on floor 2, they are `b`, `c`, and `d`; on floor 3, they are `b` and `d`. Empowered monsters are displayed with an apostrophe to the right, such as `d'`, and their identities are learned separately from ordinary `d` monsters. Floor 3 contains one ordinary `f` Fire Lizard.
 
 **Stage 3 Monsters**
 
