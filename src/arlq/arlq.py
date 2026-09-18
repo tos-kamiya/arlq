@@ -790,14 +790,9 @@ def main():
         except TerminalSizeSmall as e:
             sys.exit("Error: " + str(e))
     else:
-        if sys.version_info >= (3, 14):
-            sys.exit(
-                "Pygame GUI is not supported on Python 3.14 yet; "
-                "run arlq with Python 3.13 or use --curses."
-            )
-        from .pygame_funcs import PygameUI
+        from .pyglet_funcs import PygletUI
 
-        ui = PygameUI()
+        ui = PygletUI()
         run_game(ui, seed_str, args.stage, args.debug_show_entities, args.seed)
 
 
