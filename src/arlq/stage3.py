@@ -642,7 +642,7 @@ def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
             message = (-1, "") if remaining_tick < 0 else (remaining_tick, message[1])
 
         show_entities = debug or getattr(ui, "map_mode", False)
-        # The curses renderer discovers the player from the entity list, while
+        # The terminal renderer discovers the player from the entity list, while
         # the pygame renderer receives it separately. Keep the Stage 3 state
         # model separate and provide a render-only combined list.
         render_entities = [player, *current["entities"]]

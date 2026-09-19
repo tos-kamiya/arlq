@@ -737,7 +737,10 @@ def main():
 
     parser.add_argument("--seed", action="store", help="Seed value or seed string")
     parser.add_argument("--rematch", action="store_true", help="Replay the last stage with the same seed.")
-    parser.add_argument("--curses", action="store_true", help="Use curses as UI framework.")
+    parser.add_argument(
+        "--terminal", "--curses", dest="terminal", action="store_true",
+        help="Use the Blessed terminal UI (--curses is a deprecated alias).",
+    )
     parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
 
     args = parser.parse_args()
@@ -776,19 +779,15 @@ def main():
     rand.set_seed(args.seed)
     seed_str = generate_seed_string(args)
 
-    if args.curses:
-        import curses
+    if args.terminal:
+        from blessed import Terminal
 
-        from .curses_funcs import CursesUI, TerminalSizeSmall
+        from .blessed_funcs import BlessedUI
 
-        def curses_main(stdscr):
-            ui = CursesUI(stdscr)
+        term = Terminal()
+        with term.fullscreen(), term.cbreak(), term.hidden_cursor():
+            ui = BlessedUI(term)
             run_game(ui, seed_str, args.stage, args.debug_show_entities, args.seed)
-
-        try:
-            curses.wrapper(curses_main)
-        except TerminalSizeSmall as e:
-            sys.exit("Error: " + str(e))
     else:
         from .pyglet_funcs import PygletUI
 
@@ -797,7 +796,7 @@ def main():
 
 
 def main_cli():
-    sys.argv.append("--curses")
+    sys.argv.append("--terminal")
     main()
 
 

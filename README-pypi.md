@@ -18,7 +18,7 @@ Features include:
 - Turn-based combat, level progression, food, and special monster abilities.
 - Fog of war and an automap that preserves explored areas.
 - Companions with unique abilities.
-- A Pyglet graphical interface and a curses terminal interface.
+- A Pyglet graphical interface and a Blessed terminal interface.
 
 ## Installation
 
@@ -40,14 +40,14 @@ The terminal version is available through `arlq-cli`:
 arlq-cli
 ```
 
-You can also select the curses interface explicitly:
+You can also select the Blessed terminal interface explicitly:
 
 ```bash
-arlq --curses
+arlq --terminal
 ```
 
-Run `arlq --help` for the complete list of options. On Windows, the curses
-interface requires the additional `windows-curses` package.
+Run `arlq --help` for the complete list of options. The old `--curses` option
+is retained as a deprecated alias for `--terminal`.
 
 ## License
 
