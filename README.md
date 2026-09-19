@@ -98,7 +98,7 @@ pip install windows-curses
 
 ## Monster List
 
-**Stage 1**
+### Stage 1
 
 | Display & Name      | Description                                                                                                                                                       |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -109,7 +109,7 @@ pip install windows-curses
 | **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to half until replaced.        |
 | **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
 
-**Stage 2**
+### Stage 2
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
@@ -121,23 +121,23 @@ Stage 2 contains three ordinary `b` Bison and three empowered `b` Bison. Empower
 | **e** Erebus        | Battling it drains your vitality by a small amount.                                                                     |
 | **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
 | **g** Golem         | When defeated, rocks scatter. It yields no food.                                                                        |
-| **H** High Elf      | Does not recognize you until you have earned enough elf progress.                                                       |
+| **H** High Elf      | Too powerful to defeat.                                                                                               |
 | **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you.                                                         |
 
-**Stage 3**
+### Stage 3
 
 Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
-Some monsters are empowered and have three times their normal level. On floor 1, empowered individuals are `c` and `d`; on floor 2, they are `b`, `c`, and `d`; on floor 3, they are `b` and `d`. Empowered monsters are displayed with an apostrophe to the right, such as `d'`, and their identities are learned separately from ordinary `d` monsters.
+Stage 3 features empowered versions of `b`, `c`, and `d`: `b'`, `c'`, and `d'`.
 
-**Stage 3 Monsters**
+#### Monsters
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **m** Myconid | Temporarily reduces vision until another monster is contacted. |
+| **m** Myconid | Temporarily reduces the player's field of vision until another monster is contacted. |
 | **w** Wyrm | Protected by a barrier. |
 | **W** Dread Wyrm | Protected by a barrier and unlocks the treasure chest when defeated. |
 
-**Elves**
+#### Elves
 
 | Display & Name | Description |
 | -------------- | ----------- |
@@ -151,8 +151,8 @@ Some monsters are empowered and have three times their normal level. On floor 1,
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
 | **l** Loop Companion | Appears only in Stage 3. Sends the world back 80 turns; monster identities remain known. |
-| **n** Nomicon  | Reveals the type of every monster within the player's FOV. |
-| **o** Ocular   | Slightly extends the player's field of vision.                   |
+| **n** Nomicon  | Reveals the type of every monster within the player's field of vision. |
+| **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Helps the player overcome walls when a collision is imminent.    |
 
 ## Development commands
