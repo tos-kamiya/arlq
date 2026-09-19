@@ -156,7 +156,7 @@ Stage 3 features empowered versions of `b`, `c`, and `d`: `b'`, `c'`, and `d'`.
 | **l** Loop Companion | Appears only in Stage 3. Sends the world back 80 turns; monster identities remain known. |
 | **n** Nomicon  | Reveals the type of every monster within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
-| **p** Pegasus  | Helps the player overcome walls when a collision is imminent.    |
+| **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |
 
 ## Development commands
 
