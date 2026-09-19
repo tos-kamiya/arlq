@@ -20,10 +20,10 @@ Pygame UI:
 uv run -p .venv/bin/python python -m arlq
 ```
 
-curses UI:
+Blessed terminal UI:
 
 ```bash
-uv run -p .venv/bin/python python -m arlq --curses
+uv run -p .venv/bin/python python -m arlq --terminal
 ```
 
 CLI entrypoint:

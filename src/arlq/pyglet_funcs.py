@@ -7,7 +7,7 @@ from pyglet.window import key as pgkey
 from .__about__ import __version__
 from . import defs as d
 
-# RGB colors corresponding to curses color numbers
+# RGB colors corresponding to terminal color names
 CI_RED = 1
 CI_GREEN = 2
 CI_YELLOW = 3
@@ -317,7 +317,7 @@ class PygletUI:
         extra_keys: bool,
     ):
         """
-        Draws the status bar at the bottom of the screen similar to the curses version.
+        Draws the status bar at the bottom of the screen similar to the terminal version.
         This includes stage, hours, level (with item modifiers), item info,
         beatable monsters, LP value, and a rectangular LP bar.
         """

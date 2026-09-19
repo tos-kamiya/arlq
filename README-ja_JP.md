@@ -1,9 +1,9 @@
 # ARLQ, another rogue-like quest game
 
-ARLQ（Another Rogue-Like Quest）は、人間とChatGPTが共同で作成した実験的なローグライクゲームです。Pygletとcursesに対応したPython実装です。
+ARLQ（Another Rogue-Like Quest）は、人間とChatGPTが共同で作成した実験的なローグライクゲームです。PygletとBlessed端末UIに対応したPython実装です。
 
 * コードは、ゲームのおおまかな内容の記述をもとにChatGPTで生成し、その後人間が細部を調整・改善しました。
-  * ChatGPTは、コード生成以外にも迷路生成アルゴリズムの作成やcursesライブラリの使い方の解説を担当しました。
+  * ChatGPTは、コード生成以外にも迷路生成アルゴリズムの作成や端末UIの使い方の解説を担当しました。
   * タイプヒントやコメントもChatGPTによって生成されています。
   * 新しいモンスターのアイデアにもChatGPTが協力しています。
 * マニュアルは、人間がドラフトを作成し、後にChatGPTと共に加筆・校正を行いました。
@@ -35,26 +35,15 @@ arlq-cli --stage 1
 - `--debug-show-entities`: 未発見のエンティティも表示する
 - `--seed VALUE`: 整数のシードまたはバージョン付きシード文字列を指定する
 - `--rematch`: 前回のステージとシードを再利用する（同じ配置を再現するには他のレイアウト関連オプションも同じにする。`--seed`・`--stage`との併用不可）
-- `--curses`: cursesを使用する
+- `--terminal`: Blessedを使用した端末UIを使用する
+- `--curses`: `--terminal`の互換用 alias（非推奨）
 - `--version`: バージョンを表示する
 
 ゲーム開始時にステージとシードをユーザーのキャッシュディレクトリ内の
 `arlq/last-seed` に保存します。`--rematch`だけで前回のステージを直接開始できます。
 `--seed`・`--stage`を併用した場合や、保存値がない場合・壊れている場合はエラーになります。
 
-`--curses`を利用する場合は、必要に応じてcursesパッケージを別途インストールしてください。
-
-Ubuntu 24.04の場合:
-
-```bash
-sudo apt install python3-curses
-```
-
-Windowsの場合:
-
-```bash
-pip install windows-curses
-```
+端末UIに必要なBlessedは、ARLQのインストール時に自動的にインストールされます。
 
 ## ゲームの説明
 

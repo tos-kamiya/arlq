@@ -8,7 +8,7 @@ This file gives repository-specific guidance to coding agents working in this pr
 - Type: small Python game package
 - Runtime: Python 3.10+
 - Main dependency: `pyglet`
-- Alternate UI: terminal mode via `curses`
+- Alternate UI: terminal mode via `blessed`
 - Packaging: `hatchling`
 - Source root: `src/arlq`
 
@@ -19,7 +19,7 @@ ARLQ is a compact rogue-like game. Most gameplay logic lives in a small number o
 - `src/arlq/arlq.py`: main game loop, maze generation, spawning, field creation, visibility handling, CLI entry flow
 - `src/arlq/defs.py`: constants, entity classes, tribe definitions, spawn tables
 - `src/arlq/pyglet_funcs.py`: Pyglet rendering and input handling
-- `src/arlq/curses_funcs.py`: curses rendering and input handling
+- `src/arlq/blessed_funcs.py`: Blessed terminal rendering and input handling
 - `src/arlq/utils.py`: shared helpers
 - `src/arlq/__init__.py`: public package entrypoints
 - `src/arlq/__about__.py`: version source for packaging
@@ -32,7 +32,7 @@ Use the local virtualenv when available.
 
 - GUI mode: `uv run -p .venv/bin/python python -m arlq`
 - CLI script mode: `uv run -p .venv/bin/python arlq-cli`
-- curses mode: `uv run -p .venv/bin/python python -m arlq --curses`
+- terminal mode: `uv run -p .venv/bin/python python -m arlq --terminal`
 
 If `python -m arlq` does not work in the current environment, fall back to:
 
@@ -42,10 +42,10 @@ If `python -m arlq` does not work in the current environment, fall back to:
 
 - Preserve the current architecture. Do not introduce heavy abstractions for a small codebase unless they remove clear duplication.
 - Keep gameplay constants and tribe/spawn definitions centralized in `src/arlq/defs.py`.
-- Keep renderer-specific behavior in `pyglet_funcs.py` or `curses_funcs.py`; avoid pushing UI-specific logic into shared game logic unless both frontends need it.
+- Keep renderer-specific behavior in `pyglet_funcs.py` or `blessed_funcs.py`; avoid pushing UI-specific logic into shared game logic unless both frontends need it.
 - When changing gameplay behavior, verify whether README text also needs to change.
 - Prefer small, local edits. This project is easier to maintain when the control flow stays explicit.
-- Maintain compatibility with both GUI and curses modes unless the task explicitly targets only one frontend.
+- Maintain compatibility with both GUI and Blessed terminal modes unless the task explicitly targets only one frontend.
 - Avoid adding new dependencies unless they are clearly necessary.
 
 ## Validation Expectations
@@ -63,7 +63,7 @@ For most changes, also validate with targeted local checks:
 When working in a headless or non-interactive environment:
 
 - Prefer `pytest`, `python -m compileall src`, and import checks first.
-- State clearly if GUI or curses runtime validation could not be performed.
+- State clearly if GUI or terminal runtime validation could not be performed.
 
 ## Documentation Expectations
 
