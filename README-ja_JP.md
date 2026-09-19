@@ -2,6 +2,15 @@
 
 ARLQ（Another Rogue-Like Quest）は、人間とChatGPTが共同で作成した実験的なローグライクゲームです。PygletとBlessed端末UIに対応したPython実装です。
 
+<p align="center">
+  <a href="https://pypi.org/project/arlq/">
+    <img alt="PyPI version" src="https://img.shields.io/pypi/v/arlq" />
+  </a>
+  <a href="https://www.python.org/">
+    <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
+  </a>
+</p>
+
 * コードは、ゲームのおおまかな内容の記述をもとにChatGPTで生成し、その後人間が細部を調整・改善しました。
   * ChatGPTは、コード生成以外にも迷路生成アルゴリズムの作成や端末UIの使い方の解説を担当しました。
   * タイプヒントやコメントもChatGPTによって生成されています。

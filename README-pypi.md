@@ -3,6 +3,15 @@
 ARLQ (Another Rogue-Like Quest) is a compact rogue-like game created as an
 experiment in developing code and manuals with humans and ChatGPT.
 
+<p align="center">
+  <a href="https://pypi.org/project/arlq/">
+    <img alt="PyPI version" src="https://img.shields.io/pypi/v/arlq" />
+  </a>
+  <a href="https://www.python.org/">
+    <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
+  </a>
+</p>
+
 ![](https://github.com/tos-kamiya/arlq/blob/main/screenshot.png?raw=True)
 
 Explore a procedurally generated dungeon, manage your LP (Life Points), learn
