@@ -162,6 +162,7 @@ def create_field(
     corridor_v_width: int,
     wall_char: str,
     excluded_tile: Optional[d.Point] = None,
+    margin_x: int = 0,
 ) -> Tuple[List[List[str]], d.Point, d.Point]:
     def find_empty_cell(field: List[List[str]], left_top: d.Point, right_bottom: d.Point) -> d.Point:
         assert left_top[0] < right_bottom[0]
@@ -172,6 +173,10 @@ def create_field(
             y = rand.randrange(right_bottom[1] - left_top[1]) + left_top[1]
             if field[y][x] == " ":
                 return x, y
+
+    # margin_x walls off that many tile columns on each of the left and
+    # right edges, leaving a narrower maze centered in the same field size.
+    tile_num_x = d.TILE_NUM_X - 2 * margin_x
 
     field: List[List[str]] = [[" " for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
 
@@ -207,11 +212,14 @@ def create_field(
                 field[y2][x2] = wall_char
 
     # Create corridors
-    edges, first_p, last_p = generate_maze(d.TILE_NUM_X, d.TILE_NUM_Y, excluded_tile)
+    edges, first_p, last_p = generate_maze(tile_num_x, d.TILE_NUM_Y, excluded_tile)
+    first_p = (first_p[0] + margin_x, first_p[1])
+    last_p = (last_p[0] + margin_x, last_p[1])
     for edge in edges:
         (x1, y1), (x2, y2) = sorted(edge)
         assert x1 <= x2
         assert y1 <= y2
+        x1, x2 = x1 + margin_x, x2 + margin_x
         if y1 == y2:
             offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
             for y in range(corridor_h_width):
@@ -234,6 +242,17 @@ def create_field(
                     row = bypass_y * (d.TILE_HEIGHT + 1) + offset + y
                     field[row][island_x * (d.TILE_WIDTH + 1)] = " "
                     field[row][(island_x + 1) * (d.TILE_WIDTH + 1)] = " "
+
+    # Wall off the margin columns entirely so they read as removed, rather
+    # than as a disconnected strip of tiny rooms.
+    if margin_x > 0:
+        left_edge = margin_x * (d.TILE_WIDTH + 1)
+        right_edge = (d.TILE_NUM_X - margin_x) * (d.TILE_WIDTH + 1)
+        for y in range(d.FIELD_HEIGHT):
+            for x in range(0, left_edge):
+                field[y][x] = wall_char
+            for x in range(right_edge, d.FIELD_WIDTH):
+                field[y][x] = wall_char
 
     r = tile_to_place_range(*first_p)
     first_p = find_empty_cell(field, r[0], r[1])
@@ -530,7 +549,8 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     spawn_config = d.STAGE_TO_SPAWN_CONFIGS[stage_num - 1]
 
     # Initialize field
-    field, first_p, last_p = create_field(d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH, d.WALL_CHAR)
+    margin_x = d.STAGE1_COLUMN_MARGIN if stage_num == 1 else 0
+    field, first_p, last_p = create_field(d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH, d.WALL_CHAR, margin_x=margin_x)
 
     # Initialize view/ui components
     cur_torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]

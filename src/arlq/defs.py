@@ -6,6 +6,10 @@ TILE_NUM_X: int = 6
 TILE_NUM_Y: int = 3
 FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
+# Stage 1 is a smaller, introductory map: it walls off this many tile
+# columns on each of the left and right edges (6 -> 4 wide), leaving
+# TILE_NUM_Y unchanged.
+STAGE1_COLUMN_MARGIN: int = 1
 CORRIDOR_V_WIDTH: int = 3
 CORRIDOR_H_WIDTH: int = 2
 WALL_CHAR: str = "#"
@@ -257,7 +261,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("d", 20, 60, item=ITEM_POISONED),  # Comodo Dragon
     _MT(
         CHAR_DRAGON,
-        40,
+        35,
         MIN_FOOD,
         effect=EFFECT_UNLOCK_TREASURE,
         event_message="-- Unlocked Dragon's treasure chest!",
@@ -311,15 +315,14 @@ _SC = SpawnConfig
 
 # Stage 1 spawn configurations.
 SPAWN_CONFIGS_ST1 = [
-    _SC(CHAR_TO_TRIBE["a"], 20),
-    _SC(CHAR_TO_TRIBE["A"], 1),
-    _SC(CHAR_TO_TRIBE["b"], 10),
-    _SC(CHAR_TO_TRIBE["c"], 3),
+    _SC(CHAR_TO_TRIBE["a"], 10),
+    _SC(CHAR_TO_TRIBE["A"], 2),
+    _SC(CHAR_TO_TRIBE["b"], 7),
+    _SC(CHAR_TO_TRIBE["c"], 1),
     _SC(CHAR_TO_TRIBE["d"], 2),
     _SC(CHAR_TO_TRIBE[CHAR_DRAGON], 1),
     _SC(CHAR_TO_TRIBE["n"], 0.7),
     _SC(CHAR_TO_TRIBE["o"], 0.7),
-    _SC(CHAR_TO_TRIBE["p"], 0.7),
 ]
 
 # Stage 2 spawn configurations.
