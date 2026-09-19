@@ -26,9 +26,9 @@ classifiers = [
   "Topic :: Games/Entertainment"
 ]
 dependencies = [
-  "appdirs>=1.4",
-  "blessed>=1.28",
-  "pyglet>=2",
+  "appdirs>=1.4",  # MIT License
+  "blessed>=1.28",  # MIT License
+  "pyglet>=2",  # BSD 3-Clause License
 ]
 
 [project.optional-dependencies]
