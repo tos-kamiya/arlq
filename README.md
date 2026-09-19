@@ -14,12 +14,19 @@ the Python implementation with Pyglet and Blessed terminal frontends.
 
 ## Installation Instructions
 
-Run the following command to install:
+ARLQ requires Python 3.10 or later. Install the latest released version with:
+
+```bash
+pipx install arlq
+```
+
+To install the latest development version directly from GitHub instead, use:
 
 ```bash
 pipx install git+https://github.com/tos-kamiya/arlq
 ```
 
+The required Pyglet and Blessed dependencies are installed automatically.
 Once installed, the `arlq` and `arlq-cli` commands become available.
 
 ```bash
@@ -27,6 +34,10 @@ arlq --stage 1
 arlq --stage 3
 arlq-cli --stage 1
 ```
+
+The terminal interface requires a terminal at least 80 columns wide and 24
+lines high. If the terminal is resized below that size, the game pauses until
+it is enlarged again.
 
 - Without any options, the game will run in a Pyglet window.
 - To make the game easier, use the `-T` option (expands the visible area).

@@ -22,11 +22,13 @@ Features include:
 
 ## Installation
 
-Install ARLQ from PyPI:
+ARLQ requires Python 3.10 or later. Install it from PyPI with:
 
 ```bash
 pip install arlq
 ```
+
+The required Pyglet and Blessed dependencies are installed automatically.
 
 Start the graphical version with:
 
@@ -47,7 +49,9 @@ arlq --terminal
 ```
 
 Run `arlq --help` for the complete list of options. The old `--curses` option
-is retained as a deprecated alias for `--terminal`.
+is retained as a deprecated alias for `--terminal`. The terminal interface
+requires a terminal at least 80 columns wide and 24 lines high; the game
+pauses while the terminal is smaller and resumes after it is enlarged.
 
 ## License
 

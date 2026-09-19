@@ -12,12 +12,19 @@ ARLQ（Another Rogue-Like Quest）は、人間とChatGPTが共同で作成した
 
 ## インストールと起動
 
-以下のコマンドでインストールします。
+Python 3.10以降が必要です。リリース版は以下のコマンドでインストールできます。
+
+```bash
+pipx install arlq
+```
+
+GitHub上の最新版を直接インストールする場合は、以下を実行してください。
 
 ```bash
 pipx install git+https://github.com/tos-kamiya/arlq
 ```
 
+必要なPygletとBlessedも自動的にインストールされます。
 インストール後、`arlq` と `arlq-cli` を実行できます。
 
 ```bash
@@ -25,6 +32,9 @@ arlq --stage 1
 arlq --stage 3
 arlq-cli --stage 1
 ```
+
+端末UIを使用する場合は、端末の大きさを80桁×24行以上にしてください。
+端末をそれより小さくするとゲームは一時停止し、十分な大きさに戻すと再開します。
 
 主なオプション:
 
