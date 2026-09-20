@@ -75,6 +75,10 @@ Update documentation when behavior visible to players changes:
 
 Keep English and Japanese gameplay descriptions reasonably aligned.
 
+Any commit that bumps the version in `src/arlq/__about__.py` must also add a
+corresponding entry to `release-notes.md` in the same commit, summarizing the
+user-visible changes since the previous version.
+
 ## Editing Notes
 
 - Follow existing plain Python style; the codebase is simple and mostly procedural.
