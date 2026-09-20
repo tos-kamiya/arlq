@@ -39,6 +39,11 @@ CELL_SIZE_Y = 20
 CELL_SIZE_X = 13
 STRENGTH_COLUMN_WIDTH = CELL_SIZE_X + 2 * STRENGTH_COLUMN_PADDING
 
+# The field's leftmost and rightmost columns are always walls (see
+# create_field), so they're rendered at a reduced width to trim the window.
+FIELD_EDGE_WALL_WIDTH = 2
+FIELD_EDGE_SHIFT = FIELD_EDGE_WALL_WIDTH - CELL_SIZE_X
+
 # Keys that map to a movement direction, shared by input_direction().
 _DIRECTION_KEYS = {
     pgkey.UP: (0, -1),
@@ -65,8 +70,10 @@ class PygletUI:
         # Calculate window dimensions (including status bar area and the
         # right-edge strength column). The column is a cell wide plus left/
         # right padding, so its character has room to render before the
-        # window's true edge.
-        self.window_width = self.field_width * CELL_SIZE_X + STRENGTH_COLUMN_WIDTH
+        # window's true edge. The two wall-only edge columns of the field
+        # are narrower (see FIELD_EDGE_WALL_WIDTH) to keep the window compact.
+        self.field_pixel_width = FIELD_EDGE_WALL_WIDTH * 2 + (self.field_width - 2) * CELL_SIZE_X
+        self.window_width = self.field_pixel_width + STRENGTH_COLUMN_WIDTH
         self.window_height = (self.field_height + 2) * CELL_SIZE_Y
 
         self.window = pyglet.window.Window(
@@ -150,6 +157,24 @@ class PygletUI:
         )
         self._drawables.append(label)
 
+    def _field_col_x(self, col: int) -> int:
+        """Pixel x-start of field column `col`, accounting for the narrower
+        edge columns; every column from 1 onward shifts left by the same
+        amount so they stay contiguous."""
+        if col == 0:
+            return 0
+        return col * CELL_SIZE_X + FIELD_EDGE_SHIFT
+
+    def _field_col_width(self, col: int) -> int:
+        if col == 0 or col == self.field_width - 1:
+            return FIELD_EDGE_WALL_WIDTH
+        return CELL_SIZE_X
+
+    def _draw_field_text(self, pos: d.Point, text: str, color: Tuple[int, int, int], bold: bool = False):
+        """Draws text at a field grid cell (never an edge column), applying
+        the same shift as `_field_col_x`."""
+        self._draw_text(pos, text, color, bold=bold, x_offset=FIELD_EDGE_SHIFT)
+
     def _draw_rect(self, x: int, y: int, width: int, height: int, color: Tuple[int, int, int]):
         rect = pyglet.shapes.Rectangle(
             x,
@@ -224,20 +249,20 @@ class PygletUI:
                 if cell == d.CHAR_BARRIER and discovered:
                     tile_color = (67, 42, 45)
                 self._draw_rect(
-                    x * CELL_SIZE_X,
+                    self._field_col_x(x),
                     y * CELL_SIZE_Y,
-                    CELL_SIZE_X + 1,
+                    self._field_col_width(x) + 1,
                     CELL_SIZE_Y + 1,
                     tile_color,
                 )
 
                 if discovered and cell in ("^", "v"):
-                    self._draw_text((x, y), cell, COLOR_MAP[CI_YELLOW], bold=True)
+                    self._draw_field_text((x, y), cell, COLOR_MAP[CI_YELLOW], bold=True)
                 elif discovered and cell == d.CHAR_BARRIER:
                     self._draw_line(
-                        x * CELL_SIZE_X + 2,
+                        self._field_col_x(x) + 2,
                         y * CELL_SIZE_Y + CELL_SIZE_Y // 2,
-                        x * CELL_SIZE_X + CELL_SIZE_X - 2,
+                        self._field_col_x(x) + CELL_SIZE_X - 2,
                         y * CELL_SIZE_Y + CELL_SIZE_Y // 2,
                         COLOR_MAP[CI_RED],
                         thickness=2,
@@ -246,7 +271,7 @@ class PygletUI:
         self._draw_visibility_boundary(cur_torched)
 
         if checkpoint is not None and checkpoint != (px, py):
-            self._draw_text(checkpoint, "+", COLOR_MAP[CI_YELLOW], bold=True)
+            self._draw_field_text(checkpoint, "+", COLOR_MAP[CI_YELLOW], bold=True)
 
         # Draw the player character. Low LP or poisoned is shown as a
         # background highlight behind "@" rather than a text color, since
@@ -258,11 +283,11 @@ class PygletUI:
         elif player.item == d.ITEM_POISONED:
             player_bg = COLOR_MAP[CI_MAGENTA]
         if player_bg is not None:
-            self._draw_rect(px * CELL_SIZE_X, py * CELL_SIZE_Y, CELL_SIZE_X + 1, CELL_SIZE_Y + 1, player_bg)
-        self._draw_text((px, py), "@", COLOR_MAP["default"], bold=True)
+            self._draw_rect(self._field_col_x(px), py * CELL_SIZE_Y, CELL_SIZE_X + 1, CELL_SIZE_Y + 1, player_bg)
+        self._draw_field_text((px, py), "@", COLOR_MAP["default"], bold=True)
 
         if player.companion is not None and px + 1 < d.FIELD_WIDTH:
-            self._draw_text((px + 1, py), player.companion.tribe.char, COLOR_MAP[CI_GREEN], bold=True)
+            self._draw_field_text((px + 1, py), player.companion.tribe.char, COLOR_MAP[CI_GREEN], bold=True)
 
         # Draw entities (monster and treasures)
         player_attack = d.player_attack_by_level(player)
@@ -276,9 +301,9 @@ class PygletUI:
                 elif isinstance(e, d.Treasure):
                     ch = d.CHAR_TREASURE
                 if ch is not None:
-                    self._draw_text(pos, ch, self._dim_color(COLOR_MAP["default"]))
+                    self._draw_field_text(pos, ch, self._dim_color(COLOR_MAP["default"]))
                     if isinstance(e, d.Monster) and e.empowered > 1:
-                        self._draw_text((e.x + 1, e.y), "'", self._dim_color(COLOR_MAP["default"]))
+                        self._draw_field_text((e.x + 1, e.y), "'", self._dim_color(COLOR_MAP["default"]))
 
         for ei, e in enumerate(entities):
             pos = e.x, e.y
@@ -289,14 +314,14 @@ class PygletUI:
                 ch = c.tribe.char
                 if ch not in known_types and not show_entities:
                     ch = "!"
-                self._draw_text(pos, ch, COLOR_MAP[CI_GREEN], bold=True)
+                self._draw_field_text(pos, ch, COLOR_MAP[CI_GREEN], bold=True)
             elif isinstance(e, d.Monster):
                 m: d.Monster = e
                 ch = m.tribe.char
                 type_key = d.monster_type_key(m)
                 if type_key not in known_types:
                     if not show_entities:
-                        self._draw_text(pos, "?", COLOR_MAP[CI_YELLOW], bold=True)
+                        self._draw_field_text(pos, "?", COLOR_MAP[CI_YELLOW], bold=True)
                 else:
                     if d.monster_level(m) <= player_attack:
                         if m.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
@@ -306,27 +331,27 @@ class PygletUI:
                     else:
                         ci = CI_RED
                     color = self._dim_color(COLOR_MAP[ci]) if dim_types and ch in dim_types else COLOR_MAP[ci]
-                    self._draw_text(pos, ch, color, bold=True)
+                    self._draw_field_text(pos, ch, color, bold=True)
                     if m.empowered > 1:
-                        self._draw_text((m.x + 1, m.y), "'", color, bold=True)
+                        self._draw_field_text((m.x + 1, m.y), "'", color, bold=True)
             elif isinstance(e, d.Treasure):
                 t: d.Treasure = e
                 treasure_unlocked = unlocked_treasures is not None and t.unlock_key in unlocked_treasures
                 if treasure_unlocked:
-                    self._draw_text(pos, d.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], bold=True)
+                    self._draw_field_text(pos, d.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], bold=True)
 
         # Stage 3 followers persist across floor changes and are rendered
         # independently of the temporary companion slot.
         for fx, fy, ffloor, fchar in getattr(player, "persistent_followers", []):
             if ffloor == player.stage3_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
-                self._draw_text((fx, fy), fchar, COLOR_MAP[CI_GREEN], bold=True)
+                self._draw_field_text((fx, fy), fchar, COLOR_MAP[CI_GREEN], bold=True)
 
         # Draw the right-edge strength column: the stage's monster tribes and
         # the player, ranked strongest-first. A tinted background (full
         # column width) sets it apart from the field; the characters are
         # padded in from its left/right edges.
         self._draw_rect(
-            self.field_width * CELL_SIZE_X,
+            self.field_pixel_width,
             0,
             STRENGTH_COLUMN_WIDTH,
             self.field_height * CELL_SIZE_Y,
@@ -340,7 +365,8 @@ class PygletUI:
             if char is None:
                 continue
             self._draw_text(
-                (self.field_width, y), char, COLOR_MAP["default"], bold=is_player, x_offset=STRENGTH_COLUMN_PADDING
+                (0, y), char, COLOR_MAP["default"], bold=is_player,
+                x_offset=self.field_pixel_width + STRENGTH_COLUMN_PADDING
             )
 
         # Draw the status bar
@@ -469,9 +495,9 @@ class PygletUI:
             for x in range(width):
                 if not visibility[y][x]:
                     continue
-                left = x * CELL_SIZE_X
+                left = self._field_col_x(x)
                 top = y * CELL_SIZE_Y
-                right = left + CELL_SIZE_X
+                right = left + self._field_col_width(x)
                 bottom = top + CELL_SIZE_Y
                 if y == 0 or not visibility[y - 1][x]:
                     self._draw_line(left, top, right, top, boundary_color, thickness=line_width)
