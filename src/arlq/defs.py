@@ -23,6 +23,7 @@ LP_MAX: int = 100
 LP_INIT: int = 90
 LP_RESPAWN_MIN: int = 20
 LP_RESPAWN_COST: int = 6
+LP_LOW_THRESHOLD: int = 20  # LP bar/player "@" turn red at or below this
 
 MONSTER_RESPAWN_INTERVAL: int = 65
 SWORD_USES: int = 3
