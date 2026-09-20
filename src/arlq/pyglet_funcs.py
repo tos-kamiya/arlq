@@ -32,6 +32,7 @@ FLOOR = (31, 38, 48)
 WALL = (67, 73, 84)
 VISIBLE_FLOOR = (43, 52, 65)
 VISIBLE_WALL = (86, 96, 111)
+STRENGTH_COLUMN_BG = (30, 34, 48)
 
 CELL_SIZE_Y = 20
 CELL_SIZE_X = 13
@@ -306,7 +307,15 @@ class PygletUI:
                 self._draw_text((fx, fy), fchar, COLOR_MAP[CI_GREEN], bold=True)
 
         # Draw the right-edge strength column: the stage's monster tribes and
-        # the player, ranked strongest-first.
+        # the player, ranked strongest-first. A tinted background sets it
+        # apart from the field.
+        self._draw_rect(
+            self.field_width * CELL_SIZE_X,
+            0,
+            CELL_SIZE_X,
+            self.field_height * CELL_SIZE_Y,
+            STRENGTH_COLUMN_BG,
+        )
         tribes = stage_roster if stage_roster is not None else (
             d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
         )
