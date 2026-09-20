@@ -6,6 +6,27 @@ from pyglet.window import key as pgkey
 
 from .__about__ import __version__
 from . import defs as d
+from .i18n import t as tr
+
+# "Courier New" (the game's normal font) has no Japanese glyphs, so a label
+# containing translated text would render as tofu boxes. pyglet.text.Label
+# picks the first available name from a font_name list, so non-ASCII labels
+# add these common Japanese-capable fonts as fallbacks (checked in order;
+# harmless if a given font isn't installed). No fonts are bundled with the
+# package, so rendering still depends on the OS having one of these.
+JAPANESE_FALLBACK_FONTS = [
+    "Noto Sans Mono CJK JP",
+    "Noto Sans CJK JP",
+    "IPAGothic",
+    "IPAPGothic",
+    "TakaoGothic",
+    "Yu Gothic",
+    "MS Gothic",
+    "Meiryo",
+    "Hiragino Kaku Gothic ProN",
+    "Hiragino Sans",
+    "sans-serif",
+]
 
 # RGB colors corresponding to terminal color names
 CI_RED = 1
@@ -143,10 +164,21 @@ class PygletUI:
         Draws text at the grid cell defined by pos, optionally nudged by
         `x_offset` pixels (used to inset text within a cell).
         """
+        # pyglet.font.load() picks the first *installed* name in a font_name
+        # list, regardless of glyph coverage. "Courier New" is installed on
+        # most systems, so it must be left out of the list for non-ASCII
+        # text or it would always "win" and render Japanese as tofu.
+        is_ascii = text.isascii()
+        font_name = self.font_name if is_ascii else JAPANESE_FALLBACK_FONTS
+        # At the same nominal size, common Japanese fonts (e.g. Noto Sans
+        # CJK JP) have a noticeably taller ascent than Courier New, making
+        # translated text look oversized and overflow its row/cell. Scale
+        # it down to roughly match Courier New's cap height.
+        font_size = self.font_size if is_ascii else self.font_size * 0.72
         label = pyglet.text.Label(
             text,
-            font_name=self.font_name,
-            font_size=self.font_size,
+            font_name=font_name,
+            font_size=font_size,
             weight="bold" if bold else "normal",
             x=pos[0] * CELL_SIZE_X + x_offset,
             y=self.window_height - pos[1] * CELL_SIZE_Y,
@@ -602,15 +634,15 @@ class PygletUI:
         num_stages = len(d.STAGE_TO_SPAWN_CONFIGS)
         assert num_stages <= 9
 
-        options = ["[q]uit"]
+        options = [tr("[q]uit")]
         for n in range(1, num_stages + 1):
-            options.append(f"stage [{n}]")
+            options.append(tr("stage [{n}]").format(n=n))
 
         current_index = 1  # Initial selection: stage 1
 
         while True:
             self._clear_drawables()
-            self._draw_text((10, 5), "Stage Selection", COLOR_MAP[CI_YELLOW], bold=True)
+            self._draw_text((10, 5), tr("Stage Selection"), COLOR_MAP[CI_YELLOW], bold=True)
 
             base_x = 10
             base_y = 8

@@ -14,6 +14,7 @@ from .arlq import (
     reveal_entities_in_fov,
     unlock_treasure_for_defeat,
 )
+from .i18n import t as tr
 from .utils import rand
 
 FLOORS = 3
@@ -291,7 +292,7 @@ def _apply_terrain_hazards(current: Floor, player: d.Player, previous: d.Point) 
     event_message = None
     if field[player.y][player.x] == d.CHAR_BARRIER and not (player.stage3_flags & STAGE3_H) and (player.x, player.y) != previous:
         player.lp -= 30
-        event_message = "-- The barrier burns you."
+        event_message = tr("-- The barrier burns you.")
     if field[player.y][player.x] == d.CHAR_CALTROP:
         player.lp -= 3
         field[player.y][player.x] = " "
@@ -345,7 +346,7 @@ def _rewind_to_history(
             break
     _spawn(restored_entities, floors[floor[0]]["field"], "l", {(player.x, player.y)}, floors[floor[0]]["island"], floor[0])
 
-    return (5, "-- Time folds back to the beginning of the recorded past.")
+    return (5, tr("-- Time folds back to the beginning of the recorded past."))
 
 
 def _defeat_monster(
@@ -426,7 +427,7 @@ def _resolve_monster_contact(
         current["entities"].pop(hit)
         if ch in ELF_REPEAT_MESSAGES:
             current["entities"].append(entity)
-            raise _StepDone((MESSAGE_TICKS, ELF_REPEAT_MESSAGES[ch]))
+            raise _StepDone((MESSAGE_TICKS, tr(ELF_REPEAT_MESSAGES[ch])))
         raise _StepDone(None)
 
     # The W treasure must remain hidden until W is actually defeated. Other
@@ -448,10 +449,10 @@ def _resolve_monster_contact(
         player.persistent_followers.append((player.x, player.y, floor[0], "J"))
     elif ch == "K" and not (player.stage3_flags & STAGE3_C):
         current["entities"].append(entity)
-        event_message = "-- Bring the cursed sword."
+        event_message = tr("-- Bring the cursed sword.")
     elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2:
         current["entities"].append(entity)
-        event_message = "-- The High Elf does not recognize you."
+        event_message = tr("-- The High Elf does not recognize you.")
     elif _attack(player) < d.monster_level(entity):
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity
@@ -462,7 +463,7 @@ def _resolve_monster_contact(
         player.item = None
         player.item_uses = 0
         player.item_taken_from = None
-        event_message = "-- Respawned!"
+        event_message = tr("-- Respawned!")
     else:
         _defeat_monster(entity, current, player, floor, checkpoint, queue)
 
@@ -473,7 +474,7 @@ def _resolve_monster_contact(
         player.stage3_met_elves.add(ch)
 
     if event_message is None:
-        event_message = entity.tribe.event_message
+        event_message = tr(entity.tribe.event_message)
 
     return event_message
 
@@ -505,7 +506,7 @@ def _resolve_contact(
             if player.stage3_flags & STAGE3_W:
                 player.stage3_won = True
             else:
-                event_message = "-- You took the treasure, but the King's request remains."
+                event_message = tr("-- You took the treasure, but the King's request remains.")
         return event_message
 
     if isinstance(entity, d.Companion):
@@ -517,7 +518,7 @@ def _resolve_contact(
             raise _StepDone(_rewind_to_history(floors, player, floor, checkpoint, queue, history))
         player.companion = entity
         player.karma = 0
-        return entity.tribe.event_message
+        return tr(entity.tribe.event_message)
 
     return _resolve_monster_contact(hit, entity, current, player, floor, checkpoint, queue, event_message)
 
@@ -541,13 +542,13 @@ def _handle_floor_transition(
         player.x, player.y = floors[floor[0]]["up"]
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
-        return f"-- Descended to floor {floor[0] + 1}/3."
+        return tr("-- Descended to floor {n}/3.").format(n=floor[0] + 1)
     if floor[0] > 0 and (player.x, player.y) == current["up"]:
         floor[0] -= 1
         player.x, player.y = floors[floor[0]]["down"]
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
-        return f"-- Ascended to floor {floor[0] + 1}/3."
+        return tr("-- Ascended to floor {n}/3.").format(n=floor[0] + 1)
     return None
 
 
@@ -615,7 +616,7 @@ def _step(
         spawn_key = (origin_floor, ch)
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
         player.companion = None
-        event_message = "-- The companion vanishes."
+        event_message = tr("-- The companion vanishes.")
 
     reveal_entities_in_fov(player, current["entities"])
     _advance_persistent_followers(player, floor[0], (player.x, player.y) != previous, previous)
@@ -642,7 +643,7 @@ def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
     queue: "Counter[Tuple[int, str]]" = Counter()
     history: Deque[HistoryEntry] = deque()
     hours = 0
-    message: Tuple[int, str] = (5, "-- The King has ordered the Dread Wyrm slain.")
+    message: Tuple[int, str] = (5, tr("-- The King has ordered the Dread Wyrm slain."))
 
     while player.lp > 0 and not player.stage3_won:
         current = floors[floor[0]]
@@ -691,7 +692,7 @@ def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
         hours += 1
         player.lp -= 1
 
-    message = (-1, ">> Treasures collected! <<" if player.stage3_won else ">> Starved to Death. <<")
+    message = (-1, tr(">> Treasures collected! <<") if player.stage3_won else tr(">> Starved to Death. <<"))
     while True:
         current = floors[floor[0]]
         cur = get_torched(player, d.TORCH_RADIUS)
@@ -720,4 +721,4 @@ def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
         if key == "m":
             debug = not debug
         elif key == "s":
-            message = (-1, f"SEED: {seed_str}")
+            message = (-1, tr("SEED: {seed_str}").format(seed_str=seed_str))
