@@ -174,7 +174,7 @@ class BlessedUI:
         # urgent state), pushing poisoned down to a background highlight so
         # both remain visible at once.
         is_poisoned = player.item == d.ITEM_POISONED
-        if player.lp <= 20:
+        if player.lp <= d.LP_LOW_THRESHOLD:
             player_fg, player_bg = "red", ("magenta" if is_poisoned else None)
         elif is_poisoned:
             player_fg, player_bg = "magenta", None
@@ -239,7 +239,7 @@ class BlessedUI:
         add(item_str + "  ")
         add(f"LP: {player.lp} [")
         bar_len = 8
-        bar_color = "red" if player.lp <= 20 else "white"
+        bar_color = "red" if player.lp <= d.LP_LOW_THRESHOLD else "white"
         for char, _ in block_progress_cells(player.lp, d.LP_MAX, bar_len, 0):
             add(char, bar_color)
         add("]  ")
