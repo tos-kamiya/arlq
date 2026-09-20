@@ -350,7 +350,7 @@ class PygletUI:
             self._draw_field_text((px + 1, py), player.companion.tribe.char, COLOR_MAP[CI_GREEN], bold=True)
 
         # Draw entities (monster and treasures)
-        player_attack = d.player_attack_by_level(player)
+        player_attack = d.current_player_attack(player, stage_num)
 
         if show_entities:
             for ei, e in enumerate(entities):
@@ -420,7 +420,7 @@ class PygletUI:
         tribes = stage_roster if stage_roster is not None else (
             d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
         )
-        ranking_attack = d.player_attack_by_level(player, include_stage3_bonuses=stage_num == 3)
+        ranking_attack = d.current_player_attack(player, stage_num)
         for y, (char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, self.field_height)):
             if char is None:
                 continue

@@ -431,7 +431,7 @@ def update_entities(
                 message = (MESSAGE_TICKS, tr("-- The High Elf does not recognize you."))
                 continue
 
-            player_attack = d.player_attack_by_level(player)
+            player_attack = d.current_player_attack(player)
 
             if player_attack < d.monster_level(m):
                 if respawn_point is None:

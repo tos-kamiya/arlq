@@ -250,10 +250,6 @@ def build() -> Tuple[List[Floor], d.Player]:
     return floors, player
 
 
-def _attack(player: d.Player) -> int:
-    return d.player_attack_by_level(player, include_stage3_bonuses=True)
-
-
 def _move_player(direction: d.Point, current: Floor, player: d.Player) -> None:
     """Apply one step of player movement, including sword-breaking and Pegasus jumps."""
     dx, dy = direction
@@ -453,7 +449,7 @@ def _resolve_monster_contact(
     elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2:
         current["entities"].append(entity)
         event_message = tr("-- The High Elf does not recognize you.")
-    elif _attack(player) < d.monster_level(entity):
+    elif d.current_player_attack(player, 3) < d.monster_level(entity):
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity
         # here prevents a failed attack from deleting it.

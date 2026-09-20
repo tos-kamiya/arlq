@@ -382,7 +382,7 @@ def test_sword_and_poison_attack_modifiers(item, expected_attack):
     player = d.Player(2, 2, 10, 90)
     player.item = item
 
-    assert d.player_attack_by_level(player) == expected_attack
+    assert d.current_player_attack(player) == expected_attack
 
 
 def test_sword_breaks_wall_and_consumes_one_use():
@@ -444,7 +444,22 @@ def test_collector_and_javelin_elves_increase_stage3_attack():
     player.stage3_flags = STAGE3_K
     player.persistent_followers = [(2, 2, 0, "J")]
 
-    assert d.player_attack_by_level(player, include_stage3_bonuses=True) == 150
+    assert d.current_player_attack(player, 3) == 150
+
+
+@pytest.mark.parametrize("stage_num", [0, 1, 2])
+def test_stage3_bonuses_do_not_apply_outside_stage3(stage_num):
+    # Regression test: the on-screen red/blue color coding and the strength
+    # ranking column must use the same boosted attack value that Stage 3
+    # combat resolution uses, and only when actually in Stage 3 - otherwise a
+    # monster can be shown as unbeatable (red) while dying on contact, or
+    # vice versa.
+    player = d.Player(2, 2, 100, 90)
+    player.stage3_flags = STAGE3_K
+    player.persistent_followers = [(2, 2, 0, "J")]
+
+    assert d.current_player_attack(player, stage_num) == 100
+    assert d.current_player_attack(player, 3) == 150
 
 
 @pytest.mark.parametrize(
