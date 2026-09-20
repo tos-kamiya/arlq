@@ -206,7 +206,7 @@ class BlessedUI:
             level_str += " +25%"
 
         if stage_num == 3:
-            add(f"ST: 3 F:{player.stage3_floor + 1}  ")
+            add(f"ST: 3 F: {player.stage3_floor + 1}  ")
         elif stage_num != 0:
             add(f"ST: {stage_num}  ")
         add(f"HRS: {hours}  ")
