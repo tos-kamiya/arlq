@@ -373,24 +373,34 @@ def build_strength_column(
     max_rows: int,
 ) -> List[Tuple[Optional[str], bool]]:
     """
-    Rank a stage's monster tribes and the player by strength, strongest first, as
-    a side-column display replacing the old ">X" beatable-monster indicator.
+    Lay out a stage's monster tribes and the player for the right-edge
+    strength column, replacing the old ">X" beatable-monster indicator.
 
-    Returns up to `max_rows` (char, is_player) pairs, char is None for a blank
-    row. If everything fits, the list is shorter than max_rows and meant to be
-    drawn top-aligned. If it overflows, the player is pinned to the last row
-    and as many stronger tribes as fit are kept above it (padded with blank
-    rows at the top when too few tribes are stronger than the player).
+    The player is fixed near the vertical center with a blank row on each
+    side. Tribes stronger than the player stack above it (strongest at the
+    top, closest to the player at the bottom, right above the gap); tribes
+    the player can beat (including a tie) stack below it (closest to the
+    player at the top, right below the gap, weakest at the bottom). If a
+    side has more tribes than fit, the ones closest to the player's
+    strength are kept and the rest are dropped, leaving blank rows at that
+    side's far end.
+
+    Returns exactly `max_rows` (char, is_player) pairs, char is None for a
+    blank row.
     """
-    entries = [(t.level, t.char, False) for t in tribes]
-    entries.append((player_attack, "@", True))
-    # On a tie, the player ranks above the tribe of the same level: an equal
-    # attack value is enough to beat it.
-    entries.sort(key=lambda e: (e[0], e[2]), reverse=True)
-    if len(entries) <= max_rows:
-        return [(char, is_player) for _, char, is_player in entries]
-    player_index = next(i for i, e in enumerate(entries) if e[2])
-    end = player_index + 1
-    start = max(0, end - max_rows)
-    window = [(char, is_player) for _, char, is_player in entries[start:end]]
-    return [(None, False)] * (max_rows - len(window)) + window
+    stronger = sorted((t for t in tribes if t.level > player_attack), key=lambda t: t.level, reverse=True)
+    weaker = sorted((t for t in tribes if t.level <= player_attack), key=lambda t: t.level, reverse=True)
+
+    center = max_rows // 2
+    above_cap = max(center - 1, 0)
+    below_cap = max(max_rows - center - 2, 0)
+
+    kept_above = stronger[-above_cap:] if above_cap else []
+    kept_below = weaker[:below_cap]
+
+    above_column: List[Tuple[Optional[str], bool]] = [(None, False)] * (above_cap - len(kept_above))
+    above_column += [(t.char, False) for t in kept_above]
+    below_column: List[Tuple[Optional[str], bool]] = [(t.char, False) for t in kept_below]
+    below_column += [(None, False)] * (below_cap - len(kept_below))
+
+    return above_column + [(None, False), ("@", True), (None, False)] + below_column
