@@ -273,18 +273,23 @@ class PygletUI:
         if checkpoint is not None and checkpoint != (px, py):
             self._draw_field_text(checkpoint, "+", COLOR_MAP[CI_YELLOW], bold=True)
 
-        # Draw the player character. Low LP or poisoned is shown as a
-        # background highlight behind "@" rather than a text color, since
-        # red/blue text colors are already used for beatable/dangerous
-        # monsters.
-        player_bg = None
-        if player.lp <= d.LP_LOW_THRESHOLD:
-            player_bg = COLOR_MAP[CI_RED]
-        elif player.item == d.ITEM_POISONED:
-            player_bg = COLOR_MAP[CI_MAGENTA]
-        if player_bg is not None:
-            self._draw_rect(self._field_col_x(px), py * CELL_SIZE_Y, CELL_SIZE_X + 1, CELL_SIZE_Y + 1, player_bg)
-        self._draw_field_text((px, py), "@", COLOR_MAP["default"], bold=True)
+        # Draw the player character. Low LP is a red background highlight
+        # behind "@"; poisoned tints the text magenta instead, so both can be
+        # shown at once. Magenta-on-red is hard to read, so that combination
+        # switches the text to black instead.
+        is_low_lp = player.lp <= d.LP_LOW_THRESHOLD
+        is_poisoned = player.item == d.ITEM_POISONED
+        if is_low_lp:
+            self._draw_rect(
+                self._field_col_x(px), py * CELL_SIZE_Y, CELL_SIZE_X + 1, CELL_SIZE_Y + 1, COLOR_MAP[CI_RED]
+            )
+        if is_low_lp and is_poisoned:
+            player_color = (0, 0, 0)
+        elif is_poisoned:
+            player_color = COLOR_MAP[CI_MAGENTA]
+        else:
+            player_color = COLOR_MAP["default"]
+        self._draw_field_text((px, py), "@", player_color, bold=True)
 
         if player.companion is not None and px + 1 < d.FIELD_WIDTH:
             self._draw_field_text((px + 1, py), player.companion.tribe.char, COLOR_MAP[CI_GREEN], bold=True)

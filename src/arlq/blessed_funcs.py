@@ -169,17 +169,19 @@ class BlessedUI:
                 if unlocked_treasures is not None and entity.unlock_key in unlocked_treasures:
                     put(entity.x, entity.y, d.CHAR_TREASURE, "yellow", bold=True)
 
-        # "@" is white by default, matching the GUI. Poisoned tints the text
-        # magenta; low LP takes over the text as red instead (it's the more
-        # urgent state), pushing poisoned down to a background highlight so
-        # both remain visible at once.
+        # "@" is white by default, matching the GUI. Low LP is a red
+        # background highlight; poisoned tints the text magenta instead, so
+        # both can be shown at once. Magenta-on-red is hard to read, so that
+        # combination switches the text to black instead.
         is_poisoned = player.item == d.ITEM_POISONED
-        if player.lp <= d.LP_LOW_THRESHOLD:
-            player_fg, player_bg = "red", ("magenta" if is_poisoned else None)
+        is_low_lp = player.lp <= d.LP_LOW_THRESHOLD
+        player_bg = "red" if is_low_lp else None
+        if is_low_lp and is_poisoned:
+            player_fg = "black"
         elif is_poisoned:
-            player_fg, player_bg = "magenta", None
+            player_fg = "magenta"
         else:
-            player_fg, player_bg = "white", None
+            player_fg = "white"
         put(px, py, "@", player_fg, bold=True, bg=player_bg)
         if player.companion and px + 1 < d.FIELD_WIDTH:
             put(px + 1, py, player.companion.tribe.char, dim=True)
