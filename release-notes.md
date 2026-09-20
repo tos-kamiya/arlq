@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 4.5.1 - 2026-09-21
+
+- Fix Stage 3 monster color coding (red/beatable-blue) to include the
+  Javelin Elf and Collector Elf attack bonuses, matching actual combat
+  resolution. Previously an empowered monster could be shown as
+  unbeatable (red) while still dying on contact.
+
 ## 4.5.0 - 2026-09-21
 
 - Add Japanese localization: in-game event/status messages and the
