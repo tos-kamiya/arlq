@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 4.5.0 - 2026-09-21
+
+- Add Japanese localization: in-game event/status messages and the
+  stage-select screen, in both the GUI and terminal frontends, can now
+  display in Japanese. Status-bar abbreviations and item names stay in
+  English to avoid breaking fixed-width layouts.
+- Add the `--lang {auto,en,ja}` option. `auto` (the default) detects the
+  language from the environment: an explicit `LC_ALL`/`LC_MESSAGES`/`LANG`
+  environment variable is honored first, then falls back to a native
+  per-OS UI-language lookup (Windows, macOS) when none is set.
+
 ## 4.4.2 - 2026-09-20
 
 - Fix the low-LP and poisoned player indicators so both can be shown at
