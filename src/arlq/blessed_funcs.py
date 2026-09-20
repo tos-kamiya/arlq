@@ -3,6 +3,7 @@ from typing import List, Optional, Set
 from blessed import Terminal
 
 from . import defs as d
+from .i18n import t as tr
 from .utils import block_progress_cells
 
 
@@ -211,7 +212,7 @@ class BlessedUI:
         def add(text: str, color: Optional[str] = None, bold: bool = False, dim: bool = False):
             nonlocal x
             output.append(self.term.move_xy(x, y) + self._style(text, color, bold, dim))
-            x += len(text)
+            x += self.term.length(text)
 
         has_stage3_k = stage_num == 3 and getattr(player, "stage3_flags", 0) & d.STAGE3_K_FLAG
         has_stage3_j = stage_num == 3 and any(
@@ -259,7 +260,7 @@ class BlessedUI:
         if message:
             available = self.term.width - x - 1
             if available > 0:
-                add(message[:available], bold=True)
+                add(self.term.truncate(message, available), bold=True)
         return "".join(output)
 
     def draw_stage(
@@ -310,12 +311,12 @@ class BlessedUI:
 
     def select_stage(self) -> int:
         num_stages = len(d.STAGE_TO_SPAWN_CONFIGS)
-        options = ["[q]uit"] + [f"stage [{n}]" for n in range(1, num_stages + 1)]
+        options = [tr("[q]uit")] + [tr("stage [{n}]").format(n=n) for n in range(1, num_stages + 1)]
         current_index = 1
         while True:
             self._wait_for_terminal_size()
             output = [self.term.home + self.term.clear]
-            output.append(self.term.move_xy(2, 2) + self.term.bold(self.term.yellow("Stage Selection")))
+            output.append(self.term.move_xy(2, 2) + self.term.bold(self.term.yellow(tr("Stage Selection"))))
             for i, option in enumerate(options):
                 prefix = ">" if i == current_index else " "
                 text = f"{prefix} {option}"

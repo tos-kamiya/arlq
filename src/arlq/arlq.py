@@ -13,6 +13,7 @@ from .__about__ import __version__
 
 from .utils import rand
 from . import defs as d
+from .i18n import t as tr, detect_language, set_language
 
 MESSAGE_TICKS = 8
 
@@ -405,7 +406,7 @@ def update_entities(
         if isinstance(ee, d.Treasure):
             t: d.Treasure = ee
             if t.unlock_key in unlocked_treasures:
-                message = (10, ">> Treasures collected! <<")
+                message = (10, tr(">> Treasures collected! <<"))
                 del entities[eei]
                 effect = d.EFFECT_GOT_TREASURE
         elif isinstance(ee, d.Companion):
@@ -418,7 +419,7 @@ def update_entities(
             player.karma = 0
 
             if c.tribe.event_message:
-                message = (MESSAGE_TICKS, c.tribe.event_message)
+                message = (MESSAGE_TICKS, tr(c.tribe.event_message))
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
             player.known_monsters.add(d.monster_type_key(m))
@@ -427,7 +428,7 @@ def update_entities(
             # remains in place until the required elf progress is available,
             # and must not establish a respawn checkpoint on contact.
             if m.tribe.char == "H":
-                message = (MESSAGE_TICKS, "-- The High Elf does not recognize you.")
+                message = (MESSAGE_TICKS, tr("-- The High Elf does not recognize you."))
                 continue
 
             player_attack = d.player_attack_by_level(player)
@@ -442,7 +443,7 @@ def update_entities(
                 player.item_taken_from = ""
                 player.lp -= d.LP_RESPAWN_COST
                 player.lp = max(d.LP_RESPAWN_MIN, min(player.lp, d.LP_INIT))
-                message = (MESSAGE_TICKS, "-- Respawned!")
+                message = (MESSAGE_TICKS, tr("-- Respawned!"))
             else:
                 del entities[eei]
 
@@ -484,12 +485,12 @@ def update_entities(
                     player.lp = (player.lp * 3 + 3) // 4
 
                 if m.tribe.event_message:
-                    message = (MESSAGE_TICKS, m.tribe.event_message)
+                    message = (MESSAGE_TICKS, tr(m.tribe.event_message))
 
     reveal_entities_in_fov(player, entities)
 
     if player.companion is not None and player.karma >= player.companion.tribe.durability:
-        message = (MESSAGE_TICKS, "-- The companion vanishes.")
+        message = (MESSAGE_TICKS, tr("-- The companion vanishes."))
         char = player.companion.tribe.char
         tribes_to_be_respawned.append(char)
         player.companion = None
@@ -592,7 +593,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     while True:
         # Starvation check
         if player.lp <= 0:
-            message = (-1, ">> Starved to Death. <<")
+            message = (-1, tr(">> Starved to Death. <<"))
             break
 
         # Update view / auto mapping
@@ -685,7 +686,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             if hasattr(ui, "map_mode"):
                 ui.map_mode = True
         elif c == "s":
-            message = (-1, f"SEED: {seed_str}")
+            message = (-1, tr("SEED: {seed_str}").format(seed_str=seed_str))
 
 
 def generate_seed_string(args):
@@ -762,8 +763,14 @@ def main():
         help="Use the Blessed terminal UI (--curses is a deprecated alias).",
     )
     parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
+    parser.add_argument(
+        "--lang", choices=["en", "ja"], default=None,
+        help="UI message language (default: auto-detect from the locale).",
+    )
 
     args = parser.parse_args()
+
+    set_language(args.lang or detect_language())
 
     if args.rematch and (args.seed is not None or args.stage):
         parser.error("--rematch cannot be combined with --seed or --stage")
