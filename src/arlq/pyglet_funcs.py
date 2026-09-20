@@ -9,24 +9,15 @@ from . import defs as d
 from .i18n import t as tr
 
 # "Courier New" (the game's normal font) has no Japanese glyphs, so a label
-# containing translated text would render as tofu boxes. pyglet.text.Label
-# picks the first available name from a font_name list, so non-ASCII labels
-# add these common Japanese-capable fonts as fallbacks (checked in order;
-# harmless if a given font isn't installed). No fonts are bundled with the
-# package, so rendering still depends on the OS having one of these.
-JAPANESE_FALLBACK_FONTS = [
-    "Noto Sans Mono CJK JP",
-    "Noto Sans CJK JP",
-    "IPAGothic",
-    "IPAPGothic",
-    "TakaoGothic",
-    "Yu Gothic",
-    "MS Gothic",
-    "Meiryo",
-    "Hiragino Kaku Gothic ProN",
-    "Hiragino Sans",
-    "sans-serif",
-]
+# containing translated text would render as tofu boxes. Rather than
+# hardcoding specific Japanese font names (which assumes a particular OS and
+# language), non-ASCII text is requested by generic family name instead:
+# "monospace", then "sans-serif". The OS's own font-substitution logic (e.g.
+# fontconfig on Linux) resolves these based on the current locale, so a
+# Japanese-locale system already tends to substitute a Japanese-capable font
+# with no locale-specific names needed here. If neither resolves, the game's
+# normal font is used unchanged (no fonts are bundled with the package).
+NON_ASCII_FONT_CANDIDATES = ["monospace", "sans-serif"]
 
 # RGB colors corresponding to terminal color names
 CI_RED = 1
@@ -106,6 +97,9 @@ class PygletUI:
 
         self.font_name = "Courier New"
         self.font_size = int(CELL_SIZE_Y * 0.82)
+        # Lazily resolved (font_name, size_scale) for non-ASCII text; see
+        # _non_ascii_font(). None until first computed.
+        self._non_ascii_font_result: Optional[Tuple[str, float]] = None
 
         self.batch = pyglet.graphics.Batch()
         self._drawables: list = []
@@ -164,17 +158,11 @@ class PygletUI:
         Draws text at the grid cell defined by pos, optionally nudged by
         `x_offset` pixels (used to inset text within a cell).
         """
-        # pyglet.font.load() picks the first *installed* name in a font_name
-        # list, regardless of glyph coverage. "Courier New" is installed on
-        # most systems, so it must be left out of the list for non-ASCII
-        # text or it would always "win" and render Japanese as tofu.
-        is_ascii = text.isascii()
-        font_name = self.font_name if is_ascii else JAPANESE_FALLBACK_FONTS
-        # At the same nominal size, common Japanese fonts (e.g. Noto Sans
-        # CJK JP) have a noticeably taller ascent than Courier New, making
-        # translated text look oversized and overflow its row/cell. Scale
-        # it down to roughly match Courier New's cap height.
-        font_size = self.font_size if is_ascii else self.font_size * 0.72
+        if text.isascii():
+            font_name, font_size = self.font_name, self.font_size
+        else:
+            non_ascii_font_name, size_scale = self._non_ascii_font()
+            font_name, font_size = non_ascii_font_name, self.font_size * size_scale
         label = pyglet.text.Label(
             text,
             font_name=font_name,
@@ -188,6 +176,41 @@ class PygletUI:
             batch=self.batch,
         )
         self._drawables.append(label)
+
+    def _non_ascii_font(self) -> Tuple[str, float]:
+        """Resolve the font (and a matching font-size scale) for non-ASCII
+        text, trying generic family names in order: "monospace", then
+        "sans-serif". These are resolved by the OS's own font substitution
+        (e.g. fontconfig on Linux), which already accounts for the current
+        locale, so no specific Japanese font names are hardcoded here.
+
+        Falls back to the game's normal font unscaled if neither resolves.
+        The size scale corrects for common Japanese fonts rendering
+        noticeably taller than Courier New at the same nominal size; it is
+        computed from actual font metrics rather than a fixed constant, so
+        it adapts to whichever font actually gets resolved.
+        """
+        if self._non_ascii_font_result is not None:
+            return self._non_ascii_font_result
+
+        result = (self.font_name, 1.0)
+        try:
+            base_ascent = pyglet.font.load(self.font_name, size=self.font_size).ascent
+        except Exception:
+            base_ascent = None
+
+        if base_ascent:
+            for candidate in NON_ASCII_FONT_CANDIDATES:
+                try:
+                    font = pyglet.font.load(candidate, size=self.font_size)
+                except Exception:
+                    continue
+                scale = base_ascent / font.ascent if font.ascent else 1.0
+                result = (candidate, scale)
+                break
+
+        self._non_ascii_font_result = result
+        return result
 
     def _field_col_x(self, col: int) -> int:
         """Pixel x-start of field column `col`, accounting for the narrower
