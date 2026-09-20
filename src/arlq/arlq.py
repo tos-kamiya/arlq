@@ -13,7 +13,7 @@ from .__about__ import __version__
 
 from .utils import rand
 from . import defs as d
-from .i18n import t as tr, detect_language, set_language
+from .i18n import t as tr, set_language
 
 MESSAGE_TICKS = 8
 
@@ -770,7 +770,7 @@ def main():
 
     args = parser.parse_args()
 
-    set_language(detect_language() if args.lang == "auto" else args.lang)
+    set_language(args.lang)
 
     if args.rematch and (args.seed is not None or args.stage):
         parser.error("--rematch cannot be combined with --seed or --stage")
