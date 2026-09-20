@@ -377,7 +377,7 @@ class PygletUI:
 
         status_line = ""
         if stage_num == 3:
-            status_line += "ST: 3 F:%d  " % (player.stage3_floor + 1)
+            status_line += "ST: 3 F: %d  " % (player.stage3_floor + 1)
         elif stage_num != 0:
             status_line += "ST: %d  " % stage_num
         status_line += "HRS: %d  " % hours
@@ -432,7 +432,7 @@ class PygletUI:
                 bold=True,
             )
             if message:
-                self._draw_text((16, self.field_height + 1), message, COLOR_MAP[CI_YELLOW], bold=True)
+                self._draw_text((18, self.field_height + 1), message, COLOR_MAP[CI_YELLOW], bold=True)
         elif message:
             self._draw_text((0, self.field_height + 1), message, COLOR_MAP["default"], bold=True)
 
