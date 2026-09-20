@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 4.4.2 - 2026-09-20
+
+- Fix the low-LP and poisoned player indicators so both can be shown at
+  once: low LP now always highlights the "@" background red and poisoned
+  always tints its text magenta, switching to black text when both apply,
+  in both the GUI and terminal renderers.
+
 ## 4.4.1 - 2026-09-20
 
 - Replace the ">X" beatable-monster status indicator with a right-edge
