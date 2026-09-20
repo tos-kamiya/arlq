@@ -33,9 +33,11 @@ WALL = (67, 73, 84)
 VISIBLE_FLOOR = (43, 52, 65)
 VISIBLE_WALL = (86, 96, 111)
 STRENGTH_COLUMN_BG = (30, 34, 48)
+STRENGTH_COLUMN_PADDING = 4
 
 CELL_SIZE_Y = 20
 CELL_SIZE_X = 13
+STRENGTH_COLUMN_WIDTH = CELL_SIZE_X + 2 * STRENGTH_COLUMN_PADDING
 
 # Keys that map to a movement direction, shared by input_direction().
 _DIRECTION_KEYS = {
@@ -61,8 +63,10 @@ class PygletUI:
         self.field_height = d.FIELD_HEIGHT
 
         # Calculate window dimensions (including status bar area and the
-        # right-edge strength column, one extra cell wide)
-        self.window_width = (self.field_width + 1) * CELL_SIZE_X
+        # right-edge strength column). The column is a cell wide plus left/
+        # right padding, so its character has room to render before the
+        # window's true edge.
+        self.window_width = self.field_width * CELL_SIZE_X + STRENGTH_COLUMN_WIDTH
         self.window_height = (self.field_height + 2) * CELL_SIZE_Y
 
         self.window = pyglet.window.Window(
@@ -126,16 +130,18 @@ class PygletUI:
         text: str,
         color: Tuple[int, int, int],
         bold: bool = False,
+        x_offset: int = 0,
     ):
         """
-        Draws text at the grid cell defined by pos.
+        Draws text at the grid cell defined by pos, optionally nudged by
+        `x_offset` pixels (used to inset text within a cell).
         """
         label = pyglet.text.Label(
             text,
             font_name=self.font_name,
             font_size=self.font_size,
             weight="bold" if bold else "normal",
-            x=pos[0] * CELL_SIZE_X,
+            x=pos[0] * CELL_SIZE_X + x_offset,
             y=self.window_height - pos[1] * CELL_SIZE_Y,
             anchor_x="left",
             anchor_y="top",
@@ -307,12 +313,13 @@ class PygletUI:
                 self._draw_text((fx, fy), fchar, COLOR_MAP[CI_GREEN], bold=True)
 
         # Draw the right-edge strength column: the stage's monster tribes and
-        # the player, ranked strongest-first. A tinted background sets it
-        # apart from the field.
+        # the player, ranked strongest-first. A tinted background (full
+        # column width) sets it apart from the field; the characters are
+        # padded in from its left/right edges.
         self._draw_rect(
             self.field_width * CELL_SIZE_X,
             0,
-            CELL_SIZE_X,
+            STRENGTH_COLUMN_WIDTH,
             self.field_height * CELL_SIZE_Y,
             STRENGTH_COLUMN_BG,
         )
@@ -323,7 +330,9 @@ class PygletUI:
         for y, (char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, self.field_height)):
             if char is None:
                 continue
-            self._draw_text((self.field_width, y), char, COLOR_MAP["default"], bold=is_player)
+            self._draw_text(
+                (self.field_width, y), char, COLOR_MAP["default"], bold=is_player, x_offset=STRENGTH_COLUMN_PADDING
+            )
 
         # Draw the status bar
         self.draw_status_bar(hours, player, stage_num, message, extra_keys)
