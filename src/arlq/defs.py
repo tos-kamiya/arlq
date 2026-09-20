@@ -290,7 +290,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
 ]
 
 COMPANION_TRIBES: List[CompanionTribe] = [
-    _CT("l", event_message="-- Something went terribly wrong..."),  # Looping companion
+    _CT("l"),  # Looping companion; contact always rewinds via _rewind_to_history, so no event_message here
     _CT("n", 10, event_message="-- Nomicon joined!"),  # Nomicon
     _CT("o", 20, event_message="-- Ocular joined!"),  # Ocular
     _CT("p", 5, event_message="-- Pegasus joined!"),  # Pegasus

@@ -23,7 +23,7 @@ STAGE3_C, STAGE3_I, STAGE3_K, STAGE3_H, STAGE3_W, STAGE3_J = 1, 2, 4, 8, 16, 64
 
 ELF_REPEAT_MESSAGES = {
     "I": "-- The elf watches you in silence.",
-    "K": "-- The cursed sword has served its purpose.",
+    "K": "-- The Collector Elf looks satisfied.",
     "H": "-- Keep the talisman close to your skin.",
 }
 
