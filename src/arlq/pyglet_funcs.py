@@ -59,8 +59,9 @@ class PygletUI:
         self.field_width = d.FIELD_WIDTH
         self.field_height = d.FIELD_HEIGHT
 
-        # Calculate window dimensions (including status bar area)
-        self.window_width = self.field_width * CELL_SIZE_X
+        # Calculate window dimensions (including status bar area and the
+        # right-edge strength column, one extra cell wide)
+        self.window_width = (self.field_width + 1) * CELL_SIZE_X
         self.window_height = (self.field_height + 2) * CELL_SIZE_Y
 
         self.window = pyglet.window.Window(
@@ -189,6 +190,7 @@ class PygletUI:
         checkpoint: Optional[d.Point] = None,
         unlocked_treasures: Optional[Set[str]] = None,
         dim_types: Optional[Set[str]] = None,
+        stage_roster: Optional[List[d.MonsterTribe]] = None,
     ):
         """
         Renders the game stage:
@@ -303,6 +305,17 @@ class PygletUI:
             if ffloor == player.stage3_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
                 self._draw_text((fx, fy), fchar, COLOR_MAP[CI_GREEN], bold=True)
 
+        # Draw the right-edge strength column: the stage's monster tribes and
+        # the player, ranked strongest-first.
+        tribes = stage_roster if stage_roster is not None else (
+            d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
+        )
+        ranking_attack = d.player_attack_by_level(player, include_stage3_bonuses=stage_num == 3)
+        for y, (char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, self.field_height)):
+            if char is None:
+                continue
+            self._draw_text((self.field_width, y), char, COLOR_MAP["default"], bold=is_player)
+
         # Draw the status bar
         self.draw_status_bar(hours, player, stage_num, message, extra_keys)
 
@@ -344,12 +357,6 @@ class PygletUI:
         if has_stage3_j:
             level_str += " +25%"
 
-        beatable = d.get_max_beatable_monster_tribe(
-            player,
-            include_stage3_boss=stage_num == 3,
-            include_stage3_bonuses=stage_num == 3,
-        )
-
         status_line = ""
         if stage_num == 3:
             status_line += "ST: 3 F:%d  " % (player.stage3_floor + 1)
@@ -358,8 +365,6 @@ class PygletUI:
         status_line += "HRS: %d  " % hours
         status_line += level_str + "  "
         status_line += item_str + "  "
-        if beatable:
-            status_line += ">%s  " % ",".join(b.char for b in beatable)
         status_line += "LP: "
 
         self._draw_text((0, self.field_height), status_line, COLOR_MAP["default"])
