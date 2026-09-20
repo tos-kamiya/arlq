@@ -54,8 +54,9 @@ it is enlarged again.
 - Use `--rematch` to replay the most recently started stage with the same seed.
 - Use `--version` to show the version.
 - Use `--lang en` or `--lang ja` to choose the language of in-game messages
-  and the stage-select screen (default: auto-detected from the locale).
-  Status-bar labels and item names stay in English regardless of language.
+  and the stage-select screen. `--lang auto` (the default) detects it from
+  the locale. Status-bar labels and item names stay in English regardless
+  of language.
 
 At game start, the stage and seed are saved to `arlq/last-seed` under the user
 cache directory. `--rematch` starts the saved stage without showing the stage

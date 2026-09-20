@@ -764,13 +764,13 @@ def main():
     )
     parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
     parser.add_argument(
-        "--lang", choices=["en", "ja"], default=None,
-        help="UI message language (default: auto-detect from the locale).",
+        "--lang", choices=["auto", "en", "ja"], default="auto",
+        help="UI message language ('auto' detects it from the locale; default: auto).",
     )
 
     args = parser.parse_args()
 
-    set_language(args.lang or detect_language())
+    set_language(detect_language() if args.lang == "auto" else args.lang)
 
     if args.rematch and (args.seed is not None or args.stage):
         parser.error("--rematch cannot be combined with --seed or --stage")
