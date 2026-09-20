@@ -45,11 +45,17 @@ def set_language(lang: str) -> None:
 
 
 def detect_language() -> str:
-    """Guess a language from the environment's locale variables."""
+    """Guess a language from the environment's locale variables.
+
+    Follows POSIX precedence: LC_ALL overrides LC_MESSAGES, which
+    overrides LANG. Whichever of these is set first (even to "C" or
+    "POSIX") is authoritative, so it decides the language on its own
+    instead of falling through to the next variable.
+    """
     for var in ("LC_ALL", "LC_MESSAGES", "LANG"):
         value = os.environ.get(var, "")
-        if value.lower().startswith("ja"):
-            return "ja"
+        if value:
+            return "ja" if value.lower().startswith("ja") else "en"
     return "en"
 
 
