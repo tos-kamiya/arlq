@@ -22,8 +22,8 @@ LOOP_TURNS = 80
 STAGE3_C, STAGE3_I, STAGE3_K, STAGE3_H, STAGE3_W, STAGE3_J = 1, 2, 4, 8, 16, 64
 
 ELF_REPEAT_MESSAGES = {
-    "I": "-- The elf watches you in silence.",
-    "K": "-- The Collector Elf looks satisfied.",
+    "I": "-- The elf (I) watches you in silence.",
+    "K": "-- The Collector Elf (K) looks satisfied.",
     "H": "-- Keep the talisman close to your skin.",
 }
 
@@ -449,7 +449,7 @@ def _resolve_monster_contact(
         player.persistent_followers.append((player.x, player.y, floor[0], "J"))
     elif ch == "K" and not (player.stage3_flags & STAGE3_C):
         current["entities"].append(entity)
-        event_message = tr("-- Bring the cursed sword.")
+        event_message = tr("-- Bring the cursed sword (C).")
     elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2:
         current["entities"].append(entity)
         event_message = tr("-- The High Elf does not recognize you.")
@@ -643,7 +643,7 @@ def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
     queue: "Counter[Tuple[int, str]]" = Counter()
     history: Deque[HistoryEntry] = deque()
     hours = 0
-    message: Tuple[int, str] = (5, tr("-- The King has ordered the Dread Wyrm slain."))
+    message: Tuple[int, str] = (5, tr("-- The King has ordered the Dread Wyrm (W) slain."))
 
     while player.lp > 0 and not player.stage3_won:
         current = floors[floor[0]]
