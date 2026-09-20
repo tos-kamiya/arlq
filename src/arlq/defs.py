@@ -286,7 +286,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("H", 0, 0, event_message="-- The High Elf bestowed the talisman upon you!", is_elf=True),
     _MT("m", 5, MIN_FOOD, event_message="-- Spores cloud your vision!"),
     _MT("w", 50, MIN_FOOD),
-    _MT("W", 150, MIN_FOOD, event_message="-- Dread Wyrm defeated!", treasure_key=CHAR_TREASURE + "W"),
+    _MT("W", 150, MIN_FOOD, event_message=">> Dread Wyrm defeated! <<", treasure_key=CHAR_TREASURE + "W"),
 ]
 
 COMPANION_TRIBES: List[CompanionTribe] = [
