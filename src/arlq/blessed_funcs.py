@@ -63,15 +63,18 @@ class BlessedUI:
             if key:
                 return key
 
-    def _style(self, text: str, color: Optional[str] = None, bold: bool = False, dim: bool = False) -> str:
+    def _style(
+        self, text: str, color: Optional[str] = None, bold: bool = False, dim: bool = False, bg: Optional[str] = None
+    ) -> str:
         if dim:
             return self.term.dim(text)
-        if bold and color:
-            return self.term.bold(getattr(self.term, color)(text))
+        attr_name = f"{color}_on_{bg}" if color and bg else (f"on_{bg}" if bg else color)
+        if bold and attr_name:
+            return self.term.bold(getattr(self.term, attr_name)(text))
         if bold:
             return self.term.bold(text)
-        if color:
-            return getattr(self.term, color)(text)
+        if attr_name:
+            return getattr(self.term, attr_name)(text)
         return text
 
     def _draw_stage(
@@ -91,8 +94,19 @@ class BlessedUI:
     ) -> str:
         output = [self.term.home + self.term.clear]
 
-        def put(x: int, y: int, text: str, color: Optional[str] = None, bold: bool = False, dim: bool = False):
-            output.append(self.term.move_xy(x, y) + self._style(text, None if monochrome else color, bold, dim))
+        def put(
+            x: int,
+            y: int,
+            text: str,
+            color: Optional[str] = None,
+            bold: bool = False,
+            dim: bool = False,
+            bg: Optional[str] = None,
+        ):
+            output.append(
+                self.term.move_xy(x, y)
+                + self._style(text, None if monochrome else color, bold, dim, None if monochrome else bg)
+            )
 
         player, px, py = None, None, None
         for entity in entities:
@@ -143,7 +157,7 @@ class BlessedUI:
                 type_key = d.monster_type_key(monster)
                 if type_key not in known_types:
                     if not show_entities:
-                        put(entity.x, entity.y, "?", bold=True)
+                        put(entity.x, entity.y, "?", "yellow", bold=True)
                 else:
                     color = "yellow" if monster.tribe.effect == d.EFFECT_UNLOCK_TREASURE else (
                         "blue" if d.monster_level(monster) <= player_attack else "red"
@@ -155,7 +169,18 @@ class BlessedUI:
                 if unlocked_treasures is not None and entity.unlock_key in unlocked_treasures:
                     put(entity.x, entity.y, d.CHAR_TREASURE, "yellow", bold=True)
 
-        put(px, py, "@", "yellow", bold=True)
+        # "@" is white by default, matching the GUI. Poisoned tints the text
+        # magenta; low LP takes over the text as red instead (it's the more
+        # urgent state), pushing poisoned down to a background highlight so
+        # both remain visible at once.
+        is_poisoned = player.item == d.ITEM_POISONED
+        if player.lp <= 20:
+            player_fg, player_bg = "red", ("magenta" if is_poisoned else None)
+        elif is_poisoned:
+            player_fg, player_bg = "magenta", None
+        else:
+            player_fg, player_bg = "white", None
+        put(px, py, "@", player_fg, bold=True, bg=player_bg)
         if player.companion and px + 1 < d.FIELD_WIDTH:
             put(px + 1, py, player.companion.tribe.char, dim=True)
 

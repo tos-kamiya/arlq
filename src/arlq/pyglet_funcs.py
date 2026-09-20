@@ -248,9 +248,18 @@ class PygletUI:
         if checkpoint is not None and checkpoint != (px, py):
             self._draw_text(checkpoint, "+", COLOR_MAP[CI_YELLOW], bold=True)
 
-        # Draw the player character
-        player_color = COLOR_MAP[CI_MAGENTA] if player.item == d.ITEM_POISONED else COLOR_MAP["default"]
-        self._draw_text((px, py), "@", player_color, bold=True)
+        # Draw the player character. Low LP or poisoned is shown as a
+        # background highlight behind "@" rather than a text color, since
+        # red/blue text colors are already used for beatable/dangerous
+        # monsters.
+        player_bg = None
+        if player.lp < 20:
+            player_bg = COLOR_MAP[CI_RED]
+        elif player.item == d.ITEM_POISONED:
+            player_bg = COLOR_MAP[CI_MAGENTA]
+        if player_bg is not None:
+            self._draw_rect(px * CELL_SIZE_X, py * CELL_SIZE_Y, CELL_SIZE_X + 1, CELL_SIZE_Y + 1, player_bg)
+        self._draw_text((px, py), "@", COLOR_MAP["default"], bold=True)
 
         if player.companion is not None and px + 1 < d.FIELD_WIDTH:
             self._draw_text((px + 1, py), player.companion.tribe.char, COLOR_MAP[CI_GREEN], bold=True)
