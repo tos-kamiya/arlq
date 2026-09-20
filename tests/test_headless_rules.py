@@ -44,7 +44,7 @@ def run_stage3_keys(keys, floors, player, floor, checkpoint, queue, history):
     ("level", "expected_message", "expected_position"),
     [
         (1, "-- Respawned!", (2, 2)),
-        (200, "-- Dread Wyrm defeated!", (3, 2)),
+        (200, ">> Dread Wyrm defeated! <<", (3, 2)),
     ],
 )
 def test_stage3_wyrm_combat_updates_message_position_and_state(level, expected_message, expected_position):
@@ -129,7 +129,7 @@ def test_stage3_treasure_requires_current_timeline_w_defeat():
     messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history)
 
     assert messages[0] == "-- You took the treasure, but the King's request remains."
-    assert messages[1] == "-- Dread Wyrm defeated!"
+    assert messages[1] == ">> Dread Wyrm defeated! <<"
     assert player.stage3_treasure_collected
     assert player.stage3_won
     assert floors[0]["entities"] == []
