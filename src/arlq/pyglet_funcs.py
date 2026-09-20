@@ -253,7 +253,7 @@ class PygletUI:
         # red/blue text colors are already used for beatable/dangerous
         # monsters.
         player_bg = None
-        if player.lp < d.LP_LOW_THRESHOLD:
+        if player.lp <= d.LP_LOW_THRESHOLD:
             player_bg = COLOR_MAP[CI_RED]
         elif player.item == d.ITEM_POISONED:
             player_bg = COLOR_MAP[CI_MAGENTA]
@@ -410,7 +410,7 @@ class PygletUI:
         y_offset = self.field_height * CELL_SIZE_Y + (CELL_SIZE_Y - bar_height) // 2
         progress_ratio = player.lp / d.LP_MAX
         fill_width = int(bar_width * progress_ratio)
-        lp_color = COLOR_MAP[CI_RED] if player.lp < d.LP_LOW_THRESHOLD else COLOR_MAP["default"]
+        lp_color = COLOR_MAP[CI_RED] if player.lp <= d.LP_LOW_THRESHOLD else COLOR_MAP["default"]
 
         self._draw_rect_outline(x_offset, y_offset, bar_width, bar_height, COLOR_MAP["default"])
         if fill_width > 0:
