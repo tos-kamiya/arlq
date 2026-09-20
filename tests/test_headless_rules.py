@@ -411,7 +411,7 @@ def test_sword_breaks_wall_and_consumes_one_use():
     [
         ("I", 0, STAGE3_I, "-- The Isolated Elf told you about the history of the elves."),
         ("J", 0, STAGE3_J, "-- The Javelin Elf joins your hunt for the Dread Wyrm!"),
-        ("K", STAGE3_C, STAGE3_C | STAGE3_K, "-- The Collector Elf gave you a rustless blade for your Cursed Sword!"),
+        ("K", STAGE3_C, STAGE3_C | STAGE3_K, "-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!"),
         ("H", STAGE3_I | STAGE3_J, STAGE3_I | STAGE3_J | STAGE3_H, "-- The High Elf bestowed the talisman upon you!"),
     ],
 )
