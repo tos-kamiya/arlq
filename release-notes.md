@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 4.4.1 - 2026-09-20
+
+- Replace the ">X" beatable-monster status indicator with a right-edge
+  strength column that ranks the stage's monsters and the player by
+  strength, in both the GUI and terminal renderers.
+- In the GUI, give the strength column a tinted background and padding so
+  it reads as distinct from the field, and shrink the field's wall-only
+  edge columns to keep the window compact.
+- Fix the Stage 3 status line spacing and the message overlapping the
+  C/I/J/K/H/W/T progress flags in the GUI.
+- Fix the player's low-LP and poisoned indicators so they no longer use the
+  same colors as dangerous/beatable monsters.
+
+## 4.4.0 - 2026-09-19
+
+- Shrink Stage 1 to a smaller introductory map.
+- Note that the Pegasus companion appears from Stage 2 onward.
+
 ## 4.3.1 - 2026-09-19
 
 - Add a CPython compatibility matrix for Python 3.10 through 3.14.
