@@ -86,6 +86,8 @@ class BlessedUI:
         monochrome: bool = False,
         unlocked_treasures: Optional[Set[str]] = None,
         dim_types: Optional[Set[str]] = None,
+        stage_num: int = 0,
+        stage_roster: Optional[List[d.MonsterTribe]] = None,
     ) -> str:
         output = [self.term.home + self.term.clear]
 
@@ -156,6 +158,16 @@ class BlessedUI:
         put(px, py, "@", "yellow", bold=True)
         if player.companion and px + 1 < d.FIELD_WIDTH:
             put(px + 1, py, player.companion.tribe.char, dim=True)
+
+        tribes = stage_roster if stage_roster is not None else (
+            d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
+        )
+        ranking_attack = d.player_attack_by_level(player, include_stage3_bonuses=stage_num == 3)
+        for y, (char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, d.FIELD_HEIGHT)):
+            if char is None:
+                continue
+            put(d.FIELD_WIDTH, y, char, "white", bold=is_player)
+
         return "".join(output) + self.term.normal
 
     def _draw_status_bar(
@@ -193,9 +205,6 @@ class BlessedUI:
         if has_stage3_j:
             level_str += " +25%"
 
-        beatable = d.get_max_beatable_monster_tribe(
-            player, include_stage3_boss=stage_num == 3, include_stage3_bonuses=stage_num == 3
-        )
         if stage_num == 3:
             add(f"ST: 3 F:{player.stage3_floor + 1}  ")
         elif stage_num != 0:
@@ -203,8 +212,6 @@ class BlessedUI:
         add(f"HRS: {hours}  ")
         add(level_str + "  ")
         add(item_str + "  ")
-        if beatable:
-            add(">%s  " % ",".join(b.char for b in beatable))
         add(f"LP: {player.lp} [")
         bar_len = 8
         bar_color = "red" if player.lp <= 20 else "white"
@@ -244,12 +251,13 @@ class BlessedUI:
         checkpoint=None,
         unlocked_treasures: Optional[Set[str]] = None,
         dim_types: Optional[Set[str]] = None,
+        stage_roster: Optional[List[d.MonsterTribe]] = None,
     ):
         self._wait_for_terminal_size()
         show_entities = show_entities or self.map_mode
         stage_args = (
             entities, field, cur_torched, torched, known_types, show_entities,
-            checkpoint, self.map_mode, unlocked_treasures, dim_types,
+            checkpoint, self.map_mode, unlocked_treasures, dim_types, stage_num, stage_roster,
         )
         status_args = (player, hours, stage_num, message, extra_keys)
         self._last_stage = (stage_args, status_args)

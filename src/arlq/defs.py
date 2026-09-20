@@ -299,18 +299,6 @@ CHAR_TO_TRIBE: Dict[str, Tribe] = {mt.char: mt for mt in MONSTER_TRIBES + COMPAN
 CHAR_TO_MONSTER_TRIBE: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
 CHAR_TO_COMPANION_TRIBE: Dict[str, CompanionTribe] = {mt.char: mt for mt in COMPANION_TRIBES}
 
-MONSTER_LEVEL_GAUGE1: List[MonsterTribe] = [
-    CHAR_TO_MONSTER_TRIBE["a"],
-    CHAR_TO_MONSTER_TRIBE["b"],
-    CHAR_TO_MONSTER_TRIBE["c"],
-    CHAR_TO_MONSTER_TRIBE["d"],
-]
-
-MONSTER_LEVEL_GAUGE2: List[MonsterTribe] = [
-    CHAR_TO_MONSTER_TRIBE[CHAR_DRAGON],
-    CHAR_TO_MONSTER_TRIBE[CHAR_FIRE_DRAKE],
-]
-
 _SC = SpawnConfig
 
 # Stage 1 spawn configurations.
@@ -370,21 +358,39 @@ def player_attack_by_level(player: Player, include_stage3_bonuses: bool = False)
     return value
 
 
-def get_max_beatable_monster_tribe(
-    player: Player,
-    include_stage3_boss: bool = False,
-    include_stage3_bonuses: bool = False,
-) -> List[MonsterTribe]:
-    atk = player_attack_by_level(player, include_stage3_bonuses=include_stage3_bonuses)
-    r = []
-    for mt in MONSTER_LEVEL_GAUGE1[::-1]:
-        if mt.level <= atk:
-            r.append(mt)
-            break
-    for mt in MONSTER_LEVEL_GAUGE2[::-1]:
-        if mt.level <= atk:
-            r.append(mt)
-            break
-    if include_stage3_boss and CHAR_TO_MONSTER_TRIBE["W"].level <= atk:
-        r.append(CHAR_TO_MONSTER_TRIBE["W"])
-    return r
+def get_stage_roster_tribes(stage_num: int) -> List[MonsterTribe]:
+    """Distinct, non-elf monster tribes that can appear in stage 1 or 2, strongest first."""
+    configs = STAGE_TO_SPAWN_CONFIGS[stage_num - 1]
+    chars = dict.fromkeys(
+        sc.tribe.char for sc in configs if isinstance(sc.tribe, MonsterTribe) and not sc.tribe.is_elf
+    )
+    return sorted((CHAR_TO_MONSTER_TRIBE[c] for c in chars), key=lambda t: t.level, reverse=True)
+
+
+def build_strength_column(
+    tribes: List[MonsterTribe],
+    player_attack: int,
+    max_rows: int,
+) -> List[Tuple[Optional[str], bool]]:
+    """
+    Rank a stage's monster tribes and the player by strength, strongest first, as
+    a side-column display replacing the old ">X" beatable-monster indicator.
+
+    Returns up to `max_rows` (char, is_player) pairs, char is None for a blank
+    row. If everything fits, the list is shorter than max_rows and meant to be
+    drawn top-aligned. If it overflows, the player is pinned to the last row
+    and as many stronger tribes as fit are kept above it (padded with blank
+    rows at the top when too few tribes are stronger than the player).
+    """
+    entries = [(t.level, t.char, False) for t in tribes]
+    entries.append((player_attack, "@", True))
+    # On a tie, the player ranks above the tribe of the same level: an equal
+    # attack value is enough to beat it.
+    entries.sort(key=lambda e: (e[0], e[2]), reverse=True)
+    if len(entries) <= max_rows:
+        return [(char, is_player) for _, char, is_player in entries]
+    player_index = next(i for i, e in enumerate(entries) if e[2])
+    end = player_index + 1
+    start = max(0, end - max_rows)
+    window = [(char, is_player) for _, char, is_player in entries[start:end]]
+    return [(None, False)] * (max_rows - len(window)) + window

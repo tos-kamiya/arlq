@@ -33,6 +33,20 @@ ROSTER: List[List[Tuple[str, int, int]]] = [
     [("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("w", 1, 1), ("W", 1, 1), ("H", 1, 1), ("n", 1, 1), ("o", 1, 1), ("p", 1, 1)],
 ]
 
+# Distinct, non-elf monster tribes across all floors, strongest first: feeds
+# the right-edge strength column (see d.build_strength_column), which shows
+# the whole stage's roster regardless of which floor the player is on.
+_ROSTER_CHARS = dict.fromkeys(char for floor in ROSTER for char, _, _ in floor)
+ROSTER_TRIBES: List[d.MonsterTribe] = sorted(
+    (
+        d.CHAR_TO_MONSTER_TRIBE[c]
+        for c in _ROSTER_CHARS
+        if c in d.CHAR_TO_MONSTER_TRIBE and not d.CHAR_TO_MONSTER_TRIBE[c].is_elf
+    ),
+    key=lambda t: t.level,
+    reverse=True,
+)
+
 # A per-floor game state. Keeping this as a plain dict (rather than a new
 # class) matches how legacy stages pass field/entities/torched around.
 Floor = Dict[str, Any]
@@ -661,6 +675,7 @@ def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
             checkpoint=checkpoint[0],
             unlocked_treasures=player.unlocked_treasures,
             dim_types=player.stage3_met_elves,
+            stage_roster=ROSTER_TRIBES,
         )
 
         move = ui.input_direction()
@@ -697,6 +712,7 @@ def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
             checkpoint[0],
             player.unlocked_treasures,
             player.stage3_met_elves,
+            stage_roster=ROSTER_TRIBES,
         )
         key = ui.input_alphabet()
         if key is None:
