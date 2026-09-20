@@ -341,7 +341,13 @@ STAGE_TO_SPAWN_CONFIGS = [
 ]
 
 
-def player_attack_by_level(player: Player, include_stage3_bonuses: bool = False) -> int:
+def current_player_attack(player: Player, stage_num: int = 0) -> int:
+    """
+    Player's current attack power: level and equipped item, plus Stage 3's
+    elf/flag bonuses when playing Stage 3. This is the single place that
+    combines those bonuses, so every caller (combat resolution, on-screen
+    color coding, the strength ranking column) sees the same value.
+    """
     if player.item == ITEM_SWORD_X1_5:
         value = player.level * 3 // 2
     elif player.item == ITEM_SWORD_CURSED:
@@ -351,7 +357,7 @@ def player_attack_by_level(player: Player, include_stage3_bonuses: bool = False)
     else:
         value = player.level
 
-    if include_stage3_bonuses:
+    if stage_num == 3:
         if player.stage3_flags & STAGE3_K_FLAG:
             value = (value * 6 + 1) // 5
         if any(follower[3] == "J" for follower in player.persistent_followers):
