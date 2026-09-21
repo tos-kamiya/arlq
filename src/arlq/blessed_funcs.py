@@ -40,7 +40,7 @@ class BlessedUI:
             print(
                 self.term.clear
                 + self.term.home
-                + self.term.bold(TERMINAL_SIZE_MESSAGE),
+                + self.term.bold(tr(TERMINAL_SIZE_MESSAGE)),
                 end="",
                 flush=True,
             )

@@ -44,7 +44,7 @@ def run_stage3_keys(keys, floors, player, floor, checkpoint, queue, history):
     ("level", "expected_message", "expected_position"),
     [
         (1, "-- Respawned!", (2, 2)),
-        (200, ">> Dread Wyrm defeated! <<", (3, 2)),
+        (200, ">> Dread Wyrm (W) defeated! <<", (3, 2)),
     ],
 )
 def test_stage3_wyrm_combat_updates_message_position_and_state(level, expected_message, expected_position):
@@ -128,8 +128,8 @@ def test_stage3_treasure_requires_current_timeline_w_defeat():
 
     messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history)
 
-    assert messages[0] == "-- You took the treasure, but the King's request remains."
-    assert messages[1] == ">> Dread Wyrm defeated! <<"
+    assert messages[0] == "-- You took the treasure chest, but the King's request remains."
+    assert messages[1] == ">> Dread Wyrm (W) defeated! <<"
     assert player.stage3_treasure_collected
     assert player.stage3_won
     assert floors[0]["entities"] == []
@@ -149,7 +149,7 @@ def test_legacy_defeat_applies_item_and_caltrop_field_effect():
 
     assert effect == d.EFFECT_CALTROP_SPREAD
     assert respawns == ["X"]
-    assert message == (8, "-- Caltrops Scattered!")
+    assert message == (8, "-- Caltrops were scattered!")
     assert contact
     assert player.item is None
     assert player.item_taken_from == "X"
@@ -225,7 +225,7 @@ def test_legacy_stage2_high_elf_refuses_once_then_sends_player_elsewhere(monkeyp
     entities = [player, high_elf, weak]
 
     _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
-    assert message == (8, "-- The High Elf does not recognize you.")
+    assert message == (8, "-- The High Elf does not recognize you yet.")
     assert (player.x, player.y) == (3, 2)
     assert player.lp == 90
     assert player.high_elf_refused is True
@@ -497,7 +497,7 @@ def test_sword_breaks_wall_and_consumes_one_use():
     ("elf", "initial_flags", "expected_flags", "expected_message"),
     [
         ("I", 0, STAGE3_I, "-- The Isolated Elf told you about the history of the elves."),
-        ("J", 0, STAGE3_J, "-- The Javelin Elf joins your hunt for the Dread Wyrm!"),
+        ("J", 0, STAGE3_J, "-- The Javelin Elf joined your hunt for the Dread Wyrm!"),
         ("K", STAGE3_C, STAGE3_C | STAGE3_K, "-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!"),
         ("H", STAGE3_I | STAGE3_J, STAGE3_I | STAGE3_J | STAGE3_H, "-- The High Elf bestowed the talisman upon you!"),
     ],
@@ -587,7 +587,7 @@ def test_stage3_high_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
     history = deque()
 
     messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
-    assert messages == ["-- The High Elf does not recognize you."]
+    assert messages == ["-- The High Elf does not recognize you yet."]
     assert (player.x, player.y) == (3, 2)
     assert player.high_elf_refused is True
     assert player.stage3_flags == 0
@@ -619,7 +619,7 @@ def test_stage3_collector_elf_refuses_once_then_sends_player_elsewhere(monkeypat
     history = deque()
 
     messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
-    assert messages == ["-- Bring the cursed sword (C)."]
+    assert messages == ["-- Please bring the cursed sword (C)."]
     assert (player.x, player.y) == (3, 2)
     assert player.k_elf_refused is True
     assert player.stage3_flags == 0
@@ -708,7 +708,7 @@ def test_isolated_elf_sends_player_away_on_repeat_contact(monkeypatch):
     monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (20, 15))
     messages = run_stage3_keys("LR", floors, player, floor, checkpoint, queue, history)
 
-    assert messages[-1] == "-- The elf (I) wants to be left alone, and sends you elsewhere."
+    assert messages[-1] == "-- The Isolated Elf wants to be left alone, and sends you elsewhere."
     assert (player.x, player.y) == (20, 15)
     assert floors[0]["entities"] == [entity]
 
