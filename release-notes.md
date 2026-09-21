@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 4.6.3 - 2026-09-22
+
+- Revise the English and Japanese event messages so both languages
+  describe the same outcome. The stage-clear banner now says the
+  treasure chest was obtained, and the defeat banner says the player
+  collapsed from hunger.
+- In English, drop an initial letter when the creature's name already
+  shows it, such as in the Dragon's treasure-chest message. Japanese
+  messages keep the alphabet letter beside the katakana name.
+- Show the "terminal is too small" prompt in Japanese when the UI
+  language is Japanese.
+
 ## 4.6.2 - 2026-09-22
 
 - Fix the High Elf (`H`) and Stage 3's Collector Elf (`K`) so that, while
