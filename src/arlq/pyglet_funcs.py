@@ -1,5 +1,36 @@
+import locale
+import sys
 import time
 from typing import Optional, Tuple, List, Set
+
+
+def _prepare_x11_locale() -> None:
+    """Keep Pyglet's X11 window properties usable in the C locale.
+
+    Pyglet selects its X11 title-property encoding from the process locale.
+    With ``LC_ALL=C`` it uses the legacy STRING property, which some window
+    managers display as an empty title.  The C.UTF-8 locale is sufficient for
+    Pyglet's X11 UTF-8 property path and does not change the UI language
+    selected by :mod:`arlq.i18n` (that is resolved before this module loads).
+    """
+    if sys.platform != "linux":
+        return
+
+    try:
+        encoding = locale.getlocale(locale.LC_CTYPE)[1]
+        if encoding and encoding.upper().replace("-", "") == "UTF8":
+            return
+        for candidate in ("C.UTF-8", "C.utf8"):
+            try:
+                locale.setlocale(locale.LC_CTYPE, candidate)
+                return
+            except locale.Error:
+                continue
+    except (locale.Error, IndexError):
+        pass
+
+
+_prepare_x11_locale()
 
 import pyglet
 from pyglet.window import key as pgkey
