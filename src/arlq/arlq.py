@@ -443,7 +443,7 @@ def update_entities(
                 # corridor cannot soft-lock the map.
                 if player.last_contact_monster == contact_key:
                     player.x, player.y = find_random_place(entities, field, distance=2)
-                    message = (MESSAGE_TICKS, tr("-- You break free and end up elsewhere."))
+                    message = (MESSAGE_TICKS, tr("-- Respawned to a random location."))
                 else:
                     if respawn_point is None:
                         player.x, player.y = find_random_place(entities, field, distance=2)

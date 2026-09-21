@@ -73,22 +73,20 @@ The terminal interface uses Blessed, which is installed automatically with ARLQ.
 
   Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Four elves, `I`, `J`, `K`, and `H`, appear.
 
-* **Player**  
+* **Player and Fog**  
   You control the character represented by `@` using the arrow keys or WASD.
-
-* **Fog System**  
   The game uses a fog system where only the areas you have walked on are visible. Combined with auto-mapping, areas once visited remain visible on the map.
 
 * **Monsters and Companions**  
-  The dungeon is populated with various monsters and companions. At first, monsters are displayed as `?` and companions as `!`. Once you encounter one, its type (e.g., `a`, `b`, `c`, etc.) is revealed, and other creatures of the same kind will be represented by that character.
-  Monster identities remain known across floors. In Stage 3, companion identities are learned separately on each floor, so an unencountered companion is shown as `!` again on a new floor.
-  Ordinary monsters and temporary companions do not move on their own. The Javelin Elf is a persistent follower and moves to the player's previous position after each successful move.
+  Unencountered monsters are displayed as `?` and companions as `!`. Once you make contact, the type is revealed, and other entities of the same kind are shown with that character. Ordinary monsters and temporary companions do not move on their own, but the Javelin Elf follows the player, moving to the position the player was at before its last move.
 
-* **Encounters**  
-  - **Monsters:** Contacting a monster initiates combat. If the monster is at or below your level, you can defeat it, level up, and obtain any items it may be carrying. However, if you lose to a higher-level monster, you will respawn at the initial spawn point or at the location where you most recently defeated a monster. If you lose to the very same monster twice in a row (with no other monster contact in between), you instead escape to a random location on the map — this prevents an unbeatable monster blocking the only corridor into an area from soft-locking the game. Monsters `a`, `A`, `b`, `c`, and `C` do not respawn after being defeated.
-  - **Companions:** When you come into contact with a companion, it will join you and provide its unique benefit.  
+  Monster identification persists across floors. Companion identification in Stage 3, however, is tracked per floor, so an unencountered companion is shown again as `!` on a new floor.
 
-  Note: Neither monsters nor companions move on their own; they wait for you to approach.
+  Contacting a monster starts combat. Defeating an enemy at or below your attack power levels you up and lets you obtain its belongings and food. Losing to a stronger monster sends you back to the checkpoint. However, if you lose to the very same monster twice in a row without contacting any other monster in between, you instead escape to a random location on the map (this prevents the game from becoming unwinnable when an unbeatable monster blocks a corridor).
+
+  `a`, `A`, `b`, `c`, and `C` do not respawn once defeated. Companions provide their unique benefit for a limited time.
+
+  Defeating the dragon or fire drake unlocks the treasure chest, and making contact with the unlocked `T` clears the stage. A sword can break up to three walls, and being poisoned halves your attack power.
 
 * **Rare Types and Empowered Types**  
   Some monsters have rare variants with special features that differ from the normal ones.  

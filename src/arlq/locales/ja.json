@@ -31,7 +31,7 @@
     "-- Descended to floor {n}/3.": "-- フロア{n}/3に降りた。",
     "-- Ascended to floor {n}/3.": "-- フロア{n}/3に上った。",
     "-- The King has ordered the Dread Wyrm (W) slain.": "-- 国王からドレッドウィルム(W)の討伐を命じられている。",
-    "-- You break free and end up elsewhere.": "-- あなたは抜け出し、どこか別の場所へ移動した。",
+    "-- Respawned to a random location.": "-- リスポーンしてランダムな場所に転移した。",
     "-- The elf (I) wants to be left alone, and sends you elsewhere.": "-- エルフ(I)は一人でいたいらしい。あなたをどこかへ送り出した。",
     "Stage Selection": "ステージ選択",
     "[q]uit": "[q] 終了",
