@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 4.6.2 - 2026-09-22
+
+- Fix the High Elf (`H`) and Stage 3's Collector Elf (`K`) so that, while
+  their condition remains unmet, contacting them a first time only shows
+  their refusal message, but any contact after that now sends the player
+  to a random location on the map (previously Stage 2's High Elf ignored
+  the shared "twice in a row" escape mechanic entirely, and Stage 3's
+  Collector Elf never escaped at all).
+
 ## 4.6.1 - 2026-09-21
 
 - Fix the GUI window title when launching with `LC_ALL=C`.
