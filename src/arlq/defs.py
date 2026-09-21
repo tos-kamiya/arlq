@@ -287,38 +287,38 @@ MIN_FOOD = 8
 
 MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("a", 1, 10),  # Amoeba
-    _MT("A", 2, MIN_FOOD, effect=EFFECT_SPECIAL_EXP, event_message="-- Exp. Boost!"),  # Amoeba rare
+    _MT("A", 2, MIN_FOOD, effect=EFFECT_SPECIAL_EXP, event_message="-- Level boosted!"),  # Amoeba rare
     _MT("b", 5, 60, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
     _MT("c", 10, MIN_FOOD, item=ITEM_SWORD_X1_5, event_message="-- Got a sword (c)!"),  # Chimera
-    _MT("C", 15, MIN_FOOD, item=ITEM_SWORD_CURSED, event_message="-- Got cursed sword (C)!"),  # Chimera rare
+    _MT("C", 15, MIN_FOOD, item=ITEM_SWORD_CURSED, event_message="-- Got a cursed sword (C)!"),  # Chimera rare
     _MT("d", 20, 60, item=ITEM_POISONED),  # Comodo Dragon
     _MT(
         CHAR_DRAGON,
         35,
         MIN_FOOD,
         effect=EFFECT_UNLOCK_TREASURE,
-        event_message="-- Unlocked Dragon's treasure chest!",
+        event_message="-- Unlocked the Dragon's treasure chest!",
         treasure_key=CHAR_TREASURE + CHAR_DRAGON,
     ),  # Dragon
-    _MT("e", 1, -5, effect=EFFECT_ENERGY_DRAIN, event_message="-- Energy Drained!"),  # Erebus
+    _MT("e", 1, -5, effect=EFFECT_ENERGY_DRAIN, event_message="-- Your energy was drained!"),  # Erebus
     _MT(
         CHAR_FIRE_DRAKE,
         60,
         MIN_FOOD,
         effect=EFFECT_UNLOCK_TREASURE,
-        event_message="-- Unlocked Fire Drake's treasure chest!",
+        event_message="-- Unlocked the Fire Drake's treasure chest!",
         treasure_key=CHAR_TREASURE + CHAR_FIRE_DRAKE,
     ),  # Fire Drake
     _MT("f", 50, MIN_FOOD),  # Fire Lizard
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
-    _MT("X", 1, MIN_FOOD, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops Scattered!"),  # Caltrop Plant
+    _MT("X", 1, MIN_FOOD, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops were scattered!"),  # Caltrop Plant
     _MT("I", 0, 0, event_message="-- The Isolated Elf told you about the history of the elves.", is_elf=True),
-    _MT("J", 0, 0, event_message="-- The Javelin Elf joins your hunt for the Dread Wyrm!", is_elf=True),
+    _MT("J", 0, 0, event_message="-- The Javelin Elf joined your hunt for the Dread Wyrm!", is_elf=True),
     _MT("K", 0, 0, event_message="-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!", is_elf=True),
     _MT("H", 0, 0, event_message="-- The High Elf bestowed the talisman upon you!", is_elf=True),
     _MT("m", 5, MIN_FOOD, event_message="-- Spores cloud your vision!"),
     _MT("w", 50, MIN_FOOD),
-    _MT("W", 150, MIN_FOOD, event_message=">> Dread Wyrm defeated! <<", treasure_key=CHAR_TREASURE + "W"),
+    _MT("W", 150, MIN_FOOD, event_message=">> Dread Wyrm (W) defeated! <<", treasure_key=CHAR_TREASURE + "W"),
 ]
 
 COMPANION_TRIBES: List[CompanionTribe] = [

@@ -414,7 +414,7 @@ def update_entities(
         if isinstance(ee, d.Treasure):
             t: d.Treasure = ee
             if t.unlock_key in unlocked_treasures:
-                message = (10, tr(">> Treasures collected! <<"))
+                message = (10, tr(">> Treasure chest obtained! <<"))
                 del entities[eei]
                 effect = d.EFFECT_GOT_TREASURE
         elif isinstance(ee, d.Companion):
@@ -443,7 +443,7 @@ def update_entities(
                     player.x, player.y = find_random_place(entities, field, distance=2)
                     message = (MESSAGE_TICKS, tr("-- Respawned to a random location."))
                 else:
-                    message = (MESSAGE_TICKS, tr("-- The High Elf does not recognize you."))
+                    message = (MESSAGE_TICKS, tr("-- The High Elf does not recognize you yet."))
                     player.high_elf_refused = True
                 player.last_contact_monster = contact_key
                 continue
@@ -605,7 +605,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     while True:
         # Starvation check
         if player.lp <= 0:
-            message = (-1, tr(">> Starved to Death. <<"))
+            message = (-1, tr(">> Collapsed from hunger! <<"))
             break
 
         # Update view / auto mapping

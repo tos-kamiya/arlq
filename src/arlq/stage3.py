@@ -434,7 +434,7 @@ def _resolve_monster_contact(
             current["entities"].append(entity)
             player.x, player.y = _find_escape_place(current)
             raise _StepDone(
-                (MESSAGE_TICKS, tr("-- The elf (I) wants to be left alone, and sends you elsewhere."))
+                (MESSAGE_TICKS, tr("-- The Isolated Elf wants to be left alone, and sends you elsewhere."))
             )
         if ch in ELF_REPEAT_MESSAGES:
             current["entities"].append(entity)
@@ -466,7 +466,7 @@ def _resolve_monster_contact(
             player.x, player.y = _find_escape_place(current)
             event_message = tr("-- Respawned to a random location.")
         else:
-            event_message = tr("-- Bring the cursed sword (C).")
+            event_message = tr("-- Please bring the cursed sword (C).")
             player.k_elf_refused = True
     elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2:
         current["entities"].append(entity)
@@ -476,7 +476,7 @@ def _resolve_monster_contact(
             player.x, player.y = _find_escape_place(current)
             event_message = tr("-- Respawned to a random location.")
         else:
-            event_message = tr("-- The High Elf does not recognize you.")
+            event_message = tr("-- The High Elf does not recognize you yet.")
             player.high_elf_refused = True
     elif d.current_player_attack(player, 3) < d.monster_level(entity):
         # The encounter remains on the map when the player loses. Rust
@@ -542,7 +542,7 @@ def _resolve_contact(
             if player.stage3_flags & STAGE3_W:
                 player.stage3_won = True
             else:
-                event_message = tr("-- You took the treasure, but the King's request remains.")
+                event_message = tr("-- You took the treasure chest, but the King's request remains.")
         return event_message
 
     if isinstance(entity, d.Companion):
@@ -726,7 +726,7 @@ def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
         hours += 1
         player.lp -= 1
 
-    message = (-1, tr(">> Treasures collected! <<") if player.stage3_won else tr(">> Starved to Death. <<"))
+    message = (-1, tr(">> Treasure chest obtained! <<") if player.stage3_won else tr(">> Collapsed from hunger! <<"))
     while True:
         current = floors[floor[0]]
         cur = get_torched(player, d.TORCH_RADIUS)
