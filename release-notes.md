@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 4.6.1 - 2026-09-21
+
+- Fix the GUI window title when launching with `LC_ALL=C`.
+- Align the `arlq-cli` stage-selection heading with its options.
+
 ## 4.6.0 - 2026-09-21
 
 - Fix a soft-lock: losing combat twice in a row to the very same monster
