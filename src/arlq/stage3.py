@@ -480,7 +480,7 @@ def _resolve_monster_contact(
         # soft-lock the floor.
         if player.last_contact_monster == contact_key:
             player.x, player.y = _find_escape_place(current)
-            event_message = tr("-- You break free and end up elsewhere.")
+            event_message = tr("-- Respawned to a random location.")
         else:
             player.x, player.y = checkpoint[0]
             event_message = tr("-- Respawned!")

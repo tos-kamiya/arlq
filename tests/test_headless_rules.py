@@ -209,7 +209,7 @@ def test_legacy_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(mo
     monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (10, 10))
     _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
 
-    assert message == (8, "-- You break free and end up elsewhere.")
+    assert message == (8, "-- Respawned to a random location.")
     assert (player.x, player.y) == (10, 10)
 
 
@@ -554,7 +554,7 @@ def test_stage3_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(mo
     monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (10, 10))
     messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
 
-    assert messages == ["-- You break free and end up elsewhere."]
+    assert messages == ["-- Respawned to a random location."]
     assert (player.x, player.y) == (10, 10)
 
 
