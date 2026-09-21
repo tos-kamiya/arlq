@@ -173,6 +173,10 @@ uv run -p .venv/bin/python pytest
 uv run -p .venv/bin/python ruff check src
 ```
 
+## Acknowledgments
+
+ChatGPT, Gemini, Claude, and Grok contributed to the design and implementation of this game. Their assistance is gratefully acknowledged.
+
 ## License
 
 This project is licensed under the BSD-2 license.

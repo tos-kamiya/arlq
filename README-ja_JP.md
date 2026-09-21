@@ -161,6 +161,10 @@ uv run -p .venv/bin/python pytest
 uv run -p .venv/bin/python ruff check src
 ```
 
+## 謝辞
+
+ChatGPT、Gemini、Claude、Grokには、本ゲームの設計と実装に協力してもらいました。感謝します。
+
 ## ライセンス
 
 本プロジェクトはBSD-2-Clauseライセンスのもとで公開されています。
