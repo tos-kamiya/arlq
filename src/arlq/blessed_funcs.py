@@ -316,7 +316,7 @@ class BlessedUI:
         while True:
             self._wait_for_terminal_size()
             output = [self.term.home + self.term.clear]
-            output.append(self.term.move_xy(2, 2) + self.term.bold(self.term.yellow(tr("Stage Selection"))))
+            output.append(self.term.move_xy(4, 2) + self.term.bold(self.term.yellow(tr("Stage Selection"))))
             for i, option in enumerate(options):
                 prefix = ">" if i == current_index else " "
                 text = f"{prefix} {option}"
