@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
 
 TILE_WIDTH: int = 12
 TILE_HEIGHT: int = 6
@@ -28,8 +28,23 @@ LP_LOW_THRESHOLD: int = 20  # LP bar/player "@" turn red at or below this
 MONSTER_RESPAWN_INTERVAL: int = 65
 SWORD_USES: int = 3
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
-STAGE3_K_FLAG: int = 4
+# W and w stay down for the rest of a Stage 3 run.
+STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w"}
+STAGE3_C_FLAG: int = 1
 STAGE3_I_FLAG: int = 2
+STAGE3_K_FLAG: int = 4
+STAGE3_H_FLAG: int = 8
+STAGE3_W_FLAG: int = 16
+STAGE3_J_FLAG: int = 64
+# Order of the Stage 3 status-line marks. The treasure mark "T" is added separately.
+STAGE3_PROGRESS: List[Tuple[str, int]] = [
+    ("C", STAGE3_C_FLAG),
+    ("I", STAGE3_I_FLAG),
+    ("J", STAGE3_J_FLAG),
+    ("K", STAGE3_K_FLAG),
+    ("H", STAGE3_H_FLAG),
+    ("W", STAGE3_W_FLAG),
+]
 
 ITEM_SWORD_X1_5: str = "Sword"
 ITEM_SWORD_CURSED: str = "Cursed Sword"
@@ -50,6 +65,7 @@ PEGASUS_STEP_Y: int = 4
 CALTROP_SPREAD_RADIUS: int = 3
 CALTROP_WIDTH_EXPANSION_RATIO: float = 1.7
 CALTROP_LP_DAMAGE: int = 3
+BARRIER_LP_DAMAGE: int = 30
 
 ROCK_SPREAD_OFFSETS: List[Tuple[int, int]] = [
     (-3, -3),
@@ -357,6 +373,37 @@ STAGE_TO_SPAWN_CONFIGS = [
 ]
 
 
+def _stage3_javelin_active(player: Player) -> bool:
+    return any(follower[3] == "J" for follower in player.persistent_followers)
+
+
+def apply_feed(player: Player, feed: int) -> None:
+    # Feeding never drops LP below 1. Starvation is checked separately.
+    player.lp = max(1, min(LP_MAX, player.lp + feed))
+
+
+def apply_respawn_penalty(player: Player) -> None:
+    player.lp -= LP_RESPAWN_COST
+    player.lp = max(LP_RESPAWN_MIN, min(player.lp, LP_INIT))
+
+
+def take_monster_item(
+    player: Player,
+    item: Optional[str],
+    source: str,
+    sword_uses: int = SWORD_USES,
+) -> None:
+    player.item = item
+    player.item_taken_from = source
+    player.item_uses = sword_uses if item in (ITEM_SWORD_X1_5, ITEM_SWORD_CURSED) else 0
+    if item == ITEM_SWORD_CURSED:
+        player.lp = (player.lp * 3 + 3) // 4
+
+
+def grant_defeat_level(player: Player, effect: Optional[str]) -> None:
+    player.level += 10 if effect == EFFECT_SPECIAL_EXP else 1
+
+
 def current_player_attack(player: Player, stage_num: int = 0) -> int:
     """
     Player's current attack power: level and equipped item, plus Stage 3's
@@ -376,7 +423,7 @@ def current_player_attack(player: Player, stage_num: int = 0) -> int:
     if stage_num == 3:
         if player.stage3_flags & STAGE3_K_FLAG:
             value = (value * 6 + 1) // 5
-        if any(follower[3] == "J" for follower in player.persistent_followers):
+        if _stage3_javelin_active(player):
             value = (value * 5 + 2) // 4
     return value
 
@@ -427,3 +474,151 @@ def build_strength_column(
     below_column += [(None, False)] * (below_cap - len(kept_below))
 
     return above_column + [(None, False), ("@", True), (None, False)] + below_column
+
+
+def level_item_labels(player: Player, stage_num: int) -> Tuple[str, str]:
+    """Level and item fragments shared by both status bars.
+
+    Stage 3's K (x1.2) and J (+25%) suffixes apply only in that stage.
+    x1.2 is omitted while a sword already replaces the base multiplier.
+    """
+    stage3 = stage_num == 3
+    has_k = stage3 and bool(player.stage3_flags & STAGE3_K_FLAG)
+    has_j = stage3 and _stage3_javelin_active(player)
+    item = player.item
+    if item == ITEM_SWORD_X1_5:
+        level = f"LVL: {player.level} x1.5"
+        item_str = f"+{item}({player.item_taken_from})"
+    elif item == ITEM_SWORD_CURSED:
+        level = f"LVL: {player.level} x3"
+        item_str = f"+{item}({player.item_taken_from})"
+    elif item == ITEM_POISONED:
+        level = f"LVL: {player.level} /2"
+        item_str = f"+{item}({player.item_taken_from})"
+    else:
+        level = f"LVL: {player.level}"
+        item_str = ""
+    if has_k and item not in (ITEM_SWORD_X1_5, ITEM_SWORD_CURSED):
+        level += " x1.2"
+    if has_j:
+        level += " +25%"
+    return level, item_str
+
+
+def status_prefix(player: Player, stage_num: int, hours: int) -> str:
+    """Text to the left of the LP readout, including the trailing spaces."""
+    level_str, item_str = level_item_labels(player, stage_num)
+    text = ""
+    if stage_num == 3:
+        text += f"ST: 3 F: {player.stage3_floor + 1}  "
+    elif stage_num != 0:
+        text += f"ST: {stage_num}  "
+    text += f"HRS: {hours}  "
+    text += level_str + "  "
+    text += item_str + "  "
+    return text
+
+
+def stage3_progress_marks(player: Player) -> List[Tuple[str, bool]]:
+    """Elf and treasure marks for the Stage 3 status line, in display order.
+
+    Each entry is (label, achieved). With the Isolated Elf flag, an elf label
+    gains the floor number recorded in ``stage3_elf_floors``.
+    """
+    show_floors = bool(player.stage3_flags & STAGE3_I_FLAG)
+    marks: List[Tuple[str, bool]] = []
+    for label, bit in STAGE3_PROGRESS:
+        text = label
+        if show_floors and label in player.stage3_elf_floors:
+            text += str(player.stage3_elf_floors[label])
+        marks.append((text, bool(player.stage3_flags & bit)))
+    marks.append(("T", player.stage3_won))
+    return marks
+
+
+class FieldGlyph(NamedTuple):
+    """One character to draw on the field.
+
+    ``tone`` is a semantic name (``yellow``, ``blue``, ``red``, ``companion``,
+    ``default``, ``black``, ``magenta``). Each frontend maps it. ``companion``
+    is green in the GUI and the terminal's default color.
+    """
+
+    x: int
+    y: int
+    char: str
+    tone: str
+    bold: bool = False
+    dim: bool = False
+
+
+def player_appearance(player: Player) -> Tuple[str, Optional[str]]:
+    """Foreground and background tones for '@'.
+
+    Low LP is a red background. Poison is magenta text. Both at once use
+    black text, because magenta on red is hard to read. Foreground
+    ``default`` is the frontend's normal text color.
+    """
+    low = player.lp <= LP_LOW_THRESHOLD
+    poisoned = player.item == ITEM_POISONED
+    if low and poisoned:
+        foreground = "black"
+    elif poisoned:
+        foreground = "magenta"
+    else:
+        foreground = "default"
+    return foreground, ("red" if low else None)
+
+
+def preview_entity_glyphs(entity: Entity) -> List[FieldGlyph]:
+    """Dim glyphs for an entity when the whole map is revealed."""
+    char = None
+    if isinstance(entity, (Companion, Monster)):
+        char = entity.tribe.char
+    elif isinstance(entity, Treasure):
+        char = CHAR_TREASURE
+    if char is None:
+        return []
+    glyphs = [FieldGlyph(entity.x, entity.y, char, "default", dim=True)]
+    if isinstance(entity, Monster) and entity.empowered > 1:
+        glyphs.append(FieldGlyph(entity.x + 1, entity.y, "'", "default", dim=True))
+    return glyphs
+
+
+def revealed_entity_glyphs(
+    entity: Entity,
+    known_types: Set[str],
+    show_entities: bool,
+    player_attack: int,
+    unlocked_treasures: Optional[Set[str]],
+    dim_types: Optional[Set[str]],
+) -> List[FieldGlyph]:
+    """Glyphs for an entity inside the explored map.
+
+    Empty when the entity stays hidden (an unknown monster while the whole
+    map is already shown, or a treasure that is still locked).
+    """
+    if isinstance(entity, Companion):
+        char = entity.tribe.char
+        if char not in known_types and not show_entities:
+            char = "!"
+        return [FieldGlyph(entity.x, entity.y, char, "companion", bold=True)]
+    if isinstance(entity, Monster):
+        char = entity.tribe.char
+        if monster_type_key(entity) not in known_types:
+            if show_entities:
+                return []
+            return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
+        if monster_level(entity) <= player_attack:
+            tone = "yellow" if entity.tribe.effect == EFFECT_UNLOCK_TREASURE else "blue"
+        else:
+            tone = "red"
+        dim = bool(dim_types and char in dim_types)
+        glyphs = [FieldGlyph(entity.x, entity.y, char, tone, bold=True, dim=dim)]
+        if entity.empowered > 1:
+            glyphs.append(FieldGlyph(entity.x + 1, entity.y, "'", tone, bold=True, dim=dim))
+        return glyphs
+    if isinstance(entity, Treasure):
+        if unlocked_treasures is not None and entity.unlock_key in unlocked_treasures:
+            return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
+    return []

@@ -5,7 +5,7 @@ import pytest
 from arlq import defs as d
 from arlq import stage3 as stage3_module
 from arlq.arlq import respawn_entity, update_entities
-from arlq.stage3 import STAGE3_C, STAGE3_H, STAGE3_I, STAGE3_J, STAGE3_K, _step
+from arlq.stage3 import STAGE3_C, STAGE3_H, STAGE3_I, STAGE3_J, STAGE3_K, STAGE3_W, _step
 
 KEYS = {
     "U": (0, -1),
@@ -170,7 +170,7 @@ def test_legacy_respawn_queue_controls_actual_respawn(monkeypatch):
 
     assert respawns == ["X"]
     monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_args, **_kwargs: (5, 2))
-    respawn_entity(d.CHAR_TO_MONSTER_TRIBE["X"], entities, field, [])
+    respawn_entity(d.CHAR_TO_MONSTER_TRIBE["X"], entities, field)
 
     assert [(e.x, e.y, e.tribe.char) for e in entities if isinstance(e, d.Monster)] == [(5, 2, "X")]
 
@@ -730,3 +730,72 @@ def test_non_isolated_elf_repeat_contact_does_not_relocate_player():
 
     assert messages[-1] == "-- The Collector Elf (K) looks satisfied."
     assert (player.x, player.y) == (3, 2)
+
+
+def test_stage3_flags_keep_their_bit_values():
+    assert (STAGE3_C, STAGE3_I, STAGE3_K, STAGE3_H, STAGE3_W, STAGE3_J) == (1, 2, 4, 8, 16, 64)
+    assert d.STAGE3_NO_RESPAWN_MONSTERS == {"a", "A", "b", "c", "C", "W", "w"}
+
+
+def test_stage3_rare_amoeba_grants_the_special_exp_bonus():
+    player = d.Player(2, 2, 2, 90)
+    amoeba = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["A"])
+    floors, _ = stage3_state(player, [amoeba])
+
+    run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter(), deque())
+
+    assert player.level == 12
+
+
+def test_level_item_labels_follow_the_stage3_attack_bonuses():
+    player = d.Player(1, 1, 100, 90)
+    player.item = d.ITEM_POISONED
+    player.item_taken_from = "d"
+    assert d.level_item_labels(player, 1) == ("LVL: 100 /2", "+Poisoned(d)")
+
+    player.stage3_flags = STAGE3_K
+    player.persistent_followers.append((1, 1, 0, "J"))
+    assert d.level_item_labels(player, 3) == ("LVL: 100 /2 x1.2 +25%", "+Poisoned(d)")
+    assert d.level_item_labels(player, 2) == ("LVL: 100 /2", "+Poisoned(d)")
+
+    player.item = d.ITEM_SWORD_X1_5
+    assert d.level_item_labels(player, 3)[0] == "LVL: 100 x1.5 +25%"
+    assert d.status_prefix(player, 3, 4).endswith("LVL: 100 x1.5 +25%  +Sword(d)  ")
+
+
+def test_stage3_progress_marks_add_elf_floors_after_the_isolated_elf():
+    player = d.Player(1, 1, 1, 90)
+    player.stage3_flags = STAGE3_I | STAGE3_K
+    player.stage3_elf_floors = {"K": 2, "H": 3}
+    player.stage3_won = True
+
+    assert d.stage3_progress_marks(player) == [
+        ("C", False),
+        ("I", True),
+        ("J", False),
+        ("K2", True),
+        ("H3", False),
+        ("W", False),
+        ("T", True),
+    ]
+
+
+def test_revealed_entity_glyphs_distinguish_unknown_known_and_empowered():
+    monster = d.Monster(4, 4, d.CHAR_TO_MONSTER_TRIBE["b"], empowered=2)
+    hidden = d.revealed_entity_glyphs(monster, set(), False, 100, None, None)
+    assert [(glyph.char, glyph.tone, glyph.bold) for glyph in hidden] == [("?", "yellow", True)]
+
+    shown = d.revealed_entity_glyphs(monster, {d.monster_type_key(monster)}, False, 1, None, {"b"})
+    assert [(glyph.char, glyph.tone, glyph.dim) for glyph in shown] == [
+        ("b", "red", True),
+        ("'", "red", True),
+    ]
+
+    companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
+    unknown = d.revealed_entity_glyphs(companion, set(), False, 1, None, None)
+    assert [(glyph.char, glyph.tone) for glyph in unknown] == [("!", "companion")]
+    preview = d.preview_entity_glyphs(monster)
+    assert [(glyph.char, glyph.dim, glyph.bold) for glyph in preview] == [
+        ("b", True, False),
+        ("'", True, False),
+    ]
