@@ -442,6 +442,7 @@ def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
 
     def record_spawn(entities, _field, char, _avoid, _island, floor_index=None):
         spawned.append((entities, char, floor_index))
+        return (0, 0)
 
     monkeypatch.setattr(stage3_module, "_spawn", record_spawn)
     _step(KEYS["U"], floors, player, floor, checkpoint, queue, history, 0)

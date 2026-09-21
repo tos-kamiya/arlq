@@ -214,6 +214,11 @@ def set_language(requested: str) -> None:
     _lang = resolve_language(requested)
 
 
+def get_language() -> str:
+    """The resolved language tag currently in effect (see set_language())."""
+    return _lang
+
+
 def t(text: str) -> str:
     """Translate a fixed message string (or `str.format` template) for the
     current language. Falls back to `text` unchanged if untranslated."""

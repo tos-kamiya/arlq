@@ -1,4 +1,4 @@
-from typing import List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple, Optional
 
 from collections import Counter
 import argparse
@@ -13,7 +13,8 @@ from .__about__ import __version__
 
 from .utils import rand
 from . import defs as d
-from .i18n import t as tr, set_language
+from .i18n import t as tr, set_language, get_language
+from .trace import DIR_TO_KEY, ReplayUI, TraceRecorder, default_replay_output_path, load_trace
 
 MESSAGE_TICKS = 8
 
@@ -146,10 +147,10 @@ def respawn_entity(
     tribe: d.Tribe,
     entities: List[d.Entity],
     field: List[List[str]],
-) -> None:
+) -> d.Entity:
     """Place one monster or companion."""
     x, y = find_random_place(entities, field, distance=2)
-    spawn_at(entities, x, y, tribe)
+    return spawn_at(entities, x, y, tribe)
 
 
 def create_field(
@@ -362,6 +363,7 @@ def update_entities(
     unlocked_treasures: Set[str],
     sword_uses: int = d.SWORD_USES,
     respawn_point: Optional[d.Point] = None,
+    trace: Optional[TraceRecorder] = None,
 ) -> Tuple[Optional[str], List[str], Optional[Tuple[int, str]], bool]:
     effect = None
     tribes_to_be_respawned = []
@@ -369,6 +371,7 @@ def update_entities(
     # player move
     dx, dy = move_direction
 
+    wall_result: Optional[Dict[str, object]] = None
     if 0 <= (nx := player.x + dx) < d.FIELD_WIDTH and 0 <= (ny := player.y + dy) < d.FIELD_HEIGHT:
         ch = field[ny][nx]
         if ch in (" ", d.CHAR_CALTROP):
@@ -382,6 +385,7 @@ def update_entities(
         ):
             player.x, player.y = n2x, n2y
             player.karma += 1
+            wall_result = {"result": "pegasus_phase"}
         elif player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) and ch == d.WALL_CHAR:
             # break the wall
             player.x, player.y = nx, ny
@@ -392,6 +396,14 @@ def update_entities(
                 player.item = ""
                 player.item_uses = 0
                 player.item_taken_from = ""
+            wall_result = {"result": "sword_break", "item_uses_left": player.item_uses}
+        else:
+            wall_result = {"result": "blocked"}
+    else:
+        wall_result = {"result": "blocked"}
+
+    if trace is not None and wall_result is not None:
+        trace.record_wall(wall_result)
 
     # Caltrop damage
     if field[player.y][player.x] == d.CHAR_CALTROP:
@@ -413,7 +425,10 @@ def update_entities(
     for eei, ee in enc_entity_infos:
         if isinstance(ee, d.Treasure):
             t: d.Treasure = ee
-            if t.unlock_key in unlocked_treasures:
+            collected = t.unlock_key in unlocked_treasures
+            if trace is not None:
+                trace.record_contact({"type": "treasure", "id": t.unlock_key, "collected": collected})
+            if collected:
                 message = (10, tr(">> Treasure chest obtained! <<"))
                 del entities[eei]
                 effect = d.EFFECT_GOT_TREASURE
@@ -422,6 +437,9 @@ def update_entities(
             player.known_companions.add(c.tribe.char)
 
             del entities[eei]
+
+            if trace is not None:
+                trace.record_contact({"type": "companion", "id": c.tribe.char})
 
             player.companion = c
             player.karma = 0
@@ -440,6 +458,8 @@ def update_entities(
             # first refusal only shows a message; any later refusal sends the
             # player elsewhere, like repeat contact with the Isolated Elf.
             if m.tribe.char == "H":
+                if trace is not None:
+                    trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
                 if player.high_elf_refused:
                     player.x, player.y = find_random_place(entities, field, distance=2)
                     message = (MESSAGE_TICKS, tr("-- Respawned to a random location."))
@@ -450,6 +470,7 @@ def update_entities(
                 continue
 
             player_attack = d.current_player_attack(player)
+            monster_id = d.monster_type_key(m)
 
             if player_attack < d.monster_level(m):
                 # Losing twice in a row to the very same monster (no other
@@ -466,12 +487,22 @@ def update_entities(
                     else:
                         player.x, player.y = respawn_point
                     message = (MESSAGE_TICKS, tr("-- Respawned!"))
+                if trace is not None:
+                    trace.record_contact(
+                        {"type": "monster", "id": monster_id, "outcome": "lose", "respawn_to": [player.x, player.y]}
+                    )
+                old_item, old_source = player.item, player.item_taken_from
                 player.item = ""
                 player.item_uses = 0
                 player.item_taken_from = ""
+                if trace is not None and old_item:
+                    trace.add_expired({"type": "item_expired", "item": old_source, "reason": "lost_on_defeat"})
                 d.apply_respawn_penalty(player)
             else:
                 del entities[eei]
+
+                if trace is not None:
+                    trace.record_contact({"type": "monster", "id": monster_id, "outcome": "win"})
 
                 if d.monster_level(m) > 0 and m.tribe.effect != d.EFFECT_UNLOCK_TREASURE:
                     tribes_to_be_respawned.append(m.tribe.char)
@@ -493,7 +524,10 @@ def update_entities(
 
                 player.karma += 1
 
+                old_item, old_source = player.item, player.item_taken_from
                 d.take_monster_item(player, m.tribe.item, m.tribe.char, sword_uses)
+                if trace is not None and old_item:
+                    trace.add_expired({"type": "item_expired", "item": old_source, "reason": "overwritten"})
 
                 event_message = m.tribe.event_message
                 if event_message:
@@ -506,6 +540,8 @@ def update_entities(
     if player.companion is not None and player.karma >= player.companion.tribe.durability:
         message = (MESSAGE_TICKS, tr("-- The companion vanishes."))
         char = player.companion.tribe.char
+        if trace is not None:
+            trace.add_expired({"type": "companion_departed", "id": char})
         tribes_to_be_respawned.append(char)
         player.companion = None
 
@@ -542,7 +578,14 @@ def read_last_seed() -> Tuple[int, int]:
     return stage, seed
 
 
-def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = False, seed_value: Optional[int] = None) -> None:
+def run_game(
+    ui,
+    seed_str: str,
+    stage_num: int,
+    debug_show_entities: bool = False,
+    seed_value: Optional[int] = None,
+    trace: Optional[TraceRecorder] = None,
+) -> None:
     show_entities = debug_show_entities
 
     if stage_num == 0:  # if stage is not selected yet
@@ -550,6 +593,19 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         if r == 0:
             return
         stage_num = r
+        # seed_str embeds the stage number (see generate_seed_string()); it
+        # was built before interactive selection, so it still shows the
+        # placeholder stage 0. Patch it in place so both the in-game "SEED:"
+        # display and a recorded trace's params.seed show the stage actually
+        # played.
+        parts = seed_str.split("-")
+        if len(parts) == 4:
+            parts[2] = str(stage_num)
+            seed_str = "-".join(parts)
+
+    if trace is not None:
+        trace.params["stage"] = stage_num
+        trace.params["seed"] = seed_str
 
     if seed_value is not None:
         remember_seed(stage_num, seed_value)
@@ -557,7 +613,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
     if stage_num == 3:
         from .stage3 import run_game as run_stage3
 
-        run_stage3(ui, seed_str, debug_show_entities)
+        run_stage3(ui, seed_str, debug_show_entities, trace=trace)
         return
 
     # Configuration
@@ -608,6 +664,8 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         # Starvation check
         if player.lp <= 0:
             message = (-1, tr(">> Collapsed from hunger! <<"))
+            if trace is not None:
+                trace.set_outcome("lose")
             break
 
         # Update view / auto mapping
@@ -634,9 +692,18 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
 
         move_direction = ui.input_direction()
         if move_direction is None:
+            if trace is not None:
+                trace.record_quit()
+                trace.set_outcome("unfinished" if getattr(ui, "ran_dry", False) else "quit")
             return
         if move_direction == (0, 0):
             continue
+
+        if trace is not None:
+            key = DIR_TO_KEY.get(move_direction)
+            if key is None:
+                raise RuntimeError("--trace-record does not support non-cardinal (e.g. diagonal joystick) movement")
+            trace.begin_turn(key)
 
         # Player move, encountering, etc.
         effect, tribes_to_be_respawned, m, _ = update_entities(
@@ -646,6 +713,7 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
             entities,
             player.unlocked_treasures,
             respawn_point=checkpoint,
+            trace=trace,
         )
         if m is not None:
             message = m
@@ -660,10 +728,22 @@ def run_game(ui, seed_str: str, stage_num: int, debug_show_entities: bool = Fals
         if hours % d.MONSTER_RESPAWN_INTERVAL == 0:
             for t in list(respawn_queue.keys()):
                 if respawn_queue[t] > 0:
-                    respawn_entity(d.CHAR_TO_TRIBE[t], entities, field)
+                    respawned = respawn_entity(d.CHAR_TO_TRIBE[t], entities, field)
                     respawn_queue[t] -= 1
+                    if trace is not None:
+                        kind = "monster" if isinstance(respawned, d.Monster) else "companion"
+                        rid = d.monster_type_key(respawned) if isinstance(respawned, d.Monster) else respawned.tribe.char
+                        trace.add_world_event(
+                            {"type": "respawn", "kind": kind, "id": rid, "at": [respawned.x, respawned.y]}
+                        )
+
+        if trace is not None:
+            trace.set_player(player, stage_num)
+            trace.commit_turn()
 
         if effect == d.EFFECT_GOT_TREASURE:
+            if trace is not None:
+                trace.set_outcome("win")
             break
 
         hours += 1
@@ -709,7 +789,7 @@ def generate_seed_string(args):
     return f"v{__version__}-{flag_str}-{args.stage}-{args.seed}"
 
 
-def parse_seed_string(args, seed_str):
+def parse_seed_string(args, seed_str, enforce_version: bool = True):
     parts = seed_str.split("-")
     if len(parts) != 4:
         exit("Error: Seed string format is invalid. Expected format: v<version>-<flags>-<stage>-<seed>")
@@ -719,7 +799,7 @@ def parse_seed_string(args, seed_str):
     if not version_part.startswith("v"):
         exit("Error: Seed string must start with 'v'.")
     version = version_part[1:]
-    if version != __version__:
+    if enforce_version and version != __version__:
         exit("Error: Seed string version does not match game version.")
 
     # Restore flags: set booleans based on whether they are specified.
@@ -776,32 +856,78 @@ def main():
         "--lang", choices=["auto", "en", "ja"], default="auto",
         help="UI message language ('auto' detects it from the locale; default: auto).",
     )
+    parser.add_argument(
+        "--trace-record", metavar="PATH",
+        help="Internal/testing: record inputs and results of this session to a gameplay trace JSON file.",
+    )
+    parser.add_argument(
+        "--trace-replay", metavar="PATH",
+        help="Internal/testing: replay a gameplay trace JSON file headlessly and write a new trace file.",
+    )
+    parser.add_argument(
+        "--trace-replay-output", metavar="OUT_PATH",
+        help="Output path for --trace-replay (default: PATH with '.replay' inserted before its extension).",
+    )
+    parser.add_argument(
+        "--trace-replay-watch", action="store_true",
+        help="With --trace-replay, also render the replay to the real UI (pyglet/blessed) as it runs.",
+    )
 
     args = parser.parse_args()
 
     set_language(args.lang)
 
-    if args.rematch and (args.seed is not None or args.stage):
-        parser.error("--rematch cannot be combined with --seed or --stage")
+    if args.trace_record and args.trace_replay:
+        parser.error("--trace-record cannot be combined with --trace-replay")
+    if args.trace_replay_output and not args.trace_replay:
+        parser.error("--trace-replay-output requires --trace-replay")
+    if args.trace_replay_watch and not args.trace_replay:
+        parser.error("--trace-replay-watch requires --trace-replay")
 
-    if args.rematch:
+    trace_data = None
+    if args.trace_replay:
+        if args.rematch or args.seed is not None or args.stage or args.large_torch or args.small_torch or args.narrower_corridors:
+            parser.error("--trace-replay cannot be combined with --seed, --stage, --rematch, -T, -t, or -n")
+
         try:
-            args.stage, args.seed = read_last_seed()
-        except ValueError as error:
-            parser.error(str(error))
-    elif args.seed is not None:
-        # Check if any conflicting flags are provided
-        if any([args.stage, args.large_torch, args.small_torch, args.narrower_corridors]):
-            exit("Error: option --seed is mutually exclusive to options --stage, -T, -t, -n")
-        if isinstance(args.seed, str) and args.seed.startswith("v"):
-            parse_seed_string(args, args.seed)
-        else:
-            try:
-                args.seed = int(args.seed)
-            except (TypeError, ValueError):
-                parser.error("--seed must be an integer or a versioned seed string")
+            trace_data = load_trace(Path(args.trace_replay))
+        except (OSError, ValueError) as error:
+            sys.exit(f"Error: cannot load trace file {args.trace_replay}: {error}")
+
+        if trace_data.get("arlq_version") != __version__:
+            print(
+                f"Warning: trace was recorded with arlq {trace_data.get('arlq_version')}, "
+                f"current version is {__version__}.",
+                file=sys.stderr,
+            )
+
+        params = trace_data["params"]
+        args.seed = params["seed"]
+        parse_seed_string(args, args.seed, enforce_version=False)
+        if args.lang == "auto":
+            set_language(params.get("lang", "auto"))
     else:
-        args.seed = int(time.time()) % 100000
+        if args.rematch and (args.seed is not None or args.stage):
+            parser.error("--rematch cannot be combined with --seed or --stage")
+
+        if args.rematch:
+            try:
+                args.stage, args.seed = read_last_seed()
+            except ValueError as error:
+                parser.error(str(error))
+        elif args.seed is not None:
+            # Check if any conflicting flags are provided
+            if any([args.stage, args.large_torch, args.small_torch, args.narrower_corridors]):
+                exit("Error: option --seed is mutually exclusive to options --stage, -T, -t, -n")
+            if isinstance(args.seed, str) and args.seed.startswith("v"):
+                parse_seed_string(args, args.seed)
+            else:
+                try:
+                    args.seed = int(args.seed)
+                except (TypeError, ValueError):
+                    parser.error("--seed must be an integer or a versioned seed string")
+        else:
+            args.seed = int(time.time()) % 100000
 
     if args.large_torch:
         d.TORCH_RADIUS += 1
@@ -815,20 +941,50 @@ def main():
     rand.set_seed(args.seed)
     seed_str = generate_seed_string(args)
 
-    if args.terminal:
+    trace_recorder: Optional[TraceRecorder] = None
+    if args.trace_record or args.trace_replay:
+        trace_recorder = TraceRecorder(
+            params={
+                "stage": args.stage,
+                "seed": seed_str,
+                "large_torch": args.large_torch,
+                "narrower_corridors": args.narrower_corridors,
+                "lang": get_language(),
+            }
+        )
+
+    def play(ui) -> None:
+        if args.trace_replay:
+            replay_ui = ReplayUI(trace_data["turns"], args.stage, ui if args.trace_replay_watch else None)
+            run_game(replay_ui, seed_str, args.stage, args.debug_show_entities, None, trace=trace_recorder)
+        else:
+            run_game(ui, seed_str, args.stage, args.debug_show_entities, args.seed, trace=trace_recorder)
+
+    if args.trace_replay and not args.trace_replay_watch:
+        play(None)
+    elif args.terminal:
         from blessed import Terminal
 
         from .blessed_funcs import BlessedUI
 
         term = Terminal()
         with term.fullscreen(), term.cbreak(), term.hidden_cursor():
-            ui = BlessedUI(term)
-            run_game(ui, seed_str, args.stage, args.debug_show_entities, args.seed)
+            play(BlessedUI(term))
     else:
         from .pyglet_funcs import PygletUI
 
-        ui = PygletUI()
-        run_game(ui, seed_str, args.stage, args.debug_show_entities, args.seed)
+        play(PygletUI())
+
+    if trace_recorder is not None:
+        if args.trace_replay:
+            output_path = (
+                Path(args.trace_replay_output)
+                if args.trace_replay_output
+                else default_replay_output_path(Path(args.trace_replay))
+            )
+        else:
+            output_path = Path(args.trace_record)
+        trace_recorder.write(output_path)
 
 
 def main_cli():
