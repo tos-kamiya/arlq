@@ -30,6 +30,19 @@ def _string_literals():
     return found
 
 
+def _event_message_locals(tree):
+    """Names assigned from a tribe's event_message before being passed to tr()."""
+    names = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        value = node.value
+        if isinstance(target, ast.Name) and isinstance(value, ast.Attribute) and value.attr == "event_message":
+            names.add(target.id)
+    return names
+
+
 def _module_bindings(tree):
     """Module-level string constants and dicts whose values are all strings."""
     bindings = {}
@@ -77,6 +90,7 @@ def _tr_message_ids():
     needs_event_messages = False
     for path, tree in _trees():
         bindings = _module_bindings(tree)
+        event_message_locals = _event_message_locals(tree)
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
                 continue
@@ -89,6 +103,8 @@ def _tr_message_ids():
                 ids.add(arg.value)
             elif isinstance(arg, ast.Name) and arg.id in bindings:
                 ids.update(bindings[arg.id])
+            elif isinstance(arg, ast.Name) and arg.id in event_message_locals:
+                needs_event_messages = True
             elif (
                 isinstance(arg, ast.Subscript)
                 and isinstance(arg.value, ast.Name)

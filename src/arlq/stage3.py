@@ -510,7 +510,9 @@ def _resolve_monster_contact(
     player.last_contact_monster = contact_key
 
     if event_message is None:
-        event_message = tr(entity.tribe.event_message)
+        tribe_message = entity.tribe.event_message
+        if tribe_message:
+            event_message = tr(tribe_message)
 
     return event_message
 
@@ -554,7 +556,8 @@ def _resolve_contact(
             raise _StepDone(_rewind_to_history(floors, player, floor, checkpoint, queue, history))
         player.companion = entity
         player.karma = 0
-        return tr(entity.tribe.event_message)
+        tribe_message = entity.tribe.event_message
+        return tr(tribe_message) if tribe_message else None
 
     return _resolve_monster_contact(hit, entity, current, player, floor, checkpoint, queue, event_message)
 

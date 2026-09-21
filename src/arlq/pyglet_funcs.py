@@ -1,7 +1,7 @@
 import locale
 import sys
 import time
-from typing import Optional, Tuple, List, Set
+from typing import List, Optional, Set, Tuple, Union
 
 
 def _prepare_x11_locale() -> None:
@@ -112,7 +112,7 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 
 
 class PygletUI:
-    def __init__(self):
+    def __init__(self) -> None:
         # Field dimensions from defs
         self.field_width = d.FIELD_WIDTH
         self.field_height = d.FIELD_HEIGHT
@@ -166,7 +166,8 @@ class PygletUI:
         self.joystick = joystick
 
         self.joystick_interval_timer = 0
-        self.joystick_previous_direction = None
+        # Direction tuple while moving; hat-y int on the stage-select screen.
+        self.joystick_previous_direction: Optional[Union[Tuple[int, int], int]] = None
         self.map_mode = False
 
     def _display_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
@@ -209,6 +210,7 @@ class PygletUI:
         Draws text at the grid cell defined by pos, optionally nudged by
         `x_offset` pixels (used to inset text within a cell).
         """
+        font_size: float
         if text.isascii():
             font_name, font_size = self.font_name, self.font_size
         else:
