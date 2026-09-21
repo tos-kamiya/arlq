@@ -17,6 +17,7 @@ from .arlq import (
     unlock_treasure_for_defeat,
 )
 from .i18n import t as tr
+from .trace import DIR_TO_KEY, TraceRecorder
 from .utils import rand
 
 FLOORS = 3
@@ -261,12 +262,16 @@ def build() -> Tuple[List[Floor], d.Player]:
     return floors, player
 
 
-def _move_player(direction: d.Point, current: Floor, player: d.Player) -> None:
+def _move_player(
+    direction: d.Point, current: Floor, player: d.Player, trace: Optional[TraceRecorder] = None
+) -> None:
     """Apply one step of player movement, including sword-breaking and Pegasus jumps."""
     dx, dy = direction
     nx, ny = player.x + dx, player.y + dy
     field = current["field"]
     if not (0 <= ny < len(field) and 0 <= nx < len(field[0])):
+        if trace is not None:
+            trace.record_wall({"result": "blocked"})
         return
 
     cell = field[ny][nx]
@@ -279,6 +284,10 @@ def _move_player(direction: d.Point, current: Floor, player: d.Player) -> None:
         if 0 <= jy < len(field) and 0 <= jx < len(field[0]) and field[jy][jx] in (" ", d.CHAR_CALTROP):
             player.x, player.y = jx, jy
             player.karma += 1
+            if trace is not None:
+                trace.record_wall({"result": "pegasus_phase"})
+        elif trace is not None:
+            trace.record_wall({"result": "blocked"})
         return
 
     if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) and player.item_uses:
@@ -287,6 +296,12 @@ def _move_player(direction: d.Point, current: Floor, player: d.Player) -> None:
         player.item_uses -= 1
         if not player.item_uses:
             player.item = None
+        if trace is not None:
+            trace.record_wall({"result": "sword_break", "item_uses_left": player.item_uses})
+        return
+
+    if trace is not None:
+        trace.record_wall({"result": "blocked"})
 
 
 def _apply_terrain_hazards(current: Floor, player: d.Player, previous: d.Point) -> Optional[str]:
@@ -363,6 +378,7 @@ def _defeat_monster(
     floor: List[int],
     checkpoint: List[d.Point],
     queue: "Counter[Tuple[int, str]]",
+    trace: Optional[TraceRecorder] = None,
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
     ch = entity.tribe.char
@@ -376,7 +392,10 @@ def _defeat_monster(
     # for d (Poisoned): defeating another monster with no item must clear
     # the poison and identify the new source.
     if ch != "H":
+        old_item, old_source = player.item, player.item_taken_from
         d.take_monster_item(player, entity.tribe.item, ch)
+        if trace is not None and old_item:
+            trace.add_expired({"type": "item_expired", "item": old_source, "reason": "overwritten"})
 
     if ch == "W":
         player.stage3_flags |= STAGE3_W
@@ -415,6 +434,7 @@ def _resolve_monster_contact(
     checkpoint: List[d.Point],
     queue: "Counter[Tuple[int, str]]",
     event_message: Optional[str],
+    trace: Optional[TraceRecorder] = None,
 ) -> Optional[str]:
     """Resolve contact with a monster (including elves). May raise `_StepDone`
     for a repeated encounter with an already-met elf, which ends the turn
@@ -427,6 +447,8 @@ def _resolve_monster_contact(
 
     if ch in player.stage3_met_elves:
         current["entities"].pop(hit)
+        if trace is not None:
+            trace.record_contact({"type": "monster", "id": ch, "outcome": "refused"})
         if ch == "I":
             # The sealed Isolated Elf island has no other way out (see
             # _inside_island): once the player has met "I", every further
@@ -455,9 +477,13 @@ def _resolve_monster_contact(
 
     if ch == "I":
         player.stage3_flags |= STAGE3_I
+        if trace is not None:
+            trace.record_contact({"type": "monster", "id": "I", "outcome": "granted"})
     elif ch == "J":
         player.stage3_flags |= STAGE3_J
         player.persistent_followers.append((player.x, player.y, floor[0], "J"))
+        if trace is not None:
+            trace.record_contact({"type": "monster", "id": "J", "outcome": "granted"})
     elif ch == "K" and not (player.stage3_flags & STAGE3_C):
         current["entities"].append(entity)
         # The first refusal only shows a message; any later refusal sends the
@@ -468,6 +494,8 @@ def _resolve_monster_contact(
         else:
             event_message = tr("-- Please bring the cursed sword (C).")
             player.k_elf_refused = True
+        if trace is not None:
+            trace.record_contact({"type": "monster", "id": "K", "outcome": "refused"})
     elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2:
         current["entities"].append(entity)
         # The first refusal only shows a message; any later refusal sends the
@@ -478,6 +506,8 @@ def _resolve_monster_contact(
         else:
             event_message = tr("-- The High Elf does not recognize you yet.")
             player.high_elf_refused = True
+        if trace is not None:
+            trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
     elif d.current_player_attack(player, 3) < d.monster_level(entity):
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity
@@ -494,12 +524,26 @@ def _resolve_monster_contact(
         else:
             player.x, player.y = checkpoint[0]
             event_message = tr("-- Respawned!")
+        if trace is not None:
+            trace.record_contact(
+                {
+                    "type": "monster",
+                    "id": d.monster_type_key(entity),
+                    "outcome": "lose",
+                    "respawn_to": [player.x, player.y],
+                }
+            )
         d.apply_respawn_penalty(player)
+        old_item, old_source = player.item, player.item_taken_from
         player.item = None
         player.item_uses = 0
         player.item_taken_from = None
+        if trace is not None and old_item:
+            trace.add_expired({"type": "item_expired", "item": old_source, "reason": "lost_on_defeat"})
     else:
-        _defeat_monster(entity, current, player, floor, checkpoint, queue)
+        if trace is not None:
+            trace.record_contact({"type": "monster", "id": d.monster_type_key(entity), "outcome": "win"})
+        _defeat_monster(entity, current, player, floor, checkpoint, queue, trace=trace)
 
     if entity.tribe.is_elf and ch != "J" and entity not in current["entities"]:
         player.stage3_met_elves.add(ch)
@@ -527,6 +571,7 @@ def _resolve_contact(
     queue: "Counter[Tuple[int, str]]",
     history: Deque[HistoryEntry],
     event_message: Optional[str],
+    trace: Optional[TraceRecorder] = None,
 ) -> Optional[str]:
     """Resolve contact with the entity at `hit` in current["entities"].
 
@@ -538,7 +583,10 @@ def _resolve_contact(
     entity = current["entities"][hit]
 
     if isinstance(entity, d.Treasure):
-        if entity.unlock_key in player.unlocked_treasures:
+        collected = entity.unlock_key in player.unlocked_treasures
+        if trace is not None:
+            trace.record_contact({"type": "treasure", "id": entity.unlock_key, "collected": collected})
+        if collected:
             current["entities"].pop(hit)
             player.stage3_treasure_collected = True
             if player.stage3_flags & STAGE3_W:
@@ -551,6 +599,8 @@ def _resolve_contact(
         ch = entity.tribe.char
         current["known_companions"].add(ch)
         current["entities"].pop(hit)
+        if trace is not None:
+            trace.record_contact({"type": "companion", "id": ch})
         # l is a companion whose contact rewinds the recorded past.
         if ch == "l" and history:
             raise _StepDone(_rewind_to_history(floors, player, floor, checkpoint, queue, history))
@@ -559,7 +609,7 @@ def _resolve_contact(
         tribe_message = entity.tribe.event_message
         return tr(tribe_message) if tribe_message else None
 
-    return _resolve_monster_contact(hit, entity, current, player, floor, checkpoint, queue, event_message)
+    return _resolve_monster_contact(hit, entity, current, player, floor, checkpoint, queue, event_message, trace=trace)
 
 
 def _advance_persistent_followers(player: d.Player, floor_index: int, moved: bool, previous: d.Point) -> None:
@@ -597,6 +647,7 @@ def _process_respawn_queue(
     floor: List[int],
     queue: "Counter[Tuple[int, str]]",
     hours: int,
+    trace: Optional[TraceRecorder] = None,
 ) -> None:
     if hours % d.MONSTER_RESPAWN_INTERVAL != 0:
         return
@@ -612,10 +663,15 @@ def _process_respawn_queue(
             empowered = 1
         args = (floors[spawn_floor]["entities"], floors[spawn_floor]["field"], ch, avoid, floors[spawn_floor]["island"], spawn_floor)
         if empowered == 1:
-            _spawn(*args)
+            x, y = _spawn(*args)
         else:
-            _spawn(*args, empowered)
+            x, y = _spawn(*args, empowered)
         queue[(spawn_floor, type_key)] -= 1
+        if trace is not None:
+            kind = "monster" if isinstance(d.CHAR_TO_TRIBE[ch], d.MonsterTribe) else "companion"
+            trace.add_world_event(
+                {"type": "respawn", "kind": kind, "id": type_key, "at": [x, y], "floor": spawn_floor}
+            )
 
 
 def _step(
@@ -627,6 +683,7 @@ def _step(
     queue: "Counter[Tuple[int, str]]",
     history: Deque[HistoryEntry],
     hours: int,
+    trace: Optional[TraceRecorder] = None,
 ) -> Optional[Tuple[int, str]]:
     current = floors[floor[0]]
     history.append((deepcopy(floors), deepcopy(player), floor[0], checkpoint[0], deepcopy(queue)))
@@ -634,13 +691,15 @@ def _step(
         history.popleft()
 
     previous = (player.x, player.y)
-    _move_player(direction, current, player)
+    _move_player(direction, current, player, trace=trace)
     event_message = _apply_terrain_hazards(current, player, previous)
 
     hit = next((i for i, e in enumerate(current["entities"]) if (e.x, e.y) == (player.x, player.y)), None)
     if hit is not None:
         try:
-            event_message = _resolve_contact(hit, current, floors, player, floor, checkpoint, queue, history, event_message)
+            event_message = _resolve_contact(
+                hit, current, floors, player, floor, checkpoint, queue, history, event_message, trace=trace
+            )
         except _StepDone as done:
             return done.result
 
@@ -656,20 +715,25 @@ def _step(
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
         player.companion = None
         event_message = tr("-- The companion vanishes.")
+        if trace is not None:
+            trace.add_expired({"type": "companion_departed", "id": ch})
 
     reveal_entities_in_fov(player, current["entities"])
     _advance_persistent_followers(player, floor[0], (player.x, player.y) != previous, previous)
 
+    floor_before = floor[0]
     transition_message = _handle_floor_transition(current, floors, player, floor, checkpoint)
     if transition_message is not None:
         event_message = transition_message
+        if trace is not None:
+            trace.record_contact({"type": "stairs", "from_floor": floor_before, "to_floor": floor[0]})
 
-    _process_respawn_queue(floors, player, floor, queue, hours)
+    _process_respawn_queue(floors, player, floor, queue, hours, trace=trace)
 
     return (MESSAGE_TICKS, event_message) if event_message else None
 
 
-def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
+def run_game(ui: Any, seed_str: str, debug: bool = False, trace: Optional[TraceRecorder] = None) -> None:
     floors, player = build()
     player.known_monsters = set()
     player.unlocked_treasures = set()
@@ -718,16 +782,33 @@ def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
 
         move = ui.input_direction()
         if move is None:
+            if trace is not None:
+                trace.record_quit()
+                trace.set_outcome("unfinished" if getattr(ui, "ran_dry", False) else "quit")
             return
         if move == (0, 0):
             continue
 
-        event_message = _step(move, floors, player, floor, checkpoint, queue, history, hours)
+        if trace is not None:
+            key = DIR_TO_KEY.get(move)
+            if key is None:
+                raise RuntimeError("--trace-record does not support non-cardinal (e.g. diagonal joystick) movement")
+            trace.begin_turn(key)
+
+        event_message = _step(move, floors, player, floor, checkpoint, queue, history, hours, trace=trace)
         player.stage3_floor = floor[0]
         if event_message is not None:
             message = event_message
+
+        if trace is not None:
+            trace.set_player(player, 3)
+            trace.commit_turn()
+
         hours += 1
         player.lp -= 1
+
+    if trace is not None:
+        trace.set_outcome("win" if player.stage3_won else "lose")
 
     message = (-1, tr(">> Treasure chest obtained! <<") if player.stage3_won else tr(">> Collapsed from hunger! <<"))
     while True:
