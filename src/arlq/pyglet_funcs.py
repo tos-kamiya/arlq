@@ -68,6 +68,13 @@ COLOR_MAP = {
     CI_CYAN: (92, 190, 196),
     "default": (226, 230, 238),
 }
+_TONE_INDEX = {
+    "red": CI_RED,
+    "green": CI_GREEN,
+    "yellow": CI_YELLOW,
+    "blue": CI_BLUE,
+    "magenta": CI_MAGENTA,
+}
 
 BACKGROUND = (12, 14, 18)
 FOG = (22, 25, 31)
@@ -171,6 +178,19 @@ class PygletUI:
     def _dim_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
         DIM_FACTOR = 2
         return (color[0] // DIM_FACTOR, color[1] // DIM_FACTOR, color[2] // DIM_FACTOR)
+
+    def _tone_color(self, tone: str, dim: bool = False) -> Tuple[int, int, int]:
+        if tone == "black":
+            color = (0, 0, 0)
+        elif tone == "companion":
+            color = COLOR_MAP[CI_GREEN]
+        elif tone == "default":
+            color = COLOR_MAP["default"]
+        else:
+            color = COLOR_MAP[_TONE_INDEX[tone]]
+        if dim:
+            color = self._dim_color(color)
+        return color
 
     def _clear_drawables(self):
         for obj in self._drawables:
@@ -359,23 +379,12 @@ class PygletUI:
         if checkpoint is not None and checkpoint != (px, py):
             self._draw_field_text(checkpoint, "+", COLOR_MAP[CI_YELLOW], bold=True)
 
-        # Draw the player character. Low LP is a red background highlight
-        # behind "@"; poisoned tints the text magenta instead, so both can be
-        # shown at once. Magenta-on-red is hard to read, so that combination
-        # switches the text to black instead.
-        is_low_lp = player.lp <= d.LP_LOW_THRESHOLD
-        is_poisoned = player.item == d.ITEM_POISONED
-        if is_low_lp:
+        foreground, background = d.player_appearance(player)
+        if background == "red":
             self._draw_rect(
                 self._field_col_x(px), py * CELL_SIZE_Y, CELL_SIZE_X + 1, CELL_SIZE_Y + 1, COLOR_MAP[CI_RED]
             )
-        if is_low_lp and is_poisoned:
-            player_color = (0, 0, 0)
-        elif is_poisoned:
-            player_color = COLOR_MAP[CI_MAGENTA]
-        else:
-            player_color = COLOR_MAP["default"]
-        self._draw_field_text((px, py), "@", player_color, bold=True)
+        self._draw_field_text((px, py), "@", self._tone_color(foreground), bold=True)
 
         if player.companion is not None and px + 1 < d.FIELD_WIDTH:
             self._draw_field_text((px + 1, py), player.companion.tribe.char, COLOR_MAP[CI_GREEN], bold=True)
@@ -383,53 +392,23 @@ class PygletUI:
         # Draw entities (monster and treasures)
         player_attack = d.current_player_attack(player, stage_num)
 
-        if show_entities:
-            for ei, e in enumerate(entities):
-                pos = e.x, e.y
-                ch = None
-                if isinstance(e, (d.Companion, d.Monster)):
-                    ch = e.tribe.char
-                elif isinstance(e, d.Treasure):
-                    ch = d.CHAR_TREASURE
-                if ch is not None:
-                    self._draw_field_text(pos, ch, self._dim_color(COLOR_MAP["default"]))
-                    if isinstance(e, d.Monster) and e.empowered > 1:
-                        self._draw_field_text((e.x + 1, e.y), "'", self._dim_color(COLOR_MAP["default"]))
+        def paint(glyph: d.FieldGlyph) -> None:
+            self._draw_field_text(
+                (glyph.x, glyph.y), glyph.char, self._tone_color(glyph.tone, glyph.dim), bold=glyph.bold
+            )
 
-        for ei, e in enumerate(entities):
-            pos = e.x, e.y
-            if torched[e.y][e.x] == 0 or pos == (px, py):
+        if show_entities:
+            for entity in entities:
+                for glyph in d.preview_entity_glyphs(entity):
+                    paint(glyph)
+
+        for entity in entities:
+            if torched[entity.y][entity.x] == 0 or (entity.x, entity.y) == (px, py):
                 continue
-            if isinstance(e, d.Companion):
-                c: d.Companion = e
-                ch = c.tribe.char
-                if ch not in known_types and not show_entities:
-                    ch = "!"
-                self._draw_field_text(pos, ch, COLOR_MAP[CI_GREEN], bold=True)
-            elif isinstance(e, d.Monster):
-                m: d.Monster = e
-                ch = m.tribe.char
-                type_key = d.monster_type_key(m)
-                if type_key not in known_types:
-                    if not show_entities:
-                        self._draw_field_text(pos, "?", COLOR_MAP[CI_YELLOW], bold=True)
-                else:
-                    if d.monster_level(m) <= player_attack:
-                        if m.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
-                            ci = CI_YELLOW
-                        else:
-                            ci = CI_BLUE
-                    else:
-                        ci = CI_RED
-                    color = self._dim_color(COLOR_MAP[ci]) if dim_types and ch in dim_types else COLOR_MAP[ci]
-                    self._draw_field_text(pos, ch, color, bold=True)
-                    if m.empowered > 1:
-                        self._draw_field_text((m.x + 1, m.y), "'", color, bold=True)
-            elif isinstance(e, d.Treasure):
-                t: d.Treasure = e
-                treasure_unlocked = unlocked_treasures is not None and t.unlock_key in unlocked_treasures
-                if treasure_unlocked:
-                    self._draw_field_text(pos, d.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], bold=True)
+            for glyph in d.revealed_entity_glyphs(
+                entity, known_types, show_entities, player_attack, unlocked_treasures, dim_types
+            ):
+                paint(glyph)
 
         # Stage 3 followers persist across floor changes and are rendered
         # independently of the temporary companion slot.
@@ -478,38 +457,8 @@ class PygletUI:
         This includes stage, hours, level (with item modifiers), item info,
         beatable monsters, LP value, and a rectangular LP bar.
         """
-        has_stage3_k = stage_num == 3 and getattr(player, "stage3_flags", 0) & d.STAGE3_K_FLAG
-        has_stage3_j = stage_num == 3 and any(
-            follower[3] == "J" for follower in getattr(player, "persistent_followers", [])
-        )
-        if player.item == d.ITEM_SWORD_X1_5:
-            level_str = "LVL: %d x1.5" % player.level
-            item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-        elif player.item == d.ITEM_SWORD_CURSED:
-            level_str = "LVL: %d x3" % player.level
-            item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-        elif player.item == d.ITEM_POISONED:
-            level_str = "LVL: %d /2" % player.level
-            if has_stage3_k:
-                level_str += " x1.2"
-            item_str = "+%s(%s)" % (player.item, player.item_taken_from)
-        else:
-            level_str = "LVL: %d" % player.level
-            if has_stage3_k:
-                level_str += " x1.2"
-            item_str = ""
-        if has_stage3_j:
-            level_str += " +25%"
-
-        status_line = ""
-        if stage_num == 3:
-            status_line += "ST: 3 F: %d  " % (player.stage3_floor + 1)
-        elif stage_num != 0:
-            status_line += "ST: %d  " % stage_num
-        status_line += "HRS: %d  " % hours
-        status_line += level_str + "  "
-        status_line += item_str + "  "
-        status_line += "LP: "
+        _, item_str = d.level_item_labels(player, stage_num)
+        status_line = d.status_prefix(player, stage_num, hours) + "LP: "
 
         self._draw_text((0, self.field_height), status_line, COLOR_MAP["default"])
         text_width = self._text_width(status_line)
@@ -539,24 +488,11 @@ class PygletUI:
         self._draw_text((item_x_offset // CELL_SIZE_X, self.field_height), item_status, COLOR_MAP["default"])
 
         if stage_num == 3:
-            progress = (("C", 1), ("I", 2), ("J", 64), ("K", 4), ("H", 8), ("W", 16))
-            elf_floors = getattr(player, "stage3_elf_floors", {})
-            show_elf_floors = getattr(player, "stage3_flags", 0) & d.STAGE3_I_FLAG
             progress_x = 0
-            for label, bit in progress:
-                color = COLOR_MAP["default"] if player.stage3_flags & bit else (100, 106, 118)
-                progress_label = label
-                if show_elf_floors and label in elf_floors:
-                    progress_label += str(elf_floors[label])
-                self._draw_text((progress_x, self.field_height + 1), progress_label, color, bold=True)
-                progress_x += len(progress_label) + 1
-            treasure_collected = player.stage3_won
-            self._draw_text(
-                (progress_x, self.field_height + 1),
-                "T",
-                COLOR_MAP["default"] if treasure_collected else (100, 106, 118),
-                bold=True,
-            )
+            for label, achieved in d.stage3_progress_marks(player):
+                color = COLOR_MAP["default"] if achieved else (100, 106, 118)
+                self._draw_text((progress_x, self.field_height + 1), label, color, bold=True)
+                progress_x += len(label) + 1
             if message:
                 self._draw_text((18, self.field_height + 1), message, COLOR_MAP[CI_YELLOW], bold=True)
         elif message:

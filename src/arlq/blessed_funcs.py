@@ -134,56 +134,26 @@ class BlessedUI:
             put(checkpoint[0], checkpoint[1], "+", "yellow", bold=True)
 
         player_attack = d.current_player_attack(player, stage_num)
+
+        def paint(glyph: d.FieldGlyph) -> None:
+            color = None if glyph.tone in ("companion", "default") else glyph.tone
+            put(glyph.x, glyph.y, glyph.char, color, bold=glyph.bold, dim=glyph.dim)
+
         if show_entities:
             for entity in entities:
-                char = None
-                if isinstance(entity, (d.Companion, d.Monster)):
-                    char = entity.tribe.char
-                elif isinstance(entity, d.Treasure):
-                    char = d.CHAR_TREASURE
-                if char is not None:
-                    put(entity.x, entity.y, char, dim=True)
-                    if isinstance(entity, d.Monster) and entity.empowered > 1:
-                        put(entity.x + 1, entity.y, "'", dim=True)
+                for glyph in d.preview_entity_glyphs(entity):
+                    paint(glyph)
 
         for entity in entities:
             if torched[entity.y][entity.x] == 0 or (entity.x, entity.y) == (px, py):
                 continue
-            if isinstance(entity, d.Companion):
-                char = entity.tribe.char if entity.tribe.char in known_types or show_entities else "!"
-                put(entity.x, entity.y, char, bold=True)
-            elif isinstance(entity, d.Monster):
-                monster = entity
-                char = monster.tribe.char
-                type_key = d.monster_type_key(monster)
-                if type_key not in known_types:
-                    if not show_entities:
-                        put(entity.x, entity.y, "?", "yellow", bold=True)
-                else:
-                    color = "yellow" if monster.tribe.effect == d.EFFECT_UNLOCK_TREASURE else (
-                        "blue" if d.monster_level(monster) <= player_attack else "red"
-                    )
-                    put(entity.x, entity.y, char, color, bold=True, dim=bool(dim_types and char in dim_types))
-                    if monster.empowered > 1:
-                        put(entity.x + 1, entity.y, "'", color, bold=True, dim=bool(dim_types and char in dim_types))
-            elif isinstance(entity, d.Treasure):
-                if unlocked_treasures is not None and entity.unlock_key in unlocked_treasures:
-                    put(entity.x, entity.y, d.CHAR_TREASURE, "yellow", bold=True)
+            for glyph in d.revealed_entity_glyphs(
+                entity, known_types, show_entities, player_attack, unlocked_treasures, dim_types
+            ):
+                paint(glyph)
 
-        # "@" is white by default, matching the GUI. Low LP is a red
-        # background highlight; poisoned tints the text magenta instead, so
-        # both can be shown at once. Magenta-on-red is hard to read, so that
-        # combination switches the text to black instead.
-        is_poisoned = player.item == d.ITEM_POISONED
-        is_low_lp = player.lp <= d.LP_LOW_THRESHOLD
-        player_bg = "red" if is_low_lp else None
-        if is_low_lp and is_poisoned:
-            player_fg = "black"
-        elif is_poisoned:
-            player_fg = "magenta"
-        else:
-            player_fg = "white"
-        put(px, py, "@", player_fg, bold=True, bg=player_bg)
+        foreground, background = d.player_appearance(player)
+        put(px, py, "@", "white" if foreground == "default" else foreground, bold=True, bg=background)
         if player.companion and px + 1 < d.FIELD_WIDTH:
             put(px + 1, py, player.companion.tribe.char, dim=True)
 
@@ -214,32 +184,7 @@ class BlessedUI:
             output.append(self.term.move_xy(x, y) + self._style(text, color, bold, dim))
             x += self.term.length(text)
 
-        has_stage3_k = stage_num == 3 and getattr(player, "stage3_flags", 0) & d.STAGE3_K_FLAG
-        has_stage3_j = stage_num == 3 and any(
-            follower[3] == "J" for follower in getattr(player, "persistent_followers", [])
-        )
-        if player.item == d.ITEM_SWORD_X1_5:
-            level_str, item_str = f"LVL: {player.level} x1.5", f"+{player.item}({player.item_taken_from})"
-        elif player.item == d.ITEM_SWORD_CURSED:
-            level_str, item_str = f"LVL: {player.level} x3", f"+{player.item}({player.item_taken_from})"
-        elif player.item == d.ITEM_POISONED:
-            level_str, item_str = f"LVL: {player.level} /2", f"+{player.item}({player.item_taken_from})"
-            if has_stage3_k:
-                level_str += " x1.2"
-        else:
-            level_str, item_str = f"LVL: {player.level}", ""
-            if has_stage3_k:
-                level_str += " x1.2"
-        if has_stage3_j:
-            level_str += " +25%"
-
-        if stage_num == 3:
-            add(f"ST: 3 F: {player.stage3_floor + 1}  ")
-        elif stage_num != 0:
-            add(f"ST: {stage_num}  ")
-        add(f"HRS: {hours}  ")
-        add(level_str + "  ")
-        add(item_str + "  ")
+        add(d.status_prefix(player, stage_num, hours))
         add(f"LP: {player.lp} [")
         bar_len = 8
         bar_color = "red" if player.lp <= d.LP_LOW_THRESHOLD else "white"
@@ -251,12 +196,10 @@ class BlessedUI:
         y += 1
         x = 0
         if stage_num == 3:
-            elf_floors = getattr(player, "stage3_elf_floors", {})
-            show_elf_floors = getattr(player, "stage3_flags", 0) & d.STAGE3_I_FLAG
-            for label, bit in (("C", 1), ("I", 2), ("J", 64), ("K", 4), ("H", 8), ("W", 16)):
-                progress_label = label + (str(elf_floors[label]) if show_elf_floors and label in elf_floors else "")
-                add(progress_label + " ", bold=bool(player.stage3_flags & bit), dim=not bool(player.stage3_flags & bit))
-            add("T", bold=player.stage3_won, dim=not player.stage3_won)
+            marks = d.stage3_progress_marks(player)
+            for index, (label, achieved) in enumerate(marks):
+                spacer = "" if index == len(marks) - 1 else " "
+                add(label + spacer, bold=achieved, dim=not achieved)
         if message:
             available = self.term.width - x - 1
             if available > 0:

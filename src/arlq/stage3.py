@@ -10,8 +10,10 @@ from .arlq import (
     create_field,
     find_random_place,
     get_torched,
-    iterate_ellipse_points,
     reveal_entities_in_fov,
+    spawn_at,
+    spread_caltrops,
+    tick_message,
     unlock_treasure_for_defeat,
 )
 from .i18n import t as tr
@@ -19,7 +21,12 @@ from .utils import rand
 
 FLOORS = 3
 LOOP_TURNS = 80
-STAGE3_C, STAGE3_I, STAGE3_K, STAGE3_H, STAGE3_W, STAGE3_J = 1, 2, 4, 8, 16, 64
+STAGE3_C = d.STAGE3_C_FLAG
+STAGE3_I = d.STAGE3_I_FLAG
+STAGE3_K = d.STAGE3_K_FLAG
+STAGE3_H = d.STAGE3_H_FLAG
+STAGE3_W = d.STAGE3_W_FLAG
+STAGE3_J = d.STAGE3_J_FLAG
 
 ELF_REPEAT_MESSAGES = {
     "K": "-- The Collector Elf (K) looks satisfied.",
@@ -97,12 +104,7 @@ def _spawn(
         x, y = find_random_place(entities, field, distance=2)
         if (x, y) not in avoid and not _inside_island((x, y), island_tile):
             break
-    tribe = d.CHAR_TO_TRIBE[ch]
-    if isinstance(tribe, d.CompanionTribe):
-        entities.append(d.Companion(x, y, tribe, origin_floor=floor_index))
-    else:
-        assert isinstance(tribe, d.MonsterTribe)
-        entities.append(d.Monster(x, y, tribe, empowered=empowered))
+    spawn_at(entities, x, y, d.CHAR_TO_TRIBE[ch], empowered=empowered, origin_floor=floor_index)
     return x, y
 
 
@@ -296,10 +298,10 @@ def _apply_terrain_hazards(current: Floor, player: d.Player, previous: d.Point) 
     field = current["field"]
     event_message = None
     if field[player.y][player.x] == d.CHAR_BARRIER and not (player.stage3_flags & STAGE3_H) and (player.x, player.y) != previous:
-        player.lp -= 30
+        player.lp -= d.BARRIER_LP_DAMAGE
         event_message = tr("-- The barrier burns you.")
     if field[player.y][player.x] == d.CHAR_CALTROP:
-        player.lp -= 3
+        player.lp -= d.CALTROP_LP_DAMAGE
         field[player.y][player.x] = " "
     return event_message
 
@@ -374,11 +376,7 @@ def _defeat_monster(
     # for d (Poisoned): defeating another monster with no item must clear
     # the poison and identify the new source.
     if ch != "H":
-        player.item = entity.tribe.item
-        player.item_taken_from = ch
-        player.item_uses = d.SWORD_USES if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) else 0
-        if player.item == d.ITEM_SWORD_CURSED:
-            player.lp = (player.lp * 3 + 3) // 4
+        d.take_monster_item(player, entity.tribe.item, ch)
 
     if ch == "W":
         player.stage3_flags |= STAGE3_W
@@ -396,16 +394,14 @@ def _defeat_monster(
     if ch == "C":
         player.stage3_flags |= STAGE3_C
 
-    player.level += 10 if ch == "A" else 1
-    player.lp = max(1, min(100, player.lp + entity.tribe.feed))
+    d.grant_defeat_level(player, entity.tribe.effect)
+    d.apply_feed(player, entity.tribe.feed)
     player.karma += 1
 
     if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
-        for x, y in iterate_ellipse_points(player.x, player.y, 3, 1.7, True, current["entities"]):
-            if (x + y) % 2 == 0 and current["field"][y][x] in (" ", d.WALL_CHAR):
-                current["field"][y][x] = d.CHAR_CALTROP
+        spread_caltrops(current["field"], (player.x, player.y), current["entities"])
 
-    if d.monster_level(entity) > 0 and ch not in {"a", "A", "b", "c", "C", "W", "w"}:
+    if d.monster_level(entity) > 0 and ch not in d.STAGE3_NO_RESPAWN_MONSTERS:
         spawn_key = (floor[0], d.monster_type_key(entity))
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
 
@@ -498,7 +494,7 @@ def _resolve_monster_contact(
         else:
             player.x, player.y = checkpoint[0]
             event_message = tr("-- Respawned!")
-        player.lp = max(20, min(90, player.lp - 6))
+        d.apply_respawn_penalty(player)
         player.item = None
         player.item_uses = 0
         player.item_taken_from = None
@@ -577,7 +573,7 @@ def _handle_floor_transition(
     floor: List[int],
     checkpoint: List[d.Point],
 ) -> Optional[str]:
-    if floor[0] < 2 and (player.x, player.y) == current["down"]:
+    if floor[0] < FLOORS - 1 and (player.x, player.y) == current["down"]:
         floor[0] += 1
         player.x, player.y = floors[floor[0]]["up"]
         checkpoint[0] = (player.x, player.y)
@@ -692,9 +688,7 @@ def run_game(ui: Any, seed_str: str, debug: bool = False) -> None:
             for x in range(len(cur[0])):
                 current["seen"][y][x] |= cur[y][x]
 
-        if message[0] >= 0:
-            remaining_tick = message[0] - 1
-            message = (-1, "") if remaining_tick < 0 else (remaining_tick, message[1])
+        message = tick_message(message)
 
         show_entities = debug or getattr(ui, "map_mode", False)
         # The terminal renderer discovers the player from the entity list, while
