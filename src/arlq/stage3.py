@@ -464,10 +464,24 @@ def _resolve_monster_contact(
         player.persistent_followers.append((player.x, player.y, floor[0], "J"))
     elif ch == "K" and not (player.stage3_flags & STAGE3_C):
         current["entities"].append(entity)
-        event_message = tr("-- Bring the cursed sword (C).")
+        # The first refusal only shows a message; any later refusal sends the
+        # player elsewhere, like repeat contact with the Isolated Elf.
+        if player.k_elf_refused:
+            player.x, player.y = _find_escape_place(current)
+            event_message = tr("-- Respawned to a random location.")
+        else:
+            event_message = tr("-- Bring the cursed sword (C).")
+            player.k_elf_refused = True
     elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2:
         current["entities"].append(entity)
-        event_message = tr("-- The High Elf does not recognize you.")
+        # The first refusal only shows a message; any later refusal sends the
+        # player elsewhere, like repeat contact with the Isolated Elf.
+        if player.high_elf_refused:
+            player.x, player.y = _find_escape_place(current)
+            event_message = tr("-- Respawned to a random location.")
+        else:
+            event_message = tr("-- The High Elf does not recognize you.")
+            player.high_elf_refused = True
     elif d.current_player_attack(player, 3) < d.monster_level(entity):
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity

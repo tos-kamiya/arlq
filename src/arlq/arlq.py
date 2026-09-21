@@ -427,9 +427,16 @@ def update_entities(
 
             # High Elf is a Stage 3-style gatekeeper in Stage 2 as well. It
             # remains in place until the required elf progress is available,
-            # and must not establish a respawn checkpoint on contact.
+            # and must not establish a respawn checkpoint on contact. The
+            # first refusal only shows a message; any later refusal sends the
+            # player elsewhere, like repeat contact with the Isolated Elf.
             if m.tribe.char == "H":
-                message = (MESSAGE_TICKS, tr("-- The High Elf does not recognize you."))
+                if player.high_elf_refused:
+                    player.x, player.y = find_random_place(entities, field, distance=2)
+                    message = (MESSAGE_TICKS, tr("-- Respawned to a random location."))
+                else:
+                    message = (MESSAGE_TICKS, tr("-- The High Elf does not recognize you."))
+                    player.high_elf_refused = True
                 player.last_contact_monster = contact_key
                 continue
 

@@ -238,6 +238,15 @@ class Player(Entity):
         # blocking the only way through a bridge corridor; see the escape
         # branch in update_entities()/_resolve_monster_contact().
         self.last_contact_monster: Optional[Tuple[int, int, int]] = None
+        # Whether the player has already been turned away by an unrecognized
+        # High Elf at least once (Stage 2's gatekeeper, or Stage 3's before
+        # meeting two of I/J/K). The first refusal only shows a message; any
+        # later refusal sends the player elsewhere, like repeat contact with
+        # the Isolated Elf.
+        self.high_elf_refused: bool = False
+        # Same idea as high_elf_refused, but for Stage 3's Collector Elf (K)
+        # before the player has the cursed sword.
+        self.k_elf_refused: bool = False
 
 
 class SpawnConfig:
