@@ -213,6 +213,41 @@ def test_legacy_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(mo
     assert (player.x, player.y) == (10, 10)
 
 
+def test_legacy_stage2_high_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
+    """Stage 2's High Elf never actually fights (no checkpoint repel, no LP
+    cost). The first refusal only shows a message and leaves the player in
+    place; any later contact (even after an unrelated monster in between)
+    sends the player elsewhere, like repeat contact with the Isolated Elf."""
+    player = d.Player(2, 2, 1, 90)
+    high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
+    weak = d.Monster(1, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
+    field = blank_field()
+    entities = [player, high_elf, weak]
+
+    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    assert message == (8, "-- The High Elf does not recognize you.")
+    assert (player.x, player.y) == (3, 2)
+    assert player.lp == 90
+    assert player.high_elf_refused is True
+
+    # Move back and defeat an unrelated monster; unlike the ordinary
+    # too-strong-monster streak, this must NOT clear the High Elf refusal.
+    update_entities(KEYS["L"], field, player, entities, set(), respawn_point=(2, 2))
+    _, _, message, _ = update_entities(KEYS["L"], field, player, entities, set(), respawn_point=(2, 2))
+    assert message is None
+    assert (player.x, player.y) == (1, 2)
+    assert weak not in entities
+    assert player.high_elf_refused is True
+
+    update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (10, 10))
+    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+
+    assert message == (8, "-- Respawned to a random location.")
+    assert (player.x, player.y) == (10, 10)
+    assert player.lp == 100  # unchanged by the High Elf; raised earlier by defeating the amoeba
+
+
 def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypatch):
     """Beating an unrelated monster in between two losses to the same strong
     monster must NOT count as "two losses in a row": the escape branch is
@@ -535,6 +570,70 @@ def test_elf_repeat_contact_shows_follow_up_message(elf, initial_flags):
     assert messages[2] is not None
     assert messages[2] != messages[0]
     assert len(floors[0]["entities"]) == 1
+
+
+def test_stage3_high_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
+    """Before the player has met two of I/J/K, Stage 3's High Elf behaves
+    like Stage 2's: the first refusal only shows a message and leaves the
+    player in place, but any later contact sends the player elsewhere, even
+    after an unrelated monster contact in between."""
+    player = d.Player(2, 2, 100, 90)
+    high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
+    weak = d.Monster(1, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
+    floors, _ = stage3_state(player, [high_elf, weak])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+    assert messages == ["-- The High Elf does not recognize you."]
+    assert (player.x, player.y) == (3, 2)
+    assert player.high_elf_refused is True
+    assert player.stage3_flags == 0
+
+    messages = run_stage3_keys("LL", floors, player, floor, checkpoint, queue, history)
+    assert messages == [None, None]
+    assert (player.x, player.y) == (1, 2)
+    assert player.high_elf_refused is True
+
+    monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (10, 10))
+    messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history)
+
+    assert messages[-1] == "-- Respawned to a random location."
+    assert (player.x, player.y) == (10, 10)
+
+
+def test_stage3_collector_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
+    """Before the player has the cursed sword, Stage 3's Collector Elf (K)
+    behaves like the High Elf: the first refusal only shows a message and
+    leaves the player in place, but any later contact sends the player
+    elsewhere, even after an unrelated monster contact in between."""
+    player = d.Player(2, 2, 100, 90)
+    k_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["K"])
+    weak = d.Monster(1, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
+    floors, _ = stage3_state(player, [k_elf, weak])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+    assert messages == ["-- Bring the cursed sword (C)."]
+    assert (player.x, player.y) == (3, 2)
+    assert player.k_elf_refused is True
+    assert player.stage3_flags == 0
+
+    messages = run_stage3_keys("LL", floors, player, floor, checkpoint, queue, history)
+    assert messages == [None, None]
+    assert (player.x, player.y) == (1, 2)
+    assert player.k_elf_refused is True
+
+    monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (10, 10))
+    messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history)
+
+    assert messages[-1] == "-- Respawned to a random location."
+    assert (player.x, player.y) == (10, 10)
 
 
 def test_stage3_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(monkeypatch):

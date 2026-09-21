@@ -153,6 +153,8 @@ Stage 3 features empowered versions of `b`, `c`, and `d`: `b'`, `c'`, and `d'`.
 | **K** Collector Elf | Exchanges the cursed sword for a permanent 1.2x attack enhancement; it cannot break walls. |
 | **H** High Elf | Grants the talisman after meeting any two of `I`, `J`, and `K`. |
 
+The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first contact made while their condition is unmet; any contact after that sends you to a random location on the map.
+
 ## Companion List
 
 | Display & Name | Description                                                      |
