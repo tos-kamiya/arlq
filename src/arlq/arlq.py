@@ -426,8 +426,9 @@ def update_entities(
             player.companion = c
             player.karma = 0
 
-            if c.tribe.event_message:
-                message = (MESSAGE_TICKS, tr(c.tribe.event_message))
+            event_message = c.tribe.event_message
+            if event_message:
+                message = (MESSAGE_TICKS, tr(event_message))
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
             player.known_monsters.add(d.monster_type_key(m))
@@ -494,8 +495,9 @@ def update_entities(
 
                 d.take_monster_item(player, m.tribe.item, m.tribe.char, sword_uses)
 
-                if m.tribe.event_message:
-                    message = (MESSAGE_TICKS, tr(m.tribe.event_message))
+                event_message = m.tribe.event_message
+                if event_message:
+                    message = (MESSAGE_TICKS, tr(event_message))
 
             player.last_contact_monster = contact_key
 

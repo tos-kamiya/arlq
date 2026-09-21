@@ -1,4 +1,4 @@
-from typing import List, Optional, Set
+from typing import Any, List, Optional, Set, Tuple
 
 from blessed import Terminal
 
@@ -28,7 +28,7 @@ class BlessedUI:
     def __init__(self, term: Terminal):
         self.term = term
         self.map_mode = False
-        self._last_stage = None
+        self._last_stage: Optional[Tuple[Any, Any]] = None
 
     def _terminal_is_large_enough(self) -> bool:
         return self.term.width >= MIN_TERMINAL_WIDTH and self.term.height >= MIN_TERMINAL_HEIGHT

@@ -189,7 +189,8 @@ def _load_catalog(candidate: str) -> Optional[Dict[str, str]]:
     if candidate not in _catalog_cache:
         result: Optional[Dict[str, str]] = None
         try:
-            path = resources.files(__package__).joinpath("locales", f"{candidate}.json")
+            # joinpath takes a single child on Python 3.10's Traversable.
+            path = resources.files(__package__).joinpath("locales").joinpath(f"{candidate}.json")
             result = json.loads(path.read_text(encoding="utf-8"))
         except (FileNotFoundError, OSError, ValueError):
             result = None
@@ -213,10 +214,8 @@ def set_language(requested: str) -> None:
     _lang = resolve_language(requested)
 
 
-def t(text: Optional[str]) -> Optional[str]:
+def t(text: str) -> str:
     """Translate a fixed message string (or `str.format` template) for the
     current language. Falls back to `text` unchanged if untranslated."""
-    if text is None:
-        return None
     catalog = _load_catalog(_lang) or {}
     return catalog.get(text, text)
