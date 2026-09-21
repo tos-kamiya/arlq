@@ -231,6 +231,13 @@ class Player(Entity):
         self.stage3_won: bool = False
         self.stage3_floor: int = 0
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
+        # (floor, x, y) of the monster involved in the most recent monster
+        # contact (win, loss, or a no-combat gatekeeper like High Elf), or
+        # None. Losing combat against the same (floor, x, y) twice in a row,
+        # with no other monster contact in between, means that monster is
+        # blocking the only way through a bridge corridor; see the escape
+        # branch in update_entities()/_resolve_monster_contact().
+        self.last_contact_monster: Optional[Tuple[int, int, int]] = None
 
 
 class SpawnConfig:

@@ -22,7 +22,6 @@ LOOP_TURNS = 80
 STAGE3_C, STAGE3_I, STAGE3_K, STAGE3_H, STAGE3_W, STAGE3_J = 1, 2, 4, 8, 16, 64
 
 ELF_REPEAT_MESSAGES = {
-    "I": "-- The elf (I) watches you in silence.",
     "K": "-- The Collector Elf (K) looks satisfied.",
     "H": "-- Keep the talisman close to your skin.",
 }
@@ -105,6 +104,16 @@ def _spawn(
         assert isinstance(tribe, d.MonsterTribe)
         entities.append(d.Monster(x, y, tribe, empowered=empowered))
     return x, y
+
+
+def _find_escape_place(current: Floor) -> d.Point:
+    """A random open cell for the player to be sent to, never inside a
+    sealed island (e.g. the Isolated Elf's room)."""
+    island_tile = current.get("island")
+    while True:
+        x, y = find_random_place(current["entities"], current["field"], distance=2)
+        if not _inside_island((x, y), island_tile):
+            return x, y
 
 
 def _main_connected(field: List[List[str]], start: d.Point, island_tile: Optional[d.Point]) -> bool:
@@ -415,12 +424,22 @@ def _resolve_monster_contact(
     for a repeated encounter with an already-met elf, which ends the turn
     immediately without the usual end-of-turn processing."""
     ch = entity.tribe.char
+    contact_key = (floor[0], entity.x, entity.y)
 
     if entity.tribe.is_elf:
         player.stage3_elf_floors.setdefault(ch, floor[0] + 1)
 
     if ch in player.stage3_met_elves:
         current["entities"].pop(hit)
+        if ch == "I":
+            # The sealed Isolated Elf island has no other way out (see
+            # _inside_island): once the player has met "I", every further
+            # visit sends them back out instead of trapping them inside.
+            current["entities"].append(entity)
+            player.x, player.y = _find_escape_place(current)
+            raise _StepDone(
+                (MESSAGE_TICKS, tr("-- The elf (I) wants to be left alone, and sends you elsewhere."))
+            )
         if ch in ELF_REPEAT_MESSAGES:
             current["entities"].append(entity)
             raise _StepDone((MESSAGE_TICKS, tr(ELF_REPEAT_MESSAGES[ch])))
@@ -454,12 +473,21 @@ def _resolve_monster_contact(
         # resolves combat before removing the monster; keeping the entity
         # here prevents a failed attack from deleting it.
         current["entities"].append(entity)
-        player.x, player.y = checkpoint[0]
+        # Losing twice in a row to the very same monster (no other monster
+        # contact in between) means it is blocking the only way through:
+        # send the player somewhere random instead of back to the
+        # checkpoint, so a too-strong monster on a bridge corridor cannot
+        # soft-lock the floor.
+        if player.last_contact_monster == contact_key:
+            player.x, player.y = _find_escape_place(current)
+            event_message = tr("-- You break free and end up elsewhere.")
+        else:
+            player.x, player.y = checkpoint[0]
+            event_message = tr("-- Respawned!")
         player.lp = max(20, min(90, player.lp - 6))
         player.item = None
         player.item_uses = 0
         player.item_taken_from = None
-        event_message = tr("-- Respawned!")
     else:
         _defeat_monster(entity, current, player, floor, checkpoint, queue)
 
@@ -468,6 +496,8 @@ def _resolve_monster_contact(
         current["entities"].append(entity)
     elif entity.tribe.is_elf and entity not in current["entities"]:
         player.stage3_met_elves.add(ch)
+
+    player.last_contact_monster = contact_key
 
     if event_message is None:
         event_message = tr(entity.tribe.event_message)
