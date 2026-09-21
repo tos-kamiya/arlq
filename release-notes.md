@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 4.6.0 - 2026-09-21
+
+- Fix a soft-lock: losing combat twice in a row to the very same monster
+  (with no other monster contact in between) now sends the player to a
+  random location instead of back to the checkpoint, so a too-strong
+  monster occupying the only corridor into an area can no longer
+  permanently block progress.
+- Fix a soft-lock in Stage 3: contact with the Isolated Elf (`I`) after
+  the first now always sends the player elsewhere, so a player who
+  reaches the elf's sealed room (e.g. via a Pegasus jump) can no longer
+  get trapped inside.
+- Align the English README's Game Description section structure with the
+  Japanese version, and document the new escape mechanics above.
+
 ## 4.5.1 - 2026-09-21
 
 - Fix Stage 3 monster color coding (red/beatable-blue) to include the
