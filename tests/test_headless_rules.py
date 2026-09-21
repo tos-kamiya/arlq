@@ -190,6 +190,58 @@ def test_legacy_non_respawning_monster_does_not_enter_respawn_queue():
     assert entities == [player]
 
 
+def test_legacy_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(monkeypatch):
+    """A monster too strong to beat, sitting in the only corridor into an
+    area, must not soft-lock the game: losing to it once still sends the
+    player back to the checkpoint, but losing to the very same monster again
+    right after (with no other monster contact in between) sends the player
+    somewhere random instead."""
+    player = d.Player(2, 2, 1, 90)
+    dragon = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_DRAGON])
+    field = blank_field()
+    entities = [player, dragon]
+
+    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    assert message == (8, "-- Respawned!")
+    assert (player.x, player.y) == (2, 2)
+    assert player.last_contact_monster == (0, 3, 2)
+
+    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (10, 10))
+    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+
+    assert message == (8, "-- You break free and end up elsewhere.")
+    assert (player.x, player.y) == (10, 10)
+
+
+def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypatch):
+    """Beating an unrelated monster in between two losses to the same strong
+    monster must NOT count as "two losses in a row": the escape branch is
+    only for genuinely consecutive contact with the same individual."""
+    player = d.Player(2, 2, 1, 90)
+    dragon = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_DRAGON])
+    weak = d.Monster(1, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
+    field = blank_field()
+    entities = [player, dragon, weak]
+
+    update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    assert player.last_contact_monster == (0, 3, 2)
+    assert (player.x, player.y) == (2, 2)
+
+    update_entities(KEYS["L"], field, player, entities, set(), respawn_point=(2, 2))
+    assert player.last_contact_monster == (0, 1, 2)
+    assert (player.x, player.y) == (1, 2)
+
+    update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    assert (player.x, player.y) == (2, 2)
+
+    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (99, 99))
+    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+
+    assert message == (8, "-- Respawned!")
+    assert (player.x, player.y) == (2, 2)
+    assert player.last_contact_monster == (0, 3, 2)
+
+
 def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     player.known_monsters = {"a", "W"}
@@ -483,3 +535,99 @@ def test_elf_repeat_contact_shows_follow_up_message(elf, initial_flags):
     assert messages[2] is not None
     assert messages[2] != messages[0]
     assert len(floors[0]["entities"]) == 1
+
+
+def test_stage3_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(monkeypatch):
+    player = d.Player(2, 2, 1, 90)
+    wyrm = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
+    floors, _ = stage3_state(player, [wyrm])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+    assert messages == ["-- Respawned!"]
+    assert (player.x, player.y) == (2, 2)
+    assert player.last_contact_monster == (0, 3, 2)
+
+    monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (10, 10))
+    messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+
+    assert messages == ["-- You break free and end up elsewhere."]
+    assert (player.x, player.y) == (10, 10)
+
+
+def test_stage3_defeating_a_different_monster_resets_the_escape_streak(monkeypatch):
+    player = d.Player(2, 2, 1, 90)
+    wyrm = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
+    weak = d.Monster(1, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
+    floors, _ = stage3_state(player, [wyrm, weak])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+    assert player.last_contact_monster == (0, 3, 2)
+
+    run_stage3_keys("L", floors, player, floor, checkpoint, queue, history)
+    assert player.last_contact_monster == (0, 1, 2)
+    # Defeating a non-elf monster establishes a new checkpoint at the
+    # player's current position (existing behavior), which matters for the
+    # position asserted after the next loss below.
+    assert checkpoint == [(1, 2)]
+
+    run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+    assert (player.x, player.y) == (2, 2)
+
+    monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (99, 99))
+    messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+
+    assert messages == ["-- Respawned!"]
+    assert (player.x, player.y) == (1, 2)
+    assert player.last_contact_monster == (0, 3, 2)
+
+
+def test_isolated_elf_sends_player_away_on_repeat_contact(monkeypatch):
+    """The Isolated Elf's room has no door (see _inside_island in stage3.py);
+    a player who reaches it (e.g. via a Pegasus jump) must not be able to get
+    trapped there, so any contact after the first sends them elsewhere."""
+    player = d.Player(2, 2, 100, 90)
+    entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["I"])
+    floors, _ = stage3_state(player, [entity])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+    assert messages == ["-- The Isolated Elf told you about the history of the elves."]
+    assert (player.x, player.y) == (3, 2)
+    assert floors[0]["entities"] == [entity]
+
+    monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (20, 15))
+    messages = run_stage3_keys("LR", floors, player, floor, checkpoint, queue, history)
+
+    assert messages[-1] == "-- The elf (I) wants to be left alone, and sends you elsewhere."
+    assert (player.x, player.y) == (20, 15)
+    assert floors[0]["entities"] == [entity]
+
+
+def test_non_isolated_elf_repeat_contact_does_not_relocate_player():
+    """Regression guard: only the Isolated Elf's repeat contact should
+    relocate the player. Other elves keep their existing in-place message."""
+    player = d.Player(2, 2, 100, 90)
+    player.stage3_flags = STAGE3_C
+    entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["K"])
+    floors, _ = stage3_state(player, [entity])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
+    messages = run_stage3_keys("LR", floors, player, floor, checkpoint, queue, history)
+
+    assert messages[-1] == "-- The Collector Elf (K) looks satisfied."
+    assert (player.x, player.y) == (3, 2)

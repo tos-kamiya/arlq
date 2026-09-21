@@ -85,7 +85,7 @@ The terminal interface uses Blessed, which is installed automatically with ARLQ.
   Ordinary monsters and temporary companions do not move on their own. The Javelin Elf is a persistent follower and moves to the player's previous position after each successful move.
 
 * **Encounters**  
-  - **Monsters:** Contacting a monster initiates combat. If the monster is at or below your level, you can defeat it, level up, and obtain any items it may be carrying. However, if you lose to a higher-level monster, you will respawn at the initial spawn point or at the location where you most recently defeated a monster. Monsters `a`, `A`, `b`, `c`, and `C` do not respawn after being defeated.
+  - **Monsters:** Contacting a monster initiates combat. If the monster is at or below your level, you can defeat it, level up, and obtain any items it may be carrying. However, if you lose to a higher-level monster, you will respawn at the initial spawn point or at the location where you most recently defeated a monster. If you lose to the very same monster twice in a row (with no other monster contact in between), you instead escape to a random location on the map — this prevents an unbeatable monster blocking the only corridor into an area from soft-locking the game. Monsters `a`, `A`, `b`, `c`, and `C` do not respawn after being defeated.
   - **Companions:** When you come into contact with a companion, it will join you and provide its unique benefit.  
 
   Note: Neither monsters nor companions move on their own; they wait for you to approach.
@@ -150,7 +150,7 @@ Stage 3 features empowered versions of `b`, `c`, and `d`: `b'`, `c'`, and `d'`.
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **I** Isolated Elf | Reveals information about the other elves. It is inside a sealed room, so a wall-breaking sword is needed to reach it. |
+| **I** Isolated Elf | Reveals information about the other elves. It is inside a sealed room, so a wall-breaking sword is needed to reach it. Any contact after the first sends you back out to a random location, so you cannot get trapped inside. |
 | **J** Javelin Elf | Follows the player and increases attack power by 25%. |
 | **K** Collector Elf | Exchanges the cursed sword for a permanent 1.2x attack enhancement; it cannot break walls. |
 | **H** High Elf | Grants the talisman after meeting any two of `I`, `J`, and `K`. |

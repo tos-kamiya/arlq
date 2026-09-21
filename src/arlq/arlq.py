@@ -423,27 +423,38 @@ def update_entities(
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
             player.known_monsters.add(d.monster_type_key(m))
+            contact_key = (0, m.x, m.y)
 
             # High Elf is a Stage 3-style gatekeeper in Stage 2 as well. It
             # remains in place until the required elf progress is available,
             # and must not establish a respawn checkpoint on contact.
             if m.tribe.char == "H":
                 message = (MESSAGE_TICKS, tr("-- The High Elf does not recognize you."))
+                player.last_contact_monster = contact_key
                 continue
 
             player_attack = d.current_player_attack(player)
 
             if player_attack < d.monster_level(m):
-                if respawn_point is None:
+                # Losing twice in a row to the very same monster (no other
+                # monster contact in between) means it is blocking the only
+                # way through: send the player somewhere random instead of
+                # back to the checkpoint, so a too-strong monster on a bridge
+                # corridor cannot soft-lock the map.
+                if player.last_contact_monster == contact_key:
                     player.x, player.y = find_random_place(entities, field, distance=2)
+                    message = (MESSAGE_TICKS, tr("-- You break free and end up elsewhere."))
                 else:
-                    player.x, player.y = respawn_point
+                    if respawn_point is None:
+                        player.x, player.y = find_random_place(entities, field, distance=2)
+                    else:
+                        player.x, player.y = respawn_point
+                    message = (MESSAGE_TICKS, tr("-- Respawned!"))
                 player.item = ""
                 player.item_uses = 0
                 player.item_taken_from = ""
                 player.lp -= d.LP_RESPAWN_COST
                 player.lp = max(d.LP_RESPAWN_MIN, min(player.lp, d.LP_INIT))
-                message = (MESSAGE_TICKS, tr("-- Respawned!"))
             else:
                 del entities[eei]
 
@@ -486,6 +497,8 @@ def update_entities(
 
                 if m.tribe.event_message:
                     message = (MESSAGE_TICKS, tr(m.tribe.event_message))
+
+            player.last_contact_monster = contact_key
 
     reveal_entities_in_fov(player, entities)
 
