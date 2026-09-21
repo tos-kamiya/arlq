@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 4.6.4 - 2026-09-22
+
+- No player-visible gameplay or UI changes.
+- Add internal developer/testing CLI options `--trace-record`,
+  `--trace-replay`, `--trace-replay-output`, and `--trace-replay-watch`
+  for recording a play session's inputs and results to a JSON trace file
+  and replaying it headlessly, to help catch behavior regressions across
+  code changes. Not documented in `README.md`/`README-ja_JP.md`; see
+  `docs/gameplay-trace-spec.md` and `docs/developer.md`.
+
 ## 4.6.3 - 2026-09-22
 
 - Revise the English and Japanese event messages so both languages
