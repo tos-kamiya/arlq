@@ -1,10 +1,11 @@
 from collections import Counter, deque
+from types import SimpleNamespace
 
 import pytest
 
 from arlq import defs as d
 from arlq import stage3 as stage3_module
-from arlq.arlq import respawn_entity, update_entities
+from arlq.arlq import GameConfig, game_config_from_args, respawn_entity, run_game, update_entities
 from arlq.stage3 import STAGE3_C, STAGE3_H, STAGE3_I, STAGE3_J, STAGE3_K, STAGE3_W, _step
 
 KEYS = {
@@ -38,6 +39,43 @@ def run_stage3_keys(keys, floors, player, floor, checkpoint, queue, history):
         result = _step(KEYS[key], floors, player, floor, checkpoint, queue, history, 1)
         messages.append(result[1] if result is not None else None)
     return messages
+
+
+def test_game_config_from_args_does_not_mutate_gameplay_constants():
+    original = (d.TORCH_RADIUS, d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH)
+
+    large_narrow = game_config_from_args(
+        SimpleNamespace(large_torch=True, small_torch=False, narrower_corridors=True)
+    )
+    small_normal = game_config_from_args(
+        SimpleNamespace(large_torch=False, small_torch=True, narrower_corridors=False)
+    )
+
+    assert large_narrow == GameConfig(
+        torch_radius=original[0] + 1,
+        corridor_h_width=original[1] - 1,
+        corridor_v_width=original[2] - 1,
+    )
+    assert small_normal == GameConfig(
+        torch_radius=original[0] - 1,
+        corridor_h_width=original[1],
+        corridor_v_width=original[2],
+    )
+    assert (d.TORCH_RADIUS, d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH) == original
+
+
+def test_stage3_receives_the_per_run_game_config(monkeypatch):
+    config = GameConfig(torch_radius=5, corridor_h_width=1, corridor_v_width=2)
+    received = []
+
+    def fake_run_game(ui, seed_str, debug, trace=None, config=None):
+        received.append((ui, seed_str, debug, trace, config))
+
+    monkeypatch.setattr(stage3_module, "run_game", fake_run_game)
+
+    run_game("ui", "seed", 3, debug_show_entities=True, config=config)
+
+    assert received == [("ui", "seed", True, None, config)]
 
 
 @pytest.mark.parametrize(

@@ -2,6 +2,7 @@ from typing import Container, Dict, List, Set, Tuple, Optional
 
 from collections import Counter
 import argparse
+from dataclasses import dataclass
 import math
 import sys
 import time
@@ -17,6 +18,23 @@ from .i18n import t as tr, set_language, get_language
 from .trace import DIR_TO_KEY, ReplayUI, TraceRecorder, default_replay_output_path, load_trace
 
 MESSAGE_TICKS = 8
+
+
+@dataclass(frozen=True)
+class GameConfig:
+    torch_radius: int = d.TORCH_RADIUS
+    corridor_h_width: int = d.CORRIDOR_H_WIDTH
+    corridor_v_width: int = d.CORRIDOR_V_WIDTH
+
+
+def game_config_from_args(args) -> GameConfig:
+    torch_adjustment = 1 if args.large_torch else -1 if args.small_torch else 0
+    corridor_adjustment = 1 if args.narrower_corridors else 0
+    return GameConfig(
+        torch_radius=d.TORCH_RADIUS + torch_adjustment,
+        corridor_h_width=d.CORRIDOR_H_WIDTH - corridor_adjustment,
+        corridor_v_width=d.CORRIDOR_V_WIDTH - corridor_adjustment,
+    )
 
 
 def tick_message(message: Tuple[int, str]) -> Tuple[int, str]:
@@ -603,7 +621,10 @@ def run_game(
     debug_show_entities: bool = False,
     seed_value: Optional[int] = None,
     trace: Optional[TraceRecorder] = None,
+    config: Optional[GameConfig] = None,
 ) -> None:
+    if config is None:
+        config = GameConfig()
     show_entities = debug_show_entities
 
     if stage_num == 0:  # if stage is not selected yet
@@ -631,7 +652,7 @@ def run_game(
     if stage_num == 3:
         from .stage3 import run_game as run_stage3
 
-        run_stage3(ui, seed_str, debug_show_entities, trace=trace)
+        run_stage3(ui, seed_str, debug_show_entities, trace=trace, config=config)
         return
 
     # Configuration
@@ -639,7 +660,12 @@ def run_game(
 
     # Initialize field
     margin_x = d.STAGE1_COLUMN_MARGIN if stage_num == 1 else 0
-    field, first_p, last_p = create_field(d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH, d.WALL_CHAR, margin_x=margin_x)
+    field, first_p, last_p = create_field(
+        config.corridor_h_width,
+        config.corridor_v_width,
+        d.WALL_CHAR,
+        margin_x=margin_x,
+    )
 
     # Initialize view/ui components
     cur_torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
@@ -670,7 +696,7 @@ def run_game(
     spawn_entities(entities, field, spawn_config)
 
     # Initialize stage state
-    torch_radius = d.TORCH_RADIUS
+    torch_radius = config.torch_radius
     hours: int = -1
     move_direction = None
 
@@ -947,17 +973,9 @@ def main():
         else:
             args.seed = int(time.time()) % 100000
 
-    if args.large_torch:
-        d.TORCH_RADIUS += 1
-    elif args.small_torch:
-        d.TORCH_RADIUS -= 1
-
-    if args.narrower_corridors:
-        d.CORRIDOR_H_WIDTH -= 1
-        d.CORRIDOR_V_WIDTH -= 1
-
     rand.set_seed(args.seed)
     seed_str = generate_seed_string(args)
+    game_config = game_config_from_args(args)
 
     trace_recorder: Optional[TraceRecorder] = None
     if args.trace_record or args.trace_replay:
@@ -974,9 +992,25 @@ def main():
     def play(ui) -> None:
         if args.trace_replay:
             replay_ui = ReplayUI(trace_data["turns"], args.stage, ui if args.trace_replay_watch else None)
-            run_game(replay_ui, seed_str, args.stage, args.debug_show_entities, None, trace=trace_recorder)
+            run_game(
+                replay_ui,
+                seed_str,
+                args.stage,
+                args.debug_show_entities,
+                None,
+                trace=trace_recorder,
+                config=game_config,
+            )
         else:
-            run_game(ui, seed_str, args.stage, args.debug_show_entities, args.seed, trace=trace_recorder)
+            run_game(
+                ui,
+                seed_str,
+                args.stage,
+                args.debug_show_entities,
+                args.seed,
+                trace=trace_recorder,
+                config=game_config,
+            )
 
     if args.trace_replay and not args.trace_replay_watch:
         play(None)
