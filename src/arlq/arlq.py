@@ -720,14 +720,14 @@ def run_game(
         message = tick_message(message)
         show_entities = show_entities or getattr(ui, "map_mode", False)
         ui.draw_stage(
-            hours,
-            player,
-            entities,
-            field,
-            cur_torched,
-            torched,
-            player.known_monsters | player.known_companions,
-            show_entities,
+            hours=hours,
+            player=player,
+            entities=entities,
+            field=field,
+            cur_torched=cur_torched,
+            torched=torched,
+            known_types=player.known_monsters | player.known_companions,
+            show_entities=show_entities,
             stage_num=stage_num,
             message=message[1],
             checkpoint=checkpoint,
@@ -775,8 +775,13 @@ def run_game(
                     respawned = respawn_entity(d.CHAR_TO_TRIBE[t], entities, field)
                     respawn_queue[t] -= 1
                     if trace is not None:
-                        kind = "monster" if isinstance(respawned, d.Monster) else "companion"
-                        rid = d.monster_type_key(respawned) if isinstance(respawned, d.Monster) else respawned.tribe.char
+                        if isinstance(respawned, d.Monster):
+                            kind = "monster"
+                            rid = d.monster_type_key(respawned)
+                        else:
+                            assert isinstance(respawned, d.Companion)
+                            kind = "companion"
+                            rid = respawned.tribe.char
                         trace.add_world_event(
                             {"type": "respawn", "kind": kind, "id": rid, "at": [respawned.x, respawned.y]}
                         )
@@ -796,14 +801,14 @@ def run_game(
     # Game over display
     while True:
         ui.draw_stage(
-            hours,
-            player,
-            entities,
-            field,
-            cur_torched,
-            torched,
-            player.known_monsters | player.known_companions,
-            show_entities,
+            hours=hours,
+            player=player,
+            entities=entities,
+            field=field,
+            cur_torched=cur_torched,
+            torched=torched,
+            known_types=player.known_monsters | player.known_companions,
+            show_entities=show_entities,
             stage_num=stage_num,
             message=message[1],
             extra_keys=True,

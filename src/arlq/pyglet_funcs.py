@@ -316,6 +316,7 @@ class PygletUI:
 
     def draw_stage(
         self,
+        *,
         hours: int,
         player: d.Player,
         entities: List[d.Entity],

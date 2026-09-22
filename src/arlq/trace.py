@@ -144,9 +144,9 @@ class ReplayUI:
         self.map_mode = False
         self.ran_dry = False
 
-    def draw_stage(self, *args: Any, **kwargs: Any) -> None:
+    def draw_stage(self, **kwargs: Any) -> None:
         if self._draw_ui is not None:
-            self._draw_ui.draw_stage(*args, **kwargs)
+            self._draw_ui.draw_stage(**kwargs)
 
     def select_stage(self) -> int:
         return self._stage
