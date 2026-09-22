@@ -10,6 +10,7 @@ from .arlq import (
     create_field,
     find_random_place,
     get_torched,
+    move_player,
     reveal_entities_in_fov,
     spawn_at,
     spread_caltrops,
@@ -266,42 +267,14 @@ def _move_player(
     direction: d.Point, current: Floor, player: d.Player, trace: Optional[TraceRecorder] = None
 ) -> None:
     """Apply one step of player movement, including sword-breaking and Pegasus jumps."""
-    dx, dy = direction
-    nx, ny = player.x + dx, player.y + dy
-    field = current["field"]
-    if not (0 <= ny < len(field) and 0 <= nx < len(field[0])):
-        if trace is not None:
-            trace.record_wall({"result": "blocked"})
-        return
-
-    cell = field[ny][nx]
-    if cell in (" ", d.CHAR_CALTROP, "^", "v", d.CHAR_BARRIER):
-        player.x, player.y = nx, ny
-        return
-
-    if player.companion and player.companion.tribe.char == "p":
-        jx, jy = player.x + dx * d.PEGASUS_STEP_X, player.y + dy * d.PEGASUS_STEP_Y
-        if 0 <= jy < len(field) and 0 <= jx < len(field[0]) and field[jy][jx] in (" ", d.CHAR_CALTROP):
-            player.x, player.y = jx, jy
-            player.karma += 1
-            if trace is not None:
-                trace.record_wall({"result": "pegasus_phase"})
-        elif trace is not None:
-            trace.record_wall({"result": "blocked"})
-        return
-
-    if player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) and player.item_uses:
-        player.x, player.y = nx, ny
-        field[ny][nx] = " "
-        player.item_uses -= 1
-        if not player.item_uses:
-            d.clear_player_item(player)
-        if trace is not None:
-            trace.record_wall({"result": "sword_break", "item_uses_left": player.item_uses})
-        return
-
-    if trace is not None:
-        trace.record_wall({"result": "blocked"})
+    wall_result = move_player(
+        direction,
+        current["field"],
+        player,
+        (" ", d.CHAR_CALTROP, "^", "v", d.CHAR_BARRIER),
+    )
+    if trace is not None and wall_result is not None:
+        trace.record_wall(wall_result)
 
 
 def _apply_terrain_hazards(current: Floor, player: d.Player, previous: d.Point) -> Optional[str]:

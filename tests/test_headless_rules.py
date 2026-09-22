@@ -537,6 +537,23 @@ def test_stage3_sword_breaking_its_last_wall_clears_all_equipment_state():
     assert player.item_taken_from is None
 
 
+@pytest.mark.parametrize("cell", ["^", "v", d.CHAR_BARRIER])
+def test_stage3_special_floor_cells_are_passable_without_using_sword(cell):
+    player = d.Player(2, 2, 10, 90)
+    player.item = d.ITEM_SWORD_CURSED
+    player.item_uses = 2
+    player.item_taken_from = "C"
+    floors, field = stage3_state(player, [])
+    field[2][3] = cell
+
+    run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter(), deque())
+
+    assert (player.x, player.y) == (3, 2)
+    assert field[2][3] == cell
+    assert player.item == d.ITEM_SWORD_CURSED
+    assert player.item_uses == 2
+
+
 @pytest.mark.parametrize(
     ("elf", "initial_flags", "expected_flags", "expected_message"),
     [
