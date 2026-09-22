@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 4.6.6 - 2026-09-22
+
+- No player-visible gameplay or UI changes.
+- Separate legacy gameplay event results from trace JSON serialization so
+  gameplay rules no longer depend directly on `TraceRecorder`.
+
 ## 4.6.5 - 2026-09-22
 
 - No player-visible gameplay or UI changes.
