@@ -2,6 +2,7 @@
 
 from collections import Counter, deque
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, Container, Deque, Dict, List, Optional, Set, Tuple, TypedDict
 
 from . import defs as d
@@ -72,11 +73,13 @@ class Floor(TypedDict):
 HistoryEntry = Tuple[List[Floor], d.Player, int, d.Point, "Counter[Tuple[int, str]]"]
 
 
-class _StepDone(Exception):
-    """Internal signal: skip the rest of `_step` and return `result` now."""
+@dataclass(frozen=True)
+class _ContactResult:
+    """Outcome of an entity contact within one Stage 3 turn."""
 
-    def __init__(self, result: Optional[Tuple[int, str]]) -> None:
-        self.result = result
+    message: Optional[str]
+    end_turn: bool = False
+    message_ticks: int = MESSAGE_TICKS
 
 
 def _place_barrier(field: List[List[str]], center: d.Point) -> None:
@@ -321,7 +324,7 @@ def _rewind_to_history(
     checkpoint: List[d.Point],
     queue: "Counter[Tuple[int, str]]",
     history: Deque[HistoryEntry],
-) -> Tuple[int, str]:
+) -> str:
     """Handle contact with the Loop Companion ('l'): rewind to the oldest recorded state."""
     known = player.known_monsters
     unlocked = player.unlocked_treasures
@@ -361,7 +364,7 @@ def _rewind_to_history(
             break
     _spawn(restored_entities, floors[floor[0]]["field"], "l", {(player.x, player.y)}, floors[floor[0]]["island"], floor[0])
 
-    return (5, tr("-- Time folds back to the beginning of the recorded past."))
+    return tr("-- Time folds back to the beginning of the recorded past.")
 
 
 def _defeat_monster(
@@ -428,10 +431,8 @@ def _resolve_monster_contact(
     queue: "Counter[Tuple[int, str]]",
     event_message: Optional[str],
     trace: Optional[TraceRecorder] = None,
-) -> Optional[str]:
-    """Resolve contact with a monster (including elves). May raise `_StepDone`
-    for a repeated encounter with an already-met elf, which ends the turn
-    immediately without the usual end-of-turn processing."""
+) -> _ContactResult:
+    """Resolve contact with a monster, including early-ending elf encounters."""
     ch = entity.tribe.char
     contact_key = (floor[0], entity.x, entity.y)
 
@@ -448,13 +449,14 @@ def _resolve_monster_contact(
             # visit sends them back out instead of trapping them inside.
             current["entities"].append(entity)
             player.x, player.y = _find_escape_place(current)
-            raise _StepDone(
-                (MESSAGE_TICKS, tr("-- The Isolated Elf wants to be left alone, and sends you elsewhere."))
+            return _ContactResult(
+                tr("-- The Isolated Elf wants to be left alone, and sends you elsewhere."),
+                end_turn=True,
             )
         if ch in ELF_REPEAT_MESSAGES:
             current["entities"].append(entity)
-            raise _StepDone((MESSAGE_TICKS, tr(ELF_REPEAT_MESSAGES[ch])))
-        raise _StepDone(None)
+            return _ContactResult(tr(ELF_REPEAT_MESSAGES[ch]), end_turn=True)
+        return _ContactResult(None, end_turn=True)
 
     # The W treasure must remain hidden until W is actually defeated. Other
     # monsters are revealed on contact, but revealing W here would also make
@@ -549,7 +551,7 @@ def _resolve_monster_contact(
         if tribe_message:
             event_message = tr(tribe_message)
 
-    return event_message
+    return _ContactResult(event_message)
 
 
 def _resolve_contact(
@@ -563,13 +565,12 @@ def _resolve_contact(
     history: Deque[HistoryEntry],
     event_message: Optional[str],
     trace: Optional[TraceRecorder] = None,
-) -> Optional[str]:
+) -> _ContactResult:
     """Resolve contact with the entity at `hit` in current["entities"].
 
-    Returns the event message to report for this turn (which may be
-    `event_message` unchanged). May raise `_StepDone` for encounters that end
-    the turn immediately, bypassing the usual end-of-turn processing (Loop
-    Companion rewind, repeated elf contact).
+    The result explicitly marks encounters that end the turn immediately,
+    bypassing the usual end-of-turn processing (Loop Companion rewind and
+    repeated elf contact).
     """
     entity = current["entities"][hit]
 
@@ -584,7 +585,7 @@ def _resolve_contact(
                 player.stage3_won = True
             else:
                 event_message = tr("-- You took the treasure chest, but the King's request remains.")
-        return event_message
+        return _ContactResult(event_message)
 
     if isinstance(entity, d.Companion):
         ch = entity.tribe.char
@@ -594,11 +595,12 @@ def _resolve_contact(
             trace.record_contact({"type": "companion", "id": ch})
         # l is a companion whose contact rewinds the recorded past.
         if ch == "l" and history:
-            raise _StepDone(_rewind_to_history(floors, player, floor, checkpoint, queue, history))
+            message = _rewind_to_history(floors, player, floor, checkpoint, queue, history)
+            return _ContactResult(message, end_turn=True, message_ticks=5)
         player.companion = entity
         player.karma = 0
         tribe_message = entity.tribe.event_message
-        return tr(tribe_message) if tribe_message else None
+        return _ContactResult(tr(tribe_message) if tribe_message else None)
 
     assert isinstance(entity, d.Monster)
     return _resolve_monster_contact(hit, entity, current, player, floor, checkpoint, queue, event_message, trace=trace)
@@ -688,12 +690,12 @@ def _step(
 
     hit = next((i for i, e in enumerate(current["entities"]) if (e.x, e.y) == (player.x, player.y)), None)
     if hit is not None:
-        try:
-            event_message = _resolve_contact(
-                hit, current, floors, player, floor, checkpoint, queue, history, event_message, trace=trace
-            )
-        except _StepDone as done:
-            return done.result
+        contact = _resolve_contact(
+            hit, current, floors, player, floor, checkpoint, queue, history, event_message, trace=trace
+        )
+        if contact.end_turn:
+            return (contact.message_ticks, contact.message) if contact.message else None
+        event_message = contact.message
 
     if player.companion is not None and player.karma >= player.companion.tribe.durability:
         ch = player.companion.tribe.char

@@ -881,6 +881,22 @@ def test_non_isolated_elf_repeat_contact_does_not_relocate_player():
     assert (player.x, player.y) == (3, 2)
 
 
+def test_repeated_elf_contact_ends_turn_before_companion_expiration():
+    player = d.Player(2, 2, 100, 90)
+    player.stage3_met_elves.add("K")
+    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"], origin_floor=0)
+    player.karma = player.companion.tribe.durability
+    entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["K"])
+    floors, _ = stage3_state(player, [entity])
+    queue = Counter()
+
+    messages = run_stage3_keys("R", floors, player, [0], [(2, 2)], queue, deque())
+
+    assert messages == ["-- The Collector Elf (K) looks satisfied."]
+    assert player.companion is not None
+    assert queue == Counter()
+
+
 def test_stage3_flags_keep_their_bit_values():
     assert (STAGE3_C, STAGE3_I, STAGE3_K, STAGE3_H, STAGE3_W, STAGE3_J) == (1, 2, 4, 8, 16, 64)
     assert d.STAGE3_NO_RESPAWN_MONSTERS == {"a", "A", "b", "c", "C", "W", "w"}
