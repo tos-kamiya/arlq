@@ -1,4 +1,4 @@
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Container, Dict, List, Set, Tuple, Optional
 
 from collections import Counter
 import argparse
@@ -355,6 +355,58 @@ def reveal_entities_in_fov(
             player.known_monsters.add(d.monster_type_key(entity))
 
 
+def move_player(
+    direction: d.Point,
+    field: List[List[str]],
+    player: d.Player,
+    passable_cells: Container[str],
+) -> Optional[Dict[str, object]]:
+    """Move the player and return a traceable wall-interaction result.
+
+    A normal step has no wall result. Blocked movement, a Pegasus phase, and
+    a sword-broken wall return the event recorded by the gameplay trace.
+    """
+    dx, dy = direction
+    nx, ny = player.x + dx, player.y + dy
+    height = len(field)
+    width = len(field[0]) if field else 0
+
+    if not (0 <= ny < height and 0 <= nx < width):
+        return {"result": "blocked"}
+
+    cell = field[ny][nx]
+    if cell in passable_cells:
+        player.x, player.y = nx, ny
+        return None
+
+    if player.companion is not None and player.companion.tribe is d.CHAR_TO_COMPANION_TRIBE["p"]:
+        jump_x = player.x + dx * d.PEGASUS_STEP_X
+        jump_y = player.y + dy * d.PEGASUS_STEP_Y
+        if (
+            0 <= jump_y < height
+            and 0 <= jump_x < width
+            and field[jump_y][jump_x] in (" ", d.CHAR_CALTROP)
+        ):
+            player.x, player.y = jump_x, jump_y
+            player.karma += 1
+            return {"result": "pegasus_phase"}
+        return {"result": "blocked"}
+
+    if (
+        player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
+        and player.item_uses > 0
+        and cell == d.WALL_CHAR
+    ):
+        player.x, player.y = nx, ny
+        field[ny][nx] = " "
+        player.item_uses -= 1
+        if player.item_uses == 0:
+            d.clear_player_item(player)
+        return {"result": "sword_break", "item_uses_left": player.item_uses}
+
+    return {"result": "blocked"}
+
+
 def update_entities(
     move_direction: d.Point,
     field: List[List[str]],
@@ -368,37 +420,7 @@ def update_entities(
     effect = None
     tribes_to_be_respawned = []
     message = None
-    # player move
-    dx, dy = move_direction
-
-    wall_result: Optional[Dict[str, object]] = None
-    if 0 <= (nx := player.x + dx) < d.FIELD_WIDTH and 0 <= (ny := player.y + dy) < d.FIELD_HEIGHT:
-        ch = field[ny][nx]
-        if ch in (" ", d.CHAR_CALTROP):
-            player.x, player.y = nx, ny
-        elif (
-            player.companion is not None
-            and player.companion.tribe is d.CHAR_TO_COMPANION_TRIBE["p"]
-            and 0 <= (n2x := player.x + dx * d.PEGASUS_STEP_X) < d.FIELD_WIDTH
-            and 0 <= (n2y := player.y + dy * d.PEGASUS_STEP_Y) < d.FIELD_HEIGHT
-            and field[n2y][n2x] in (" ", d.CHAR_CALTROP)
-        ):
-            player.x, player.y = n2x, n2y
-            player.karma += 1
-            wall_result = {"result": "pegasus_phase"}
-        elif player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED) and ch == d.WALL_CHAR:
-            # break the wall
-            player.x, player.y = nx, ny
-            field[player.y][player.x] = " "
-            if player.item_uses > 0:
-                player.item_uses -= 1
-            if player.item_uses <= 0:
-                d.clear_player_item(player)
-            wall_result = {"result": "sword_break", "item_uses_left": player.item_uses}
-        else:
-            wall_result = {"result": "blocked"}
-    else:
-        wall_result = {"result": "blocked"}
+    wall_result = move_player(move_direction, field, player, (" ", d.CHAR_CALTROP))
 
     if trace is not None and wall_result is not None:
         trace.record_wall(wall_result)
