@@ -7,6 +7,7 @@ from typing import Any, Container, Deque, Dict, List, Optional, Tuple
 from . import defs as d
 from .arlq import (
     MESSAGE_TICKS,
+    GameConfig,
     create_field,
     find_random_place,
     get_torched,
@@ -150,13 +151,15 @@ def _build_floor(
     special_floors: Dict[str, int],
     elf_floors: Dict[str, int],
     entry_point: Optional[d.Point] = None,
+    corridor_h_width: int = d.CORRIDOR_H_WIDTH,
+    corridor_v_width: int = d.CORRIDOR_V_WIDTH,
 ) -> Floor:
     island_tile = None
     if index == elf_floors["I"]:
         while island_tile is None or _inside_island(entry_point, island_tile):
             island_tile = (rand.randrange(d.TILE_NUM_X), rand.randrange(d.TILE_NUM_Y))
     for _ in range(1000):
-        field, up, down = create_field(d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH, d.WALL_CHAR, island_tile)
+        field, up, down = create_field(corridor_h_width, corridor_v_width, d.WALL_CHAR, island_tile)
         if entry_point is not None:
             entry_x, entry_y = entry_point
             if not (0 <= entry_y < len(field) and 0 <= entry_x < len(field[0])):
@@ -244,7 +247,10 @@ def _treasure_spot(entities: List[d.Entity], field: List[List[str]], reserved: C
             return p
 
 
-def build() -> Tuple[List[Floor], d.Player]:
+def build(
+    corridor_h_width: int = d.CORRIDOR_H_WIDTH,
+    corridor_v_width: int = d.CORRIDOR_V_WIDTH,
+) -> Tuple[List[Floor], d.Player]:
     elf_floors = {
         "I": rand.randrange(FLOORS),
         "J": rand.randrange(FLOORS),
@@ -255,7 +261,14 @@ def build() -> Tuple[List[Floor], d.Player]:
     floors: List[Floor] = []
     entry_point = None
     for index in range(FLOORS):
-        floor = _build_floor(index, special_floors, elf_floors, entry_point)
+        floor = _build_floor(
+            index,
+            special_floors,
+            elf_floors,
+            entry_point,
+            corridor_h_width,
+            corridor_v_width,
+        )
         floors.append(floor)
         entry_point = floor["down"]
     player = d.Player(floors[0]["up"][0], floors[0]["up"][1], 1, d.LP_INIT)
@@ -704,8 +717,16 @@ def _step(
     return (MESSAGE_TICKS, event_message) if event_message else None
 
 
-def run_game(ui: Any, seed_str: str, debug: bool = False, trace: Optional[TraceRecorder] = None) -> None:
-    floors, player = build()
+def run_game(
+    ui: Any,
+    seed_str: str,
+    debug: bool = False,
+    trace: Optional[TraceRecorder] = None,
+    config: Optional[GameConfig] = None,
+) -> None:
+    if config is None:
+        config = GameConfig()
+    floors, player = build(config.corridor_h_width, config.corridor_v_width)
     player.known_monsters = set()
     player.unlocked_treasures = set()
     player.stage3_won = False
@@ -721,7 +742,7 @@ def run_game(ui: Any, seed_str: str, debug: bool = False, trace: Optional[TraceR
 
     while player.lp > 0 and not player.stage3_won:
         current = floors[floor[0]]
-        cur = get_torched(player, d.TORCH_RADIUS)
+        cur = get_torched(player, config.torch_radius)
         for y in range(len(cur)):
             for x in range(len(cur[0])):
                 current["seen"][y][x] |= cur[y][x]
@@ -784,7 +805,7 @@ def run_game(ui: Any, seed_str: str, debug: bool = False, trace: Optional[TraceR
     message = (-1, tr(">> Treasure chest obtained! <<") if player.stage3_won else tr(">> Collapsed from hunger! <<"))
     while True:
         current = floors[floor[0]]
-        cur = get_torched(player, d.TORCH_RADIUS)
+        cur = get_torched(player, config.torch_radius)
         render_entities = [player, *current["entities"]]
         known_types = player.known_monsters | current["known_companions"]
         ui.draw_stage(
