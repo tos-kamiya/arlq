@@ -393,9 +393,7 @@ def update_entities(
             if player.item_uses > 0:
                 player.item_uses -= 1
             if player.item_uses <= 0:
-                player.item = ""
-                player.item_uses = 0
-                player.item_taken_from = ""
+                d.clear_player_item(player)
             wall_result = {"result": "sword_break", "item_uses_left": player.item_uses}
         else:
             wall_result = {"result": "blocked"}
@@ -492,9 +490,7 @@ def update_entities(
                         {"type": "monster", "id": monster_id, "outcome": "lose", "respawn_to": [player.x, player.y]}
                     )
                 old_item, old_source = player.item, player.item_taken_from
-                player.item = ""
-                player.item_uses = 0
-                player.item_taken_from = ""
+                d.clear_player_item(player)
                 if trace is not None and old_item:
                     trace.add_expired({"type": "item_expired", "item": old_source, "reason": "lost_on_defeat"})
                 d.apply_respawn_penalty(player)

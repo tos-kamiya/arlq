@@ -387,6 +387,13 @@ def apply_respawn_penalty(player: Player) -> None:
     player.lp = max(LP_RESPAWN_MIN, min(player.lp, LP_INIT))
 
 
+def clear_player_item(player: Player) -> None:
+    """Remove the held item and all state associated with it."""
+    player.item = None
+    player.item_uses = 0
+    player.item_taken_from = None
+
+
 def take_monster_item(
     player: Player,
     item: Optional[str],
