@@ -16,6 +16,7 @@ from .utils import rand
 from . import defs as d
 from .i18n import t as tr, set_language, get_language
 from .trace import DIR_TO_KEY, ReplayUI, TraceRecorder, default_replay_output_path, load_trace
+from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent, WorldEvent
 
 MESSAGE_TICKS = 8
 
@@ -433,15 +434,18 @@ def update_entities(
     unlocked_treasures: Set[str],
     sword_uses: int = d.SWORD_USES,
     respawn_point: Optional[d.Point] = None,
-    trace: Optional[TraceRecorder] = None,
-) -> Tuple[Optional[str], List[str], Optional[Tuple[int, str]], bool]:
+) -> UpdateResult:
+    events = TurnEvents()
     effect = None
     tribes_to_be_respawned = []
     message = None
     wall_result = move_player(move_direction, field, player, (" ", d.CHAR_CALTROP))
 
-    if trace is not None and wall_result is not None:
-        trace.record_wall(wall_result)
+    if wall_result is not None:
+        events.wall = WallEvent(
+            result=str(wall_result["result"]),
+            item_uses_left=wall_result.get("item_uses_left"),
+        )
 
     # Caltrop damage
     if field[player.y][player.x] == d.CHAR_CALTROP:
@@ -464,8 +468,7 @@ def update_entities(
         if isinstance(ee, d.Treasure):
             t: d.Treasure = ee
             collected = t.unlock_key in unlocked_treasures
-            if trace is not None:
-                trace.record_contact({"type": "treasure", "id": t.unlock_key, "collected": collected})
+            events.contact = ContactEvent("treasure", t.unlock_key, collected=collected)
             if collected:
                 message = (10, tr(">> Treasure chest obtained! <<"))
                 del entities[eei]
@@ -476,8 +479,7 @@ def update_entities(
 
             del entities[eei]
 
-            if trace is not None:
-                trace.record_contact({"type": "companion", "id": c.tribe.char})
+            events.contact = ContactEvent("companion", c.tribe.char)
 
             player.companion = c
             player.karma = 0
@@ -496,8 +498,7 @@ def update_entities(
             # first refusal only shows a message; any later refusal sends the
             # player elsewhere, like repeat contact with the Isolated Elf.
             if m.tribe.char == "H":
-                if trace is not None:
-                    trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
+                events.contact = ContactEvent("monster", "H", outcome="refused")
                 if player.high_elf_refused:
                     player.x, player.y = find_random_place(entities, field, distance=2)
                     message = (MESSAGE_TICKS, tr("-- Respawned to a random location."))
@@ -525,20 +526,18 @@ def update_entities(
                     else:
                         player.x, player.y = respawn_point
                     message = (MESSAGE_TICKS, tr("-- Respawned!"))
-                if trace is not None:
-                    trace.record_contact(
-                        {"type": "monster", "id": monster_id, "outcome": "lose", "respawn_to": [player.x, player.y]}
-                    )
+                events.contact = ContactEvent(
+                    "monster", monster_id, outcome="lose", respawn_to=(player.x, player.y)
+                )
                 old_item, old_source = player.item, player.item_taken_from
                 d.clear_player_item(player)
-                if trace is not None and old_item:
-                    trace.add_expired({"type": "item_expired", "item": old_source, "reason": "lost_on_defeat"})
+                if old_item:
+                    events.expired.append(ExpiredEvent("item_expired", item=old_source, reason="lost_on_defeat"))
                 d.apply_respawn_penalty(player)
             else:
                 del entities[eei]
 
-                if trace is not None:
-                    trace.record_contact({"type": "monster", "id": monster_id, "outcome": "win"})
+                events.contact = ContactEvent("monster", monster_id, outcome="win")
 
                 if d.monster_level(m) > 0 and m.tribe.effect != d.EFFECT_UNLOCK_TREASURE:
                     tribes_to_be_respawned.append(m.tribe.char)
@@ -562,8 +561,8 @@ def update_entities(
 
                 old_item, old_source = player.item, player.item_taken_from
                 d.take_monster_item(player, m.tribe.item, m.tribe.char, sword_uses)
-                if trace is not None and old_item:
-                    trace.add_expired({"type": "item_expired", "item": old_source, "reason": "overwritten"})
+                if old_item:
+                    events.expired.append(ExpiredEvent("item_expired", item=old_source, reason="overwritten"))
 
                 event_message = m.tribe.event_message
                 if event_message:
@@ -576,12 +575,11 @@ def update_entities(
     if player.companion is not None and player.karma >= player.companion.tribe.durability:
         message = (MESSAGE_TICKS, tr("-- The companion vanishes."))
         char = player.companion.tribe.char
-        if trace is not None:
-            trace.add_expired({"type": "companion_departed", "id": char})
+        events.expired.append(ExpiredEvent("companion_departed", event_id=char))
         tribes_to_be_respawned.append(char)
         player.companion = None
 
-    return effect, tribes_to_be_respawned, message, contact_happened
+    return UpdateResult(effect, tribes_to_be_respawned, message, contact_happened, events)
 
 
 def last_seed_path() -> Path:
@@ -750,15 +748,16 @@ def run_game(
             trace.begin_turn(key)
 
         # Player move, encountering, etc.
-        effect, tribes_to_be_respawned, m, _ = update_entities(
+        update_result = update_entities(
             move_direction,
             field,
             player,
             entities,
             player.unlocked_treasures,
             respawn_point=checkpoint,
-            trace=trace,
         )
+        effect, tribes_to_be_respawned, m, _ = update_result
+        turn_events = update_result.events
         if m is not None:
             message = m
 
@@ -782,11 +781,12 @@ def run_game(
                             assert isinstance(respawned, d.Companion)
                             kind = "companion"
                             rid = respawned.tribe.char
-                        trace.add_world_event(
-                            {"type": "respawn", "kind": kind, "id": rid, "at": [respawned.x, respawned.y]}
+                        turn_events.world.append(
+                            WorldEvent(kind, rid, (respawned.x, respawned.y))
                         )
 
         if trace is not None:
+            trace.record_events(turn_events)
             trace.set_player(player, stage_num)
             trace.commit_turn()
 

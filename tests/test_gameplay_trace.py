@@ -48,7 +48,9 @@ def one_floor(entities, **overrides):
 
 def committed_turn(recorder, key, func, *args, **kwargs):
     recorder.begin_turn(key)
-    func(*args, **kwargs)
+    result = func(*args, **kwargs)
+    if hasattr(result, "events"):
+        recorder.record_events(result.events)
     recorder.commit_turn()
     return recorder.turns[-1]
 
@@ -161,7 +163,7 @@ def test_legacy_wall_blocked():
     field[2][3] = d.WALL_CHAR
     trace = TraceRecorder(params={})
 
-    turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set(), trace=trace)
+    turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set())
 
     assert turn["wall"] == {"result": "blocked"}
     assert (player.x, player.y) == (2, 2)
@@ -175,7 +177,7 @@ def test_legacy_wall_sword_break_reports_remaining_uses():
     field[2][3] = d.WALL_CHAR
     trace = TraceRecorder(params={})
 
-    turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set(), trace=trace)
+    turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set())
 
     assert turn["wall"] == {"result": "sword_break", "item_uses_left": 0}
     assert (player.x, player.y) == (3, 2)
@@ -188,7 +190,7 @@ def test_legacy_wall_pegasus_phase():
     field[2][3] = d.WALL_CHAR
     trace = TraceRecorder(params={})
 
-    turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set(), trace=trace)
+    turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set())
 
     assert turn["wall"] == {"result": "pegasus_phase"}
     assert (player.x, player.y) == (2 + d.PEGASUS_STEP_X, 2)
@@ -202,14 +204,14 @@ def test_legacy_contact_treasure_locked_and_unlocked():
     trace = TraceRecorder(params={})
 
     turn = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player, [player, treasure], set(), trace=trace
+        trace, "R", update_entities, KEYS["R"], field, player, [player, treasure], set()
     )
     assert turn["contact"] == {"type": "treasure", "id": "TD", "collected": False}
 
     player2 = d.Player(2, 2, 1, 90)
     treasure2 = d.Treasure(3, 2, "TD")
     turn2 = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player2, [player2, treasure2], {"TD"}, trace=trace
+        trace, "R", update_entities, KEYS["R"], field, player2, [player2, treasure2], {"TD"}
     )
     assert turn2["contact"] == {"type": "treasure", "id": "TD", "collected": True}
 
@@ -221,7 +223,7 @@ def test_legacy_contact_companion_join():
     trace = TraceRecorder(params={})
 
     turn = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player, [player, companion], set(), trace=trace
+        trace, "R", update_entities, KEYS["R"], field, player, [player, companion], set()
     )
 
     assert turn["contact"] == {"type": "companion", "id": "n"}
@@ -237,7 +239,7 @@ def test_legacy_contact_monster_win_expires_old_item_as_overwritten():
     trace = TraceRecorder(params={})
 
     turn = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player, [player, monster], set(), trace=trace
+        trace, "R", update_entities, KEYS["R"], field, player, [player, monster], set()
     )
 
     assert turn["contact"] == {"type": "monster", "id": "c", "outcome": "win"}
@@ -263,7 +265,6 @@ def test_legacy_contact_monster_lose_expires_old_item_as_lost_on_defeat():
         [player, monster],
         set(),
         respawn_point=(5, 5),
-        trace=trace,
     )
 
     assert turn["contact"] == {"type": "monster", "id": "C", "outcome": "lose", "respawn_to": [5, 5]}
@@ -280,7 +281,7 @@ def test_legacy_contact_high_elf_always_refused():
     trace = TraceRecorder(params={})
 
     turn = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player, [player, high_elf], set(), trace=trace
+        trace, "R", update_entities, KEYS["R"], field, player, [player, high_elf], set()
     )
 
     assert turn["contact"] == {"type": "monster", "id": "H", "outcome": "refused"}
@@ -293,7 +294,7 @@ def test_legacy_companion_departed_on_karma_limit():
     field = blank_field()
     trace = TraceRecorder(params={})
 
-    turn = committed_turn(trace, "U", update_entities, KEYS["U"], field, player, [player], set(), trace=trace)
+    turn = committed_turn(trace, "U", update_entities, KEYS["U"], field, player, [player], set())
 
     assert turn["expired"] == [{"type": "companion_departed", "id": "l"}]
     assert player.companion is None

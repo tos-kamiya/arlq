@@ -17,6 +17,7 @@ from typing import Any, Deque, Dict, List, Optional, Tuple
 
 from . import defs as d
 from .__about__ import __version__
+from .game_events import TurnEvents
 
 SCHEMA_VERSION = 2
 
@@ -61,6 +62,48 @@ class TraceRecorder:
     def record_wall(self, wall: Dict[str, Any]) -> None:
         if self._current is not None:
             self._current["wall"] = wall
+
+    def record_events(self, events: TurnEvents) -> None:
+        """Serialize gameplay events into the trace schema for this turn."""
+        if self._current is None:
+            return
+        if events.wall is not None:
+            wall: Dict[str, Any] = {"result": events.wall.result}
+            if events.wall.item_uses_left is not None:
+                wall["item_uses_left"] = events.wall.item_uses_left
+            self._current["wall"] = wall
+        if events.contact is not None:
+            contact: Dict[str, Any] = {"type": events.contact.kind, "id": events.contact.event_id}
+            if events.contact.outcome is not None:
+                contact["outcome"] = events.contact.outcome
+            if events.contact.respawn_to is not None:
+                contact["respawn_to"] = list(events.contact.respawn_to)
+            if events.contact.collected is not None:
+                contact["collected"] = events.contact.collected
+            if events.contact.from_floor is not None:
+                contact["from_floor"] = events.contact.from_floor
+            if events.contact.to_floor is not None:
+                contact["to_floor"] = events.contact.to_floor
+            self._current["contact"] = contact
+        for event in events.expired:
+            expired: Dict[str, Any] = {"type": event.kind}
+            if event.event_id is not None:
+                expired["id"] = event.event_id
+            if event.item is not None:
+                expired["item"] = event.item
+            if event.reason is not None:
+                expired["reason"] = event.reason
+            self._current.setdefault("expired", []).append(expired)
+        for event in events.world:
+            world: Dict[str, Any] = {
+                "type": "respawn",
+                "kind": event.kind,
+                "id": event.event_id,
+                "at": list(event.at),
+            }
+            if event.floor is not None:
+                world["floor"] = event.floor
+            self._current.setdefault("world", []).append(world)
 
     def record_contact(self, contact: Dict[str, Any]) -> None:
         if self._current is not None:
