@@ -295,7 +295,7 @@ def _move_player(
         field[ny][nx] = " "
         player.item_uses -= 1
         if not player.item_uses:
-            player.item = None
+            d.clear_player_item(player)
         if trace is not None:
             trace.record_wall({"result": "sword_break", "item_uses_left": player.item_uses})
         return
@@ -405,7 +405,7 @@ def _defeat_monster(
             player.stage3_won = True
     if ch == "K":
         player.stage3_flags |= STAGE3_K
-        player.item = None
+        d.clear_player_item(player)
     if ch == "H":
         player.stage3_flags |= STAGE3_H
     if ch == "m":
@@ -535,9 +535,7 @@ def _resolve_monster_contact(
             )
         d.apply_respawn_penalty(player)
         old_item, old_source = player.item, player.item_taken_from
-        player.item = None
-        player.item_uses = 0
-        player.item_taken_from = None
+        d.clear_player_item(player)
         if trace is not None and old_item:
             trace.add_expired({"type": "item_expired", "item": old_source, "reason": "lost_on_defeat"})
     else:

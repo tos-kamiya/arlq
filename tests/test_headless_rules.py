@@ -473,6 +473,19 @@ def test_sword_and_poison_attack_modifiers(item, expected_attack):
     assert d.current_player_attack(player) == expected_attack
 
 
+def test_clear_player_item_removes_all_equipment_state():
+    player = d.Player(2, 2, 10, 90)
+    player.item = d.ITEM_SWORD_CURSED
+    player.item_uses = 3
+    player.item_taken_from = "C"
+
+    d.clear_player_item(player)
+
+    assert player.item is None
+    assert player.item_uses == 0
+    assert player.item_taken_from is None
+
+
 def test_sword_breaks_wall_and_consumes_one_use():
     player = d.Player(2, 2, 10, 90)
     player.item = d.ITEM_SWORD_CURSED
@@ -494,6 +507,36 @@ def test_sword_breaks_wall_and_consumes_one_use():
     assert player.item_uses == 1
 
 
+def test_sword_breaking_its_last_wall_clears_all_equipment_state():
+    player = d.Player(2, 2, 10, 90)
+    player.item = d.ITEM_SWORD_CURSED
+    player.item_uses = 1
+    player.item_taken_from = "C"
+    field = blank_field()
+    field[2][3] = d.WALL_CHAR
+
+    update_entities(KEYS["R"], field, player, [player], set(), respawn_point=(2, 2))
+
+    assert player.item is None
+    assert player.item_uses == 0
+    assert player.item_taken_from is None
+
+
+def test_stage3_sword_breaking_its_last_wall_clears_all_equipment_state():
+    player = d.Player(2, 2, 10, 90)
+    player.item = d.ITEM_SWORD_CURSED
+    player.item_uses = 1
+    player.item_taken_from = "C"
+    floors, field = stage3_state(player, [])
+    field[2][3] = d.WALL_CHAR
+
+    run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter(), deque())
+
+    assert player.item is None
+    assert player.item_uses == 0
+    assert player.item_taken_from is None
+
+
 @pytest.mark.parametrize(
     ("elf", "initial_flags", "expected_flags", "expected_message"),
     [
@@ -506,6 +549,10 @@ def test_sword_breaks_wall_and_consumes_one_use():
 def test_elf_encounters_apply_their_conditions(elf, initial_flags, expected_flags, expected_message):
     player = d.Player(2, 2, 100, 90)
     player.stage3_flags = initial_flags
+    if elf == "K":
+        player.item = d.ITEM_SWORD_CURSED
+        player.item_uses = 2
+        player.item_taken_from = "C"
     entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[elf])
     floors, _ = stage3_state(player, [entity])
     floor = [0]
@@ -525,6 +572,10 @@ def test_elf_encounters_apply_their_conditions(elf, initial_flags, expected_flag
         assert floors[0]["entities"] == [entity]
     else:
         assert floors[0]["entities"] == [entity]
+        if elf == "K":
+            assert player.item is None
+            assert player.item_uses == 0
+            assert player.item_taken_from is None
 
 
 def test_collector_and_javelin_elves_increase_stage3_attack():

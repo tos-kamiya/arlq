@@ -268,7 +268,9 @@ def test_legacy_contact_monster_lose_expires_old_item_as_lost_on_defeat():
 
     assert turn["contact"] == {"type": "monster", "id": "C", "outcome": "lose", "respawn_to": [5, 5]}
     assert turn["expired"] == [{"type": "item_expired", "item": "c", "reason": "lost_on_defeat"}]
-    assert player.item == ""
+    assert player.item is None
+    assert player.item_uses == 0
+    assert player.item_taken_from is None
 
 
 def test_legacy_contact_high_elf_always_refused():
