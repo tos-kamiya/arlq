@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 4.6.5 - 2026-09-22
+
+- No player-visible gameplay or UI changes.
+- Refactor shared item and movement handling, keep command-line gameplay
+  options local to each run, type the Stage 3 floor state, make renderer
+  calls keyword-only, and replace exception-based Stage 3 turn control with
+  explicit contact results.
+
 ## 4.6.4 - 2026-09-22
 
 - No player-visible gameplay or UI changes.
