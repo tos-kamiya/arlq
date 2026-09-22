@@ -133,11 +133,11 @@ def test_replay_ui_draw_stage_forwards_only_when_given_a_draw_target():
         def draw_stage(self, *args, **kwargs):
             calls.append((args, kwargs))
 
-    ReplayUI([], stage=1).draw_stage(1, 2, message="x")
+    ReplayUI([], stage=1).draw_stage(hours=1, player=2, message="x")
     assert calls == []
 
-    ReplayUI([], stage=1, draw_ui=Recorder()).draw_stage(1, 2, message="x")
-    assert calls == [((1, 2), {"message": "x"})]
+    ReplayUI([], stage=1, draw_ui=Recorder()).draw_stage(hours=1, player=2, message="x")
+    assert calls == [((), {"hours": 1, "player": 2, "message": "x"})]
 
 
 @pytest.mark.parametrize(

@@ -90,6 +90,36 @@ def test_stage3_receives_the_per_run_game_config(monkeypatch):
     assert received == [("ui", "seed", True, None, config)]
 
 
+def test_game_loop_draws_with_keyword_arguments_only():
+    draws = []
+
+    class KeywordOnlyUI:
+        def draw_stage(self, **kwargs):
+            draws.append(kwargs)
+
+        def input_direction(self):
+            return None
+
+    run_game(KeywordOnlyUI(), "seed", 1)
+
+    assert len(draws) == 1
+    assert set(draws[0]) == {
+        "hours",
+        "player",
+        "entities",
+        "field",
+        "cur_torched",
+        "torched",
+        "known_types",
+        "show_entities",
+        "stage_num",
+        "message",
+        "checkpoint",
+        "unlocked_treasures",
+    }
+    assert draws[0]["stage_num"] == 1
+
+
 @pytest.mark.parametrize(
     ("level", "expected_message", "expected_position"),
     [

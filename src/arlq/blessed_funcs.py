@@ -208,6 +208,7 @@ class BlessedUI:
 
     def draw_stage(
         self,
+        *,
         hours,
         player,
         entities,
