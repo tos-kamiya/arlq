@@ -6,7 +6,7 @@ import pytest
 from arlq import defs as d
 from arlq import stage3 as stage3_module
 from arlq.arlq import GameConfig, game_config_from_args, respawn_entity, run_game, update_entities
-from arlq.stage3 import STAGE3_C, STAGE3_H, STAGE3_I, STAGE3_J, STAGE3_K, STAGE3_W, _step
+from arlq.stage3 import Floor, STAGE3_C, STAGE3_H, STAGE3_I, STAGE3_J, STAGE3_K, STAGE3_W, _step
 
 KEYS = {
     "U": (0, -1),
@@ -31,6 +31,18 @@ def stage3_state(player, entities):
         "down": (d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
         "island": None,
     }], field
+
+
+def test_stage3_floor_declares_its_complete_state_shape():
+    assert Floor.__required_keys__ == {
+        "field",
+        "entities",
+        "seen",
+        "known_companions",
+        "up",
+        "down",
+        "island",
+    }
 
 
 def run_stage3_keys(keys, floors, player, floor, checkpoint, queue, history):
