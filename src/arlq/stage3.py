@@ -2,7 +2,7 @@
 
 from collections import Counter, deque
 from copy import deepcopy
-from typing import Any, Container, Deque, Dict, List, Optional, Tuple
+from typing import Any, Container, Deque, Dict, List, Optional, Set, Tuple, TypedDict
 
 from . import defs as d
 from .arlq import (
@@ -57,9 +57,16 @@ ROSTER_TRIBES: List[d.MonsterTribe] = sorted(
     reverse=True,
 )
 
-# A per-floor game state. Keeping this as a plain dict (rather than a new
-# class) matches how legacy stages pass field/entities/torched around.
-Floor = Dict[str, Any]
+class Floor(TypedDict):
+    """State owned by one Stage 3 floor."""
+
+    field: List[List[str]]
+    entities: List[d.Entity]
+    seen: List[List[int]]
+    known_companions: Set[str]
+    up: d.Point
+    down: d.Point
+    island: Optional[d.Point]
 
 # History entries snapshot everything the Loop Companion can rewind.
 HistoryEntry = Tuple[List[Floor], d.Player, int, d.Point, "Counter[Tuple[int, str]]"]
@@ -593,6 +600,7 @@ def _resolve_contact(
         tribe_message = entity.tribe.event_message
         return tr(tribe_message) if tribe_message else None
 
+    assert isinstance(entity, d.Monster)
     return _resolve_monster_contact(hit, entity, current, player, floor, checkpoint, queue, event_message, trace=trace)
 
 
