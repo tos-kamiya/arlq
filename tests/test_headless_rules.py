@@ -306,7 +306,7 @@ def test_legacy_stage2_high_elf_refuses_once_then_sends_player_elsewhere(monkeyp
     entities = [player, high_elf, weak]
 
     _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
-    assert message == (8, "-- The High Elf does not recognize you yet.")
+    assert message == (8, "-- The High Elf seems uninterested in you.")
     assert (player.x, player.y) == (3, 2)
     assert player.lp == 90
     assert player.high_elf_refused is True
