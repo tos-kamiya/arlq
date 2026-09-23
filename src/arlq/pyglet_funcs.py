@@ -380,9 +380,6 @@ class PygletUI:
                         thickness=2,
                     )
 
-        if floor_label:
-            self._draw_text((0, 0), floor_label, COLOR_MAP["default"], bold=True)
-
         if not floor_view:
             self._draw_visibility_boundary(cur_torched)
 
@@ -448,6 +445,13 @@ class PygletUI:
             self._draw_text(
                 (0, y), char, COLOR_MAP["default"], bold=is_player,
                 x_offset=self.field_pixel_width + STRENGTH_COLUMN_PADDING
+            )
+
+        if floor_label:
+            label_width = len(floor_label) * CELL_SIZE_X
+            label_x = max(0, self.field_pixel_width - label_width)
+            self._draw_text(
+                (0, self.field_height - 1), floor_label, COLOR_MAP["default"], x_offset=label_x
             )
 
         # Draw the status bar

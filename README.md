@@ -143,7 +143,7 @@ Stage 4 is under construction; its design and gameplay are subject to change.
 
 Stage 4 has four floors with the Stage 3 layout. Each floor has two filled rooms in different columns; one filled room across the stage contains the Isolated Elf. Adjacent floors can have a second stair pair in another room when space is available. The monster roster reuses Stage 3's first-floor monsters on floors 1–2, its second-floor roster on floor 3, and its third-floor roster on floor 4.
 
-While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an adjacent floor's explored map in GUI mode. In `arlq-cli`, hold Shift and press W or S. Unexplored areas remain hidden. The top-left `F:` marker shows the displayed floor. A normal movement input returns the display to the player's floor and moves as usual.
+While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an adjacent floor's explored map in GUI mode. In `arlq-cli`, hold Shift and press W or S. Unexplored areas remain hidden. The bottom-right `F:` marker shows the displayed floor. A normal movement input returns the display to the player's floor and moves as usual.
 
 #### Monsters
 
