@@ -133,9 +133,6 @@ class BlessedUI:
                 elif (x + y) % 2 == 1:
                     put(x, y, ".", dim=True)
 
-        if floor_label:
-            put(0, 0, floor_label, "white", bold=True)
-
         if not floor_view and checkpoint is not None and checkpoint != (px, py):
             put(checkpoint[0], checkpoint[1], "+", "yellow", bold=True)
 
@@ -172,6 +169,9 @@ class BlessedUI:
             if char is None:
                 continue
             put(d.FIELD_WIDTH, y, char, "white", bold=is_player)
+
+        if floor_label:
+            put(d.FIELD_WIDTH - len(floor_label), d.FIELD_HEIGHT - 1, floor_label, "white")
 
         return "".join(output) + self.term.normal
 
