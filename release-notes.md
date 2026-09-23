@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 4.6.8 - 2026-09-23
+
+- Ease Stage 2 by increasing ordinary Bison (`b`) from three to four,
+  reducing empowered Bison (`b'`) from three to two, and adding one Rare
+  Amoeba (`A`).
+- Set empowered monster strength to three times its base level plus 10.
+
 ## 4.6.7 - 2026-09-23
 
 - Fix Pegasus wall jumps after a Stage 3 rewind. The restored companion is
