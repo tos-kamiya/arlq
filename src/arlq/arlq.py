@@ -20,7 +20,7 @@ from .trace import DIR_TO_KEY, ReplayUI, TraceRecorder, default_replay_output_pa
 from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent, WorldEvent
 
 MESSAGE_TICKS = 8
-SEPARATE_STAGE_MODULES = {3: "stage3"}
+SEPARATE_STAGE_MODULES = {3: "stage3", 4: "stage4"}
 
 
 @dataclass(frozen=True)
@@ -609,7 +609,7 @@ def read_last_seed() -> Tuple[int, int]:
         stage, seed = int(parts[0]), int(parts[1])
     except ValueError as error:
         raise ValueError(f"invalid rematch stage or seed in {path}") from error
-    if stage not in (1, 2, 3):
+    if stage not in (1, 2, 3, 4):
         raise ValueError(f"invalid rematch stage or seed in {path}")
     return stage, seed
 
@@ -873,8 +873,8 @@ def parse_seed_string(args, seed_str, enforce_version: bool = True):
         args.stage = int(stage_str)
     except ValueError:
         exit("Error: Stage value in seed string is not a valid integer.")
-    if args.stage not in (1, 2, 3):
-        exit("Error: Stage value in seed string must be 1, 2, or 3.")
+    if args.stage not in (1, 2, 3, 4):
+        exit("Error: Stage value in seed string must be 1, 2, 3, or 4.")
 
     try:
         args.seed = int(seed_value_str)
@@ -887,7 +887,7 @@ def main():
         description="A Rogue-Like game.",
     )
 
-    parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1, 2, or 3).")
+    parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, or 4).")
 
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
