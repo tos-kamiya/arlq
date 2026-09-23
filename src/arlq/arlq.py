@@ -398,7 +398,7 @@ def move_player(
         player.x, player.y = nx, ny
         return None
 
-    if player.companion is not None and player.companion.tribe is d.CHAR_TO_COMPANION_TRIBE["p"]:
+    if player.companion is not None and player.companion.tribe.char == d.CHAR_PEGASUS:
         jump_x = player.x + dx * d.PEGASUS_STEP_X
         jump_y = player.y + dy * d.PEGASUS_STEP_Y
         if (

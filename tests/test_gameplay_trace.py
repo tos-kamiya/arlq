@@ -5,6 +5,7 @@
 
 import json
 from collections import Counter, deque
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -331,6 +332,18 @@ def test_stage3_wall_pegasus_phase():
     trace.commit_turn()
 
     assert trace.turns[-1]["wall"] == {"result": "pegasus_phase"}
+
+
+def test_stage3_wall_pegasus_phase_after_player_state_is_deepcopied():
+    player = d.Player(2, 2, 1, 90)
+    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE[d.CHAR_PEGASUS])
+    player = deepcopy(player)
+    floor_data = one_floor([])
+    floor_data["field"][2][3] = d.WALL_CHAR
+
+    _move_player(KEYS["R"], floor_data, player)
+
+    assert (player.x, player.y) == (2 + d.PEGASUS_STEP_X, 2)
 
 
 def test_stage3_wall_blocked_when_pegasus_jump_target_is_solid():
