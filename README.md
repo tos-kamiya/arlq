@@ -120,7 +120,7 @@ The terminal interface uses Blessed, which is installed automatically with ARLQ.
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 contains three ordinary `b` Bison and three empowered `b` Bison (see Rare Types and Empowered Types above).
+Stage 2 contains four ordinary `b` Bison and two empowered `b` Bison (see Rare Types and Empowered Types above).
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |

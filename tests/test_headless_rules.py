@@ -175,7 +175,8 @@ def test_stage2_rebalances_bison_and_comodo_dragon_counts():
     b_configs = [config for config in d.SPAWN_CONFIGS_ST2 if config.tribe.char == "b"]
     populations = {config.tribe.char: config.population for config in d.SPAWN_CONFIGS_ST2 if config.tribe.char != "b"}
 
-    assert [(config.population, config.empowered) for config in b_configs] == [(3, 1), (3, 2)]
+    assert [(config.population, config.empowered) for config in b_configs] == [(4, 1), (2, 2)]
+    assert populations["A"] == 3
     assert populations["d"] == 6
 
 
