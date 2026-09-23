@@ -262,6 +262,7 @@ def run_game(ui, seed_str, debug=False, trace=None, config=None):
     floors, player = build(config.corridor_h_width, config.corridor_v_width)
     player.known_monsters = set()
     floor = [0]
+    view_floor = 0
     checkpoint = [floors[0]["up"]]
     queue = Counter()
     history = deque()
@@ -269,17 +270,24 @@ def run_game(ui, seed_str, debug=False, trace=None, config=None):
     message = (5, tr("-- Explore the sealed rooms across four floors."))
     while player.lp > 0:
         current = floors[floor[0]]
+        display_floor = floors[view_floor]
         cur = get_torched(player, config.torch_radius)
         for y in range(d.FIELD_HEIGHT):
             for x in range(d.FIELD_WIDTH):
                 current["seen"][y][x] |= cur[y][x]
         message = tick_message(message)
+        floor_view = view_floor != floor[0]
+        render_player = deepcopy(player) if floor_view else player
         ui.draw_stage(
-            hours=hours, player=player, entities=[player, *current["entities"]],
-            field=current["field"], cur_torched=cur, torched=current["seen"],
-            known_types=player.known_monsters | current["known_companions"],
-            show_entities=debug or getattr(ui, "map_mode", False), stage_num=4,
-            message=message[1], checkpoint=checkpoint[0], stage_roster=ROSTER_TRIBES,
+            hours=hours, player=render_player, entities=[render_player, *display_floor["entities"]],
+            field=display_floor["field"],
+            cur_torched=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)] if floor_view else cur,
+            torched=display_floor["seen"],
+            known_types=player.known_monsters | display_floor["known_companions"],
+            show_entities=(debug or getattr(ui, "map_mode", False)) and not floor_view, stage_num=4,
+            message=message[1], checkpoint=None if floor_view else checkpoint[0], stage_roster=ROSTER_TRIBES,
+            floor_view=floor_view,
+            floor_label=f"F: {view_floor + 1}",
         )
         move = ui.input_direction()
         if move is None:
@@ -289,6 +297,10 @@ def run_game(ui, seed_str, debug=False, trace=None, config=None):
             return
         if move == (0, 0):
             continue
+        if getattr(ui, "shift_direction", False):
+            view_floor = max(0, min(FLOORS - 1, view_floor + move[1]))
+            continue
+        view_floor = floor[0]
         if trace is not None:
             key = DIR_TO_KEY.get(move)
             if key is None:

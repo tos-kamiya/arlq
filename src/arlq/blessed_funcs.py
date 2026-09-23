@@ -28,6 +28,7 @@ class BlessedUI:
     def __init__(self, term: Terminal):
         self.term = term
         self.map_mode = False
+        self.shift_direction = False
         self._last_stage: Optional[Tuple[Any, Any]] = None
 
     def _terminal_is_large_enough(self) -> bool:
@@ -92,6 +93,8 @@ class BlessedUI:
         dim_types: Optional[Set[str]] = None,
         stage_num: int = 0,
         stage_roster: Optional[List[d.MonsterTribe]] = None,
+        floor_view: bool = False,
+        floor_label: Optional[str] = None,
     ) -> str:
         output = [self.term.home + self.term.clear]
 
@@ -120,7 +123,7 @@ class BlessedUI:
             for x, cell in enumerate(row):
                 if cur_torched[y][x]:
                     put(x, y, cell, "green" if cell == d.WALL_CHAR else "magenta" if cell == d.CHAR_CALTROP else None)
-                elif torched[y][x] or show_entities:
+                elif torched[y][x] or (show_entities and not floor_view):
                     if cell == d.WALL_CHAR:
                         put(x, y, cell, "green")
                     elif cell == " " and (x + y) % 2 == 1:
@@ -130,7 +133,10 @@ class BlessedUI:
                 elif (x + y) % 2 == 1:
                     put(x, y, ".", dim=True)
 
-        if checkpoint is not None and checkpoint != (px, py):
+        if floor_label:
+            put(0, 0, floor_label, "white", bold=True)
+
+        if not floor_view and checkpoint is not None and checkpoint != (px, py):
             put(checkpoint[0], checkpoint[1], "+", "yellow", bold=True)
 
         player_attack = d.current_player_attack(player, stage_num)
@@ -139,7 +145,7 @@ class BlessedUI:
             color = None if glyph.tone in ("companion", "default") else glyph.tone
             put(glyph.x, glyph.y, glyph.char, color, bold=glyph.bold, dim=glyph.dim)
 
-        if show_entities:
+        if show_entities and not floor_view:
             for entity in entities:
                 for glyph in d.preview_entity_glyphs(entity):
                     paint(glyph)
@@ -153,8 +159,9 @@ class BlessedUI:
                 paint(glyph)
 
         foreground, background = d.player_appearance(player)
-        put(px, py, "@", "white" if foreground == "default" else foreground, bold=True, bg=background)
-        if player.companion and px + 1 < d.FIELD_WIDTH:
+        if not floor_view:
+            put(px, py, "@", "white" if foreground == "default" else foreground, bold=True, bg=background)
+        if not floor_view and player.companion and px + 1 < d.FIELD_WIDTH:
             put(px + 1, py, player.companion.tribe.char, dim=True)
 
         tribes = stage_roster if stage_roster is not None else (
@@ -224,18 +231,21 @@ class BlessedUI:
         unlocked_treasures: Optional[Set[str]] = None,
         dim_types: Optional[Set[str]] = None,
         stage_roster: Optional[List[d.MonsterTribe]] = None,
+        floor_view: bool = False,
+        floor_label: Optional[str] = None,
     ):
         self._wait_for_terminal_size()
-        show_entities = show_entities or self.map_mode
+        show_entities = (show_entities or self.map_mode) and not floor_view
         stage_args = (
             entities, field, cur_torched, torched, known_types, show_entities,
-            checkpoint, self.map_mode, unlocked_treasures, dim_types, stage_num, stage_roster,
+            checkpoint, self.map_mode, unlocked_treasures, dim_types, stage_num, stage_roster, floor_view, floor_label,
         )
         status_args = (player, hours, stage_num, message, extra_keys)
         self._last_stage = (stage_args, status_args)
         self._render_last_stage()
 
     def input_direction(self) -> Optional[d.Point]:
+        self.shift_direction = False
         while True:
             key = self._read_key()
             if key.code == self.term.KEY_ESCAPE or str(key).lower() == "q":
@@ -243,8 +253,17 @@ class BlessedUI:
             if str(key).lower() == "m":
                 self.map_mode = True
                 return (0, 0)
-            direction = key_to_dir(key.name or str(key))
+            key_name = key.name or str(key)
+            shift_names = {
+                "KEY_SLEFT": (-1, 0), "KEY_SRIGHT": (1, 0),
+            }
+            direction = shift_names.get(key_name)
             if direction is not None:
+                self.shift_direction = True
+                return direction
+            direction = key_to_dir(key_name)
+            if direction is not None:
+                self.shift_direction = len(key_name) == 1 and key_name in "WASD"
                 return direction
 
     def input_alphabet(self) -> Optional[str]:

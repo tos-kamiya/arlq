@@ -745,6 +745,7 @@ def run_game(
     floor = [0]
     checkpoint = [floors[0]["up"]]
     player.stage3_floor = 0
+    view_floor = 0
     queue: "Counter[Tuple[int, str]]" = Counter()
     history: Deque[HistoryEntry] = deque()
     hours = 0
@@ -752,6 +753,7 @@ def run_game(
 
     while player.lp > 0 and not player.stage3_won:
         current = floors[floor[0]]
+        display_floor = floors[view_floor]
         cur = get_torched(player, config.torch_radius)
         for y in range(len(cur)):
             for x in range(len(cur[0])):
@@ -759,19 +761,23 @@ def run_game(
 
         message = tick_message(message)
 
+        floor_view = view_floor != floor[0]
         show_entities = debug or getattr(ui, "map_mode", False)
         # The terminal renderer discovers the player from the entity list, while
         # the pygame renderer receives it separately. Keep the Stage 3 state
         # model separate and provide a render-only combined list.
-        render_entities = [player, *current["entities"]]
-        known_types = player.known_monsters | current["known_companions"]
+        render_player = deepcopy(player) if floor_view else player
+        render_player.stage3_floor = view_floor
+        render_entities = [render_player, *display_floor["entities"]]
+        known_types = player.known_monsters | display_floor["known_companions"]
+        no_current_visibility = [[0] * len(display_floor["field"][0]) for _ in display_floor["field"]]
         ui.draw_stage(
             hours=hours,
-            player=player,
+            player=render_player,
             entities=render_entities,
-            field=current["field"],
-            cur_torched=cur,
-            torched=current["seen"],
+            field=display_floor["field"],
+            cur_torched=no_current_visibility if floor_view else cur,
+            torched=display_floor["seen"],
             known_types=known_types,
             show_entities=show_entities,
             stage_num=3,
@@ -780,6 +786,8 @@ def run_game(
             unlocked_treasures=player.unlocked_treasures,
             dim_types=player.met_elves,
             stage_roster=ROSTER_TRIBES,
+            floor_view=floor_view,
+            floor_label=f"F: {view_floor + 1}",
         )
 
         move = ui.input_direction()
@@ -790,6 +798,12 @@ def run_game(
             return
         if move == (0, 0):
             continue
+        if getattr(ui, "shift_direction", False):
+            view_floor = max(0, min(FLOORS - 1, view_floor + move[1]))
+            continue
+
+        # A real movement always returns the display to the player's floor.
+        view_floor = floor[0]
 
         if trace is not None:
             key = DIR_TO_KEY.get(move)
