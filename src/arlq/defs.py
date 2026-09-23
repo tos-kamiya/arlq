@@ -84,6 +84,7 @@ ROCK_SPREAD_OFFSETS: List[Tuple[int, int]] = [
 
 CHAR_DRAGON: str = "D"
 CHAR_FIRE_DRAKE: str = "F"
+CHAR_PEGASUS: str = "p"
 CHAR_TREASURE: str = "T"
 CHAR_CALTROP: str = "x"
 CHAR_BARRIER: str = "="
@@ -320,12 +321,13 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("w", 50, MIN_FOOD),
     _MT("W", 150, MIN_FOOD, event_message=">> Dread Wyrm (W) defeated! <<", treasure_key=CHAR_TREASURE + "W"),
 ]
+assert len({tribe.char for tribe in MONSTER_TRIBES}) == len(MONSTER_TRIBES), "Duplicate monster tribe char"
 
 COMPANION_TRIBES: List[CompanionTribe] = [
     _CT("l"),  # Looping companion; contact always rewinds via _rewind_to_history, so no event_message here
     _CT("n", 10, event_message="-- Nomicon joined!"),  # Nomicon
     _CT("o", 20, event_message="-- Ocular joined!"),  # Ocular
-    _CT("p", 5, event_message="-- Pegasus joined!"),  # Pegasus
+    _CT(CHAR_PEGASUS, 5, event_message="-- Pegasus joined!"),  # Pegasus
 ]
 
 CHAR_TO_TRIBE: Dict[str, Tribe] = {mt.char: mt for mt in MONSTER_TRIBES + COMPANION_TRIBES}
@@ -362,7 +364,7 @@ SPAWN_CONFIGS_ST2 = [
     _SC(CHAR_TO_TRIBE["X"], 1),
     _SC(CHAR_TO_TRIBE["n"], 0.7),
     _SC(CHAR_TO_TRIBE["o"], 0.7),
-    _SC(CHAR_TO_TRIBE["p"], 0.7),
+    _SC(CHAR_TO_TRIBE[CHAR_PEGASUS], 0.7),
 ]
 
 # Mapping stages to their corresponding spawn configurations.
