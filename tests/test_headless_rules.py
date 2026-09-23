@@ -160,12 +160,12 @@ def test_stage3_excludes_fire_lizard():
     assert all(ch != "f" for floor in stage3_module.ROSTER for ch, _, _ in floor)
 
 
-def test_empowered_monsters_triple_level_and_have_separate_identity():
+def test_empowered_monsters_scale_level_and_have_separate_identity():
     normal = d.Monster(2, 2, d.CHAR_TO_MONSTER_TRIBE["d"])
     empowered = d.Monster(2, 2, d.CHAR_TO_MONSTER_TRIBE["d"], empowered=2)
 
     assert d.monster_level(normal) == 20
-    assert d.monster_level(empowered) == 60
+    assert d.monster_level(empowered) == 70
     assert d.monster_type_key(normal) == "d"
     assert d.monster_type_key(empowered) == "d2"
     assert d.CHAR_TO_MONSTER_TRIBE["d"].feed == 60
