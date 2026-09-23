@@ -191,7 +191,7 @@ class Monster(Entity):
 
     Attributes:
         tribe: Tribe information of the monster (MonsterTribe instance).
-        empowered: Level multiplier for an enhanced monster instance.
+        empowered: Empowerment rank for an enhanced monster instance.
     """
 
     def __init__(self, x: int, y: int, tribe: MonsterTribe, empowered: int = 1):
@@ -203,7 +203,9 @@ class Monster(Entity):
 
 
 def monster_level(monster: Monster) -> int:
-    return monster.tribe.level * (1 if monster.empowered == 1 else 3)
+    if monster.empowered == 1:
+        return monster.tribe.level
+    return monster.tribe.level * 3 + 10
 
 
 def monster_type_key(monster: Monster) -> str:

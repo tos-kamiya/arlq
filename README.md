@@ -94,7 +94,7 @@ The terminal interface uses Blessed, which is installed automatically with ARLQ.
   - `A` (Rare Amoeba): Significantly boosts your level upon defeat.  
   - `C` (Rare Chimera): Grants a cursed sword that greatly increases combat power at the cost of LP.
 
-  Some monsters also have empowered variants, starting from Stage 2. Unlike rare types, being empowered is not a benefit to you — it's simply a stronger version of the same monster, at three times its normal level. Empowered monsters are displayed with an apostrophe to the right, such as `b'`, and are treated as a separate monster type for discovery.
+  Some monsters also have empowered variants, starting from Stage 2. Unlike rare types, being empowered is not a benefit to you — it's simply a stronger version of the same monster, with strength equal to its normal level × 3 + 10. Empowered monsters are displayed with an apostrophe to the right, such as `b'`, and are treated as a separate monster type for discovery.
 
 * **LP System**
   The player has LP (Life Points) that decrease with every move.
