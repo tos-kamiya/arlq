@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 4.6.7 - 2026-09-23
+
+- Fix Pegasus wall jumps after a Stage 3 rewind. The restored companion is
+  recognized by its tribe character even when rewinding creates a copy of
+  its tribe data.
+
 ## 4.6.6 - 2026-09-22
 
 - No player-visible gameplay or UI changes.
