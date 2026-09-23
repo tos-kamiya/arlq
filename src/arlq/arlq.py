@@ -3,6 +3,7 @@ from typing import Container, Dict, List, Set, Tuple, Optional
 from collections import Counter
 import argparse
 from dataclasses import dataclass
+from importlib import import_module
 import math
 import sys
 import time
@@ -19,6 +20,7 @@ from .trace import DIR_TO_KEY, ReplayUI, TraceRecorder, default_replay_output_pa
 from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent, WorldEvent
 
 MESSAGE_TICKS = 8
+SEPARATE_STAGE_MODULES = {3: "stage3"}
 
 
 @dataclass(frozen=True)
@@ -503,7 +505,7 @@ def update_entities(
                     player.x, player.y = find_random_place(entities, field, distance=2)
                     message = (MESSAGE_TICKS, tr("-- Respawned to a random location."))
                 else:
-                    message = (MESSAGE_TICKS, tr("-- The High Elf does not recognize you yet."))
+                    message = (MESSAGE_TICKS, tr("-- The High Elf seems uninterested in you."))
                     player.high_elf_refused = True
                 player.last_contact_monster = contact_key
                 continue
@@ -647,10 +649,10 @@ def run_game(
     if seed_value is not None:
         remember_seed(stage_num, seed_value)
 
-    if stage_num == 3:
-        from .stage3 import run_game as run_stage3
-
-        run_stage3(ui, seed_str, debug_show_entities, trace=trace, config=config)
+    stage_module_name = SEPARATE_STAGE_MODULES.get(stage_num)
+    if stage_module_name is not None:
+        stage_module = import_module(f".{stage_module_name}", package=__package__)
+        stage_module.run_game(ui, seed_str, debug_show_entities, trace=trace, config=config)
         return
 
     # Configuration

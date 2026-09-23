@@ -344,7 +344,7 @@ def _rewind_to_history(
     player.__dict__.update(old_player.__dict__)
     # Monster/treasure knowledge and elf floor locations survive the rewind;
     # everything else (position, level, LP, floor, stage3_flags, ...)
-    # reverts to the recorded past. stage3_met_elves must revert together
+    # reverts to the recorded past. met_elves must revert together
     # with stage3_flags: it gates re-processing of an elf encounter
     # (_resolve_monster_contact), so keeping it "met" while stage3_flags
     # reverts to not-yet-met would permanently block earning that elf's
@@ -439,7 +439,7 @@ def _resolve_monster_contact(
     if entity.tribe.is_elf:
         player.stage3_elf_floors.setdefault(ch, floor[0] + 1)
 
-    if ch in player.stage3_met_elves:
+    if ch in player.met_elves:
         current["entities"].pop(hit)
         if trace is not None:
             trace.record_contact({"type": "monster", "id": ch, "outcome": "refused"})
@@ -539,10 +539,10 @@ def _resolve_monster_contact(
         _defeat_monster(entity, current, player, floor, checkpoint, queue, trace=trace)
 
     if entity.tribe.is_elf and ch != "J" and entity not in current["entities"]:
-        player.stage3_met_elves.add(ch)
+        player.met_elves.add(ch)
         current["entities"].append(entity)
     elif entity.tribe.is_elf and entity not in current["entities"]:
-        player.stage3_met_elves.add(ch)
+        player.met_elves.add(ch)
 
     player.last_contact_monster = contact_key
 
@@ -741,7 +741,7 @@ def run_game(
     player.unlocked_treasures = set()
     player.stage3_won = False
     player.stage3_treasure_collected = False
-    player.stage3_met_elves = set()
+    player.met_elves = set()
     floor = [0]
     checkpoint = [floors[0]["up"]]
     player.stage3_floor = 0
@@ -778,7 +778,7 @@ def run_game(
             message=message[1],
             checkpoint=checkpoint[0],
             unlocked_treasures=player.unlocked_treasures,
-            dim_types=player.stage3_met_elves,
+            dim_types=player.met_elves,
             stage_roster=ROSTER_TRIBES,
         )
 
@@ -832,7 +832,7 @@ def run_game(
             extra_keys=True,
             checkpoint=checkpoint[0],
             unlocked_treasures=player.unlocked_treasures,
-            dim_types=player.stage3_met_elves,
+            dim_types=player.met_elves,
             stage_roster=ROSTER_TRIBES,
         )
         key = ui.input_alphabet()

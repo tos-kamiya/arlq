@@ -240,7 +240,9 @@ class Player(Entity):
         # Stages 1 and 2 have one floor, while Stage 3 keeps this per floor.
         self.known_companions: Set[str] = set()
         self.unlocked_treasures: Set[str] = set()
-        self.stage3_met_elves: Set[str] = set()
+        # Elf encounter knowledge is shared by any stage that reuses elf
+        # characters. Stage 3's floor hints and progress flags stay separate.
+        self.met_elves: Set[str] = set()
         self.stage3_elf_floors: Dict[str, int] = {}
         # Stage 3 state. Keeping these on Player preserves the small shared
         # entity model used by both frontends.
@@ -266,6 +268,15 @@ class Player(Entity):
         # Same idea as high_elf_refused, but for Stage 3's Collector Elf (K)
         # before the player has the cursed sword.
         self.k_elf_refused: bool = False
+
+    @property
+    def stage3_met_elves(self) -> Set[str]:
+        """Compatibility alias for older Stage 3 state snapshots/callers."""
+        return self.met_elves
+
+    @stage3_met_elves.setter
+    def stage3_met_elves(self, value: Set[str]) -> None:
+        self.met_elves = value
 
 
 class SpawnConfig:
