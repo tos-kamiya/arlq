@@ -153,7 +153,7 @@ class PygletUI:
 
         @window.event
         def on_key_press(symbol, modifiers):
-            self._key_queue.append(symbol)
+            self._key_queue.append((symbol, modifiers))
 
         joysticks = pyglet.input.get_joysticks()
         joystick = None
@@ -169,6 +169,7 @@ class PygletUI:
         # Direction tuple while moving; hat-y int on the stage-select screen.
         self.joystick_previous_direction: Optional[Union[Tuple[int, int], int]] = None
         self.map_mode = False
+        self.shift_direction = False
 
     def _display_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
         if not self.map_mode:
@@ -332,6 +333,8 @@ class PygletUI:
         unlocked_treasures: Optional[Set[str]] = None,
         dim_types: Optional[Set[str]] = None,
         stage_roster: Optional[List[d.MonsterTribe]] = None,
+        floor_view: bool = False,
+        floor_label: Optional[str] = None,
     ):
         """
         Renders the game stage:
@@ -340,7 +343,7 @@ class PygletUI:
         - Draws the player and entities with appropriate colors.
         - Draws the status bar at the bottom.
         """
-        show_entities = show_entities or self.map_mode
+        show_entities = (show_entities or self.map_mode) and not floor_view
         self._clear_drawables()
         px, py = player.x, player.y
 
@@ -377,19 +380,24 @@ class PygletUI:
                         thickness=2,
                     )
 
-        self._draw_visibility_boundary(cur_torched)
+        if floor_label:
+            self._draw_text((0, 0), floor_label, COLOR_MAP["default"], bold=True)
 
-        if checkpoint is not None and checkpoint != (px, py):
+        if not floor_view:
+            self._draw_visibility_boundary(cur_torched)
+
+        if not floor_view and checkpoint is not None and checkpoint != (px, py):
             self._draw_field_text(checkpoint, "+", COLOR_MAP[CI_YELLOW], bold=True)
 
         foreground, background = d.player_appearance(player)
-        if background == "red":
+        if not floor_view and background == "red":
             self._draw_rect(
                 self._field_col_x(px), py * CELL_SIZE_Y, CELL_SIZE_X + 1, CELL_SIZE_Y + 1, COLOR_MAP[CI_RED]
             )
-        self._draw_field_text((px, py), "@", self._tone_color(foreground), bold=True)
+        if not floor_view:
+            self._draw_field_text((px, py), "@", self._tone_color(foreground), bold=True)
 
-        if player.companion is not None and px + 1 < d.FIELD_WIDTH:
+        if not floor_view and player.companion is not None and px + 1 < d.FIELD_WIDTH:
             self._draw_field_text((px + 1, py), player.companion.tribe.char, COLOR_MAP[CI_GREEN], bold=True)
 
         # Draw entities (monster and treasures)
@@ -416,7 +424,7 @@ class PygletUI:
         # Stage 3 followers persist across floor changes and are rendered
         # independently of the temporary companion slot.
         for fx, fy, ffloor, fchar in getattr(player, "persistent_followers", []):
-            if ffloor == player.stage3_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
+            if not floor_view and ffloor == player.stage3_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
                 self._draw_field_text((fx, fy), fchar, COLOR_MAP[CI_GREEN], bold=True)
 
         # Draw the right-edge strength column: the stage's monster tribes and
@@ -550,7 +558,14 @@ class PygletUI:
     def _next_key(self) -> Optional[int]:
         """Pops the oldest queued key symbol, or None if no key is queued."""
         if self._key_queue:
-            return self._key_queue.pop(0)
+            key = self._key_queue.pop(0)
+            return key[0] if isinstance(key, tuple) else key
+        return None
+
+    def _next_key_event(self):
+        if self._key_queue:
+            key = self._key_queue.pop(0)
+            return key if isinstance(key, tuple) else (key, 0)
         return None
 
     def input_direction(self) -> Optional[Tuple[int, int]]:
@@ -559,19 +574,26 @@ class PygletUI:
         Returns a tuple (dx, dy) if an arrow key, WASD key, or D-pad.
         Returns None if ESC or 'q' is pressed, or the window is closed.
         """
+        self.shift_direction = False
         while True:
             self._pump()
             if self._closed:
                 return None
 
             while self._key_queue:
-                symbol = self._next_key()
+                event = self._next_key_event()
+                if event is None:
+                    symbol = None
+                    modifiers = 0
+                else:
+                    symbol, modifiers = event
                 if symbol == pgkey.M:
                     self.map_mode = True
                     return (0, 0)
                 if symbol in (pgkey.ESCAPE, pgkey.Q):
                     return None
                 if symbol in _DIRECTION_KEYS:
+                    self.shift_direction = bool(modifiers & pgkey.MOD_SHIFT)
                     return _DIRECTION_KEYS[symbol]
 
             if self.joystick:
@@ -600,7 +622,8 @@ class PygletUI:
                 return None
 
             while self._key_queue:
-                symbol = self._key_queue.pop(0)
+                event = self._next_key_event()
+                symbol = event[0]
                 if symbol in (pgkey.ESCAPE, pgkey.Q):
                     return None
                 if symbol in _DIGIT_KEYS:
@@ -658,8 +681,9 @@ class PygletUI:
                 if self.joystick and self.joystick.buttons and self.joystick.buttons[0]:
                     return current_index
 
-                symbol = self._next_key()
-                if symbol is not None:
+                event = self._next_key_event()
+                if event is not None:
+                    symbol, _ = event
                     if symbol == pgkey.UP:
                         current_index = (current_index - 1) % len(options)
                     elif symbol == pgkey.DOWN:

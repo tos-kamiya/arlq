@@ -532,9 +532,7 @@ def status_prefix(player: Player, stage_num: int, hours: int) -> str:
     """Text to the left of the LP readout, including the trailing spaces."""
     level_str, item_str = level_item_labels(player, stage_num)
     text = ""
-    if stage_num == 3:
-        text += f"ST: 3 F: {player.stage3_floor + 1}  "
-    elif stage_num != 0:
+    if stage_num != 0:
         text += f"ST: {stage_num}  "
     text += f"HRS: {hours}  "
     text += level_str + "  "
