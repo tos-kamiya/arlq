@@ -273,8 +273,8 @@ class BlessedUI:
         return str(key).lower()
 
     def select_stage(self) -> int:
-        num_stages = len(d.STAGE_TO_SPAWN_CONFIGS)
-        options = [tr("[q]uit")] + [tr("stage [{n}]").format(n=n) for n in range(1, num_stages + 1)]
+        stage_numbers = d.PUBLIC_STAGE_NUMBERS
+        options = [tr("[q]uit")] + [tr("stage [{n}]").format(n=n) for n in stage_numbers]
         current_index = 1
         while True:
             self._wait_for_terminal_size()
@@ -295,5 +295,5 @@ class BlessedUI:
                 return current_index
             elif str(key).lower() == "q" or key.code == self.term.KEY_ESCAPE:
                 return 0
-            elif str(key).isdigit() and 1 <= int(str(key)) <= num_stages:
+            elif str(key).isdigit() and int(str(key)) in stage_numbers:
                 return int(str(key))
