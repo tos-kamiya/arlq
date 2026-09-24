@@ -35,7 +35,6 @@ Once installed, the `arlq` and `arlq-cli` commands become available.
 ```bash
 arlq --stage 1
 arlq --stage 3
-arlq --stage 4
 arlq-cli --stage 1
 ```
 
@@ -44,10 +43,15 @@ lines high. If the terminal is resized below that size, the game pauses until
 it is enlarged again.
 
 - Without any options, the game will run in a Pyglet window.
+- Use `--scale FACTOR` to enlarge or reduce the Pyglet GUI (for example,
+  `--scale 1.5`). The selected scale is saved in the per-user configuration
+  directory and is used automatically on the next GUI launch. The stage
+  selection screen also provides a `Settings` menu for changing it without a
+  command-line option.
 - To make the game easier, use the `-T` option (expands the visible area).
 - To make the game more challenging, use the `-t` option (reduces the visible area).
 - Use `-n` / `--narrower-corridors` to make corridors narrower.
-- Use `--stage 1`, `--stage 2`, `--stage 3`, or `--stage 4` to select a stage directly.
+- Use `--stage 1`, `--stage 2`, or `--stage 3` to select a stage directly.
 - Use `--debug-show-entities` to show undiscovered entities.
 - Use `--seed VALUE` to select an integer seed or a versioned seed string.
 - With the `--terminal` option, the game will run in the terminal using Blessed.
@@ -137,9 +141,10 @@ Stage 2 contains four ordinary `b` Bison and two empowered `b` Bison (see Rare T
 Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
 Stage 3 features empowered versions of `b`, `c`, and `d`: `b'`, `c'`, and `d'`.
 
-### Stage 4 (experimental)
+### Stage 4 (experimental, development-only)
 
-Stage 4 is under construction; its design and gameplay are subject to change.
+Stage 4 is under construction and is not selectable in this release; its
+design and gameplay are subject to change.
 
 Stage 4 has four floors with the Stage 3 layout. Each floor has two filled rooms in different columns; one filled room across the stage contains the Isolated Elf. Adjacent floors can have a second stair pair in another room when space is available. The monster roster reuses Stage 3's first-floor monsters on floors 1–2, its second-floor roster on floor 3, and its third-floor roster on floor 4.
 

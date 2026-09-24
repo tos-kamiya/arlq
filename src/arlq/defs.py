@@ -6,6 +6,10 @@ TILE_NUM_X: int = 6
 TILE_NUM_Y: int = 3
 FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
+# Public release entry points currently expose stages 1-3. Stage 4 remains
+# available in the source for continued development, but is not selectable
+# from the released game's UI or command line.
+PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3)
 # Stage 1 is a smaller, introductory map: it walls off this many tile
 # columns on each of the left and right edges (6 -> 4 wide), leaving
 # TILE_NUM_Y unchanged.

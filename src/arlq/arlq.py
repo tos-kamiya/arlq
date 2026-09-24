@@ -609,7 +609,7 @@ def read_last_seed() -> Tuple[int, int]:
         stage, seed = int(parts[0]), int(parts[1])
     except ValueError as error:
         raise ValueError(f"invalid rematch stage or seed in {path}") from error
-    if stage not in (1, 2, 3, 4):
+    if stage not in d.PUBLIC_STAGE_NUMBERS:
         raise ValueError(f"invalid rematch stage or seed in {path}")
     return stage, seed
 
@@ -873,8 +873,8 @@ def parse_seed_string(args, seed_str, enforce_version: bool = True):
         args.stage = int(stage_str)
     except ValueError:
         exit("Error: Stage value in seed string is not a valid integer.")
-    if args.stage not in (1, 2, 3, 4):
-        exit("Error: Stage value in seed string must be 1, 2, 3, or 4.")
+    if args.stage not in d.PUBLIC_STAGE_NUMBERS:
+        exit("Error: Stage value in seed string must be 1, 2, or 3.")
 
     try:
         args.seed = int(seed_value_str)
@@ -887,7 +887,7 @@ def main():
         description="A Rogue-Like game.",
     )
 
-    parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, or 4).")
+    parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1, 2, or 3).")
 
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
@@ -906,6 +906,10 @@ def main():
     parser.add_argument(
         "--lang", choices=["auto", "en", "ja"], default="auto",
         help="UI message language ('auto' detects it from the locale; default: auto).",
+    )
+    parser.add_argument(
+        "--scale", type=float, metavar="FACTOR",
+        help="GUI display scale (0.75 to 2.5); saves the value for future GUI starts.",
     )
     parser.add_argument(
         "--trace-record", metavar="PATH",
@@ -927,6 +931,9 @@ def main():
     args = parser.parse_args()
 
     set_language(args.lang)
+
+    if args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
+        parser.error("--stage must be 1, 2, or 3")
 
     if args.trace_record and args.trace_replay:
         parser.error("--trace-record cannot be combined with --trace-replay")
@@ -1032,7 +1039,12 @@ def main():
     else:
         from .pyglet_funcs import PygletUI
 
-        play(PygletUI())
+        ui = PygletUI(args.scale)
+        if args.scale is not None:
+            from .pyglet_funcs import save_ui_scale
+
+            save_ui_scale(ui.scale)
+        play(ui)
 
     if trace_recorder is not None:
         if args.trace_replay:

@@ -1,7 +1,12 @@
 import locale
+import json
+import math
 import sys
 import time
+from pathlib import Path
 from typing import List, Optional, Set, Tuple, Union
+
+from appdirs import user_config_dir
 
 
 def _prepare_x11_locale() -> None:
@@ -94,6 +99,36 @@ STRENGTH_COLUMN_WIDTH = CELL_SIZE_X + 2 * STRENGTH_COLUMN_PADDING
 FIELD_EDGE_WALL_WIDTH = 2
 FIELD_EDGE_SHIFT = FIELD_EDGE_WALL_WIDTH - CELL_SIZE_X
 
+MIN_UI_SCALE = 0.75
+MAX_UI_SCALE = 2.5
+UI_SCALE_CHOICES = (1.0, 1.25, 1.5, 1.75, 2.0)
+
+
+def _settings_path() -> Path:
+    return Path(user_config_dir("arlq")) / "settings.json"
+
+
+def load_ui_scale() -> float:
+    """Load the saved GUI scale, falling back safely to the default."""
+    try:
+        value = json.loads(_settings_path().read_text(encoding="utf-8")).get("scale", 1.0)
+        value = float(value)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError, AttributeError):
+        return 1.0
+    return min(MAX_UI_SCALE, max(MIN_UI_SCALE, value))
+
+
+def save_ui_scale(scale: float) -> None:
+    """Persist the GUI scale in the user's platform configuration directory."""
+    path = _settings_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"scale": scale}, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        # A read-only or unusual environment should not prevent the game from
+        # starting; the setting simply will not persist in that case.
+        pass
+
 # Keys that map to a movement direction, shared by input_direction().
 _DIRECTION_KEYS = {
     pgkey.UP: (0, -1),
@@ -112,19 +147,13 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 
 
 class PygletUI:
-    def __init__(self) -> None:
+    def __init__(self, scale: Optional[float] = None) -> None:
         # Field dimensions from defs
         self.field_width = d.FIELD_WIDTH
         self.field_height = d.FIELD_HEIGHT
 
-        # Calculate window dimensions (including status bar area and the
-        # right-edge strength column). The column is a cell wide plus left/
-        # right padding, so its character has room to render before the
-        # window's true edge. The two wall-only edge columns of the field
-        # are narrower (see FIELD_EDGE_WALL_WIDTH) to keep the window compact.
-        self.field_pixel_width = FIELD_EDGE_WALL_WIDTH * 2 + (self.field_width - 2) * CELL_SIZE_X
-        self.window_width = self.field_pixel_width + STRENGTH_COLUMN_WIDTH
-        self.window_height = (self.field_height + 2) * CELL_SIZE_Y
+        self.scale = self._valid_scale(load_ui_scale() if scale is None else scale)
+        self._set_scaled_dimensions()
 
         self.window = pyglet.window.Window(
             width=self.window_width,
@@ -134,7 +163,7 @@ class PygletUI:
         self.window.set_mouse_visible(False)
 
         self.font_name = "Courier New"
-        self.font_size = int(CELL_SIZE_Y * 0.82)
+        self.font_size = int(self.cell_size_y * 0.82)
         # Lazily resolved (font_name, size_scale) for non-ASCII text; see
         # _non_ascii_font(). None until first computed.
         self._non_ascii_font_result: Optional[Tuple[str, float]] = None
@@ -170,6 +199,37 @@ class PygletUI:
         self.joystick_previous_direction: Optional[Union[Tuple[int, int], int]] = None
         self.map_mode = False
         self.shift_direction = False
+
+    @staticmethod
+    def _valid_scale(scale: float) -> float:
+        scale = float(scale)
+        if not math.isfinite(scale):
+            return 1.0
+        return min(MAX_UI_SCALE, max(MIN_UI_SCALE, scale))
+
+    def _set_scaled_dimensions(self) -> None:
+        self.cell_size_x = max(1, round(CELL_SIZE_X * self.scale))
+        self.cell_size_y = max(1, round(CELL_SIZE_Y * self.scale))
+        self.strength_column_padding = max(1, round(STRENGTH_COLUMN_PADDING * self.scale))
+        self.strength_column_width = self.cell_size_x + 2 * self.strength_column_padding
+        self.field_edge_wall_width = max(1, round(FIELD_EDGE_WALL_WIDTH * self.scale))
+        self.field_edge_shift = self.field_edge_wall_width - self.cell_size_x
+        self.field_pixel_width = self.field_edge_wall_width * 2 + (self.field_width - 2) * self.cell_size_x
+        self.window_width = self.field_pixel_width + self.strength_column_width
+        self.window_height = (self.field_height + 2) * self.cell_size_y
+
+    def set_scale(self, scale: float, save: bool = True) -> None:
+        """Resize the GUI and its grid cells without changing gameplay."""
+        self.scale = self._valid_scale(scale)
+        self._set_scaled_dimensions()
+        self.font_size = int(self.cell_size_y * 0.82)
+        self._non_ascii_font_result = None
+        self.window.set_size(self.window_width, self.window_height)
+        # Process the resize immediately.  Otherwise the stage-selection
+        # screen can be drawn with the old viewport until the next key event.
+        self.window.dispatch_events()
+        if save:
+            save_ui_scale(self.scale)
 
     def _display_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
         if not self.map_mode:
@@ -222,8 +282,8 @@ class PygletUI:
             font_name=font_name,
             font_size=font_size,
             weight="bold" if bold else "normal",
-            x=pos[0] * CELL_SIZE_X + x_offset,
-            y=self.window_height - pos[1] * CELL_SIZE_Y,
+            x=pos[0] * self.cell_size_x + x_offset,
+            y=self.window_height - pos[1] * self.cell_size_y,
             anchor_x="left",
             anchor_y="top",
             color=(*self._display_color(color), 255),
@@ -272,17 +332,17 @@ class PygletUI:
         amount so they stay contiguous."""
         if col == 0:
             return 0
-        return col * CELL_SIZE_X + FIELD_EDGE_SHIFT
+        return col * self.cell_size_x + self.field_edge_shift
 
     def _field_col_width(self, col: int) -> int:
         if col == 0 or col == self.field_width - 1:
-            return FIELD_EDGE_WALL_WIDTH
-        return CELL_SIZE_X
+            return self.field_edge_wall_width
+        return self.cell_size_x
 
     def _draw_field_text(self, pos: d.Point, text: str, color: Tuple[int, int, int], bold: bool = False):
         """Draws text at a field grid cell (never an edge column), applying
         the same shift as `_field_col_x`."""
-        self._draw_text(pos, text, color, bold=bold, x_offset=FIELD_EDGE_SHIFT)
+        self._draw_text(pos, text, color, bold=bold, x_offset=self.field_edge_shift)
 
     def _draw_rect(self, x: int, y: int, width: int, height: int, color: Tuple[int, int, int]):
         rect = pyglet.shapes.Rectangle(
@@ -362,9 +422,9 @@ class PygletUI:
                     tile_color = (67, 42, 45)
                 self._draw_rect(
                     self._field_col_x(x),
-                    y * CELL_SIZE_Y,
+                    y * self.cell_size_y,
                     self._field_col_width(x) + 1,
-                    CELL_SIZE_Y + 1,
+                    self.cell_size_y + 1,
                     tile_color,
                 )
 
@@ -373,9 +433,9 @@ class PygletUI:
                 elif discovered and cell == d.CHAR_BARRIER:
                     self._draw_line(
                         self._field_col_x(x) + 2,
-                        y * CELL_SIZE_Y + CELL_SIZE_Y // 2,
-                        self._field_col_x(x) + CELL_SIZE_X - 2,
-                        y * CELL_SIZE_Y + CELL_SIZE_Y // 2,
+                        y * self.cell_size_y + self.cell_size_y // 2,
+                        self._field_col_x(x) + self.cell_size_x - 2,
+                        y * self.cell_size_y + self.cell_size_y // 2,
                         COLOR_MAP[CI_RED],
                         thickness=2,
                     )
@@ -389,7 +449,7 @@ class PygletUI:
         foreground, background = d.player_appearance(player)
         if not floor_view and background == "red":
             self._draw_rect(
-                self._field_col_x(px), py * CELL_SIZE_Y, CELL_SIZE_X + 1, CELL_SIZE_Y + 1, COLOR_MAP[CI_RED]
+                self._field_col_x(px), py * self.cell_size_y, self.cell_size_x + 1, self.cell_size_y + 1, COLOR_MAP[CI_RED]
             )
         if not floor_view:
             self._draw_field_text((px, py), "@", self._tone_color(foreground), bold=True)
@@ -431,8 +491,8 @@ class PygletUI:
         self._draw_rect(
             self.field_pixel_width,
             0,
-            STRENGTH_COLUMN_WIDTH,
-            self.field_height * CELL_SIZE_Y,
+            self.strength_column_width,
+            self.field_height * self.cell_size_y,
             STRENGTH_COLUMN_BG,
         )
         tribes = stage_roster if stage_roster is not None else (
@@ -444,11 +504,11 @@ class PygletUI:
                 continue
             self._draw_text(
                 (0, y), char, COLOR_MAP["default"], bold=is_player,
-                x_offset=self.field_pixel_width + STRENGTH_COLUMN_PADDING
+                x_offset=self.field_pixel_width + self.strength_column_padding
             )
 
         if floor_label:
-            label_width = len(floor_label) * CELL_SIZE_X
+            label_width = len(floor_label) * self.cell_size_x
             label_x = max(0, self.field_pixel_width - label_width)
             self._draw_text(
                 (0, self.field_height - 1), floor_label, COLOR_MAP["default"], x_offset=label_x
@@ -480,15 +540,15 @@ class PygletUI:
         x_offset = text_width + 10
 
         lp_str = "%d " % player.lp
-        lp_x_cell = x_offset // CELL_SIZE_X
+        lp_x_cell = x_offset // self.cell_size_x
         self._draw_text((lp_x_cell, self.field_height), lp_str, COLOR_MAP["default"])
         lp_width = self._text_width(lp_str)
         x_offset += lp_width
 
         bar_cells = 8
-        bar_width = bar_cells * CELL_SIZE_X
-        bar_height = CELL_SIZE_Y // 2
-        y_offset = self.field_height * CELL_SIZE_Y + (CELL_SIZE_Y - bar_height) // 2
+        bar_width = bar_cells * self.cell_size_x
+        bar_height = self.cell_size_y // 2
+        y_offset = self.field_height * self.cell_size_y + (self.cell_size_y - bar_height) // 2
         progress_ratio = player.lp / d.LP_MAX
         fill_width = int(bar_width * progress_ratio)
         lp_color = COLOR_MAP[CI_RED] if player.lp <= d.LP_LOW_THRESHOLD else COLOR_MAP["default"]
@@ -500,7 +560,7 @@ class PygletUI:
         extra = "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
         item_status = extra if stage_num == 3 else "  ".join([item_str, extra])
         item_x_offset = x_offset + bar_width + 10
-        self._draw_text((item_x_offset // CELL_SIZE_X, self.field_height), item_status, COLOR_MAP["default"])
+        self._draw_text((item_x_offset // self.cell_size_x, self.field_height), item_status, COLOR_MAP["default"])
 
         if stage_num == 3:
             progress_x = 0
@@ -538,9 +598,9 @@ class PygletUI:
                 if not visibility[y][x]:
                     continue
                 left = self._field_col_x(x)
-                top = y * CELL_SIZE_Y
+                top = y * self.cell_size_y
                 right = left + self._field_col_width(x)
-                bottom = top + CELL_SIZE_Y
+                bottom = top + self.cell_size_y
                 if y == 0 or not visibility[y - 1][x]:
                     self._draw_line(left, top, right, top, boundary_color, thickness=line_width)
                 if y + 1 == height or not visibility[y + 1][x]:
@@ -641,6 +701,49 @@ class PygletUI:
         """Closes the game window."""
         self.window.close()
 
+    def settings_menu(self) -> None:
+        """Show GUI settings and persist the selected display scale."""
+        current_index = min(
+            range(len(UI_SCALE_CHOICES)),
+            key=lambda index: abs(UI_SCALE_CHOICES[index] - self.scale),
+        )
+
+        while True:
+            self._clear_drawables()
+            self._draw_text((10, 5), "Settings", COLOR_MAP[CI_YELLOW], bold=True)
+            self._draw_text((10, 7), "Interface scale", COLOR_MAP["default"])
+            for index, scale in enumerate(UI_SCALE_CHOICES):
+                marker = ">" if index == current_index else " "
+                self._draw_text(
+                    (10, 9 + index),
+                    f"{marker} {int(scale * 100)}%",
+                    COLOR_MAP["default"],
+                    bold=index == current_index,
+                )
+            self._draw_text((10, 16), "Enter: apply   Esc: cancel", COLOR_MAP["default"])
+            self._flip()
+
+            while True:
+                self._pump()
+                if self._closed:
+                    return
+                event = self._next_key_event()
+                if event is None:
+                    time.sleep(1 / 30)
+                    continue
+                symbol, _ = event
+                if symbol == pgkey.UP:
+                    current_index = (current_index - 1) % len(UI_SCALE_CHOICES)
+                    break
+                if symbol == pgkey.DOWN:
+                    current_index = (current_index + 1) % len(UI_SCALE_CHOICES)
+                    break
+                if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
+                    self.set_scale(UI_SCALE_CHOICES[current_index])
+                    return
+                if symbol in (pgkey.ESCAPE, pgkey.Q):
+                    return
+
     def select_stage(self) -> int:
         """
         Displays a stage selection menu where the user can navigate with arrow keys or D-pad,
@@ -651,14 +754,16 @@ class PygletUI:
         Returns:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
         """
-        num_stages = len(d.STAGE_TO_SPAWN_CONFIGS)
-        assert num_stages <= 9
+        stage_numbers = d.PUBLIC_STAGE_NUMBERS
+        assert len(stage_numbers) <= 9
 
         options = [tr("[q]uit")]
-        for n in range(1, num_stages + 1):
+        for n in stage_numbers:
             options.append(tr("stage [{n}]").format(n=n))
+        options.append(tr("(s)ettings"))
 
         current_index = 1  # Initial selection: stage 1
+        settings_index = len(options) - 1
 
         while True:
             self._clear_drawables()
@@ -683,6 +788,11 @@ class PygletUI:
                     return 0
 
                 if self.joystick and self.joystick.buttons and self.joystick.buttons[0]:
+                    if current_index == 0:
+                        return 0
+                    if current_index == settings_index:
+                        self.settings_menu()
+                        break
                     return current_index
 
                 event = self._next_key_event()
@@ -693,12 +803,20 @@ class PygletUI:
                     elif symbol == pgkey.DOWN:
                         current_index = (current_index + 1) % len(options)
                     elif symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
+                        if current_index == 0:
+                            return 0
+                        if current_index == settings_index:
+                            self.settings_menu()
+                            break
                         return current_index
+                    elif symbol == pgkey.S:
+                        self.settings_menu()
+                        break
                     elif symbol in (pgkey.Q, pgkey.ESCAPE):
                         return 0
                     elif symbol in _DIGIT_KEYS:
                         n = int(_DIGIT_KEYS[symbol])
-                        if n <= num_stages:
+                        if n in stage_numbers:
                             return n
                     break
 
