@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 4.7.2 - 2026-09-25
+
+- Show the destination floor immediately after using stairs in Stage 3.
+- In `arlq-cli`, keep stair symbols visible when a respawn checkpoint shares
+  their cell.
+
 ## 4.7.1 - 2026-09-25
 
 - No player-visible gameplay or UI changes. Add the Japanese catalog entry
