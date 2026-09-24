@@ -133,7 +133,12 @@ class BlessedUI:
                 elif (x + y) % 2 == 1:
                     put(x, y, ".", dim=True)
 
-        if not floor_view and checkpoint is not None and checkpoint != (px, py):
+        if (
+            not floor_view
+            and checkpoint is not None
+            and checkpoint != (px, py)
+            and field[checkpoint[1]][checkpoint[0]] not in ("^", "v")
+        ):
             put(checkpoint[0], checkpoint[1], "+", "yellow", bold=True)
 
         player_attack = d.current_player_attack(player, stage_num)

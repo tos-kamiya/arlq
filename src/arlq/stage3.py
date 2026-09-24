@@ -813,6 +813,9 @@ def run_game(
 
         event_message = _step(move, floors, player, floor, checkpoint, queue, history, hours, trace=trace)
         player.stage3_floor = floor[0]
+        # A stair contact can change the player's floor during _step(). Keep
+        # the displayed floor in sync so the next frame shows the new floor.
+        view_floor = floor[0]
         if event_message is not None:
             message = event_message
 
