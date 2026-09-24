@@ -643,8 +643,18 @@ class PygletUI:
         elif message:
             self._draw_text((0, self.field_height + 1), message, COLOR_MAP["default"], bold=True)
 
-    def _text_width(self, text: str) -> int:
-        label = pyglet.text.Label(text, font_name=self.font_name, font_size=self.font_size)
+    def _text_width(self, text: str, bold: bool = False) -> int:
+        if text.isascii():
+            font_name, font_size = self.font_name, self.font_size
+        else:
+            non_ascii_font_name, size_scale = self._non_ascii_font()
+            font_name, font_size = non_ascii_font_name, self.font_size * size_scale
+        label = pyglet.text.Label(
+            text,
+            font_name=font_name,
+            font_size=font_size,
+            weight="bold" if bold else "normal",
+        )
         width = label.content_width
         label.delete()
         return width
@@ -805,23 +815,30 @@ class PygletUI:
         row = 0
         while True:
             self._clear_drawables()
-            self._draw_text((10, 5), "Settings", COLOR_MAP[CI_YELLOW], bold=True)
-            self._draw_text((8, 9), f"{'>' if row == 0 else ' '} Interface scale", COLOR_MAP["default"], bold=row == 0)
+            self._draw_text((8, 5), tr("Settings"), COLOR_MAP[CI_YELLOW], bold=True)
+            scale_label = tr("Interface scale")
+            scale_heading = f"{'>' if row == 0 else ' '} {scale_label}"
+            self._draw_text((8, 8), scale_heading, COLOR_MAP["default"], bold=row == 0)
             self._draw_text(
-                (28, 9),
+                (8, 8),
                 f"<  {int(UI_SCALE_CHOICES[current_index] * 100)}%  >",
                 COLOR_MAP["default"],
                 bold=row == 0,
+                x_offset=self._text_width(scale_heading, bold=row == 0) + self.cell_size_x,
             )
-            self._draw_text((8, 12), f"{'>' if row == 1 else ' '} Key repeat interval", COLOR_MAP["default"], bold=row == 1)
+            repeat_label = tr("Key repeat interval")
+            repeat_heading = f"{'>' if row == 1 else ' '} {repeat_label}"
+            self._draw_text((8, 10), repeat_heading, COLOR_MAP["default"], bold=row == 1)
             self._draw_text(
-                (30, 12),
+                (8, 10),
                 f"<  {'None' if KEY_REPEAT_CHOICES[repeat_index] is None else format(KEY_REPEAT_CHOICES[repeat_index], '.1f') + 's'}  >",
                 COLOR_MAP["default"],
                 bold=row == 1,
+                x_offset=self._text_width(repeat_heading, bold=row == 1) + self.cell_size_x,
             )
-            self._draw_text((8, 17), "Up/Down: item   Left/Right: value", COLOR_MAP["default"])
-            self._draw_text((8, 19), "Enter: apply   Esc: cancel", COLOR_MAP["default"])
+            help_color = (145, 150, 160)
+            self._draw_text((8, 13), tr("Up/Down: item   Left/Right: value"), help_color)
+            self._draw_text((8, 15), tr("Enter: apply   Esc: cancel"), help_color)
             self._flip()
 
             while True:
@@ -881,9 +898,9 @@ class PygletUI:
 
         while True:
             self._clear_drawables()
-            self._draw_text((10, 5), tr("Stage Selection"), COLOR_MAP[CI_YELLOW], bold=True)
+            self._draw_text((8, 5), tr("Stage Selection"), COLOR_MAP[CI_YELLOW], bold=True)
 
-            base_x = 10
+            base_x = 8
             base_y = 8
             for i, option in enumerate(options):
                 prefix = ">" if i == current_index else " "
