@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 4.6.9 - 2026-09-24
+
+- Add a configurable Pyglet GUI scale with a persistent Settings menu and
+  the `--scale` command-line option.
+- Keep the experimental Stage 4 implementation in the source while limiting
+  released game entry points to Stages 1-3.
+
 ## 4.6.8 - 2026-09-23
 
 - Ease Stage 2 by increasing ordinary Bison (`b`) from three to four,
