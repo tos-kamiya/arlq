@@ -43,15 +43,6 @@ lines high. If the terminal is resized below that size, the game pauses until
 it is enlarged again.
 
 - Without any options, the game will run in a Pyglet window.
-- Use `--scale FACTOR` to enlarge or reduce the Pyglet GUI (from `0.5` to
-  `4.0`, for example `--scale 1.5`). The selected scale is saved in the per-user configuration
-  directory and is used automatically on the next GUI launch. The stage
-  selection screen also provides a `Settings` menu for changing it without a
-  command-line option.
-- Use `--key-repeat-interval SECONDS` to set the GUI movement repeat delay and
-  interval (from `0.1` to `1.0` seconds), or use `none` to disable it. The
-  setting is saved for later GUI starts and can also be changed in the stage
-  selection screen's `Settings`.
 - To make the game easier, use the `-T` option (expands the visible area).
 - To make the game more challenging, use the `-t` option (reduces the visible area).
 - Use `-n` / `--narrower-corridors` to make corridors narrower.
@@ -72,7 +63,17 @@ cache directory. `--rematch` starts the saved stage without showing the stage
 selector. It cannot be combined with `--seed` or `--stage`; keep the other
 layout options unchanged to reproduce the same layout.
 
-The terminal interface uses Blessed, which is installed automatically with ARLQ.
+GUI-only options:
+
+- Use `--scale FACTOR` to enlarge or reduce the Pyglet GUI (from `0.5` to
+  `4.0`, for example `--scale 1.5`). The selected scale is saved in the per-user configuration
+  directory and is used automatically on the next GUI launch. The stage
+  selection screen also provides a `Settings` menu for changing it without a
+  command-line option.
+- Use `--key-repeat-interval SECONDS` to set the GUI movement repeat delay and
+  interval (from `0.1` to `1.0` seconds), or use `none` to disable it. The
+  setting is saved for later GUI starts and can also be changed in the stage
+  selection screen's `Settings`.
 
 ## Game Description
 
