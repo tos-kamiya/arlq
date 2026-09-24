@@ -37,6 +37,6 @@
     "Stage Selection": "ステージ選択",
     "[q]uit": "[q] 終了",
     "stage [{n}]": "ステージ [{n}]",
-    "(s)ettings": "(s)設定",
+    "[s]ettings": "[s] 設定",
     "Please resize the terminal to at least 80x24.": "端末を 80x24 以上の大きさにしてください。"
 }

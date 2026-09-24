@@ -99,19 +99,28 @@ STRENGTH_COLUMN_WIDTH = CELL_SIZE_X + 2 * STRENGTH_COLUMN_PADDING
 FIELD_EDGE_WALL_WIDTH = 2
 FIELD_EDGE_SHIFT = FIELD_EDGE_WALL_WIDTH - CELL_SIZE_X
 
-MIN_UI_SCALE = 0.75
-MAX_UI_SCALE = 2.5
-UI_SCALE_CHOICES = (1.0, 1.25, 1.5, 1.75, 2.0)
+MIN_UI_SCALE = 0.5
+MAX_UI_SCALE = 4.0
+UI_SCALE_CHOICES = tuple(n / 100 for n in range(50, 401, 25))
+KEY_REPEAT_CHOICES = tuple(n / 10 for n in range(1, 11)) + (None,)
 
 
 def _settings_path() -> Path:
     return Path(user_config_dir("arlq")) / "settings.json"
 
 
+def _load_settings() -> dict:
+    try:
+        value = json.loads(_settings_path().read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return {}
+
+
 def load_ui_scale() -> float:
     """Load the saved GUI scale, falling back safely to the default."""
     try:
-        value = json.loads(_settings_path().read_text(encoding="utf-8")).get("scale", 1.0)
+        value = _load_settings().get("scale", 1.0)
         value = float(value)
     except (OSError, ValueError, TypeError, json.JSONDecodeError, AttributeError):
         return 1.0
@@ -123,10 +132,24 @@ def save_ui_scale(scale: float) -> None:
     path = _settings_path()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"scale": scale}, indent=2) + "\n", encoding="utf-8")
+        settings = _load_settings()
+        settings["scale"] = scale
+        path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
     except OSError:
         # A read-only or unusual environment should not prevent the game from
         # starting; the setting simply will not persist in that case.
+        pass
+
+
+def save_key_repeat_interval(interval: float) -> None:
+    """Persist the GUI key repeat interval without discarding other settings."""
+    path = _settings_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        settings = _load_settings()
+        settings["key_repeat_interval"] = PygletUI._valid_repeat_interval(interval)
+        path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+    except OSError:
         pass
 
 # Keys that map to a movement direction, shared by input_direction().
@@ -147,7 +170,7 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 
 
 class PygletUI:
-    def __init__(self, scale: Optional[float] = None) -> None:
+    def __init__(self, scale: Optional[float] = None, key_repeat_interval: Optional[float] = None) -> None:
         # Field dimensions from defs
         self.field_width = d.FIELD_WIDTH
         self.field_height = d.FIELD_HEIGHT
@@ -173,6 +196,15 @@ class PygletUI:
 
         self._closed = False
         self._key_queue: list = []
+        self._stage_input_active = False
+        self._escape_key_held = False
+        self.key_repeat_interval = self._valid_repeat_interval(
+            _load_settings().get("key_repeat_interval", None)
+            if key_repeat_interval is None else key_repeat_interval
+        )
+        self._held_direction: Optional[Tuple[int, int]] = None
+        self._held_direction_keys: Set[int] = set()
+        self._next_repeat_at = 0.0
 
         window = self.window
 
@@ -182,7 +214,29 @@ class PygletUI:
 
         @window.event
         def on_key_press(symbol, modifiers):
+            if symbol == pgkey.ESCAPE:
+                if self._escape_key_held:
+                    return pyglet.event.EVENT_HANDLED
+                self._escape_key_held = True
+            if self._stage_input_active and symbol in _DIRECTION_KEYS:
+                if symbol in self._held_direction_keys:
+                    return
+                self._held_direction_keys.add(symbol)
             self._key_queue.append((symbol, modifiers))
+            if symbol == pgkey.ESCAPE:
+                return pyglet.event.EVENT_HANDLED
+
+        @window.event
+        def on_key_release(symbol, modifiers):
+            if symbol == pgkey.ESCAPE:
+                self._escape_key_held = False
+            was_held = symbol in self._held_direction_keys
+            self._held_direction_keys.discard(symbol)
+            if was_held and symbol in _DIRECTION_KEYS and not any(
+                _DIRECTION_KEYS[key] == self._held_direction for key in self._held_direction_keys
+            ):
+                self._held_direction = None
+                self._next_repeat_at = 0.0
 
         joysticks = pyglet.input.get_joysticks()
         joystick = None
@@ -206,6 +260,22 @@ class PygletUI:
         if not math.isfinite(scale):
             return 1.0
         return min(MAX_UI_SCALE, max(MIN_UI_SCALE, scale))
+
+    @staticmethod
+    def _valid_repeat_interval(interval: Optional[float]) -> Optional[float]:
+        if interval is None:
+            return None
+        try:
+            interval = float(interval)
+        except (ValueError, TypeError):
+            return 0.2
+        if not math.isfinite(interval):
+            return 0.2
+        return min(1.0, max(0.1, interval))
+
+    def set_key_repeat_interval(self, interval: Optional[float]) -> None:
+        self.key_repeat_interval = self._valid_repeat_interval(interval)
+        save_key_repeat_interval(self.key_repeat_interval)
 
     def _set_scaled_dimensions(self) -> None:
         self.cell_size_x = max(1, round(CELL_SIZE_X * self.scale))
@@ -632,7 +702,20 @@ class PygletUI:
             return key if isinstance(key, tuple) else (key, 0)
         return None
 
+    def _discard_queued_key(self, symbol: int) -> None:
+        self._key_queue = [
+            event for event in self._key_queue
+            if (event[0] if isinstance(event, tuple) else event) != symbol
+        ]
+
     def input_direction(self) -> Optional[Tuple[int, int]]:
+        self._stage_input_active = True
+        try:
+            return self._input_direction()
+        finally:
+            self._stage_input_active = False
+
+    def _input_direction(self) -> Optional[Tuple[int, int]]:
         """
         Waits for a directional input.
         Returns a tuple (dx, dy) if an arrow key, WASD key, or D-pad.
@@ -658,7 +741,17 @@ class PygletUI:
                     return None
                 if symbol in _DIRECTION_KEYS:
                     self.shift_direction = bool(modifiers & pgkey.MOD_SHIFT)
+                    if symbol in self._held_direction_keys:
+                        self._held_direction = _DIRECTION_KEYS[symbol]
+                        self._next_repeat_at = (
+                            time.monotonic() + self.key_repeat_interval
+                            if self.key_repeat_interval is not None else float("inf")
+                        )
                     return _DIRECTION_KEYS[symbol]
+
+            if self._held_direction is not None and time.monotonic() >= self._next_repeat_at:
+                self._next_repeat_at = time.monotonic() + self.key_repeat_interval
+                return self._held_direction
 
             if self.joystick:
                 hat_x = int(self.joystick.hat_x)
@@ -702,25 +795,33 @@ class PygletUI:
         self.window.close()
 
     def settings_menu(self) -> None:
-        """Show GUI settings and persist the selected display scale."""
+        """Show GUI settings and persist the selected display scale and key repeat."""
         current_index = min(
             range(len(UI_SCALE_CHOICES)),
             key=lambda index: abs(UI_SCALE_CHOICES[index] - self.scale),
         )
 
+        repeat_index = KEY_REPEAT_CHOICES.index(self.key_repeat_interval) if self.key_repeat_interval in KEY_REPEAT_CHOICES else 0
+        row = 0
         while True:
             self._clear_drawables()
             self._draw_text((10, 5), "Settings", COLOR_MAP[CI_YELLOW], bold=True)
-            self._draw_text((10, 7), "Interface scale", COLOR_MAP["default"])
-            for index, scale in enumerate(UI_SCALE_CHOICES):
-                marker = ">" if index == current_index else " "
-                self._draw_text(
-                    (10, 9 + index),
-                    f"{marker} {int(scale * 100)}%",
-                    COLOR_MAP["default"],
-                    bold=index == current_index,
-                )
-            self._draw_text((10, 16), "Enter: apply   Esc: cancel", COLOR_MAP["default"])
+            self._draw_text((8, 9), f"{'>' if row == 0 else ' '} Interface scale", COLOR_MAP["default"], bold=row == 0)
+            self._draw_text(
+                (28, 9),
+                f"<  {int(UI_SCALE_CHOICES[current_index] * 100)}%  >",
+                COLOR_MAP["default"],
+                bold=row == 0,
+            )
+            self._draw_text((8, 12), f"{'>' if row == 1 else ' '} Key repeat interval", COLOR_MAP["default"], bold=row == 1)
+            self._draw_text(
+                (30, 12),
+                f"<  {'None' if KEY_REPEAT_CHOICES[repeat_index] is None else format(KEY_REPEAT_CHOICES[repeat_index], '.1f') + 's'}  >",
+                COLOR_MAP["default"],
+                bold=row == 1,
+            )
+            self._draw_text((8, 17), "Up/Down: item   Left/Right: value", COLOR_MAP["default"])
+            self._draw_text((8, 19), "Enter: apply   Esc: cancel", COLOR_MAP["default"])
             self._flip()
 
             while True:
@@ -733,13 +834,26 @@ class PygletUI:
                     continue
                 symbol, _ = event
                 if symbol == pgkey.UP:
-                    current_index = (current_index - 1) % len(UI_SCALE_CHOICES)
+                    row = (row - 1) % 2
                     break
                 if symbol == pgkey.DOWN:
-                    current_index = (current_index + 1) % len(UI_SCALE_CHOICES)
+                    row = (row + 1) % 2
+                    break
+                if symbol == pgkey.LEFT:
+                    if row == 0:
+                        current_index = max(0, current_index - 1)
+                    else:
+                        repeat_index = max(0, repeat_index - 1)
+                    break
+                if symbol == pgkey.RIGHT:
+                    if row == 0:
+                        current_index = min(len(UI_SCALE_CHOICES) - 1, current_index + 1)
+                    else:
+                        repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
                     break
                 if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
                     self.set_scale(UI_SCALE_CHOICES[current_index])
+                    self.set_key_repeat_interval(KEY_REPEAT_CHOICES[repeat_index])
                     return
                 if symbol in (pgkey.ESCAPE, pgkey.Q):
                     return
@@ -760,7 +874,7 @@ class PygletUI:
         options = [tr("[q]uit")]
         for n in stage_numbers:
             options.append(tr("stage [{n}]").format(n=n))
-        options.append(tr("(s)ettings"))
+        options.append(tr("[s]ettings"))
 
         current_index = 1  # Initial selection: stage 1
         settings_index = len(options) - 1
@@ -792,6 +906,7 @@ class PygletUI:
                         return 0
                     if current_index == settings_index:
                         self.settings_menu()
+                        self._discard_queued_key(pgkey.ESCAPE)
                         break
                     return current_index
 
@@ -807,10 +922,12 @@ class PygletUI:
                             return 0
                         if current_index == settings_index:
                             self.settings_menu()
+                            self._discard_queued_key(pgkey.ESCAPE)
                             break
                         return current_index
                     elif symbol == pgkey.S:
                         self.settings_menu()
+                        self._discard_queued_key(pgkey.ESCAPE)
                         break
                     elif symbol in (pgkey.Q, pgkey.ESCAPE):
                         return 0

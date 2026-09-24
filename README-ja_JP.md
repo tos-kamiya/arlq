@@ -41,7 +41,8 @@ arlq-cli --stage 1
 
 主なオプション:
 
-- `--scale FACTOR`: Pyglet GUIの表示倍率を変更する（例: `--scale 1.5`）。倍率はユーザーごとの設定ディレクトリに保存され、次回のGUI起動時にも自動的に使われる。ステージ選択画面の `Settings` メニューからも変更できる。
+- `--scale FACTOR`: Pyglet GUIの表示倍率を変更する（`0.5`～`4.0`、例: `--scale 1.5`）。倍率はユーザーごとの設定ディレクトリに保存され、次回のGUI起動時にも自動的に使われる。ステージ選択画面の `Settings` メニューからも変更できる。
+- `--key-repeat-interval SECONDS`: GUIの移動キーリピートの開始待ち時間と間隔を設定する（`0.1`～`1.0` 秒）。`none` を指定すると無効にできる。値は次回起動用に保存され、ステージ選択画面の `Settings` からも変更できる。
 - `-T` / `--large-torch`: 視界を広げる
 - `-t` / `--small-torch`: 視界を狭める
 - `-n` / `--narrower-corridors`: 通路を狭くする
