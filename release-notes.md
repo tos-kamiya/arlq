@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 4.7.1 - 2026-09-25
+
+- No player-visible gameplay or UI changes. Add the Japanese catalog entry
+  for the experimental Stage 4 message and regression tests for GUI Settings
+  Escape navigation.
+
 ## 4.7.0 - 2026-09-25
 
 - Add configurable key repeat to GUI movement, with an option to disable it,
