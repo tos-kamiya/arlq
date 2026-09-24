@@ -909,7 +909,14 @@ def main():
     )
     parser.add_argument(
         "--scale", type=float, metavar="FACTOR",
-        help="GUI display scale (0.75 to 2.5); saves the value for future GUI starts.",
+        help="GUI display scale (0.5 to 4.0); saves the value for future GUI starts.",
+    )
+    parser.add_argument(
+        "--key-repeat-interval",
+        type=lambda value: None if value.lower() == "none" else float(value),
+        metavar="SECONDS|none",
+        default=argparse.SUPPRESS,
+        help="GUI movement repeat delay and interval (0.1 to 1.0 seconds, or none); saves for future GUI starts.",
     )
     parser.add_argument(
         "--trace-record", metavar="PATH",
@@ -1044,6 +1051,8 @@ def main():
             from .pyglet_funcs import save_ui_scale
 
             save_ui_scale(ui.scale)
+        if hasattr(args, "key_repeat_interval"):
+            ui.set_key_repeat_interval(args.key_repeat_interval)
         play(ui)
 
     if trace_recorder is not None:
