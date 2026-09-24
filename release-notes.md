@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 4.7.0 - 2026-09-25
+
+- Add configurable key repeat to GUI movement, with an option to disable it,
+  and support configuring its interval from Settings or the command line.
+- Expand the GUI scale range to 50%-400% and improve the Settings and stage
+  selection screens, including Japanese localization and Escape handling.
+- Document GUI-only command-line options separately from shared options.
+
 ## 4.6.9 - 2026-09-24
 
 - Add a configurable Pyglet GUI scale with a persistent Settings menu and
