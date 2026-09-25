@@ -161,6 +161,102 @@ def _find_escape_place(current: Floor) -> d.Point:
             return x, y
 
 
+def _split_floor_roster(
+    roster: List[Tuple[str, int, int]], elf_floors: Dict[str, int]
+) -> Tuple[List[Tuple[str, int, int]], List[Tuple[str, int, int]], List[Tuple[str, int, int]]]:
+    """Separate ordinary spawns, assigned-floor elves, and Wyrm encounters."""
+    ordinary, elves, wyrms = [], [], []
+    for entry in roster:
+        ch = entry[0]
+        if ch == "I":
+            continue  # I is placed inside the generated isolated room.
+        if ch in {"w", "W"}:
+            wyrms.append(entry)
+        elif ch in elf_floors:
+            elves.append(entry)
+        else:
+            ordinary.append(entry)
+    return ordinary, elves, wyrms
+
+
+def _spawn_roster_entries(
+    entries: List[Tuple[str, int, int]],
+    entities: List[d.Entity],
+    field: List[List[str]],
+    reserved: Container[d.Point],
+    island_tile: Optional[d.Point],
+    floor_index: int,
+) -> None:
+    for ch, count, empowered in entries:
+        for _ in range(count):
+            _spawn(entities, field, ch, reserved, island_tile, floor_index, empowered)
+
+
+def _spawn_assigned_floor_elves(
+    entries: List[Tuple[str, int, int]],
+    elf_floors: Dict[str, int],
+    floor_index: int,
+    entities: List[d.Entity],
+    field: List[List[str]],
+    reserved: Container[d.Point],
+    island_tile: Optional[d.Point],
+) -> None:
+    for ch, count, empowered in entries:
+        if elf_floors[ch] == floor_index:
+            for _ in range(count):
+                _spawn(entities, field, ch, reserved, island_tile, floor_index, empowered)
+
+
+def _spawn_roster_wyrms(
+    entries: List[Tuple[str, int, int]],
+    entities: List[d.Entity],
+    field: List[List[str]],
+    reserved: Container[d.Point],
+    down: d.Point,
+    floor_index: int,
+) -> None:
+    has_boss = False
+    for ch, count, empowered in entries:
+        for monster_index in range(count):
+            if ch == "W" and monster_index == 0:
+                x, y = down
+                entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[ch], empowered))
+                has_boss = True
+            else:
+                x, y = _spawn(entities, field, ch, reserved, floor_index=floor_index, empowered=empowered)
+            _place_barrier(field, (x, y))
+    if has_boss:
+        entities.append(d.Treasure(*_treasure_spot(entities, field, reserved), d.CHAR_TREASURE + "W"))
+
+
+def _spawn_island_elf(field: List[List[str]], entities: List[d.Entity], island_tile: Optional[d.Point]) -> None:
+    if island_tile is None:
+        return
+    left = island_tile[0] * (d.TILE_WIDTH + 1) + 1
+    top = island_tile[1] * (d.TILE_HEIGHT + 1) + 1
+    for y in range(top, top + d.TILE_HEIGHT):
+        for x in range(left, left + d.TILE_WIDTH):
+            field[y][x] = d.CHAR_FLOOR
+    for x in range(left, left + d.TILE_WIDTH):
+        if island_tile[1] > 0:
+            field[top - 1][x] = d.WALL_CHAR
+        if island_tile[1] < d.TILE_NUM_Y - 1:
+            field[top + d.TILE_HEIGHT][x] = d.WALL_CHAR
+    for y in range(top, top + d.TILE_HEIGHT):
+        if island_tile[0] > 0:
+            field[y][left - 1] = d.WALL_CHAR
+        if island_tile[0] < d.TILE_NUM_X - 1:
+            field[y][left + d.TILE_WIDTH] = d.WALL_CHAR
+    spots = [
+        (x, y)
+        for y in range(top, top + d.TILE_HEIGHT)
+        for x in range(left, left + d.TILE_WIDTH)
+        if field[y][x] == d.CHAR_FLOOR
+    ]
+    x, y = rand.choice(spots)
+    entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE["I"]))
+
+
 def _build_floor(
     index: int,
     special_floors: Dict[str, int],
@@ -177,7 +273,7 @@ def _build_floor(
 ) -> Floor:
     island_count, filled_count = room_counts
     field, up, down, island_rooms, _ = generate_floor_field(
-        entry_point if stage_num == 3 else up_point,
+        up_point if up_point is not None else entry_point,
         down_point,
         corridor_h_width,
         corridor_v_width,
@@ -193,55 +289,17 @@ def _build_floor(
 
     entities: List[d.Entity] = []
     reserved = {up, down}
-    for ch, count, empowered in roster:
-        if ch in {"W", "w", "I", "J", "K", "H"}:
-            continue
-        for _ in range(count):
-            _spawn(entities, field, ch, reserved, island_tile, index, empowered)
+    ordinary_roster, elf_roster, wyrm_roster = _split_floor_roster(roster, elf_floors)
+    _spawn_roster_entries(ordinary_roster, entities, field, reserved, island_tile, index)
+    _spawn_island_elf(field, entities, island_tile)
+    _spawn_assigned_floor_elves(
+        elf_roster, elf_floors, index, entities, field, reserved, island_tile
+    )
+    _spawn_roster_wyrms(wyrm_roster, entities, field, reserved, down, index)
 
-    if island_tile is not None:
-        left = island_tile[0] * (d.TILE_WIDTH + 1) + 1
-        top = island_tile[1] * (d.TILE_HEIGHT + 1) + 1
-        for y in range(top, top + d.TILE_HEIGHT):
-            for x in range(left, left + d.TILE_WIDTH):
-                field[y][x] = d.CHAR_FLOOR
-        for x in range(left, left + d.TILE_WIDTH):
-            if island_tile[1] > 0:
-                field[top - 1][x] = d.WALL_CHAR
-            if island_tile[1] < d.TILE_NUM_Y - 1:
-                field[top + d.TILE_HEIGHT][x] = d.WALL_CHAR
-        for y in range(top, top + d.TILE_HEIGHT):
-            if island_tile[0] > 0:
-                field[y][left - 1] = d.WALL_CHAR
-            if island_tile[0] < d.TILE_NUM_X - 1:
-                field[y][left + d.TILE_WIDTH] = d.WALL_CHAR
-        spots = [
-            (x, y)
-            for y in range(top, top + d.TILE_HEIGHT)
-            for x in range(left, left + d.TILE_WIDTH)
-            if field[y][x] == d.CHAR_FLOOR
-        ]
-        x, y = rand.choice(spots)
-        entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE["I"]))
-
-    if stage_num == 3:
-        for ch in ("J", "K", "H"):
-            if index == elf_floors[ch]:
-                _spawn(entities, field, ch, reserved, island_tile, index)
-
-    if stage_num == 3 and index == 2:
-        _spawn(entities, field, "w", reserved, floor_index=index)
-        weak = next(e for e in entities if isinstance(e, d.Monster) and e.tribe.char == "w")
-        _place_barrier(field, (weak.x, weak.y))
-        entities.append(d.Monster(down[0], down[1], d.CHAR_TO_MONSTER_TRIBE["W"]))
-        _place_barrier(field, down)
-        entities.append(d.Treasure(*_treasure_spot(entities, field, reserved), d.CHAR_TREASURE + "W"))
-
-    if stage_num == 3:
-        for ch, assigned_floor in special_floors.items():
-            if index == assigned_floor:
-                for _ in range(2 if ch == "m" else 1):
-                    _spawn(entities, field, ch, reserved, island_tile, index)
+    for ch, assigned_floor in special_floors.items():
+        if index == assigned_floor:
+            _spawn(entities, field, ch, reserved, island_tile, index)
 
     return Floor(
         field=field,
@@ -291,8 +349,10 @@ def build(
             "H": rand.randrange(FLOORS),
         })
         special_floors = {ch: rand.randrange(FLOORS) for ch in ("m", "X", "e", "g")}
+        m_floor = special_floors.pop("m")
     else:
         special_floors = {}
+        m_floor = None
 
     stair_tiles: List[d.Point] = []
     if stage_num == 4:
@@ -310,7 +370,9 @@ def build(
         if stage_num == 4:
             up_point = None if index == 0 else room_center(stair_tiles[index - 1])
             down_point = None if index == FLOORS - 1 else room_center(stair_tiles[index])
-        roster = STAGE4_ROSTER[index] if stage_num == 4 else ROSTER[index]
+        roster = list(STAGE4_ROSTER[index] if stage_num == 4 else ROSTER[index])
+        if index == m_floor:
+            roster.append(("m", 2, 1))
         floor = _build_floor(
             index,
             special_floors,
