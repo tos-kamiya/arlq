@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 4.8.1 - 2026-09-25
+
+- Improve terminal UI contrast on light themes: use the terminal's default
+  text color for the strength column and player, and show the LP gauge with
+  explicit `#` and `-` characters.
+- Clarify that `--dots` applies to terminal UI launches only.
+
 ## 4.8.0 - 2026-09-25
 
 - Add a color-based `arlq-cli` map view, with `--dots` as an alternative for

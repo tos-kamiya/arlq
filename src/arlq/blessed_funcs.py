@@ -209,7 +209,7 @@ class BlessedUI:
                 px,
                 py,
                 "@",
-                "white" if foreground == "default" else foreground,
+                None if foreground == "default" else foreground,
                 bold=True,
                 bg=background or cell_background(px, py),
             )
