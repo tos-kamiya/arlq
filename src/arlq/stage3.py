@@ -333,14 +333,21 @@ def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
         return
     for index in range(FLOORS - 1):
         upper, lower = floors[index], floors[index + 1]
-        first_stair_room = tile_at(upper.down_stairs[0])
+
+        def separated_from_stairs(point: d.Point, stairs: List[d.Point]) -> bool:
+            room = tile_at(point)
+            return all(
+                abs(room[0] - stair_room[0]) + abs(room[1] - stair_room[1]) > 1
+                for stair_room in (tile_at(stair) for stair in stairs)
+            )
+
         candidates = [
             (x, y)
             for y in range(1, d.FIELD_HEIGHT - 1)
             for x in range(1, d.FIELD_WIDTH - 1)
             if upper.field[y][x] == d.CHAR_FLOOR
             and lower.field[y][x] == d.CHAR_FLOOR
-            and tile_at((x, y)) != first_stair_room
+            and separated_from_stairs((x, y), upper.down_stairs)
             and (x, y) != upper.down
             and (x, y) != lower.up
         ]
@@ -357,10 +364,7 @@ def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
             candidates = [
                 candidate
                 for candidate in candidates
-                if max(
-                    abs(candidate[0] - point[0]),
-                    abs(candidate[1] - point[1]),
-                ) > 2
+                if separated_from_stairs(candidate, upper.down_stairs)
             ]
 
 
