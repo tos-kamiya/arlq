@@ -466,6 +466,7 @@ class PygletUI:
         floor_view: bool = False,
         floor_label: Optional[str] = None,
         arrow_marks=(),
+        mimic_marks=(),
     ):
         """
         Renders the game stage:
@@ -510,6 +511,10 @@ class PygletUI:
                         COLOR_MAP[CI_RED],
                         thickness=2,
                     )
+
+        for x, y in mimic_marks:
+            if (show_entities or torched[y][x]) and (x, y) != (px, py):
+                self._draw_field_text((x, y), "M", self._tone_color("default", True))
 
         for (x, y), char in arrow_marks:
             if (show_entities or torched[y][x]) and (x, y) != (px, py):

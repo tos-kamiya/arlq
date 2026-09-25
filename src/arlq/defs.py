@@ -35,7 +35,7 @@ MONSTER_RESPAWN_INTERVAL: int = 65
 SWORD_USES: int = 3
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
 # W and w stay down for the rest of a Stage 3 run.
-STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w", "V"}
+STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w", "V", "M"}
 STAGE3_C_FLAG: int = 1
 STAGE3_I_FLAG: int = 2
 STAGE3_K_FLAG: int = 4
@@ -118,6 +118,10 @@ class Treasure(Entity):
         super().__init__(x, y)
         self.encounter_type = encounter_type
         self.unlock_key = unlock_key or encounter_type
+
+
+class MimicChest(Treasure):
+    """A treasure-looking trap that becomes a monster when contacted."""
 
 
 class Tribe:
@@ -210,6 +214,7 @@ class Monster(Entity):
         if empowered < 1:
             raise ValueError("empowered must be positive")
         self.empowered: int = empowered
+        self.mimic_revealed: bool = False
 
 
 def monster_level(monster: Monster) -> int:
@@ -342,6 +347,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("K", 0, 0, event_message="-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!", is_elf=True),
     _MT("H", 0, 0, event_message="-- The High Elf bestowed the talisman upon you!", is_elf=True),
     _MT("k", 80, MIN_FOOD),  # Marksman
+    _MT("M", 85, 16, event_message="-- The treasure chest was a Mimic!"),  # Mimic
     _MT("m", 5, MIN_FOOD, event_message="-- Spores cloud your vision!"),
     _MT("w", 50, MIN_FOOD),
     _MT("W", 150, MIN_FOOD, event_message=">> Dread Wyrm (W) defeated! <<", treasure_key=CHAR_TREASURE + "W"),
@@ -641,6 +647,8 @@ def revealed_entity_glyphs(
             char = "!"
         return [FieldGlyph(entity.x, entity.y, char, "companion", bold=True)]
     if isinstance(entity, Monster):
+        if entity.tribe.char == "M" and not getattr(entity, "mimic_revealed", False):
+            return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
         char = entity.tribe.char
         if monster_type_key(entity) not in known_types:
             if show_entities:
@@ -656,6 +664,8 @@ def revealed_entity_glyphs(
             glyphs.append(FieldGlyph(entity.x + 1, entity.y, "'", tone, bold=True, dim=dim))
         return glyphs
     if isinstance(entity, Treasure):
+        if isinstance(entity, MimicChest):
+            return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
         if unlocked_treasures is not None and entity.unlock_key in unlocked_treasures:
             return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
     return []
