@@ -4,7 +4,6 @@ from blessed import Terminal
 
 from . import defs as d
 from .i18n import t as tr
-from .utils import block_progress_cells
 
 
 MIN_TERMINAL_WIDTH = 80
@@ -231,10 +230,10 @@ class BlessedUI:
         for y, (char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, d.FIELD_HEIGHT)):
             if char is None:
                 continue
-            put(d.FIELD_WIDTH, y, char, "white", bold=is_player)
+            put(d.FIELD_WIDTH, y, char, bold=is_player)
 
         if floor_label:
-            put(d.FIELD_WIDTH - len(floor_label), d.FIELD_HEIGHT - 1, floor_label, "white")
+            put(d.FIELD_WIDTH - len(floor_label), d.FIELD_HEIGHT - 1, floor_label)
 
         return "".join(output) + self.term.normal
 
@@ -257,9 +256,9 @@ class BlessedUI:
         add(d.status_prefix(player, stage_num, hours))
         add(f"LP: {player.lp} [")
         bar_len = 8
-        bar_color = "red" if player.lp <= d.LP_LOW_THRESHOLD else "white"
-        for char, _ in block_progress_cells(player.lp, d.LP_MAX, bar_len, 0):
-            add(char, bar_color)
+        filled = round(max(0, min(player.lp, d.LP_MAX)) / d.LP_MAX * bar_len)
+        bar_color = "red" if player.lp <= d.LP_LOW_THRESHOLD else None
+        add("#" * filled + "-" * (bar_len - filled), bar_color)
         add("]  ")
         add("/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit")
 
