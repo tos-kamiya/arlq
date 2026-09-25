@@ -35,7 +35,7 @@ def _field_connected(field: List[List[str]], start: d.Point, end: d.Point) -> bo
                 0 <= point[1] < len(field)
                 and 0 <= point[0] < len(field[0])
                 and point not in seen
-                and field[point[1]][point[0]] in (" ", "^", "v")
+                and field[point[1]][point[0]] in (d.CHAR_FLOOR, *d.STAIR_CHARS)
             ):
                 seen.add(point)
                 pending.append(point)
@@ -117,12 +117,12 @@ def _generate_floor(
                 x = (max(x1, x2)) * (d.TILE_WIDTH + 1)
                 offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
                 for y in range(y1 * (d.TILE_HEIGHT + 1) + offset, y1 * (d.TILE_HEIGHT + 1) + offset + corridor_h_width):
-                    field[y][x] = " "
+                    field[y][x] = d.CHAR_FLOOR
             else:
                 y = (max(y1, y2)) * (d.TILE_HEIGHT + 1)
                 offset = rand.randrange(d.TILE_WIDTH + 1 - corridor_v_width) + 1
                 for x in range(x1 * (d.TILE_WIDTH + 1) + offset, x1 * (d.TILE_WIDTH + 1) + offset + corridor_v_width):
-                    field[y][x] = " "
+                    field[y][x] = d.CHAR_FLOOR
 
         # create_field's generated start and end cells may sit away from
         # the room center; connect those reserved stair cells to this tree.
@@ -131,12 +131,12 @@ def _generate_floor(
             tx, ty = _tile_at(stair)
             cx, cy = _room_center((tx, ty))
             while sx != cx:
-                field[sy][sx] = " "
+                field[sy][sx] = d.CHAR_FLOOR
                 sx += 1 if cx > sx else -1
             while sy != cy:
-                field[sy][sx] = " "
+                field[sy][sx] = d.CHAR_FLOOR
                 sy += 1 if cy > sy else -1
-            field[sy][sx] = " "
+            field[sy][sx] = d.CHAR_FLOOR
 
         # Carve stair rooms after the doors so the stair tiles always have
         # open floor around them. The connecting doorway remains the tree's.
@@ -145,11 +145,11 @@ def _generate_floor(
             top = _tile_at(stair)[1] * (d.TILE_HEIGHT + 1) + 1
             for y in range(top, top + d.TILE_HEIGHT):
                 for x in range(left, left + d.TILE_WIDTH):
-                    field[y][x] = " "
+                    field[y][x] = d.CHAR_FLOOR
         if index:
-            field[up[1]][up[0]] = "^"
+            field[up[1]][up[0]] = d.CHAR_STAIRS_UP
         if index < FLOORS - 1:
-            field[down[1]][down[0]] = "v"
+            field[down[1]][down[0]] = d.CHAR_STAIRS_DOWN
         entities: List[d.Entity] = []
         roster_index = 0 if index < 2 else index - 1
         for ch, count, empowered in ROSTER[roster_index]:
@@ -207,7 +207,7 @@ def build(corridor_h_width: int = d.CORRIDOR_H_WIDTH, corridor_v_width: int = d.
     top = elf_room[1] * (d.TILE_HEIGHT + 1) + 1
     for y in range(top, top + d.TILE_HEIGHT):
         for x in range(left, left + d.TILE_WIDTH):
-            elf_data["field"][y][x] = " "
+            elf_data["field"][y][x] = d.CHAR_FLOOR
     for x in range(left, left + d.TILE_WIDTH):
         if elf_room[1] > 0:
             elf_data["field"][top - 1][x] = d.WALL_CHAR
@@ -231,7 +231,7 @@ def build(corridor_h_width: int = d.CORRIDOR_H_WIDTH, corridor_v_width: int = d.
             (x, y)
             for y in range(1, d.FIELD_HEIGHT - 1)
             for x in range(1, d.FIELD_WIDTH - 1)
-            if upper["field"][y][x] == " " and lower["field"][y][x] == " "
+            if upper["field"][y][x] == d.CHAR_FLOOR and lower["field"][y][x] == d.CHAR_FLOOR
             and _tile_at((x, y)) != first_stair_room
             and (x, y) != upper["down"] and (x, y) != lower["up"]
         ]
@@ -242,8 +242,8 @@ def build(corridor_h_width: int = d.CORRIDOR_H_WIDTH, corridor_v_width: int = d.
             lower_point = upper_point
             if any(abs(entity.x - lower_point[0]) <= 2 and abs(entity.y - lower_point[1]) <= 2 for entity in lower["entities"]):
                 continue
-            upper["field"][upper_point[1]][upper_point[0]] = "v"
-            lower["field"][lower_point[1]][lower_point[0]] = "^"
+            upper["field"][upper_point[1]][upper_point[0]] = d.CHAR_STAIRS_DOWN
+            lower["field"][lower_point[1]][lower_point[0]] = d.CHAR_STAIRS_UP
             upper["down_stairs"].append(upper_point)
             lower["up_stairs"].append(lower_point)
             break

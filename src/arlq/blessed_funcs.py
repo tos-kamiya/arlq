@@ -126,7 +126,7 @@ class BlessedUI:
                 elif torched[y][x] or (show_entities and not floor_view):
                     if cell == d.WALL_CHAR:
                         put(x, y, cell, "green")
-                    elif cell == " " and (x + y) % 2 == 1:
+                    elif cell == d.CHAR_FLOOR and (x + y) % 2 == 1:
                         put(x, y, ".", dim=True)
                     else:
                         put(x, y, cell)
@@ -137,7 +137,7 @@ class BlessedUI:
             not floor_view
             and checkpoint is not None
             and checkpoint != (px, py)
-            and field[checkpoint[1]][checkpoint[0]] not in ("^", "v")
+            and field[checkpoint[1]][checkpoint[0]] not in d.STAIR_CHARS
         ):
             put(checkpoint[0], checkpoint[1], "+", "yellow", bold=True)
 

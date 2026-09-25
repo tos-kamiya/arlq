@@ -92,7 +92,7 @@ def _place_barrier(field: List[List[str]], center: d.Point) -> None:
                 continue
             # Never punch through the sealed Isolated Elf room's
             # perimeter when another Stage 3 feature is nearby.
-            if field[y][x] == " ":
+            if field[y][x] == d.CHAR_FLOOR:
                 field[y][x] = d.CHAR_BARRIER
 
 
@@ -142,13 +142,13 @@ def _main_connected(field: List[List[str]], start: d.Point, island_tile: Optiona
             if (
                 0 <= ny < len(field)
                 and 0 <= nx < len(field[0])
-                and field[ny][nx] in (" ", "^", "v", d.CHAR_BARRIER)
+                and field[ny][nx] in (d.CHAR_FLOOR, *d.STAIR_CHARS, d.CHAR_BARRIER)
                 and point not in reached
             ):
                 reached.add(point)
                 pending.append(point)
     return all(
-        field[y][x] not in (" ", "^", "v", d.CHAR_BARRIER)
+        field[y][x] not in (d.CHAR_FLOOR, *d.STAIR_CHARS, d.CHAR_BARRIER)
         or _inside_island((x, y), island_tile)
         or (x, y) in reached
         for y in range(len(field))
@@ -185,12 +185,12 @@ def _build_floor(
             x, y = entry_point
             target_x, target_y = generated_up
             while x != target_x:
-                field[y][x] = " "
+                field[y][x] = d.CHAR_FLOOR
                 x += 1 if target_x > x else -1
             while y != target_y:
-                field[y][x] = " "
+                field[y][x] = d.CHAR_FLOOR
                 y += 1 if target_y > y else -1
-            field[y][x] = " "
+            field[y][x] = d.CHAR_FLOOR
             up = entry_point
         if _main_connected(field, up, island_tile):
             break
@@ -198,9 +198,9 @@ def _build_floor(
         raise RuntimeError("could not generate a connected Stage 3 floor")
 
     if index < FLOORS - 1:
-        field[down[1]][down[0]] = "v"
+        field[down[1]][down[0]] = d.CHAR_STAIRS_DOWN
     if index:
-        field[up[1]][up[0]] = "^"
+        field[up[1]][up[0]] = d.CHAR_STAIRS_UP
 
     entities: List[d.Entity] = []
     reserved = {up, down}
@@ -217,7 +217,7 @@ def _build_floor(
             (x, y)
             for y in range(top, top + d.TILE_HEIGHT)
             for x in range(left, left + d.TILE_WIDTH)
-            if field[y][x] == " "
+            if field[y][x] == d.CHAR_FLOOR
         ]
         x, y = rand.choice(spots)
         entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE["I"]))
@@ -294,7 +294,7 @@ def _move_player(
         direction,
         current["field"],
         player,
-        (" ", d.CHAR_CALTROP, "^", "v", d.CHAR_BARRIER),
+        (d.CHAR_FLOOR, d.CHAR_CALTROP, *d.STAIR_CHARS, d.CHAR_BARRIER),
     )
     if trace is not None and wall_result is not None:
         trace.record_wall(wall_result)
@@ -313,7 +313,7 @@ def _apply_terrain_hazards(current: Floor, player: d.Player, previous: d.Point) 
         event_message = tr("-- The barrier burns you.")
     if field[player.y][player.x] == d.CHAR_CALTROP:
         player.lp -= d.CALTROP_LP_DAMAGE
-        field[player.y][player.x] = " "
+        field[player.y][player.x] = d.CHAR_FLOOR
     return event_message
 
 

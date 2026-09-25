@@ -498,7 +498,7 @@ class PygletUI:
                     tile_color,
                 )
 
-                if discovered and cell in ("^", "v"):
+                if discovered and cell in d.STAIR_CHARS:
                     self._draw_field_text((x, y), cell, COLOR_MAP[CI_YELLOW], bold=True)
                 elif discovered and cell == d.CHAR_BARRIER:
                     self._draw_line(
