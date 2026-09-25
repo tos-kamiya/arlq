@@ -51,10 +51,10 @@ def test_stage3_floor_declares_its_complete_state_shape():
     }
 
 
-def run_stage3_keys(keys, floors, player, floor, checkpoint, queue, history):
+def run_stage3_keys(keys, floors, player, floor, checkpoint, queue, history, stage_num=3):
     messages = []
     for key in keys:
-        result = _step(KEYS[key], floors, player, floor, checkpoint, queue, history, 1)
+        result = _step(KEYS[key], floors, player, floor, checkpoint, queue, history, 1, stage_num)
         messages.append(result[1] if result is not None else None)
     return messages
 
@@ -167,7 +167,9 @@ def test_stage3_excludes_fire_lizard():
 
 
 def test_stage4_has_independent_per_floor_roster():
-    assert len(stage3_module.STAGE4_ROSTER) == 3
+    assert len(stage3_module.STAGE4_ROSTER) == 4
+    assert stage3_module.STAGE4_ROSTER[1] == stage3_module.STAGE4_ROSTER[2]
+    assert all(filled_rooms <= 1 for _, filled_rooms in stage3_module.STAGE4_FLOOR_LAYOUT)
     assert all(
         stage4_floor is not stage3_floor
         for stage4_floor, stage3_floor in zip(stage3_module.STAGE4_ROSTER, stage3_module.ROSTER)
@@ -181,20 +183,21 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for ch, count, _ in floor if ch == "k")
         for floor in stage3_module.STAGE4_ROSTER
-    ] == [2, 3, 3]
+    ] == [2, 3, 3, 3]
     assert d.MARKSMAN_LP_DAMAGE == 5
-    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[2] if ch == "w") == 1
-    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[2] if ch == "W") == 1
-    assert not any(ch in {"w", "W"} for floor in stage3_module.STAGE4_ROSTER[:2] for ch, _, _ in floor)
+    assert not any(ch == "G" for floor in stage3_module.STAGE4_ROSTER for ch, _, _ in floor)
+    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[3] if ch == "w") == 1
+    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[3] if ch == "W") == 1
+    assert not any(ch in {"w", "W"} for floor in stage3_module.STAGE4_ROSTER[:3] for ch, _, _ in floor)
     assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[0] if ch == "E") == 0
     assert all(
         sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[index] if ch == "E") == 1
-        for index in (1, 2)
+        for index in (1, 2, 3)
     )
     assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[0] if ch == "e") == 1
     assert all(
         sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[index] if ch == "e") == 0
-        for index in (1, 2)
+        for index in (1, 2, 3)
     )
     assert d.CHAR_TO_MONSTER_TRIBE["V"].level == d.CHAR_TO_MONSTER_TRIBE["E"].level == 30
 
@@ -214,10 +217,19 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
         for entity in floor.entities
         if isinstance(entity, d.Monster) and entity.tribe.char == "W"
     ]
+    golems = [
+        (floor_index, entity)
+        for floor_index, floor in enumerate(floors)
+        for entity in floor.entities
+        if isinstance(entity, d.Monster) and entity.tribe.char == "g"
+    ]
 
     assert elves == {"I", "J", "K", "H"}
     assert len(bosses) == 1
-    assert bosses[0] in floors[2].entities
+    assert len(floors) == 4
+    assert bosses[0] in floors[3].entities
+    assert len(golems) == 1
+    assert golems[0][1].tribe.char == "g"
 
 
 @pytest.mark.parametrize("blocking_tile", [
@@ -402,6 +414,35 @@ def test_stage3_treasure_requires_current_timeline_w_defeat():
     assert player.stage3_treasure_collected
     assert player.stage3_won
     assert floors[0].entities == []
+
+
+def test_stage4_displays_treasure_message_when_was_defeated_first():
+    player = d.Player(2, 2, 200, 90)
+    player.unlocked_treasures.add("TW")
+    player.stage3_flags |= STAGE3_W
+    treasure = d.Treasure(3, 2, "TW")
+    floors, _ = stage3_state(player, [treasure])
+
+    messages = run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter(), deque(), stage_num=4)
+
+    assert messages == [">> Treasure chest obtained! <<"]
+    assert player.stage3_treasure_collected
+
+
+def test_stage4_displays_completion_message_when_treasure_was_taken_first():
+    player = d.Player(2, 2, 200, 90)
+    player.unlocked_treasures.add("TW")
+    treasure = d.Treasure(3, 2, "TW")
+    wyrm = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
+    floors, _ = stage3_state(player, [treasure, wyrm])
+
+    messages = run_stage3_keys("RR", floors, player, [0], [(2, 2)], Counter(), deque(), stage_num=4)
+
+    assert messages == [
+        "-- You took the treasure chest, but the King's request remains.",
+        ">> The King's request is complete! <<",
+    ]
+    assert player.stage3_won
 
 
 def test_legacy_defeat_applies_item_and_caltrop_field_effect():

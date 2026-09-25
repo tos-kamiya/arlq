@@ -30,10 +30,11 @@ from .trace import DIR_TO_KEY, TraceRecorder
 from .utils import rand
 
 FLOORS = 3
+STAGE4_FLOORS = 4
 LOOP_TURNS = 80
 MARKSMAN_ARROW_LIMIT = 20
 STAGE3_FLOOR_LAYOUT = [(1, 0), (0, 0), (0, 0)]
-STAGE4_FLOOR_LAYOUT = [(1, 1), (0, 2), (0, 2)]
+STAGE4_FLOOR_LAYOUT = [(1, 1), (0, 1), (0, 1), (0, 1)]
 STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
 STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
 STAGE3_C = d.STAGE3_C_FLAG
@@ -58,8 +59,9 @@ ROSTER: List[List[Tuple[str, int, int]]] = [
 # Stage 4 has its own per-floor counts so balancing it does not change Stage 3.
 STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [("a", 22, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("e", 1, 1), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 3, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 2, 1), ("b", 4, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 2, 1), ("d", 4, 2), ("k", 3, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1), ("w", 1, 1), ("W", 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 2, 1), ("b", 4, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 2, 1), ("d", 4, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1), ("w", 1, 1), ("W", 1, 1)],
 ]
 
 # Distinct, non-elf monster tribes across all floors, strongest first: feeds
@@ -273,6 +275,7 @@ def _build_floor(
     up_point: Optional[d.Point] = None,
     down_point: Optional[d.Point] = None,
 ) -> Floor:
+    floor_count = STAGE4_FLOORS if stage_num == 4 else FLOORS
     island_count, filled_count = room_counts
     field, up, down, island_rooms, _ = generate_floor_field(
         up_point if up_point is not None else entry_point,
@@ -284,7 +287,7 @@ def _build_floor(
     )
     island_tile = next(iter(island_rooms), None)
 
-    if index < FLOORS - 1:
+    if index < floor_count - 1:
         field[down[1]][down[0]] = d.CHAR_STAIRS_DOWN
     if index:
         field[up[1]][up[0]] = d.CHAR_STAIRS_UP
@@ -309,10 +312,10 @@ def _build_floor(
         seen=[[0] * len(field[0]) for _ in field],
         known_companions=set(),
         up=up,
-        down=up if stage_num == 4 and index == FLOORS - 1 else down,
+        down=up if stage_num == 4 and index == floor_count - 1 else down,
         island=island_tile,
         up_stairs=[up] if index else [],
-        down_stairs=[down] if index < FLOORS - 1 else [],
+        down_stairs=[down] if index < floor_count - 1 else [],
     )
 
 
@@ -339,6 +342,7 @@ def build(
         )
     if stair_pairs_per_transition < 1:
         raise ValueError("each floor transition needs at least one stair pair")
+    floor_count = STAGE4_FLOORS if stage_num == 4 else FLOORS
     layout = STAGE3_FLOOR_LAYOUT if stage_num == 3 else STAGE4_FLOOR_LAYOUT
     floor_layout = shuffle_floor_layout(layout)
     elf_floors = {
@@ -346,19 +350,19 @@ def build(
     }
     if stage_num == 3:
         elf_floors.update({
-            "J": rand.randrange(FLOORS),
+            "J": rand.randrange(floor_count),
             "K": rand.randrange(FLOORS - 1),
-            "H": rand.randrange(FLOORS),
+            "H": rand.randrange(floor_count),
         })
-        special_floors = {ch: rand.randrange(FLOORS) for ch in ("m", "X", "e", "g")}
+        special_floors = {ch: rand.randrange(floor_count) for ch in ("m", "X", "e", "g")}
         m_floor = special_floors.pop("m")
     elif stage_num == 4:
         elf_floors.update({
-            "J": rand.randrange(FLOORS),
-            "K": rand.randrange(FLOORS - 1),
-            "H": rand.randrange(FLOORS),
+            "J": rand.randrange(floor_count),
+            "K": rand.randrange(floor_count - 1),
+            "H": rand.randrange(floor_count),
         })
-        special_floors = {"g": rand.randrange(FLOORS)}
+        special_floors = {"g": rand.randrange(floor_count)}
         m_floor = None
     else:
         special_floors = {}
@@ -368,18 +372,18 @@ def build(
     if stage_num == 4:
         tiles = [(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)]
         stair_tiles.append(rand.choice(tiles))
-        for _ in range(FLOORS - 2):
+        for _ in range(floor_count - 2):
             options = [tile for tile in tiles if tile != stair_tiles[-1]]
             stair_tiles.append(rand.choice(options))
 
     floors: List[Floor] = []
     entry_point = None
-    for index in range(FLOORS):
+    for index in range(floor_count):
         up_point = None
         down_point = None
         if stage_num == 4:
             up_point = None if index == 0 else room_center(stair_tiles[index - 1])
-            down_point = None if index == FLOORS - 1 else room_center(stair_tiles[index])
+            down_point = None if index == floor_count - 1 else room_center(stair_tiles[index])
         roster = list(STAGE4_ROSTER[index] if stage_num == 4 else ROSTER[index])
         if stage_num == 4:
             roster.extend(
@@ -420,7 +424,7 @@ def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
     """Add matching stair pairs up to the configured count per floor link."""
     if pair_count <= 1:
         return
-    for index in range(FLOORS - 1):
+    for index in range(len(floors) - 1):
         upper, lower = floors[index], floors[index + 1]
 
         def separated_from_stairs(point: d.Point, stairs: List[d.Point]) -> bool:
@@ -684,9 +688,7 @@ def _defeat_monster(
     if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
         spread_caltrops(current.field, (player.x, player.y), current.entities)
     elif entity.tribe.effect == d.EFFECT_ROCK_SPREAD:
-        for x, y in iterate_offsets(
-            player.x, player.y, d.ROCK_SPREAD_OFFSETS, except_for_entities=current.entities
-        ):
+        for x, y in iterate_offsets(player.x, player.y, d.ROCK_SPREAD_OFFSETS, except_for_entities=current.entities):
             if current.field[y][x] == d.CHAR_FLOOR:
                 current.field[y][x] = d.WALL_CHAR
     elif entity.tribe.effect == d.EFFECT_VORTEX:
@@ -707,6 +709,7 @@ def _resolve_monster_contact(
     queue: Counter[Tuple[int, str]],
     event_message: Optional[str],
     trace: Optional[TraceRecorder] = None,
+    stage_num: int = 3,
 ) -> _ContactResult:
     """Resolve contact with a monster, including early-ending elf encounters."""
     ch = entity.tribe.char
@@ -819,6 +822,8 @@ def _resolve_monster_contact(
         if trace is not None:
             trace.record_contact({"type": "monster", "id": d.monster_type_key(entity), "outcome": "win"})
         _defeat_monster(entity, current, player, floor, checkpoint, queue, trace=trace)
+        if ch == "W" and stage_num == 4 and player.stage3_treasure_collected:
+            event_message = tr(">> The King's request is complete! <<")
 
     if entity.tribe.is_elf and ch != "J" and entity not in current.entities:
         player.met_elves.add(ch)
@@ -847,6 +852,7 @@ def _resolve_contact(
     history: Deque[HistoryEntry],
     event_message: Optional[str],
     trace: Optional[TraceRecorder] = None,
+    stage_num: int = 3,
 ) -> _ContactResult:
     """Resolve contact with the entity at `hit` in current.entities.
 
@@ -865,6 +871,8 @@ def _resolve_contact(
             player.stage3_treasure_collected = True
             if player.stage3_flags & STAGE3_W:
                 player.stage3_won = True
+                if stage_num == 4:
+                    event_message = tr(">> Treasure chest obtained! <<")
             else:
                 event_message = tr("-- You took the treasure chest, but the King's request remains.")
         return _ContactResult(event_message)
@@ -885,7 +893,10 @@ def _resolve_contact(
         return _ContactResult(tr(tribe_message) if tribe_message else None)
 
     assert isinstance(entity, d.Monster)
-    return _resolve_monster_contact(hit, entity, current, player, floor, checkpoint, queue, event_message, trace=trace)
+    return _resolve_monster_contact(
+        hit, entity, current, player, floor, checkpoint, queue, event_message,
+        trace=trace, stage_num=stage_num,
+    )
 
 
 def _advance_persistent_followers(player: d.Player, floor_index: int, moved: bool, previous: d.Point) -> None:
@@ -906,14 +917,15 @@ def _handle_floor_transition(
     legacy_floors = not any(f.up_stairs or f.down_stairs for f in floors)
     down_stairs = current.down_stairs or ([current.down] if legacy_floors else [])
     up_stairs = current.up_stairs or ([current.up] if legacy_floors else [])
-    if floor[0] < FLOORS - 1 and point in down_stairs:
+    floor_count = len(floors)
+    if floor[0] < floor_count - 1 and point in down_stairs:
         stair_index = down_stairs.index(point)
         floor[0] += 1
         destination_stairs = floors[floor[0]].up_stairs or [floors[floor[0]].up]
         player.x, player.y = destination_stairs[min(stair_index, len(destination_stairs) - 1)]
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
-        return tr("-- Descended to floor {n}/3.").format(n=floor[0] + 1)
+        return tr("-- Descended to floor {n}/{total}.").format(n=floor[0] + 1, total=floor_count)
     if floor[0] > 0 and point in up_stairs:
         stair_index = up_stairs.index(point)
         floor[0] -= 1
@@ -921,7 +933,7 @@ def _handle_floor_transition(
         player.x, player.y = destination_stairs[min(stair_index, len(destination_stairs) - 1)]
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
-        return tr("-- Ascended to floor {n}/3.").format(n=floor[0] + 1)
+        return tr("-- Ascended to floor {n}/{total}.").format(n=floor[0] + 1, total=floor_count)
     return None
 
 
@@ -984,7 +996,8 @@ def _step(
     hit = next((i for i, e in enumerate(current.entities) if (e.x, e.y) == (player.x, player.y)), None)
     if hit is not None:
         contact = _resolve_contact(
-            hit, current, floors, player, floor, checkpoint, queue, history, event_message, trace=trace
+            hit, current, floors, player, floor, checkpoint, queue, history, event_message,
+            trace=trace, stage_num=stage_num,
         )
         if contact.end_turn:
             return (contact.message_ticks, contact.message) if contact.message else None
@@ -1056,7 +1069,7 @@ def run_game(
         5,
         tr("-- The King has ordered the Dread Wyrm (W) slain.")
         if stage_num == 3
-        else tr("-- Explore the sealed rooms across three floors."),
+        else tr("-- Explore the sealed rooms across four floors."),
     )
 
     while player.lp > 0 and (stage_num == 4 or not player.stage3_won):
@@ -1116,7 +1129,7 @@ def run_game(
         if move == (0, 0):
             continue
         if getattr(ui, "shift_direction", False):
-            view_floor = max(0, min(FLOORS - 1, view_floor + move[1]))
+            view_floor = max(0, min(len(floors) - 1, view_floor + move[1]))
             continue
 
         # A real movement always returns the display to the player's floor.

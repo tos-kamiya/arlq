@@ -91,6 +91,7 @@ ROCK_SPREAD_OFFSETS: List[Tuple[int, int]] = [
     (3, 3),
 ]
 
+
 CHAR_DRAGON: str = "D"
 CHAR_FIRE_DRAKE: str = "F"
 CHAR_PEGASUS: str = "p"

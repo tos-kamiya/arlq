@@ -19,6 +19,7 @@
     "-- Ocular joined!": "-- オキュラー(o)がついてきた！",
     "-- Pegasus joined!": "-- ペガサス(p)がついてきた！",
     ">> Treasure chest obtained! <<": ">> 宝箱(T)を手に入れた！ <<",
+    ">> The King's request is complete! <<": ">> 国王の依頼を達成した！ <<",
     "-- The High Elf does not recognize you yet.": "-- ハイエルフ(H)はまだあなたを認めていない。",
     "-- The High Elf seems uninterested in you.": "-- ハイエルフ(H)はあなたに興味がないようだ。",
     "-- Respawned!": "-- リスポーンした！",
@@ -31,8 +32,8 @@
     "-- Time folds back to the beginning of the recorded past.": "-- 時が記録された過去に巻き戻った。",
     "-- You took the treasure chest, but the King's request remains.": "-- 宝箱を手に入れたが、国王の依頼はまだ残っている。",
     "-- Please bring the cursed sword (C).": "-- 呪われた剣(C)を持って来てほしい。",
-    "-- Descended to floor {n}/3.": "-- フロア{n}/3に降りた。",
-    "-- Ascended to floor {n}/3.": "-- フロア{n}/3に上った。",
+    "-- Descended to floor {n}/{total}.": "-- フロア{n}/{total}に降りた。",
+    "-- Ascended to floor {n}/{total}.": "-- フロア{n}/{total}に上った。",
     "-- The King has ordered the Dread Wyrm (W) slain.": "-- 国王からドレッドウィルム(W)の討伐を命じられている。",
     "-- Respawned to a random location.": "-- 別の場所にリスポーンした！",
     "-- The Isolated Elf wants to be left alone, and sends you elsewhere.": "-- 隠者エルフ(I)は一人でいたい。あなたをどこかへ送り出した。",
@@ -46,5 +47,5 @@
     "stage [{n}]": "ステージ [{n}]",
     "[s]ettings": "[s] 設定",
     "Please resize the terminal to at least 80x24.": "端末を 80x24 以上の大きさにしてください。",
-    "-- Explore the sealed rooms across three floors.": "3つのフロアにある封印された部屋を探索しよう。"
+    "-- Explore the sealed rooms across four floors.": "4つのフロアにある封印された部屋を探索しよう。"
 }
