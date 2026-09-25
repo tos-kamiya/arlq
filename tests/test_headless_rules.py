@@ -164,6 +164,19 @@ def test_stage3_excludes_fire_lizard():
     assert all(ch != "f" for floor in stage3_module.ROSTER for ch, _, _ in floor)
 
 
+def test_stage4_has_independent_per_floor_roster():
+    assert len(stage3_module.STAGE4_ROSTER) == 3
+    assert all(
+        stage4_floor is not stage3_floor
+        for stage4_floor, stage3_floor in zip(stage3_module.STAGE4_ROSTER, stage3_module.ROSTER)
+    )
+    assert all(
+        ch not in {"I", "J", "K", "H", "W", "w"}
+        for floor in stage3_module.STAGE4_ROSTER
+        for ch, _, _ in floor
+    )
+
+
 def test_empowered_monsters_scale_level_and_have_separate_identity():
     normal = d.Monster(2, 2, d.CHAR_TO_MONSTER_TRIBE["d"])
     empowered = d.Monster(2, 2, d.CHAR_TO_MONSTER_TRIBE["d"], empowered=2)
