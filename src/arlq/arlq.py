@@ -568,9 +568,7 @@ def update_entities(
                 elif effect == d.EFFECT_CALTROP_SPREAD:
                     spread_caltrops(field, (player.x, player.y), entities)
                 elif effect == d.EFFECT_ROCK_SPREAD:
-                    for x, y in iterate_offsets(
-                        player.x, player.y, d.ROCK_SPREAD_OFFSETS, except_for_entities=entities
-                    ):
+                    for x, y in iterate_offsets(player.x, player.y, d.ROCK_SPREAD_OFFSETS, except_for_entities=entities):
                         if field[y][x] == d.CHAR_FLOOR:
                             field[y][x] = d.WALL_CHAR
 

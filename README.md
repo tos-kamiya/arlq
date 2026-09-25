@@ -158,9 +158,9 @@ One Golem (`g`) appears on a random floor in Stage 3 and Stage 4. When defeated,
 Stage 4 is experimental and available from the stage selection menu. Its
 design and gameplay are subject to change.
 
-Stage 4 has three floors with the Stage 3 layout. Each floor has two filled rooms in different columns; one filled room across the stage contains the Isolated Elf. The four elves appear across the floors, and the Dread Wyrm guards the final floor. Adjacent floors can have a second stair pair in another room when space is available. The monster roster reuses Stage 3's first-floor monsters on floors 1–2 and its second-floor roster on floor 3, with 22 amoebas on floor 1, two `k` Marksmen on floor 1 and three on each later floor, one `e` Erebus on floor 1, and one each of `V` Vortex and `E` Erebus on floors 2 and 3.
+Stage 4 has four floors with the Stage 3 layout. Each floor has at most one filled room, and one separate sealed room across the stage contains the Isolated Elf. The four elves appear across the floors, and the Dread Wyrm guards the final floor. Adjacent floors can have a second stair pair in another room when space is available. Floor 1 keeps its current roster, floors 2 and 3 use the current floor 2 roster, and floor 4 uses the current floor 3 roster. Floor 1 has 22 amoebas and two `k` Marksmen; floors 2–4 have three `k` Marksmen each. One `e` Erebus appears on floor 1, and one each of `V` Vortex and `E` Erebus appear on floors 2–4.
 
-Floors 2 and 3 contain more empowered `b` monsters; floor 3 also has more empowered `d` monsters. Their total populations stay the same.
+Floors 2 and 3 contain more empowered `b` monsters; floor 4 has more empowered `d` monsters.
 
 While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an adjacent floor's explored map in GUI mode. In `arlq-cli`, hold Shift and press W or S. Unexplored areas remain hidden. The bottom-right `F:` marker shows the displayed floor. A normal movement input returns the display to the player's floor and moves as usual.
 
