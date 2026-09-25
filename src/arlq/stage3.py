@@ -2,8 +2,8 @@
 
 from collections import Counter, deque
 from copy import deepcopy
-from dataclasses import dataclass
-from typing import Any, Container, Deque, Dict, List, Optional, Set, Tuple, TypedDict
+from dataclasses import dataclass, field as dataclass_field
+from typing import Any, Container, Deque, Dict, List, Optional, Set, Tuple
 
 from . import defs as d
 from .arlq import (
@@ -58,7 +58,8 @@ ROSTER_TRIBES: List[d.MonsterTribe] = sorted(
     reverse=True,
 )
 
-class Floor(TypedDict):
+@dataclass
+class Floor:
     """State owned by one Stage 3 floor."""
 
     field: List[List[str]]
@@ -68,9 +69,11 @@ class Floor(TypedDict):
     up: d.Point
     down: d.Point
     island: Optional[d.Point]
+    up_stairs: List[d.Point] = dataclass_field(default_factory=list)
+    down_stairs: List[d.Point] = dataclass_field(default_factory=list)
 
 # History entries snapshot everything the Loop Companion can rewind.
-HistoryEntry = Tuple[List[Floor], d.Player, int, d.Point, "Counter[Tuple[int, str]]"]
+HistoryEntry = Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]
 
 
 @dataclass(frozen=True)
@@ -124,9 +127,9 @@ def _spawn(
 def _find_escape_place(current: Floor) -> d.Point:
     """A random open cell for the player to be sent to, never inside a
     sealed island (e.g. the Isolated Elf's room)."""
-    island_tile = current.get("island")
+    island_tile = current.island
     while True:
-        x, y = find_random_place(current["entities"], current["field"], distance=2)
+        x, y = find_random_place(current.entities, current.field, distance=2)
         if not _inside_island((x, y), island_tile):
             return x, y
 
@@ -239,15 +242,15 @@ def _build_floor(
             for _ in range(2 if ch == "m" else 1):
                 _spawn(entities, field, ch, reserved, island_tile, index)
 
-    return {
-        "field": field,
-        "entities": entities,
-        "seen": [[0] * len(field[0]) for _ in field],
-        "known_companions": set(),
-        "up": up,
-        "down": down,
-        "island": island_tile,
-    }
+    return Floor(
+        field=field,
+        entities=entities,
+        seen=[[0] * len(field[0]) for _ in field],
+        known_companions=set(),
+        up=up,
+        down=down,
+        island=island_tile,
+    )
 
 
 def _treasure_spot(entities: List[d.Entity], field: List[List[str]], reserved: Container[d.Point]) -> d.Point:
@@ -280,8 +283,8 @@ def build(
             corridor_v_width,
         )
         floors.append(floor)
-        entry_point = floor["down"]
-    player = d.Player(floors[0]["up"][0], floors[0]["up"][1], 1, d.LP_INIT)
+        entry_point = floor.down
+    player = d.Player(floors[0].up[0], floors[0].up[1], 1, d.LP_INIT)
     player.stage3_elf_floors = {char: floor + 1 for char, floor in elf_floors.items()}
     return floors, player
 
@@ -292,7 +295,7 @@ def _move_player(
     """Apply one step of player movement, including sword-breaking and Pegasus jumps."""
     wall_result = move_player(
         direction,
-        current["field"],
+        current.field,
         player,
         (d.CHAR_FLOOR, d.CHAR_CALTROP, *d.STAIR_CHARS, d.CHAR_BARRIER),
     )
@@ -306,7 +309,7 @@ def _apply_terrain_hazards(current: Floor, player: d.Player, previous: d.Point) 
     Returns an event message for the barrier case, or None otherwise (caltrop
     damage never produces a message, matching the legacy stages).
     """
-    field = current["field"]
+    field = current.field
     event_message = None
     if field[player.y][player.x] == d.CHAR_BARRIER and not (player.stage3_flags & STAGE3_H) and (player.x, player.y) != previous:
         player.lp -= d.BARRIER_LP_DAMAGE
@@ -322,24 +325,24 @@ def _rewind_to_history(
     player: d.Player,
     floor: List[int],
     checkpoint: List[d.Point],
-    queue: "Counter[Tuple[int, str]]",
+    queue: Counter[Tuple[int, str]],
     history: Deque[HistoryEntry],
 ) -> str:
     """Handle contact with the Loop Companion ('l'): rewind to the oldest recorded state."""
     known = player.known_monsters
     unlocked = player.unlocked_treasures
     elf_floors = player.stage3_elf_floors
-    seen = [floor_data["seen"] for floor_data in floors]
-    known_companions = [floor_data["known_companions"] for floor_data in floors]
+    seen = [floor_data.seen for floor_data in floors]
+    known_companions = [floor_data.known_companions for floor_data in floors]
 
     old_floors, old_player, old_floor, old_checkpoint, old_queue = history[0]
     floors[:] = old_floors
     queue.clear()
     queue.update(old_queue)
     for floor_data, preserved_seen in zip(floors, seen, strict=True):
-        floor_data["seen"] = preserved_seen
+        floor_data.seen = preserved_seen
     for floor_data, preserved_known in zip(floors, known_companions, strict=True):
-        floor_data["known_companions"] = preserved_known
+        floor_data.known_companions = preserved_known
 
     player.__dict__.update(old_player.__dict__)
     # Monster/treasure knowledge and elf floor locations survive the rewind;
@@ -357,12 +360,12 @@ def _rewind_to_history(
     floor[0], checkpoint[0] = old_floor, old_checkpoint
     history.clear()
 
-    restored_entities = floors[floor[0]]["entities"]
+    restored_entities = floors[floor[0]].entities
     for index, restored in enumerate(restored_entities):
         if isinstance(restored, d.Companion) and restored.tribe.char == "l":
             del restored_entities[index]
             break
-    _spawn(restored_entities, floors[floor[0]]["field"], "l", {(player.x, player.y)}, floors[floor[0]]["island"], floor[0])
+    _spawn(restored_entities, floors[floor[0]].field, "l", {(player.x, player.y)}, floors[floor[0]].island, floor[0])
 
     return tr("-- Time folds back to the beginning of the recorded past.")
 
@@ -373,7 +376,7 @@ def _defeat_monster(
     player: d.Player,
     floor: List[int],
     checkpoint: List[d.Point],
-    queue: "Counter[Tuple[int, str]]",
+    queue: Counter[Tuple[int, str]],
     trace: Optional[TraceRecorder] = None,
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
@@ -414,7 +417,7 @@ def _defeat_monster(
     player.karma += 1
 
     if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
-        spread_caltrops(current["field"], (player.x, player.y), current["entities"])
+        spread_caltrops(current.field, (player.x, player.y), current.entities)
 
     if d.monster_level(entity) > 0 and ch not in d.STAGE3_NO_RESPAWN_MONSTERS:
         spawn_key = (floor[0], d.monster_type_key(entity))
@@ -428,7 +431,7 @@ def _resolve_monster_contact(
     player: d.Player,
     floor: List[int],
     checkpoint: List[d.Point],
-    queue: "Counter[Tuple[int, str]]",
+    queue: Counter[Tuple[int, str]],
     event_message: Optional[str],
     trace: Optional[TraceRecorder] = None,
 ) -> _ContactResult:
@@ -440,21 +443,21 @@ def _resolve_monster_contact(
         player.stage3_elf_floors.setdefault(ch, floor[0] + 1)
 
     if ch in player.met_elves:
-        current["entities"].pop(hit)
+        current.entities.pop(hit)
         if trace is not None:
             trace.record_contact({"type": "monster", "id": ch, "outcome": "refused"})
         if ch == "I":
             # The sealed Isolated Elf island has no other way out (see
             # _inside_island): once the player has met "I", every further
             # visit sends them back out instead of trapping them inside.
-            current["entities"].append(entity)
+            current.entities.append(entity)
             player.x, player.y = _find_escape_place(current)
             return _ContactResult(
                 tr("-- The Isolated Elf wants to be left alone, and sends you elsewhere."),
                 end_turn=True,
             )
         if ch in ELF_REPEAT_MESSAGES:
-            current["entities"].append(entity)
+            current.entities.append(entity)
             return _ContactResult(tr(ELF_REPEAT_MESSAGES[ch]), end_turn=True)
         return _ContactResult(None, end_turn=True)
 
@@ -463,7 +466,7 @@ def _resolve_monster_contact(
     # the renderer show its locked treasure.
     if ch != "W":
         player.known_monsters.add(d.monster_type_key(entity))
-    current["entities"].pop(hit)
+    current.entities.pop(hit)
 
     # Contact with any monster clears the spores. The Rust version resets
     # this before resolving the encounter, so defeating a different monster
@@ -480,7 +483,7 @@ def _resolve_monster_contact(
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "J", "outcome": "granted"})
     elif ch == "K" and not (player.stage3_flags & STAGE3_C):
-        current["entities"].append(entity)
+        current.entities.append(entity)
         # The first refusal only shows a message; any later refusal sends the
         # player elsewhere, like repeat contact with the Isolated Elf.
         if player.k_elf_refused:
@@ -492,7 +495,7 @@ def _resolve_monster_contact(
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "K", "outcome": "refused"})
     elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2:
-        current["entities"].append(entity)
+        current.entities.append(entity)
         # The first refusal only shows a message; any later refusal sends the
         # player elsewhere, like repeat contact with the Isolated Elf.
         if player.high_elf_refused:
@@ -507,7 +510,7 @@ def _resolve_monster_contact(
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity
         # here prevents a failed attack from deleting it.
-        current["entities"].append(entity)
+        current.entities.append(entity)
         # Losing twice in a row to the very same monster (no other monster
         # contact in between) means it is blocking the only way through:
         # send the player somewhere random instead of back to the
@@ -538,10 +541,10 @@ def _resolve_monster_contact(
             trace.record_contact({"type": "monster", "id": d.monster_type_key(entity), "outcome": "win"})
         _defeat_monster(entity, current, player, floor, checkpoint, queue, trace=trace)
 
-    if entity.tribe.is_elf and ch != "J" and entity not in current["entities"]:
+    if entity.tribe.is_elf and ch != "J" and entity not in current.entities:
         player.met_elves.add(ch)
-        current["entities"].append(entity)
-    elif entity.tribe.is_elf and entity not in current["entities"]:
+        current.entities.append(entity)
+    elif entity.tribe.is_elf and entity not in current.entities:
         player.met_elves.add(ch)
 
     player.last_contact_monster = contact_key
@@ -561,25 +564,25 @@ def _resolve_contact(
     player: d.Player,
     floor: List[int],
     checkpoint: List[d.Point],
-    queue: "Counter[Tuple[int, str]]",
+    queue: Counter[Tuple[int, str]],
     history: Deque[HistoryEntry],
     event_message: Optional[str],
     trace: Optional[TraceRecorder] = None,
 ) -> _ContactResult:
-    """Resolve contact with the entity at `hit` in current["entities"].
+    """Resolve contact with the entity at `hit` in current.entities.
 
     The result explicitly marks encounters that end the turn immediately,
     bypassing the usual end-of-turn processing (Loop Companion rewind and
     repeated elf contact).
     """
-    entity = current["entities"][hit]
+    entity = current.entities[hit]
 
     if isinstance(entity, d.Treasure):
         collected = entity.unlock_key in player.unlocked_treasures
         if trace is not None:
             trace.record_contact({"type": "treasure", "id": entity.unlock_key, "collected": collected})
         if collected:
-            current["entities"].pop(hit)
+            current.entities.pop(hit)
             player.stage3_treasure_collected = True
             if player.stage3_flags & STAGE3_W:
                 player.stage3_won = True
@@ -589,8 +592,8 @@ def _resolve_contact(
 
     if isinstance(entity, d.Companion):
         ch = entity.tribe.char
-        current["known_companions"].add(ch)
-        current["entities"].pop(hit)
+        current.known_companions.add(ch)
+        current.entities.pop(hit)
         if trace is not None:
             trace.record_contact({"type": "companion", "id": ch})
         # l is a companion whose contact rewinds the recorded past.
@@ -620,15 +623,15 @@ def _handle_floor_transition(
     floor: List[int],
     checkpoint: List[d.Point],
 ) -> Optional[str]:
-    if floor[0] < FLOORS - 1 and (player.x, player.y) == current["down"]:
+    if floor[0] < FLOORS - 1 and (player.x, player.y) == current.down:
         floor[0] += 1
-        player.x, player.y = floors[floor[0]]["up"]
+        player.x, player.y = floors[floor[0]].up
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
         return tr("-- Descended to floor {n}/3.").format(n=floor[0] + 1)
-    if floor[0] > 0 and (player.x, player.y) == current["up"]:
+    if floor[0] > 0 and (player.x, player.y) == current.up:
         floor[0] -= 1
-        player.x, player.y = floors[floor[0]]["down"]
+        player.x, player.y = floors[floor[0]].down
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
         return tr("-- Ascended to floor {n}/3.").format(n=floor[0] + 1)
@@ -639,7 +642,7 @@ def _process_respawn_queue(
     floors: List[Floor],
     player: d.Player,
     floor: List[int],
-    queue: "Counter[Tuple[int, str]]",
+    queue: Counter[Tuple[int, str]],
     hours: int,
     trace: Optional[TraceRecorder] = None,
 ) -> None:
@@ -655,7 +658,7 @@ def _process_respawn_queue(
         else:
             ch = type_key
             empowered = 1
-        args = (floors[spawn_floor]["entities"], floors[spawn_floor]["field"], ch, avoid, floors[spawn_floor]["island"], spawn_floor)
+        args = (floors[spawn_floor].entities, floors[spawn_floor].field, ch, avoid, floors[spawn_floor].island, spawn_floor)
         if empowered == 1:
             x, y = _spawn(*args)
         else:
@@ -674,7 +677,7 @@ def _step(
     player: d.Player,
     floor: List[int],
     checkpoint: List[d.Point],
-    queue: "Counter[Tuple[int, str]]",
+    queue: Counter[Tuple[int, str]],
     history: Deque[HistoryEntry],
     hours: int,
     trace: Optional[TraceRecorder] = None,
@@ -688,7 +691,7 @@ def _step(
     _move_player(direction, current, player, trace=trace)
     event_message = _apply_terrain_hazards(current, player, previous)
 
-    hit = next((i for i, e in enumerate(current["entities"]) if (e.x, e.y) == (player.x, player.y)), None)
+    hit = next((i for i, e in enumerate(current.entities) if (e.x, e.y) == (player.x, player.y)), None)
     if hit is not None:
         contact = _resolve_contact(
             hit, current, floors, player, floor, checkpoint, queue, history, event_message, trace=trace
@@ -712,7 +715,7 @@ def _step(
         if trace is not None:
             trace.add_expired({"type": "companion_departed", "id": ch})
 
-    reveal_entities_in_fov(player, current["entities"])
+    reveal_entities_in_fov(player, current.entities)
     _advance_persistent_followers(player, floor[0], (player.x, player.y) != previous, previous)
 
     floor_before = floor[0]
@@ -743,10 +746,10 @@ def run_game(
     player.stage3_treasure_collected = False
     player.met_elves = set()
     floor = [0]
-    checkpoint = [floors[0]["up"]]
+    checkpoint = [floors[0].up]
     player.stage3_floor = 0
     view_floor = 0
-    queue: "Counter[Tuple[int, str]]" = Counter()
+    queue: Counter[Tuple[int, str]] = Counter()
     history: Deque[HistoryEntry] = deque()
     hours = 0
     message: Tuple[int, str] = (5, tr("-- The King has ordered the Dread Wyrm (W) slain."))
@@ -757,7 +760,7 @@ def run_game(
         cur = get_torched(player, config.torch_radius)
         for y in range(len(cur)):
             for x in range(len(cur[0])):
-                current["seen"][y][x] |= cur[y][x]
+                current.seen[y][x] |= cur[y][x]
 
         message = tick_message(message)
 
@@ -768,16 +771,16 @@ def run_game(
         # model separate and provide a render-only combined list.
         render_player = deepcopy(player) if floor_view else player
         render_player.stage3_floor = view_floor
-        render_entities = [render_player, *display_floor["entities"]]
-        known_types = player.known_monsters | display_floor["known_companions"]
-        no_current_visibility = [[0] * len(display_floor["field"][0]) for _ in display_floor["field"]]
+        render_entities = [render_player, *display_floor.entities]
+        known_types = player.known_monsters | display_floor.known_companions
+        no_current_visibility = [[0] * len(display_floor.field[0]) for _ in display_floor.field]
         ui.draw_stage(
             hours=hours,
             player=render_player,
             entities=render_entities,
-            field=display_floor["field"],
+            field=display_floor.field,
             cur_torched=no_current_visibility if floor_view else cur,
-            torched=display_floor["seen"],
+            torched=display_floor.seen,
             known_types=known_types,
             show_entities=show_entities,
             stage_num=3,
@@ -833,15 +836,15 @@ def run_game(
     while True:
         current = floors[floor[0]]
         cur = get_torched(player, config.torch_radius)
-        render_entities = [player, *current["entities"]]
-        known_types = player.known_monsters | current["known_companions"]
+        render_entities = [player, *current.entities]
+        known_types = player.known_monsters | current.known_companions
         ui.draw_stage(
             hours=hours,
             player=player,
             entities=render_entities,
-            field=current["field"],
+            field=current.field,
             cur_torched=cur,
-            torched=current["seen"],
+            torched=current.seen,
             known_types=known_types,
             show_entities=debug,
             stage_num=3,

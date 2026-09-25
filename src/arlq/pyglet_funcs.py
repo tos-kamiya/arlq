@@ -141,7 +141,7 @@ def save_ui_scale(scale: float) -> None:
         pass
 
 
-def save_key_repeat_interval(interval: float) -> None:
+def save_key_repeat_interval(interval: Optional[float]) -> None:
     """Persist the GUI key repeat interval without discarding other settings."""
     path = _settings_path()
     try:
@@ -643,6 +643,8 @@ class PygletUI:
             self._draw_text((0, self.field_height + 1), message, COLOR_MAP["default"], bold=True)
 
     def _text_width(self, text: str, bold: bool = False) -> int:
+        font_name: str
+        font_size: float
         if text.isascii():
             font_name, font_size = self.font_name, self.font_size
         else:
@@ -758,8 +760,13 @@ class PygletUI:
                         )
                     return _DIRECTION_KEYS[symbol]
 
-            if self._held_direction is not None and time.monotonic() >= self._next_repeat_at:
-                self._next_repeat_at = time.monotonic() + self.key_repeat_interval
+            repeat_interval = self.key_repeat_interval
+            if (
+                self._held_direction is not None
+                and repeat_interval is not None
+                and time.monotonic() >= self._next_repeat_at
+            ):
+                self._next_repeat_at = time.monotonic() + repeat_interval
                 return self._held_direction
 
             if self.joystick:

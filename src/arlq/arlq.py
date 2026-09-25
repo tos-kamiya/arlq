@@ -381,7 +381,7 @@ def move_player(
     field: List[List[str]],
     player: d.Player,
     passable_cells: Container[str],
-) -> Optional[Dict[str, object]]:
+) -> Optional[WallEvent]:
     """Move the player and return a traceable wall-interaction result.
 
     A normal step has no wall result. Blocked movement, a Pegasus phase, and
@@ -393,7 +393,7 @@ def move_player(
     width = len(field[0]) if field else 0
 
     if not (0 <= ny < height and 0 <= nx < width):
-        return {"result": "blocked"}
+        return WallEvent("blocked")
 
     cell = field[ny][nx]
     if cell in passable_cells:
@@ -410,8 +410,8 @@ def move_player(
         ):
             player.x, player.y = jump_x, jump_y
             player.karma += 1
-            return {"result": "pegasus_phase"}
-        return {"result": "blocked"}
+            return WallEvent("pegasus_phase")
+        return WallEvent("blocked")
 
     if (
         player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
@@ -423,9 +423,9 @@ def move_player(
         player.item_uses -= 1
         if player.item_uses == 0:
             d.clear_player_item(player)
-        return {"result": "sword_break", "item_uses_left": player.item_uses}
+        return WallEvent("sword_break", player.item_uses)
 
-    return {"result": "blocked"}
+    return WallEvent("blocked")
 
 
 def update_entities(
@@ -444,10 +444,7 @@ def update_entities(
     wall_result = move_player(move_direction, field, player, (d.CHAR_FLOOR, d.CHAR_CALTROP))
 
     if wall_result is not None:
-        events.wall = WallEvent(
-            result=str(wall_result["result"]),
-            item_uses_left=wall_result.get("item_uses_left"),
-        )
+        events.wall = wall_result
 
     # Caltrop damage
     if field[player.y][player.x] == d.CHAR_CALTROP:
@@ -758,7 +755,9 @@ def run_game(
             player.unlocked_treasures,
             respawn_point=checkpoint,
         )
-        effect, tribes_to_be_respawned, m, _ = update_result
+        effect = update_result.effect
+        tribes_to_be_respawned = update_result.tribes_to_be_respawned
+        m = update_result.message
         turn_events = update_result.events
         if m is not None:
             message = m
