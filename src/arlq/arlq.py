@@ -122,7 +122,7 @@ def find_random_place(entities: List[d.Entity], field: List[List[str]], distance
         x = rand.randrange(d.FIELD_WIDTH - 2) + 1
         y = rand.randrange(d.FIELD_HEIGHT - 2) + 1
         if all(
-            c == " " for c in field[y][x - 1 : x + 1 + 1]
+            c == d.CHAR_FLOOR for c in field[y][x - 1 : x + 1 + 1]
         ) and not any(  # both left and right cells are spaces (not walls)
             abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places
         ):
@@ -188,14 +188,14 @@ def create_field(
         while True:
             x = rand.randrange(right_bottom[0] - left_top[0]) + left_top[0]
             y = rand.randrange(right_bottom[1] - left_top[1]) + left_top[1]
-            if field[y][x] == " ":
+            if field[y][x] == d.CHAR_FLOOR:
                 return x, y
 
     # margin_x walls off that many tile columns on each of the left and
     # right edges, leaving a narrower maze centered in the same field size.
     tile_num_x = d.TILE_NUM_X - 2 * margin_x
 
-    field: List[List[str]] = [[" " for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
+    field: List[List[str]] = [[d.CHAR_FLOOR for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
 
     # Create walls
     for ty in range(d.TILE_NUM_Y + 1):
@@ -240,12 +240,12 @@ def create_field(
         if y1 == y2:
             offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
             for y in range(corridor_h_width):
-                field[y1 * (d.TILE_HEIGHT + 1) + offset + y][x2 * (d.TILE_WIDTH + 1)] = " "
+                field[y1 * (d.TILE_HEIGHT + 1) + offset + y][x2 * (d.TILE_WIDTH + 1)] = d.CHAR_FLOOR
         else:
             assert x1 == x2
             offset = rand.randrange(d.TILE_WIDTH + 1 - corridor_v_width) + 1
             for x in range(corridor_v_width):
-                field[y2 * (d.TILE_HEIGHT + 1)][x1 * (d.TILE_WIDTH + 1) + offset + x] = " "
+                field[y2 * (d.TILE_HEIGHT + 1)][x1 * (d.TILE_WIDTH + 1) + offset + x] = d.CHAR_FLOOR
 
     # The sealed tile can interrupt a direct route between its neighbors.
     # Rust's stage 3 adds a short bypass on the adjacent row at an outer edge.
@@ -257,8 +257,8 @@ def create_field(
                 offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
                 for y in range(corridor_h_width):
                     row = bypass_y * (d.TILE_HEIGHT + 1) + offset + y
-                    field[row][island_x * (d.TILE_WIDTH + 1)] = " "
-                    field[row][(island_x + 1) * (d.TILE_WIDTH + 1)] = " "
+                    field[row][island_x * (d.TILE_WIDTH + 1)] = d.CHAR_FLOOR
+                    field[row][(island_x + 1) * (d.TILE_WIDTH + 1)] = d.CHAR_FLOOR
 
     # Wall off the margin columns entirely so they read as removed, rather
     # than as a disconnected strip of tiny rooms.
@@ -316,7 +316,7 @@ def spread_caltrops(field: List[List[str]], origin: d.Point, entities: List[d.En
         except_for_center=True,
         except_for_entities=entities,
     ):
-        if (x + y) % 2 == 0 and field[y][x] in (" ", d.WALL_CHAR):
+        if (x + y) % 2 == 0 and field[y][x] in (d.CHAR_FLOOR, d.WALL_CHAR):
             field[y][x] = d.CHAR_CALTROP
 
 
@@ -406,7 +406,7 @@ def move_player(
         if (
             0 <= jump_y < height
             and 0 <= jump_x < width
-            and field[jump_y][jump_x] in (" ", d.CHAR_CALTROP)
+            and field[jump_y][jump_x] in (d.CHAR_FLOOR, d.CHAR_CALTROP)
         ):
             player.x, player.y = jump_x, jump_y
             player.karma += 1
@@ -419,7 +419,7 @@ def move_player(
         and cell == d.WALL_CHAR
     ):
         player.x, player.y = nx, ny
-        field[ny][nx] = " "
+        field[ny][nx] = d.CHAR_FLOOR
         player.item_uses -= 1
         if player.item_uses == 0:
             d.clear_player_item(player)
@@ -441,7 +441,7 @@ def update_entities(
     effect = None
     tribes_to_be_respawned = []
     message = None
-    wall_result = move_player(move_direction, field, player, (" ", d.CHAR_CALTROP))
+    wall_result = move_player(move_direction, field, player, (d.CHAR_FLOOR, d.CHAR_CALTROP))
 
     if wall_result is not None:
         events.wall = WallEvent(
@@ -452,7 +452,7 @@ def update_entities(
     # Caltrop damage
     if field[player.y][player.x] == d.CHAR_CALTROP:
         player.lp -= d.CALTROP_LP_DAMAGE
-        field[player.y][player.x] = " "
+        field[player.y][player.x] = d.CHAR_FLOOR
 
     # Find encountered entity
     enc_entity_infos: List[Tuple[int, d.Entity]] = []
@@ -554,7 +554,7 @@ def update_entities(
                     for x, y in iterate_offsets(
                         player.x, player.y, d.ROCK_SPREAD_OFFSETS, except_for_entities=entities
                     ):
-                        if field[y][x] == " ":
+                        if field[y][x] == d.CHAR_FLOOR:
                             field[y][x] = d.WALL_CHAR
 
                 d.apply_feed(player, m.tribe.feed)
