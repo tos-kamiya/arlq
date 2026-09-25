@@ -9,6 +9,7 @@ from . import defs as d
 from .arlq import (
     MESSAGE_TICKS,
     GameConfig,
+    create_field,
     find_random_place,
     get_torched,
     iterate_offsets,
@@ -419,6 +420,42 @@ def build(
     player = d.Player(floors[0].up[0], floors[0].up[1], 1, d.LP_INIT)
     player.stage3_elf_floors = {char: floor + 1 for char, floor in elf_floors.items()}
     return floors, player
+
+
+def build_trap_test(
+    corridor_h_width: int = d.CORRIDOR_H_WIDTH,
+    corridor_v_width: int = d.CORRIDOR_V_WIDTH,
+) -> Tuple[List[Floor], d.Player]:
+    """Build a one-floor arena for manually exercising Stage 4 traps."""
+    field, entry, wyrm_point = create_field(
+        corridor_h_width,
+        corridor_v_width,
+        d.WALL_CHAR,
+        margin_x=d.STAGE1_COLUMN_MARGIN,
+    )
+    wyrm = d.Monster(*wyrm_point, d.CHAR_TO_MONSTER_TRIBE["W"])
+    entities: List[d.Entity] = [wyrm]
+    _place_barrier(field, wyrm_point)
+    reserved = {entry, wyrm_point}
+    entities.append(d.Treasure(*_treasure_spot(entities, field, reserved), d.CHAR_TREASURE + "W"))
+    for _ in range(3):
+        _spawn(entities, field, "b", reserved, floor_index=0)
+        _spawn(entities, field, "d", reserved, floor_index=0)
+    _spawn(entities, field, "V", reserved, floor_index=0)
+
+    arena = Floor(
+        field=field,
+        entities=entities,
+        seen=[[0] * len(field[0]) for _ in field],
+        known_companions=set(),
+        up=entry,
+        down=wyrm_point,
+        island=None,
+    )
+    player = d.Player(entry[0], entry[1], 150, d.LP_INIT)
+    player.stage3_elf_floors = {}
+    player.stage3_flags |= STAGE3_H
+    return [arena], player
 
 
 def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
@@ -838,7 +875,7 @@ def _resolve_monster_contact(
         if trace is not None:
             trace.record_contact({"type": "monster", "id": d.monster_type_key(entity), "outcome": "win"})
         _defeat_monster(entity, current, player, floor, checkpoint, queue, trace=trace)
-        if ch == "W" and stage_num == 4:
+        if ch == "W" and stage_num in (4, 5):
             reserved = set(current.up_stairs + current.down_stairs)
             mimic_spot = _treasure_spot(current.entities, current.field, reserved)
             current.entities.append(d.MimicChest(*mimic_spot, d.CHAR_TREASURE + "M"))
@@ -908,7 +945,7 @@ def _resolve_contact(
             player.stage3_treasure_collected = True
             if player.stage3_flags & STAGE3_W:
                 player.stage3_won = True
-                if stage_num == 4:
+                if stage_num in (4, 5):
                     event_message = tr(">> Treasure chest obtained! <<")
             else:
                 event_message = tr("-- You took the treasure chest, but the King's request remains.")
@@ -1080,16 +1117,19 @@ def run_game(
 ) -> None:
     if config is None:
         config = GameConfig()
-    floors, player = build(
-        config.corridor_h_width,
-        config.corridor_v_width,
-        stage_num,
-        stair_pairs_per_transition=(
-            STAGE3_STAIR_PAIRS_PER_TRANSITION
-            if stage_num == 3
-            else STAGE4_STAIR_PAIRS_PER_TRANSITION
-        ),
-    )
+    if stage_num == 5:
+        floors, player = build_trap_test(config.corridor_h_width, config.corridor_v_width)
+    else:
+        floors, player = build(
+            config.corridor_h_width,
+            config.corridor_v_width,
+            stage_num,
+            stair_pairs_per_transition=(
+                STAGE3_STAIR_PAIRS_PER_TRANSITION
+                if stage_num == 3
+                else STAGE4_STAIR_PAIRS_PER_TRANSITION
+            ),
+        )
     player.known_monsters = set()
     player.unlocked_treasures = set()
     player.stage3_won = False
@@ -1106,10 +1146,14 @@ def run_game(
         5,
         tr("-- The King has ordered the Dread Wyrm (W) slain.")
         if stage_num == 3
-        else tr("-- Explore the sealed rooms across four floors."),
+        else tr(
+            "-- Trap test: Mimic, Vortex, W, treasure, b and d."
+            if stage_num == 5
+            else "-- Explore the sealed rooms across four floors."
+        ),
     )
 
-    while player.lp > 0 and (stage_num == 4 or not player.stage3_won):
+    while player.lp > 0 and (stage_num in (4, 5) or not player.stage3_won):
         current = floors[floor[0]]
         display_floor = floors[view_floor]
         cur = get_torched(player, config.torch_radius)
