@@ -972,14 +972,17 @@ def main():
         if args.lang == "auto":
             set_language(params.get("lang", "auto"))
     else:
-        if args.rematch and (args.seed is not None or args.stage):
-            parser.error("--rematch cannot be combined with --seed or --stage")
+        if args.rematch and args.seed is not None:
+            parser.error("--rematch cannot be combined with --seed")
 
         if args.rematch:
             try:
-                args.stage, args.seed = read_last_seed()
+                rematch_stage, args.seed = read_last_seed()
             except ValueError as error:
                 parser.error(str(error))
+            if args.stage and args.stage != rematch_stage:
+                parser.error(f"--rematch can only be combined with --stage {rematch_stage}")
+            args.stage = rematch_stage
         elif args.seed is not None:
             # Check if any conflicting flags are provided
             if any([args.stage, args.large_torch, args.small_torch, args.narrower_corridors]):
