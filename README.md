@@ -155,10 +155,10 @@ One Golem (`g`) appears on a random floor in Stage 3. When defeated, rocks scatt
 
 ### Stage 4 (experimental, development-only)
 
-Stage 4 is under construction and is not selectable in this release; its
+Stage 4 is experimental and available from the stage selection menu. Its
 design and gameplay are subject to change.
 
-Stage 4 has four floors with the Stage 3 layout. Each floor has two filled rooms in different columns; one filled room across the stage contains the Isolated Elf. Adjacent floors can have a second stair pair in another room when space is available. The monster roster reuses Stage 3's first-floor monsters on floors 1–2, its second-floor roster on floor 3, and its third-floor roster on floor 4.
+Stage 4 has three floors with the Stage 3 layout. Each floor has two filled rooms in different columns; one filled room across the stage contains the Isolated Elf. Adjacent floors can have a second stair pair in another room when space is available. The monster roster reuses Stage 3's first-floor monsters on floors 1–2 and its second-floor roster on floor 3.
 
 While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an adjacent floor's explored map in GUI mode. In `arlq-cli`, hold Shift and press W or S. Unexplored areas remain hidden. The bottom-right `F:` marker shows the displayed floor. A normal movement input returns the display to the player's floor and moves as usual.
 

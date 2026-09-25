@@ -893,7 +893,7 @@ def parse_seed_string(args, seed_str, enforce_version: bool = True):
     except ValueError:
         exit("Error: Stage value in seed string is not a valid integer.")
     if args.stage not in d.PUBLIC_STAGE_NUMBERS:
-        exit("Error: Stage value in seed string must be 1, 2, or 3.")
+        exit("Error: Stage value in seed string must be 1, 2, 3, or 4.")
 
     try:
         args.seed = int(seed_value_str)
@@ -906,7 +906,7 @@ def main():
         description="A Rogue-Like game.",
     )
 
-    parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1, 2, or 3).")
+    parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, or 4).")
 
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
@@ -963,7 +963,7 @@ def main():
     set_language(args.lang)
 
     if args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
-        parser.error("--stage must be 1, 2, or 3")
+        parser.error("--stage must be 1, 2, 3, or 4")
 
     if args.trace_record and args.trace_replay:
         parser.error("--trace-record cannot be combined with --trace-replay")

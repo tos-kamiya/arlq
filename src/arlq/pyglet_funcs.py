@@ -473,7 +473,7 @@ class PygletUI:
         - Draws the player and entities with appropriate colors.
         - Draws the status bar at the bottom.
         """
-        show_entities = (show_entities or self.map_mode) and not floor_view
+        show_entities = show_entities or self.map_mode
         self._clear_drawables()
         px, py = player.x, player.y
 

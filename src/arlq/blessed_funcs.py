@@ -122,12 +122,12 @@ class BlessedUI:
         def cell_background(x: int, y: int) -> Optional[str]:
             if self.dots or not (0 <= y < len(field) and 0 <= x < len(field[y])):
                 return None
-            discovered = torched[y][x] or (show_entities and not floor_view)
+            discovered = torched[y][x] or show_entities
             return "black" if discovered else None
 
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
-                discovered = bool(torched[y][x] or (show_entities and not floor_view))
+                discovered = bool(torched[y][x] or show_entities)
                 visible = bool(cur_torched[y][x])
                 if self.dots:
                     if visible:
@@ -179,7 +179,7 @@ class BlessedUI:
                 bg=cell_background(glyph.x, glyph.y),
             )
 
-        if show_entities and not floor_view:
+        if show_entities:
             for entity in entities:
                 for glyph in d.preview_entity_glyphs(entity):
                     paint(glyph)
@@ -297,7 +297,7 @@ class BlessedUI:
         floor_label: Optional[str] = None,
     ):
         self._wait_for_terminal_size()
-        show_entities = (show_entities or self.map_mode) and not floor_view
+        show_entities = show_entities or self.map_mode
         stage_args = (
             entities, field, cur_torched, torched, known_types, show_entities,
             checkpoint, self.map_mode, unlocked_treasures, dim_types, stage_num, stage_roster, floor_view, floor_label,
