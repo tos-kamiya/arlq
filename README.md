@@ -39,6 +39,7 @@ arlq-cli
 
 Running `arlq` without options opens the graphical interface. Running
 `arlq-cli` without options starts the terminal interface.
+Use `arlq-cli --dots` to show unexplored areas with dots instead of background colors.
 
 The terminal interface requires a terminal at least 80 columns wide and 24
 lines high. If the terminal is resized below that size, the game pauses until
@@ -74,6 +75,7 @@ reproduce the same layout.
 | Option | Description |
 | --- | --- |
 | `--terminal` | Run the game in the terminal using Blessed. |
+| `--dots` | In the terminal interface, show unexplored areas with dots instead of background colors. |
 | `--scale FACTOR` | Enlarge or reduce the Pyglet GUI (from `0.5` to `4.0`, for example `--scale 1.5`). The selected scale is saved in the per-user configuration directory and used automatically on the next GUI launch. You can also change it in the stage selection screen's `Settings`. |
 | `--key-repeat-interval SECONDS` | Set the GUI movement repeat delay and interval (from `0.1` to `1.0` seconds), or use `none` to disable it. The setting is saved for later GUI starts and can also be changed in the stage selection screen's `Settings`. |
 

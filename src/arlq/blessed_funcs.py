@@ -25,8 +25,9 @@ def key_to_dir(key: str) -> Optional[d.Point]:
 
 
 class BlessedUI:
-    def __init__(self, term: Terminal):
+    def __init__(self, term: Terminal, dots: bool = False):
         self.term = term
+        self.dots = dots
         self.map_mode = False
         self.shift_direction = False
         self._last_stage: Optional[Tuple[Any, Any]] = None
@@ -68,9 +69,9 @@ class BlessedUI:
     def _style(
         self, text: str, color: Optional[str] = None, bold: bool = False, dim: bool = False, bg: Optional[str] = None
     ) -> str:
-        if dim:
-            return self.term.dim(text)
         attr_name = f"{color}_on_{bg}" if color and bg else (f"on_{bg}" if bg else color)
+        if dim:
+            text = self.term.dim(text)
         if bold and attr_name:
             return self.term.bold(getattr(self.term, attr_name)(text))
         if bold:
@@ -119,19 +120,36 @@ class BlessedUI:
                 px, py = entity.x, entity.y
         assert player is not None and px is not None and py is not None
 
+        def cell_background(x: int, y: int) -> Optional[str]:
+            if self.dots or not (0 <= y < len(field) and 0 <= x < len(field[y])):
+                return None
+            discovered = torched[y][x] or (show_entities and not floor_view)
+            return "bright_black" if discovered else None
+
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
-                if cur_torched[y][x]:
-                    put(x, y, cell, "green" if cell == d.WALL_CHAR else "magenta" if cell == d.CHAR_CALTROP else None)
-                elif torched[y][x] or (show_entities and not floor_view):
-                    if cell == d.WALL_CHAR:
-                        put(x, y, cell, "green")
-                    elif cell == d.CHAR_FLOOR and (x + y) % 2 == 1:
+                discovered = bool(torched[y][x] or (show_entities and not floor_view))
+                visible = bool(cur_torched[y][x])
+                if self.dots:
+                    if visible:
+                        put(
+                            x,
+                            y,
+                            cell,
+                            "green" if cell == d.WALL_CHAR else "magenta" if cell == d.CHAR_CALTROP else None,
+                        )
+                    elif discovered:
+                        if cell == d.WALL_CHAR:
+                            put(x, y, cell, "green")
+                        elif cell == d.CHAR_FLOOR and (x + y) % 2 == 1:
+                            put(x, y, ".", dim=True)
+                        else:
+                            put(x, y, cell)
+                    elif (x + y) % 2 == 1:
                         put(x, y, ".", dim=True)
-                    else:
-                        put(x, y, cell)
-                elif (x + y) % 2 == 1:
-                    put(x, y, ".", dim=True)
+                else:
+                    color = "green" if cell == d.WALL_CHAR else "magenta" if cell == d.CHAR_CALTROP else None
+                    put(x, y, cell if discovered else " ", color, bg="bright_black" if discovered else None)
 
         if (
             not floor_view
@@ -139,13 +157,28 @@ class BlessedUI:
             and checkpoint != (px, py)
             and field[checkpoint[1]][checkpoint[0]] not in d.STAIR_CHARS
         ):
-            put(checkpoint[0], checkpoint[1], "+", "yellow", bold=True)
+            put(
+                checkpoint[0],
+                checkpoint[1],
+                "+",
+                "yellow",
+                bold=True,
+                bg=cell_background(checkpoint[0], checkpoint[1]),
+            )
 
         player_attack = d.current_player_attack(player, stage_num)
 
         def paint(glyph: d.FieldGlyph) -> None:
             color = None if glyph.tone in ("companion", "default") else glyph.tone
-            put(glyph.x, glyph.y, glyph.char, color, bold=glyph.bold, dim=glyph.dim)
+            put(
+                glyph.x,
+                glyph.y,
+                glyph.char,
+                color,
+                bold=glyph.bold,
+                dim=glyph.dim,
+                bg=cell_background(glyph.x, glyph.y),
+            )
 
         if show_entities and not floor_view:
             for entity in entities:
@@ -160,11 +193,36 @@ class BlessedUI:
             ):
                 paint(glyph)
 
+        for fx, fy, ffloor, fchar in getattr(player, "persistent_followers", []):
+            if (
+                not floor_view
+                and ffloor == player.stage3_floor
+                and 0 <= fy < len(torched)
+                and 0 <= fx < len(torched[fy])
+                and torched[fy][fx]
+                and (fx, fy) != (px, py)
+            ):
+                put(fx, fy, fchar, "green", bold=True, bg=cell_background(fx, fy))
+
         foreground, background = d.player_appearance(player)
         if not floor_view:
-            put(px, py, "@", "white" if foreground == "default" else foreground, bold=True, bg=background)
+            put(
+                px,
+                py,
+                "@",
+                "white" if foreground == "default" else foreground,
+                bold=True,
+                bg=background or cell_background(px, py),
+            )
         if not floor_view and player.companion and px + 1 < d.FIELD_WIDTH:
-            put(px + 1, py, player.companion.tribe.char, dim=True)
+            put(
+                px + 1,
+                py,
+                player.companion.tribe.char,
+                "green" if not self.dots else None,
+                dim=self.dots,
+                bg=cell_background(px + 1, py),
+            )
 
         tribes = stage_roster if stage_roster is not None else (
             d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []

@@ -901,6 +901,10 @@ def main():
         "--terminal", "--curses", dest="terminal", action="store_true",
         help="Use the Blessed terminal UI (--curses is a deprecated alias).",
     )
+    parser.add_argument(
+        "--dots", action="store_true",
+        help="Use dots instead of background colors for unexplored areas in the terminal UI.",
+    )
     parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
     parser.add_argument(
         "--lang", choices=["auto", "en", "ja"], default="auto",
@@ -1044,7 +1048,7 @@ def main():
 
         term = Terminal()
         with term.fullscreen(), term.cbreak(), term.hidden_cursor():
-            play(BlessedUI(term))
+            play(BlessedUI(term, dots=args.dots))
     else:
         from .pyglet_funcs import PygletUI
 
