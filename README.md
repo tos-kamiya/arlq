@@ -186,7 +186,7 @@ While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an 
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **k** Marksman | Level 80. After each player move, it shoots for 5 LP damage when aligned horizontally or vertically with a clear path. Walls, barriers, stairs, caltrops, monsters, companions, and unactivated `M`, `O`, and `V` traps block its shot. Activated traps do not: Mimics and Vortexes disappear, and Collapse becomes an open hole. Arrows do not activate traps. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
+| **k** Marksman | Level 80. After each player move, it shoots for 5 LP damage when aligned horizontally or vertically with a clear path. Walls, barriers, stairs, caltrops, monsters, companions, and unactivated `M`, `O`, and `V` traps block its shot. When triggered, a Mimic becomes an ordinary `M` monster and continues to block shots; Vortex disappears, and Collapse becomes an open hole. Arrows do not activate traps. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
 | **E** Rare Erebus | Level 30. When defeated, halves the player's level (rounded down, minimum 1) instead of granting the usual level increase; it restores 8 LP. It respawns after the usual interval. |
 
 #### Traps
@@ -197,11 +197,11 @@ Traps do not respawn. A discovered Collapse remains in place and can be used rep
 
 | Trap | Display before discovery | Description |
 | ---- | ------------------------ | ----------- |
-| **M** Mimic | `T` | Appears alongside the treasure chest and is indistinguishable from it until contacted. |
+| **M** Mimic | `T` | Level 85. Appears as a second chest after the Dread Wyrm is defeated. Contact reveals it and spawns an `M` monster at that spot, starting normal combat immediately. If it survives, its visible `M` blocks Marksman shots. Defeating it restores 16 LP and leaves a faint `M` marker; it does not respawn. |
 | **O** Collapse | `?` | Entering it drops the player one floor to the same coordinates. The destination must be passable. Once triggered, that location is known and appears as `O`; the hole remains usable. It does not appear on the lowest floor. |
-| **V** Vortex | `?` | Level 30. When defeated, repositions monsters, floor companions, and the treasure chest except elves, removes all Marksmen's arrow marks, and resets explored floor cells. The Dread Wyrm and chest move independently. Wyrm barriers are rebuilt around the new positions and become unexplored. Known walls and stairs remain visible. Collapse locations stay fixed and are not destinations for the rearrangement. |
+| **V** Vortex | `?` | Level 30. When defeated, repositions monsters, floor companions, and the treasure chest except elves, removes all Marksmen's arrow marks, and resets explored floor cells. An activated Mimic moves as a monster and remains identified. The Dread Wyrm and chest move independently. Wyrm barriers are rebuilt around the new positions and become unexplored. Known walls and stairs remain visible. Collapse locations stay fixed and are not destinations for the rearrangement. |
 
-Mimic and Collapse are planned additions; Stage 4 is experimental and their behavior may change.
+Collapse is a planned addition. Stage 4 is experimental and its behavior may change.
 
 ## Companion List
 

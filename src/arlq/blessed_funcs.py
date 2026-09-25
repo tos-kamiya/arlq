@@ -96,6 +96,7 @@ class BlessedUI:
         floor_view: bool = False,
         floor_label: Optional[str] = None,
         arrow_marks=(),
+        mimic_marks=(),
     ) -> str:
         output = [self.term.home + self.term.clear]
 
@@ -150,6 +151,10 @@ class BlessedUI:
                 else:
                     color = "green" if cell == d.WALL_CHAR else "magenta" if cell == d.CHAR_CALTROP else None
                     put(x, y, cell if discovered else " ", color, bg="black" if discovered else None)
+
+        for x, y in mimic_marks:
+            if (show_entities or torched[y][x]) and (x, y) != (px, py):
+                put(x, y, "M", dim=True, bg=cell_background(x, y))
 
         if (
             not floor_view
@@ -301,6 +306,7 @@ class BlessedUI:
         floor_view: bool = False,
         floor_label: Optional[str] = None,
         arrow_marks=(),
+        mimic_marks=(),
     ):
         self._wait_for_terminal_size()
         show_entities = show_entities or self.map_mode
@@ -308,6 +314,7 @@ class BlessedUI:
             entities, field, cur_torched, torched, known_types, show_entities,
             checkpoint, self.map_mode, unlocked_treasures, dim_types, stage_num, stage_roster, floor_view, floor_label,
             arrow_marks,
+            mimic_marks,
         )
         status_args = (player, hours, stage_num, message, extra_keys)
         self._last_stage = (stage_args, status_args)

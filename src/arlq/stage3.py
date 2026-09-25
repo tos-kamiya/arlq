@@ -80,7 +80,7 @@ ROSTER_TRIBES: List[d.MonsterTribe] = sorted(
 STAGE4_ROSTER_TRIBES: List[d.MonsterTribe] = sorted(
     (
         d.CHAR_TO_MONSTER_TRIBE[c]
-        for c in dict.fromkeys(char for floor in STAGE4_ROSTER for char, _, _ in floor)
+        for c in dict.fromkeys([*(char for floor in STAGE4_ROSTER for char, _, _ in floor), "M"])
         if c in d.CHAR_TO_MONSTER_TRIBE and not d.CHAR_TO_MONSTER_TRIBE[c].is_elf
     ),
     key=lambda t: t.level,
@@ -102,6 +102,7 @@ class Floor:
     down_stairs: List[d.Point] = dataclass_field(default_factory=list)
     contact_reveal: Optional[d.Point] = None
     arrow_marks: Dict[d.Monster, List[Tuple[d.Point, str]]] = dataclass_field(default_factory=dict)
+    defeated_mimics: Set[d.Point] = dataclass_field(default_factory=set)
 
 # History entries snapshot everything the Loop Companion can rewind.
 HistoryEntry = Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]
@@ -518,7 +519,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
                 blocked = True
                 break
             if any(
-                isinstance(other, (d.Monster, d.Companion)) and (other.x, other.y) == (x, y)
+                isinstance(other, (d.Monster, d.Companion, d.MimicChest)) and (other.x, other.y) == (x, y)
                 for other in current.entities
             ):
                 blocked = True
@@ -616,6 +617,7 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
             char = entity.tribe.char
             empowered = entity.empowered if isinstance(entity, d.Monster) else 1
             origin_floor = entity.origin_floor if isinstance(entity, d.Companion) else floor_index
+            mimic_revealed = entity.mimic_revealed if isinstance(entity, d.Monster) and char == "M" else False
             _spawn(
                 current.entities,
                 current.field,
@@ -625,6 +627,8 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
                 origin_floor,
                 empowered,
             )
+            if char == "M":
+                current.entities[-1].mimic_revealed = mimic_revealed
 
     for entity in current.entities:
         if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}:
@@ -650,6 +654,8 @@ def _defeat_monster(
     ch = entity.tribe.char
     if ch == "k":
         current.arrow_marks.pop(entity, None)
+    if ch == "M":
+        current.defeated_mimics.add((entity.x, entity.y))
 
     # A successful monster defeat establishes the next respawn point,
     # matching the legacy stages and the Rust port.
@@ -790,6 +796,9 @@ def _resolve_monster_contact(
         # resolves combat before removing the monster; keeping the entity
         # here prevents a failed attack from deleting it.
         current.entities.append(entity)
+        first_mimic_contact = ch == "M" and not entity.mimic_revealed
+        if ch == "M":
+            entity.mimic_revealed = True
         # Losing twice in a row to the very same monster (no other monster
         # contact in between) means it is blocking the only way through:
         # send the player somewhere random instead of back to the
@@ -804,6 +813,9 @@ def _resolve_monster_contact(
             # frame, even when the checkpoint is outside its FOV.
             current.contact_reveal = (entity.x, entity.y)
             event_message = tr("-- Respawned!")
+        if first_mimic_contact:
+            player.known_monsters.add("M")
+            event_message = tr("-- The treasure chest was a Mimic! You respawned.")
         if trace is not None:
             trace.record_contact(
                 {
@@ -819,9 +831,21 @@ def _resolve_monster_contact(
         if trace is not None and old_item:
             trace.add_expired({"type": "item_expired", "item": old_source, "reason": "lost_on_defeat"})
     else:
+        was_revealed = entity.mimic_revealed if ch == "M" else False
+        if ch == "M":
+            entity.mimic_revealed = True
+            player.known_monsters.add("M")
         if trace is not None:
             trace.record_contact({"type": "monster", "id": d.monster_type_key(entity), "outcome": "win"})
         _defeat_monster(entity, current, player, floor, checkpoint, queue, trace=trace)
+        if ch == "W" and stage_num == 4:
+            reserved = set(current.up_stairs + current.down_stairs)
+            mimic_spot = _treasure_spot(current.entities, current.field, reserved)
+            current.entities.append(d.MimicChest(*mimic_spot, d.CHAR_TREASURE + "M"))
+        if ch == "M" and was_revealed:
+            event_message = tr("-- The Mimic was defeated!")
+        elif ch == "M":
+            event_message = tr("-- The treasure chest was a Mimic!")
         if ch == "W" and stage_num == 4 and player.stage3_treasure_collected:
             event_message = tr(">> The King's request is complete! <<")
 
@@ -863,6 +887,19 @@ def _resolve_contact(
     entity = current.entities[hit]
 
     if isinstance(entity, d.Treasure):
+        if isinstance(entity, d.MimicChest):
+            mimic = d.Monster(entity.x, entity.y, d.CHAR_TO_MONSTER_TRIBE["M"])
+            current.entities[hit] = mimic
+            player.known_monsters.add("M")
+            if trace is not None:
+                trace.record_contact({"type": "trap", "id": "M", "outcome": "triggered"})
+            result = _resolve_monster_contact(
+                hit, mimic, current, player, floor, checkpoint, queue,
+                tr("-- The treasure chest was a Mimic!"), trace=trace, stage_num=stage_num,
+            )
+            if result.message is None:
+                return _ContactResult(tr("-- The treasure chest was a Mimic!"), result.end_turn, result.message_ticks)
+            return result
         collected = entity.unlock_key in player.unlocked_treasures
         if trace is not None:
             trace.record_contact({"type": "treasure", "id": entity.unlock_key, "collected": collected})
@@ -1118,6 +1155,7 @@ def run_game(
             arrow_marks=[mark for marks in display_floor.arrow_marks.values() for mark in marks]
             if stage_num == 4
             else (),
+            mimic_marks=display_floor.defeated_mimics if stage_num == 4 else (),
         )
 
         move = ui.input_direction()
@@ -1188,6 +1226,7 @@ def run_game(
             arrow_marks=[mark for marks in current.arrow_marks.values() for mark in marks]
             if stage_num == 4
             else (),
+            mimic_marks=current.defeated_mimics if stage_num == 4 else (),
         )
         key = ui.input_alphabet()
         if key is None:

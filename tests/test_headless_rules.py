@@ -1129,7 +1129,7 @@ def test_repeated_elf_contact_ends_turn_before_companion_expiration():
 
 def test_stage3_flags_keep_their_bit_values():
     assert (STAGE3_C, STAGE3_I, STAGE3_K, STAGE3_H, STAGE3_W, STAGE3_J) == (1, 2, 4, 8, 16, 64)
-    assert d.STAGE3_NO_RESPAWN_MONSTERS == {"a", "A", "b", "c", "C", "V", "W", "w"}
+    assert d.STAGE3_NO_RESPAWN_MONSTERS == {"a", "A", "b", "c", "C", "M", "V", "W", "w"}
 
 
 def test_stage3_rare_amoeba_grants_the_special_exp_bonus():
