@@ -9,7 +9,6 @@ from . import defs as d
 from .arlq import (
     MESSAGE_TICKS,
     GameConfig,
-    create_field,
     find_random_place,
     get_torched,
     iterate_offsets,
@@ -21,6 +20,7 @@ from .arlq import (
     unlock_treasure_for_defeat,
 )
 from .i18n import t as tr
+from .stage_maze import generate_floor_field, shuffle_floor_layout
 from .trace import DIR_TO_KEY, TraceRecorder
 from .utils import rand
 
@@ -136,31 +136,6 @@ def _find_escape_place(current: Floor) -> d.Point:
             return x, y
 
 
-def _main_connected(field: List[List[str]], start: d.Point, island_tile: Optional[d.Point]) -> bool:
-    reached = {start}
-    pending: Deque[d.Point] = deque([start])
-    while pending:
-        x, y = pending.popleft()
-        for dx, dy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
-            nx, ny = x + dx, y + dy
-            point = (nx, ny)
-            if (
-                0 <= ny < len(field)
-                and 0 <= nx < len(field[0])
-                and field[ny][nx] in (d.CHAR_FLOOR, *d.STAIR_CHARS, d.CHAR_BARRIER)
-                and point not in reached
-            ):
-                reached.add(point)
-                pending.append(point)
-    return all(
-        field[y][x] not in (d.CHAR_FLOOR, *d.STAIR_CHARS, d.CHAR_BARRIER)
-        or _inside_island((x, y), island_tile)
-        or (x, y) in reached
-        for y in range(len(field))
-        for x in range(len(field[0]))
-    )
-
-
 def _build_floor(
     index: int,
     special_floors: Dict[str, int],
@@ -168,39 +143,18 @@ def _build_floor(
     entry_point: Optional[d.Point] = None,
     corridor_h_width: int = d.CORRIDOR_H_WIDTH,
     corridor_v_width: int = d.CORRIDOR_V_WIDTH,
+    room_counts: Tuple[int, int] = (0, 0),
 ) -> Floor:
-    island_tile = None
-    if index == elf_floors["I"]:
-        while island_tile is None or _inside_island(entry_point, island_tile):
-            island_tile = (rand.randrange(d.TILE_NUM_X), rand.randrange(d.TILE_NUM_Y))
-    for _ in range(1000):
-        field, up, down = create_field(corridor_h_width, corridor_v_width, d.WALL_CHAR, island_tile)
-        if entry_point is not None:
-            entry_x, entry_y = entry_point
-            if not (0 <= entry_y < len(field) and 0 <= entry_x < len(field[0])):
-                continue
-            if _inside_island(entry_point, island_tile):
-                continue
-            generated_up = up
-            if not _main_connected(field, generated_up, island_tile):
-                continue
-            # Preserve the exit coordinates from the previous floor. If the
-            # corresponding cell is a wall on this floor, carve a short
-            # connection to the generated main corridor.
-            x, y = entry_point
-            target_x, target_y = generated_up
-            while x != target_x:
-                field[y][x] = d.CHAR_FLOOR
-                x += 1 if target_x > x else -1
-            while y != target_y:
-                field[y][x] = d.CHAR_FLOOR
-                y += 1 if target_y > y else -1
-            field[y][x] = d.CHAR_FLOOR
-            up = entry_point
-        if _main_connected(field, up, island_tile):
-            break
-    else:
-        raise RuntimeError("could not generate a connected Stage 3 floor")
+    island_count, filled_count = room_counts
+    field, up, down, island_rooms, _ = generate_floor_field(
+        entry_point,
+        None,
+        corridor_h_width,
+        corridor_v_width,
+        island_count,
+        filled_count,
+    )
+    island_tile = next(iter(island_rooms), None)
 
     if index < FLOORS - 1:
         field[down[1]][down[0]] = d.CHAR_STAIRS_DOWN
@@ -218,6 +172,19 @@ def _build_floor(
     if island_tile is not None:
         left = island_tile[0] * (d.TILE_WIDTH + 1) + 1
         top = island_tile[1] * (d.TILE_HEIGHT + 1) + 1
+        for y in range(top, top + d.TILE_HEIGHT):
+            for x in range(left, left + d.TILE_WIDTH):
+                field[y][x] = d.CHAR_FLOOR
+        for x in range(left, left + d.TILE_WIDTH):
+            if island_tile[1] > 0:
+                field[top - 1][x] = d.WALL_CHAR
+            if island_tile[1] < d.TILE_NUM_Y - 1:
+                field[top + d.TILE_HEIGHT][x] = d.WALL_CHAR
+        for y in range(top, top + d.TILE_HEIGHT):
+            if island_tile[0] > 0:
+                field[y][left - 1] = d.WALL_CHAR
+            if island_tile[0] < d.TILE_NUM_X - 1:
+                field[y][left + d.TILE_WIDTH] = d.WALL_CHAR
         spots = [
             (x, y)
             for y in range(top, top + d.TILE_HEIGHT)
@@ -266,8 +233,9 @@ def build(
     corridor_h_width: int = d.CORRIDOR_H_WIDTH,
     corridor_v_width: int = d.CORRIDOR_V_WIDTH,
 ) -> Tuple[List[Floor], d.Player]:
+    floor_layout = shuffle_floor_layout([(1, 0), (0, 0), (0, 0)])
     elf_floors = {
-        "I": rand.randrange(FLOORS),
+        "I": next(index for index, counts in enumerate(floor_layout) if counts[0]),
         "J": rand.randrange(FLOORS),
         "K": rand.randrange(FLOORS - 1),
         "H": rand.randrange(FLOORS),
@@ -283,6 +251,7 @@ def build(
             entry_point,
             corridor_h_width,
             corridor_v_width,
+            floor_layout[index],
         )
         floors.append(floor)
         entry_point = floor.down
