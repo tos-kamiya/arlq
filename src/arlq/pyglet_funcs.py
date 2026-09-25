@@ -602,7 +602,6 @@ class PygletUI:
         This includes stage, hours, level (with item modifiers), item info,
         beatable monsters, LP value, and a rectangular LP bar.
         """
-        _, item_str = d.level_item_labels(player, stage_num)
         status_line = d.status_prefix(player, stage_num, hours) + "LP: "
 
         self._draw_text((0, self.field_height), status_line, COLOR_MAP["default"])
@@ -628,7 +627,7 @@ class PygletUI:
             self._draw_rect(x_offset, y_offset, fill_width, bar_height, lp_color)
 
         extra = "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
-        item_status = extra if stage_num == 3 else "  ".join([item_str, extra])
+        item_status = extra
         item_x_offset = x_offset + bar_width + 10
         self._draw_text((item_x_offset // self.cell_size_x, self.field_height), item_status, COLOR_MAP["default"])
 
