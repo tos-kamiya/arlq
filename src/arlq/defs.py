@@ -98,6 +98,7 @@ CHAR_PEGASUS: str = "p"
 CHAR_TREASURE: str = "T"
 CHAR_CALTROP: str = "x"
 CHAR_BARRIER: str = "="
+TRAP_MONSTER_DISGUISES: Dict[str, str] = {"M": CHAR_TREASURE, "V": "?"}
 
 Point = Tuple[int, int]
 Edge = Tuple[Point, Point]
@@ -112,16 +113,13 @@ class Entity:
 
 
 class Treasure(Entity):
-    """Entity that inherits from the Treasure class."""
+    """A chest that may be locked or inactive in the current timeline."""
 
     def __init__(self, x, y, encounter_type, unlock_key: Optional[str] = None):
         super().__init__(x, y)
         self.encounter_type = encounter_type
         self.unlock_key = unlock_key or encounter_type
-
-
-class MimicChest(Treasure):
-    """A treasure-looking trap that becomes a monster when contacted."""
+        self.active: bool = True
 
 
 class Tribe:
@@ -214,7 +212,8 @@ class Monster(Entity):
         if empowered < 1:
             raise ValueError("empowered must be positive")
         self.empowered: int = empowered
-        self.mimic_revealed: bool = False
+        self.revealed: bool = False
+        self.active: bool = True
 
 
 def monster_level(monster: Monster) -> int:
@@ -615,8 +614,16 @@ def player_appearance(player: Player) -> Tuple[str, Optional[str]]:
 
 def preview_entity_glyphs(entity: Entity) -> List[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
+    if isinstance(entity, (Monster, Treasure)) and not entity.active:
+        return []
     char = None
-    if isinstance(entity, (Companion, Monster)):
+    if isinstance(entity, Monster):
+        char = (
+            TRAP_MONSTER_DISGUISES[entity.tribe.char]
+            if entity.tribe.char in TRAP_MONSTER_DISGUISES and not entity.revealed
+            else entity.tribe.char
+        )
+    elif isinstance(entity, Companion):
         char = entity.tribe.char
     elif isinstance(entity, Treasure):
         char = CHAR_TREASURE
@@ -647,10 +654,12 @@ def revealed_entity_glyphs(
             char = "!"
         return [FieldGlyph(entity.x, entity.y, char, "companion", bold=True)]
     if isinstance(entity, Monster):
-        if entity.tribe.char == "M" and not getattr(entity, "mimic_revealed", False):
-            return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
+        if not entity.active:
+            return []
         char = entity.tribe.char
-        if monster_type_key(entity) not in known_types:
+        if char in TRAP_MONSTER_DISGUISES and not entity.revealed:
+            return [FieldGlyph(entity.x, entity.y, TRAP_MONSTER_DISGUISES[char], "yellow", bold=True)]
+        if char not in TRAP_MONSTER_DISGUISES and monster_type_key(entity) not in known_types:
             if show_entities:
                 return []
             return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
@@ -664,8 +673,6 @@ def revealed_entity_glyphs(
             glyphs.append(FieldGlyph(entity.x + 1, entity.y, "'", tone, bold=True, dim=dim))
         return glyphs
     if isinstance(entity, Treasure):
-        if isinstance(entity, MimicChest):
-            return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
-        if unlocked_treasures is not None and entity.unlock_key in unlocked_treasures:
+        if entity.active and unlocked_treasures is not None and entity.unlock_key in unlocked_treasures:
             return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
     return []

@@ -176,10 +176,10 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 Stage 4 is experimental and available from the stage selection menu. Its
 design and gameplay are subject to change.
 
-For a one-floor trap test arena with Stage 1's side margins, a level 150 player who has the talisman, W, its treasure chest, Vortex, and several `b` and `d` monsters, run `uv run -p .venv/bin/python python -m arlq --trap-test`. Defeating W reveals the Mimic chest. Collapse is omitted until its behavior is implemented.
+For a one-floor trap test arena with Stage 1's side margins, a level 150 player who has the talisman, W, two hidden chests, Vortex, and several `b` and `d` monsters, run `uv run -p .venv/bin/python python -m arlq --trap-test`. Defeating W reveals both chests as `T`; one is a Mimic. Collapse is omitted until its behavior is implemented.
 The arena seed is saved, so `uv run -p .venv/bin/python python -m arlq --trap-test --rematch` reruns the same layout without the map-mode flag. `--rematch` alone also reruns the most recently played stage.
 
-Stage 4 has four floors with the Stage 3 layout. Each floor has at most one filled room, and one separate sealed room across the stage contains the Isolated Elf. The four elves appear across the floors, and the Dread Wyrm guards the final floor. Adjacent floors can have a second stair pair in another room when space is available. Floor 1 keeps its current roster, floors 2 and 3 use the current floor 2 roster, and floor 4 uses the current floor 3 roster. Floor 1 has 22 amoebas and two `k` Marksmen; floors 2–4 have three `k` Marksmen each. One `e` Erebus appears on floor 1, and one each of `V` Vortex and `E` Rare Erebus appear on floors 2–4.
+Stage 4 has four floors with the Stage 3 layout. Each floor has at most one filled room, and one separate sealed room across the stage contains the Isolated Elf. The four elves appear across the floors, and the Dread Wyrm guards the final floor. The real chest and Mimic are placed on the final floor at the start, but both remain hidden and inactive until W is defeated. Then both appear as identical `T` chests. Adjacent floors can have a second stair pair in another room when space is available. Floor 1 keeps its current roster, floors 2 and 3 use the current floor 2 roster, and floor 4 uses the current floor 3 roster. Floor 1 has 22 amoebas and two `k` Marksmen; floors 2–4 have three `k` Marksmen each. One `e` Erebus appears on floor 1, and one each of `V` Vortex and `E` Rare Erebus appear on floors 2–4.
 
 Floors 2 and 3 contain more empowered `b` monsters; floor 4 has more empowered `d` monsters.
 
@@ -189,20 +189,20 @@ While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an 
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **k** Marksman | Level 80. After each player move, it shoots for 5 LP damage when aligned horizontally or vertically with a clear path. Walls, barriers, stairs, caltrops, monsters, companions, and unactivated `M`, `O`, and `V` traps block its shot. When triggered, a Mimic becomes an ordinary `M` monster and continues to block shots; Vortex disappears, and Collapse becomes an open hole. Arrows do not activate traps. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
+| **k** Marksman | Level 80. After each player move, it shoots for 5 LP damage when aligned horizontally or vertically with a clear path. Walls, barriers, stairs, caltrops, monsters, and companions block its shot. Both chests block shots after W is defeated; while hidden, they do not. Unactivated `O` and `V` traps also block shots; Vortex disappears when defeated, and Collapse becomes an open hole when triggered. Arrows do not activate traps. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
 | **E** Rare Erebus | Level 30. When defeated, halves the player's level (rounded down, minimum 1) instead of granting the usual level increase; it restores 8 LP. It respawns after the usual interval. |
 
 #### Traps
 
-Unidentified traps are hidden as `?`, except that a Mimic looks exactly like a treasure chest. Discovery is tracked per trap, so identifying one does not reveal every trap of the same kind.
+Unidentified traps are hidden as `?`, except that a Mimic looks exactly like a treasure chest after W is defeated. Discovery is tracked per trap, so identifying one does not reveal every trap of the same kind.
 
 Traps do not respawn. A discovered Collapse remains in place and can be used repeatedly.
 
 | Trap | Display before discovery | Description |
 | ---- | ------------------------ | ----------- |
-| **M** Mimic | `T` | Level 85. Appears as a second chest after the Dread Wyrm is defeated. Contact reveals it and spawns an `M` monster at that spot, starting normal combat immediately. If it survives, its visible `M` blocks Marksman shots. Defeating it restores 16 LP and leaves a faint `M` marker; it does not respawn. |
+| **M** Mimic | Hidden, then `T` | Level 85. Placed at the start on the same floor as the real treasure. Both chests appear as `T` only after the Dread Wyrm is defeated. Contact then reveals the Mimic as `M` and starts combat. If it survives, it stays visible as `M`. Defeating it restores 16 LP and leaves a faint `M` marker; it does not respawn. |
 | **O** Collapse | `?` | Entering it drops the player one floor to the same coordinates. The destination must be passable. Once triggered, that location is known and appears as `O`; the hole remains usable. It does not appear on the lowest floor. |
-| **V** Vortex | `?` | Level 30. When defeated, repositions monsters, floor companions, and the treasure chest except elves, removes all Marksmen's arrow marks, and resets explored floor cells. An activated Mimic moves as a monster and remains identified. The Dread Wyrm and chest move independently. Wyrm barriers are rebuilt around the new positions and become unexplored. Known walls and stairs remain visible. Collapse locations stay fixed and are not destinations for the rearrangement. |
+| **V** Vortex | `?` | Level 30. When defeated, repositions monsters, floor companions, and both chests except elves, removes all Marksmen's arrow marks, and resets explored floor cells. The Mimic moves with the monsters and keeps its discovery state. The Dread Wyrm and chests move independently. Wyrm barriers are rebuilt around the new positions and become unexplored. Known walls and stairs remain visible. Collapse locations stay fixed and are not destinations for the rearrangement. |
 
 Collapse is a planned addition. Stage 4 is experimental and its behavior may change.
 
@@ -210,7 +210,7 @@ Collapse is a planned addition. Stage 4 is experimental and its behavior may cha
 
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
-| **l** Loop Companion | Appears only in Stage 3. Sends the world back 80 turns; monster identities remain known. |
+| **l** Loop Companion | Appears in Stages 3 and 4. Sends the world back 80 turns; monster identities remain known. |
 | **n** Nomicon  | Reveals the type of every monster within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |
