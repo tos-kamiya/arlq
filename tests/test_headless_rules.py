@@ -178,10 +178,10 @@ def test_stage4_has_independent_per_floor_roster():
         for ch, _, _ in floor
     )
     assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[0] if ch == "a") == 22
-    assert all(
-        sum(count for ch, count, _ in floor if ch == "k") == 4
+    assert [
+        sum(count for ch, count, _ in floor if ch == "k")
         for floor in stage3_module.STAGE4_ROSTER
-    )
+    ] == [2, 3, 3]
     assert d.MARKSMAN_LP_DAMAGE == 5
     assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[2] if ch == "w") == 1
     assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[2] if ch == "W") == 1
