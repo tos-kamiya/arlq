@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 4.8.0 - 2026-09-25
+
+- Add a color-based `arlq-cli` map view, with `--dots` as an alternative for
+  unexplored areas. Preserve map-cell backgrounds behind characters and the
+  Stage 3 Javelin Elf follower.
+- Pace terminal trace-watch playback using the configured GUI key-repeat
+  interval.
+
 ## 4.7.2 - 2026-09-25
 
 - Show the destination floor immediately after using stairs in Stage 3.
