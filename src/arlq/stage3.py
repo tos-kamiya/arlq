@@ -12,6 +12,7 @@ from .arlq import (
     create_field,
     find_random_place,
     get_torched,
+    iterate_offsets,
     move_player,
     reveal_entities_in_fov,
     spawn_at,
@@ -419,6 +420,12 @@ def _defeat_monster(
 
     if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
         spread_caltrops(current.field, (player.x, player.y), current.entities)
+    elif entity.tribe.effect == d.EFFECT_ROCK_SPREAD:
+        for x, y in iterate_offsets(
+            player.x, player.y, d.ROCK_SPREAD_OFFSETS, except_for_entities=current.entities
+        ):
+            if current.field[y][x] == d.CHAR_FLOOR:
+                current.field[y][x] = d.WALL_CHAR
 
     if d.monster_level(entity) > 0 and ch not in d.STAGE3_NO_RESPAWN_MONSTERS:
         spawn_key = (floor[0], d.monster_type_key(entity))
