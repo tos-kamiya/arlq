@@ -465,6 +465,7 @@ class PygletUI:
         stage_roster: Optional[List[d.MonsterTribe]] = None,
         floor_view: bool = False,
         floor_label: Optional[str] = None,
+        arrow_marks=(),
     ):
         """
         Renders the game stage:
@@ -509,6 +510,10 @@ class PygletUI:
                         COLOR_MAP[CI_RED],
                         thickness=2,
                     )
+
+        for (x, y), char in arrow_marks:
+            if (show_entities or torched[y][x]) and (x, y) != (px, py):
+                self._draw_field_text((x, y), char, COLOR_MAP[CI_RED], bold=True)
 
         if not floor_view:
             self._draw_visibility_boundary(cur_torched)
