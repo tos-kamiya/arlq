@@ -57,8 +57,7 @@ You can also select the Blessed terminal interface explicitly:
 arlq --terminal
 ```
 
-Run `arlq --help` for the complete list of options. The old `--curses` option
-is retained as a deprecated alias for `--terminal`. The terminal interface
+Run `arlq --help` for the complete list of options. The terminal interface
 requires a terminal at least 80 columns wide and 24 lines high; the game
 pauses while the terminal is smaller and resumes after it is enlarged.
 

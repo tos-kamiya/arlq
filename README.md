@@ -33,47 +33,49 @@ The required Pyglet and Blessed dependencies are installed automatically.
 Once installed, the `arlq` and `arlq-cli` commands become available.
 
 ```bash
-arlq --stage 1
-arlq --stage 3
-arlq-cli --stage 1
+arlq
+arlq-cli
 ```
+
+Running `arlq` without options opens the graphical interface. Running
+`arlq-cli` without options starts the terminal interface.
 
 The terminal interface requires a terminal at least 80 columns wide and 24
 lines high. If the terminal is resized below that size, the game pauses until
 it is enlarged again.
 
-- Without any options, the game will run in a Pyglet window.
-- To make the game easier, use the `-T` option (expands the visible area).
-- To make the game more challenging, use the `-t` option (reduces the visible area).
-- Use `-n` / `--narrower-corridors` to make corridors narrower.
-- Use `--stage 1`, `--stage 2`, or `--stage 3` to select a stage directly.
-- Use `--debug-show-entities` to show undiscovered entities.
-- Use `--seed VALUE` to select an integer seed or a versioned seed string.
-- With the `--terminal` option, the game will run in the terminal using Blessed.
-- `--curses` remains as a deprecated alias for `--terminal`.
-- Use `--rematch` to replay the most recently started stage with the same seed.
-- Use `--version` to show the version.
-- Use `--lang en` or `--lang ja` to choose the language of in-game messages
-  and the stage-select screen. `--lang auto` (the default) detects it from
-  the locale. Status-bar labels and item names stay in English regardless
-  of language.
+### Options shared by `arlq-cli` and `arlq`
+
+| Option | Description |
+| --- | --- |
+| `--version` | Show the version. |
+| `--rematch` | Replay the most recently started stage with the same seed. |
+| `--seed VALUE` | Select an integer seed or a versioned seed string. |
+| `--stage 1`, `--stage 2`, `--stage 3` | Select a stage directly. |
+| `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
+| `--debug-show-entities` | Show undiscovered entities. |
 
 At game start, the stage and seed are saved to `arlq/last-seed` under the user
 cache directory. `--rematch` starts the saved stage without showing the stage
-selector. It cannot be combined with `--seed` or `--stage`; keep the other
-layout options unchanged to reproduce the same layout.
+selector. It cannot be combined with `--seed`. You may also specify `--stage`
+if it matches the saved stage. Keep the other layout options unchanged to
+reproduce the same layout.
 
-GUI-only options:
+#### Difficulty options
 
-- Use `--scale FACTOR` to enlarge or reduce the Pyglet GUI (from `0.5` to
-  `4.0`, for example `--scale 1.5`). The selected scale is saved in the per-user configuration
-  directory and is used automatically on the next GUI launch. The stage
-  selection screen also provides a `Settings` menu for changing it without a
-  command-line option.
-- Use `--key-repeat-interval SECONDS` to set the GUI movement repeat delay and
-  interval (from `0.1` to `1.0` seconds), or use `none` to disable it. The
-  setting is saved for later GUI starts and can also be changed in the stage
-  selection screen's `Settings`.
+| Option | Description |
+| --- | --- |
+| `-T` / `--large-torch` | Expand the visible area. |
+| `-t` / `--small-torch` | Reduce the visible area. |
+| `-n` / `--narrower-corridors` | Make corridors narrower. |
+
+### Options available only with `arlq`
+
+| Option | Description |
+| --- | --- |
+| `--terminal` | Run the game in the terminal using Blessed. |
+| `--scale FACTOR` | Enlarge or reduce the Pyglet GUI (from `0.5` to `4.0`, for example `--scale 1.5`). The selected scale is saved in the per-user configuration directory and used automatically on the next GUI launch. You can also change it in the stage selection screen's `Settings`. |
+| `--key-repeat-interval SECONDS` | Set the GUI movement repeat delay and interval (from `0.1` to `1.0` seconds), or use `none` to disable it. The setting is saved for later GUI starts and can also be changed in the stage selection screen's `Settings`. |
 
 ## Game Description
 
