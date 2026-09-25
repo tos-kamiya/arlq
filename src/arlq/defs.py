@@ -35,7 +35,7 @@ MONSTER_RESPAWN_INTERVAL: int = 65
 SWORD_USES: int = 3
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
 # W and w stay down for the rest of a Stage 3 run.
-STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w"}
+STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w", "V"}
 STAGE3_C_FLAG: int = 1
 STAGE3_I_FLAG: int = 2
 STAGE3_K_FLAG: int = 4

@@ -153,26 +153,10 @@ Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm
 Stage 3 features empowered versions of `b`, `c`, and `d`: `b'`, `c'`, and `d'`.
 One Golem (`g`) appears on a random floor in Stage 3 and Stage 4. When defeated, rocks scatter and turn some floor tiles into walls.
 
-### Stage 4 (experimental, development-only)
-
-Stage 4 is experimental and available from the stage selection menu. Its
-design and gameplay are subject to change.
-
-Stage 4 has four floors with the Stage 3 layout. Each floor has at most one filled room, and one separate sealed room across the stage contains the Isolated Elf. The four elves appear across the floors, and the Dread Wyrm guards the final floor. Adjacent floors can have a second stair pair in another room when space is available. Floor 1 keeps its current roster, floors 2 and 3 use the current floor 2 roster, and floor 4 uses the current floor 3 roster. Floor 1 has 22 amoebas and two `k` Marksmen; floors 2–4 have three `k` Marksmen each. One `e` Erebus appears on floor 1, and one each of `V` Vortex and `E` Erebus appear on floors 2–4.
-
-Floors 2 and 3 contain more empowered `b` monsters; floor 4 has more empowered `d` monsters.
-
-While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an adjacent floor's explored map in GUI mode. In `arlq-cli`, hold Shift and press W or S. Unexplored areas remain hidden. The bottom-right `F:` marker shows the displayed floor. A normal movement input returns the display to the player's floor and moves as usual.
-
 #### Monsters
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **m** Myconid | Temporarily reduces the player's field of vision until another monster is contacted. |
-| **e** Erebus | Level 1. Defeating it costs 5 LP. |
-| **k** Marksman | Level 80. After each player move, it shoots for 5 LP damage when aligned horizontally or vertically with a clear path. Walls, barriers, stairs, caltrops, monsters, and companions block its shot. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
-| **E** Erebus | Level 30. When defeated, halves the player's level (rounded down, minimum 1) instead of granting the usual level increase; it restores 8 LP. It respawns after the usual interval. |
-| **V** Vortex | Level 30. When defeated, repositions monsters, floor companions, and the treasure chest except elves, removes all Marksmen's arrow marks, and resets explored floor cells. The Dread Wyrm and chest move independently. Wyrm barriers are rebuilt around the new positions and become unexplored. Known walls and stairs remain visible. The Vortex reappears after the usual respawn interval. |
 | **w** Wyrm | Protected by a barrier. |
 | **W** Dread Wyrm | Protected by a barrier and unlocks the treasure chest when defeated. |
 
@@ -186,6 +170,38 @@ While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an 
 | **H** High Elf | Grants the talisman after meeting any two of `I`, `J`, and `K`. |
 
 The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first contact made while their condition is unmet; any contact after that sends you to a random location on the map.
+
+### Stage 4 (experimental, development-only)
+
+Stage 4 is experimental and available from the stage selection menu. Its
+design and gameplay are subject to change.
+
+Stage 4 has four floors with the Stage 3 layout. Each floor has at most one filled room, and one separate sealed room across the stage contains the Isolated Elf. The four elves appear across the floors, and the Dread Wyrm guards the final floor. Adjacent floors can have a second stair pair in another room when space is available. Floor 1 keeps its current roster, floors 2 and 3 use the current floor 2 roster, and floor 4 uses the current floor 3 roster. Floor 1 has 22 amoebas and two `k` Marksmen; floors 2–4 have three `k` Marksmen each. One `e` Erebus appears on floor 1, and one each of `V` Vortex and `E` Rare Erebus appear on floors 2–4.
+
+Floors 2 and 3 contain more empowered `b` monsters; floor 4 has more empowered `d` monsters.
+
+While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an adjacent floor's explored map in GUI mode. In `arlq-cli`, hold Shift and press W or S. Unexplored areas remain hidden. The bottom-right `F:` marker shows the displayed floor. A normal movement input returns the display to the player's floor and moves as usual.
+
+#### Monsters
+
+| Display & Name | Description |
+| -------------- | ----------- |
+| **k** Marksman | Level 80. After each player move, it shoots for 5 LP damage when aligned horizontally or vertically with a clear path. Walls, barriers, stairs, caltrops, monsters, companions, and unactivated `M`, `O`, and `V` traps block its shot. Activated traps do not: Mimics and Vortexes disappear, and Collapse becomes an open hole. Arrows do not activate traps. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
+| **E** Rare Erebus | Level 30. When defeated, halves the player's level (rounded down, minimum 1) instead of granting the usual level increase; it restores 8 LP. It respawns after the usual interval. |
+
+#### Traps
+
+Unidentified traps are hidden as `?`, except that a Mimic looks exactly like a treasure chest. Discovery is tracked per trap, so identifying one does not reveal every trap of the same kind.
+
+Traps do not respawn. A discovered Collapse remains in place and can be used repeatedly.
+
+| Trap | Display before discovery | Description |
+| ---- | ------------------------ | ----------- |
+| **M** Mimic | `T` | Appears alongside the treasure chest and is indistinguishable from it until contacted. |
+| **O** Collapse | `?` | Entering it drops the player one floor to the same coordinates. The destination must be passable. Once triggered, that location is known and appears as `O`; the hole remains usable. It does not appear on the lowest floor. |
+| **V** Vortex | `?` | Level 30. When defeated, repositions monsters, floor companions, and the treasure chest except elves, removes all Marksmen's arrow marks, and resets explored floor cells. The Dread Wyrm and chest move independently. Wyrm barriers are rebuilt around the new positions and become unexplored. Known walls and stairs remain visible. Collapse locations stay fixed and are not destinations for the rearrangement. |
+
+Mimic and Collapse are planned additions; Stage 4 is experimental and their behavior may change.
 
 ## Companion List
 
