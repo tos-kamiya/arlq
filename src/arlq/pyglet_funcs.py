@@ -636,7 +636,7 @@ class PygletUI:
         item_x_offset = x_offset + bar_width + 10
         self._draw_text((item_x_offset // self.cell_size_x, self.field_height), item_status, COLOR_MAP["default"])
 
-        if stage_num == 3:
+        if stage_num in (3, 4):
             progress_x = 0
             for label, achieved in d.stage3_progress_marks(player):
                 color = COLOR_MAP["default"] if achieved else (100, 106, 118)
