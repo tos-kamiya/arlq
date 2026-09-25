@@ -58,8 +58,8 @@ ROSTER: List[List[Tuple[str, int, int]]] = [
 # Stage 4 has its own per-floor counts so balancing it does not change Stage 3.
 STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1)],
 ]
 
 # Distinct, non-elf monster tribes across all floors, strongest first: feeds
@@ -562,6 +562,42 @@ def _rewind_to_history(
     return tr("-- Time folds back to the beginning of the recorded past.")
 
 
+def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> None:
+    """Reposition mobile floor entities and forget explored floor cells."""
+    movable = [
+        entity
+        for entity in current.entities
+        if isinstance(entity, d.Companion)
+        or (
+            isinstance(entity, d.Monster)
+            and not entity.tribe.is_elf
+            and entity.tribe.effect != d.EFFECT_VORTEX
+        )
+    ]
+    avoid = {(player.x, player.y)} | {(entity.x, entity.y) for entity in movable}
+    current.entities[:] = [entity for entity in current.entities if entity not in movable]
+
+    for entity in movable:
+        char = entity.tribe.char
+        empowered = entity.empowered if isinstance(entity, d.Monster) else 1
+        origin_floor = entity.origin_floor if isinstance(entity, d.Companion) else floor_index
+        _spawn(
+            current.entities,
+            current.field,
+            char,
+            avoid,
+            current.island,
+            origin_floor,
+            empowered,
+        )
+
+    for y, row in enumerate(current.field):
+        for x, cell in enumerate(row):
+            if cell == d.CHAR_FLOOR:
+                current.seen[y][x] = 0
+    current.arrow_marks.clear()
+
+
 def _defeat_monster(
     entity: d.Monster,
     current: Floor,
@@ -618,6 +654,8 @@ def _defeat_monster(
         ):
             if current.field[y][x] == d.CHAR_FLOOR:
                 current.field[y][x] = d.WALL_CHAR
+    elif entity.tribe.effect == d.EFFECT_VORTEX:
+        _vortex_rearrange(current, player, floor[0])
 
     if d.monster_level(entity) > 0 and ch not in d.STAGE3_NO_RESPAWN_MONSTERS:
         spawn_key = (floor[0], d.monster_type_key(entity))

@@ -63,6 +63,7 @@ EFFECT_UNLOCK_TREASURE: str = "Unlock Treasure"
 EFFECT_ENERGY_DRAIN: str = "Energy Drain"
 EFFECT_CALTROP_SPREAD: str = "Caltrop Spread"
 EFFECT_ROCK_SPREAD: str = "Rock Spread"
+EFFECT_VORTEX: str = "Vortex"
 EFFECT_GOT_TREASURE: str = "Got Treasure"
 
 PEGASUS_STEP_X: int = 9
@@ -341,6 +342,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("m", 5, MIN_FOOD, event_message="-- Spores cloud your vision!"),
     _MT("w", 50, MIN_FOOD),
     _MT("W", 150, MIN_FOOD, event_message=">> Dread Wyrm (W) defeated! <<", treasure_key=CHAR_TREASURE + "W"),
+    _MT("V", 1, MIN_FOOD, effect=EFFECT_VORTEX, event_message="-- The Vortex rearranges the floor!"),
 ]
 assert len({tribe.char for tribe in MONSTER_TRIBES}) == len(MONSTER_TRIBES), "Duplicate monster tribe char"
 

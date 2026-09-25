@@ -46,6 +46,8 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "island",
         "up_stairs",
         "down_stairs",
+        "contact_reveal",
+        "arrow_marks",
     }
 
 
