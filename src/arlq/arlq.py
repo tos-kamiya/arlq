@@ -2,6 +2,7 @@ from typing import Container, Dict, List, Set, Tuple, Optional
 
 from collections import Counter
 import argparse
+import json
 from dataclasses import dataclass
 from importlib import import_module
 import math
@@ -9,7 +10,7 @@ import sys
 import time
 from pathlib import Path
 
-from appdirs import user_cache_dir
+from appdirs import user_cache_dir, user_config_dir
 
 from .__about__ import __version__
 
@@ -38,6 +39,25 @@ def game_config_from_args(args) -> GameConfig:
         corridor_h_width=d.CORRIDOR_H_WIDTH - corridor_adjustment,
         corridor_v_width=d.CORRIDOR_V_WIDTH - corridor_adjustment,
     )
+
+
+def terminal_replay_interval(args) -> float:
+    """Match terminal replay pacing to the saved GUI key repeat interval."""
+    interval = getattr(args, "key_repeat_interval", None)
+    if interval is None:
+        settings_path = Path(user_config_dir("arlq")) / "settings.json"
+        try:
+            settings = json.loads(settings_path.read_text(encoding="utf-8"))
+            interval = settings.get("key_repeat_interval")
+        except (OSError, ValueError, TypeError, AttributeError):
+            interval = None
+    try:
+        interval = float(interval)
+    except (ValueError, TypeError):
+        interval = 0.25
+    if not math.isfinite(interval):
+        interval = 0.25
+    return min(1.0, max(0.1, interval))
 
 
 def tick_message(message: Tuple[int, str]) -> Tuple[int, str]:
@@ -1018,7 +1038,14 @@ def main():
 
     def play(ui) -> None:
         if args.trace_replay:
-            replay_ui = ReplayUI(trace_data["turns"], args.stage, ui if args.trace_replay_watch else None)
+            replay_ui = ReplayUI(
+                trace_data["turns"],
+                args.stage,
+                ui if args.trace_replay_watch else None,
+                draw_interval=terminal_replay_interval(args)
+                if args.trace_replay_watch and args.terminal
+                else 0.0,
+            )
             run_game(
                 replay_ui,
                 seed_str,
