@@ -22,19 +22,21 @@ def blank_field():
 
 def stage3_state(player, entities):
     field = blank_field()
-    return [{
-        "field": field,
-        "entities": entities,
-        "seen": [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-        "known_companions": set(),
-        "up": (1, 1),
-        "down": (d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
-        "island": None,
-    }], field
+    return [
+        Floor(
+            field=field,
+            entities=entities,
+            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            known_companions=set(),
+            up=(1, 1),
+            down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+            island=None,
+        )
+    ], field
 
 
 def test_stage3_floor_declares_its_complete_state_shape():
-    assert Floor.__required_keys__ == {
+    assert set(Floor.__dataclass_fields__) == {
         "field",
         "entities",
         "seen",
@@ -42,6 +44,8 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "up",
         "down",
         "island",
+        "up_stairs",
+        "down_stairs",
     }
 
 
@@ -141,18 +145,18 @@ def test_stage3_wyrm_combat_updates_message_position_and_state(level, expected_m
     assert messages == [expected_message]
     assert (player.x, player.y) == expected_position
     if level == 1:
-        assert floors[0]["entities"] == [wyrm]
+        assert floors[0].entities == [wyrm]
         assert player.item is None
         assert player.lp == 84
         assert not player.unlocked_treasures
         assert not queue
     else:
-        assert floors[0]["entities"] == []
+        assert floors[0].entities == []
         assert player.level == 201
         assert player.karma == 1
         assert player.unlocked_treasures == {"TW"}
         assert not queue
-        assert floors[0]["entities"] == []
+        assert floors[0].entities == []
 
 
 def test_stage3_excludes_fire_lizard():
@@ -213,7 +217,7 @@ def test_stage3_treasure_requires_current_timeline_w_defeat():
     assert messages[1] == ">> Dread Wyrm (W) defeated! <<"
     assert player.stage3_treasure_collected
     assert player.stage3_won
-    assert floors[0]["entities"] == []
+    assert floors[0].entities == []
 
 
 def test_legacy_defeat_applies_item_and_caltrop_field_effect():
@@ -367,8 +371,8 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     player.stage3_elf_floors = {"I": 1, "J": 3, "K": 2, "H": 1}
     loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
     current_floors, current_field = stage3_state(player, [loop])
-    current_floors[0]["known_companions"] = {"n"}
-    current_floors[0]["seen"][1][1] = 9
+    current_floors[0].known_companions = {"n"}
+    current_floors[0].seen[1][1] = 9
     current_field[10][10] = d.WALL_CHAR
 
     old_player = d.Player(5, 5, 7, 60)
@@ -397,9 +401,9 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     assert player.lp == 60
     assert checkpoint == [(4, 5)]
     assert current_queue == Counter({(0, "a"): 2})
-    assert current_floors[0]["field"][10][10] == " "
-    assert current_floors[0]["seen"][1][1] == 9
-    assert current_floors[0]["known_companions"] == {"l", "n"}
+    assert current_floors[0].field[10][10] == " "
+    assert current_floors[0].seen[1][1] == 9
+    assert current_floors[0].known_companions == {"l", "n"}
     assert player.known_monsters == {"a", "W"}
     assert player.unlocked_treasures == {"TW"}
     assert not player.stage3_treasure_collected
@@ -409,12 +413,12 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     assert player.stage3_met_elves == set()
     assert player.stage3_elf_floors == {"I": 1, "J": 3, "K": 2, "H": 1}
     assert not player.stage3_won
-    assert len(current_floors[0]["entities"]) == 2
+    assert len(current_floors[0].entities) == 2
     assert any(
         isinstance(entity, d.Companion) and entity.tribe.char == "l"
-        for entity in current_floors[0]["entities"]
+        for entity in current_floors[0].entities
     )
-    assert any(isinstance(entity, d.Treasure) for entity in current_floors[0]["entities"])
+    assert any(isinstance(entity, d.Treasure) for entity in current_floors[0].entities)
     assert not history
 
 
@@ -460,24 +464,24 @@ def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():
     origin_pegasus = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["p"], origin_floor=0)
     other_pegasus = d.Companion(7, 7, d.CHAR_TO_COMPANION_TRIBE["p"], origin_floor=1)
     floors = [
-        {
-            "field": blank_field(),
-            "entities": [origin_pegasus],
-            "seen": [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-            "known_companions": set(),
-            "up": (1, 1),
-            "down": (4, 2),
-            "island": None,
-        },
-        {
-            "field": blank_field(),
-            "entities": [other_pegasus],
-            "seen": [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-            "known_companions": set(),
-            "up": (5, 5),
-            "down": (50, 50),
-            "island": None,
-        },
+        Floor(
+            field=blank_field(),
+            entities=[origin_pegasus],
+            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            known_companions=set(),
+            up=(1, 1),
+            down=(4, 2),
+            island=None,
+        ),
+        Floor(
+            field=blank_field(),
+            entities=[other_pegasus],
+            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            known_companions=set(),
+            up=(5, 5),
+            down=(50, 50),
+            island=None,
+        ),
     ]
     floor = [0]
     checkpoint = [(2, 2)]
@@ -505,8 +509,8 @@ def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():
     def companion_count(entities, char):
         return sum(1 for e in entities if isinstance(e, d.Companion) and e.tribe.char == char)
 
-    assert companion_count(floors[0]["entities"], "p") == 1
-    assert companion_count(floors[1]["entities"], "p") == 1
+    assert companion_count(floors[0].entities, "p") == 1
+    assert companion_count(floors[1].entities, "p") == 1
 
 
 def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
@@ -528,7 +532,7 @@ def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
     monkeypatch.setattr(stage3_module, "_spawn", record_spawn)
     _step(KEYS["U"], floors, player, floor, checkpoint, queue, history, 0)
 
-    assert [(entities is floors[0]["entities"], char, floor_index) for entities, char, floor_index in spawned] == [
+    assert [(entities is floors[0].entities, char, floor_index) for entities, char, floor_index in spawned] == [
         (True, "p", 0),
         (True, "X", 0),
         (False, "p", 1),
@@ -664,12 +668,12 @@ def test_elf_encounters_apply_their_conditions(elf, initial_flags, expected_flag
     assert player.stage3_flags == expected_flags
     if elf == "J":
         assert player.persistent_followers == [(2, 2, 0, "J")]
-        assert floors[0]["entities"] == []
+        assert floors[0].entities == []
     elif elf == "H":
         assert player.stage3_flags & STAGE3_H
-        assert floors[0]["entities"] == [entity]
+        assert floors[0].entities == [entity]
     else:
-        assert floors[0]["entities"] == [entity]
+        assert floors[0].entities == [entity]
         if elf == "K":
             assert player.item is None
             assert player.item_uses == 0
@@ -719,7 +723,7 @@ def test_elf_repeat_contact_shows_follow_up_message(elf, initial_flags):
     assert messages[1] is None
     assert messages[2] is not None
     assert messages[2] != messages[0]
-    assert len(floors[0]["entities"]) == 1
+    assert len(floors[0].entities) == 1
 
 
 def test_stage3_high_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
@@ -853,14 +857,14 @@ def test_isolated_elf_sends_player_away_on_repeat_contact(monkeypatch):
     messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
     assert messages == ["-- The Isolated Elf told you about the history of the elves."]
     assert (player.x, player.y) == (3, 2)
-    assert floors[0]["entities"] == [entity]
+    assert floors[0].entities == [entity]
 
     monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (20, 15))
     messages = run_stage3_keys("LR", floors, player, floor, checkpoint, queue, history)
 
     assert messages[-1] == "-- The Isolated Elf wants to be left alone, and sends you elsewhere."
     assert (player.x, player.y) == (20, 15)
-    assert floors[0]["entities"] == [entity]
+    assert floors[0].entities == [entity]
 
 
 def test_non_isolated_elf_repeat_contact_does_not_relocate_player():
