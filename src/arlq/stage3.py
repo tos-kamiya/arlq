@@ -57,9 +57,9 @@ ROSTER: List[List[Tuple[str, int, int]]] = [
 
 # Stage 4 has its own per-floor counts so balancing it does not change Stage 3.
 STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
-    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1)],
+    [("a", 22, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("e", 1, 1), ("k", 4, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 4, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 4, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1), ("w", 1, 1), ("W", 1, 1)],
 ]
 
 # Distinct, non-elf monster tribes across all floors, strongest first: feeds
@@ -352,6 +352,14 @@ def build(
         })
         special_floors = {ch: rand.randrange(FLOORS) for ch in ("m", "X", "e", "g")}
         m_floor = special_floors.pop("m")
+    elif stage_num == 4:
+        elf_floors.update({
+            "J": rand.randrange(FLOORS),
+            "K": rand.randrange(FLOORS - 1),
+            "H": rand.randrange(FLOORS),
+        })
+        special_floors = {}
+        m_floor = None
     else:
         special_floors = {}
         m_floor = None
@@ -373,6 +381,12 @@ def build(
             up_point = None if index == 0 else room_center(stair_tiles[index - 1])
             down_point = None if index == FLOORS - 1 else room_center(stair_tiles[index])
         roster = list(STAGE4_ROSTER[index] if stage_num == 4 else ROSTER[index])
+        if stage_num == 4:
+            roster.extend(
+                (char, 1, 1)
+                for char, assigned_floor in elf_floors.items()
+                if char != "I" and assigned_floor == index
+            )
         if index == m_floor:
             roster.append(("m", 2, 1))
         floor = _build_floor(
@@ -491,11 +505,16 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
         blocked = False
         for offset in range(1, distance):
             x, y = entity.x + step_x * offset, entity.y + step_y * offset
-            if current.field[y][x] in (d.WALL_CHAR, *d.STAIR_CHARS):
+            if current.field[y][x] in (
+                d.WALL_CHAR,
+                d.CHAR_CALTROP,
+                d.CHAR_BARRIER,
+                *d.STAIR_CHARS,
+            ):
                 blocked = True
                 break
             if any(
-                isinstance(other, d.Monster) and (other.x, other.y) == (x, y)
+                isinstance(other, (d.Monster, d.Companion)) and (other.x, other.y) == (x, y)
                 for other in current.entities
             ):
                 blocked = True
@@ -567,7 +586,7 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
     movable = [
         entity
         for entity in current.entities
-        if isinstance(entity, d.Companion)
+        if isinstance(entity, (d.Companion, d.Treasure))
         or (
             isinstance(entity, d.Monster)
             and not entity.tribe.is_elf
@@ -577,23 +596,39 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
     avoid = {(player.x, player.y)} | {(entity.x, entity.y) for entity in movable}
     current.entities[:] = [entity for entity in current.entities if entity not in movable]
 
+    # Barriers belong to the Wyrms. Clear them before moving the Wyrms, then
+    # place them around every new position after the shuffle.
+    for y, row in enumerate(current.field):
+        for x, cell in enumerate(row):
+            if cell == d.CHAR_BARRIER:
+                current.field[y][x] = d.CHAR_FLOOR
+
     for entity in movable:
-        char = entity.tribe.char
-        empowered = entity.empowered if isinstance(entity, d.Monster) else 1
-        origin_floor = entity.origin_floor if isinstance(entity, d.Companion) else floor_index
-        _spawn(
-            current.entities,
-            current.field,
-            char,
-            avoid,
-            current.island,
-            origin_floor,
-            empowered,
-        )
+        if isinstance(entity, d.Treasure):
+            stairs = set(current.up_stairs + current.down_stairs)
+            entity.x, entity.y = _treasure_spot(current.entities, current.field, avoid | stairs)
+            current.entities.append(entity)
+        else:
+            char = entity.tribe.char
+            empowered = entity.empowered if isinstance(entity, d.Monster) else 1
+            origin_floor = entity.origin_floor if isinstance(entity, d.Companion) else floor_index
+            _spawn(
+                current.entities,
+                current.field,
+                char,
+                avoid,
+                current.island,
+                origin_floor,
+                empowered,
+            )
+
+    for entity in current.entities:
+        if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}:
+            _place_barrier(current.field, (entity.x, entity.y))
 
     for y, row in enumerate(current.field):
         for x, cell in enumerate(row):
-            if cell == d.CHAR_FLOOR:
+            if cell in (d.CHAR_FLOOR, d.CHAR_BARRIER):
                 current.seen[y][x] = 0
     current.arrow_marks.clear()
 

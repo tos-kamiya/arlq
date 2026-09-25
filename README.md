@@ -158,7 +158,7 @@ One Golem (`g`) appears on a random floor in Stage 3. When defeated, rocks scatt
 Stage 4 is experimental and available from the stage selection menu. Its
 design and gameplay are subject to change.
 
-Stage 4 has three floors with the Stage 3 layout. Each floor has two filled rooms in different columns; one filled room across the stage contains the Isolated Elf. Adjacent floors can have a second stair pair in another room when space is available. The monster roster reuses Stage 3's first-floor monsters on floors 1–2 and its second-floor roster on floor 3, with two `k` Marksmen on every floor and one `V` Vortex on floors 2 and 3.
+Stage 4 has three floors with the Stage 3 layout. Each floor has two filled rooms in different columns; one filled room across the stage contains the Isolated Elf. The four elves appear across the floors, and the Dread Wyrm guards the final floor. Adjacent floors can have a second stair pair in another room when space is available. The monster roster reuses Stage 3's first-floor monsters on floors 1–2 and its second-floor roster on floor 3, with 22 amoebas on floor 1, four `k` Marksmen on every floor, one `e` Erebus on floor 1, and one each of `V` Vortex and `E` Erebus on floors 2 and 3.
 
 While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an adjacent floor's explored map in GUI mode. In `arlq-cli`, hold Shift and press W or S. Unexplored areas remain hidden. The bottom-right `F:` marker shows the displayed floor. A normal movement input returns the display to the player's floor and moves as usual.
 
@@ -167,8 +167,10 @@ While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an 
 | Display & Name | Description |
 | -------------- | ----------- |
 | **m** Myconid | Temporarily reduces the player's field of vision until another monster is contacted. |
-| **k** Marksman | Level 80. After each player move, it shoots for 3 LP damage when aligned horizontally or vertically with a clear path. Walls, stairs, and other monsters block its shot. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
-| **V** Vortex | Level 1. When defeated, repositions the other monsters and floor companions (except elves), removes all Marksmen's arrow marks, and resets explored floor cells. Known walls and stairs remain visible. The Vortex reappears after the usual respawn interval. |
+| **e** Erebus | Level 1. Defeating it costs 5 LP. |
+| **k** Marksman | Level 80. After each player move, it shoots for 5 LP damage when aligned horizontally or vertically with a clear path. Walls, barriers, stairs, caltrops, monsters, and companions block its shot. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
+| **E** Erebus | Level 30. When defeated, halves the player's level (rounded down, minimum 1) instead of granting the usual level increase; it restores 8 LP. It respawns after the usual interval. |
+| **V** Vortex | Level 30. When defeated, repositions monsters, floor companions, and the treasure chest except elves, removes all Marksmen's arrow marks, and resets explored floor cells. The Dread Wyrm and chest move independently. Wyrm barriers are rebuilt around the new positions and become unexplored. Known walls and stairs remain visible. The Vortex reappears after the usual respawn interval. |
 | **w** Wyrm | Protected by a barrier. |
 | **W** Dread Wyrm | Protected by a barrier and unlocks the treasure chest when defeated. |
 

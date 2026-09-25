@@ -173,10 +173,179 @@ def test_stage4_has_independent_per_floor_roster():
         for stage4_floor, stage3_floor in zip(stage3_module.STAGE4_ROSTER, stage3_module.ROSTER)
     )
     assert all(
-        ch not in {"I", "J", "K", "H", "W", "w"}
+        ch not in {"I", "J", "K", "H"}
         for floor in stage3_module.STAGE4_ROSTER
         for ch, _, _ in floor
     )
+    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[0] if ch == "a") == 22
+    assert all(
+        sum(count for ch, count, _ in floor if ch == "k") == 4
+        for floor in stage3_module.STAGE4_ROSTER
+    )
+    assert d.MARKSMAN_LP_DAMAGE == 5
+    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[2] if ch == "w") == 1
+    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[2] if ch == "W") == 1
+    assert not any(ch in {"w", "W"} for floor in stage3_module.STAGE4_ROSTER[:2] for ch, _, _ in floor)
+    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[0] if ch == "E") == 0
+    assert all(
+        sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[index] if ch == "E") == 1
+        for index in (1, 2)
+    )
+    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[0] if ch == "e") == 1
+    assert all(
+        sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[index] if ch == "e") == 0
+        for index in (1, 2)
+    )
+    assert d.CHAR_TO_MONSTER_TRIBE["V"].level == d.CHAR_TO_MONSTER_TRIBE["E"].level == 30
+
+
+def test_stage4_builds_all_elves_and_dread_wyrm_boss():
+    floors, _ = stage3_module.build(stage_num=4)
+
+    elves = {
+        entity.tribe.char
+        for floor in floors
+        for entity in floor.entities
+        if isinstance(entity, d.Monster) and entity.tribe.is_elf
+    }
+    bosses = [
+        entity
+        for floor in floors
+        for entity in floor.entities
+        if isinstance(entity, d.Monster) and entity.tribe.char == "W"
+    ]
+
+    assert elves == {"I", "J", "K", "H"}
+    assert len(bosses) == 1
+    assert bosses[0] in floors[2].entities
+
+
+@pytest.mark.parametrize("blocking_tile", [
+    d.CHAR_CALTROP,
+    d.WALL_CHAR,
+    d.CHAR_BARRIER,
+    *d.STAIR_CHARS,
+])
+def test_marksman_shots_are_blocked_by_terrain(blocking_tile):
+    field = blank_field()
+    field[2][3] = blocking_tile
+    marksman = d.Monster(1, 2, d.CHAR_TO_MONSTER_TRIBE["k"])
+    current = Floor(
+        field=field,
+        entities=[marksman],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        known_companions=set(),
+        up=(1, 1),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+    )
+    player = d.Player(5, 2, 1, 90)
+
+    stage3_module._marksman_shoot(current, player)
+
+    assert player.lp == 90
+    assert marksman not in current.arrow_marks
+
+
+@pytest.mark.parametrize("old_arrow_mark", [False, True])
+@pytest.mark.parametrize("marksman_x, player_x, companion_x, mark_x", [
+    (1, 5, 3, 4),
+    (8, 4, 6, 5),
+])
+def test_floor_loop_companion_blocks_marksman_shots_after_player_moves(
+    old_arrow_mark, marksman_x, player_x, companion_x, mark_x
+):
+    field = blank_field()
+    marksman = d.Monster(marksman_x, 2, d.CHAR_TO_MONSTER_TRIBE["k"])
+    player = d.Player(player_x, 3, 1, 90)
+    entities = [marksman, d.Companion(companion_x, 2, d.CHAR_TO_COMPANION_TRIBE["l"])]
+    current = Floor(
+        field=field,
+        entities=entities,
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        known_companions=set(),
+        up=(1, 1),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+    )
+    if old_arrow_mark:
+        current.arrow_marks[marksman] = [((mark_x, 2), "-")]
+
+    _step((0, -1), [current], player, [0], [(player_x, 3)], Counter(), deque(), 1, stage_num=4)
+
+    assert (player.x, player.y) == (player_x, 2)
+    assert player.lp == 90
+    assert current.arrow_marks.get(marksman, []) == ([((mark_x, 2), "-")] if old_arrow_mark else [])
+
+
+def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
+    field = blank_field()
+    dread_wyrm = d.Monster(10, 8, d.CHAR_TO_MONSTER_TRIBE["W"])
+    wyrm = d.Monster(20, 8, d.CHAR_TO_MONSTER_TRIBE["w"])
+    marksman = d.Monster(20, 12, d.CHAR_TO_MONSTER_TRIBE["k"])
+    treasure = d.Treasure(10, 15, "TW")
+    for center in ((dread_wyrm.x, dread_wyrm.y), (wyrm.x, wyrm.y)):
+        stage3_module._place_barrier(field, center)
+    seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    field[4][4] = d.WALL_CHAR
+    field[4][5] = d.CHAR_STAIRS_UP
+    current = Floor(
+        field=field,
+        entities=[dread_wyrm, wyrm, marksman, treasure],
+        seen=seen,
+        known_companions=set(),
+        up=(1, 1),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+        arrow_marks={marksman: [((19, 12), "-")]},
+    )
+
+    new_positions = {"W": (30, 16), "w": (30, 8), "k": (30, 12)}
+
+    def fixed_spawn(entities, spawn_field, char, _avoid, _island, origin_floor, empowered=1):
+        x, y = new_positions[char]
+        return stage3_module.spawn_at(
+            entities,
+            x,
+            y,
+            d.CHAR_TO_TRIBE[char],
+            empowered=empowered,
+            origin_floor=origin_floor,
+        )
+
+    monkeypatch.setattr(stage3_module, "_spawn", fixed_spawn)
+    monkeypatch.setattr(stage3_module, "_treasure_spot", lambda *_args: (40, 16))
+    player = d.Player(1, 1, 1, 90)
+
+    stage3_module._vortex_rearrange(current, player, 2)
+
+    relocated_wyrm = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "w")
+    relocated_boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W")
+    assert relocated_wyrm is not wyrm
+    assert (relocated_wyrm.x, relocated_wyrm.y) == (30, 8)
+    assert relocated_boss is not dread_wyrm
+    assert (relocated_boss.x, relocated_boss.y) == (30, 16)
+    assert treasure in current.entities
+    assert (treasure.x, treasure.y) == (40, 16)
+    assert field[8][19] == d.CHAR_FLOOR
+    assert field[8][9] == field[8][11] == d.CHAR_FLOOR
+    assert field[8][29] == field[8][31] == d.CHAR_BARRIER
+    assert field[16][29] == field[16][31] == d.CHAR_BARRIER
+    assert field[16][9] == field[16][11] == d.CHAR_FLOOR
+    assert seen[8][9] == seen[8][11] == seen[8][29] == seen[8][31] == 0
+    assert seen[16][29] == seen[16][31] == 0
+    assert seen[16][9] == seen[16][11] == 0
+    assert seen[4][4] == seen[4][5] == 1
+    assert not current.arrow_marks
+
+
+@pytest.mark.parametrize(("initial_level", "expected_level"), [(1, 1), (2, 1), (21, 10), (22, 11)])
+def test_erebus_rare_halves_level_instead_of_granting_level(initial_level, expected_level):
+    player = d.Player(1, 1, initial_level, 90)
+
+    d.grant_defeat_level(player, d.EFFECT_LEVEL_HALVE)
+
+    assert player.level == expected_level
 
 
 def test_empowered_monsters_scale_level_and_have_separate_identity():
