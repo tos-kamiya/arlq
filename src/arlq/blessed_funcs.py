@@ -124,7 +124,7 @@ class BlessedUI:
             if self.dots or not (0 <= y < len(field) and 0 <= x < len(field[y])):
                 return None
             discovered = torched[y][x] or (show_entities and not floor_view)
-            return "bright_black" if discovered else None
+            return "black" if discovered else None
 
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
@@ -149,7 +149,7 @@ class BlessedUI:
                         put(x, y, ".", dim=True)
                 else:
                     color = "green" if cell == d.WALL_CHAR else "magenta" if cell == d.CHAR_CALTROP else None
-                    put(x, y, cell if discovered else " ", color, bg="bright_black" if discovered else None)
+                    put(x, y, cell if discovered else " ", color, bg="black" if discovered else None)
 
         if (
             not floor_view
