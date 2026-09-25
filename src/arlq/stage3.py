@@ -71,6 +71,7 @@ class Floor:
     island: Optional[d.Point]
     up_stairs: List[d.Point] = dataclass_field(default_factory=list)
     down_stairs: List[d.Point] = dataclass_field(default_factory=list)
+    contact_reveal: Optional[d.Point] = None
 
 # History entries snapshot everything the Loop Companion can rewind.
 HistoryEntry = Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]
@@ -507,6 +508,9 @@ def _resolve_monster_contact(
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
     elif d.current_player_attack(player, 3) < d.monster_level(entity):
+        # Losing still identifies the monster, including W. Treasure glyphs
+        # remain gated separately by their unlock state in the renderer.
+        player.known_monsters.add(d.monster_type_key(entity))
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity
         # here prevents a failed attack from deleting it.
@@ -521,6 +525,9 @@ def _resolve_monster_contact(
             event_message = tr("-- Respawned to a random location.")
         else:
             player.x, player.y = checkpoint[0]
+            # Keep the monster that caused this respawn visible for the next
+            # frame, even when the checkpoint is outside its FOV.
+            current.contact_reveal = (entity.x, entity.y)
             event_message = tr("-- Respawned!")
         if trace is not None:
             trace.record_contact(
@@ -758,6 +765,12 @@ def run_game(
         current = floors[floor[0]]
         display_floor = floors[view_floor]
         cur = get_torched(player, config.torch_radius)
+        if display_floor is current and display_floor.contact_reveal is not None:
+            rx, ry = display_floor.contact_reveal
+            # Mark the cell as explored without adding it to the current FOV;
+            # this keeps the monster visible without extending the blue FOV
+            # boundary out to its location.
+            display_floor.seen[ry][rx] = 1
         for y in range(len(cur)):
             for x in range(len(cur[0])):
                 current.seen[y][x] |= cur[y][x]
