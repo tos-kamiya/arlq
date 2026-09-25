@@ -429,18 +429,32 @@ def test_stage4_displays_treasure_message_when_was_defeated_first():
     assert player.stage3_treasure_collected
 
 
-def test_stage4_displays_completion_message_when_treasure_was_taken_first():
+def test_stage4_chests_wait_for_w_defeat():
     player = d.Player(2, 2, 200, 90)
     player.unlocked_treasures.add("TW")
     treasure = d.Treasure(3, 2, "TW")
+    treasure.active = False
     wyrm = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
-    floors, _ = stage3_state(player, [treasure, wyrm])
+    mimic = d.Monster(5, 2, d.CHAR_TO_MONSTER_TRIBE["M"])
+    mimic.active = False
+    floors, _ = stage3_state(player, [treasure, wyrm, mimic])
+    assert d.revealed_entity_glyphs(treasure, set(), False, 200, {"TW"}, None) == []
+    assert d.revealed_entity_glyphs(mimic, set(), False, 200, {"TW"}, None) == []
+    assert d.preview_entity_glyphs(treasure) == d.preview_entity_glyphs(mimic) == []
 
-    messages = run_stage3_keys("RR", floors, player, [0], [(2, 2)], Counter(), deque(), stage_num=4)
+    floor, checkpoint, queue, history = [0], [(2, 2)], Counter(), deque()
+    messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history, stage_num=4)
+    assert d.revealed_entity_glyphs(treasure, set(), False, 200, {"TW"}, None)[0].char == "T"
+    assert d.revealed_entity_glyphs(mimic, set(), False, 200, {"TW"}, None)[0].char == "T"
+    assert d.preview_entity_glyphs(treasure)[0].char == d.preview_entity_glyphs(mimic)[0].char == "T"
+    messages += run_stage3_keys("RLL", floors, player, floor, checkpoint, queue, history, stage_num=4)
 
     assert messages == [
-        "-- You took the treasure chest, but the King's request remains.",
-        ">> The King's request is complete! <<",
+        None,
+        ">> Dread Wyrm (W) defeated! <<",
+        "-- The treasure chest was a Mimic!",
+        None,
+        ">> Treasure chest obtained! <<",
     ]
     assert player.stage3_won
 

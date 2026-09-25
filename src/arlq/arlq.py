@@ -383,7 +383,7 @@ def reveal_entities_in_fov(
     entities: List[d.Entity],
     torch_radius: int = d.TORCH_RADIUS,
 ) -> None:
-    """Reveal every monster currently inside the player's FOV."""
+    """Reveal ordinary monsters currently inside the player's FOV."""
     if player.companion is None or player.companion.tribe.char != "n":
         return
     torched = get_torched(player, torch_radius)
@@ -392,7 +392,7 @@ def reveal_entities_in_fov(
             continue
         if not torched[entity.y][entity.x]:
             continue
-        if isinstance(entity, d.Monster):
+        if isinstance(entity, d.Monster) and entity.tribe.char not in d.TRAP_MONSTER_DISGUISES:
             player.known_monsters.add(d.monster_type_key(entity))
 
 

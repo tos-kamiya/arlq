@@ -220,6 +220,7 @@ def _spawn_roster_wyrms(
     reserved: Container[d.Point],
     down: d.Point,
     floor_index: int,
+    stage_num: int,
 ) -> None:
     has_boss = False
     for ch, count, empowered in entries:
@@ -232,7 +233,27 @@ def _spawn_roster_wyrms(
                 x, y = _spawn(entities, field, ch, reserved, floor_index=floor_index, empowered=empowered)
             _place_barrier(field, (x, y))
     if has_boss:
-        entities.append(d.Treasure(*_treasure_spot(entities, field, reserved), d.CHAR_TREASURE + "W"))
+        _place_wyrm_chests(entities, field, reserved, stage_num)
+
+
+def _place_wyrm_chests(
+    entities: List[d.Entity], field: List[List[str]], reserved: Container[d.Point], stage_num: int
+) -> None:
+    chest = d.Treasure(*_treasure_spot(entities, field, reserved), d.CHAR_TREASURE + "W")
+    chest.active = stage_num != 4
+    entities.append(chest)
+    if stage_num == 4:
+        mimic = d.Monster(*_treasure_spot(entities, field, reserved), d.CHAR_TO_MONSTER_TRIBE["M"])
+        mimic.active = False
+        entities.append(mimic)
+
+
+def _activate_wyrm_chests(current: Floor) -> None:
+    for entity in current.entities:
+        if isinstance(entity, d.Treasure) and entity.unlock_key == d.CHAR_TREASURE + "W":
+            entity.active = True
+        elif isinstance(entity, d.Monster) and entity.tribe.char == "M":
+            entity.active = True
 
 
 def _spawn_island_elf(field: List[List[str]], entities: List[d.Entity], island_tile: Optional[d.Point]) -> None:
@@ -302,7 +323,7 @@ def _build_floor(
     _spawn_assigned_floor_elves(
         elf_roster, elf_floors, index, entities, field, reserved, island_tile
     )
-    _spawn_roster_wyrms(wyrm_roster, entities, field, reserved, down, index)
+    _spawn_roster_wyrms(wyrm_roster, entities, field, reserved, down, index, stage_num)
 
     for ch, assigned_floor in special_floors.items():
         if index == assigned_floor:
@@ -437,7 +458,7 @@ def build_trap_test(
     entities: List[d.Entity] = [wyrm]
     _place_barrier(field, wyrm_point)
     reserved = {entry, wyrm_point}
-    entities.append(d.Treasure(*_treasure_spot(entities, field, reserved), d.CHAR_TREASURE + "W"))
+    _place_wyrm_chests(entities, field, reserved, 4)
     for _ in range(3):
         _spawn(entities, field, "b", reserved, floor_index=0)
         _spawn(entities, field, "d", reserved, floor_index=0)
@@ -556,7 +577,11 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
                 blocked = True
                 break
             if any(
-                isinstance(other, (d.Monster, d.Companion, d.MimicChest)) and (other.x, other.y) == (x, y)
+                (other.x, other.y) == (x, y)
+                and (
+                    isinstance(other, d.Companion)
+                    or isinstance(other, (d.Monster, d.Treasure)) and other.active
+                )
                 for other in current.entities
             ):
                 blocked = True
@@ -654,7 +679,8 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
             char = entity.tribe.char
             empowered = entity.empowered if isinstance(entity, d.Monster) else 1
             origin_floor = entity.origin_floor if isinstance(entity, d.Companion) else floor_index
-            mimic_revealed = entity.mimic_revealed if isinstance(entity, d.Monster) and char == "M" else False
+            trap_revealed = entity.revealed if isinstance(entity, d.Monster) else False
+            trap_active = entity.active if isinstance(entity, d.Monster) else True
             _spawn(
                 current.entities,
                 current.field,
@@ -664,8 +690,9 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
                 origin_floor,
                 empowered,
             )
-            if char == "M":
-                current.entities[-1].mimic_revealed = mimic_revealed
+            if isinstance(entity, d.Monster) and char in d.TRAP_MONSTER_DISGUISES:
+                current.entities[-1].revealed = trap_revealed
+                current.entities[-1].active = trap_active
 
     for entity in current.entities:
         if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}:
@@ -711,6 +738,7 @@ def _defeat_monster(
     if ch == "W":
         player.stage3_flags |= STAGE3_W
         unlock_treasure_for_defeat(entity, player.unlocked_treasures)
+        _activate_wyrm_chests(current)
         player.known_monsters.add(d.monster_type_key(entity))
         if player.stage3_treasure_collected:
             player.stage3_won = True
@@ -780,11 +808,15 @@ def _resolve_monster_contact(
             return _ContactResult(tr(ELF_REPEAT_MESSAGES[ch]), end_turn=True)
         return _ContactResult(None, end_turn=True)
 
-    # The W treasure must remain hidden until W is actually defeated. Other
-    # monsters are revealed on contact, but revealing W here would also make
-    # the renderer show its locked treasure.
-    if ch != "W":
+    # Stage 3 keeps the W treasure hidden until W is defeated. Trap monsters
+    # track discovery per instance instead of entering the known-type set.
+    if ch != "W" and ch not in d.TRAP_MONSTER_DISGUISES:
         player.known_monsters.add(d.monster_type_key(entity))
+    was_revealed = entity.revealed
+    if ch in d.TRAP_MONSTER_DISGUISES:
+        entity.revealed = True
+    if ch == "M" and not was_revealed and trace is not None:
+        trace.record_contact({"type": "trap", "id": "M", "outcome": "triggered"})
     current.entities.pop(hit)
 
     # Contact with any monster clears the spores. The Rust version resets
@@ -828,14 +860,13 @@ def _resolve_monster_contact(
     elif d.current_player_attack(player, 3) < d.monster_level(entity):
         # Losing still identifies the monster, including W. Treasure glyphs
         # remain gated separately by their unlock state in the renderer.
-        player.known_monsters.add(d.monster_type_key(entity))
+        if ch not in d.TRAP_MONSTER_DISGUISES:
+            player.known_monsters.add(d.monster_type_key(entity))
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity
         # here prevents a failed attack from deleting it.
         current.entities.append(entity)
-        first_mimic_contact = ch == "M" and not entity.mimic_revealed
-        if ch == "M":
-            entity.mimic_revealed = True
+        first_mimic_contact = ch == "M" and not was_revealed
         # Losing twice in a row to the very same monster (no other monster
         # contact in between) means it is blocking the only way through:
         # send the player somewhere random instead of back to the
@@ -851,7 +882,6 @@ def _resolve_monster_contact(
             current.contact_reveal = (entity.x, entity.y)
             event_message = tr("-- Respawned!")
         if first_mimic_contact:
-            player.known_monsters.add("M")
             event_message = tr("-- The treasure chest was a Mimic! You respawned.")
         if trace is not None:
             trace.record_contact(
@@ -868,17 +898,9 @@ def _resolve_monster_contact(
         if trace is not None and old_item:
             trace.add_expired({"type": "item_expired", "item": old_source, "reason": "lost_on_defeat"})
     else:
-        was_revealed = entity.mimic_revealed if ch == "M" else False
-        if ch == "M":
-            entity.mimic_revealed = True
-            player.known_monsters.add("M")
         if trace is not None:
             trace.record_contact({"type": "monster", "id": d.monster_type_key(entity), "outcome": "win"})
         _defeat_monster(entity, current, player, floor, checkpoint, queue, trace=trace)
-        if ch == "W" and stage_num in (4, 5):
-            reserved = set(current.up_stairs + current.down_stairs)
-            mimic_spot = _treasure_spot(current.entities, current.field, reserved)
-            current.entities.append(d.MimicChest(*mimic_spot, d.CHAR_TREASURE + "M"))
         if ch == "M" and was_revealed:
             event_message = tr("-- The Mimic was defeated!")
         elif ch == "M":
@@ -924,20 +946,7 @@ def _resolve_contact(
     entity = current.entities[hit]
 
     if isinstance(entity, d.Treasure):
-        if isinstance(entity, d.MimicChest):
-            mimic = d.Monster(entity.x, entity.y, d.CHAR_TO_MONSTER_TRIBE["M"])
-            current.entities[hit] = mimic
-            player.known_monsters.add("M")
-            if trace is not None:
-                trace.record_contact({"type": "trap", "id": "M", "outcome": "triggered"})
-            result = _resolve_monster_contact(
-                hit, mimic, current, player, floor, checkpoint, queue,
-                tr("-- The treasure chest was a Mimic!"), trace=trace, stage_num=stage_num,
-            )
-            if result.message is None:
-                return _ContactResult(tr("-- The treasure chest was a Mimic!"), result.end_turn, result.message_ticks)
-            return result
-        collected = entity.unlock_key in player.unlocked_treasures
+        collected = entity.active and entity.unlock_key in player.unlocked_treasures
         if trace is not None:
             trace.record_contact({"type": "treasure", "id": entity.unlock_key, "collected": collected})
         if collected:
@@ -967,6 +976,8 @@ def _resolve_contact(
         return _ContactResult(tr(tribe_message) if tribe_message else None)
 
     assert isinstance(entity, d.Monster)
+    if entity.tribe.char == "M" and not entity.active:
+        return _ContactResult(event_message)
     return _resolve_monster_contact(
         hit, entity, current, player, floor, checkpoint, queue, event_message,
         trace=trace, stage_num=stage_num,
