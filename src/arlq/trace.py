@@ -10,6 +10,7 @@ this module owns the trace file's schema plus the replay-side input source.
 from __future__ import annotations
 
 import json
+import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
@@ -183,16 +184,25 @@ class ReplayUI:
     frontend-specific key codes here.
     """
 
-    def __init__(self, turns: List[Dict[str, Any]], stage: int, draw_ui: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        turns: List[Dict[str, Any]],
+        stage: int,
+        draw_ui: Optional[Any] = None,
+        draw_interval: float = 0.0,
+    ) -> None:
         self._inputs: Deque[str] = deque(turn["input"] for turn in turns)
         self._stage = stage
         self._draw_ui = draw_ui
+        self._draw_interval = draw_interval
         self.map_mode = False
         self.ran_dry = False
 
     def draw_stage(self, **kwargs: Any) -> None:
         if self._draw_ui is not None:
             self._draw_ui.draw_stage(**kwargs)
+            if self._draw_interval > 0:
+                time.sleep(self._draw_interval)
 
     def select_stage(self) -> int:
         return self._stage
