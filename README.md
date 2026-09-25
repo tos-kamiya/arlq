@@ -176,6 +176,9 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 Stage 4 is experimental and available from the stage selection menu. Its
 design and gameplay are subject to change.
 
+For a one-floor trap test arena with Stage 1's side margins, a level 150 player who has the talisman, W, its treasure chest, Vortex, and several `b` and `d` monsters, run `uv run -p .venv/bin/python python -m arlq --trap-test`. Defeating W reveals the Mimic chest. Collapse is omitted until its behavior is implemented.
+The arena seed is saved, so `uv run -p .venv/bin/python python -m arlq --trap-test --rematch` reruns the same layout without the map-mode flag. `--rematch` alone also reruns the most recently played stage.
+
 Stage 4 has four floors with the Stage 3 layout. Each floor has at most one filled room, and one separate sealed room across the stage contains the Isolated Elf. The four elves appear across the floors, and the Dread Wyrm guards the final floor. Adjacent floors can have a second stair pair in another room when space is available. Floor 1 keeps its current roster, floors 2 and 3 use the current floor 2 roster, and floor 4 uses the current floor 3 roster. Floor 1 has 22 amoebas and two `k` Marksmen; floors 2–4 have three `k` Marksmen each. One `e` Erebus appears on floor 1, and one each of `V` Vortex and `E` Rare Erebus appear on floors 2–4.
 
 Floors 2 and 3 contain more empowered `b` monsters; floor 4 has more empowered `d` monsters.

@@ -21,7 +21,7 @@ from .trace import DIR_TO_KEY, ReplayUI, TraceRecorder, default_replay_output_pa
 from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent, WorldEvent
 
 MESSAGE_TICKS = 8
-SEPARATE_STAGE_MODULES = {3: "stage3", 4: "stage3"}
+SEPARATE_STAGE_MODULES = {3: "stage3", 4: "stage3", 5: "stage3"}
 
 
 @dataclass(frozen=True)
@@ -624,7 +624,7 @@ def read_last_seed() -> Tuple[int, int]:
         stage, seed = int(parts[0]), int(parts[1])
     except ValueError as error:
         raise ValueError(f"invalid rematch stage or seed in {path}") from error
-    if stage not in d.PUBLIC_STAGE_NUMBERS:
+    if stage not in d.PUBLIC_STAGE_NUMBERS and stage != 5:
         raise ValueError(f"invalid rematch stage or seed in {path}")
     return stage, seed
 
@@ -667,9 +667,9 @@ def run_game(
     stage_module_name = SEPARATE_STAGE_MODULES.get(stage_num)
     if stage_module_name is not None:
         stage_module = import_module(f".{stage_module_name}", package=__package__)
-        if stage_num == 4:
+        if stage_num in (4, 5):
             stage_module.run_game(
-                ui, seed_str, debug_show_entities, trace=trace, config=config, stage_num=4
+                ui, seed_str, debug_show_entities, trace=trace, config=config, stage_num=stage_num
             )
         else:
             stage_module.run_game(ui, seed_str, debug_show_entities, trace=trace, config=config)
@@ -910,6 +910,7 @@ def main():
     )
 
     parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, or 4).")
+    parser.add_argument("--trap-test", action="store_true", help="Start the one-floor trap test stage.")
 
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
@@ -965,7 +966,11 @@ def main():
 
     set_language(args.lang)
 
-    if args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
+    if args.trap_test:
+        if args.stage or args.seed is not None or args.trace_record or args.trace_replay:
+            parser.error("--trap-test cannot be combined with --stage, --seed, or trace options")
+        args.stage = 5
+    elif args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
         parser.error("--stage must be 1, 2, 3, or 4")
 
     if args.trace_record and args.trace_replay:
