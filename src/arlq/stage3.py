@@ -35,7 +35,6 @@ STAGE3_FLOOR_LAYOUT = [(1, 0), (0, 0), (0, 0)]
 STAGE4_FLOOR_LAYOUT = [(1, 1), (0, 2), (0, 2)]
 STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
 STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
-STAGE4_ROSTER_EXCLUSIONS = {"I", "J", "K", "H", "W", "w"}
 STAGE3_C = d.STAGE3_C_FLAG
 STAGE3_I = d.STAGE3_I_FLAG
 STAGE3_K = d.STAGE3_K_FLAG
@@ -55,6 +54,13 @@ ROSTER: List[List[Tuple[str, int, int]]] = [
     [("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("w", 1, 1), ("W", 1, 1), ("H", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
 ]
 
+# Stage 4 has its own per-floor counts so balancing it does not change Stage 3.
+STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
+    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
+]
+
 # Distinct, non-elf monster tribes across all floors, strongest first: feeds
 # the right-edge strength column (see d.build_strength_column), which shows
 # the whole stage's roster regardless of which floor the player is on.
@@ -63,6 +69,15 @@ ROSTER_TRIBES: List[d.MonsterTribe] = sorted(
     (
         d.CHAR_TO_MONSTER_TRIBE[c]
         for c in _ROSTER_CHARS
+        if c in d.CHAR_TO_MONSTER_TRIBE and not d.CHAR_TO_MONSTER_TRIBE[c].is_elf
+    ),
+    key=lambda t: t.level,
+    reverse=True,
+)
+STAGE4_ROSTER_TRIBES: List[d.MonsterTribe] = sorted(
+    (
+        d.CHAR_TO_MONSTER_TRIBE[c]
+        for c in dict.fromkeys(char for floor in STAGE4_ROSTER for char, _, _ in floor)
         if c in d.CHAR_TO_MONSTER_TRIBE and not d.CHAR_TO_MONSTER_TRIBE[c].is_elf
     ),
     key=lambda t: t.level,
@@ -154,6 +169,8 @@ def _build_floor(
     corridor_h_width: int = d.CORRIDOR_H_WIDTH,
     corridor_v_width: int = d.CORRIDOR_V_WIDTH,
     room_counts: Tuple[int, int] = (0, 0),
+    *,
+    roster: List[Tuple[str, int, int]],
     stage_num: int = 3,
     up_point: Optional[d.Point] = None,
     down_point: Optional[d.Point] = None,
@@ -176,14 +193,6 @@ def _build_floor(
 
     entities: List[d.Entity] = []
     reserved = {up, down}
-    if stage_num == 4:
-        roster_index = 0 if index < 2 else index - 1
-        roster = [
-            entry for entry in ROSTER[roster_index]
-            if entry[0] not in STAGE4_ROSTER_EXCLUSIONS
-        ]
-    else:
-        roster = ROSTER[index]
     for ch, count, empowered in roster:
         if ch in {"W", "w", "I", "J", "K", "H"}:
             continue
@@ -301,6 +310,7 @@ def build(
         if stage_num == 4:
             up_point = None if index == 0 else room_center(stair_tiles[index - 1])
             down_point = None if index == FLOORS - 1 else room_center(stair_tiles[index])
+        roster = STAGE4_ROSTER[index] if stage_num == 4 else ROSTER[index]
         floor = _build_floor(
             index,
             special_floors,
@@ -309,9 +319,10 @@ def build(
             corridor_h_width,
             corridor_v_width,
             floor_layout[index],
-            stage_num,
-            up_point,
-            down_point,
+            roster=roster,
+            stage_num=stage_num,
+            up_point=up_point,
+            down_point=down_point,
         )
         floors.append(floor)
         if stage_num == 3:
@@ -908,7 +919,7 @@ def run_game(
             checkpoint=checkpoint[0],
             unlocked_treasures=player.unlocked_treasures,
             dim_types=player.met_elves,
-            stage_roster=ROSTER_TRIBES,
+            stage_roster=ROSTER_TRIBES if stage_num == 3 else STAGE4_ROSTER_TRIBES,
             floor_view=floor_view,
             floor_label=f"F: {view_floor + 1}",
         )
@@ -977,7 +988,7 @@ def run_game(
             checkpoint=checkpoint[0],
             unlocked_treasures=player.unlocked_treasures,
             dim_types=player.met_elves,
-            stage_roster=ROSTER_TRIBES,
+            stage_roster=ROSTER_TRIBES if stage_num == 3 else STAGE4_ROSTER_TRIBES,
         )
         key = ui.input_alphabet()
         if key is None:
