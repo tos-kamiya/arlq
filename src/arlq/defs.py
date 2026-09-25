@@ -71,6 +71,7 @@ PEGASUS_STEP_Y: int = 4
 CALTROP_SPREAD_RADIUS: int = 3
 CALTROP_WIDTH_EXPANSION_RATIO: float = 1.7
 CALTROP_LP_DAMAGE: int = 3
+MARKSMAN_LP_DAMAGE: int = 3
 BARRIER_LP_DAMAGE: int = 30
 
 ROCK_SPREAD_OFFSETS: List[Tuple[int, int]] = [
@@ -336,6 +337,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("J", 0, 0, event_message="-- The Javelin Elf joined your hunt for the Dread Wyrm!", is_elf=True),
     _MT("K", 0, 0, event_message="-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!", is_elf=True),
     _MT("H", 0, 0, event_message="-- The High Elf bestowed the talisman upon you!", is_elf=True),
+    _MT("k", 80, MIN_FOOD),  # Marksman
     _MT("m", 5, MIN_FOOD, event_message="-- Spores cloud your vision!"),
     _MT("w", 50, MIN_FOOD),
     _MT("W", 150, MIN_FOOD, event_message=">> Dread Wyrm (W) defeated! <<", treasure_key=CHAR_TREASURE + "W"),

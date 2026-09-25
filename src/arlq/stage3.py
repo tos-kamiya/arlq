@@ -31,6 +31,7 @@ from .utils import rand
 
 FLOORS = 3
 LOOP_TURNS = 80
+MARKSMAN_ARROW_LIMIT = 20
 STAGE3_FLOOR_LAYOUT = [(1, 0), (0, 0), (0, 0)]
 STAGE4_FLOOR_LAYOUT = [(1, 1), (0, 2), (0, 2)]
 STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
@@ -56,9 +57,9 @@ ROSTER: List[List[Tuple[str, int, int]]] = [
 
 # Stage 4 has its own per-floor counts so balancing it does not change Stage 3.
 STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
-    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
 ]
 
 # Distinct, non-elf monster tribes across all floors, strongest first: feeds
@@ -98,6 +99,7 @@ class Floor:
     up_stairs: List[d.Point] = dataclass_field(default_factory=list)
     down_stairs: List[d.Point] = dataclass_field(default_factory=list)
     contact_reveal: Optional[d.Point] = None
+    arrow_marks: Dict[d.Monster, List[Tuple[d.Point, str]]] = dataclass_field(default_factory=dict)
 
 # History entries snapshot everything the Loop Companion can rewind.
 HistoryEntry = Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]
@@ -472,6 +474,44 @@ def _apply_terrain_hazards(current: Floor, player: d.Player, previous: d.Point) 
     return event_message
 
 
+def _marksman_shoot(current: Floor, player: d.Player) -> None:
+    """Resolve Stage 4 marksmen after a player move and retain their arrow marks."""
+    for entity in current.entities:
+        if not isinstance(entity, d.Monster) or entity.tribe.char != "k":
+            continue
+        dx, dy = player.x - entity.x, player.y - entity.y
+        if (dx == 0) == (dy == 0):
+            continue
+        distance = abs(dx or dy)
+        if distance == 1:
+            continue
+
+        step_x = 0 if dx == 0 else (1 if dx > 0 else -1)
+        step_y = 0 if dy == 0 else (1 if dy > 0 else -1)
+        blocked = False
+        for offset in range(1, distance):
+            x, y = entity.x + step_x * offset, entity.y + step_y * offset
+            if current.field[y][x] in (d.WALL_CHAR, *d.STAIR_CHARS):
+                blocked = True
+                break
+            if any(
+                isinstance(other, d.Monster) and (other.x, other.y) == (x, y)
+                for other in current.entities
+            ):
+                blocked = True
+                break
+        if blocked:
+            continue
+
+        player.lp -= d.MARKSMAN_LP_DAMAGE
+        mark = ((player.x - step_x, player.y - step_y), "-" if step_x else "|")
+        marks = current.arrow_marks.setdefault(entity, [])
+        marks[:] = [existing for existing in marks if existing[0] != mark[0]]
+        marks.append(mark)
+        if len(marks) > MARKSMAN_ARROW_LIMIT:
+            del marks[0]
+
+
 def _rewind_to_history(
     floors: List[Floor],
     player: d.Player,
@@ -533,6 +573,8 @@ def _defeat_monster(
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
     ch = entity.tribe.char
+    if ch == "k":
+        current.arrow_marks.pop(entity, None)
 
     # A successful monster defeat establishes the next respawn point,
     # matching the legacy stages and the Rust port.
@@ -852,6 +894,7 @@ def _step(
     queue: Counter[Tuple[int, str]],
     history: Deque[HistoryEntry],
     hours: int,
+    stage_num: int = 3,
     trace: Optional[TraceRecorder] = None,
 ) -> Optional[Tuple[int, str]]:
     current = floors[floor[0]]
@@ -862,6 +905,8 @@ def _step(
     previous = (player.x, player.y)
     _move_player(direction, current, player, trace=trace)
     event_message = _apply_terrain_hazards(current, player, previous)
+    if stage_num == 4 and (player.x, player.y) != previous:
+        _marksman_shoot(current, player)
 
     hit = next((i for i, e in enumerate(current.entities) if (e.x, e.y) == (player.x, player.y)), None)
     if hit is not None:
@@ -984,6 +1029,9 @@ def run_game(
             stage_roster=ROSTER_TRIBES if stage_num == 3 else STAGE4_ROSTER_TRIBES,
             floor_view=floor_view,
             floor_label=f"F: {view_floor + 1}",
+            arrow_marks=[mark for marks in display_floor.arrow_marks.values() for mark in marks]
+            if stage_num == 4
+            else (),
         )
 
         move = ui.input_direction()
@@ -1009,7 +1057,7 @@ def run_game(
 
         event_message = _step(
             move, floors, player, floor, checkpoint, queue, history, hours,
-            trace=trace,
+            stage_num=stage_num, trace=trace,
         )
         player.stage3_floor = floor[0]
         # A stair contact can change the player's floor during _step(). Keep
@@ -1051,6 +1099,9 @@ def run_game(
             unlocked_treasures=player.unlocked_treasures,
             dim_types=player.met_elves,
             stage_roster=ROSTER_TRIBES if stage_num == 3 else STAGE4_ROSTER_TRIBES,
+            arrow_marks=[mark for marks in current.arrow_marks.values() for mark in marks]
+            if stage_num == 4
+            else (),
         )
         key = ui.input_alphabet()
         if key is None:
