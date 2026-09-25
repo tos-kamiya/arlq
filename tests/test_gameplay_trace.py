@@ -12,7 +12,7 @@ import pytest
 
 from arlq import defs as d
 from arlq.arlq import respawn_entity, update_entities
-from arlq.stage3 import _move_player, _process_respawn_queue, _step
+from arlq.stage3 import Floor, _move_player, _process_respawn_queue, _step
 from arlq.trace import (
     KEY_TO_DIR,
     ReplayUI,
@@ -34,16 +34,17 @@ def blank_field():
 
 
 def one_floor(entities, **overrides):
-    floor = {
-        "field": blank_field(),
-        "entities": entities,
-        "seen": [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-        "known_companions": set(),
-        "up": (1, 1),
-        "down": (d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
-        "island": None,
-    }
-    floor.update(overrides)
+    floor = Floor(
+        field=blank_field(),
+        entities=entities,
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        known_companions=set(),
+        up=(1, 1),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+    )
+    for key, value in overrides.items():
+        setattr(floor, key, value)
     return floor
 
 
@@ -324,7 +325,7 @@ def test_stage3_wall_pegasus_phase():
     player = d.Player(2, 2, 1, 90)
     player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
     floor_data = one_floor([])
-    floor_data["field"][2][3] = d.WALL_CHAR
+    floor_data.field[2][3] = d.WALL_CHAR
     trace = TraceRecorder(params={})
 
     trace.begin_turn("R")
@@ -339,7 +340,7 @@ def test_stage3_wall_pegasus_phase_after_player_state_is_deepcopied():
     player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE[d.CHAR_PEGASUS])
     player = deepcopy(player)
     floor_data = one_floor([])
-    floor_data["field"][2][3] = d.WALL_CHAR
+    floor_data.field[2][3] = d.WALL_CHAR
 
     _move_player(KEYS["R"], floor_data, player)
 
@@ -350,8 +351,8 @@ def test_stage3_wall_blocked_when_pegasus_jump_target_is_solid():
     player = d.Player(2, 2, 1, 90)
     player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
     floor_data = one_floor([])
-    floor_data["field"][2][3] = d.WALL_CHAR
-    floor_data["field"][2][2 + d.PEGASUS_STEP_X] = d.WALL_CHAR
+    floor_data.field[2][3] = d.WALL_CHAR
+    floor_data.field[2][2 + d.PEGASUS_STEP_X] = d.WALL_CHAR
     trace = TraceRecorder(params={})
 
     trace.begin_turn("R")
