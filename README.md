@@ -151,7 +151,7 @@ Stage 2 contains four ordinary `b` Bison and two empowered `b` Bison (see Rare T
 
 Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
 Stage 3 features empowered versions of `b`, `c`, and `d`: `b'`, `c'`, and `d'`.
-One Golem (`g`) appears on a random floor in Stage 3. When defeated, rocks scatter and turn some floor tiles into walls.
+One Golem (`g`) appears on a random floor in Stage 3 and Stage 4. When defeated, rocks scatter and turn some floor tiles into walls.
 
 ### Stage 4 (experimental, development-only)
 

@@ -358,7 +358,7 @@ def build(
             "K": rand.randrange(FLOORS - 1),
             "H": rand.randrange(FLOORS),
         })
-        special_floors = {}
+        special_floors = {"g": rand.randrange(FLOORS)}
         m_floor = None
     else:
         special_floors = {}
