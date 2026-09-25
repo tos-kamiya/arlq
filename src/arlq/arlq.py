@@ -21,7 +21,7 @@ from .trace import DIR_TO_KEY, ReplayUI, TraceRecorder, default_replay_output_pa
 from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent, WorldEvent
 
 MESSAGE_TICKS = 8
-SEPARATE_STAGE_MODULES = {3: "stage3", 4: "stage4"}
+SEPARATE_STAGE_MODULES = {3: "stage3", 4: "stage3"}
 
 
 @dataclass(frozen=True)
@@ -669,7 +669,12 @@ def run_game(
     stage_module_name = SEPARATE_STAGE_MODULES.get(stage_num)
     if stage_module_name is not None:
         stage_module = import_module(f".{stage_module_name}", package=__package__)
-        stage_module.run_game(ui, seed_str, debug_show_entities, trace=trace, config=config)
+        if stage_num == 4:
+            stage_module.run_game(
+                ui, seed_str, debug_show_entities, trace=trace, config=config, stage_num=4
+            )
+        else:
+            stage_module.run_game(ui, seed_str, debug_show_entities, trace=trace, config=config)
         return
 
     # Configuration

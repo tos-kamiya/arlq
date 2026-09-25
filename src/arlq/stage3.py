@@ -20,12 +20,22 @@ from .arlq import (
     unlock_treasure_for_defeat,
 )
 from .i18n import t as tr
-from .stage_maze import generate_floor_field, shuffle_floor_layout
+from .stage_maze import (
+    generate_floor_field,
+    room_center,
+    shuffle_floor_layout,
+    tile_at,
+)
 from .trace import DIR_TO_KEY, TraceRecorder
 from .utils import rand
 
 FLOORS = 3
 LOOP_TURNS = 80
+STAGE3_FLOOR_LAYOUT = [(1, 0), (0, 0), (0, 0)]
+STAGE4_FLOOR_LAYOUT = [(1, 1), (0, 2), (0, 2)]
+STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
+STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
+STAGE4_ROSTER_EXCLUSIONS = {"I", "J", "K", "H", "W", "w"}
 STAGE3_C = d.STAGE3_C_FLAG
 STAGE3_I = d.STAGE3_I_FLAG
 STAGE3_K = d.STAGE3_K_FLAG
@@ -61,7 +71,7 @@ ROSTER_TRIBES: List[d.MonsterTribe] = sorted(
 
 @dataclass
 class Floor:
-    """State owned by one Stage 3 floor."""
+    """State owned by one floor in a multi-floor stage."""
 
     field: List[List[str]]
     entities: List[d.Entity]
@@ -144,11 +154,14 @@ def _build_floor(
     corridor_h_width: int = d.CORRIDOR_H_WIDTH,
     corridor_v_width: int = d.CORRIDOR_V_WIDTH,
     room_counts: Tuple[int, int] = (0, 0),
+    stage_num: int = 3,
+    up_point: Optional[d.Point] = None,
+    down_point: Optional[d.Point] = None,
 ) -> Floor:
     island_count, filled_count = room_counts
     field, up, down, island_rooms, _ = generate_floor_field(
-        entry_point,
-        None,
+        entry_point if stage_num == 3 else up_point,
+        down_point,
         corridor_h_width,
         corridor_v_width,
         island_count,
@@ -163,7 +176,15 @@ def _build_floor(
 
     entities: List[d.Entity] = []
     reserved = {up, down}
-    for ch, count, empowered in ROSTER[index]:
+    if stage_num == 4:
+        roster_index = 0 if index < 2 else index - 1
+        roster = [
+            entry for entry in ROSTER[roster_index]
+            if entry[0] not in STAGE4_ROSTER_EXCLUSIONS
+        ]
+    else:
+        roster = ROSTER[index]
+    for ch, count, empowered in roster:
         if ch in {"W", "w", "I", "J", "K", "H"}:
             continue
         for _ in range(count):
@@ -194,11 +215,12 @@ def _build_floor(
         x, y = rand.choice(spots)
         entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE["I"]))
 
-    for ch in ("J", "K", "H"):
-        if index == elf_floors[ch]:
-            _spawn(entities, field, ch, reserved, island_tile, index)
+    if stage_num == 3:
+        for ch in ("J", "K", "H"):
+            if index == elf_floors[ch]:
+                _spawn(entities, field, ch, reserved, island_tile, index)
 
-    if index == 2:
+    if stage_num == 3 and index == 2:
         _spawn(entities, field, "w", reserved, floor_index=index)
         weak = next(e for e in entities if isinstance(e, d.Monster) and e.tribe.char == "w")
         _place_barrier(field, (weak.x, weak.y))
@@ -206,10 +228,11 @@ def _build_floor(
         _place_barrier(field, down)
         entities.append(d.Treasure(*_treasure_spot(entities, field, reserved), d.CHAR_TREASURE + "W"))
 
-    for ch, assigned_floor in special_floors.items():
-        if index == assigned_floor:
-            for _ in range(2 if ch == "m" else 1):
-                _spawn(entities, field, ch, reserved, island_tile, index)
+    if stage_num == 3:
+        for ch, assigned_floor in special_floors.items():
+            if index == assigned_floor:
+                for _ in range(2 if ch == "m" else 1):
+                    _spawn(entities, field, ch, reserved, island_tile, index)
 
     return Floor(
         field=field,
@@ -217,8 +240,10 @@ def _build_floor(
         seen=[[0] * len(field[0]) for _ in field],
         known_companions=set(),
         up=up,
-        down=down,
+        down=up if stage_num == 4 and index == FLOORS - 1 else down,
         island=island_tile,
+        up_stairs=[up] if index else [],
+        down_stairs=[down] if index < FLOORS - 1 else [],
     )
 
 
@@ -232,18 +257,50 @@ def _treasure_spot(entities: List[d.Entity], field: List[List[str]], reserved: C
 def build(
     corridor_h_width: int = d.CORRIDOR_H_WIDTH,
     corridor_v_width: int = d.CORRIDOR_V_WIDTH,
+    stage_num: int = 3,
+    stair_pairs_per_transition: Optional[int] = None,
 ) -> Tuple[List[Floor], d.Player]:
-    floor_layout = shuffle_floor_layout([(1, 0), (0, 0), (0, 0)])
+    if stage_num not in (3, 4):
+        raise ValueError("multi-floor builder supports stages 3 and 4")
+    if stair_pairs_per_transition is None:
+        stair_pairs_per_transition = (
+            STAGE3_STAIR_PAIRS_PER_TRANSITION
+            if stage_num == 3
+            else STAGE4_STAIR_PAIRS_PER_TRANSITION
+        )
+    if stair_pairs_per_transition < 1:
+        raise ValueError("each floor transition needs at least one stair pair")
+    layout = STAGE3_FLOOR_LAYOUT if stage_num == 3 else STAGE4_FLOOR_LAYOUT
+    floor_layout = shuffle_floor_layout(layout)
     elf_floors = {
         "I": next(index for index, counts in enumerate(floor_layout) if counts[0]),
-        "J": rand.randrange(FLOORS),
-        "K": rand.randrange(FLOORS - 1),
-        "H": rand.randrange(FLOORS),
     }
-    special_floors = {ch: rand.randrange(FLOORS) for ch in ("m", "X", "e", "g")}
+    if stage_num == 3:
+        elf_floors.update({
+            "J": rand.randrange(FLOORS),
+            "K": rand.randrange(FLOORS - 1),
+            "H": rand.randrange(FLOORS),
+        })
+        special_floors = {ch: rand.randrange(FLOORS) for ch in ("m", "X", "e", "g")}
+    else:
+        special_floors = {}
+
+    stair_tiles: List[d.Point] = []
+    if stage_num == 4:
+        tiles = [(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)]
+        stair_tiles.append(rand.choice(tiles))
+        for _ in range(FLOORS - 2):
+            options = [tile for tile in tiles if tile != stair_tiles[-1]]
+            stair_tiles.append(rand.choice(options))
+
     floors: List[Floor] = []
     entry_point = None
     for index in range(FLOORS):
+        up_point = None
+        down_point = None
+        if stage_num == 4:
+            up_point = None if index == 0 else room_center(stair_tiles[index - 1])
+            down_point = None if index == FLOORS - 1 else room_center(stair_tiles[index])
         floor = _build_floor(
             index,
             special_floors,
@@ -252,12 +309,59 @@ def build(
             corridor_h_width,
             corridor_v_width,
             floor_layout[index],
+            stage_num,
+            up_point,
+            down_point,
         )
         floors.append(floor)
-        entry_point = floor.down
+        if stage_num == 3:
+            entry_point = floor.down
+
+    _add_additional_stairs(
+        floors,
+        stair_pairs_per_transition,
+    )
+
     player = d.Player(floors[0].up[0], floors[0].up[1], 1, d.LP_INIT)
     player.stage3_elf_floors = {char: floor + 1 for char, floor in elf_floors.items()}
     return floors, player
+
+
+def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
+    """Add matching stair pairs up to the configured count per floor link."""
+    if pair_count <= 1:
+        return
+    for index in range(FLOORS - 1):
+        upper, lower = floors[index], floors[index + 1]
+        first_stair_room = tile_at(upper.down_stairs[0])
+        candidates = [
+            (x, y)
+            for y in range(1, d.FIELD_HEIGHT - 1)
+            for x in range(1, d.FIELD_WIDTH - 1)
+            if upper.field[y][x] == d.CHAR_FLOOR
+            and lower.field[y][x] == d.CHAR_FLOOR
+            and tile_at((x, y)) != first_stair_room
+            and (x, y) != upper.down
+            and (x, y) != lower.up
+        ]
+        while candidates and len(upper.down_stairs) < pair_count:
+            point = candidates.pop(rand.randrange(len(candidates)))
+            if any(abs(entity.x - point[0]) <= 2 and abs(entity.y - point[1]) <= 2 for entity in upper.entities):
+                continue
+            if any(abs(entity.x - point[0]) <= 2 and abs(entity.y - point[1]) <= 2 for entity in lower.entities):
+                continue
+            upper.field[point[1]][point[0]] = d.CHAR_STAIRS_DOWN
+            lower.field[point[1]][point[0]] = d.CHAR_STAIRS_UP
+            upper.down_stairs.append(point)
+            lower.up_stairs.append(point)
+            candidates = [
+                candidate
+                for candidate in candidates
+                if max(
+                    abs(candidate[0] - point[0]),
+                    abs(candidate[1] - point[1]),
+                ) > 2
+            ]
 
 
 def _move_player(
@@ -606,15 +710,23 @@ def _handle_floor_transition(
     floor: List[int],
     checkpoint: List[d.Point],
 ) -> Optional[str]:
-    if floor[0] < FLOORS - 1 and (player.x, player.y) == current.down:
+    point = (player.x, player.y)
+    legacy_floors = not any(f.up_stairs or f.down_stairs for f in floors)
+    down_stairs = current.down_stairs or ([current.down] if legacy_floors else [])
+    up_stairs = current.up_stairs or ([current.up] if legacy_floors else [])
+    if floor[0] < FLOORS - 1 and point in down_stairs:
+        stair_index = down_stairs.index(point)
         floor[0] += 1
-        player.x, player.y = floors[floor[0]].up
+        destination_stairs = floors[floor[0]].up_stairs or [floors[floor[0]].up]
+        player.x, player.y = destination_stairs[min(stair_index, len(destination_stairs) - 1)]
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
         return tr("-- Descended to floor {n}/3.").format(n=floor[0] + 1)
-    if floor[0] > 0 and (player.x, player.y) == current.up:
+    if floor[0] > 0 and point in up_stairs:
+        stair_index = up_stairs.index(point)
         floor[0] -= 1
-        player.x, player.y = floors[floor[0]].down
+        destination_stairs = floors[floor[0]].down_stairs or [floors[floor[0]].down]
+        player.x, player.y = destination_stairs[min(stair_index, len(destination_stairs) - 1)]
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [(player.x, player.y, floor[0], ch) for _, _, _, ch in player.persistent_followers]
         return tr("-- Ascended to floor {n}/3.").format(n=floor[0] + 1)
@@ -719,10 +831,20 @@ def run_game(
     debug: bool = False,
     trace: Optional[TraceRecorder] = None,
     config: Optional[GameConfig] = None,
+    stage_num: int = 3,
 ) -> None:
     if config is None:
         config = GameConfig()
-    floors, player = build(config.corridor_h_width, config.corridor_v_width)
+    floors, player = build(
+        config.corridor_h_width,
+        config.corridor_v_width,
+        stage_num,
+        stair_pairs_per_transition=(
+            STAGE3_STAIR_PAIRS_PER_TRANSITION
+            if stage_num == 3
+            else STAGE4_STAIR_PAIRS_PER_TRANSITION
+        ),
+    )
     player.known_monsters = set()
     player.unlocked_treasures = set()
     player.stage3_won = False
@@ -735,9 +857,14 @@ def run_game(
     queue: Counter[Tuple[int, str]] = Counter()
     history: Deque[HistoryEntry] = deque()
     hours = 0
-    message: Tuple[int, str] = (5, tr("-- The King has ordered the Dread Wyrm (W) slain."))
+    message: Tuple[int, str] = (
+        5,
+        tr("-- The King has ordered the Dread Wyrm (W) slain.")
+        if stage_num == 3
+        else tr("-- Explore the sealed rooms across three floors."),
+    )
 
-    while player.lp > 0 and not player.stage3_won:
+    while player.lp > 0 and (stage_num == 4 or not player.stage3_won):
         current = floors[floor[0]]
         display_floor = floors[view_floor]
         cur = get_torched(player, config.torch_radius)
@@ -772,7 +899,7 @@ def run_game(
             torched=display_floor.seen,
             known_types=known_types,
             show_entities=show_entities,
-            stage_num=3,
+            stage_num=stage_num,
             message=message[1],
             checkpoint=checkpoint[0],
             unlocked_treasures=player.unlocked_treasures,
@@ -803,7 +930,10 @@ def run_game(
                 raise RuntimeError("--trace-record does not support non-cardinal (e.g. diagonal joystick) movement")
             trace.begin_turn(key)
 
-        event_message = _step(move, floors, player, floor, checkpoint, queue, history, hours, trace=trace)
+        event_message = _step(
+            move, floors, player, floor, checkpoint, queue, history, hours,
+            trace=trace,
+        )
         player.stage3_floor = floor[0]
         # A stair contact can change the player's floor during _step(). Keep
         # the displayed floor in sync so the next frame shows the new floor.
@@ -812,16 +942,17 @@ def run_game(
             message = event_message
 
         if trace is not None:
-            trace.set_player(player, 3)
+            trace.set_player(player, stage_num)
             trace.commit_turn()
 
         hours += 1
         player.lp -= 1
 
     if trace is not None:
-        trace.set_outcome("win" if player.stage3_won else "lose")
+        trace.set_outcome("win" if stage_num == 3 and player.stage3_won else "lose")
 
-    message = (-1, tr(">> Treasure chest obtained! <<") if player.stage3_won else tr(">> Collapsed from hunger! <<"))
+    won = stage_num == 3 and player.stage3_won
+    message = (-1, tr(">> Treasure chest obtained! <<") if won else tr(">> Collapsed from hunger! <<"))
     while True:
         current = floors[floor[0]]
         cur = get_torched(player, config.torch_radius)
@@ -836,7 +967,7 @@ def run_game(
             torched=current.seen,
             known_types=known_types,
             show_entities=debug,
-            stage_num=3,
+            stage_num=stage_num,
             message=message[1],
             extra_keys=True,
             checkpoint=checkpoint[0],

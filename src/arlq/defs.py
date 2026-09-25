@@ -391,7 +391,7 @@ STAGE_TO_SPAWN_CONFIGS = [
     SPAWN_CONFIGS_ST1,
     SPAWN_CONFIGS_ST2,
     [],  # Stage 3 uses its per-floor roster in stage3.py.
-    [],  # Stage 4 uses its per-floor roster in stage4.py.
+    [],  # Stage 4 uses its per-floor roster in stage3.py.
 ]
 
 
