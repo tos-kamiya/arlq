@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 5.0.2 - 2026-09-27
+
+- Show Mimics as `M` in mapping mode before they are defeated, and remove them
+  from the map after defeat.
+
 ## 5.0.1 - 2026-09-26
 
 - Fix Stage 4 initialization when selecting random monster floors.
