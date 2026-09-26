@@ -206,6 +206,7 @@ def test_stage4_has_independent_per_floor_roster():
     assert not any(ch == "G" for floor in d.STAGE4_ROSTER for ch, _, _ in floor)
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "w") == 1
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "W") == 1
+    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "M") == 1
     assert not any(ch in {"w", "W"} for floor in d.STAGE4_ROSTER[:3] for ch, _, _ in floor)
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[0] if ch == "E") == 0
     assert all(
@@ -241,13 +242,49 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
         for entity in floor.entities
         if isinstance(entity, d.Monster) and entity.tribe.char == "g"
     ]
+    treasures = [
+        entity
+        for entity in floors[3].entities
+        if isinstance(entity, d.Treasure)
+    ]
+    mimics = [
+        entity
+        for entity in floors[3].entities
+        if isinstance(entity, d.Monster) and entity.tribe.char == "M"
+    ]
 
     assert elves == {"I", "J", "K", "H"}
     assert len(bosses) == 1
     assert len(floors) == 4
     assert bosses[0] in floors[3].entities
+    assert len(treasures) == len(mimics) == 1
+    assert treasures[0].encounter_type == "TW"
+    assert not treasures[0].unlocked
+    assert not mimics[0].active
     assert len(golems) == 1
     assert golems[0][1].tribe.char == "g"
+
+
+def test_stage3_build_places_wyrm_treasure_without_mimics():
+    floors, _ = game_engine_module.build(stage_num=3)
+    boss_floor = next(
+        floor
+        for floor in floors
+        if any(
+            isinstance(entity, d.Monster) and entity.tribe.char == "W"
+            for entity in floor.entities
+        )
+    )
+
+    treasures = [entity for entity in boss_floor.entities if isinstance(entity, d.Treasure)]
+    mimics = [
+        entity
+        for entity in boss_floor.entities
+        if isinstance(entity, d.Monster) and entity.tribe.char == "M"
+    ]
+    assert len(treasures) == 1
+    assert treasures[0].encounter_type == "TW"
+    assert mimics == []
 
 
 @pytest.mark.parametrize("blocking_tile", [
