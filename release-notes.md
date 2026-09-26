@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 5.0.1 - 2026-09-26
+
+- Fix Stage 4 initialization when selecting random monster floors.
+- Show the current floor as a fraction on multi-floor stages, including the
+  result screen, and label the elapsed turn count as `TURN`.
+- Use the King's Dread Wyrm slaying request as the Stage 4 opening message.
+
 ## 5.0.0 - 2026-09-26
 
 - Add experimental Stage 4, a four-floor stage with new monsters, traps,
