@@ -387,12 +387,12 @@ def build(
             up_point = None if index == 0 else room_center(stair_tiles[index - 1])
             down_point = None if index == floor_count - 1 else room_center(stair_tiles[index])
         roster = list(d.STAGE4_ROSTER[index] if stage_num == 4 else d.STAGE3_ROSTER[index])
-        if stage_num == 4:
-            roster.extend(
-                (char, 1, 1)
-                for char, assigned_floor in elf_floors.items()
-                if char != "I" and assigned_floor == index
-            )
+        roster = [entry for entry in roster if entry[0] not in {"I", "J", "K", "H"}]
+        roster.extend(
+            (char, 1, 1)
+            for char, assigned_floor in elf_floors.items()
+            if char != "I" and assigned_floor == index
+        )
         if index == m_floor:
             roster.append(("m", 2, 1))
         floor = _build_floor(
@@ -1142,10 +1142,15 @@ def _process_respawn_queue(
             ch = type_key
             empowered = 1
         args = (floors[spawn_floor].entities, floors[spawn_floor].field, ch, avoid, floors[spawn_floor].island, spawn_floor)
+        previous_entity_count = len(floors[spawn_floor].entities)
         if empowered == 1:
             x, y = _spawn(*args)
         else:
             x, y = _spawn(*args, empowered)
+        if len(floors[spawn_floor].entities) > previous_entity_count:
+            respawned = floors[spawn_floor].entities[-1]
+            if isinstance(respawned, d.Companion):
+                respawned.revealed = True
         queue[(spawn_floor, type_key)] -= 1
         if trace is not None:
             kind = "monster" if isinstance(d.CHAR_TO_TRIBE[ch], d.MonsterTribe) else "companion"
@@ -1480,6 +1485,8 @@ def run_game(
     if not won:
         message = (-1, tr(">> Collapsed from hunger! <<"))
     elif legacy_stage:
+        message = (-1, tr(">> Treasure chest obtained! <<"))
+    elif stage_num == 3 and player.stage3_won:
         message = (-1, tr(">> Treasure chest obtained! <<"))
     while True:
         current = floors[floor[0]]
