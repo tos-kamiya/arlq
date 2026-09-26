@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 4.9.1 - 2026-09-27
+
+- Show stacked sword and elf attack bonuses together in the status display.
+
 ## 4.9.0 - 2026-09-27
 
 - Keep Stage 4 behind the `--dev` stage-selection option while it remains
