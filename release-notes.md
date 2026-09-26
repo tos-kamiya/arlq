@@ -10,13 +10,13 @@
   explored cells.
 - Improve terminal map display and combat-loss respawn placement.
 
-## 5.1.0 - 2026-09-27
+## 5.1.0 (dev) - 2026-09-27
 
 - Add a keyboard controls help screen accessible with `H` from the stage
   selection screen and during gameplay.
 - Clarify that `M` enters map and entity display mode and cannot be undone.
 
-## 5.0.3 - 2026-09-27
+## 5.0.3 (dev) - 2026-09-27
 
 - Add an `F`-key preview of explored cells reachable with the player's
   remaining LP.
@@ -24,19 +24,19 @@
 - Prefer combat-loss respawn locations at least 25 Manhattan steps from the
   monster, falling back to the existing random placement after ten attempts.
 
-## 5.0.2 - 2026-09-27
+## 5.0.2 (dev) - 2026-09-27
 
 - Show Mimics as `M` in mapping mode before they are defeated, and remove them
   from the map after defeat.
 
-## 5.0.1 - 2026-09-26
+## 5.0.1 (dev) - 2026-09-26
 
 - Fix Stage 4 initialization when selecting random monster floors.
 - Show the current floor as a fraction on multi-floor stages, including the
   result screen, and label the elapsed turn count as `TURN`.
 - Use the King's Dread Wyrm slaying request as the Stage 4 opening message.
 
-## 5.0.0 - 2026-09-26
+## 5.0.0 (dev) - 2026-09-26
 
 - Add experimental Stage 4, a four-floor stage with new monsters, traps,
   floor transitions, and a rematchable trap test arena.
