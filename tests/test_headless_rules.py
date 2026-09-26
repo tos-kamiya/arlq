@@ -660,7 +660,7 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     assert current_floors[0].seen[1][1] == 9
     assert current_floors[0].known_companions == {"l", "n"}
     assert player.known_monsters == {"a", "W"}
-    assert player.unlocked_treasures == {"TW"}
+    assert player.unlocked_treasures == set()
     assert not player.stage3_treasure_collected
     # stage3_met_elves must revert with stage3_flags (it gates re-processing
     # of elf encounters), unlike the elf floor locations, which are pure map
@@ -708,6 +708,150 @@ def test_rewind_reverts_met_elves_together_with_stage3_flags(monkeypatch):
 
     assert not (player.stage3_flags & d.STAGE3_H_FLAG)
     assert player.stage3_met_elves == set()
+
+
+@pytest.mark.parametrize("has_vortex_map", [False, True])
+def test_replay_rewind_restores_world_state_and_preserves_selected_map(monkeypatch, has_vortex_map):
+    def initial_state(*_args, **_kwargs):
+        player = d.Player(5, 5, 1, d.LP_INIT)
+        mimic = d.Monster(8, 8, d.CHAR_TO_MONSTER_TRIBE["M"])
+        chest = d.Treasure(9, 8, "TW")
+        chest.active = False
+        floor = Floor(
+            field=blank_field(),
+            entities=[mimic, chest],
+            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            known_companions=set(),
+            up=(5, 5),
+            down=(9, 8),
+            island=None,
+        )
+        return [floor], player
+
+    monkeypatch.setattr(game_engine_module, "build", initial_state)
+    player = d.Player(2, 2, 9, 30)
+    player.known_monsters = {"M"}
+    player.unlocked_treasures = {"TW"}
+    player.stage3_elf_floors = {"I": 2}
+    loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
+    floors, _ = stage3_state(player, [loop])
+    floors[0].known_companions = {"o", "l"}
+    floors[0].seen[1][1] = 7
+    changed_mimic = d.Monster(4, 4, d.CHAR_TO_MONSTER_TRIBE["M"])
+    changed_mimic.revealed = True
+    changed_chest = d.Treasure(5, 4, "TW")
+    changed_chest.active = True
+    floors[0].entities.extend([changed_mimic, changed_chest])
+
+    vortex_seen = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    vortex_seen[2][2] = 3
+    context = game_engine_module.ReplayContext(
+        stage_num=4,
+        seed=2468,
+        config=GameConfig(),
+        operations=[(1, 0), (0, 1)],
+        vortex_maps=[(1, [vortex_seen])] if has_vortex_map else [],
+        cursor=2,
+    )
+    history = deque([None])
+    floor_index = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+
+    game_engine_module._rewind_to_history(
+        floors, player, floor_index, checkpoint, queue, history, context
+    )
+
+    restored_mimic = next(entity for entity in floors[0].entities if isinstance(entity, d.Monster))
+    restored_chest = next(entity for entity in floors[0].entities if isinstance(entity, d.Treasure))
+    assert not restored_mimic.revealed
+    assert not restored_chest.active
+    assert player.unlocked_treasures == set()
+    assert player.known_monsters == {"M"}
+    assert player.stage3_elf_floors == {"I": 2}
+    assert floors[0].known_companions == {"o", "l"}
+    assert floors[0].seen[2][2] == (3 if has_vortex_map else 0)
+    assert floors[0].seen[1][1] == (0 if has_vortex_map else 7)
+
+
+def test_live_loop_rewind_replays_from_seed_for_repeatable_random_results(monkeypatch):
+    def initial_state(*_args, **_kwargs):
+        # Stage construction also consumes randomness in a real run.
+        game_engine_module.rand.randrange(1000)
+        player = d.Player(2, 2, 1, d.LP_INIT)
+        floor = Floor(
+            field=blank_field(),
+            entities=[d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])],
+            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            known_companions=set(),
+            up=(2, 2),
+            down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+            island=None,
+        )
+        return [floor], player
+
+    monkeypatch.setattr(game_engine_module, "build", initial_state)
+
+    def play_once():
+        game_engine_module.rand.set_seed(97531)
+        loop_positions = []
+
+        def draw_stage(**kwargs):
+            loop_positions.append(
+                next(
+                    (entity.x, entity.y)
+                    for entity in kwargs["entities"]
+                    if isinstance(entity, d.Companion) and entity.tribe.char == "l"
+                )
+            )
+
+        moves = iter([(1, 0), (0, 1), None])
+        ui = SimpleNamespace(
+            draw_stage=draw_stage,
+            input_direction=moves.__next__,
+            input_alphabet=lambda: None,
+            map_mode=False,
+        )
+        run_game(ui, "seed", 3)
+        return loop_positions, game_engine_module.rand.randrange(1000)
+
+    assert play_once() == play_once()
+
+
+def test_vortex_records_map_knowledge_before_disturbing_it(monkeypatch):
+    player = d.Player(2, 2, 1, d.LP_INIT)
+    vortex = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["V"])
+    floor = Floor(
+        field=blank_field(),
+        entities=[],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        known_companions=set(),
+        up=(1, 1),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+    )
+    floor.seen[4][5] = 8
+    replay = game_engine_module.ReplayContext(4, 55, GameConfig(), cursor=3)
+
+    def disturb_map(current, *_args):
+        current.seen[4][5] = 0
+
+    monkeypatch.setattr(game_engine_module, "_vortex_rearrange", disturb_map)
+    game_engine_module._defeat_monster(
+        vortex,
+        floor,
+        player,
+        [0],
+        [(2, 2)],
+        Counter(),
+        floors=[floor],
+        replay_context=replay,
+    )
+
+    assert len(replay.vortex_maps) == 1
+    assert replay.vortex_maps[0][0] == 2
+    assert replay.vortex_maps[0][1][0][4][5] == 8
+    assert floor.seen[4][5] == 0
 
 
 def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():
