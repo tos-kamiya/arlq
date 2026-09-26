@@ -5,7 +5,14 @@ import pytest
 
 from arlq import defs as d
 from arlq import game_engine as game_engine_module
-from arlq.arlq import GameConfig, game_config_from_args, respawn_entity, run_game, update_entities
+from arlq.arlq import (
+    GameConfig,
+    game_config_from_args,
+    respawn_entity,
+    reveal_entities_in_fov,
+    run_game,
+    update_entities,
+)
 from arlq.game_engine import Floor, _step
 
 KEYS = {
@@ -594,25 +601,71 @@ def test_stage4_chests_wait_for_w_defeat():
     ]
     assert mimic in floors[0].entities
     assert not mimic.active
-    assert mimic.revealed and mimic.met
+    assert not mimic.revealed and mimic.met
+    assert "M" in player.known_monsters
     assert d.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
     assert d.preview_entity_glyphs(mimic) == []
     assert player.stage_won
 
 
-@pytest.mark.parametrize(("char", "disguise"), [("V", "?"), ("M", "T")])
-def test_debug_entity_display_reveals_trap_monster_identity(char, disguise):
-    monster = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE[char])
+def test_mimic_uses_species_knowledge_after_first_contact():
+    player = d.Player(2, 2, 1, 90)
+    mimic = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["M"])
+    floors, _ = stage3_state(player, [mimic])
+    floor, checkpoint, queue, history = [0], [(2, 2)], Counter(), deque()
 
-    assert d.preview_entity_glyphs(monster)[0].char == disguise
-    assert d.preview_entity_glyphs(monster, reveal_disguises=True)[0].char == char
-    assert d.revealed_entity_glyphs(monster, set(), True, 1, None)[0].char == disguise
+    assert run_stage3_keys("R", floors, player, floor, checkpoint, queue, history, stage_num=4) == [
+        "-- The treasure chest was a Mimic! You respawned."
+    ]
+    assert "M" in player.known_monsters
+    assert not mimic.revealed
+    assert d.revealed_entity_glyphs(mimic, player.known_monsters, False, 1, None)[0].char == "M"
+
+    player.level = 100
+    assert run_stage3_keys("R", floors, player, floor, checkpoint, queue, history, stage_num=4) == [
+        "-- The Mimic was defeated!"
+    ]
+    assert not mimic.revealed
+
+
+def test_nomicon_identifies_active_mimic_in_fov():
+    player = d.Player(2, 2, 1, 90)
+    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
+    mimic = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["M"])
+    mimic.active = False
+
+    reveal_entities_in_fov(player, [mimic], torch_radius=3)
+    assert "M" not in player.known_monsters
+
+    mimic.active = True
+    reveal_entities_in_fov(player, [mimic], torch_radius=3)
+    assert "M" in player.known_monsters
+    assert not mimic.revealed
+
+
+def test_debug_entity_display_reveals_mimic_identity():
+    monster = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE["M"])
+
+    assert d.preview_entity_glyphs(monster)[0].char == "T"
+    assert d.preview_entity_glyphs(monster, known_types={"M"})[0].char == "M"
+    assert d.preview_entity_glyphs(monster, reveal_disguises=True)[0].char == "M"
+    assert d.revealed_entity_glyphs(monster, set(), True, 1, None)[0].char == "T"
+    assert d.revealed_entity_glyphs(monster, {"M"}, False, 1, None)[0].char == "M"
     assert (
         d.revealed_entity_glyphs(
             monster, set(), True, 1, None, reveal_disguises=True
         )[0].char
-        == char
+        == "M"
     )
+
+
+def test_vortex_uses_ordinary_monster_identification():
+    vortex = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE["V"])
+
+    assert d.preview_entity_glyphs(vortex)[0].char == "V"
+    assert d.revealed_entity_glyphs(vortex, set(), False, 1, None)[0].char == "?"
+    assert d.revealed_entity_glyphs(vortex, set(), True, 1, None) == []
+    assert d.revealed_entity_glyphs(vortex, {"V"}, False, 1, None)[0].char == "V"
 
 
 def test_stage4_debug_floor_views_show_v_as_v():
@@ -990,7 +1043,6 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(monkeypat
     floors, _ = stage3_state(player, [loop])
     floors[0].seen[1][1] = 7
     changed_mimic = d.Monster(4, 4, d.CHAR_TO_MONSTER_TRIBE["M"])
-    changed_mimic.revealed = True
     changed_mimic.met = True
     changed_mimic.active = False
     changed_chest = d.Treasure(5, 4, "TW")
