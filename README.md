@@ -119,6 +119,15 @@ reproduce the same layout.
 * **Game End**  
   The game is cleared when you come into contact with the treasure chest (represented by `T`). Your objective is to obtain the treasure chest guarded by the dragon.
 
+## Companion List
+
+| Display & Name | Description                                                      |
+| -------------- | ---------------------------------------------------------------- |
+| **l** Loop Companion | Appears in Stages 3 and 4. Sends the world back 80 turns; monster identities remain known. |
+| **n** Nomicon  | Reveals the type of every monster within the player's field of vision. |
+| **o** Ocular   | Significantly extends the player's field of vision.              |
+| **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |
+
 ## Monster List
 
 ### Stage 1
@@ -151,8 +160,8 @@ Stage 2 contains four ordinary `b` Bison and two empowered `b` Bison (see Rare T
 
 Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
 Stage 3 features empowered versions of `b`, `c`, and `d`: `b'`, `c'`, and `d'`.
-One Rare Chimera (`C`) appears on the same floor as the Collector Elf (`K`).
-One Golem (`g`) appears on a random floor in Stage 3 and Stage 4. When defeated, rocks scatter and turn some floor tiles into walls.
+
+The bottom-right `F:` marker shows the displayed floor. Hold Shift and press Up or Down in GUI mode, or Shift and W or S in `arlq-cli`, to inspect another floor. Unexplored areas remain hidden. A normal movement input returns the display to the player's floor and moves as usual.
 
 #### Monsters
 
@@ -165,7 +174,7 @@ One Golem (`g`) appears on a random floor in Stage 3 and Stage 4. When defeated,
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **I** Isolated Elf | Reveals information about the other elves. It is inside a sealed room, normally reached with a wall-breaking sword; a Collapse can also drop you into the room. Any contact after the first sends you back out to a random location, so you cannot get trapped inside. |
+| **I** Isolated Elf | Reveals information about the other elves. It is in a sealed room, which you must enter by breaking a wall with a sword, flying in with Pegasus, or using stairs or a Collapse. On the second and later contacts, it sends the player to a random location on the map. |
 | **J** Javelin Elf | Follows the player and increases attack power by 25%. |
 | **K** Collector Elf | Exchanges the cursed sword for a permanent 1.2x attack enhancement; it cannot break walls. |
 | **H** High Elf | Grants the talisman after meeting any two of `I`, `J`, and `K`. |
@@ -176,10 +185,6 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 
 Stage 4 is experimental and available from the stage selection menu. It has four floors and adds new enemies and traps to the Stage 3 structure. Its design and gameplay are subject to change.
 
-Run `uv run -p .venv/bin/python python -m arlq --trap-test` to start the one-floor trap test arena. Add `--rematch` to replay the same layout.
-
-While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an adjacent floor's explored map in GUI mode. In `arlq-cli`, hold Shift and press W or S. Unexplored areas remain hidden. The bottom-right `F:` marker shows the displayed floor. A normal movement input returns the display to the player's floor and moves as usual.
-
 #### Monsters
 
 | Display & Name | Description |
@@ -189,26 +194,13 @@ While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an 
 
 #### Traps
 
-Unidentified traps are hidden as `?`, except that a Mimic looks exactly like a treasure chest after W is defeated. Discovery is tracked per trap, so identifying one does not reveal every trap of the same kind.
-
-Traps do not respawn. A discovered Collapse remains in place and can be used repeatedly.
+Unidentified traps are displayed as `?`, like monsters. After W is defeated, a Mimic looks exactly like a treasure chest. A discovered Collapse stays in place and can be used as a passage to the floor below.
 
 | Trap | Display before discovery | Description |
 | ---- | ------------------------ | ----------- |
 | **M** Mimic | Hidden, then `T` | Appears as a chest after W is defeated; contact reveals it and starts combat. |
 | **O** Collapse | `?` | Drops the player to the same coordinates on the floor below. It can be used repeatedly. |
 | **V** Vortex | `?` | Repositions monsters, companions, and chests when defeated; explored areas are reset. |
-
-Stage 4 is experimental and its behavior may change.
-
-## Companion List
-
-| Display & Name | Description                                                      |
-| -------------- | ---------------------------------------------------------------- |
-| **l** Loop Companion | Appears in Stages 3 and 4. Sends the world back 80 turns; monster identities remain known. |
-| **n** Nomicon  | Reveals the type of every monster within the player's field of vision. |
-| **o** Ocular   | Significantly extends the player's field of vision.              |
-| **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |
 
 ## Development commands
 
