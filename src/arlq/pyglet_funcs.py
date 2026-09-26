@@ -516,14 +516,7 @@ class PygletUI:
                 if discovered and cell in d.STAIR_CHARS:
                     self._draw_field_text((x, y), cell, COLOR_MAP[CI_YELLOW], bold=True)
                 elif discovered and cell == d.CHAR_BARRIER:
-                    self._draw_line(
-                        self._field_col_x(x) + 2,
-                        y * self.cell_size_y + self.cell_size_y // 2,
-                        self._field_col_x(x) + self.cell_size_x - 2,
-                        y * self.cell_size_y + self.cell_size_y // 2,
-                        COLOR_MAP[CI_RED],
-                        thickness=2,
-                    )
+                    self._draw_field_text((x, y), d.CHAR_BARRIER, COLOR_MAP[CI_RED], bold=True)
 
         for entity in entities:
             if not isinstance(entity, d.Monster) or entity.tribe.char != "k":
