@@ -662,7 +662,7 @@ def player_appearance(player: Player) -> Tuple[str, Optional[str]]:
 def preview_entity_glyphs(entity: Entity, reveal_disguises: bool = False) -> List[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
     if isinstance(entity, Monster) and not entity.active and not (
-        entity.tribe.char == "M" and entity.met
+        entity.tribe.char == "M" and not entity.met and reveal_disguises
     ):
         return []
     char = None
@@ -719,7 +719,7 @@ def revealed_entity_glyphs(
         return [FieldGlyph(entity.x, entity.y, char, tone, bold=True)]
     if isinstance(entity, Monster):
         char = entity.tribe.char
-        if not entity.active and not (char == "M" and entity.met):
+        if not entity.active:
             return []
         if char in TRAP_MONSTER_DISGUISES and not entity.revealed and not reveal_disguises:
             return [FieldGlyph(entity.x, entity.y, TRAP_MONSTER_DISGUISES[char], "yellow", bold=True)]

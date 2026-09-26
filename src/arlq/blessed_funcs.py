@@ -97,6 +97,7 @@ class BlessedUI:
         floor_label: Optional[str] = None,
     ) -> str:
         output = [self.term.home + self.term.clear]
+        reveal_disguises = debug_show_entities or monochrome
 
         def put(
             x: int,
@@ -188,7 +189,7 @@ class BlessedUI:
 
         if show_entities:
             for entity in entities:
-                for glyph in d.preview_entity_glyphs(entity, reveal_disguises=debug_show_entities):
+                for glyph in d.preview_entity_glyphs(entity, reveal_disguises=reveal_disguises):
                     paint(glyph)
 
         for entity in entities:
@@ -196,7 +197,7 @@ class BlessedUI:
                 continue
             for glyph in d.revealed_entity_glyphs(
                 entity, known_types, show_entities, player_attack, dim_types,
-                reveal_disguises=debug_show_entities,
+                reveal_disguises=reveal_disguises,
                 debug_show_entities=debug_show_entities,
             ):
                 paint(glyph)
