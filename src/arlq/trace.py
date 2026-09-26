@@ -204,7 +204,7 @@ class ReplayUI:
             if self._draw_interval > 0:
                 time.sleep(self._draw_interval)
 
-    def select_stage(self) -> int:
+    def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         return self._stage
 
     def input_direction(self) -> Optional[Tuple[int, int]]:

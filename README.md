@@ -55,7 +55,8 @@ interface only; it has no effect when `arlq` starts the graphical interface.
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3` | Select a stage directly. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4` | Select a stage directly. |
+| `--dev` | Show development stages in the stage selection menu. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -181,27 +182,6 @@ The bottom-right marker shows the displayed floor as a fraction (for example, `3
 | **H** High Elf | Grants the talisman after meeting any two of `I`, `J`, and `K`. |
 
 The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first contact made while their condition is unmet; any contact after that sends you to a random location on the map.
-
-### Stage 4 (experimental, development-only)
-
-Stage 4 is experimental and available from the stage selection menu. It has four floors and adds new enemies and traps to the Stage 3 structure. Its design and gameplay are subject to change.
-
-#### Monsters
-
-| Display & Name | Description |
-| -------------- | ----------- |
-| **k** Marksman | Shoots arrows when the player is in its line of sight. |
-| **E** Rare Erebus | Restores LP when defeated but lowers the player's level. |
-
-#### Traps
-
-Unidentified traps are displayed as `?`, like monsters. After W is defeated, a Mimic looks exactly like a treasure chest. A discovered Collapse stays in place and can be used as a passage to the floor below.
-
-| Trap | Display before discovery | Description |
-| ---- | ------------------------ | ----------- |
-| **M** Mimic | Hidden, then `T` | Appears as a chest after W is defeated; contact reveals it and starts combat. It disappears from the map when defeated. |
-| **O** Collapse | `?` | Drops the player to the same coordinates on the floor below. It can be used repeatedly. |
-| **V** Vortex | `?` | Repositions monsters, companions, and chests when defeated; explored areas are reset. |
 
 ## Development commands
 

@@ -671,13 +671,17 @@ def run_game(
     seed_value: Optional[int] = None,
     trace: Optional[TraceRecorder] = None,
     config: Optional[GameConfig] = None,
+    dev: bool = False,
 ) -> None:
     if config is None:
         config = GameConfig()
     show_entities = debug_show_entities
 
     if stage_num == 0:  # if stage is not selected yet
-        r = ui.select_stage()
+        stage_numbers = d.PUBLIC_STAGE_NUMBERS if dev else tuple(
+            stage for stage in d.PUBLIC_STAGE_NUMBERS if stage != 4
+        )
+        r = ui.select_stage(stage_numbers)
         if r == 0:
             return
         stage_num = r
@@ -766,6 +770,10 @@ def main():
     )
 
     parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, or 4).")
+    parser.add_argument(
+        "--dev", action="store_true",
+        help="Show development stages in the stage selection menu.",
+    )
     parser.add_argument("--trap-test", action="store_true", help="Start the one-floor trap test stage.")
 
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
@@ -918,6 +926,7 @@ def main():
                 None,
                 trace=trace_recorder,
                 config=game_config,
+                dev=args.dev,
             )
         else:
             run_game(
@@ -928,6 +937,7 @@ def main():
                 args.seed,
                 trace=trace_recorder,
                 config=game_config,
+                dev=args.dev,
             )
 
     if args.trace_replay and not args.trace_replay_watch:
