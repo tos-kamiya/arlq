@@ -3,7 +3,7 @@
 from collections import Counter, deque
 from copy import deepcopy
 from dataclasses import dataclass, field as dataclass_field
-from typing import Any, Container, Deque, Dict, List, Optional, Set, Tuple
+from typing import Any, Container, Deque, Dict, List, Optional, Tuple
 
 from . import defs as d
 from .arlq import (
@@ -46,15 +46,12 @@ class Floor:
     field: List[List[str]]
     entities: List[d.Entity]
     seen: List[List[int]]
-    known_companions: Set[str]
     up: d.Point
     down: d.Point
     island: Optional[d.Point]
     up_stairs: List[d.Point] = dataclass_field(default_factory=list)
     down_stairs: List[d.Point] = dataclass_field(default_factory=list)
     contact_reveal: Optional[d.Point] = None
-    arrow_marks: Dict[d.Monster, List[Tuple[d.Point, str]]] = dataclass_field(default_factory=dict)
-    defeated_mimics: Set[d.Point] = dataclass_field(default_factory=set)
 
 # Rewind history tracks the operation window; game state is rebuilt from inputs.
 HistoryEntry = Optional[Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]]
@@ -208,7 +205,6 @@ def _place_wyrm_chests(
     entities: List[d.Entity], field: List[List[str]], reserved: Container[d.Point], stage_num: int
 ) -> None:
     chest = d.Treasure(*_treasure_spot(entities, field, reserved), d.CHAR_TREASURE + "W")
-    chest.active = stage_num != 4
     entities.append(chest)
     if stage_num == 4:
         mimic = d.Monster(*_treasure_spot(entities, field, reserved), d.CHAR_TO_MONSTER_TRIBE["M"])
@@ -216,11 +212,9 @@ def _place_wyrm_chests(
         entities.append(mimic)
 
 
-def _activate_wyrm_chests(current: Floor) -> None:
+def _activate_wyrm_mimics(current: Floor) -> None:
     for entity in current.entities:
-        if isinstance(entity, d.Treasure) and entity.unlock_key == d.CHAR_TREASURE + "W":
-            entity.active = True
-        elif isinstance(entity, d.Monster) and entity.tribe.char == "M":
+        if isinstance(entity, d.Monster) and entity.tribe.char == "M":
             entity.active = True
 
 
@@ -301,7 +295,6 @@ def _build_floor(
         field=field,
         entities=entities,
         seen=[[0] * len(field[0]) for _ in field],
-        known_companions=set(),
         up=up,
         down=up if stage_num == 4 and index == floor_count - 1 else down,
         island=island_tile,
@@ -448,7 +441,6 @@ def build_trap_test(
         field=field,
         entities=entities,
         seen=[[0] * len(field[0]) for _ in field],
-        known_companions=set(),
         up=entry,
         down=wyrm_point,
         island=None,
@@ -534,7 +526,7 @@ def _apply_terrain_hazards(current: Floor, player: d.Player, previous: d.Point) 
 def _marksman_shoot(current: Floor, player: d.Player) -> None:
     """Resolve Stage 4 marksmen after a player move and retain their arrow marks."""
     for entity in current.entities:
-        if not isinstance(entity, d.Monster) or entity.tribe.char != "k":
+        if not isinstance(entity, d.Monster) or entity.tribe.char != "k" or not entity.active:
             continue
         dx, dy = player.x - entity.x, player.y - entity.y
         if (dx == 0) == (dy == 0):
@@ -560,7 +552,8 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
                 (other.x, other.y) == (x, y)
                 and (
                     isinstance(other, d.Companion)
-                    or isinstance(other, (d.Monster, d.Treasure)) and other.active
+                    or isinstance(other, d.Treasure)
+                    or isinstance(other, d.Monster) and other.active
                 )
                 for other in current.entities
             ):
@@ -571,7 +564,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
 
         player.lp -= d.MARKSMAN_LP_DAMAGE
         mark = ((player.x - step_x, player.y - step_y), "-" if step_x else "|")
-        marks = current.arrow_marks.setdefault(entity, [])
+        marks = entity.arrow_marks
         marks[:] = [existing for existing in marks if existing[0] != mark[0]]
         marks.append(mark)
         if len(marks) > d.STAGE4_MARKSMAN_ARROW_LIMIT:
@@ -600,10 +593,8 @@ def _replay_to_operation(
             ),
         )
         player.known_monsters = set()
-        player.unlocked_treasures = set()
         player.stage3_won = False
         player.stage3_treasure_collected = False
-        player.met_elves = set()
         floor = [0]
         checkpoint = [floors[0].up]
         queue: Counter[Tuple[int, str]] = Counter()
@@ -624,7 +615,6 @@ def _replay_to_operation(
                 operation_index=index,
             )
             if isinstance(result, _RewindRequest):
-                floors[floor[0]].known_companions.add("l")
                 _rewind_to_history(
                     floors,
                     player,
@@ -656,7 +646,6 @@ def _rewind_to_history(
     known_monsters = set(player.known_monsters)
     elf_floors = deepcopy(player.stage3_elf_floors)
     seen = deepcopy([floor_data.seen for floor_data in floors])
-    known_companions = deepcopy([floor_data.known_companions for floor_data in floors])
 
     if replay_context is not None:
         if operation_count is None:
@@ -696,18 +685,9 @@ def _rewind_to_history(
 
     for floor_data, preserved_seen in zip(floors, seen, strict=True):
         floor_data.seen = preserved_seen
-    for floor_data, preserved_known in zip(floors, known_companions, strict=True):
-        floor_data.known_companions = preserved_known
-
     player.__dict__.update(restored_player_state.__dict__)
-    # Monster identification and elf floor locations survive the rewind;
-    # everything else (position, level, LP, floor, stage3_flags, ...)
-    # reverts to the recorded past. met_elves must revert together
-    # with stage3_flags: it gates re-processing of an elf encounter
-    # (_resolve_monster_contact), so keeping it "met" while stage3_flags
-    # reverts to not-yet-met would permanently block earning that elf's
-    # flag again, and would render it on the field as already resolved
-    # while the status bar (driven by stage3_flags) still shows it unmet.
+    # Monster type identification and elf floor locations survive the
+    # rewind. Entity identity and encounter state are restored by replay.
     player.known_monsters = known_monsters
     player.stage3_elf_floors = elf_floors
 
@@ -731,11 +711,15 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
         if isinstance(entity, (d.Companion, d.Treasure))
         or (
             isinstance(entity, d.Monster)
+            and entity.active
             and not entity.tribe.is_elf
             and entity.tribe.effect != d.EFFECT_VORTEX
         )
     ]
     avoid = {(player.x, player.y)} | {(entity.x, entity.y) for entity in movable}
+    for entity in movable:
+        if isinstance(entity, d.Monster) and entity.tribe.char == "k":
+            entity.arrow_marks.clear()
     current.entities[:] = [entity for entity in current.entities if entity not in movable]
 
     # Barriers belong to the Wyrms. Clear them before moving the Wyrms, then
@@ -777,7 +761,9 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
         for x, cell in enumerate(row):
             if cell in (d.CHAR_FLOOR, d.CHAR_BARRIER):
                 current.seen[y][x] = 0
-    current.arrow_marks.clear()
+    for entity in current.entities:
+        if isinstance(entity, d.Monster) and entity.tribe.char == "k":
+            entity.arrow_marks.clear()
 
 
 def _defeat_monster(
@@ -795,9 +781,10 @@ def _defeat_monster(
     """Apply the effects of successfully defeating `entity` in combat."""
     ch = entity.tribe.char
     if ch == "k":
-        current.arrow_marks.pop(entity, None)
+        entity.arrow_marks.clear()
     if ch == "M":
-        current.defeated_mimics.add((entity.x, entity.y))
+        entity.met = True
+        entity.active = False
 
     # A successful monster defeat establishes the next respawn point,
     # matching the legacy stages and the Rust port.
@@ -815,8 +802,8 @@ def _defeat_monster(
 
     if ch == "W":
         player.stage3_flags |= d.STAGE3_W_FLAG
-        unlock_treasure_for_defeat(entity, player.unlocked_treasures)
-        _activate_wyrm_chests(current)
+        unlock_treasure_for_defeat(entity, current.entities)
+        _activate_wyrm_mimics(current)
         player.known_monsters.add(d.monster_type_key(entity))
         if player.stage3_treasure_collected:
             player.stage3_won = True
@@ -877,7 +864,7 @@ def _resolve_monster_contact(
     if entity.tribe.is_elf:
         player.stage3_elf_floors.setdefault(ch, floor[0] + 1)
 
-    if ch in player.met_elves:
+    if entity.tribe.is_elf and entity.met:
         current.entities.pop(hit)
         if trace is not None:
             trace.record_contact({"type": "monster", "id": ch, "outcome": "refused"})
@@ -898,8 +885,10 @@ def _resolve_monster_contact(
 
     # Stage 3 keeps the W treasure hidden until W is defeated. Trap monsters
     # track discovery per instance instead of entering the known-type set.
-    if ch != "W" and ch not in d.TRAP_MONSTER_DISGUISES:
+    if ch != "W" and ch not in d.TRAP_MONSTER_DISGUISES and not entity.tribe.is_elf:
         player.known_monsters.add(d.monster_type_key(entity))
+    if entity.tribe.is_elf:
+        entity.revealed = True
     was_revealed = entity.revealed
     if ch in d.TRAP_MONSTER_DISGUISES:
         entity.revealed = True
@@ -948,7 +937,7 @@ def _resolve_monster_contact(
     elif d.current_player_attack(player, 3) < d.monster_level(entity):
         # Losing still identifies the monster, including W. Treasure glyphs
         # remain gated separately by their unlock state in the renderer.
-        if ch not in d.TRAP_MONSTER_DISGUISES:
+        if ch not in d.TRAP_MONSTER_DISGUISES and not entity.tribe.is_elf:
             player.known_monsters.add(d.monster_type_key(entity))
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity
@@ -1000,6 +989,8 @@ def _resolve_monster_contact(
             replay_context=replay_context,
             operation_index=operation_index,
         )
+        if ch == "M":
+            current.entities.append(entity)
         if ch == "M" and was_revealed:
             event_message = tr("-- The Mimic was defeated!")
         elif ch == "M":
@@ -1008,10 +999,10 @@ def _resolve_monster_contact(
             event_message = tr(">> The King's request is complete! <<")
 
     if entity.tribe.is_elf and ch != "J" and entity not in current.entities:
-        player.met_elves.add(ch)
+        entity.met = True
         current.entities.append(entity)
     elif entity.tribe.is_elf and entity not in current.entities:
-        player.met_elves.add(ch)
+        entity.met = True
 
     player.last_contact_monster = contact_key
 
@@ -1047,7 +1038,7 @@ def _resolve_contact(
     entity = current.entities[hit]
 
     if isinstance(entity, d.Treasure):
-        collected = entity.active and entity.unlock_key in player.unlocked_treasures
+        collected = entity.unlocked
         if trace is not None:
             trace.record_contact({"type": "treasure", "id": entity.unlock_key, "collected": collected})
         if collected:
@@ -1067,8 +1058,9 @@ def _resolve_contact(
             trace.record_contact({"type": "companion", "id": ch})
         # The game loop handles rewind after this step returns its request.
         if ch == "l" and history:
+            entity.revealed = True
             return _ContactResult(None, end_turn=True, message_ticks=5, rewind_requested=True)
-        current.known_companions.add(ch)
+        entity.revealed = True
         current.entities.pop(hit)
         player.companion = entity
         player.karma = 0
@@ -1263,7 +1255,6 @@ def _build_single_floor(config: GameConfig, stage_num: int) -> Tuple[List[Floor]
         field=field,
         entities=entities,
         seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-        known_companions=set(),
         up=entry,
         down=treasure_point,
         island=None,
@@ -1301,10 +1292,8 @@ def run_game(
             ),
         )
     player.known_monsters = set()
-    player.unlocked_treasures = set()
     player.stage3_won = False
     player.stage3_treasure_collected = False
-    player.met_elves = set()
     replay_context = (
         ReplayContext(stage_num, initial_seed, config) if stage_num in (3, 4) else None
     )
@@ -1355,21 +1344,14 @@ def run_game(
         render_entities = (
             display_floor.entities if legacy_stage else [render_player, *display_floor.entities]
         )
-        known_types = player.known_monsters | (
-            player.known_companions if legacy_stage else display_floor.known_companions
-        )
+        known_types = player.known_monsters
         no_current_visibility = [[0] * len(display_floor.field[0]) for _ in display_floor.field]
         stage_draw_options = {}
         if not legacy_stage:
             stage_draw_options = {
-                "dim_types": player.met_elves,
                 "stage_roster": d.STAGE3_ROSTER_TRIBES if stage_num == 3 else d.STAGE4_ROSTER_TRIBES,
                 "floor_view": floor_view,
                 "floor_label": f"F: {view_floor + 1}",
-                "arrow_marks": [mark for marks in display_floor.arrow_marks.values() for mark in marks]
-                if stage_num == 4
-                else (),
-                "mimic_marks": display_floor.defeated_mimics if stage_num == 4 else (),
             }
         ui.draw_stage(
             hours=hours,
@@ -1384,7 +1366,6 @@ def run_game(
             stage_num=stage_num,
             message=message[1],
             checkpoint=checkpoint[0],
-            unlocked_treasures=player.unlocked_treasures,
             **stage_draw_options,
         )
 
@@ -1418,7 +1399,6 @@ def run_game(
                 current.field,
                 player,
                 current.entities,
-                player.unlocked_treasures,
                 respawn_point=checkpoint[0],
             )
             if update_result.message is not None:
@@ -1460,7 +1440,6 @@ def run_game(
             operation_index=len(replay_context.operations) - 1 if replay_context is not None else None,
         )
         if isinstance(step_result, _RewindRequest):
-            floors[floor[0]].known_companions.add("l")
             event_message = _rewind_to_history(
                 floors,
                 player,
@@ -1500,18 +1479,11 @@ def run_game(
         current = floors[floor[0]]
         cur = get_torched(player, config.torch_radius)
         render_entities = current.entities if legacy_stage else [player, *current.entities]
-        known_types = player.known_monsters | (
-            player.known_companions if legacy_stage else current.known_companions
-        )
+        known_types = player.known_monsters
         stage_draw_options = {}
         if not legacy_stage:
             stage_draw_options = {
-                "dim_types": player.met_elves,
                 "stage_roster": d.STAGE3_ROSTER_TRIBES if stage_num == 3 else d.STAGE4_ROSTER_TRIBES,
-                "arrow_marks": [mark for marks in current.arrow_marks.values() for mark in marks]
-                if stage_num == 4
-                else (),
-                "mimic_marks": current.defeated_mimics if stage_num == 4 else (),
             }
         ui.draw_stage(
             hours=hours,
@@ -1527,7 +1499,6 @@ def run_game(
             message=message[1],
             extra_keys=True,
             checkpoint=checkpoint[0],
-            unlocked_treasures=player.unlocked_treasures,
             **stage_draw_options,
         )
         key = ui.input_alphabet()

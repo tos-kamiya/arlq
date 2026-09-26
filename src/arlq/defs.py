@@ -121,13 +121,13 @@ class Entity:
 
 
 class Treasure(Entity):
-    """A chest that may be locked or inactive in the current timeline."""
+    """A chest whose unlock state is part of the chest instance."""
 
     def __init__(self, x, y, encounter_type, unlock_key: Optional[str] = None):
         super().__init__(x, y)
         self.encounter_type = encounter_type
         self.unlock_key = unlock_key or encounter_type
-        self.active: bool = True
+        self.unlocked: bool = False
 
 
 class Tribe:
@@ -203,6 +203,7 @@ class Companion(Entity):
         super().__init__(x, y)
         self.tribe: CompanionTribe = tribe
         self.origin_floor: Optional[int] = origin_floor
+        self.revealed: bool = False
 
 
 class Monster(Entity):
@@ -221,7 +222,9 @@ class Monster(Entity):
             raise ValueError("empowered must be positive")
         self.empowered: int = empowered
         self.revealed: bool = False
+        self.met: bool = False
         self.active: bool = True
+        self.arrow_marks: List[Tuple[Point, str]] = []
 
 
 def monster_level(monster: Monster) -> int:
@@ -257,14 +260,8 @@ class Player(Entity):
         self.item_taken_from: Optional[str] = None
         self.companion: Optional[Companion] = companion
         self.karma: int = 0
-        # Monster identities are known globally across all floors and stages.
+        # Ordinary monster identities are known by tribe across all floors.
         self.known_monsters: Set[str] = set()
-        # Multi-floor stages track known companions separately on each floor.
-        self.known_companions: Set[str] = set()
-        self.unlocked_treasures: Set[str] = set()
-        # Elf encounter knowledge is shared by any stage that reuses elf
-        # characters. Stage 3's floor hints and progress flags stay separate.
-        self.met_elves: Set[str] = set()
         self.stage3_elf_floors: Dict[str, int] = {}
         # Stage 3 state. Keeping these on Player preserves the small shared
         # entity model used by both frontends.
@@ -290,16 +287,6 @@ class Player(Entity):
         # Same idea as high_elf_refused, but for Stage 3's Collector Elf (K)
         # before the player has the cursed sword.
         self.k_elf_refused: bool = False
-
-    @property
-    def stage3_met_elves(self) -> Set[str]:
-        """Compatibility alias for older Stage 3 state snapshots/callers."""
-        return self.met_elves
-
-    @stage3_met_elves.setter
-    def stage3_met_elves(self, value: Set[str]) -> None:
-        self.met_elves = value
-
 
 class SpawnConfig:
     """
@@ -655,7 +642,9 @@ def player_appearance(player: Player) -> Tuple[str, Optional[str]]:
 
 def preview_entity_glyphs(entity: Entity, reveal_disguises: bool = False) -> List[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
-    if isinstance(entity, (Monster, Treasure)) and not entity.active:
+    if isinstance(entity, Monster) and not entity.active and not (
+        entity.tribe.char == "M" and entity.met
+    ):
         return []
     char = None
     if isinstance(entity, Monster):
@@ -681,9 +670,9 @@ def revealed_entity_glyphs(
     known_types: Set[str],
     show_entities: bool,
     player_attack: int,
-    unlocked_treasures: Optional[Set[str]],
     dim_types: Optional[Set[str]],
     reveal_disguises: bool = False,
+    debug_show_entities: bool = False,
 ) -> List[FieldGlyph]:
     """Glyphs for an entity inside the explored map.
 
@@ -692,16 +681,23 @@ def revealed_entity_glyphs(
     """
     if isinstance(entity, Companion):
         char = entity.tribe.char
-        if char not in known_types and not show_entities:
+        known = entity.revealed
+        if not known and not show_entities:
             char = "!"
-        return [FieldGlyph(entity.x, entity.y, char, "companion", bold=True)]
+        tone = "default" if debug_show_entities and not known else "companion"
+        return [FieldGlyph(entity.x, entity.y, char, tone, bold=True)]
     if isinstance(entity, Monster):
-        if not entity.active:
-            return []
         char = entity.tribe.char
+        if not entity.active and not (char == "M" and entity.met):
+            return []
         if char in TRAP_MONSTER_DISGUISES and not entity.revealed and not reveal_disguises:
             return [FieldGlyph(entity.x, entity.y, TRAP_MONSTER_DISGUISES[char], "yellow", bold=True)]
-        if char not in TRAP_MONSTER_DISGUISES and monster_type_key(entity) not in known_types:
+        known = (
+            entity.revealed
+            if entity.tribe.is_elf or char == "M"
+            else monster_type_key(entity) in known_types
+        )
+        if char not in TRAP_MONSTER_DISGUISES and not known:
             if show_entities:
                 return []
             return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
@@ -709,12 +705,12 @@ def revealed_entity_glyphs(
             tone = "yellow" if entity.tribe.effect == EFFECT_UNLOCK_TREASURE else "blue"
         else:
             tone = "red"
-        dim = bool(dim_types and char in dim_types)
+        dim = entity.met if entity.tribe.is_elf or char == "M" else bool(dim_types and char in dim_types)
         glyphs = [FieldGlyph(entity.x, entity.y, char, tone, bold=True, dim=dim)]
         if entity.empowered > 1:
             glyphs.append(FieldGlyph(entity.x + 1, entity.y, "'", tone, bold=True, dim=dim))
         return glyphs
     if isinstance(entity, Treasure):
-        if entity.active and unlocked_treasures is not None and entity.unlock_key in unlocked_treasures:
+        if entity.unlocked:
             return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
     return []

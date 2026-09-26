@@ -1,4 +1,4 @@
-from typing import Container, List, Set, Tuple, Optional
+from typing import Container, List, Tuple, Optional
 
 import argparse
 import json
@@ -362,13 +362,15 @@ def get_torched(player: d.Player, torch_radius: int) -> List[List[int]]:
 
 def unlock_treasure_for_defeat(
     monster: d.Monster,
-    unlocked_treasures: Set[str],
+    entities: List[d.Entity],
 ) -> None:
-    """Record the treasure unlocked by defeating a monster."""
+    """Unlock chests tied to the defeated monster."""
     treasure_key = monster.tribe.treasure_key
     if treasure_key is None:
         return
-    unlocked_treasures.add(treasure_key)
+    for entity in entities:
+        if isinstance(entity, d.Treasure) and entity.unlock_key == treasure_key:
+            entity.unlocked = True
 
 
 def reveal_entities_in_fov(
@@ -386,7 +388,10 @@ def reveal_entities_in_fov(
         if not torched[entity.y][entity.x]:
             continue
         if isinstance(entity, d.Monster) and entity.tribe.char not in d.TRAP_MONSTER_DISGUISES:
-            player.known_monsters.add(d.monster_type_key(entity))
+            if entity.tribe.is_elf:
+                entity.revealed = True
+            else:
+                player.known_monsters.add(d.monster_type_key(entity))
 
 
 def move_player(
@@ -446,7 +451,6 @@ def update_entities(
     field: List[List[str]],
     player: d.Player,
     entities: List[d.Entity],
-    unlocked_treasures: Set[str],
     sword_uses: int = d.SWORD_USES,
     respawn_point: Optional[d.Point] = None,
 ) -> UpdateResult:
@@ -479,7 +483,7 @@ def update_entities(
     for eei, ee in enc_entity_infos:
         if isinstance(ee, d.Treasure):
             t: d.Treasure = ee
-            collected = t.unlock_key in unlocked_treasures
+            collected = t.unlocked
             events.contact = ContactEvent("treasure", t.unlock_key, collected=collected)
             if collected:
                 message = (10, tr(">> Treasure chest obtained! <<"))
@@ -487,7 +491,7 @@ def update_entities(
                 effect = d.EFFECT_GOT_TREASURE
         elif isinstance(ee, d.Companion):
             c: d.Companion = ee
-            player.known_companions.add(c.tribe.char)
+            c.revealed = True
 
             del entities[eei]
 
@@ -501,7 +505,10 @@ def update_entities(
                 message = (MESSAGE_TICKS, tr(event_message))
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
-            player.known_monsters.add(d.monster_type_key(m))
+            if m.tribe.is_elf or m.tribe.char in d.TRAP_MONSTER_DISGUISES:
+                m.revealed = True
+            else:
+                player.known_monsters.add(d.monster_type_key(m))
             contact_key = (0, m.x, m.y)
 
             # High Elf is a Stage 3-style gatekeeper in Stage 2 as well. It
@@ -557,7 +564,7 @@ def update_entities(
                 effect = m.tribe.effect
                 d.grant_defeat_level(player, effect)
                 if effect == d.EFFECT_UNLOCK_TREASURE:
-                    unlock_treasure_for_defeat(m, unlocked_treasures)
+                    unlock_treasure_for_defeat(m, entities)
                 elif effect == d.EFFECT_CALTROP_SPREAD:
                     spread_caltrops(field, (player.x, player.y), entities)
                 elif effect == d.EFFECT_ROCK_SPREAD:

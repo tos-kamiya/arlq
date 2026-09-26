@@ -90,14 +90,11 @@ class BlessedUI:
         debug_show_entities: bool = False,
         checkpoint: Optional[d.Point] = None,
         monochrome: bool = False,
-        unlocked_treasures: Optional[Set[str]] = None,
         dim_types: Optional[Set[str]] = None,
         stage_num: int = 0,
         stage_roster: Optional[List[d.MonsterTribe]] = None,
         floor_view: bool = False,
         floor_label: Optional[str] = None,
-        arrow_marks=(),
-        mimic_marks=(),
     ) -> str:
         output = [self.term.home + self.term.clear]
 
@@ -153,10 +150,6 @@ class BlessedUI:
                     color = "green" if cell == d.WALL_CHAR else "magenta" if cell == d.CHAR_CALTROP else None
                     put(x, y, cell if discovered else " ", color, bg="black" if discovered else None)
 
-        for x, y in mimic_marks:
-            if (show_entities or torched[y][x]) and (x, y) != (px, py):
-                put(x, y, "M", dim=True, bg=cell_background(x, y))
-
         if (
             not floor_view
             and checkpoint is not None
@@ -172,9 +165,12 @@ class BlessedUI:
                 bg=cell_background(checkpoint[0], checkpoint[1]),
             )
 
-        for (x, y), char in arrow_marks:
-            if (show_entities or torched[y][x]) and (x, y) != (px, py):
-                put(x, y, char, "red", bold=True, bg=cell_background(x, y))
+        for entity in entities:
+            if not isinstance(entity, d.Monster) or entity.tribe.char != "k":
+                continue
+            for (x, y), char in entity.arrow_marks:
+                if (show_entities or torched[y][x]) and (x, y) != (px, py):
+                    put(x, y, char, "red", bold=True, bg=cell_background(x, y))
 
         player_attack = d.current_player_attack(player, stage_num)
 
@@ -199,8 +195,9 @@ class BlessedUI:
             if torched[entity.y][entity.x] == 0 or (entity.x, entity.y) == (px, py):
                 continue
             for glyph in d.revealed_entity_glyphs(
-                entity, known_types, show_entities, player_attack, unlocked_treasures, dim_types,
+                entity, known_types, show_entities, player_attack, dim_types,
                 reveal_disguises=debug_show_entities,
+                debug_show_entities=debug_show_entities,
             ):
                 paint(glyph)
 
@@ -303,22 +300,17 @@ class BlessedUI:
         message=None,
         extra_keys=False,
         checkpoint=None,
-        unlocked_treasures: Optional[Set[str]] = None,
         dim_types: Optional[Set[str]] = None,
         stage_roster: Optional[List[d.MonsterTribe]] = None,
         floor_view: bool = False,
         floor_label: Optional[str] = None,
-        arrow_marks=(),
-        mimic_marks=(),
     ):
         self._wait_for_terminal_size()
         show_entities = show_entities or self.map_mode
         stage_args = (
             entities, field, cur_torched, torched, known_types, show_entities,
-            debug_show_entities, checkpoint, self.map_mode, unlocked_treasures, dim_types,
+            debug_show_entities, checkpoint, self.map_mode, dim_types,
             stage_num, stage_roster, floor_view, floor_label,
-            arrow_marks,
-            mimic_marks,
         )
         status_args = (player, hours, stage_num, message, extra_keys)
         self._last_stage = (stage_args, status_args)
