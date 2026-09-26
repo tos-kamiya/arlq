@@ -775,6 +775,9 @@ class PygletUI:
                 if symbol == pgkey.M:
                     self.map_mode = True
                     return (0, 0)
+                if symbol == pgkey.H:
+                    self.controls_menu()
+                    return (0, 0)
                 if symbol in (pgkey.ESCAPE, pgkey.Q):
                     return None
                 if symbol in _DIRECTION_KEYS:
@@ -828,6 +831,9 @@ class PygletUI:
                     return None
                 if symbol in _DIGIT_KEYS:
                     return _DIGIT_KEYS[symbol]
+                if symbol == pgkey.H:
+                    self.controls_menu()
+                    return "h"
                 key_name = pgkey.symbol_string(symbol)
                 return key_name.lower()
 
@@ -836,6 +842,28 @@ class PygletUI:
     def quit(self):
         """Closes the game window."""
         self.window.close()
+
+    def controls_menu(self) -> None:
+        """Show keyboard controls until the player dismisses the help screen."""
+        self._clear_drawables()
+        self._draw_text((8, 4), tr("Keyboard Controls"), COLOR_MAP[CI_YELLOW], bold=True)
+        controls = (
+            "Arrow keys / WASD: move",
+            "F: toggle reachable-area preview",
+            "M: enter map and entity display mode (cannot be undone)",
+            "Shift + Up/Down: view another floor (Stages 3 and 4)",
+            "S: show the seed",
+            "Q / Esc: quit the stage",
+        )
+        for row, line in enumerate(controls, start=7):
+            self._draw_text((8, row), tr(line), COLOR_MAP["default"])
+        self._draw_text((8, 16), tr("Press any key to return"), (145, 150, 160))
+        self._flip()
+        while not self._closed:
+            self._pump()
+            if self._next_key_event() is not None:
+                return
+            time.sleep(1 / 30)
 
     def settings_menu(self) -> None:
         """Show GUI settings and persist the selected display scale and key repeat."""
@@ -892,13 +920,13 @@ class PygletUI:
                 if symbol == pgkey.LEFT:
                     if row == 0:
                         current_index = max(0, current_index - 1)
-                    else:
+                    elif row == 1:
                         repeat_index = max(0, repeat_index - 1)
                     break
                 if symbol == pgkey.RIGHT:
                     if row == 0:
                         current_index = min(len(UI_SCALE_CHOICES) - 1, current_index + 1)
-                    else:
+                    elif row == 1:
                         repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
                     break
                 if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
@@ -943,6 +971,7 @@ class PygletUI:
                     COLOR_MAP["default"],
                     bold=(i == current_index),
                 )
+            self._draw_text((8, base_y + len(options) + 1), tr("[h]elp: keyboard controls"), (145, 150, 160))
 
             self._flip()
 
@@ -978,6 +1007,9 @@ class PygletUI:
                     elif symbol == pgkey.S:
                         self.settings_menu()
                         self._discard_queued_key(pgkey.ESCAPE)
+                        break
+                    elif symbol == pgkey.H:
+                        self.controls_menu()
                         break
                     elif symbol in (pgkey.Q, pgkey.ESCAPE):
                         return 0
