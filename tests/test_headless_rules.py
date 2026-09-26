@@ -1623,8 +1623,8 @@ def test_level_item_labels_follow_permanent_elf_attack_bonuses():
     assert d.level_item_labels(player, 2) == ("LVL: 100 /2 x1.2 +25%", "+Poisoned(d)")
 
     player.item = d.ITEM_SWORD_X1_5
-    assert d.level_item_labels(player, 3)[0] == "LVL: 100 x1.5 +25%"
-    assert d.status_prefix(player, 3, 4).endswith("LVL: 100 x1.5 +25%  +Sword(d)  ")
+    assert d.level_item_labels(player, 3)[0] == "LVL: 100 x1.5 x1.2 +25%"
+    assert d.status_prefix(player, 3, 4).endswith("LVL: 100 x1.5 x1.2 +25%  +Sword(d)  ")
 
 
 def test_stage3_progress_marks_add_elf_floors_after_the_isolated_elf():

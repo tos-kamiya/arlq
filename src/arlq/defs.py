@@ -588,7 +588,7 @@ def level_item_labels(player: Player, stage_num: int) -> Tuple[str, str]:
     else:
         level = f"LVL: {player.level}"
         item_str = ""
-    if has_k and item not in (ITEM_SWORD_X1_5, ITEM_SWORD_CURSED):
+    if has_k:
         level += " x1.2"
     if has_j:
         level += " +25%"
