@@ -63,6 +63,7 @@ STAGE3_PROGRESS: List[Tuple[str, int]] = [
 ITEM_SWORD_X1_5: str = "Sword"
 ITEM_SWORD_CURSED: str = "Cursed Sword"
 ITEM_POISONED: str = "Poisoned"
+ITEM_SPORES: str = "Spores"
 ITEM_TREASURE: str = "Treasure"
 
 EFFECT_SPECIAL_EXP: str = "Special Exp."
@@ -171,7 +172,6 @@ class MonsterTribe(Tribe):
         event_message: Optional[str] = None,
         item: Optional[str] = None,
         effect: Optional[str] = None,
-        treasure_key: Optional[str] = None,
         is_elf: bool = False,
     ):
         super().__init__(char, event_message)
@@ -179,7 +179,6 @@ class MonsterTribe(Tribe):
         self.feed: int = feed
         self.item: Optional[str] = item
         self.effect: Optional[str] = effect
-        self.treasure_key: Optional[str] = treasure_key
         self.is_elf: bool = is_elf
 
 
@@ -191,7 +190,9 @@ class CompanionTribe(Tribe):
         durability: Durability of the companion.
     """
 
-    def __init__(self, char: str, durability: int = 1, event_message: Optional[str] = None):
+    def __init__(
+        self, char: str, durability: int = 1, event_message: Optional[str] = None
+    ):
         super().__init__(char, event_message)
         self.durability: int = durability
 
@@ -223,12 +224,21 @@ class Monster(Entity):
         empowered: Empowerment rank for an enhanced monster instance.
     """
 
-    def __init__(self, x: int, y: int, tribe: MonsterTribe, empowered: int = 1):
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        tribe: MonsterTribe,
+        empowered: int = 1,
+        mimic_boss_char: Optional[str] = None,
+    ):
         super().__init__(x, y)
         self.tribe: MonsterTribe = tribe
         if empowered < 1:
             raise ValueError("empowered must be positive")
         self.empowered: int = empowered
+        # Mimics are identified by the boss whose treasure they imitate.
+        self.mimic_boss_char: Optional[str] = mimic_boss_char
         self.revealed: bool = False
         self.met: bool = False
         self.active: bool = True
@@ -242,7 +252,10 @@ def monster_level(monster: Monster) -> int:
 
 
 def monster_type_key(monster: Monster) -> str:
-    return monster.tribe.char if monster.empowered == 1 else f"{monster.tribe.char}{monster.empowered}"
+    char = monster.tribe.char
+    if char == "M" and monster.mimic_boss_char is not None:
+        char += monster.mimic_boss_char
+    return char if monster.empowered == 1 else f"{char}{monster.empowered}"
 
 
 class Player(Entity):
@@ -259,7 +272,9 @@ class Player(Entity):
         karma: Karma value.
     """
 
-    def __init__(self, x: int, y: int, level: int, lp: int, companion: Optional[Companion] = None):
+    def __init__(
+        self, x: int, y: int, level: int, lp: int, companion: Optional[Companion] = None
+    ):
         super().__init__(x, y)
         self.level: int = level
         self.lp: int = lp
@@ -276,7 +291,6 @@ class Player(Entity):
         # Stage 3 state. Keeping these on Player preserves the small shared
         # entity model used by both frontends.
         self.stage3_flags: int = 0
-        self.stage3_spores: bool = False
         self.current_floor: int = 0
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
         # (floor, x, y) of the monster involved in the most recent monster
@@ -298,6 +312,7 @@ class Player(Entity):
     @property
     def stage_won(self) -> bool:
         return self.boss_defeated and self.treasure_collected
+
 
 class SpawnConfig:
     """
@@ -321,10 +336,20 @@ MIN_FOOD = 8
 
 MONSTER_TRIBES: List[MonsterTribe] = [
     _MT("a", 1, 10),  # Amoeba
-    _MT("A", 2, MIN_FOOD, effect=EFFECT_SPECIAL_EXP, event_message="-- Level boosted!"),  # Amoeba rare
+    _MT(
+        "A", 2, MIN_FOOD, effect=EFFECT_SPECIAL_EXP, event_message="-- Level boosted!"
+    ),  # Amoeba rare
     _MT("b", 5, 60, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
-    _MT("c", 10, MIN_FOOD, item=ITEM_SWORD_X1_5, event_message="-- Got a sword (c)!"),  # Chimera
-    _MT("C", 15, MIN_FOOD, item=ITEM_SWORD_CURSED, event_message="-- Got a cursed sword (C)!"),  # Chimera rare
+    _MT(
+        "c", 10, MIN_FOOD, item=ITEM_SWORD_X1_5, event_message="-- Got a sword (c)!"
+    ),  # Chimera
+    _MT(
+        "C",
+        15,
+        MIN_FOOD,
+        item=ITEM_SWORD_CURSED,
+        event_message="-- Got a cursed sword (C)!",
+    ),  # Chimera rare
     _MT("d", 20, 60, item=ITEM_POISONED),  # Comodo Dragon
     _MT(
         CHAR_DRAGON,
@@ -332,44 +357,104 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         MIN_FOOD,
         effect=EFFECT_UNLOCK_TREASURE,
         event_message="-- Unlocked the Dragon's treasure chest!",
-        treasure_key=CHAR_TREASURE + CHAR_DRAGON,
     ),  # Dragon
-    _MT("e", 1, -5, effect=EFFECT_ENERGY_DRAIN, event_message="-- Your energy was drained!"),  # Erebus
-    _MT("E", 30, MIN_FOOD, effect=EFFECT_LEVEL_REDUCE, event_message="-- Your level was reduced!"),  # Erebus rare
+    _MT(
+        "e",
+        1,
+        -5,
+        effect=EFFECT_ENERGY_DRAIN,
+        event_message="-- Your energy was drained!",
+    ),  # Erebus
+    _MT(
+        "E",
+        30,
+        MIN_FOOD,
+        effect=EFFECT_LEVEL_REDUCE,
+        event_message="-- Your level was reduced!",
+    ),  # Erebus rare
     _MT(
         CHAR_FIRE_DRAKE,
         60,
         MIN_FOOD,
         effect=EFFECT_UNLOCK_TREASURE,
         event_message="-- Unlocked the Fire Drake's treasure chest!",
-        treasure_key=CHAR_TREASURE + CHAR_FIRE_DRAKE,
     ),  # Fire Drake
     _MT("f", 50, MIN_FOOD),  # Fire Lizard
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
-    _MT("X", 1, MIN_FOOD, effect=EFFECT_CALTROP_SPREAD, event_message="-- Caltrops were scattered!"),  # Caltrop Plant
-    _MT("I", 0, 0, event_message="-- The Isolated Elf told you about the history of the elves.", is_elf=True),
-    _MT("J", 0, 0, event_message="-- The Javelin Elf joined your hunt for the Dread Wyrm!", is_elf=True),
-    _MT("K", 0, 0, event_message="-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!", is_elf=True),
-    _MT("H", 0, 0, event_message="-- The High Elf bestowed the talisman upon you!", is_elf=True),
+    _MT(
+        "X",
+        1,
+        MIN_FOOD,
+        effect=EFFECT_CALTROP_SPREAD,
+        event_message="-- Caltrops were scattered!",
+    ),  # Caltrop Plant
+    _MT(
+        "I",
+        0,
+        0,
+        event_message="-- The Isolated Elf told you about the history of the elves.",
+        is_elf=True,
+    ),
+    _MT(
+        "J",
+        0,
+        0,
+        event_message="-- The Javelin Elf joined your hunt for the Dread Wyrm!",
+        is_elf=True,
+    ),
+    _MT(
+        "K",
+        0,
+        0,
+        event_message="-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!",
+        is_elf=True,
+    ),
+    _MT(
+        "H",
+        0,
+        0,
+        event_message="-- The High Elf bestowed the talisman upon you!",
+        is_elf=True,
+    ),
     _MT("k", 80, MIN_FOOD),  # Marksman
     _MT("M", 85, 16, event_message="-- The treasure chest was a Mimic!"),  # Mimic
-    _MT("m", 5, MIN_FOOD, event_message="-- Spores cloud your vision!"),
+    _MT(
+        "m",
+        5,
+        MIN_FOOD,
+        item=ITEM_SPORES,
+        event_message="-- Spores cloud your vision!",
+    ),
     _MT("w", 50, MIN_FOOD),
-    _MT("W", 150, MIN_FOOD, event_message=">> Dread Wyrm (W) defeated! <<", treasure_key=CHAR_TREASURE + "W"),
-    _MT("V", 30, MIN_FOOD, effect=EFFECT_VORTEX, event_message="-- The Vortex rearranges the floor!"),
+    _MT("W", 150, MIN_FOOD, event_message=">> Dread Wyrm (W) defeated! <<"),
+    _MT(
+        "V",
+        30,
+        MIN_FOOD,
+        effect=EFFECT_VORTEX,
+        event_message="-- The Vortex rearranges the floor!",
+    ),
 ]
-assert len({tribe.char for tribe in MONSTER_TRIBES}) == len(MONSTER_TRIBES), "Duplicate monster tribe char"
+assert len({tribe.char for tribe in MONSTER_TRIBES}) == len(MONSTER_TRIBES), (
+    "Duplicate monster tribe char"
+)
 
 COMPANION_TRIBES: List[CompanionTribe] = [
-    _CT("l"),  # Looping companion; contact always rewinds via _rewind_to_history, so no event_message here
+    _CT(
+        "l"
+    ),  # Looping companion; contact always rewinds via _rewind_to_history, so no event_message here
     _CT("n", 10, event_message="-- Nomicon joined!"),  # Nomicon
     _CT("o", 20, event_message="-- Ocular joined!"),  # Ocular
     _CT(CHAR_PEGASUS, 5, event_message="-- Pegasus joined!"),  # Pegasus
 ]
 
-CHAR_TO_TRIBE: Dict[str, Tribe] = {mt.char: mt for mt in MONSTER_TRIBES + COMPANION_TRIBES}
+CHAR_TO_TRIBE: Dict[str, Tribe] = {
+    mt.char: mt for mt in MONSTER_TRIBES + COMPANION_TRIBES
+}
 CHAR_TO_MONSTER_TRIBE: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
-CHAR_TO_COMPANION_TRIBE: Dict[str, CompanionTribe] = {mt.char: mt for mt in COMPANION_TRIBES}
+CHAR_TO_COMPANION_TRIBE: Dict[str, CompanionTribe] = {
+    mt.char: mt for mt in COMPANION_TRIBES
+}
 
 _SC = SpawnConfig
 
@@ -415,17 +500,124 @@ STAGE_TO_SPAWN_CONFIGS = [
 # Per-floor rosters for the multi-floor stages. Each entry is
 # (tribe character, population, empowered rank).
 STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
-    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("I", 1, 1), ("J", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("K", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
-    [("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("w", 1, 1), ("W", 1, 1), ("H", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
+    [
+        ("a", 20, 1),
+        ("A", 2, 1),
+        ("b", 6, 1),
+        ("c", 1, 1),
+        ("c", 1, 2),
+        ("d", 3, 1),
+        ("d", 3, 2),
+        ("l", 1, 1),
+        ("I", 1, 1),
+        ("J", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+    ],
+    [
+        ("a", 20, 1),
+        ("A", 2, 1),
+        ("b", 3, 1),
+        ("b", 3, 2),
+        ("c", 1, 1),
+        ("c", 1, 2),
+        ("d", 3, 1),
+        ("d", 3, 2),
+        ("l", 1, 1),
+        ("K", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+    ],
+    [
+        ("A", 2, 1),
+        ("b", 3, 1),
+        ("b", 3, 2),
+        ("d", 3, 1),
+        ("d", 3, 2),
+        ("l", 1, 1),
+        ("w", 1, 1),
+        ("W", 1, 1),
+        ("H", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+    ],
 ]
 
 STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
-    [("a", 22, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("e", 1, 1), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 2, 1), ("b", 4, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 2, 1), ("d", 4, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("w", 1, 1), ("W", 1, 1), ("M", 1, 1)],
+    [
+        ("a", 22, 1),
+        ("A", 2, 1),
+        ("b", 6, 1),
+        ("c", 1, 1),
+        ("c", 1, 2),
+        ("C", 1, 1),
+        ("d", 3, 1),
+        ("d", 3, 2),
+        ("e", 1, 1),
+        ("k", 2, 1),
+        ("l", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+    ],
+    [
+        ("a", 20, 1),
+        ("A", 2, 1),
+        ("b", 3, 1),
+        ("b", 3, 2),
+        ("c", 1, 1),
+        ("c", 1, 2),
+        ("C", 1, 1),
+        ("d", 3, 1),
+        ("d", 3, 2),
+        ("k", 2, 1),
+        ("l", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+        ("V", 1, 1),
+        ("E", 1, 1),
+    ],
+    [
+        ("a", 20, 1),
+        ("A", 2, 1),
+        ("b", 3, 1),
+        ("b", 3, 2),
+        ("c", 1, 1),
+        ("c", 1, 2),
+        ("C", 1, 1),
+        ("d", 3, 1),
+        ("d", 3, 2),
+        ("k", 2, 1),
+        ("l", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+    ],
+    [
+        ("a", 20, 1),
+        ("A", 2, 1),
+        ("b", 2, 1),
+        ("b", 4, 2),
+        ("c", 1, 1),
+        ("c", 1, 2),
+        ("C", 1, 1),
+        ("d", 2, 1),
+        ("d", 4, 2),
+        ("k", 2, 1),
+        ("l", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+        ("w", 1, 1),
+        ("W", 1, 1),
+        ("M", 1, 1),
+    ],
 ]
+
 
 def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
     chars = dict.fromkeys(char for floor in roster for char, _, _ in floor)
@@ -447,7 +639,10 @@ STAGE3_ROSTER_TRIBES: List[MonsterTribe] = sorted(
 )
 # Collapse is a fixed stage object, but appears at level 1 on the strength gauge.
 STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
-    [*_get_stage_roster_tribes(STAGE4_ROSTER), MonsterTribe(CHAR_COLLAPSE, level=1, feed=0)],
+    [
+        *_get_stage_roster_tribes(STAGE4_ROSTER),
+        MonsterTribe(CHAR_COLLAPSE, level=1, feed=0),
+    ],
     key=lambda tribe: tribe.level,
     reverse=True,
 )
@@ -521,9 +716,13 @@ def get_stage_roster_tribes(stage_num: int) -> List[MonsterTribe]:
     """Distinct, non-elf monster tribes that can appear in stage 1 or 2, strongest first."""
     configs = STAGE_TO_SPAWN_CONFIGS[stage_num - 1]
     chars = dict.fromkeys(
-        sc.tribe.char for sc in configs if isinstance(sc.tribe, MonsterTribe) and not sc.tribe.is_elf
+        sc.tribe.char
+        for sc in configs
+        if isinstance(sc.tribe, MonsterTribe) and not sc.tribe.is_elf
     )
-    return sorted((CHAR_TO_MONSTER_TRIBE[c] for c in chars), key=lambda t: t.level, reverse=True)
+    return sorted(
+        (CHAR_TO_MONSTER_TRIBE[c] for c in chars), key=lambda t: t.level, reverse=True
+    )
 
 
 def build_strength_column(
@@ -547,8 +746,16 @@ def build_strength_column(
     Returns exactly `max_rows` (char, is_player) pairs, char is None for a
     blank row.
     """
-    stronger = sorted((t for t in tribes if t.level > player_attack), key=lambda t: t.level, reverse=True)
-    weaker = sorted((t for t in tribes if t.level <= player_attack), key=lambda t: t.level, reverse=True)
+    stronger = sorted(
+        (t for t in tribes if t.level > player_attack),
+        key=lambda t: t.level,
+        reverse=True,
+    )
+    weaker = sorted(
+        (t for t in tribes if t.level <= player_attack),
+        key=lambda t: t.level,
+        reverse=True,
+    )
 
     center = max_rows // 2
     above_cap = max(center - 1, 0)
@@ -557,9 +764,13 @@ def build_strength_column(
     kept_above = stronger[-above_cap:] if above_cap else []
     kept_below = weaker[:below_cap]
 
-    above_column: List[Tuple[Optional[str], bool]] = [(None, False)] * (above_cap - len(kept_above))
+    above_column: List[Tuple[Optional[str], bool]] = [(None, False)] * (
+        above_cap - len(kept_above)
+    )
     above_column += [(t.char, False) for t in kept_above]
-    below_column: List[Tuple[Optional[str], bool]] = [(t.char, False) for t in kept_below]
+    below_column: List[Tuple[Optional[str], bool]] = [
+        (t.char, False) for t in kept_below
+    ]
     below_column += [(None, False)] * (below_cap - len(kept_below))
 
     return above_column + [(None, False), ("@", True), (None, False)] + below_column
@@ -583,6 +794,9 @@ def level_item_labels(player: Player, stage_num: int) -> Tuple[str, str]:
         item_str = f"+{item}({player.item_taken_from})"
     elif item == ITEM_POISONED:
         level = f"LVL: {player.level} /2"
+        item_str = f"+{item}({player.item_taken_from})"
+    elif item == ITEM_SPORES:
+        level = f"LVL: {player.level}"
         item_str = f"+{item}({player.item_taken_from})"
     else:
         level = f"LVL: {player.level}"
@@ -665,14 +879,20 @@ def preview_entity_glyphs(
 ) -> List[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
     known_types = known_types or set()
-    if isinstance(entity, Monster) and not entity.active and not (
-        entity.tribe.char == "M" and not entity.met and reveal_disguises
+    if (
+        isinstance(entity, Monster)
+        and not entity.active
+        and not (entity.tribe.char == "M" and not entity.met and reveal_disguises)
     ):
         return []
     char = None
     if isinstance(entity, Monster):
         char = entity.tribe.char
-        if char == "M" and monster_type_key(entity) not in known_types and not reveal_disguises:
+        if (
+            char == "M"
+            and monster_type_key(entity) not in known_types
+            and not reveal_disguises
+        ):
             char = CHAR_TREASURE
     elif isinstance(entity, Companion):
         char = entity.tribe.char
@@ -686,7 +906,9 @@ def preview_entity_glyphs(
         )
     if char is None:
         return []
-    tone = "stair" if isinstance(entity, Collapse) and char == CHAR_COLLAPSE else "default"
+    tone = (
+        "stair" if isinstance(entity, Collapse) and char == CHAR_COLLAPSE else "default"
+    )
     glyphs = [
         FieldGlyph(
             entity.x,
@@ -742,10 +964,16 @@ def revealed_entity_glyphs(
             tone = "yellow" if entity.tribe.effect == EFFECT_UNLOCK_TREASURE else "blue"
         else:
             tone = "red"
-        dim = entity.met if entity.tribe.is_elf or char == "M" else bool(dim_types and char in dim_types)
+        dim = (
+            entity.met
+            if entity.tribe.is_elf or char == "M"
+            else bool(dim_types and char in dim_types)
+        )
         glyphs = [FieldGlyph(entity.x, entity.y, char, tone, bold=True, dim=dim)]
         if entity.empowered > 1:
-            glyphs.append(FieldGlyph(entity.x + 1, entity.y, "'", tone, bold=True, dim=dim))
+            glyphs.append(
+                FieldGlyph(entity.x + 1, entity.y, "'", tone, bold=True, dim=dim)
+            )
         return glyphs
     if isinstance(entity, Collapse):
         known = entity.revealed or CHAR_COLLAPSE in known_types

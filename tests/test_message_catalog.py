@@ -63,6 +63,55 @@ def _module_bindings(tree):
     return bindings
 
 
+def _iterated_string_locals(tree):
+    """String values passed through tr() in loops over literal sequences."""
+    sequences = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        value = node.value
+        if (
+            isinstance(target, ast.Name)
+            and isinstance(value, (ast.List, ast.Tuple))
+            and all(
+                isinstance(item, ast.Constant) and isinstance(item.value, str)
+                for item in value.elts
+            )
+        ):
+            sequences[target.id] = {item.value for item in value.elts}
+
+    locals_by_name = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.For, ast.AsyncFor)):
+            continue
+        iterable = node.iter
+        if (
+            isinstance(iterable, ast.Call)
+            and isinstance(iterable.func, ast.Name)
+            and iterable.func.id == "enumerate"
+            and len(iterable.args) == 1
+        ):
+            iterable = iterable.args[0]
+        if not isinstance(iterable, ast.Name) or iterable.id not in sequences:
+            continue
+        target_names = {
+            target.id for target in ast.walk(node.target) if isinstance(target, ast.Name)
+        }
+        translated_names = {
+            call.args[0].id
+            for call in ast.walk(node)
+            if isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Name)
+            and call.func.id == "tr"
+            and len(call.args) == 1
+            and isinstance(call.args[0], ast.Name)
+        }
+        for name in target_names & translated_names:
+            locals_by_name[name] = sequences[iterable.id]
+    return locals_by_name
+
+
 def _event_messages():
     found = set()
     for path, tree in _trees():
@@ -102,6 +151,7 @@ def _tr_message_ids():
     for path, tree in _trees():
         bindings = _module_bindings(tree)
         event_message_locals = _event_message_locals(tree)
+        iterated_string_locals = _iterated_string_locals(tree)
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
                 continue
@@ -116,6 +166,8 @@ def _tr_message_ids():
                 ids.update(bindings[arg.id])
             elif isinstance(arg, ast.Name) and arg.id in event_message_locals:
                 needs_event_messages = True
+            elif isinstance(arg, ast.Name) and arg.id in iterated_string_locals:
+                ids.update(iterated_string_locals[arg.id])
             elif (
                 isinstance(arg, ast.Subscript)
                 and isinstance(arg.value, ast.Name)

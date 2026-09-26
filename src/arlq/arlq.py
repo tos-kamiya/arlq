@@ -105,7 +105,9 @@ def generate_maze(
 
         # Find neighboring points that haven't been connected yet
         nps = neighbor_points(cur_p)
-        unconnected_nps = [np for np in nps if is_within_bounds(np) and np in unconnected_point_set]
+        unconnected_nps = [
+            np for np in nps if is_within_bounds(np) and np in unconnected_point_set
+        ]
 
         # If there are no unconnected neighboring points, remove this point from the connecting points list
         if not unconnected_nps:
@@ -152,8 +154,7 @@ def find_random_place(
         return (
             all(c == d.CHAR_FLOOR for c in field[y][x - 1 : x + 2])
             and not any(
-                abs(p[0] - x) <= distance and abs(p[1] - y) <= distance
-                for p in places
+                abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places
             )
             and not (avoid is not None and avoid(point))
         )
@@ -228,7 +229,9 @@ def create_field(
     excluded_tile: Optional[d.Point] = None,
     margin_x: int = 0,
 ) -> Tuple[List[List[str]], d.Point, d.Point]:
-    def find_empty_cell(field: List[List[str]], left_top: d.Point, right_bottom: d.Point) -> d.Point:
+    def find_empty_cell(
+        field: List[List[str]], left_top: d.Point, right_bottom: d.Point
+    ) -> d.Point:
         assert left_top[0] < right_bottom[0]
         assert left_top[1] < right_bottom[1]
 
@@ -242,7 +245,9 @@ def create_field(
     # right edges, leaving a narrower maze centered in the same field size.
     tile_num_x = d.TILE_NUM_X - 2 * margin_x
 
-    field: List[List[str]] = [[d.CHAR_FLOOR for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
+    field: List[List[str]] = [
+        [d.CHAR_FLOOR for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)
+    ]
 
     # Create walls
     for ty in range(d.TILE_NUM_Y + 1):
@@ -287,19 +292,29 @@ def create_field(
         if y1 == y2:
             offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
             for y in range(corridor_h_width):
-                field[y1 * (d.TILE_HEIGHT + 1) + offset + y][x2 * (d.TILE_WIDTH + 1)] = d.CHAR_FLOOR
+                field[y1 * (d.TILE_HEIGHT + 1) + offset + y][
+                    x2 * (d.TILE_WIDTH + 1)
+                ] = d.CHAR_FLOOR
         else:
             assert x1 == x2
             offset = rand.randrange(d.TILE_WIDTH + 1 - corridor_v_width) + 1
             for x in range(corridor_v_width):
-                field[y2 * (d.TILE_HEIGHT + 1)][x1 * (d.TILE_WIDTH + 1) + offset + x] = d.CHAR_FLOOR
+                field[y2 * (d.TILE_HEIGHT + 1)][
+                    x1 * (d.TILE_WIDTH + 1) + offset + x
+                ] = d.CHAR_FLOOR
 
     # The sealed tile can interrupt a direct route between its neighbors.
     # Rust's stage 3 adds a short bypass on the adjacent row at an outer edge.
     if excluded_tile is not None:
         island_x, island_y = excluded_tile
         if 0 < island_x < d.TILE_NUM_X - 1:
-            bypass_y = 1 if island_y == 0 else d.TILE_NUM_Y - 2 if island_y == d.TILE_NUM_Y - 1 else None
+            bypass_y = (
+                1
+                if island_y == 0
+                else d.TILE_NUM_Y - 2
+                if island_y == d.TILE_NUM_Y - 1
+                else None
+            )
             if bypass_y is not None:
                 offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
                 for y in range(corridor_h_width):
@@ -333,7 +348,9 @@ def iterate_ellipse_points(
     except_for_center: bool = False,
     except_for_entities: Optional[List[d.Entity]] = None,
 ):
-    entity_coordinates = set((e.x, e.y) for e in except_for_entities) if except_for_entities else set()
+    entity_coordinates = (
+        set((e.x, e.y) for e in except_for_entities) if except_for_entities else set()
+    )
     for dy in range(-radius, radius + 1):
         y = center_y + dy
         if 0 <= y < d.FIELD_HEIGHT:
@@ -347,7 +364,9 @@ def iterate_ellipse_points(
                         yield x, y
 
 
-def spread_caltrops(field: List[List[str]], origin: d.Point, entities: List[d.Entity]) -> None:
+def spread_caltrops(
+    field: List[List[str]], origin: d.Point, entities: List[d.Entity]
+) -> None:
     ox, oy = origin
     for x, y in iterate_ellipse_points(
         ox,
@@ -362,9 +381,14 @@ def spread_caltrops(field: List[List[str]], origin: d.Point, entities: List[d.En
 
 
 def iterate_offsets(
-    center_x: int, center_y: int, offsets: List[d.Point], except_for_entities: Optional[List[d.Entity]] = None
+    center_x: int,
+    center_y: int,
+    offsets: List[d.Point],
+    except_for_entities: Optional[List[d.Entity]] = None,
 ):
-    entity_coordinates = set((e.x, e.y) for e in except_for_entities) if except_for_entities else set()
+    entity_coordinates = (
+        set((e.x, e.y) for e in except_for_entities) if except_for_entities else set()
+    )
     for dx, dy in offsets:
         x = center_x + dx
         y = center_y + dy
@@ -374,15 +398,19 @@ def iterate_offsets(
 
 
 def get_torched(player: d.Player, torch_radius: int) -> List[List[int]]:
-    torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
+    torched: List[List[int]] = [
+        [0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)
+    ]
 
     has_ocular = player.companion is not None and player.companion.tribe.char == "o"
-    if player.stage3_spores:
+    if player.item == d.ITEM_SPORES:
         torch_radius = 2 if has_ocular else 1
     elif has_ocular:
         torch_radius += d.OCULAR_TORCH_EXTENSION
 
-    for x, y in iterate_ellipse_points(player.x, player.y, torch_radius, d.FOV_WIDTH_EXPANSION_RATIO):
+    for x, y in iterate_ellipse_points(
+        player.x, player.y, torch_radius, d.FOV_WIDTH_EXPANSION_RATIO
+    ):
         torched[y][x] = 1
 
     return torched
@@ -392,13 +420,26 @@ def unlock_treasure_for_defeat(
     monster: d.Monster,
     entities: List[d.Entity],
 ) -> None:
-    """Unlock chests tied to the defeated monster."""
-    treasure_key = monster.tribe.treasure_key
-    if treasure_key is None:
-        return
+    """Unlock chests whose key is T followed by the defeated tribe's char."""
+    treasure_key = d.CHAR_TREASURE + monster.tribe.char
     for entity in entities:
         if isinstance(entity, d.Treasure) and entity.unlock_key == treasure_key:
             entity.unlocked = True
+
+
+def activate_mimic_for_defeat(
+    monster: d.Monster,
+    entities: List[d.Entity],
+) -> None:
+    """Activate mimics disguised as the defeated monster's treasure."""
+    boss_char = monster.tribe.char
+    for entity in entities:
+        if (
+            isinstance(entity, d.Monster)
+            and entity.tribe.char == "M"
+            and entity.mimic_boss_char == boss_char
+        ):
+            entity.active = True
 
 
 def reveal_entities_in_fov(
@@ -486,7 +527,9 @@ def update_entities(
     effect = None
     tribes_to_be_respawned = []
     message = None
-    wall_result = move_player(move_direction, field, player, (d.CHAR_FLOOR, d.CHAR_CALTROP))
+    wall_result = move_player(
+        move_direction, field, player, (d.CHAR_FLOOR, d.CHAR_CALTROP)
+    )
 
     if wall_result is not None:
         events.wall = wall_result
@@ -551,7 +594,10 @@ def update_entities(
                     player.x, player.y = find_random_place(entities, field, distance=2)
                     message = (MESSAGE_TICKS, tr("-- Respawned to a random location."))
                 else:
-                    message = (MESSAGE_TICKS, tr("-- The High Elf seems uninterested in you."))
+                    message = (
+                        MESSAGE_TICKS,
+                        tr("-- The High Elf seems uninterested in you."),
+                    )
                     player.high_elf_refused = True
                 player.last_contact_monster = contact_key
                 continue
@@ -579,30 +625,46 @@ def update_entities(
                         player.x, player.y = respawn_point
                     message = (MESSAGE_TICKS, tr("-- Respawned!"))
                 events.contact = ContactEvent(
-                    "monster", monster_id, outcome="lose", respawn_to=(player.x, player.y)
+                    "monster",
+                    monster_id,
+                    outcome="lose",
+                    respawn_to=(player.x, player.y),
                 )
                 old_item, old_source = player.item, player.item_taken_from
                 d.clear_player_item(player)
                 if old_item:
-                    events.expired.append(ExpiredEvent("item_expired", item=old_source, reason="lost_on_defeat"))
+                    events.expired.append(
+                        ExpiredEvent(
+                            "item_expired", item=old_source, reason="lost_on_defeat"
+                        )
+                    )
                 d.apply_respawn_penalty(player)
             else:
                 del entities[eei]
 
                 events.contact = ContactEvent("monster", monster_id, outcome="win")
 
-                if d.monster_level(m) > 0 and m.tribe.effect != d.EFFECT_UNLOCK_TREASURE:
+                if (
+                    d.monster_level(m) > 0
+                    and m.tribe.effect != d.EFFECT_UNLOCK_TREASURE
+                ):
                     tribes_to_be_respawned.append(m.tribe.char)
 
                 effect = m.tribe.effect
                 d.grant_defeat_level(player, effect)
+                activate_mimic_for_defeat(m, entities)
                 if effect == d.EFFECT_UNLOCK_TREASURE:
                     player.boss_defeated = True
                     unlock_treasure_for_defeat(m, entities)
                 elif effect == d.EFFECT_CALTROP_SPREAD:
                     spread_caltrops(field, (player.x, player.y), entities)
                 elif effect == d.EFFECT_ROCK_SPREAD:
-                    for x, y in iterate_offsets(player.x, player.y, d.ROCK_SPREAD_OFFSETS, except_for_entities=entities):
+                    for x, y in iterate_offsets(
+                        player.x,
+                        player.y,
+                        d.ROCK_SPREAD_OFFSETS,
+                        except_for_entities=entities,
+                    ):
                         if field[y][x] == d.CHAR_FLOOR:
                             field[y][x] = d.WALL_CHAR
 
@@ -613,7 +675,11 @@ def update_entities(
                 old_item, old_source = player.item, player.item_taken_from
                 d.take_monster_item(player, m.tribe.item, m.tribe.char, sword_uses)
                 if old_item:
-                    events.expired.append(ExpiredEvent("item_expired", item=old_source, reason="overwritten"))
+                    events.expired.append(
+                        ExpiredEvent(
+                            "item_expired", item=old_source, reason="overwritten"
+                        )
+                    )
 
                 event_message = m.tribe.event_message
                 if event_message:
@@ -623,14 +689,19 @@ def update_entities(
 
     reveal_entities_in_fov(player, entities)
 
-    if player.companion is not None and player.karma >= player.companion.tribe.durability:
+    if (
+        player.companion is not None
+        and player.karma >= player.companion.tribe.durability
+    ):
         message = (MESSAGE_TICKS, tr("-- The companion vanishes."))
         char = player.companion.tribe.char
         events.expired.append(ExpiredEvent("companion_departed", event_id=char))
         tribes_to_be_respawned.append(char)
         player.companion = None
 
-    return UpdateResult(effect, tribes_to_be_respawned, message, contact_happened, events)
+    return UpdateResult(
+        effect, tribes_to_be_respawned, message, contact_happened, events
+    )
 
 
 def last_seed_path() -> Path:
@@ -678,8 +749,10 @@ def run_game(
     show_entities = debug_show_entities
 
     if stage_num == 0:  # if stage is not selected yet
-        stage_numbers = d.PUBLIC_STAGE_NUMBERS if dev else tuple(
-            stage for stage in d.PUBLIC_STAGE_NUMBERS if stage != 4
+        stage_numbers = (
+            d.PUBLIC_STAGE_NUMBERS
+            if dev
+            else tuple(stage for stage in d.PUBLIC_STAGE_NUMBERS if stage != 4)
         )
         r = ui.select_stage(stage_numbers)
         if r == 0:
@@ -705,10 +778,17 @@ def run_game(
     stage_module = import_module(f".{GAME_ENGINE_MODULE}", package=__package__)
     if stage_num in (1, 2, 4, 5):
         stage_module.run_game(
-            ui, seed_str, debug_show_entities, trace=trace, config=config, stage_num=stage_num
+            ui,
+            seed_str,
+            debug_show_entities,
+            trace=trace,
+            config=config,
+            stage_num=stage_num,
         )
     else:
-        stage_module.run_game(ui, seed_str, debug_show_entities, trace=trace, config=config)
+        stage_module.run_game(
+            ui, seed_str, debug_show_entities, trace=trace, config=config
+        )
 
 
 def generate_seed_string(args):
@@ -725,7 +805,9 @@ def generate_seed_string(args):
 def parse_seed_string(args, seed_str, enforce_version: bool = True):
     parts = seed_str.split("-")
     if len(parts) != 4:
-        exit("Error: Seed string format is invalid. Expected format: v<version>-<flags>-<stage>-<seed>")
+        exit(
+            "Error: Seed string format is invalid. Expected format: v<version>-<flags>-<stage>-<seed>"
+        )
 
     version_part, flag_str, stage_str, seed_value_str = parts
 
@@ -738,7 +820,9 @@ def parse_seed_string(args, seed_str, enforce_version: bool = True):
     # Restore flags: set booleans based on whether they are specified.
     # Check that -T and -t flags are mutually exclusive.
     if "T" in flag_str and "t" in flag_str:
-        exit("Error: Both large torch and small torch flags are present in seed string.")
+        exit(
+            "Error: Both large torch and small torch flags are present in seed string."
+        )
     elif "T" in flag_str:
         args.large_torch = True
         args.small_torch = False
@@ -769,37 +853,60 @@ def main():
         description="A Rogue-Like game.",
     )
 
-    parser.add_argument("--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, or 4).")
     parser.add_argument(
-        "--dev", action="store_true",
+        "--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, or 4)."
+    )
+    parser.add_argument(
+        "--dev",
+        action="store_true",
         help="Show development stages in the stage selection menu.",
     )
-    parser.add_argument("--trap-test", action="store_true", help="Start the one-floor trap test stage.")
+    parser.add_argument(
+        "--trap-test", action="store_true", help="Start the one-floor trap test stage."
+    )
 
-    parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + __version__
+    )
 
     g = parser.add_mutually_exclusive_group()
     g.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
     g.add_argument("-t", "--small-torch", action="store_true", help="Small torch.")
-    parser.add_argument("-n", "--narrower-corridors", action="store_true", help="Narrower corridors.")
+    parser.add_argument(
+        "-n", "--narrower-corridors", action="store_true", help="Narrower corridors."
+    )
 
     parser.add_argument("--seed", action="store", help="Seed value or seed string")
-    parser.add_argument("--rematch", action="store_true", help="Replay the last stage with the same seed.")
     parser.add_argument(
-        "--terminal", "--curses", dest="terminal", action="store_true",
+        "--rematch",
+        action="store_true",
+        help="Replay the last stage with the same seed.",
+    )
+    parser.add_argument(
+        "--terminal",
+        "--curses",
+        dest="terminal",
+        action="store_true",
         help="Use the Blessed terminal UI (--curses is a deprecated alias).",
     )
     parser.add_argument(
-        "--dots", action="store_true",
+        "--dots",
+        action="store_true",
         help="Use dots instead of background colors for unexplored areas in the terminal UI.",
     )
-    parser.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
     parser.add_argument(
-        "--lang", choices=["auto", "en", "ja"], default="auto",
+        "--debug-show-entities", action="store_true", help="Debug option."
+    )
+    parser.add_argument(
+        "--lang",
+        choices=["auto", "en", "ja"],
+        default="auto",
         help="UI message language ('auto' detects it from the locale; default: auto).",
     )
     parser.add_argument(
-        "--scale", type=float, metavar="FACTOR",
+        "--scale",
+        type=float,
+        metavar="FACTOR",
         help="GUI display scale (0.5 to 4.0); saves the value for future GUI starts.",
     )
     parser.add_argument(
@@ -810,19 +917,23 @@ def main():
         help="GUI movement repeat delay and interval (0.1 to 1.0 seconds, or none); saves for future GUI starts.",
     )
     parser.add_argument(
-        "--trace-record", metavar="PATH",
+        "--trace-record",
+        metavar="PATH",
         help="Internal/testing: record inputs and results of this session to a gameplay trace JSON file.",
     )
     parser.add_argument(
-        "--trace-replay", metavar="PATH",
+        "--trace-replay",
+        metavar="PATH",
         help="Internal/testing: replay a gameplay trace JSON file headlessly and write a new trace file.",
     )
     parser.add_argument(
-        "--trace-replay-output", metavar="OUT_PATH",
+        "--trace-replay-output",
+        metavar="OUT_PATH",
         help="Output path for --trace-replay (default: PATH with '.replay' inserted before its extension).",
     )
     parser.add_argument(
-        "--trace-replay-watch", action="store_true",
+        "--trace-replay-watch",
+        action="store_true",
         help="With --trace-replay, also render the replay to the real UI (pyglet/blessed) as it runs.",
     )
 
@@ -831,8 +942,15 @@ def main():
     set_language(args.lang)
 
     if args.trap_test:
-        if args.stage or args.seed is not None or args.trace_record or args.trace_replay:
-            parser.error("--trap-test cannot be combined with --stage, --seed, or trace options")
+        if (
+            args.stage
+            or args.seed is not None
+            or args.trace_record
+            or args.trace_replay
+        ):
+            parser.error(
+                "--trap-test cannot be combined with --stage, --seed, or trace options"
+            )
         args.stage = 5
     elif args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
         parser.error("--stage must be 1, 2, 3, or 4")
@@ -846,8 +964,17 @@ def main():
 
     trace_data = None
     if args.trace_replay:
-        if args.rematch or args.seed is not None or args.stage or args.large_torch or args.small_torch or args.narrower_corridors:
-            parser.error("--trace-replay cannot be combined with --seed, --stage, --rematch, -T, -t, or -n")
+        if (
+            args.rematch
+            or args.seed is not None
+            or args.stage
+            or args.large_torch
+            or args.small_torch
+            or args.narrower_corridors
+        ):
+            parser.error(
+                "--trace-replay cannot be combined with --seed, --stage, --rematch, -T, -t, or -n"
+            )
 
         try:
             trace_data = load_trace(Path(args.trace_replay))
@@ -876,12 +1003,23 @@ def main():
             except ValueError as error:
                 parser.error(str(error))
             if args.stage and args.stage != rematch_stage:
-                parser.error(f"--rematch can only be combined with --stage {rematch_stage}")
+                parser.error(
+                    f"--rematch can only be combined with --stage {rematch_stage}"
+                )
             args.stage = rematch_stage
         elif args.seed is not None:
             # Check if any conflicting flags are provided
-            if any([args.stage, args.large_torch, args.small_torch, args.narrower_corridors]):
-                exit("Error: option --seed is mutually exclusive to options --stage, -T, -t, -n")
+            if any(
+                [
+                    args.stage,
+                    args.large_torch,
+                    args.small_torch,
+                    args.narrower_corridors,
+                ]
+            ):
+                exit(
+                    "Error: option --seed is mutually exclusive to options --stage, -T, -t, -n"
+                )
             if isinstance(args.seed, str) and args.seed.startswith("v"):
                 parse_seed_string(args, args.seed)
             else:
