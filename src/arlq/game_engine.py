@@ -56,8 +56,21 @@ class Floor:
     arrow_marks: Dict[d.Monster, List[Tuple[d.Point, str]]] = dataclass_field(default_factory=dict)
     defeated_mimics: Set[d.Point] = dataclass_field(default_factory=set)
 
-# History entries snapshot everything the Loop Companion can rewind.
-HistoryEntry = Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]
+# Rewind history tracks the operation window; game state is rebuilt from inputs.
+HistoryEntry = Optional[Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]]
+
+
+@dataclass
+class ReplayContext:
+    """Inputs and map snapshots needed to reconstruct rewindable game state."""
+
+    stage_num: int
+    seed: int
+    config: GameConfig
+    operations: List[d.Point] = dataclass_field(default_factory=list)
+    vortex_maps: List[Tuple[int, List[List[List[int]]]]] = dataclass_field(default_factory=list)
+    cursor: int = 0
+    replaying: bool = False
 
 
 @dataclass(frozen=True)
@@ -561,6 +574,63 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
             del marks[0]
 
 
+def _replay_to_operation(
+    replay: ReplayContext,
+    operation_count: int,
+) -> Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]:
+    """Rebuild a run from its seed and replay the requested input prefix."""
+    previous_cursor = replay.cursor
+    previous_replaying = replay.replaying
+    previous_vortex_maps = replay.vortex_maps
+    replay.replaying = True
+    # Rebuild V snapshots from the seed as well. Earlier l contacts need the
+    # pre-disturbance map generated on this replayed timeline.
+    replay.vortex_maps = []
+    try:
+        rand.set_seed(replay.seed)
+        floors, player = build(
+            replay.config.corridor_h_width,
+            replay.config.corridor_v_width,
+            replay.stage_num,
+            stair_pairs_per_transition=(
+                d.STAGE3_STAIR_PAIRS_PER_TRANSITION
+                if replay.stage_num == 3
+                else d.STAGE4_STAIR_PAIRS_PER_TRANSITION
+            ),
+        )
+        player.known_monsters = set()
+        player.unlocked_treasures = set()
+        player.stage3_won = False
+        player.stage3_treasure_collected = False
+        player.met_elves = set()
+        floor = [0]
+        checkpoint = [floors[0].up]
+        queue: Counter[Tuple[int, str]] = Counter()
+        history: Deque[HistoryEntry] = deque()
+        hours = 0
+        for index, direction in enumerate(replay.operations[:operation_count]):
+            replay.cursor = index + 1
+            _step(
+                direction,
+                floors,
+                player,
+                floor,
+                checkpoint,
+                queue,
+                history,
+                hours,
+                stage_num=replay.stage_num,
+                replay_context=replay,
+            )
+            hours += 1
+            player.lp -= 1
+        return floors, player, floor[0], checkpoint[0], queue
+    finally:
+        replay.cursor = previous_cursor
+        replay.replaying = previous_replaying
+        replay.vortex_maps = previous_vortex_maps
+
+
 def _rewind_to_history(
     floors: List[Floor],
     player: d.Player,
@@ -568,25 +638,60 @@ def _rewind_to_history(
     checkpoint: List[d.Point],
     queue: Counter[Tuple[int, str]],
     history: Deque[HistoryEntry],
+    replay_context: Optional[ReplayContext] = None,
 ) -> str:
-    """Handle contact with the Loop Companion ('l'): rewind to the oldest recorded state."""
-    known = player.known_monsters
-    unlocked = player.unlocked_treasures
-    elf_floors = player.stage3_elf_floors
-    seen = [floor_data.seen for floor_data in floors]
-    known_companions = [floor_data.known_companions for floor_data in floors]
+    """Rebuild the state at the start of the recorded rewind window."""
+    known_monsters = set(player.known_monsters)
+    elf_floors = deepcopy(player.stage3_elf_floors)
+    seen = deepcopy([floor_data.seen for floor_data in floors])
+    known_companions = deepcopy([floor_data.known_companions for floor_data in floors])
 
-    old_floors, old_player, old_floor, old_checkpoint, old_queue = history[0]
-    floors[:] = old_floors
-    queue.clear()
-    queue.update(old_queue)
+    if replay_context is not None:
+        target_count = max(0, replay_context.cursor - len(history))
+        first_vortex_map = next(
+            (
+                map_state
+                for operation_index, map_state in replay_context.vortex_maps
+                if target_count <= operation_index < replay_context.cursor
+            ),
+            seen,
+        )
+        restored_floors, restored_player, restored_floor, restored_checkpoint, restored_queue = (
+            _replay_to_operation(replay_context, target_count)
+        )
+        # V events at or after the restored position belonged to the discarded
+        # branch. Earlier events remain part of the active timeline.
+        replay_context.vortex_maps = [
+            (operation_index, map_state)
+            for operation_index, map_state in replay_context.vortex_maps
+            if operation_index < target_count
+        ]
+        floors[:] = restored_floors
+        floor[0] = restored_floor
+        checkpoint[0] = restored_checkpoint
+        queue.clear()
+        queue.update(restored_queue)
+        restored_player_state = restored_player
+        seen = deepcopy(first_vortex_map)
+    else:
+        # Keep direct rule-level callers compatible; actual game sessions use
+        # seed-and-input replay through replay_context.
+        old_entry = history[0]
+        if old_entry is None:
+            raise RuntimeError("snapshot-free rewind requires a replay context")
+        old_floors, restored_player_state, old_floor, old_checkpoint, old_queue = old_entry
+        floors[:] = old_floors
+        queue.clear()
+        queue.update(old_queue)
+        floor[0], checkpoint[0] = old_floor, old_checkpoint
+
     for floor_data, preserved_seen in zip(floors, seen, strict=True):
         floor_data.seen = preserved_seen
     for floor_data, preserved_known in zip(floors, known_companions, strict=True):
         floor_data.known_companions = preserved_known
 
-    player.__dict__.update(old_player.__dict__)
-    # Monster/treasure knowledge and elf floor locations survive the rewind;
+    player.__dict__.update(restored_player_state.__dict__)
+    # Monster identification and elf floor locations survive the rewind;
     # everything else (position, level, LP, floor, stage3_flags, ...)
     # reverts to the recorded past. met_elves must revert together
     # with stage3_flags: it gates re-processing of an elf encounter
@@ -594,11 +699,9 @@ def _rewind_to_history(
     # reverts to not-yet-met would permanently block earning that elf's
     # flag again, and would render it on the field as already resolved
     # while the status bar (driven by stage3_flags) still shows it unmet.
-    player.known_monsters = known
-    player.unlocked_treasures = unlocked
+    player.known_monsters = known_monsters
     player.stage3_elf_floors = elf_floors
 
-    floor[0], checkpoint[0] = old_floor, old_checkpoint
     history.clear()
 
     restored_entities = floors[floor[0]].entities
@@ -676,6 +779,8 @@ def _defeat_monster(
     checkpoint: List[d.Point],
     queue: Counter[Tuple[int, str]],
     trace: Optional[TraceRecorder] = None,
+    floors: Optional[List[Floor]] = None,
+    replay_context: Optional[ReplayContext] = None,
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
     ch = entity.tribe.char
@@ -726,6 +831,13 @@ def _defeat_monster(
             if current.field[y][x] == d.CHAR_FLOOR:
                 current.field[y][x] = d.WALL_CHAR
     elif entity.tribe.effect == d.EFFECT_VORTEX:
+        if replay_context is not None and floors is not None:
+            replay_context.vortex_maps.append(
+                (
+                    replay_context.cursor - 1,
+                    deepcopy([floor_data.seen for floor_data in floors]),
+                )
+            )
         _vortex_rearrange(current, player, floor[0])
 
     if d.monster_level(entity) > 0 and ch not in d.STAGE3_NO_RESPAWN_MONSTERS:
@@ -744,6 +856,8 @@ def _resolve_monster_contact(
     event_message: Optional[str],
     trace: Optional[TraceRecorder] = None,
     stage_num: int = 3,
+    floors: Optional[List[Floor]] = None,
+    replay_context: Optional[ReplayContext] = None,
 ) -> _ContactResult:
     """Resolve contact with a monster, including early-ending elf encounters."""
     ch = entity.tribe.char
@@ -863,7 +977,17 @@ def _resolve_monster_contact(
     else:
         if trace is not None:
             trace.record_contact({"type": "monster", "id": d.monster_type_key(entity), "outcome": "win"})
-        _defeat_monster(entity, current, player, floor, checkpoint, queue, trace=trace)
+        _defeat_monster(
+            entity,
+            current,
+            player,
+            floor,
+            checkpoint,
+            queue,
+            trace=trace,
+            floors=floors,
+            replay_context=replay_context,
+        )
         if ch == "M" and was_revealed:
             event_message = tr("-- The Mimic was defeated!")
         elif ch == "M":
@@ -899,6 +1023,7 @@ def _resolve_contact(
     event_message: Optional[str],
     trace: Optional[TraceRecorder] = None,
     stage_num: int = 3,
+    replay_context: Optional[ReplayContext] = None,
 ) -> _ContactResult:
     """Resolve contact with the entity at `hit` in current.entities.
 
@@ -931,7 +1056,9 @@ def _resolve_contact(
             trace.record_contact({"type": "companion", "id": ch})
         # l is a companion whose contact rewinds the recorded past.
         if ch == "l" and history:
-            message = _rewind_to_history(floors, player, floor, checkpoint, queue, history)
+            message = _rewind_to_history(
+                floors, player, floor, checkpoint, queue, history, replay_context
+            )
             return _ContactResult(message, end_turn=True, message_ticks=5)
         player.companion = entity
         player.karma = 0
@@ -944,6 +1071,7 @@ def _resolve_contact(
     return _resolve_monster_contact(
         hit, entity, current, player, floor, checkpoint, queue, event_message,
         trace=trace, stage_num=stage_num,
+        floors=floors, replay_context=replay_context,
     )
 
 
@@ -1029,9 +1157,10 @@ def _step(
     hours: int,
     stage_num: int = 3,
     trace: Optional[TraceRecorder] = None,
+    replay_context: Optional[ReplayContext] = None,
 ) -> Optional[Tuple[int, str]]:
     current = floors[floor[0]]
-    history.append((deepcopy(floors), deepcopy(player), floor[0], checkpoint[0], deepcopy(queue)))
+    history.append(None)
     if len(history) > d.LOOP_TURNS:
         history.popleft()
 
@@ -1045,7 +1174,7 @@ def _step(
     if hit is not None:
         contact = _resolve_contact(
             hit, current, floors, player, floor, checkpoint, queue, history, event_message,
-            trace=trace, stage_num=stage_num,
+            trace=trace, stage_num=stage_num, replay_context=replay_context,
         )
         if contact.end_turn:
             return (contact.message_ticks, contact.message) if contact.message else None
@@ -1126,6 +1255,7 @@ def run_game(
 ) -> None:
     if config is None:
         config = GameConfig()
+    initial_seed = rand.get_seed()
     legacy_stage = stage_num in (1, 2)
     if legacy_stage:
         floors, player = _build_single_floor(config, stage_num)
@@ -1147,6 +1277,9 @@ def run_game(
     player.stage3_won = False
     player.stage3_treasure_collected = False
     player.met_elves = set()
+    replay_context = (
+        ReplayContext(stage_num, initial_seed, config) if stage_num in (3, 4) else None
+    )
     floor = [0]
     checkpoint = [floors[0].up]
     player.current_floor = 0
@@ -1247,6 +1380,10 @@ def run_game(
                 raise RuntimeError("--trace-record does not support non-cardinal (e.g. diagonal joystick) movement")
             trace.begin_turn(key)
 
+        if replay_context is not None:
+            replay_context.operations.append(move)
+            replay_context.cursor = len(replay_context.operations)
+
         if legacy_stage:
             update_result = update_entities(
                 move,
@@ -1291,7 +1428,7 @@ def run_game(
 
         event_message = _step(
             move, floors, player, floor, checkpoint, queue, history, hours,
-            stage_num=stage_num, trace=trace,
+            stage_num=stage_num, trace=trace, replay_context=replay_context,
         )
         player.current_floor = floor[0]
         # A stair contact can change the player's floor during _step(). Keep
