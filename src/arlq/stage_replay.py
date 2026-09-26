@@ -43,7 +43,7 @@ def replay_to_operation(
         checkpoint = [floors[0].up]
         queue: Counter[Tuple[int, str]] = Counter()
         history: Deque[HistoryEntry] = deque()
-        hours = 0
+        turn = 0
         for index, direction in enumerate(replay.operations[:operation_count]):
             result = _step(
                 direction,
@@ -53,7 +53,7 @@ def replay_to_operation(
                 checkpoint,
                 queue,
                 history,
-                hours,
+                turn,
                 stage_num=replay.stage_num,
                 replay_context=replay,
                 operation_index=index,
@@ -69,7 +69,7 @@ def replay_to_operation(
                     replay,
                     operation_count=index + 1,
                 )
-            hours += 1
+            turn += 1
             player.lp -= 1
         return floors, player, floor[0], checkpoint[0], queue
     finally:

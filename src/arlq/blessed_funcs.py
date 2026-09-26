@@ -264,7 +264,7 @@ class BlessedUI:
     def _draw_status_bar(
         self,
         player: d.Player,
-        hours: int,
+        turn: int,
         stage_num: int = 0,
         message: Optional[str] = None,
         extra_keys: bool = False,
@@ -277,7 +277,7 @@ class BlessedUI:
             output.append(self.term.move_xy(x, y) + self._style(text, color, bold, dim))
             x += self.term.length(text)
 
-        add(d.status_prefix(player, stage_num, hours))
+        add(d.status_prefix(player, stage_num, turn))
         add(f"LP: {player.lp} [")
         bar_len = 8
         filled = round(max(0, min(player.lp, d.LP_MAX)) / d.LP_MAX * bar_len)
@@ -302,7 +302,7 @@ class BlessedUI:
     def draw_stage(
         self,
         *,
-        hours,
+        turn,
         player,
         entities,
         field,
@@ -328,7 +328,7 @@ class BlessedUI:
             debug_show_entities, checkpoint, self.map_mode, dim_types,
             stage_num, stage_roster, floor_view, floor_label, reachable_cells,
         )
-        status_args = (player, hours, stage_num, message, extra_keys)
+        status_args = (player, turn, stage_num, message, extra_keys)
         self._last_stage = (stage_args, status_args)
         self._render_last_stage()
 
