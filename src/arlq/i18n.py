@@ -2,7 +2,7 @@
 
 Only the event/status message line and the GUI (Pyglet) stage-select
 screen are translated. Status-bar abbreviations and item names (LVL,
-HRS, Sword, Poisoned, ...) are intentionally left in English: they sit
+TURN, Sword, Poisoned, ...) are intentionally left in English: they sit
 in fixed-width layouts (especially in the Blessed terminal frontend)
 that a longer or double-width Japanese string could break.
 
