@@ -164,7 +164,7 @@ One Golem (`g`) appears on a random floor in Stage 3 and Stage 4. When defeated,
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **I** Isolated Elf | Reveals information about the other elves. It is inside a sealed room, so a wall-breaking sword is needed to reach it. Any contact after the first sends you back out to a random location, so you cannot get trapped inside. |
+| **I** Isolated Elf | Reveals information about the other elves. It is inside a sealed room, normally reached with a wall-breaking sword; a Collapse can also drop you into the room. Any contact after the first sends you back out to a random location, so you cannot get trapped inside. |
 | **J** Javelin Elf | Follows the player and increases attack power by 25%. |
 | **K** Collector Elf | Exchanges the cursed sword for a permanent 1.2x attack enhancement; it cannot break walls. |
 | **H** High Elf | Grants the talisman after meeting any two of `I`, `J`, and `K`. |
@@ -176,10 +176,10 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 Stage 4 is experimental and available from the stage selection menu. Its
 design and gameplay are subject to change.
 
-For a one-floor trap test arena with Stage 1's side margins, a level 150 player who has the talisman, W, two hidden chests, Vortex, and several `b` and `d` monsters, run `uv run -p .venv/bin/python python -m arlq --trap-test`. Defeating W reveals both chests as `T`; one is a Mimic. Collapse is omitted until its behavior is implemented.
+For a one-floor trap test arena with Stage 1's side margins, a level 150 player who has the talisman, W, two hidden chests, Vortex, and several `b` and `d` monsters, run `uv run -p .venv/bin/python python -m arlq --trap-test`. Defeating W reveals both chests as `T`; one is a Mimic. This arena has no lower floor, so it has no Collapse.
 The arena seed is saved, so `uv run -p .venv/bin/python python -m arlq --trap-test --rematch` reruns the same layout without the map-mode flag. `--rematch` alone also reruns the most recently played stage.
 
-Stage 4 has four floors with the Stage 3 layout. Each floor has at most one filled room, and one separate sealed room across the stage contains the Isolated Elf. The four elves appear across the floors, and the Dread Wyrm guards the final floor. The real chest and Mimic are placed on the final floor at the start, but both remain hidden and inactive until W is defeated. Then both appear as identical `T` chests. Adjacent floors can have a second stair pair in another room when space is available. Floor 1 keeps its current roster, floors 2 and 3 use the current floor 2 roster, and floor 4 uses the current floor 3 roster. Floor 1 has 22 amoebas and two `k` Marksmen; floors 2–4 have three `k` Marksmen each. One `e` Erebus appears on floor 1, and one each of `V` Vortex and `E` Rare Erebus appear on floors 2–4.
+Stage 4 has four floors with the Stage 3 layout. Each floor has at most one filled room, and one separate sealed room across the stage contains the Isolated Elf. Floors 1–3 can each contain one Collapse leading to the same coordinates on the floor below. The four elves appear across the floors, and the Dread Wyrm guards the final floor. The real chest and Mimic are placed on the final floor at the start, but both remain hidden and inactive until W is defeated. Then both appear as identical `T` chests. Adjacent floors can have a second stair pair in another room when space is available. Floor 1 keeps its current roster, floors 2 and 3 use the current floor 2 roster, and floor 4 uses the current floor 3 roster. Floor 1 has 22 amoebas and two `k` Marksmen; floors 2–4 have three `k` Marksmen each. One `e` Erebus appears on floor 1, and one each of `V` Vortex and `E` Rare Erebus appear on floors 2–4.
 
 Floors 2 and 3 contain more empowered `b` monsters; floor 4 has more empowered `d` monsters.
 
@@ -201,10 +201,10 @@ Traps do not respawn. A discovered Collapse remains in place and can be used rep
 | Trap | Display before discovery | Description |
 | ---- | ------------------------ | ----------- |
 | **M** Mimic | Hidden, then `T` | Level 85. Placed at the start on the same floor as the real treasure. Both chests appear as `T` only after the Dread Wyrm is defeated. Contact then reveals the Mimic as `M` and starts combat. If it survives, it stays visible as `M`. Defeating it restores 16 LP and leaves a faint `M` marker; it does not respawn. |
-| **O** Collapse | `?` | Entering it drops the player one floor to the same coordinates. The destination must be passable. Once triggered, that location is known and appears as `O`; the hole remains usable. It does not appear on the lowest floor. |
+| **O** Collapse | `?` | A fixed object placed at stage generation on floors 1–3. Entering it drops the player one floor to the same coordinates and reveals it as `O`; it can be used repeatedly and is never moved by Vortex or respawned. The source and destination must be unoccupied floor cells, and all eight neighboring cells must be free of walls on both floors. The destination may be inside the Isolated Elf's sealed room. |
 | **V** Vortex | `?` | Level 30. When defeated, repositions monsters, floor companions, and both chests except elves, removes all Marksmen's arrow marks, and resets explored floor cells. The Mimic moves with the monsters and keeps its discovery state. The Dread Wyrm and chests move independently. Wyrm barriers are rebuilt around the new positions and become unexplored. Known walls and stairs remain visible. Collapse locations stay fixed and are not destinations for the rearrangement. |
 
-Collapse is a planned addition. Stage 4 is experimental and its behavior may change.
+Stage 4 is experimental and its behavior may change.
 
 ## Companion List
 

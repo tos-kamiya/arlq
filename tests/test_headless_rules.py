@@ -45,6 +45,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "up_stairs",
         "down_stairs",
         "contact_reveal",
+        "collapse_landings",
     }
 
 
