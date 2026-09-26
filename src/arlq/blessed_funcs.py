@@ -175,13 +175,13 @@ class BlessedUI:
         player_attack = d.current_player_attack(player, stage_num)
 
         def paint(glyph: d.FieldGlyph) -> None:
-            color = None if glyph.tone in ("companion", "default") else glyph.tone
+            color = None if glyph.tone in ("companion", "default", "stair") else glyph.tone
             put(
                 glyph.x,
                 glyph.y,
                 glyph.char,
                 color,
-                bold=glyph.bold,
+                bold=False if glyph.tone == "stair" else glyph.bold,
                 dim=glyph.dim,
                 bg=cell_background(glyph.x, glyph.y),
             )

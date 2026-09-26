@@ -37,6 +37,7 @@
     "-- You took the treasure chest, but the King's request remains.": "-- 宝箱を手に入れたが、国王の依頼はまだ残っている。",
     "-- Please bring the cursed sword (C).": "-- 呪われた剣(C)を持って来てほしい。",
     "-- Descended to floor {n}/{total}.": "-- フロア{n}/{total}に降りた。",
+    "-- The floor gives way! You fall to floor {n}/{total}.": "-- 床が崩れ、フロア{n}/{total}へ落ちた。",
     "-- Ascended to floor {n}/{total}.": "-- フロア{n}/{total}に上った。",
     "-- The King has ordered the Dread Wyrm (W) slain.": "-- 国王からドレッドウィルム(W)の討伐を命じられている。",
     "-- Respawned to a random location.": "-- 別の場所にリスポーンした！",

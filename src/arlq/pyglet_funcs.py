@@ -316,6 +316,8 @@ class PygletUI:
             color = (0, 0, 0)
         elif tone == "companion":
             color = COLOR_MAP[CI_GREEN]
+        elif tone == "stair":
+            color = COLOR_MAP[CI_YELLOW]
         elif tone == "default":
             color = COLOR_MAP["default"]
         else:

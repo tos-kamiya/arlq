@@ -3,7 +3,7 @@
 from collections import Counter, deque
 from copy import deepcopy
 from dataclasses import dataclass, field as dataclass_field
-from typing import Any, Container, Deque, Dict, List, Optional, Tuple
+from typing import Any, Container, Deque, Dict, List, Optional, Set, Tuple
 
 from . import defs as d
 from .arlq import (
@@ -52,6 +52,7 @@ class Floor:
     up_stairs: List[d.Point] = dataclass_field(default_factory=list)
     down_stairs: List[d.Point] = dataclass_field(default_factory=list)
     contact_reveal: Optional[d.Point] = None
+    collapse_landings: Set[d.Point] = dataclass_field(default_factory=set)
 
 # Rewind history tracks the operation window; game state is rebuilt from inputs.
 HistoryEntry = Optional[Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]]
@@ -83,7 +84,9 @@ class _RewindRequest:
     """Signal from a turn step to the game loop to run rewind handling."""
 
 
-def _place_barrier(field: List[List[str]], center: d.Point) -> None:
+def _place_barrier(
+    field: List[List[str]], center: d.Point, protected: Container[d.Point] = ()
+) -> None:
     for dx in (-1, 0, 1):
         for dy in (-1, 0, 1):
             if not (dx or dy):
@@ -93,7 +96,7 @@ def _place_barrier(field: List[List[str]], center: d.Point) -> None:
                 continue
             # Never punch through the sealed Isolated Elf room's
             # perimeter when another Stage 3 feature is nearby.
-            if field[y][x] == d.CHAR_FLOOR:
+            if field[y][x] == d.CHAR_FLOOR and (x, y) not in protected:
                 field[y][x] = d.CHAR_BARRIER
 
 
@@ -416,6 +419,8 @@ def build(
         floors,
         stair_pairs_per_transition,
     )
+    if stage_num == 4:
+        _place_collapses(floors)
 
     player = d.Player(floors[0].up[0], floors[0].up[1], 1, d.LP_INIT)
     player.stage3_elf_floors = {char: floor + 1 for char, floor in elf_floors.items()}
@@ -457,29 +462,35 @@ def build_trap_test(
     return [arena], player
 
 
+def _transition_candidates(
+    upper: Floor, lower: Floor, stairs_to_avoid: List[d.Point]
+) -> List[d.Point]:
+    """Return matching floor cells outside the stairs' and adjacent rooms."""
+    stair_rooms = [tile_at(stair) for stair in stairs_to_avoid]
+    candidates = []
+    for y in range(1, d.FIELD_HEIGHT - 1):
+        for x in range(1, d.FIELD_WIDTH - 1):
+            if upper.field[y][x] != d.CHAR_FLOOR or lower.field[y][x] != d.CHAR_FLOOR:
+                continue
+            room = tile_at((x, y))
+            if all(
+                abs(room[0] - stair_room[0]) + abs(room[1] - stair_room[1]) > 1
+                for stair_room in stair_rooms
+            ):
+                candidates.append((x, y))
+    return candidates
+
+
 def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
     """Add matching stair pairs up to the configured count per floor link."""
     if pair_count <= 1:
         return
     for index in range(len(floors) - 1):
         upper, lower = floors[index], floors[index + 1]
-
-        def separated_from_stairs(point: d.Point, stairs: List[d.Point]) -> bool:
-            room = tile_at(point)
-            return all(
-                abs(room[0] - stair_room[0]) + abs(room[1] - stair_room[1]) > 1
-                for stair_room in (tile_at(stair) for stair in stairs)
-            )
-
         candidates = [
-            (x, y)
-            for y in range(1, d.FIELD_HEIGHT - 1)
-            for x in range(1, d.FIELD_WIDTH - 1)
-            if upper.field[y][x] == d.CHAR_FLOOR
-            and lower.field[y][x] == d.CHAR_FLOOR
-            and separated_from_stairs((x, y), upper.down_stairs)
-            and (x, y) != upper.down
-            and (x, y) != lower.up
+            point
+            for point in _transition_candidates(upper, lower, upper.down_stairs)
+            if point != upper.down and point != lower.up
         ]
         while candidates and len(upper.down_stairs) < pair_count:
             point = candidates.pop(rand.randrange(len(candidates)))
@@ -493,9 +504,46 @@ def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
             lower.up_stairs.append(point)
             candidates = [
                 candidate
-                for candidate in candidates
-                if separated_from_stairs(candidate, upper.down_stairs)
+                for candidate in _transition_candidates(upper, lower, upper.down_stairs)
+                if candidate != upper.down and candidate != lower.up
             ]
+
+
+def _place_collapses(floors: List[Floor]) -> None:
+    """Place at most one fixed Collapse on each floor with a lower floor."""
+    offsets = [
+        (dx, dy)
+        for dy in (-1, 0, 1)
+        for dx in (-1, 0, 1)
+        if dx or dy
+    ]
+
+    def has_wall_neighbors(field: List[List[str]], point: d.Point) -> bool:
+        x, y = point
+        return any(field[y + dy][x + dx] == d.WALL_CHAR for dx, dy in offsets)
+
+    for upper, lower in zip(floors, floors[1:]):
+        occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
+        occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
+        upper_fixed = {upper.up, upper.down, *upper.up_stairs, *upper.down_stairs}
+        lower_fixed = {lower.up, lower.down, *lower.up_stairs, *lower.down_stairs}
+        stair_points = upper.down_stairs + lower.up_stairs
+        candidates = [
+            point
+            for point in _transition_candidates(upper, lower, stair_points)
+            if point not in occupied_upper
+            and point not in occupied_lower
+            and point not in upper_fixed
+            and point not in lower_fixed
+            and point not in upper.collapse_landings
+            and point not in lower.collapse_landings
+            and not has_wall_neighbors(upper.field, point)
+            and not has_wall_neighbors(lower.field, point)
+        ]
+        if candidates:
+            point = rand.choice(candidates)
+            upper.entities.append(d.Collapse(*point))
+            lower.collapse_landings.add(point)
 
 
 def _move_player(
@@ -559,6 +607,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
                 and (
                     isinstance(other, d.Companion)
                     or isinstance(other, d.Treasure)
+                    or isinstance(other, d.Collapse) and not other.revealed
                     or isinstance(other, d.Monster) and other.active
                 )
                 for other in current.entities
@@ -762,11 +811,21 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
 
     for entity in current.entities:
         if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}:
-            _place_barrier(current.field, (entity.x, entity.y))
+            protected = {
+                (fixed.x, fixed.y)
+                for fixed in current.entities
+                if isinstance(fixed, d.Collapse)
+            } | current.collapse_landings
+            _place_barrier(current.field, (entity.x, entity.y), protected)
 
+    known_collapses = {
+        (entity.x, entity.y)
+        for entity in current.entities
+        if isinstance(entity, d.Collapse) and entity.revealed
+    }
     for y, row in enumerate(current.field):
         for x, cell in enumerate(row):
-            if cell in (d.CHAR_FLOOR, d.CHAR_BARRIER):
+            if cell in (d.CHAR_FLOOR, d.CHAR_BARRIER) and (x, y) not in known_collapses:
                 current.seen[y][x] = 0
     for entity in current.entities:
         if isinstance(entity, d.Monster) and entity.tribe.char == "k":
@@ -833,7 +892,7 @@ def _defeat_monster(
         spread_caltrops(current.field, (player.x, player.y), current.entities)
     elif entity.tribe.effect == d.EFFECT_ROCK_SPREAD:
         for x, y in iterate_offsets(player.x, player.y, d.ROCK_SPREAD_OFFSETS, except_for_entities=current.entities):
-            if current.field[y][x] == d.CHAR_FLOOR:
+            if (x, y) not in current.collapse_landings and current.field[y][x] == d.CHAR_FLOOR:
                 current.field[y][x] = d.WALL_CHAR
     elif entity.tribe.effect == d.EFFECT_VORTEX:
         if replay_context is not None and floors is not None and operation_index is not None:
@@ -1188,7 +1247,15 @@ def _step(
     # l contact is a control-flow event, not an ordinary gameplay turn. Detect
     # it before terrain hazards, monster actions, follower movement, stairs,
     # and respawn processing can mutate the state.
-    hit = next((i for i, e in enumerate(current.entities) if (e.x, e.y) == (player.x, player.y)), None)
+    hit = next(
+        (
+            i
+            for i, entity in enumerate(current.entities)
+            if not isinstance(entity, d.Collapse)
+            and (entity.x, entity.y) == (player.x, player.y)
+        ),
+        None,
+    )
     if hit is not None:
         entity = current.entities[hit]
         if isinstance(entity, d.Companion) and entity.tribe.char == "l" and history:
@@ -1200,11 +1267,58 @@ def _step(
             if contact.rewind_requested:
                 return _RewindRequest()
 
-    event_message = _apply_terrain_hazards(current, player, previous)
-    if stage_num == 4 and (player.x, player.y) != previous:
+    event_message: Optional[str] = None
+    collapse_transition = False
+    collapse_hit = next(
+        (
+            entity
+            for entity in current.entities
+            if isinstance(entity, d.Collapse)
+            and (entity.x, entity.y) == (player.x, player.y)
+        ),
+        None,
+    )
+    if collapse_hit is not None and (player.x, player.y) != previous:
+        from_floor = floor[0]
+        collapse_hit.revealed = True
+        floor[0] += 1
+        checkpoint[0] = (player.x, player.y)
+        player.persistent_followers = [
+            (player.x, player.y, floor[0], char)
+            for _, _, _, char in player.persistent_followers
+        ]
+        if trace is not None:
+            trace.record_contact(
+                {
+                    "type": "trap",
+                    "id": d.CHAR_COLLAPSE,
+                    "outcome": "fallen",
+                    "from_floor": from_floor,
+                    "to_floor": floor[0],
+                    "at": [player.x, player.y],
+                }
+            )
+        event_message = tr(
+            "-- The floor gives way! You fall to floor {n}/{total}."
+        ).format(n=floor[0] + 1, total=len(floors))
+        current = floors[floor[0]]
+        collapse_transition = True
+
+    hazard_message = _apply_terrain_hazards(current, player, previous)
+    if hazard_message is not None:
+        event_message = hazard_message
+    if stage_num == 4 and ((player.x, player.y) != previous or collapse_transition):
         _marksman_shoot(current, player)
 
-    hit = next((i for i, e in enumerate(current.entities) if (e.x, e.y) == (player.x, player.y)), None)
+    hit = next(
+        (
+            i
+            for i, entity in enumerate(current.entities)
+            if not isinstance(entity, d.Collapse)
+            and (entity.x, entity.y) == (player.x, player.y)
+        ),
+        None,
+    )
     if hit is not None:
         contact = _resolve_contact(
             hit, current, floors, player, floor, checkpoint, queue, history, event_message,
@@ -1234,7 +1348,11 @@ def _step(
     _advance_persistent_followers(player, floor[0], (player.x, player.y) != previous, previous)
 
     floor_before = floor[0]
-    transition_message = _handle_floor_transition(current, floors, player, floor, checkpoint)
+    transition_message = (
+        None
+        if collapse_transition
+        else _handle_floor_transition(current, floors, player, floor, checkpoint)
+    )
     if transition_message is not None:
         event_message = transition_message
         if trace is not None:

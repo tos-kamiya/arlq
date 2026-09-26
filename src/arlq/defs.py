@@ -106,6 +106,7 @@ CHAR_PEGASUS: str = "p"
 CHAR_TREASURE: str = "T"
 CHAR_CALTROP: str = "x"
 CHAR_BARRIER: str = "="
+CHAR_COLLAPSE: str = "O"
 TRAP_MONSTER_DISGUISES: Dict[str, str] = {"M": CHAR_TREASURE, "V": "?"}
 
 Point = Tuple[int, int]
@@ -128,6 +129,14 @@ class Treasure(Entity):
         self.encounter_type = encounter_type
         self.unlock_key = unlock_key or encounter_type
         self.unlocked: bool = False
+
+
+class Collapse(Entity):
+    """A fixed hole that drops the player to the same point on the next floor."""
+
+    def __init__(self, x: int, y: int):
+        super().__init__(x, y)
+        self.revealed: bool = False
 
 
 class Tribe:
@@ -610,8 +619,9 @@ class FieldGlyph(NamedTuple):
     """One character to draw on the field.
 
     ``tone`` is a semantic name (``yellow``, ``blue``, ``red``, ``companion``,
-    ``default``, ``black``, ``magenta``). Each frontend maps it. ``companion``
-    is green in the GUI and the terminal's default color.
+    ``default``, ``black``, ``magenta``, ``stair``). Each frontend maps it.
+    ``companion`` is green in the GUI and the terminal's default color;
+    ``stair`` follows the stair glyph style in each frontend.
     """
 
     x: int
@@ -657,9 +667,21 @@ def preview_entity_glyphs(entity: Entity, reveal_disguises: bool = False) -> Lis
         char = entity.tribe.char
     elif isinstance(entity, Treasure):
         char = CHAR_TREASURE
+    elif isinstance(entity, Collapse):
+        char = CHAR_COLLAPSE if entity.revealed or reveal_disguises else "?"
     if char is None:
         return []
-    glyphs = [FieldGlyph(entity.x, entity.y, char, "default", dim=True)]
+    tone = "stair" if isinstance(entity, Collapse) and char == CHAR_COLLAPSE else "default"
+    glyphs = [
+        FieldGlyph(
+            entity.x,
+            entity.y,
+            char,
+            tone,
+            bold=tone == "stair",
+            dim=tone == "default",
+        )
+    ]
     if isinstance(entity, Monster) and entity.empowered > 1:
         glyphs.append(FieldGlyph(entity.x + 1, entity.y, "'", "default", dim=True))
     return glyphs
@@ -710,6 +732,10 @@ def revealed_entity_glyphs(
         if entity.empowered > 1:
             glyphs.append(FieldGlyph(entity.x + 1, entity.y, "'", tone, bold=True, dim=dim))
         return glyphs
+    if isinstance(entity, Collapse):
+        char = CHAR_COLLAPSE if entity.revealed else "?"
+        tone = "stair" if entity.revealed else "yellow"
+        return [FieldGlyph(entity.x, entity.y, char, tone, bold=True)]
     if isinstance(entity, Treasure):
         if entity.unlocked:
             return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
