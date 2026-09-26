@@ -260,6 +260,8 @@ class Player(Entity):
         self.item_taken_from: Optional[str] = None
         self.companion: Optional[Companion] = companion
         self.karma: int = 0
+        self.boss_defeated: bool = False
+        self.treasure_collected: bool = False
         # Ordinary monster identities are known by tribe across all floors.
         self.known_monsters: Set[str] = set()
         self.stage3_elf_floors: Dict[str, int] = {}
@@ -267,8 +269,6 @@ class Player(Entity):
         # entity model used by both frontends.
         self.stage3_flags: int = 0
         self.stage3_spores: bool = False
-        self.stage3_treasure_collected: bool = False
-        self.stage3_won: bool = False
         self.current_floor: int = 0
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
         # (floor, x, y) of the monster involved in the most recent monster
@@ -284,9 +284,12 @@ class Player(Entity):
         # later refusal sends the player elsewhere, like repeat contact with
         # the Isolated Elf.
         self.high_elf_refused: bool = False
-        # Same idea as high_elf_refused, but for Stage 3's Collector Elf (K)
-        # before the player has the cursed sword.
+        # Same idea as high_elf_refused for Stage 3's Collector Elf (K).
         self.k_elf_refused: bool = False
+
+    @property
+    def stage_won(self) -> bool:
+        return self.boss_defeated and self.treasure_collected
 
 class SpawnConfig:
     """
@@ -599,7 +602,7 @@ def stage3_progress_marks(player: Player) -> List[Tuple[str, bool]]:
         if show_floors and label in player.stage3_elf_floors:
             text += str(player.stage3_elf_floors[label])
         marks.append((text, bool(player.stage3_flags & bit)))
-    marks.append(("T", player.stage3_won))
+    marks.append(("T", player.treasure_collected))
     return marks
 
 

@@ -600,8 +600,8 @@ def _replay_to_operation(
             ),
         )
         player.known_monsters = set()
-        player.stage3_won = False
-        player.stage3_treasure_collected = False
+        player.boss_defeated = False
+        player.treasure_collected = False
         floor = [0]
         checkpoint = [floors[0].up]
         queue: Counter[Tuple[int, str]] = Counter()
@@ -780,6 +780,7 @@ def _defeat_monster(
     floor: List[int],
     checkpoint: List[d.Point],
     queue: Counter[Tuple[int, str]],
+    stage_num: int = 3,
     trace: Optional[TraceRecorder] = None,
     floors: Optional[List[Floor]] = None,
     replay_context: Optional[ReplayContext] = None,
@@ -812,8 +813,8 @@ def _defeat_monster(
         unlock_treasure_for_defeat(entity, current.entities)
         _activate_mimics(current)
         player.known_monsters.add(d.monster_type_key(entity))
-        if player.stage3_treasure_collected:
-            player.stage3_won = True
+        if stage_num in (3, 4):
+            player.boss_defeated = True
     if ch == "K":
         player.stage3_flags |= d.STAGE3_K_FLAG
         d.clear_player_item(player)
@@ -991,6 +992,7 @@ def _resolve_monster_contact(
             floor,
             checkpoint,
             queue,
+            stage_num=stage_num,
             trace=trace,
             floors=floors,
             replay_context=replay_context,
@@ -1002,7 +1004,7 @@ def _resolve_monster_contact(
             event_message = tr("-- The Mimic was defeated!")
         elif ch == "M":
             event_message = tr("-- The treasure chest was a Mimic!")
-        if ch == "W" and stage_num == 4 and player.stage3_treasure_collected:
+        if ch == "W" and stage_num == 4 and player.treasure_collected:
             event_message = tr(">> The King's request is complete! <<")
 
     if entity.tribe.is_elf and ch != "J" and entity not in current.entities:
@@ -1050,9 +1052,10 @@ def _resolve_contact(
             trace.record_contact({"type": "treasure", "id": entity.unlock_key, "collected": collected})
         if collected:
             current.entities.pop(hit)
-            player.stage3_treasure_collected = True
+            player.treasure_collected = True
             if player.stage3_flags & d.STAGE3_W_FLAG:
-                player.stage3_won = True
+                if stage_num in (3, 4):
+                    player.boss_defeated = True
                 if stage_num in (4, 5):
                     event_message = tr(">> Treasure chest obtained! <<")
             else:
@@ -1304,8 +1307,8 @@ def run_game(
             ),
         )
     player.known_monsters = set()
-    player.stage3_won = False
-    player.stage3_treasure_collected = False
+    player.boss_defeated = False
+    player.treasure_collected = False
     replay_context = (
         ReplayContext(stage_num, initial_seed, config) if stage_num in (3, 4) else None
     )
@@ -1316,21 +1319,21 @@ def run_game(
     queue: Counter[Tuple[int, str]] = Counter()
     history: Deque[HistoryEntry] = deque()
     hours = 0
-    message: Tuple[int, str] = (-1, "") if legacy_stage else (
-        5,
-        tr("-- The King has ordered the Dread Wyrm (W) slain.")
-        if stage_num == 3
-        else tr(
-            "-- Trap test: Mimic, Vortex, W, treasure, b and d."
-            if stage_num == 5
-            else "-- Explore the sealed rooms across four floors."
-        ),
-    )
+    if legacy_stage:
+        message: Tuple[int, str] = (-1, "")
+    elif stage_num == 3:
+        message = (5, tr("-- The King has ordered the Dread Wyrm (W) slain."))
+    elif stage_num == 4:
+        message = (5, tr("-- Defeat the Dread Wyrm (W) and claim its treasure chest."))
+    elif stage_num == 5:
+        message = (5, "-- Trap test: Mimic, Vortex, W, treasure, b and d.")
+    else:
+        message = (5, tr("-- Explore the sealed rooms across four floors."))
     legacy_respawn_queue: Counter[str] = Counter()
     if legacy_stage:
         hours = -1
 
-    while player.lp > 0 and (legacy_stage or stage_num in (4, 5) or not player.stage3_won):
+    while player.lp > 0:
         current = floors[floor[0]]
         display_floor = floors[view_floor]
         cur = get_torched(player, config.torch_radius)
@@ -1439,8 +1442,6 @@ def run_game(
                 trace.set_player(player, stage_num)
                 trace.commit_turn()
             if update_result.effect == d.EFFECT_GOT_TREASURE:
-                if trace is not None:
-                    trace.set_outcome("win")
                 break
             hours += 1
             player.lp -= 1
@@ -1478,16 +1479,16 @@ def run_game(
 
         hours += 1
         player.lp -= 1
+        if player.stage_won:
+            break
 
-    won = (legacy_stage and player.lp > 0) or (stage_num == 3 and player.stage3_won)
+    won = player.stage_won
     if trace is not None:
         trace.set_outcome("win" if won else "lose")
 
     if not won:
         message = (-1, tr(">> Collapsed from hunger! <<"))
-    elif legacy_stage:
-        message = (-1, tr(">> Treasure chest obtained! <<"))
-    elif stage_num == 3 and player.stage3_won:
+    else:
         message = (-1, tr(">> Treasure chest obtained! <<"))
     while True:
         current = floors[floor[0]]
