@@ -461,13 +461,10 @@ class PygletUI:
         extra_keys: bool = False,
         debug_show_entities: bool = False,
         checkpoint: Optional[d.Point] = None,
-        unlocked_treasures: Optional[Set[str]] = None,
         dim_types: Optional[Set[str]] = None,
         stage_roster: Optional[List[d.MonsterTribe]] = None,
         floor_view: bool = False,
         floor_label: Optional[str] = None,
-        arrow_marks=(),
-        mimic_marks=(),
     ):
         """
         Renders the game stage:
@@ -513,13 +510,12 @@ class PygletUI:
                         thickness=2,
                     )
 
-        for x, y in mimic_marks:
-            if (show_entities or torched[y][x]) and (x, y) != (px, py):
-                self._draw_field_text((x, y), "M", self._tone_color("default", True))
-
-        for (x, y), char in arrow_marks:
-            if (show_entities or torched[y][x]) and (x, y) != (px, py):
-                self._draw_field_text((x, y), char, COLOR_MAP[CI_RED], bold=True)
+        for entity in entities:
+            if not isinstance(entity, d.Monster) or entity.tribe.char != "k":
+                continue
+            for (x, y), char in entity.arrow_marks:
+                if (show_entities or torched[y][x]) and (x, y) != (px, py):
+                    self._draw_field_text((x, y), char, COLOR_MAP[CI_RED], bold=True)
 
         if not floor_view:
             self._draw_visibility_boundary(cur_torched)
@@ -555,8 +551,9 @@ class PygletUI:
             if torched[entity.y][entity.x] == 0 or (entity.x, entity.y) == (px, py):
                 continue
             for glyph in d.revealed_entity_glyphs(
-                entity, known_types, show_entities, player_attack, unlocked_treasures, dim_types,
+                entity, known_types, show_entities, player_attack, dim_types,
                 reveal_disguises=debug_show_entities,
+                debug_show_entities=debug_show_entities,
             ):
                 paint(glyph)
 

@@ -38,7 +38,6 @@ def one_floor(entities, **overrides):
         field=blank_field(),
         entities=entities,
         seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-        known_companions=set(),
         up=(1, 1),
         down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
         island=None,
@@ -206,14 +205,15 @@ def test_legacy_contact_treasure_locked_and_unlocked():
     trace = TraceRecorder(params={})
 
     turn = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player, [player, treasure], set()
+        trace, "R", update_entities, KEYS["R"], field, player, [player, treasure]
     )
     assert turn["contact"] == {"type": "treasure", "id": "TD", "collected": False}
 
     player2 = d.Player(2, 2, 1, 90)
     treasure2 = d.Treasure(3, 2, "TD")
+    treasure2.unlocked = True
     turn2 = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player2, [player2, treasure2], {"TD"}
+        trace, "R", update_entities, KEYS["R"], field, player2, [player2, treasure2]
     )
     assert turn2["contact"] == {"type": "treasure", "id": "TD", "collected": True}
 
@@ -381,8 +381,8 @@ def test_stage3_elf_contact_granted_and_refused():
 
 def test_stage3_repeat_elf_contact_is_refused():
     player = d.Player(2, 2, 1, 90)
-    player.stage3_met_elves = {"H"}
     high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
+    high_elf.met = True
     floors = [one_floor([high_elf])]
     floor = [0]
     checkpoint = [(2, 2)]

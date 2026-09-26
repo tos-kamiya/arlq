@@ -27,7 +27,6 @@ def stage3_state(player, entities):
             field=field,
             entities=entities,
             seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-            known_companions=set(),
             up=(1, 1),
             down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
             island=None,
@@ -40,15 +39,12 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "field",
         "entities",
         "seen",
-        "known_companions",
         "up",
         "down",
         "island",
         "up_stairs",
         "down_stairs",
         "contact_reveal",
-        "arrow_marks",
-        "defeated_mimics",
     }
 
 
@@ -72,7 +68,6 @@ def run_stage3_keys(keys, floors, player, floor, checkpoint, queue, history, sta
     for key in keys:
         result = _step(KEYS[key], floors, player, floor, checkpoint, queue, history, 1, stage_num)
         if isinstance(result, game_engine_module._RewindRequest):
-            floors[floor[0]].known_companions.add("l")
             result = game_engine_module._rewind_to_history(
                 floors, player, floor, checkpoint, queue, history
             )
@@ -145,7 +140,6 @@ def test_game_loop_draws_with_keyword_arguments_only():
         "stage_num",
         "message",
         "checkpoint",
-        "unlocked_treasures",
     }
     assert draws[0]["stage_num"] == 1
 
@@ -160,7 +154,8 @@ def test_game_loop_draws_with_keyword_arguments_only():
 def test_stage3_wyrm_combat_updates_message_position_and_state(level, expected_message, expected_position):
     player = d.Player(2, 2, level, 90)
     wyrm = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
-    floors, _ = stage3_state(player, [wyrm])
+    treasure = d.Treasure(4, 2, "TW")
+    floors, _ = stage3_state(player, [wyrm, treasure])
     floor = [0]
     checkpoint = [(2, 2)]
     queue = Counter()
@@ -171,18 +166,17 @@ def test_stage3_wyrm_combat_updates_message_position_and_state(level, expected_m
     assert messages == [expected_message]
     assert (player.x, player.y) == expected_position
     if level == 1:
-        assert floors[0].entities == [wyrm]
+        assert floors[0].entities == [treasure, wyrm]
         assert player.item is None
         assert player.lp == 84
-        assert not player.unlocked_treasures
+        assert not treasure.unlocked
         assert not queue
     else:
-        assert floors[0].entities == []
+        assert floors[0].entities == [treasure]
         assert player.level == 201
         assert player.karma == 1
-        assert player.unlocked_treasures == {"TW"}
+        assert treasure.unlocked
         assert not queue
-        assert floors[0].entities == []
 
 
 def test_stage3_excludes_fire_lizard():
@@ -270,7 +264,6 @@ def test_marksman_shots_are_blocked_by_terrain(blocking_tile):
         field=field,
         entities=[marksman],
         seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-        known_companions=set(),
         up=(1, 1),
         down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
         island=None,
@@ -280,7 +273,7 @@ def test_marksman_shots_are_blocked_by_terrain(blocking_tile):
     game_engine_module._marksman_shoot(current, player)
 
     assert player.lp == 90
-    assert marksman not in current.arrow_marks
+    assert marksman.arrow_marks == []
 
 
 @pytest.mark.parametrize("old_arrow_mark", [False, True])
@@ -299,19 +292,18 @@ def test_floor_loop_companion_blocks_marksman_shots_after_player_moves(
         field=field,
         entities=entities,
         seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-        known_companions=set(),
         up=(1, 1),
         down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
         island=None,
     )
     if old_arrow_mark:
-        current.arrow_marks[marksman] = [((mark_x, 2), "-")]
+        marksman.arrow_marks = [((mark_x, 2), "-")]
 
     _step((0, -1), [current], player, [0], [(player_x, 3)], Counter(), deque(), 1, stage_num=4)
 
     assert (player.x, player.y) == (player_x, 2)
     assert player.lp == 90
-    assert current.arrow_marks.get(marksman, []) == ([((mark_x, 2), "-")] if old_arrow_mark else [])
+    assert marksman.arrow_marks == ([((mark_x, 2), "-")] if old_arrow_mark else [])
 
 
 def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
@@ -319,6 +311,7 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
     dread_wyrm = d.Monster(10, 8, d.CHAR_TO_MONSTER_TRIBE["W"])
     wyrm = d.Monster(20, 8, d.CHAR_TO_MONSTER_TRIBE["w"])
     marksman = d.Monster(20, 12, d.CHAR_TO_MONSTER_TRIBE["k"])
+    marksman.arrow_marks = [((19, 12), "-")]
     treasure = d.Treasure(10, 15, "TW")
     for center in ((dread_wyrm.x, dread_wyrm.y), (wyrm.x, wyrm.y)):
         game_engine_module._place_barrier(field, center)
@@ -329,11 +322,9 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
         field=field,
         entities=[dread_wyrm, wyrm, marksman, treasure],
         seen=seen,
-        known_companions=set(),
         up=(1, 1),
         down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
         island=None,
-        arrow_marks={marksman: [((19, 12), "-")]},
     )
 
     new_positions = {"W": (30, 16), "w": (30, 8), "k": (30, 12)}
@@ -372,7 +363,9 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
     assert seen[16][29] == seen[16][31] == 0
     assert seen[16][9] == seen[16][11] == 0
     assert seen[4][4] == seen[4][5] == 1
-    assert not current.arrow_marks
+    assert marksman.arrow_marks == []
+    relocated_marksman = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "k")
+    assert relocated_marksman.arrow_marks == []
 
 
 @pytest.mark.parametrize(("initial_level", "expected_level"), [(1, 1), (2, 1), (21, 10), (22, 11)])
@@ -422,8 +415,8 @@ def test_stage3_empowered_roster_counts_are_rounded_down():
 
 def test_stage3_treasure_requires_current_timeline_w_defeat():
     player = d.Player(2, 2, 200, 90)
-    player.unlocked_treasures.add("TW")
     treasure = d.Treasure(3, 2, "TW")
+    treasure.unlocked = True
     wyrm = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
     floors, _ = stage3_state(player, [treasure, wyrm])
     floor = [0]
@@ -442,9 +435,9 @@ def test_stage3_treasure_requires_current_timeline_w_defeat():
 
 def test_stage4_displays_treasure_message_when_was_defeated_first():
     player = d.Player(2, 2, 200, 90)
-    player.unlocked_treasures.add("TW")
     player.stage3_flags |= d.STAGE3_W_FLAG
     treasure = d.Treasure(3, 2, "TW")
+    treasure.unlocked = True
     floors, _ = stage3_state(player, [treasure])
 
     messages = run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter(), deque(), stage_num=4)
@@ -455,21 +448,20 @@ def test_stage4_displays_treasure_message_when_was_defeated_first():
 
 def test_stage4_chests_wait_for_w_defeat():
     player = d.Player(2, 2, 200, 90)
-    player.unlocked_treasures.add("TW")
     treasure = d.Treasure(3, 2, "TW")
-    treasure.active = False
     wyrm = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
     mimic = d.Monster(5, 2, d.CHAR_TO_MONSTER_TRIBE["M"])
     mimic.active = False
     floors, _ = stage3_state(player, [treasure, wyrm, mimic])
-    assert d.revealed_entity_glyphs(treasure, set(), False, 200, {"TW"}, None) == []
-    assert d.revealed_entity_glyphs(mimic, set(), False, 200, {"TW"}, None) == []
-    assert d.preview_entity_glyphs(treasure) == d.preview_entity_glyphs(mimic) == []
+    assert d.revealed_entity_glyphs(treasure, set(), False, 200, None) == []
+    assert d.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
+    assert d.preview_entity_glyphs(treasure)[0].char == "T"
+    assert d.preview_entity_glyphs(mimic) == []
 
     floor, checkpoint, queue, history = [0], [(2, 2)], Counter(), deque()
     messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history, stage_num=4)
-    assert d.revealed_entity_glyphs(treasure, set(), False, 200, {"TW"}, None)[0].char == "T"
-    assert d.revealed_entity_glyphs(mimic, set(), False, 200, {"TW"}, None)[0].char == "T"
+    assert d.revealed_entity_glyphs(treasure, set(), False, 200, None)[0].char == "T"
+    assert d.revealed_entity_glyphs(mimic, set(), False, 200, None)[0].char == "T"
     assert d.preview_entity_glyphs(treasure)[0].char == d.preview_entity_glyphs(mimic)[0].char == "T"
     messages += run_stage3_keys("RLL", floors, player, floor, checkpoint, queue, history, stage_num=4)
 
@@ -480,6 +472,12 @@ def test_stage4_chests_wait_for_w_defeat():
         None,
         ">> Treasure chest obtained! <<",
     ]
+    assert mimic in floors[0].entities
+    assert not mimic.active
+    assert mimic.revealed and mimic.met
+    mimic_glyphs = d.revealed_entity_glyphs(mimic, set(), False, 200, None)
+    assert [(glyph.char, glyph.dim) for glyph in mimic_glyphs] == [("M", True)]
+    assert [(glyph.char, glyph.dim) for glyph in d.preview_entity_glyphs(mimic)] == [("M", True)]
     assert player.stage3_won
 
 
@@ -489,10 +487,10 @@ def test_debug_entity_display_reveals_trap_monster_identity(char, disguise):
 
     assert d.preview_entity_glyphs(monster)[0].char == disguise
     assert d.preview_entity_glyphs(monster, reveal_disguises=True)[0].char == char
-    assert d.revealed_entity_glyphs(monster, set(), True, 1, None, None)[0].char == disguise
+    assert d.revealed_entity_glyphs(monster, set(), True, 1, None)[0].char == disguise
     assert (
         d.revealed_entity_glyphs(
-            monster, set(), True, 1, None, None, reveal_disguises=True
+            monster, set(), True, 1, None, reveal_disguises=True
         )[0].char
         == char
     )
@@ -539,7 +537,7 @@ def test_legacy_defeat_applies_item_and_caltrop_field_effect():
     entities = [player, plant]
 
     effect, respawns, message, contact = update_entities(
-        KEYS["R"], field, player, entities, set(), respawn_point=(2, 2)
+        KEYS["R"], field, player, entities, respawn_point=(2, 2)
     )
 
     assert effect == d.EFFECT_CALTROP_SPREAD
@@ -553,6 +551,27 @@ def test_legacy_defeat_applies_item_and_caltrop_field_effect():
     assert any(d.CHAR_CALTROP in row for row in field)
 
 
+def test_legacy_companion_identity_is_tracked_on_the_instance():
+    player = d.Player(2, 2, 100, 90)
+    companion = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
+
+    update_entities(KEYS["R"], blank_field(), player, [companion])
+
+    assert player.companion is companion
+    assert companion.revealed
+
+
+def test_legacy_boss_unlocks_its_treasure_object():
+    player = d.Player(2, 2, 200, 90)
+    dragon = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_DRAGON])
+    treasure = d.Treasure(4, 2, d.CHAR_TREASURE + d.CHAR_DRAGON)
+    entities = [player, dragon, treasure]
+
+    update_entities(KEYS["R"], blank_field(), player, entities)
+
+    assert treasure.unlocked
+
+
 def test_legacy_respawn_queue_controls_actual_respawn(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     plant = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["X"])
@@ -560,7 +579,7 @@ def test_legacy_respawn_queue_controls_actual_respawn(monkeypatch):
     entities = [player, plant]
 
     _, respawns, _, _ = update_entities(
-        KEYS["R"], field, player, entities, set(), respawn_point=(2, 2)
+        KEYS["R"], field, player, entities, respawn_point=(2, 2)
     )
 
     assert respawns == ["X"]
@@ -577,7 +596,7 @@ def test_legacy_non_respawning_monster_does_not_enter_respawn_queue():
     entities = [player, amoeba]
 
     _, respawns, _, _ = update_entities(
-        KEYS["R"], field, player, entities, set(), respawn_point=(2, 2)
+        KEYS["R"], field, player, entities, respawn_point=(2, 2)
     )
 
     respawn_queue = Counter(t for t in respawns if t not in d.NO_RESPAWN_MONSTERS)
@@ -596,13 +615,13 @@ def test_legacy_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(mo
     field = blank_field()
     entities = [player, dragon]
 
-    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
     assert message == (8, "-- Respawned!")
     assert (player.x, player.y) == (2, 2)
     assert player.last_contact_monster == (0, 3, 2)
 
     monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (10, 10))
-    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
 
     assert message == (8, "-- Respawned to a random location.")
     assert (player.x, player.y) == (10, 10)
@@ -619,24 +638,25 @@ def test_legacy_stage2_high_elf_refuses_once_then_sends_player_elsewhere(monkeyp
     field = blank_field()
     entities = [player, high_elf, weak]
 
-    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
     assert message == (8, "-- The High Elf seems uninterested in you.")
+    assert high_elf.revealed
     assert (player.x, player.y) == (3, 2)
     assert player.lp == 90
     assert player.high_elf_refused is True
 
     # Move back and defeat an unrelated monster; unlike the ordinary
     # too-strong-monster streak, this must NOT clear the High Elf refusal.
-    update_entities(KEYS["L"], field, player, entities, set(), respawn_point=(2, 2))
-    _, _, message, _ = update_entities(KEYS["L"], field, player, entities, set(), respawn_point=(2, 2))
+    update_entities(KEYS["L"], field, player, entities, respawn_point=(2, 2))
+    _, _, message, _ = update_entities(KEYS["L"], field, player, entities, respawn_point=(2, 2))
     assert message is None
     assert (player.x, player.y) == (1, 2)
     assert weak not in entities
     assert player.high_elf_refused is True
 
-    update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
     monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (10, 10))
-    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
 
     assert message == (8, "-- Respawned to a random location.")
     assert (player.x, player.y) == (10, 10)
@@ -653,43 +673,45 @@ def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypat
     field = blank_field()
     entities = [player, dragon, weak]
 
-    update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
     assert player.last_contact_monster == (0, 3, 2)
     assert (player.x, player.y) == (2, 2)
 
-    update_entities(KEYS["L"], field, player, entities, set(), respawn_point=(2, 2))
+    update_entities(KEYS["L"], field, player, entities, respawn_point=(2, 2))
     assert player.last_contact_monster == (0, 1, 2)
     assert (player.x, player.y) == (1, 2)
 
-    update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
     assert (player.x, player.y) == (2, 2)
 
     monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (99, 99))
-    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, set(), respawn_point=(2, 2))
+    _, _, message, _ = update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
 
     assert message == (8, "-- Respawned!")
     assert (player.x, player.y) == (2, 2)
     assert player.last_contact_monster == (0, 3, 2)
 
 
-def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
+def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     player.known_monsters = {"a", "W"}
-    player.unlocked_treasures = {"TW"}
     player.stage3_treasure_collected = True
-    player.stage3_met_elves = {"I"}
     player.stage3_elf_floors = {"I": 1, "J": 3, "K": 2, "H": 1}
     loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
-    current_floors, current_field = stage3_state(player, [loop])
-    current_floors[0].known_companions = {"n"}
+    known_companion = d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
+    known_companion.revealed = True
+    current_treasure = d.Treasure(5, 2, "TW")
+    current_treasure.unlocked = True
+    current_floors, current_field = stage3_state(player, [loop, known_companion, current_treasure])
     current_floors[0].seen[1][1] = 9
     current_field[10][10] = d.WALL_CHAR
 
     old_player = d.Player(5, 5, 7, 60)
     old_player.stage3_won = False
     old_loop = d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"])
+    old_companion = d.Companion(8, 5, d.CHAR_TO_COMPANION_TRIBE["n"])
     old_treasure = d.Treasure(7, 5, "TW")
-    old_floors, old_field = stage3_state(old_player, [old_loop, old_treasure])
+    old_floors, old_field = stage3_state(old_player, [old_loop, old_companion, old_treasure])
     old_field[10][10] = " "
     old_queue = Counter({(0, "a"): 2})
     current_queue = Counter({(0, "X"): 3})
@@ -713,17 +735,20 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     assert current_queue == Counter({(0, "a"): 2})
     assert current_floors[0].field[10][10] == " "
     assert current_floors[0].seen[1][1] == 9
-    assert current_floors[0].known_companions == {"l", "n"}
     assert player.known_monsters == {"a", "W"}
-    assert player.unlocked_treasures == set()
+    assert not next(
+        entity for entity in current_floors[0].entities
+        if isinstance(entity, d.Treasure)
+    ).unlocked
     assert not player.stage3_treasure_collected
-    # stage3_met_elves must revert with stage3_flags (it gates re-processing
-    # of elf encounters), unlike the elf floor locations, which are pure map
-    # knowledge and survive the rewind.
-    assert player.stage3_met_elves == set()
+    restored_companion = next(
+        entity for entity in current_floors[0].entities
+        if isinstance(entity, d.Companion) and entity.tribe.char == "n"
+    )
+    assert not restored_companion.revealed
     assert player.stage3_elf_floors == {"I": 1, "J": 3, "K": 2, "H": 1}
     assert not player.stage3_won
-    assert len(current_floors[0].entities) == 2
+    assert len(current_floors[0].entities) == 3
     assert any(
         isinstance(entity, d.Companion) and entity.tribe.char == "l"
         for entity in current_floors[0].entities
@@ -732,24 +757,20 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     assert not history
 
 
-def test_rewind_reverts_met_elves_together_with_stage3_flags(monkeypatch):
-    """Rewinding to a point before an elf flag (e.g. d.STAGE3_H_FLAG) was earned
-    must also drop that elf from stage3_met_elves. Otherwise the field
-    renders the elf as already resolved (dimmed, via stage3_met_elves)
-    while the status bar shows the flag as not yet earned (via
-    stage3_flags), and the player can never legitimately earn it again
-    since met_elves short-circuits future contact."""
+def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     player.stage3_flags = d.STAGE3_H_FLAG
-    player.stage3_met_elves = {"H"}
+    current_high_elf = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
+    current_high_elf.revealed = True
+    current_high_elf.met = True
     loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
-    current_floors, _ = stage3_state(player, [loop])
+    current_floors, _ = stage3_state(player, [loop, current_high_elf])
 
     old_player = d.Player(5, 5, 7, 60)
     old_player.stage3_flags = 0
-    old_player.stage3_met_elves = set()
     old_loop = d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"])
-    old_floors, _ = stage3_state(old_player, [old_loop])
+    old_high_elf = d.Monster(7, 5, d.CHAR_TO_MONSTER_TRIBE["H"])
+    old_floors, _ = stage3_state(old_player, [old_loop, old_high_elf])
     history = deque([(old_floors, old_player, 0, (4, 5), Counter())])
     floor = [0]
     checkpoint = [(2, 2)]
@@ -762,7 +783,12 @@ def test_rewind_reverts_met_elves_together_with_stage3_flags(monkeypatch):
     run_stage3_keys("R", current_floors, player, floor, checkpoint, queue, history)
 
     assert not (player.stage3_flags & d.STAGE3_H_FLAG)
-    assert player.stage3_met_elves == set()
+    restored_high_elf = next(
+        entity for entity in current_floors[0].entities
+        if isinstance(entity, d.Monster) and entity.tribe.char == "H"
+    )
+    assert not restored_high_elf.revealed
+    assert not restored_high_elf.met
 
 
 def test_loop_contact_returns_rewind_request_before_normal_turn_processing(monkeypatch):
@@ -781,7 +807,7 @@ def test_loop_contact_returns_rewind_request_before_normal_turn_processing(monke
     assert isinstance(result, game_engine_module._RewindRequest)
     assert (player.x, player.y) == (3, 2)
     assert loop in floors[0].entities
-    assert floors[0].known_companions == set()
+    assert loop.revealed
     assert len(history) == 1
 
 
@@ -790,13 +816,12 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(monkeypat
     def initial_state(*_args, **_kwargs):
         player = d.Player(5, 5, 1, d.LP_INIT)
         mimic = d.Monster(8, 8, d.CHAR_TO_MONSTER_TRIBE["M"])
+        companion = d.Companion(7, 8, d.CHAR_TO_COMPANION_TRIBE["n"])
         chest = d.Treasure(9, 8, "TW")
-        chest.active = False
         floor = Floor(
             field=blank_field(),
-            entities=[mimic, chest],
+            entities=[mimic, companion, chest],
             seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-            known_companions=set(),
             up=(5, 5),
             down=(9, 8),
             island=None,
@@ -806,16 +831,16 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(monkeypat
     monkeypatch.setattr(game_engine_module, "build", initial_state)
     player = d.Player(2, 2, 9, 30)
     player.known_monsters = {"M"}
-    player.unlocked_treasures = {"TW"}
     player.stage3_elf_floors = {"I": 2}
     loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
     floors, _ = stage3_state(player, [loop])
-    floors[0].known_companions = {"o", "l"}
     floors[0].seen[1][1] = 7
     changed_mimic = d.Monster(4, 4, d.CHAR_TO_MONSTER_TRIBE["M"])
     changed_mimic.revealed = True
+    changed_mimic.met = True
+    changed_mimic.active = False
     changed_chest = d.Treasure(5, 4, "TW")
-    changed_chest.active = True
+    changed_chest.unlocked = True
     floors[0].entities.extend([changed_mimic, changed_chest])
 
     vortex_seen = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
@@ -837,13 +862,15 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(monkeypat
     )
 
     restored_mimic = next(entity for entity in floors[0].entities if isinstance(entity, d.Monster))
+    restored_companion = next(entity for entity in floors[0].entities if isinstance(entity, d.Companion))
     restored_chest = next(entity for entity in floors[0].entities if isinstance(entity, d.Treasure))
     assert not restored_mimic.revealed
-    assert not restored_chest.active
-    assert player.unlocked_treasures == set()
+    assert not restored_mimic.met
+    assert restored_mimic.active
+    assert not restored_companion.revealed
+    assert not restored_chest.unlocked
     assert player.known_monsters == {"M"}
     assert player.stage3_elf_floors == {"I": 2}
-    assert floors[0].known_companions == {"o", "l"}
     assert floors[0].seen[2][2] == (3 if has_vortex_map else 0)
     assert floors[0].seen[1][1] == (0 if has_vortex_map else 7)
 
@@ -904,7 +931,6 @@ def test_live_loop_rewind_replays_from_seed_for_repeatable_random_results(monkey
             field=blank_field(),
             entities=[d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])],
             seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-            known_companions=set(),
             up=(2, 2),
             down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
             island=None,
@@ -946,7 +972,6 @@ def test_vortex_records_map_knowledge_before_disturbing_it(monkeypatch):
         field=blank_field(),
         entities=[],
         seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-        known_companions=set(),
         up=(1, 1),
         down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
         island=None,
@@ -989,7 +1014,6 @@ def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():
             field=blank_field(),
             entities=[origin_pegasus],
             seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-            known_companions=set(),
             up=(1, 1),
             down=(4, 2),
             island=None,
@@ -998,7 +1022,6 @@ def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():
             field=blank_field(),
             entities=[other_pegasus],
             seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-            known_companions=set(),
             up=(5, 5),
             down=(50, 50),
             island=None,
@@ -1100,7 +1123,7 @@ def test_sword_breaks_wall_and_consumes_one_use():
     field[2][3] = d.WALL_CHAR
 
     effect, respawns, message, contact = update_entities(
-        KEYS["R"], field, player, [player], set(), respawn_point=(2, 2)
+        KEYS["R"], field, player, [player], respawn_point=(2, 2)
     )
 
     assert effect is None
@@ -1121,7 +1144,7 @@ def test_sword_breaking_its_last_wall_clears_all_equipment_state():
     field = blank_field()
     field[2][3] = d.WALL_CHAR
 
-    update_entities(KEYS["R"], field, player, [player], set(), respawn_point=(2, 2))
+    update_entities(KEYS["R"], field, player, [player], respawn_point=(2, 2))
 
     assert player.item is None
     assert player.item_uses == 0
@@ -1409,10 +1432,10 @@ def test_non_isolated_elf_repeat_contact_does_not_relocate_player():
 
 def test_repeated_elf_contact_ends_turn_before_companion_expiration():
     player = d.Player(2, 2, 100, 90)
-    player.stage3_met_elves.add("K")
     player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"], origin_floor=0)
     player.karma = player.companion.tribe.durability
     entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["K"])
+    entity.met = True
     floors, _ = stage3_state(player, [entity])
     queue = Counter()
 
@@ -1473,18 +1496,31 @@ def test_stage3_progress_marks_add_elf_floors_after_the_isolated_elf():
 
 def test_revealed_entity_glyphs_distinguish_unknown_known_and_empowered():
     monster = d.Monster(4, 4, d.CHAR_TO_MONSTER_TRIBE["b"], empowered=2)
-    hidden = d.revealed_entity_glyphs(monster, set(), False, 100, None, None)
+    hidden = d.revealed_entity_glyphs(monster, set(), False, 100, None)
     assert [(glyph.char, glyph.tone, glyph.bold) for glyph in hidden] == [("?", "yellow", True)]
 
-    shown = d.revealed_entity_glyphs(monster, {d.monster_type_key(monster)}, False, 1, None, {"b"})
+    shown = d.revealed_entity_glyphs(monster, {d.monster_type_key(monster)}, False, 1, {"b"})
     assert [(glyph.char, glyph.tone, glyph.dim) for glyph in shown] == [
         ("b", "red", True),
         ("'", "red", True),
     ]
 
     companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
-    unknown = d.revealed_entity_glyphs(companion, set(), False, 1, None, None)
+    unknown = d.revealed_entity_glyphs(companion, set(), False, 1, None)
     assert [(glyph.char, glyph.tone) for glyph in unknown] == [("!", "companion")]
+    unknown_debug = d.revealed_entity_glyphs(
+        companion, set(), True, 1, None, debug_show_entities=True
+    )
+    assert [(glyph.char, glyph.tone) for glyph in unknown_debug] == [("n", "default")]
+    known_by_tribe = d.revealed_entity_glyphs(
+        companion, {"n"}, True, 1, None, debug_show_entities=True
+    )
+    assert [(glyph.char, glyph.tone) for glyph in known_by_tribe] == [("n", "default")]
+    companion.revealed = True
+    known_debug = d.revealed_entity_glyphs(
+        companion, set(), True, 1, None, debug_show_entities=True
+    )
+    assert [(glyph.char, glyph.tone) for glyph in known_debug] == [("n", "companion")]
     preview = d.preview_entity_glyphs(monster)
     assert [(glyph.char, glyph.dim, glyph.bold) for glyph in preview] == [
         ("b", True, False),
