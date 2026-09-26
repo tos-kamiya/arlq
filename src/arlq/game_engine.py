@@ -1452,10 +1452,8 @@ def run_game(
     hours = 0
     if legacy_stage:
         message: Tuple[int, str] = (-1, "")
-    elif stage_num == 3:
+    elif stage_num in (3, 4):
         message = (5, tr("-- The King has ordered the Dread Wyrm (W) slain."))
-    elif stage_num == 4:
-        message = (5, tr("-- Defeat the Dread Wyrm (W) and claim its treasure chest."))
     elif stage_num == 5:
         message = (5, "-- Trap test: Mimic, Vortex, W, treasure, b and d.")
     else:
@@ -1497,7 +1495,7 @@ def run_game(
             stage_draw_options = {
                 "stage_roster": d.STAGE3_ROSTER_TRIBES if stage_num == 3 else d.STAGE4_ROSTER_TRIBES,
                 "floor_view": floor_view,
-                "floor_label": f"F: {view_floor + 1}",
+                "floor_label": f"{view_floor + 1}/{len(floors)}",
             }
         ui.draw_stage(
             hours=hours,
@@ -1631,6 +1629,8 @@ def run_game(
             stage_draw_options = {
                 "stage_roster": d.STAGE3_ROSTER_TRIBES if stage_num == 3 else d.STAGE4_ROSTER_TRIBES,
             }
+            if stage_num in (3, 4):
+                stage_draw_options["floor_label"] = f"{floor[0] + 1}/{len(floors)}"
         ui.draw_stage(
             hours=hours,
             player=player,

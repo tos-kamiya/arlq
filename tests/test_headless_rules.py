@@ -523,7 +523,8 @@ def test_stage4_displays_treasure_message_when_was_defeated_first():
     assert player.treasure_collected
 
 
-def test_stage3_win_replaces_last_combat_message_with_treasure_message(monkeypatch):
+@pytest.mark.parametrize("stage_num", [3, 4])
+def test_multifloor_win_screen_shows_treasure_and_floor(monkeypatch, stage_num):
     player = d.Player(2, 2, 200, d.LP_INIT)
     wyrm = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
     treasure = d.Treasure(4, 2, "TW")
@@ -535,19 +536,33 @@ def test_stage3_win_replaces_last_combat_message_with_treasure_message(monkeypat
         down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
         island=None,
     )
-    monkeypatch.setattr(game_engine_module, "build", lambda *_args, **_kwargs: ([floor], player))
-    messages = []
+    empty_floors = [
+        Floor(
+            field=blank_field(),
+            entities=[],
+            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            up=(2, 2),
+            down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+            island=None,
+        )
+        for _ in range((3 if stage_num == 3 else 4) - 1)
+    ]
+    monkeypatch.setattr(
+        game_engine_module, "build", lambda *_args, **_kwargs: ([floor, *empty_floors], player)
+    )
+    draws = []
     moves = iter([(1, 0), (1, 0), None])
     ui = SimpleNamespace(
-        draw_stage=lambda **kwargs: messages.append(kwargs["message"]),
+        draw_stage=lambda **kwargs: draws.append(kwargs),
         input_direction=moves.__next__,
         input_alphabet=lambda: None,
         map_mode=False,
     )
 
-    game_engine_module.run_game(ui, "seed", stage_num=3)
+    game_engine_module.run_game(ui, "seed", stage_num=stage_num)
 
-    assert messages[-1] == ">> Treasure chest obtained! <<"
+    assert draws[-1]["message"] == ">> Treasure chest obtained! <<"
+    assert draws[-1]["floor_label"] == f"1/{3 if stage_num == 3 else 4}"
 
 
 def test_stage4_chests_wait_for_w_defeat():
@@ -615,15 +630,15 @@ def test_stage4_debug_floor_views_show_v_as_v():
     run_game(ui, "debug", 4, debug_show_entities=True)
 
     by_floor = {draw["floor_label"]: draw for draw in draws}
-    assert set(by_floor) == {"F: 1", "F: 2", "F: 3", "F: 4"}
+    assert set(by_floor) == {"1/4", "2/4", "3/4", "4/4"}
     assert all(draw["debug_show_entities"] for draw in draws)
     assert not any(
         isinstance(entity, d.Monster) and entity.tribe.char == "V"
-        for entity in by_floor["F: 1"]["entities"]
+        for entity in by_floor["1/4"]["entities"]
     )
     vortex_draws = [
         (label, entity)
-        for label in ("F: 2", "F: 3", "F: 4")
+        for label in ("2/4", "3/4", "4/4")
         for entity in by_floor[label]["entities"]
         if isinstance(entity, d.Monster) and entity.tribe.char == "V"
     ]
