@@ -174,15 +174,9 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 
 ### Stage 4 (experimental, development-only)
 
-Stage 4 is experimental and available from the stage selection menu. Its
-design and gameplay are subject to change.
+Stage 4 is experimental and available from the stage selection menu. It has four floors and adds new enemies and traps to the Stage 3 structure. Its design and gameplay are subject to change.
 
-For a one-floor trap test arena with Stage 1's side margins, a level 150 player who has the talisman, W, two hidden chests, Vortex, and several `b` and `d` monsters, run `uv run -p .venv/bin/python python -m arlq --trap-test`. Defeating W reveals both chests as `T`; one is a Mimic. This arena has no lower floor, so it has no Collapse.
-The arena seed is saved, so `uv run -p .venv/bin/python python -m arlq --trap-test --rematch` reruns the same layout without the map-mode flag. `--rematch` alone also reruns the most recently played stage.
-
-Stage 4 has four floors with the Stage 3 layout. Each floor has one filled room, and one randomly selected floor without the Isolated Elf has a second filled room. A separate sealed room across the stage contains the Isolated Elf. One `C` Rare Chimera appears on every floor, regardless of where the Collector Elf is. One of floors 1–3 has a Collapse leading to the same coordinates on the floor below. One `V` Vortex and one `E` Rare Erebus are each placed on a randomly selected floor from 2–4. The four elves appear across the floors, and the Dread Wyrm guards the final floor. The real chest and Mimic are placed on the final floor at the start, but both remain hidden and inactive until W is defeated. Then both appear as identical `T` chests. Adjacent floors can have a second stair pair in another room when space is available. Floor 1 keeps its current roster, floors 2 and 3 use the current floor 2 roster, and floor 4 uses the current floor 3 roster. Floor 1 has 22 amoebas and two `k` Marksmen; floors 2–4 have three `k` Marksmen each. One `e` Erebus appears on floor 1.
-
-Floors 2 and 3 contain more empowered `b` monsters; floor 4 has more empowered `d` monsters.
+Run `uv run -p .venv/bin/python python -m arlq --trap-test` to start the one-floor trap test arena. Add `--rematch` to replay the same layout.
 
 While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an adjacent floor's explored map in GUI mode. In `arlq-cli`, hold Shift and press W or S. Unexplored areas remain hidden. The bottom-right `F:` marker shows the displayed floor. A normal movement input returns the display to the player's floor and moves as usual.
 
@@ -190,8 +184,8 @@ While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an 
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **k** Marksman | Level 80. After each player move, it shoots for 4 LP damage when aligned horizontally or vertically with a clear path. Walls, barriers, stairs, caltrops, monsters, and companions block its shot. Both chests block shots after W is defeated; while hidden, they do not. Unactivated `O` and `V` traps also block shots; Vortex disappears when defeated, and Collapse becomes an open hole when triggered. Arrows do not activate traps. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
-| **E** Rare Erebus | Level 30. When defeated, reduces the player's level to two-thirds (rounded down, minimum 1) instead of granting the usual level increase; it restores 8 LP. It respawns after the usual interval. |
+| **k** Marksman | Shoots arrows when the player is in its line of sight. |
+| **E** Rare Erebus | Restores LP when defeated but lowers the player's level. |
 
 #### Traps
 
@@ -201,9 +195,9 @@ Traps do not respawn. A discovered Collapse remains in place and can be used rep
 
 | Trap | Display before discovery | Description |
 | ---- | ------------------------ | ----------- |
-| **M** Mimic | Hidden, then `T` | Level 85. Placed at the start on the same floor as the real treasure. Both chests appear as `T` only after the Dread Wyrm is defeated. Contact then reveals the Mimic as `M` and starts combat. If it survives, it stays visible as `M`. Defeating it restores 16 LP and leaves a faint `M` marker; it does not respawn. |
-| **O** Collapse | `?` | A fixed object placed once on one of floors 1–3 in Stage 4. Entering it drops the player one floor to the same coordinates and reveals it as `O`; it can be used repeatedly and is never moved by Vortex or respawned. The source and destination must be unoccupied floor cells, and all eight neighboring cells must be free of walls on both floors. The destination may be inside the Isolated Elf's sealed room. |
-| **V** Vortex | `?` | Level 30. When defeated, repositions monsters, floor companions, and both chests except elves, removes all Marksmen's arrow marks, and resets explored floor cells. The Mimic moves with the monsters and keeps its discovery state. The Dread Wyrm and chests move independently. Wyrm barriers are rebuilt around the new positions and become unexplored. Known walls and stairs remain visible. Collapse locations stay fixed and are not destinations for the rearrangement. |
+| **M** Mimic | Hidden, then `T` | Appears as a chest after W is defeated; contact reveals it and starts combat. |
+| **O** Collapse | `?` | Drops the player to the same coordinates on the floor below. It can be used repeatedly. |
+| **V** Vortex | `?` | Repositions monsters, companions, and chests when defeated; explored areas are reset. |
 
 Stage 4 is experimental and its behavior may change.
 
