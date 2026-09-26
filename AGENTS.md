@@ -50,7 +50,7 @@ If `python -m arlq` does not work in the current environment, fall back to:
 
 ## Validation Expectations
 
-A headless test suite covers core gameplay rules (legacy stage combat/respawn rules and Stage 3 rules) in `tests/`. Run it after any change to `arlq.py`, `defs.py`, or `stage3.py`:
+A headless test suite covers core gameplay rules (legacy stage combat/respawn rules and Stage 3 rules) in `tests/`. Run it after any change to `arlq.py`, `defs.py`, or `game_engine.py`:
 
 - Run tests: `uv run -p .venv/bin/python pytest`
 

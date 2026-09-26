@@ -1,6 +1,6 @@
 """Tests for the gameplay trace record/replay instrumentation
 (docs/gameplay-trace-spec.md): the TraceRecorder hooks in update_entities()
-(arlq.py) and _step() (stage3.py), plus the ReplayUI/loader in trace.py.
+(arlq.py) and _step() (game_engine.py), plus the ReplayUI/loader in trace.py.
 """
 
 import json
@@ -12,7 +12,7 @@ import pytest
 
 from arlq import defs as d
 from arlq.arlq import respawn_entity, update_entities
-from arlq.stage3 import Floor, _move_player, _process_respawn_queue, _step
+from arlq.game_engine import Floor, _move_player, _process_respawn_queue, _step
 from arlq.trace import (
     KEY_TO_DIR,
     ReplayUI,
@@ -318,7 +318,7 @@ def test_legacy_world_respawn_event_reports_position(monkeypatch):
     assert trace.turns[-1]["world"] == [{"type": "respawn", "kind": "monster", "id": "X", "at": [7, 3]}]
 
 
-# --- Stage 3 (stage3.py _step / _move_player / _process_respawn_queue) ----
+# --- Stage 3 (game_engine.py _step / _move_player / _process_respawn_queue) ----
 
 
 def test_stage3_wall_pegasus_phase():
@@ -470,7 +470,7 @@ def test_stage3_world_respawn_event_includes_floor(monkeypatch):
     queue = Counter({(1, "a"): 1})
     trace = TraceRecorder(params={})
 
-    monkeypatch.setattr("arlq.stage3.find_random_place", lambda *_a, **_k: (6, 4))
+    monkeypatch.setattr("arlq.game_engine.find_random_place", lambda *_a, **_k: (6, 4))
 
     trace.begin_turn("R")
     _process_respawn_queue(floors, player, floor, queue, hours=0, trace=trace)

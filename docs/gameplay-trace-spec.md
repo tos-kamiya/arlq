@@ -115,11 +115,11 @@ CLI引数または選択画面で実際に確定した値（起動時に生成�
 
 ### `turns[].wall`
 
-方向キー入力で「壁または通常移動不可のタイル」へ進もうとした場合のみ非null（`arlq.py:372-394`、`stage3.py:264-290` 相当）：
+方向キー入力で「壁または通常移動不可のタイル」へ進もうとした場合のみ非null（`arlq.py:372-394`、`game_engine.py:264-290` 相当）：
 
 - `{"result": "blocked"}` — 進めなかった。
 - `{"result": "pegasus_phase"}` — Pegasus（`p`）companion 同行中に、壁越しへ跳躍して進んだ（`arlq.py:376-384`）。
-- `{"result": "sword_break", "item_uses_left": N}` — 剣アイテム（`ITEM_SWORD_X1_5`/`ITEM_SWORD_CURSED`）で壁を破壊して進んだ（`arlq.py:385-394`、`stage3.py:284-289`）。`item_uses_left` はこの行動後に残った使用回数。
+- `{"result": "sword_break", "item_uses_left": N}` — 剣アイテム（`ITEM_SWORD_X1_5`/`ITEM_SWORD_CURSED`）で壁を破壊して進んだ（`arlq.py:385-394`、`game_engine.py:284-289`）。`item_uses_left` はこの行動後に残った使用回数。
 
 ### `turns[].contact`
 
@@ -128,12 +128,12 @@ CLI引数または選択画面で実際に確定した値（起動時に生成�
 - モンスター：`{"type": "monster", "id": "b2", "outcome": "win" | "lose", "respawn_to": [x, y]}`
   `id` は `defs.monster_type_key()` 形式（char＋empowered、例 `"b2"`）。`respawn_to` は `outcome: "lose"` のときのみ、敗北によるプレイヤーのリスポーン先座標（`arlq.py:464-468`）。
 - エルフ系ゲートキーパー（`H` 等、stage3では `I`/`J`/`K`/`H`）：`{"type": "monster", "id": "H", "outcome": "granted" | "refused"}`
-  条件成立・不成立は接触処理コード自身の分岐（`arlq.py:442-450`、`stage3.py` の対応箇所）が既に判定しているので、その分岐の中で `outcome` をそのまま設定する。トレース機能側で条件を再解釈・再現する必要はない。
+  条件成立・不成立は接触処理コード自身の分岐（`arlq.py:442-450`、`game_engine.py` の対応箇所）が既に判定しているので、その分岐の中で `outcome` をそのまま設定する。トレース機能側で条件を再解釈・再現する必要はない。
 - 同行者：`{"type": "companion", "id": "p"}`
   同行者に勝敗の概念はなく、接触すれば常に合流する（`arlq.py:420-431`）。
 - 宝箱：`{"type": "treasure", "id": "TD", "collected": true | false}`
   `collected: false` は、対応するボスが未撃破でロックされたまま接触した場合（`arlq.py:414-419`）。
-- 階段（stage3のみ）：`{"type": "stairs", "from_floor": 0, "to_floor": 1}`（`stage3.py:572-591`）。
+- 階段（Stages 3 and 4 only）：`{"type": "stairs", "from_floor": 0, "to_floor": 1}`（`game_engine.py:572-591`）。
 
 ### `turns[].expired`
 
@@ -147,7 +147,7 @@ CLI引数または選択画面で実際に確定した値（起動時に生成�
 
 ### `turns[].world`
 
-プレイヤーの操作結果（`contact`）とは独立した、ワールド側の自動リスポーンイベント（`MONSTER_RESPAWN_INTERVAL`＝65ターンごとの判定、`arlq.py:145-152, 656-664`、`stage3.py:594-618`）。0件以上：
+プレイヤーの操作結果（`contact`）とは独立した、ワールド側の自動リスポーンイベント（`MONSTER_RESPAWN_INTERVAL`＝65ターンごとの判定、`arlq.py:145-152, 656-664`、`game_engine.py:594-618`）。0件以上：
 
 - `{"type": "respawn", "kind": "monster" | "companion", "id": "b2", "at": [x, y]}`
   `id` は empowered を保持した `monster_type_key()` 形式（リスポーン時に empowered は保持される前提）。`kind: "companion"` の場合は単一char（例 `"p"`、companion に empowered の概念はない）。
@@ -173,7 +173,7 @@ CLI引数または選択画面で実際に確定した値（起動時に生成�
 
 ## 7. アーキテクチャ方針
 
-`update_entities()`（`arlq.py`）／`_step()`（`stage3.py`）はターンごとに必要な材料（`effect`, `contact_happened`, `tribes_to_be_respawned`、呼び出し前後の `player`/`entities`）を既に持っている。ここに最小限のコールバック引数（例：`on_turn_result(input, pre_player, post_player, effect, contact_happened, ...)`）を追加し、`run_game()` 側から任意で渡せるようにする。これが最も小さく確実な変更であり、`tests/test_headless_rules.py` が既に使っている呼び出し方（`update_entities()`/`_step()` を直接叩く）とも整合する。
+`update_entities()`（`arlq.py`）／`_step()`（`game_engine.py`）はターンごとに必要な材料（`effect`, `contact_happened`, `tribes_to_be_respawned`、呼び出し前後の `player`/`entities`）を既に持っている。ここに最小限のコールバック引数（例：`on_turn_result(input, pre_player, post_player, effect, contact_happened, ...)`）を追加し、`run_game()` 側から任意で渡せるようにする。これが最も小さく確実な変更であり、`tests/test_headless_rules.py` が既に使っている呼び出し方（`update_entities()`/`_step()` を直接叩く）とも整合する。
 
 record/replay は、この共通コールバックに加えて**入力ソース**と**描画先**という2つの独立した差し替えポイントだけで実現する（`run_game()` 自体のロジックは変更しない・複製しない）：
 
@@ -215,7 +215,7 @@ record/replay は、この共通コールバックに加えて**入力ソース*
 ## 11. 実装メモ（Implementation Notes）
 
 本機能は実装済み（`src/arlq/trace.py` の `TraceRecorder`/`ReplayUI`/`load_trace`、
-および `arlq.py`/`stage3.py` 側の計装、`main()` のCLI配線）。3章までで
+および `arlq.py`/`game_engine.py` 側の計装、`main()` のCLI配線）。3章までで
 「実装時に確認が必要」としていた点への回答と、実装上の単純化を記録する。
 
 - **コールバックの実装方式**：単一の汎用コールバックオブジェクトではなく、

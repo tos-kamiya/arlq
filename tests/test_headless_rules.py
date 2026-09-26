@@ -4,9 +4,9 @@ from types import SimpleNamespace
 import pytest
 
 from arlq import defs as d
-from arlq import stage3 as stage3_module
+from arlq import game_engine as game_engine_module
 from arlq.arlq import GameConfig, game_config_from_args, respawn_entity, run_game, update_entities
-from arlq.stage3 import Floor, STAGE3_C, STAGE3_H, STAGE3_I, STAGE3_J, STAGE3_K, STAGE3_W, _step
+from arlq.game_engine import Floor, _step
 
 KEYS = {
     "U": (0, -1),
@@ -53,11 +53,11 @@ def test_stage3_floor_declares_its_complete_state_shape():
 
 
 def test_stage3_builder_supports_floors_without_island_or_filled_rooms():
-    layout = [(0, 0)] * stage3_module.FLOORS
+    layout = [(0, 0)] * d.STAGE3_FLOORS
 
-    floors, player = stage3_module.build(floor_layout=layout)
+    floors, player = game_engine_module.build(floor_layout=layout)
 
-    assert len(floors) == stage3_module.FLOORS
+    assert len(floors) == d.STAGE3_FLOORS
     assert all(floor.island is None for floor in floors)
     assert "I" not in player.stage3_elf_floors
     assert not any(
@@ -105,7 +105,7 @@ def test_stage3_receives_the_per_run_game_config(monkeypatch):
     def fake_run_game(ui, seed_str, debug, trace=None, config=None):
         received.append((ui, seed_str, debug, trace, config))
 
-    monkeypatch.setattr(stage3_module, "run_game", fake_run_game)
+    monkeypatch.setattr(game_engine_module, "run_game", fake_run_game)
 
     run_game("ui", "seed", 3, debug_show_entities=True, config=config)
 
@@ -179,47 +179,47 @@ def test_stage3_wyrm_combat_updates_message_position_and_state(level, expected_m
 
 def test_stage3_excludes_fire_lizard():
     assert d.CHAR_TO_MONSTER_TRIBE["f"].level < d.CHAR_TO_MONSTER_TRIBE[d.CHAR_FIRE_DRAKE].level
-    assert all(ch != "f" for floor in stage3_module.ROSTER for ch, _, _ in floor)
+    assert all(ch != "f" for floor in d.STAGE3_ROSTER for ch, _, _ in floor)
 
 
 def test_stage4_has_independent_per_floor_roster():
-    assert len(stage3_module.STAGE4_ROSTER) == 4
-    assert stage3_module.STAGE4_ROSTER[1] == stage3_module.STAGE4_ROSTER[2]
-    assert all(filled_rooms <= 1 for _, filled_rooms in stage3_module.STAGE4_FLOOR_LAYOUT)
+    assert len(d.STAGE4_ROSTER) == 4
+    assert d.STAGE4_ROSTER[1] == d.STAGE4_ROSTER[2]
+    assert all(filled_rooms <= 1 for _, filled_rooms in d.STAGE4_FLOOR_LAYOUT)
     assert all(
         stage4_floor is not stage3_floor
-        for stage4_floor, stage3_floor in zip(stage3_module.STAGE4_ROSTER, stage3_module.ROSTER)
+        for stage4_floor, stage3_floor in zip(d.STAGE4_ROSTER, d.STAGE3_ROSTER)
     )
     assert all(
         ch not in {"I", "J", "K", "H"}
-        for floor in stage3_module.STAGE4_ROSTER
+        for floor in d.STAGE4_ROSTER
         for ch, _, _ in floor
     )
-    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[0] if ch == "a") == 22
+    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[0] if ch == "a") == 22
     assert [
         sum(count for ch, count, _ in floor if ch == "k")
-        for floor in stage3_module.STAGE4_ROSTER
+        for floor in d.STAGE4_ROSTER
     ] == [2, 2, 2, 2]
     assert d.MARKSMAN_LP_DAMAGE == 5
-    assert not any(ch == "G" for floor in stage3_module.STAGE4_ROSTER for ch, _, _ in floor)
-    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[3] if ch == "w") == 1
-    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[3] if ch == "W") == 1
-    assert not any(ch in {"w", "W"} for floor in stage3_module.STAGE4_ROSTER[:3] for ch, _, _ in floor)
-    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[0] if ch == "E") == 0
+    assert not any(ch == "G" for floor in d.STAGE4_ROSTER for ch, _, _ in floor)
+    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "w") == 1
+    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "W") == 1
+    assert not any(ch in {"w", "W"} for floor in d.STAGE4_ROSTER[:3] for ch, _, _ in floor)
+    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[0] if ch == "E") == 0
     assert all(
-        sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[index] if ch == "E") == 1
+        sum(count for ch, count, _ in d.STAGE4_ROSTER[index] if ch == "E") == 1
         for index in (1, 2, 3)
     )
-    assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[0] if ch == "e") == 1
+    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[0] if ch == "e") == 1
     assert all(
-        sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[index] if ch == "e") == 0
+        sum(count for ch, count, _ in d.STAGE4_ROSTER[index] if ch == "e") == 0
         for index in (1, 2, 3)
     )
     assert d.CHAR_TO_MONSTER_TRIBE["V"].level == d.CHAR_TO_MONSTER_TRIBE["E"].level == 30
 
 
 def test_stage4_builds_all_elves_and_dread_wyrm_boss():
-    floors, _ = stage3_module.build(stage_num=4)
+    floors, _ = game_engine_module.build(stage_num=4)
 
     elves = {
         entity.tribe.char
@@ -269,7 +269,7 @@ def test_marksman_shots_are_blocked_by_terrain(blocking_tile):
     )
     player = d.Player(5, 2, 1, 90)
 
-    stage3_module._marksman_shoot(current, player)
+    game_engine_module._marksman_shoot(current, player)
 
     assert player.lp == 90
     assert marksman not in current.arrow_marks
@@ -313,7 +313,7 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
     marksman = d.Monster(20, 12, d.CHAR_TO_MONSTER_TRIBE["k"])
     treasure = d.Treasure(10, 15, "TW")
     for center in ((dread_wyrm.x, dread_wyrm.y), (wyrm.x, wyrm.y)):
-        stage3_module._place_barrier(field, center)
+        game_engine_module._place_barrier(field, center)
     seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
     field[4][4] = d.WALL_CHAR
     field[4][5] = d.CHAR_STAIRS_UP
@@ -332,7 +332,7 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
 
     def fixed_spawn(entities, spawn_field, char, _avoid, _island, origin_floor, empowered=1):
         x, y = new_positions[char]
-        return stage3_module.spawn_at(
+        return game_engine_module.spawn_at(
             entities,
             x,
             y,
@@ -341,11 +341,11 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
             origin_floor=origin_floor,
         )
 
-    monkeypatch.setattr(stage3_module, "_spawn", fixed_spawn)
-    monkeypatch.setattr(stage3_module, "_treasure_spot", lambda *_args: (40, 16))
+    monkeypatch.setattr(game_engine_module, "_spawn", fixed_spawn)
+    monkeypatch.setattr(game_engine_module, "_treasure_spot", lambda *_args: (40, 16))
     player = d.Player(1, 1, 1, 90)
 
-    stage3_module._vortex_rearrange(current, player, 2)
+    game_engine_module._vortex_rearrange(current, player, 2)
 
     relocated_wyrm = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "w")
     relocated_boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W")
@@ -397,16 +397,16 @@ def test_stage2_rebalances_bison_and_comodo_dragon_counts():
 
 
 def test_stage3_empowered_roster_counts_are_rounded_down():
-    assert [(ch, count, power) for ch, count, power in stage3_module.ROSTER[0] if power == 2] == [
+    assert [(ch, count, power) for ch, count, power in d.STAGE3_ROSTER[0] if power == 2] == [
         ("c", 1, 2),
         ("d", 3, 2),
     ]
-    assert [(ch, count, power) for ch, count, power in stage3_module.ROSTER[1] if power == 2] == [
+    assert [(ch, count, power) for ch, count, power in d.STAGE3_ROSTER[1] if power == 2] == [
         ("b", 3, 2),
         ("c", 1, 2),
         ("d", 3, 2),
     ]
-    assert [(ch, count, power) for ch, count, power in stage3_module.ROSTER[2] if power == 2] == [
+    assert [(ch, count, power) for ch, count, power in d.STAGE3_ROSTER[2] if power == 2] == [
         ("b", 3, 2),
         ("d", 3, 2),
     ]
@@ -435,7 +435,7 @@ def test_stage3_treasure_requires_current_timeline_w_defeat():
 def test_stage4_displays_treasure_message_when_was_defeated_first():
     player = d.Player(2, 2, 200, 90)
     player.unlocked_treasures.add("TW")
-    player.stage3_flags |= STAGE3_W
+    player.stage3_flags |= d.STAGE3_W_FLAG
     treasure = d.Treasure(3, 2, "TW")
     floors, _ = stage3_state(player, [treasure])
 
@@ -645,7 +645,7 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
     def spawn_loop(entities, _field, _char, _avoid, _island, _floor_index=None):
         entities.append(d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"]))
 
-    monkeypatch.setattr(stage3_module, "_spawn", spawn_loop)
+    monkeypatch.setattr(game_engine_module, "_spawn", spawn_loop)
     messages = run_stage3_keys(
         "R", current_floors, player, floor, checkpoint, current_queue, history
     )
@@ -678,14 +678,14 @@ def test_loop_companion_rewinds_world_but_preserves_knowledge(monkeypatch):
 
 
 def test_rewind_reverts_met_elves_together_with_stage3_flags(monkeypatch):
-    """Rewinding to a point before an elf flag (e.g. STAGE3_H) was earned
+    """Rewinding to a point before an elf flag (e.g. d.STAGE3_H_FLAG) was earned
     must also drop that elf from stage3_met_elves. Otherwise the field
     renders the elf as already resolved (dimmed, via stage3_met_elves)
     while the status bar shows the flag as not yet earned (via
     stage3_flags), and the player can never legitimately earn it again
     since met_elves short-circuits future contact."""
     player = d.Player(2, 2, 100, 90)
-    player.stage3_flags = STAGE3_H
+    player.stage3_flags = d.STAGE3_H_FLAG
     player.stage3_met_elves = {"H"}
     loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
     current_floors, _ = stage3_state(player, [loop])
@@ -703,10 +703,10 @@ def test_rewind_reverts_met_elves_together_with_stage3_flags(monkeypatch):
     def spawn_loop(entities, _field, _char, _avoid, _island, _floor_index=None):
         entities.append(d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"]))
 
-    monkeypatch.setattr(stage3_module, "_spawn", spawn_loop)
+    monkeypatch.setattr(game_engine_module, "_spawn", spawn_loop)
     run_stage3_keys("R", current_floors, player, floor, checkpoint, queue, history)
 
-    assert not (player.stage3_flags & STAGE3_H)
+    assert not (player.stage3_flags & d.STAGE3_H_FLAG)
     assert player.stage3_met_elves == set()
 
 
@@ -784,7 +784,7 @@ def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
         spawned.append((entities, char, floor_index))
         return (0, 0)
 
-    monkeypatch.setattr(stage3_module, "_spawn", record_spawn)
+    monkeypatch.setattr(game_engine_module, "_spawn", record_spawn)
     _step(KEYS["U"], floors, player, floor, checkpoint, queue, history, 0)
 
     assert [(entities is floors[0].entities, char, floor_index) for entities, char, floor_index in spawned] == [
@@ -897,10 +897,10 @@ def test_stage3_special_floor_cells_are_passable_without_using_sword(cell):
 @pytest.mark.parametrize(
     ("elf", "initial_flags", "expected_flags", "expected_message"),
     [
-        ("I", 0, STAGE3_I, "-- The Isolated Elf told you about the history of the elves."),
-        ("J", 0, STAGE3_J, "-- The Javelin Elf joined your hunt for the Dread Wyrm!"),
-        ("K", STAGE3_C, STAGE3_C | STAGE3_K, "-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!"),
-        ("H", STAGE3_I | STAGE3_J, STAGE3_I | STAGE3_J | STAGE3_H, "-- The High Elf bestowed the talisman upon you!"),
+        ("I", 0, d.STAGE3_I_FLAG, "-- The Isolated Elf told you about the history of the elves."),
+        ("J", 0, d.STAGE3_J_FLAG, "-- The Javelin Elf joined your hunt for the Dread Wyrm!"),
+        ("K", d.STAGE3_C_FLAG, d.STAGE3_C_FLAG | d.STAGE3_K_FLAG, "-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!"),
+        ("H", d.STAGE3_I_FLAG | d.STAGE3_J_FLAG, d.STAGE3_I_FLAG | d.STAGE3_J_FLAG | d.STAGE3_H_FLAG, "-- The High Elf bestowed the talisman upon you!"),
     ],
 )
 def test_elf_encounters_apply_their_conditions(elf, initial_flags, expected_flags, expected_message):
@@ -925,7 +925,7 @@ def test_elf_encounters_apply_their_conditions(elf, initial_flags, expected_flag
         assert player.persistent_followers == [(2, 2, 0, "J")]
         assert floors[0].entities == []
     elif elf == "H":
-        assert player.stage3_flags & STAGE3_H
+        assert player.stage3_flags & d.STAGE3_H_FLAG
         assert floors[0].entities == [entity]
     else:
         assert floors[0].entities == [entity]
@@ -937,7 +937,7 @@ def test_elf_encounters_apply_their_conditions(elf, initial_flags, expected_flag
 
 def test_collector_and_javelin_elves_increase_stage3_attack():
     player = d.Player(2, 2, 100, 90)
-    player.stage3_flags = STAGE3_K
+    player.stage3_flags = d.STAGE3_K_FLAG
     player.persistent_followers = [(2, 2, 0, "J")]
 
     assert d.current_player_attack(player, 3) == 150
@@ -951,7 +951,7 @@ def test_stage3_bonuses_do_not_apply_outside_stage3(stage_num):
     # monster can be shown as unbeatable (red) while dying on contact, or
     # vice versa.
     player = d.Player(2, 2, 100, 90)
-    player.stage3_flags = STAGE3_K
+    player.stage3_flags = d.STAGE3_K_FLAG
     player.persistent_followers = [(2, 2, 0, "J")]
 
     assert d.current_player_attack(player, stage_num) == 100
@@ -960,7 +960,7 @@ def test_stage3_bonuses_do_not_apply_outside_stage3(stage_num):
 
 @pytest.mark.parametrize(
     ("elf", "initial_flags"),
-    [("I", 0), ("K", STAGE3_C), ("H", STAGE3_I | STAGE3_J)],
+    [("I", 0), ("K", d.STAGE3_C_FLAG), ("H", d.STAGE3_I_FLAG | d.STAGE3_J_FLAG)],
 )
 def test_elf_repeat_contact_shows_follow_up_message(elf, initial_flags):
     player = d.Player(2, 2, 100, 90)
@@ -1006,7 +1006,7 @@ def test_stage3_high_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
     assert (player.x, player.y) == (1, 2)
     assert player.high_elf_refused is True
 
-    monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (10, 10))
+    monkeypatch.setattr(game_engine_module, "find_random_place", lambda *_a, **_k: (10, 10))
     messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history)
 
     assert messages[-1] == "-- Respawned to a random location."
@@ -1038,7 +1038,7 @@ def test_stage3_collector_elf_refuses_once_then_sends_player_elsewhere(monkeypat
     assert (player.x, player.y) == (1, 2)
     assert player.k_elf_refused is True
 
-    monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (10, 10))
+    monkeypatch.setattr(game_engine_module, "find_random_place", lambda *_a, **_k: (10, 10))
     messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history)
 
     assert messages[-1] == "-- Respawned to a random location."
@@ -1059,7 +1059,7 @@ def test_stage3_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(mo
     assert (player.x, player.y) == (2, 2)
     assert player.last_contact_monster == (0, 3, 2)
 
-    monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (10, 10))
+    monkeypatch.setattr(game_engine_module, "find_random_place", lambda *_a, **_k: (10, 10))
     messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
 
     assert messages == ["-- Respawned to a random location."]
@@ -1089,7 +1089,7 @@ def test_stage3_defeating_a_different_monster_resets_the_escape_streak(monkeypat
     run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
     assert (player.x, player.y) == (2, 2)
 
-    monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (99, 99))
+    monkeypatch.setattr(game_engine_module, "find_random_place", lambda *_a, **_k: (99, 99))
     messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
 
     assert messages == ["-- Respawned!"]
@@ -1098,7 +1098,7 @@ def test_stage3_defeating_a_different_monster_resets_the_escape_streak(monkeypat
 
 
 def test_isolated_elf_sends_player_away_on_repeat_contact(monkeypatch):
-    """The Isolated Elf's room has no door (see _inside_island in stage3.py);
+    """The Isolated Elf's room has no door (see _inside_island in game_engine.py);
     a player who reaches it (e.g. via a Pegasus jump) must not be able to get
     trapped there, so any contact after the first sends them elsewhere."""
     player = d.Player(2, 2, 100, 90)
@@ -1114,7 +1114,7 @@ def test_isolated_elf_sends_player_away_on_repeat_contact(monkeypatch):
     assert (player.x, player.y) == (3, 2)
     assert floors[0].entities == [entity]
 
-    monkeypatch.setattr(stage3_module, "find_random_place", lambda *_a, **_k: (20, 15))
+    monkeypatch.setattr(game_engine_module, "find_random_place", lambda *_a, **_k: (20, 15))
     messages = run_stage3_keys("LR", floors, player, floor, checkpoint, queue, history)
 
     assert messages[-1] == "-- The Isolated Elf wants to be left alone, and sends you elsewhere."
@@ -1126,7 +1126,7 @@ def test_non_isolated_elf_repeat_contact_does_not_relocate_player():
     """Regression guard: only the Isolated Elf's repeat contact should
     relocate the player. Other elves keep their existing in-place message."""
     player = d.Player(2, 2, 100, 90)
-    player.stage3_flags = STAGE3_C
+    player.stage3_flags = d.STAGE3_C_FLAG
     entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["K"])
     floors, _ = stage3_state(player, [entity])
     floor = [0]
@@ -1158,7 +1158,7 @@ def test_repeated_elf_contact_ends_turn_before_companion_expiration():
 
 
 def test_stage3_flags_keep_their_bit_values():
-    assert (STAGE3_C, STAGE3_I, STAGE3_K, STAGE3_H, STAGE3_W, STAGE3_J) == (1, 2, 4, 8, 16, 64)
+    assert (d.STAGE3_C_FLAG, d.STAGE3_I_FLAG, d.STAGE3_K_FLAG, d.STAGE3_H_FLAG, d.STAGE3_W_FLAG, d.STAGE3_J_FLAG) == (1, 2, 4, 8, 16, 64)
     assert d.STAGE3_NO_RESPAWN_MONSTERS == {"a", "A", "b", "c", "C", "M", "V", "W", "w"}
 
 
@@ -1178,7 +1178,7 @@ def test_level_item_labels_follow_the_stage3_attack_bonuses():
     player.item_taken_from = "d"
     assert d.level_item_labels(player, 1) == ("LVL: 100 /2", "+Poisoned(d)")
 
-    player.stage3_flags = STAGE3_K
+    player.stage3_flags = d.STAGE3_K_FLAG
     player.persistent_followers.append((1, 1, 0, "J"))
     assert d.level_item_labels(player, 3) == ("LVL: 100 /2 x1.2 +25%", "+Poisoned(d)")
     assert d.level_item_labels(player, 2) == ("LVL: 100 /2", "+Poisoned(d)")
@@ -1190,7 +1190,7 @@ def test_level_item_labels_follow_the_stage3_attack_bonuses():
 
 def test_stage3_progress_marks_add_elf_floors_after_the_isolated_elf():
     player = d.Player(1, 1, 1, 90)
-    player.stage3_flags = STAGE3_I | STAGE3_K
+    player.stage3_flags = d.STAGE3_I_FLAG | d.STAGE3_K_FLAG
     player.stage3_elf_floors = {"K": 2, "H": 3}
     player.stage3_won = True
 

@@ -20,7 +20,7 @@ from .trace import ReplayUI, TraceRecorder, default_replay_output_path, load_tra
 from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent
 
 MESSAGE_TICKS = 8
-SEPARATE_STAGE_MODULES = {1: "stage3", 2: "stage3", 3: "stage3", 4: "stage3", 5: "stage3"}
+GAME_ENGINE_MODULE = "game_engine"
 
 
 @dataclass(frozen=True)
@@ -657,16 +657,13 @@ def run_game(
     if seed_value is not None:
         remember_seed(stage_num, seed_value)
 
-    stage_module_name = SEPARATE_STAGE_MODULES.get(stage_num)
-    if stage_module_name is not None:
-        stage_module = import_module(f".{stage_module_name}", package=__package__)
-        if stage_num in (1, 2, 4, 5):
-            stage_module.run_game(
-                ui, seed_str, debug_show_entities, trace=trace, config=config, stage_num=stage_num
-            )
-        else:
-            stage_module.run_game(ui, seed_str, debug_show_entities, trace=trace, config=config)
-        return
+    stage_module = import_module(f".{GAME_ENGINE_MODULE}", package=__package__)
+    if stage_num in (1, 2, 4, 5):
+        stage_module.run_game(
+            ui, seed_str, debug_show_entities, trace=trace, config=config, stage_num=stage_num
+        )
+    else:
+        stage_module.run_game(ui, seed_str, debug_show_entities, trace=trace, config=config)
 
 
 def generate_seed_string(args):

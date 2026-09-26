@@ -42,6 +42,14 @@ STAGE3_K_FLAG: int = 4
 STAGE3_H_FLAG: int = 8
 STAGE3_W_FLAG: int = 16
 STAGE3_J_FLAG: int = 64
+STAGE3_FLOORS = 3
+STAGE4_FLOORS = 4
+LOOP_TURNS = 80
+STAGE4_MARKSMAN_ARROW_LIMIT = 20
+STAGE3_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
+STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 1), (0, 1), (0, 1), (0, 1)]
+STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
+STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
 # Order of the Stage 3 status-line marks. The treasure mark "T" is added separately.
 STAGE3_PROGRESS: List[Tuple[str, int]] = [
     ("C", STAGE3_C_FLAG),
@@ -251,7 +259,7 @@ class Player(Entity):
         self.karma: int = 0
         # Monster identities are known globally across all floors and stages.
         self.known_monsters: Set[str] = set()
-        # Stages 1 and 2 have one floor, while Stage 3 keeps this per floor.
+        # Multi-floor stages track known companions separately on each floor.
         self.known_companions: Set[str] = set()
         self.unlocked_treasures: Set[str] = set()
         # Elf encounter knowledge is shared by any stage that reuses elf
@@ -264,7 +272,7 @@ class Player(Entity):
         self.stage3_spores: bool = False
         self.stage3_treasure_collected: bool = False
         self.stage3_won: bool = False
-        self.stage3_floor: int = 0
+        self.current_floor: int = 0
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
         # (floor, x, y) of the monster involved in the most recent monster
         # contact (win, loss, or a no-combat gatekeeper like High Elf), or
@@ -402,9 +410,42 @@ SPAWN_CONFIGS_ST2 = [
 STAGE_TO_SPAWN_CONFIGS = [
     SPAWN_CONFIGS_ST1,
     SPAWN_CONFIGS_ST2,
-    [],  # Stage 3 uses its per-floor roster in stage3.py.
-    [],  # Stage 4 uses its per-floor roster in stage3.py.
+    [],  # Stage 3 uses its per-floor roster in game_engine.py.
+    [],  # Stage 4 uses its per-floor roster in game_engine.py.
 ]
+
+# Per-floor rosters for the multi-floor stages. Each entry is
+# (tribe character, population, empowered rank).
+STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
+    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("I", 1, 1), ("J", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("K", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
+    [("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("w", 1, 1), ("W", 1, 1), ("H", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
+]
+
+STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
+    [("a", 22, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("e", 1, 1), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 2, 1), ("b", 4, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 2, 1), ("d", 4, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1), ("w", 1, 1), ("W", 1, 1)],
+]
+
+def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]], include_mimic: bool = False):
+    chars = dict.fromkeys(char for floor in roster for char, _, _ in floor)
+    if include_mimic:
+        chars.setdefault("M", None)
+    return sorted(
+        (
+            CHAR_TO_MONSTER_TRIBE[char]
+            for char in chars
+            if char in CHAR_TO_MONSTER_TRIBE and not CHAR_TO_MONSTER_TRIBE[char].is_elf
+        ),
+        key=lambda tribe: tribe.level,
+        reverse=True,
+    )
+
+
+STAGE3_ROSTER_TRIBES: List[MonsterTribe] = _get_stage_roster_tribes(STAGE3_ROSTER)
+STAGE4_ROSTER_TRIBES: List[MonsterTribe] = _get_stage_roster_tribes(STAGE4_ROSTER, include_mimic=True)
 
 
 def _stage3_javelin_active(player: Player) -> bool:

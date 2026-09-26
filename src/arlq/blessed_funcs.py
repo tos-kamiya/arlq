@@ -205,7 +205,7 @@ class BlessedUI:
         for fx, fy, ffloor, fchar in getattr(player, "persistent_followers", []):
             if (
                 not floor_view
-                and ffloor == player.stage3_floor
+                and ffloor == player.current_floor
                 and 0 <= fy < len(torched)
                 and 0 <= fx < len(torched[fy])
                 and torched[fy][fx]

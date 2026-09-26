@@ -1,4 +1,4 @@
-"""Stage 3 rules, kept separate from the compact legacy stage loop."""
+"""Shared stage loop with multi-floor rules for Stages 3 and 4."""
 
 from collections import Counter, deque
 from copy import deepcopy
@@ -34,63 +34,10 @@ from .stage_maze import (
 from .trace import DIR_TO_KEY, TraceRecorder
 from .utils import rand
 
-FLOORS = 3
-STAGE4_FLOORS = 4
-LOOP_TURNS = 80
-MARKSMAN_ARROW_LIMIT = 20
-STAGE3_FLOOR_LAYOUT = [(1, 0), (0, 0), (0, 0)]
-STAGE4_FLOOR_LAYOUT = [(1, 1), (0, 1), (0, 1), (0, 1)]
-STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
-STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
-STAGE3_C = d.STAGE3_C_FLAG
-STAGE3_I = d.STAGE3_I_FLAG
-STAGE3_K = d.STAGE3_K_FLAG
-STAGE3_H = d.STAGE3_H_FLAG
-STAGE3_W = d.STAGE3_W_FLAG
-STAGE3_J = d.STAGE3_J_FLAG
-
 ELF_REPEAT_MESSAGES = {
     "K": "-- The Collector Elf (K) looks satisfied.",
     "H": "-- Keep the talisman close to your skin.",
 }
-
-# Each entry is [(tribe_char, population, empowered), ...] for one floor.
-ROSTER: List[List[Tuple[str, int, int]]] = [
-    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("I", 1, 1), ("J", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("K", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
-    [("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("w", 1, 1), ("W", 1, 1), ("H", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
-]
-
-# Stage 4 has its own per-floor counts so balancing it does not change Stage 3.
-STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
-    [("a", 22, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("e", 1, 1), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 2, 1), ("b", 4, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 2, 1), ("d", 4, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (d.CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1), ("w", 1, 1), ("W", 1, 1)],
-]
-
-# Distinct, non-elf monster tribes across all floors, strongest first: feeds
-# the right-edge strength column (see d.build_strength_column), which shows
-# the whole stage's roster regardless of which floor the player is on.
-_ROSTER_CHARS = dict.fromkeys(char for floor in ROSTER for char, _, _ in floor)
-ROSTER_TRIBES: List[d.MonsterTribe] = sorted(
-    (
-        d.CHAR_TO_MONSTER_TRIBE[c]
-        for c in _ROSTER_CHARS
-        if c in d.CHAR_TO_MONSTER_TRIBE and not d.CHAR_TO_MONSTER_TRIBE[c].is_elf
-    ),
-    key=lambda t: t.level,
-    reverse=True,
-)
-STAGE4_ROSTER_TRIBES: List[d.MonsterTribe] = sorted(
-    (
-        d.CHAR_TO_MONSTER_TRIBE[c]
-        for c in dict.fromkeys([*(char for floor in STAGE4_ROSTER for char, _, _ in floor), "M"])
-        if c in d.CHAR_TO_MONSTER_TRIBE and not d.CHAR_TO_MONSTER_TRIBE[c].is_elf
-    ),
-    key=lambda t: t.level,
-    reverse=True,
-)
 
 @dataclass
 class Floor:
@@ -302,7 +249,7 @@ def _build_floor(
     up_point: Optional[d.Point] = None,
     down_point: Optional[d.Point] = None,
 ) -> Floor:
-    floor_count = STAGE4_FLOORS if stage_num == 4 else FLOORS
+    floor_count = d.STAGE4_FLOORS if stage_num == 4 else d.STAGE3_FLOORS
     island_count, filled_count = room_counts
     field, up, down, island_rooms, _ = generate_floor_field(
         up_point if up_point is not None else entry_point,
@@ -364,14 +311,14 @@ def build(
         raise ValueError("multi-floor builder supports stages 3 and 4")
     if stair_pairs_per_transition is None:
         stair_pairs_per_transition = (
-            STAGE3_STAIR_PAIRS_PER_TRANSITION
+            d.STAGE3_STAIR_PAIRS_PER_TRANSITION
             if stage_num == 3
-            else STAGE4_STAIR_PAIRS_PER_TRANSITION
+            else d.STAGE4_STAIR_PAIRS_PER_TRANSITION
         )
     if stair_pairs_per_transition < 1:
         raise ValueError("each floor transition needs at least one stair pair")
-    floor_count = STAGE4_FLOORS if stage_num == 4 else FLOORS
-    default_layout = STAGE3_FLOOR_LAYOUT if stage_num == 3 else STAGE4_FLOOR_LAYOUT
+    floor_count = d.STAGE4_FLOORS if stage_num == 4 else d.STAGE3_FLOORS
+    default_layout = d.STAGE3_FLOOR_LAYOUT if stage_num == 3 else d.STAGE4_FLOOR_LAYOUT
     layout = list(default_layout if floor_layout is None else floor_layout)
     if len(layout) != floor_count:
         raise ValueError(f"floor_layout must contain {floor_count} entries")
@@ -390,7 +337,7 @@ def build(
     if stage_num == 3:
         elf_floors.update({
             "J": rand.randrange(floor_count),
-            "K": rand.randrange(FLOORS - 1),
+            "K": rand.randrange(d.STAGE3_FLOORS - 1),
             "H": rand.randrange(floor_count),
         })
         special_floors = {ch: rand.randrange(floor_count) for ch in ("m", "X", "e", "g")}
@@ -423,7 +370,7 @@ def build(
         if stage_num == 4:
             up_point = None if index == 0 else room_center(stair_tiles[index - 1])
             down_point = None if index == floor_count - 1 else room_center(stair_tiles[index])
-        roster = list(STAGE4_ROSTER[index] if stage_num == 4 else ROSTER[index])
+        roster = list(d.STAGE4_ROSTER[index] if stage_num == 4 else d.STAGE3_ROSTER[index])
         if stage_num == 4:
             roster.extend(
                 (char, 1, 1)
@@ -491,7 +438,7 @@ def build_trap_test(
     )
     player = d.Player(entry[0], entry[1], 150, d.LP_INIT)
     player.stage3_elf_floors = {}
-    player.stage3_flags |= STAGE3_H
+    player.stage3_flags |= d.STAGE3_H_FLAG
     return [arena], player
 
 
@@ -558,7 +505,7 @@ def _apply_terrain_hazards(current: Floor, player: d.Player, previous: d.Point) 
     """
     field = current.field
     event_message = None
-    if field[player.y][player.x] == d.CHAR_BARRIER and not (player.stage3_flags & STAGE3_H) and (player.x, player.y) != previous:
+    if field[player.y][player.x] == d.CHAR_BARRIER and not (player.stage3_flags & d.STAGE3_H_FLAG) and (player.x, player.y) != previous:
         player.lp -= d.BARRIER_LP_DAMAGE
         event_message = tr("-- The barrier burns you.")
     if field[player.y][player.x] == d.CHAR_CALTROP:
@@ -610,7 +557,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
         marks = current.arrow_marks.setdefault(entity, [])
         marks[:] = [existing for existing in marks if existing[0] != mark[0]]
         marks.append(mark)
-        if len(marks) > MARKSMAN_ARROW_LIMIT:
+        if len(marks) > d.STAGE4_MARKSMAN_ARROW_LIMIT:
             del marks[0]
 
 
@@ -752,21 +699,21 @@ def _defeat_monster(
             trace.add_expired({"type": "item_expired", "item": old_source, "reason": "overwritten"})
 
     if ch == "W":
-        player.stage3_flags |= STAGE3_W
+        player.stage3_flags |= d.STAGE3_W_FLAG
         unlock_treasure_for_defeat(entity, player.unlocked_treasures)
         _activate_wyrm_chests(current)
         player.known_monsters.add(d.monster_type_key(entity))
         if player.stage3_treasure_collected:
             player.stage3_won = True
     if ch == "K":
-        player.stage3_flags |= STAGE3_K
+        player.stage3_flags |= d.STAGE3_K_FLAG
         d.clear_player_item(player)
     if ch == "H":
-        player.stage3_flags |= STAGE3_H
+        player.stage3_flags |= d.STAGE3_H_FLAG
     if ch == "m":
         player.stage3_spores = True
     if ch == "C":
-        player.stage3_flags |= STAGE3_C
+        player.stage3_flags |= d.STAGE3_C_FLAG
 
     d.grant_defeat_level(player, entity.tribe.effect)
     d.apply_feed(player, entity.tribe.feed)
@@ -841,15 +788,15 @@ def _resolve_monster_contact(
     player.stage3_spores = False
 
     if ch == "I":
-        player.stage3_flags |= STAGE3_I
+        player.stage3_flags |= d.STAGE3_I_FLAG
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "I", "outcome": "granted"})
     elif ch == "J":
-        player.stage3_flags |= STAGE3_J
+        player.stage3_flags |= d.STAGE3_J_FLAG
         player.persistent_followers.append((player.x, player.y, floor[0], "J"))
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "J", "outcome": "granted"})
-    elif ch == "K" and not (player.stage3_flags & STAGE3_C):
+    elif ch == "K" and not (player.stage3_flags & d.STAGE3_C_FLAG):
         current.entities.append(entity)
         # The first refusal only shows a message; any later refusal sends the
         # player elsewhere, like repeat contact with the Isolated Elf.
@@ -861,7 +808,7 @@ def _resolve_monster_contact(
             player.k_elf_refused = True
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "K", "outcome": "refused"})
-    elif ch == "H" and (player.stage3_flags & (STAGE3_I | STAGE3_J | STAGE3_K)).bit_count() < 2:
+    elif ch == "H" and (player.stage3_flags & (d.STAGE3_I_FLAG | d.STAGE3_J_FLAG | d.STAGE3_K_FLAG)).bit_count() < 2:
         current.entities.append(entity)
         # The first refusal only shows a message; any later refusal sends the
         # player elsewhere, like repeat contact with the Isolated Elf.
@@ -968,7 +915,7 @@ def _resolve_contact(
         if collected:
             current.entities.pop(hit)
             player.stage3_treasure_collected = True
-            if player.stage3_flags & STAGE3_W:
+            if player.stage3_flags & d.STAGE3_W_FLAG:
                 player.stage3_won = True
                 if stage_num in (4, 5):
                     event_message = tr(">> Treasure chest obtained! <<")
@@ -1085,7 +1032,7 @@ def _step(
 ) -> Optional[Tuple[int, str]]:
     current = floors[floor[0]]
     history.append((deepcopy(floors), deepcopy(player), floor[0], checkpoint[0], deepcopy(queue)))
-    if len(history) > LOOP_TURNS:
+    if len(history) > d.LOOP_TURNS:
         history.popleft()
 
     previous = (player.x, player.y)
@@ -1190,9 +1137,9 @@ def run_game(
             config.corridor_v_width,
             stage_num,
             stair_pairs_per_transition=(
-                STAGE3_STAIR_PAIRS_PER_TRANSITION
+                d.STAGE3_STAIR_PAIRS_PER_TRANSITION
                 if stage_num == 3
-                else STAGE4_STAIR_PAIRS_PER_TRANSITION
+                else d.STAGE4_STAIR_PAIRS_PER_TRANSITION
             ),
         )
     player.known_monsters = set()
@@ -1202,7 +1149,7 @@ def run_game(
     player.met_elves = set()
     floor = [0]
     checkpoint = [floors[0].up]
-    player.stage3_floor = 0
+    player.current_floor = 0
     view_floor = 0
     queue: Counter[Tuple[int, str]] = Counter()
     history: Deque[HistoryEntry] = deque()
@@ -1243,7 +1190,7 @@ def run_game(
         # the pygame renderer receives it separately. Keep the Stage 3 state
         # model separate and provide a render-only combined list.
         render_player = deepcopy(player) if floor_view else player
-        render_player.stage3_floor = view_floor
+        render_player.current_floor = view_floor
         render_entities = (
             display_floor.entities if legacy_stage else [render_player, *display_floor.entities]
         )
@@ -1255,7 +1202,7 @@ def run_game(
         if not legacy_stage:
             stage_draw_options = {
                 "dim_types": player.met_elves,
-                "stage_roster": ROSTER_TRIBES if stage_num == 3 else STAGE4_ROSTER_TRIBES,
+                "stage_roster": d.STAGE3_ROSTER_TRIBES if stage_num == 3 else d.STAGE4_ROSTER_TRIBES,
                 "floor_view": floor_view,
                 "floor_label": f"F: {view_floor + 1}",
                 "arrow_marks": [mark for marks in display_floor.arrow_marks.values() for mark in marks]
@@ -1346,7 +1293,7 @@ def run_game(
             move, floors, player, floor, checkpoint, queue, history, hours,
             stage_num=stage_num, trace=trace,
         )
-        player.stage3_floor = floor[0]
+        player.current_floor = floor[0]
         # A stair contact can change the player's floor during _step(). Keep
         # the displayed floor in sync so the next frame shows the new floor.
         view_floor = floor[0]
@@ -1379,7 +1326,7 @@ def run_game(
         if not legacy_stage:
             stage_draw_options = {
                 "dim_types": player.met_elves,
-                "stage_roster": ROSTER_TRIBES if stage_num == 3 else STAGE4_ROSTER_TRIBES,
+                "stage_roster": d.STAGE3_ROSTER_TRIBES if stage_num == 3 else d.STAGE4_ROSTER_TRIBES,
                 "arrow_marks": [mark for marks in current.arrow_marks.values() for mark in marks]
                 if stage_num == 4
                 else (),
