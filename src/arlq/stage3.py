@@ -354,6 +354,7 @@ def build(
     corridor_v_width: int = d.CORRIDOR_V_WIDTH,
     stage_num: int = 3,
     stair_pairs_per_transition: Optional[int] = None,
+    floor_layout: Optional[List[Tuple[int, int]]] = None,
 ) -> Tuple[List[Floor], d.Player]:
     if stage_num not in (3, 4):
         raise ValueError("multi-floor builder supports stages 3 and 4")
@@ -366,11 +367,22 @@ def build(
     if stair_pairs_per_transition < 1:
         raise ValueError("each floor transition needs at least one stair pair")
     floor_count = STAGE4_FLOORS if stage_num == 4 else FLOORS
-    layout = STAGE3_FLOOR_LAYOUT if stage_num == 3 else STAGE4_FLOOR_LAYOUT
-    floor_layout = shuffle_floor_layout(layout)
-    elf_floors = {
-        "I": next(index for index, counts in enumerate(floor_layout) if counts[0]),
-    }
+    default_layout = STAGE3_FLOOR_LAYOUT if stage_num == 3 else STAGE4_FLOOR_LAYOUT
+    layout = list(default_layout if floor_layout is None else floor_layout)
+    if len(layout) != floor_count:
+        raise ValueError(f"floor_layout must contain {floor_count} entries")
+    if any(islands < 0 or filled < 0 for islands, filled in layout):
+        raise ValueError("room counts cannot be negative")
+    if sum(islands for islands, _ in layout) > 1:
+        raise ValueError("the multi-floor builder supports at most one isolated room")
+    layout_by_floor = shuffle_floor_layout(layout)
+    island_floor = next(
+        (index for index, counts in enumerate(layout_by_floor) if counts[0]),
+        None,
+    )
+    elf_floors: Dict[str, int] = {}
+    if island_floor is not None:
+        elf_floors["I"] = island_floor
     if stage_num == 3:
         elf_floors.update({
             "J": rand.randrange(floor_count),
@@ -423,7 +435,7 @@ def build(
             entry_point,
             corridor_h_width,
             corridor_v_width,
-            floor_layout[index],
+            layout_by_floor[index],
             roster=roster,
             stage_num=stage_num,
             up_point=up_point,
