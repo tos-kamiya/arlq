@@ -202,7 +202,7 @@ def test_stage4_has_independent_per_floor_roster():
         sum(count for ch, count, _ in floor if ch == "k")
         for floor in d.STAGE4_ROSTER
     ] == [2, 2, 2, 2]
-    assert d.MARKSMAN_LP_DAMAGE == 5
+    assert d.MARKSMAN_LP_DAMAGE == 4
     assert not any(ch == "G" for floor in d.STAGE4_ROSTER for ch, _, _ in floor)
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "w") == 1
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "W") == 1
@@ -423,11 +423,11 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
     assert relocated_marksman.arrow_marks == []
 
 
-@pytest.mark.parametrize(("initial_level", "expected_level"), [(1, 1), (2, 1), (21, 10), (22, 11)])
-def test_erebus_rare_halves_level_instead_of_granting_level(initial_level, expected_level):
+@pytest.mark.parametrize(("initial_level", "expected_level"), [(1, 1), (2, 1), (21, 14), (22, 14)])
+def test_erebus_rare_reduces_level_to_two_thirds_instead_of_granting_level(initial_level, expected_level):
     player = d.Player(1, 1, initial_level, 90)
 
-    d.grant_defeat_level(player, d.EFFECT_LEVEL_HALVE)
+    d.grant_defeat_level(player, d.EFFECT_LEVEL_REDUCE)
 
     assert player.level == expected_level
 
