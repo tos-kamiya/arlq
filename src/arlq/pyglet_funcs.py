@@ -476,6 +476,7 @@ class PygletUI:
         - Draws the status bar at the bottom.
         """
         show_entities = show_entities or self.map_mode
+        reveal_disguises = debug_show_entities or self.map_mode
         self._clear_drawables()
         px, py = player.x, player.y
 
@@ -546,7 +547,7 @@ class PygletUI:
 
         if show_entities:
             for entity in entities:
-                for glyph in d.preview_entity_glyphs(entity, reveal_disguises=debug_show_entities):
+                for glyph in d.preview_entity_glyphs(entity, reveal_disguises=reveal_disguises):
                     paint(glyph)
 
         for entity in entities:
@@ -554,7 +555,7 @@ class PygletUI:
                 continue
             for glyph in d.revealed_entity_glyphs(
                 entity, known_types, show_entities, player_attack, dim_types,
-                reveal_disguises=debug_show_entities,
+                reveal_disguises=reveal_disguises,
                 debug_show_entities=debug_show_entities,
             ):
                 paint(glyph)

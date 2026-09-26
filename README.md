@@ -198,7 +198,7 @@ Unidentified traps are displayed as `?`, like monsters. After W is defeated, a M
 
 | Trap | Display before discovery | Description |
 | ---- | ------------------------ | ----------- |
-| **M** Mimic | Hidden, then `T` | Appears as a chest after W is defeated; contact reveals it and starts combat. |
+| **M** Mimic | Hidden, then `T` | Appears as a chest after W is defeated; contact reveals it and starts combat. It disappears from the map when defeated. |
 | **O** Collapse | `?` | Drops the player to the same coordinates on the floor below. It can be used repeatedly. |
 | **V** Vortex | `?` | Repositions monsters, companions, and chests when defeated; explored areas are reset. |
 

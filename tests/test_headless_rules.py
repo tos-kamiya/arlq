@@ -576,6 +576,7 @@ def test_stage4_chests_wait_for_w_defeat():
     assert d.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
     assert d.preview_entity_glyphs(treasure)[0].char == "T"
     assert d.preview_entity_glyphs(mimic) == []
+    assert d.preview_entity_glyphs(mimic, reveal_disguises=True)[0].char == "M"
 
     floor, checkpoint, queue, history = [0], [(2, 2)], Counter(), deque()
     messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history, stage_num=4)
@@ -594,9 +595,8 @@ def test_stage4_chests_wait_for_w_defeat():
     assert mimic in floors[0].entities
     assert not mimic.active
     assert mimic.revealed and mimic.met
-    mimic_glyphs = d.revealed_entity_glyphs(mimic, set(), False, 200, None)
-    assert [(glyph.char, glyph.dim) for glyph in mimic_glyphs] == [("M", True)]
-    assert [(glyph.char, glyph.dim) for glyph in d.preview_entity_glyphs(mimic)] == [("M", True)]
+    assert d.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
+    assert d.preview_entity_glyphs(mimic) == []
     assert player.stage_won
 
 
