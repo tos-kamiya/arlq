@@ -88,6 +88,17 @@ def _tr_message_ids():
     """
     ids = set()
     needs_event_messages = False
+
+    def collect_conditional_strings(node, path):
+        """Collect string IDs from both branches of a conditional expression."""
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return {node.value}
+        if isinstance(node, ast.IfExp):
+            return collect_conditional_strings(node.body, path) | collect_conditional_strings(
+                node.orelse, path
+            )
+        raise AssertionError(f"{path}: unsupported conditional tr() argument: {ast.dump(node)}")
+
     for path, tree in _trees():
         bindings = _module_bindings(tree)
         event_message_locals = _event_message_locals(tree)
@@ -113,6 +124,8 @@ def _tr_message_ids():
                 ids.update(bindings[arg.value.id])
             elif isinstance(arg, ast.Attribute) and arg.attr == "event_message":
                 needs_event_messages = True
+            elif isinstance(arg, ast.IfExp):
+                ids.update(collect_conditional_strings(arg, path))
             else:
                 raise AssertionError(f"{path}: unsupported tr() argument: {ast.dump(arg)}")
     if needs_event_messages:

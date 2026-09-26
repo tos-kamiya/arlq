@@ -48,6 +48,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "down_stairs",
         "contact_reveal",
         "arrow_marks",
+        "defeated_mimics",
     }
 
 
@@ -198,7 +199,7 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for ch, count, _ in floor if ch == "k")
         for floor in stage3_module.STAGE4_ROSTER
-    ] == [2, 3, 3, 3]
+    ] == [2, 2, 2, 2]
     assert d.MARKSMAN_LP_DAMAGE == 5
     assert not any(ch == "G" for floor in stage3_module.STAGE4_ROSTER for ch, _, _ in floor)
     assert sum(count for ch, count, _ in stage3_module.STAGE4_ROSTER[3] if ch == "w") == 1
