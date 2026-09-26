@@ -154,8 +154,6 @@ class BlessedUI:
                     elif discovered:
                         if cell == d.WALL_CHAR:
                             put(x, y, cell, "green", bg="blue" if (x, y) in highlighted_cells else None)
-                        elif cell == d.CHAR_FLOOR and (x + y) % 2 == 1:
-                            put(x, y, ".", dim=True, bg="blue" if (x, y) in highlighted_cells else None)
                         else:
                             put(x, y, cell, bg="blue" if (x, y) in highlighted_cells else None)
                     elif (x + y) % 2 == 1:
