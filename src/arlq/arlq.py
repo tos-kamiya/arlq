@@ -1,6 +1,5 @@
-from typing import Container, Dict, List, Set, Tuple, Optional
+from typing import Container, List, Set, Tuple, Optional
 
-from collections import Counter
 import argparse
 import json
 from dataclasses import dataclass
@@ -17,11 +16,11 @@ from .__about__ import __version__
 from .utils import rand
 from . import defs as d
 from .i18n import t as tr, set_language, get_language
-from .trace import DIR_TO_KEY, ReplayUI, TraceRecorder, default_replay_output_path, load_trace
-from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent, WorldEvent
+from .trace import ReplayUI, TraceRecorder, default_replay_output_path, load_trace
+from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent
 
 MESSAGE_TICKS = 8
-SEPARATE_STAGE_MODULES = {3: "stage3", 4: "stage3", 5: "stage3"}
+SEPARATE_STAGE_MODULES = {1: "stage3", 2: "stage3", 3: "stage3", 4: "stage3", 5: "stage3"}
 
 
 @dataclass(frozen=True)
@@ -296,12 +295,6 @@ def create_field(
     r = tile_to_place_range(*last_p)
     last_p = find_empty_cell(field, r[0], r[1])
     return field, first_p, last_p
-
-
-def update_torched(torched: List[List[int]], added: List[List[int]]) -> None:
-    for y in range(d.FIELD_HEIGHT):
-        for x in range(d.FIELD_WIDTH):
-            torched[y][x] += added[y][x]
 
 
 def iterate_ellipse_points(
@@ -667,188 +660,13 @@ def run_game(
     stage_module_name = SEPARATE_STAGE_MODULES.get(stage_num)
     if stage_module_name is not None:
         stage_module = import_module(f".{stage_module_name}", package=__package__)
-        if stage_num in (4, 5):
+        if stage_num in (1, 2, 4, 5):
             stage_module.run_game(
                 ui, seed_str, debug_show_entities, trace=trace, config=config, stage_num=stage_num
             )
         else:
             stage_module.run_game(ui, seed_str, debug_show_entities, trace=trace, config=config)
         return
-
-    # Configuration
-    spawn_config = d.STAGE_TO_SPAWN_CONFIGS[stage_num - 1]
-
-    # Initialize field
-    margin_x = d.STAGE1_COLUMN_MARGIN if stage_num == 1 else 0
-    field, first_p, last_p = create_field(
-        config.corridor_h_width,
-        config.corridor_v_width,
-        d.WALL_CHAR,
-        margin_x=margin_x,
-    )
-
-    # Initialize view/ui components
-    cur_torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
-    torched: List[List[int]] = [[0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
-
-    # Initialize entities
-    entities: List[d.Entity] = []
-
-    # 1. treasure
-    treasure_count = 0
-    for sc in spawn_config:
-        if isinstance(sc.tribe, d.MonsterTribe):
-            mt: d.MonsterTribe = sc.tribe
-            if mt.effect == d.EFFECT_UNLOCK_TREASURE:
-                assert sc.population == 1
-                assert treasure_count == 0
-                treasure_count += 1
-                x, y = last_p[0], last_p[1]
-                treasure: d.Treasure = d.Treasure(x, y, mt.treasure_key)
-                entities.append(treasure)
-    assert treasure_count == 1
-
-    # 2. player
-    player: d.Player = d.Player(first_p[0], first_p[1], 1, d.LP_INIT)
-    entities.append(player)
-
-    # 3. monsters
-    spawn_entities(entities, field, spawn_config)
-
-    # Initialize stage state
-    torch_radius = config.torch_radius
-    hours: int = -1
-    move_direction = None
-
-    message: Tuple[int, str] = (-1, "")
-    respawn_queue: Counter[str] = Counter()
-    checkpoint = (player.x, player.y)
-
-    while True:
-        # Starvation check
-        if player.lp <= 0:
-            message = (-1, tr(">> Collapsed from hunger! <<"))
-            if trace is not None:
-                trace.set_outcome("lose")
-            break
-
-        # Update view / auto mapping
-        cur_torched = get_torched(player, torch_radius)
-        update_torched(torched, cur_torched)
-
-        # Show the field
-        message = tick_message(message)
-        show_entities = show_entities or getattr(ui, "map_mode", False)
-        ui.draw_stage(
-            hours=hours,
-            player=player,
-            entities=entities,
-            field=field,
-            cur_torched=cur_torched,
-            torched=torched,
-            known_types=player.known_monsters | player.known_companions,
-            show_entities=show_entities,
-            stage_num=stage_num,
-            message=message[1],
-            checkpoint=checkpoint,
-            unlocked_treasures=player.unlocked_treasures,
-        )
-
-        move_direction = ui.input_direction()
-        if move_direction is None:
-            if trace is not None:
-                trace.record_quit()
-                trace.set_outcome("unfinished" if getattr(ui, "ran_dry", False) else "quit")
-            return
-        if move_direction == (0, 0):
-            continue
-
-        if trace is not None:
-            key = DIR_TO_KEY.get(move_direction)
-            if key is None:
-                raise RuntimeError("--trace-record does not support non-cardinal (e.g. diagonal joystick) movement")
-            trace.begin_turn(key)
-
-        # Player move, encountering, etc.
-        update_result = update_entities(
-            move_direction,
-            field,
-            player,
-            entities,
-            player.unlocked_treasures,
-            respawn_point=checkpoint,
-        )
-        effect = update_result.effect
-        tribes_to_be_respawned = update_result.tribes_to_be_respawned
-        m = update_result.message
-        turn_events = update_result.events
-        if m is not None:
-            message = m
-
-        if tribes_to_be_respawned:
-            checkpoint = (player.x, player.y)
-
-        for t in tribes_to_be_respawned:
-            if t not in d.NO_RESPAWN_MONSTERS:
-                respawn_queue[t] += 1
-
-        if hours % d.MONSTER_RESPAWN_INTERVAL == 0:
-            for t in list(respawn_queue.keys()):
-                if respawn_queue[t] > 0:
-                    respawned = respawn_entity(d.CHAR_TO_TRIBE[t], entities, field)
-                    respawn_queue[t] -= 1
-                    if trace is not None:
-                        if isinstance(respawned, d.Monster):
-                            kind = "monster"
-                            rid = d.monster_type_key(respawned)
-                        else:
-                            assert isinstance(respawned, d.Companion)
-                            kind = "companion"
-                            rid = respawned.tribe.char
-                        turn_events.world.append(
-                            WorldEvent(kind, rid, (respawned.x, respawned.y))
-                        )
-
-        if trace is not None:
-            trace.record_events(turn_events)
-            trace.set_player(player, stage_num)
-            trace.commit_turn()
-
-        if effect == d.EFFECT_GOT_TREASURE:
-            if trace is not None:
-                trace.set_outcome("win")
-            break
-
-        hours += 1
-        player.lp -= 1
-
-    # Game over display
-    while True:
-        ui.draw_stage(
-            hours=hours,
-            player=player,
-            entities=entities,
-            field=field,
-            cur_torched=cur_torched,
-            torched=torched,
-            known_types=player.known_monsters | player.known_companions,
-            show_entities=show_entities,
-            stage_num=stage_num,
-            message=message[1],
-            extra_keys=True,
-            checkpoint=checkpoint,
-            unlocked_treasures=player.unlocked_treasures,
-        )
-
-        c = ui.input_alphabet()
-        if c is None:
-            return
-        elif c == "m":
-            show_entities = True
-            if hasattr(ui, "map_mode"):
-                ui.map_mode = True
-        elif c == "s":
-            message = (-1, tr("SEED: {seed_str}").format(seed_str=seed_str))
 
 
 def generate_seed_string(args):
