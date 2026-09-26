@@ -492,6 +492,7 @@ def update_entities(
                 message = (10, tr(">> Treasure chest obtained! <<"))
                 del entities[eei]
                 effect = d.EFFECT_GOT_TREASURE
+                player.treasure_collected = True
         elif isinstance(ee, d.Companion):
             c: d.Companion = ee
             c.revealed = True
@@ -567,6 +568,7 @@ def update_entities(
                 effect = m.tribe.effect
                 d.grant_defeat_level(player, effect)
                 if effect == d.EFFECT_UNLOCK_TREASURE:
+                    player.boss_defeated = True
                     unlock_treasure_for_defeat(m, entities)
                 elif effect == d.EFFECT_CALTROP_SPREAD:
                     spread_caltrops(field, (player.x, player.y), entities)

@@ -483,14 +483,15 @@ def test_stage3_treasure_requires_current_timeline_w_defeat():
 
     assert messages[0] == "-- You took the treasure chest, but the King's request remains."
     assert messages[1] == ">> Dread Wyrm (W) defeated! <<"
-    assert player.stage3_treasure_collected
-    assert player.stage3_won
+    assert player.treasure_collected
+    assert player.stage_won
     assert floors[0].entities == []
 
 
 def test_stage4_displays_treasure_message_when_was_defeated_first():
     player = d.Player(2, 2, 200, 90)
     player.stage3_flags |= d.STAGE3_W_FLAG
+    player.boss_defeated = True
     treasure = d.Treasure(3, 2, "TW")
     treasure.unlocked = True
     floors, _ = stage3_state(player, [treasure])
@@ -498,7 +499,7 @@ def test_stage4_displays_treasure_message_when_was_defeated_first():
     messages = run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter(), deque(), stage_num=4)
 
     assert messages == [">> Treasure chest obtained! <<"]
-    assert player.stage3_treasure_collected
+    assert player.treasure_collected
 
 
 def test_stage3_win_replaces_last_combat_message_with_treasure_message(monkeypatch):
@@ -560,7 +561,7 @@ def test_stage4_chests_wait_for_w_defeat():
     mimic_glyphs = d.revealed_entity_glyphs(mimic, set(), False, 200, None)
     assert [(glyph.char, glyph.dim) for glyph in mimic_glyphs] == [("M", True)]
     assert [(glyph.char, glyph.dim) for glyph in d.preview_entity_glyphs(mimic)] == [("M", True)]
-    assert player.stage3_won
+    assert player.stage_won
 
 
 @pytest.mark.parametrize(("char", "disguise"), [("V", "?"), ("M", "T")])
@@ -808,7 +809,9 @@ def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypat
 def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     player.known_monsters = {"a", "W"}
-    player.stage3_treasure_collected = True
+    player.stage3_flags |= d.STAGE3_W_FLAG
+    player.boss_defeated = True
+    player.treasure_collected = True
     player.stage3_elf_floors = {"I": 1, "J": 3, "K": 2, "H": 1}
     loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
     known_companion = d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
@@ -820,7 +823,6 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
     current_field[10][10] = d.WALL_CHAR
 
     old_player = d.Player(5, 5, 7, 60)
-    old_player.stage3_won = False
     old_loop = d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"])
     old_companion = d.Companion(8, 5, d.CHAR_TO_COMPANION_TRIBE["n"])
     old_treasure = d.Treasure(7, 5, "TW")
@@ -853,14 +855,15 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
         entity for entity in current_floors[0].entities
         if isinstance(entity, d.Treasure)
     ).unlocked
-    assert not player.stage3_treasure_collected
+    assert not player.boss_defeated
+    assert not player.treasure_collected
     restored_companion = next(
         entity for entity in current_floors[0].entities
         if isinstance(entity, d.Companion) and entity.tribe.char == "n"
     )
     assert not restored_companion.revealed
     assert player.stage3_elf_floors == {"I": 1, "J": 3, "K": 2, "H": 1}
-    assert not player.stage3_won
+    assert not player.stage_won
     assert len(current_floors[0].entities) == 3
     assert any(
         isinstance(entity, d.Companion) and entity.tribe.char == "l"
@@ -1590,7 +1593,7 @@ def test_stage3_progress_marks_add_elf_floors_after_the_isolated_elf():
     player = d.Player(1, 1, 1, 90)
     player.stage3_flags = d.STAGE3_I_FLAG | d.STAGE3_K_FLAG
     player.stage3_elf_floors = {"K": 2, "H": 3}
-    player.stage3_won = True
+    player.treasure_collected = True
 
     assert d.stage3_progress_marks(player) == [
         ("C", False),
