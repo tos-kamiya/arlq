@@ -807,10 +807,10 @@ def _process_respawn_queue(
     player: d.Player,
     floor: List[int],
     queue: Counter[Tuple[int, str]],
-    hours: int,
+    turn: int,
     trace: Optional[TraceRecorder] = None,
 ) -> None:
-    if hours % d.MONSTER_RESPAWN_INTERVAL != 0:
+    if turn % d.MONSTER_RESPAWN_INTERVAL != 0:
         return
     for (spawn_floor, type_key), count in list(queue.items()):
         if not count:
@@ -865,7 +865,7 @@ def _step(
     checkpoint: List[d.Point],
     queue: Counter[Tuple[int, str]],
     history: Deque[HistoryEntry],
-    hours: int,
+    turn: int,
     stage_num: int = 3,
     trace: Optional[TraceRecorder] = None,
     replay_context: Optional[ReplayContext] = None,
@@ -1019,7 +1019,7 @@ def _step(
                 {"type": "stairs", "from_floor": floor_before, "to_floor": floor[0]}
             )
 
-    _process_respawn_queue(floors, player, floor, queue, hours, trace=trace)
+    _process_respawn_queue(floors, player, floor, queue, turn, trace=trace)
 
     return (MESSAGE_TICKS, event_message) if event_message else None
 
@@ -1065,7 +1065,7 @@ def run_game(
     view_floor = 0
     queue: Counter[Tuple[int, str]] = Counter()
     history: Deque[HistoryEntry] = deque()
-    hours = 0
+    turn = 0
     if legacy_stage:
         message: Tuple[int, str] = (-1, "")
     elif stage_num in (3, 4):
@@ -1076,7 +1076,7 @@ def run_game(
         message = (5, tr("-- Explore the sealed rooms across four floors."))
     legacy_respawn_queue: Counter[str] = Counter()
     if legacy_stage:
-        hours = -1
+        turn = -1
 
     while player.lp > 0:
         current = floors[floor[0]]
@@ -1130,7 +1130,7 @@ def run_game(
                 "floor_label": f"{view_floor + 1}/{len(floors)}",
             }
         ui.draw_stage(
-            hours=hours,
+            turn=turn,
             player=render_player,
             entities=render_entities,
             field=display_floor.field,
@@ -1191,7 +1191,7 @@ def run_game(
             for char in update_result.tribes_to_be_respawned:
                 if char not in d.NO_RESPAWN_MONSTERS:
                     legacy_respawn_queue[char] += 1
-            if hours % d.MONSTER_RESPAWN_INTERVAL == 0:
+            if turn % d.MONSTER_RESPAWN_INTERVAL == 0:
                 for char in list(legacy_respawn_queue):
                     if legacy_respawn_queue[char] <= 0:
                         continue
@@ -1213,7 +1213,7 @@ def run_game(
                 trace.commit_turn()
             if update_result.effect == d.EFFECT_GOT_TREASURE:
                 break
-            hours += 1
+            turn += 1
             player.lp -= 1
             continue
 
@@ -1225,7 +1225,7 @@ def run_game(
             checkpoint,
             queue,
             history,
-            hours,
+            turn,
             stage_num=stage_num,
             trace=trace,
             replay_context=replay_context,
@@ -1260,7 +1260,7 @@ def run_game(
             trace.set_player(player, stage_num)
             trace.commit_turn()
 
-        hours += 1
+        turn += 1
         player.lp -= 1
         if player.stage_won:
             break
@@ -1290,7 +1290,7 @@ def run_game(
             if stage_num in (3, 4):
                 stage_draw_options["floor_label"] = f"{floor[0] + 1}/{len(floors)}"
         ui.draw_stage(
-            hours=hours,
+            turn=turn,
             player=player,
             entities=render_entities,
             field=current.field,

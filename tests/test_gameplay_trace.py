@@ -136,11 +136,11 @@ def test_replay_ui_draw_stage_forwards_only_when_given_a_draw_target():
         def draw_stage(self, *args, **kwargs):
             calls.append((args, kwargs))
 
-    ReplayUI([], stage=1).draw_stage(hours=1, player=2, message="x")
+    ReplayUI([], stage=1).draw_stage(turn=1, player=2, message="x")
     assert calls == []
 
-    ReplayUI([], stage=1, draw_ui=Recorder()).draw_stage(hours=1, player=2, message="x")
-    assert calls == [((), {"hours": 1, "player": 2, "message": "x"})]
+    ReplayUI([], stage=1, draw_ui=Recorder()).draw_stage(turn=1, player=2, message="x")
+    assert calls == [((), {"turn": 1, "player": 2, "message": "x"})]
 
 
 @pytest.mark.parametrize(
@@ -473,7 +473,7 @@ def test_stage3_world_respawn_event_includes_floor(monkeypatch):
     monkeypatch.setattr("arlq.game_engine.find_random_place", lambda *_a, **_k: (6, 4))
 
     trace.begin_turn("R")
-    _process_respawn_queue(floors, player, floor, queue, hours=0, trace=trace)
+    _process_respawn_queue(floors, player, floor, queue, turn=0, trace=trace)
     trace.commit_turn()
 
     assert trace.turns[-1]["world"] == [

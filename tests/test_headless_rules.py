@@ -144,7 +144,7 @@ def test_game_loop_draws_with_keyword_arguments_only():
 
     assert len(draws) == 1
     assert set(draws[0]) == {
-        "hours",
+        "turn",
         "player",
         "entities",
         "field",

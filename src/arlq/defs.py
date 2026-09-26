@@ -808,13 +808,13 @@ def level_item_labels(player: Player, stage_num: int) -> Tuple[str, str]:
     return level, item_str
 
 
-def status_prefix(player: Player, stage_num: int, hours: int) -> str:
+def status_prefix(player: Player, stage_num: int, turn: int) -> str:
     """Text to the left of the LP readout, including the trailing spaces."""
     level_str, item_str = level_item_labels(player, stage_num)
     text = ""
     if stage_num != 0:
         text += f"ST: {stage_num}  "
-    text += f"TURN: {hours}  "
+    text += f"TURN: {turn}  "
     text += level_str + "  "
     text += item_str + "  "
     return text
