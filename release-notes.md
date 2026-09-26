@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 5.0.3 - 2026-09-27
+
+- Add an `F`-key preview of explored cells reachable with the player's
+  remaining LP.
+- In terminal `--dots` mode, omit dots from known field cells.
+- Prefer combat-loss respawn locations at least 25 Manhattan steps from the
+  monster, falling back to the existing random placement after ten attempts.
+
 ## 5.0.2 - 2026-09-27
 
 - Show Mimics as `M` in mapping mode before they are defeated, and remove them
