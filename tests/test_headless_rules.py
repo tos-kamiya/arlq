@@ -188,7 +188,13 @@ def test_stage3_excludes_fire_lizard():
 def test_stage4_has_independent_per_floor_roster():
     assert len(d.STAGE4_ROSTER) == 4
     assert d.STAGE4_ROSTER[1] == d.STAGE4_ROSTER[2]
-    assert all(filled_rooms <= 1 for _, filled_rooms in d.STAGE4_FLOOR_LAYOUT)
+    assert sorted(filled_rooms for _, filled_rooms in d.STAGE4_FLOOR_LAYOUT) == [1, 1, 1, 2]
+    assert sum(island_rooms for island_rooms, _ in d.STAGE4_FLOOR_LAYOUT) == 1
+    assert all(
+        filled_rooms == 1
+        for island_rooms, filled_rooms in d.STAGE4_FLOOR_LAYOUT
+        if island_rooms
+    )
     assert all(
         stage4_floor is not stage3_floor
         for stage4_floor, stage3_floor in zip(d.STAGE4_ROSTER, d.STAGE3_ROSTER)
