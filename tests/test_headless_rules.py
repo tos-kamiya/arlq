@@ -187,7 +187,9 @@ def test_stage3_excludes_fire_lizard():
 
 def test_stage4_has_independent_per_floor_roster():
     assert len(d.STAGE4_ROSTER) == 4
-    assert d.STAGE4_ROSTER[1] == d.STAGE4_ROSTER[2]
+    assert [entry for entry in d.STAGE4_ROSTER[1] if entry[0] not in {"V", "E"}] == [
+        entry for entry in d.STAGE4_ROSTER[2] if entry[0] not in {"V", "E"}
+    ]
     assert sorted(filled_rooms for _, filled_rooms in d.STAGE4_FLOOR_LAYOUT) == [1, 1, 1, 2]
     assert sum(island_rooms for island_rooms, _ in d.STAGE4_FLOOR_LAYOUT) == 1
     assert all(
@@ -215,11 +217,8 @@ def test_stage4_has_independent_per_floor_roster():
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "W") == 1
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "M") == 1
     assert not any(ch in {"w", "W"} for floor in d.STAGE4_ROSTER[:3] for ch, _, _ in floor)
-    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[0] if ch == "E") == 0
-    assert all(
-        sum(count for ch, count, _ in d.STAGE4_ROSTER[index] if ch == "E") == 1
-        for index in (1, 2, 3)
-    )
+    assert sum(count for floor in d.STAGE4_ROSTER for ch, count, _ in floor if ch == "V") == 1
+    assert sum(count for floor in d.STAGE4_ROSTER for ch, count, _ in floor if ch == "E") == 1
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[0] if ch == "e") == 1
     assert all(
         sum(count for ch, count, _ in d.STAGE4_ROSTER[index] if ch == "e") == 0
@@ -263,6 +262,21 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
     assert elves == {"I", "J", "K", "H"}
     assert len(bosses) == 1
     assert len(floors) == 4
+    assert sum(
+        isinstance(entity, d.Monster) and entity.tribe.char == "V"
+        for floor in floors
+        for entity in floor.entities
+    ) == 1
+    assert sum(
+        isinstance(entity, d.Monster) and entity.tribe.char == "E"
+        for floor in floors
+        for entity in floor.entities
+    ) == 1
+    assert sum(
+        isinstance(entity, d.Collapse)
+        for floor in floors
+        for entity in floor.entities
+    ) == 1
     assert bosses[0] in floors[3].entities
     assert len(treasures) == len(mimics) == 1
     assert treasures[0].encounter_type == "TW"

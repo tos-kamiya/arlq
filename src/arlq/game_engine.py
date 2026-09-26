@@ -367,6 +367,7 @@ def build(
             "K": rand.randrange(floor_count - 1),
             "H": rand.randrange(floor_count),
         })
+        voe_floors = {char: rand.randrange(1, floor_count) for char in ("V", "E")}
         special_floors = {"g": rand.randrange(floor_count)}
         m_floor = None
     else:
@@ -391,6 +392,15 @@ def build(
             down_point = None if index == floor_count - 1 else room_center(stair_tiles[index])
         roster = list(d.STAGE4_ROSTER[index] if stage_num == 4 else d.STAGE3_ROSTER[index])
         roster = [entry for entry in roster if entry[0] not in {"I", "J", "K", "H"}]
+        if stage_num == 3 and elf_floors["K"] == index:
+            roster.append(("C", 1, 1))
+        elif stage_num == 4:
+            roster = [entry for entry in roster if entry[0] not in {"V", "E"}]
+            roster.extend(
+                (char, 1, 1)
+                for char, assigned_floor in voe_floors.items()
+                if assigned_floor == index
+            )
         roster.extend(
             (char, 1, 1)
             for char, assigned_floor in elf_floors.items()
@@ -510,7 +520,7 @@ def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
 
 
 def _place_collapses(floors: List[Floor]) -> None:
-    """Place at most one fixed Collapse on each floor with a lower floor."""
+    """Place at most one fixed Collapse on a random floor transition."""
     offsets = [
         (dx, dy)
         for dy in (-1, 0, 1)
@@ -522,6 +532,7 @@ def _place_collapses(floors: List[Floor]) -> None:
         x, y = point
         return any(field[y + dy][x + dx] == d.WALL_CHAR for dx, dy in offsets)
 
+    placement_options = []
     for upper, lower in zip(floors, floors[1:]):
         occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
         occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
@@ -540,10 +551,12 @@ def _place_collapses(floors: List[Floor]) -> None:
             and not has_wall_neighbors(upper.field, point)
             and not has_wall_neighbors(lower.field, point)
         ]
-        if candidates:
-            point = rand.choice(candidates)
-            upper.entities.append(d.Collapse(*point))
-            lower.collapse_landings.add(point)
+        placement_options.extend((upper, lower, point) for point in candidates)
+
+    if placement_options:
+        upper, lower, point = rand.choice(placement_options)
+        upper.entities.append(d.Collapse(*point))
+        lower.collapse_landings.add(point)
 
 
 def _move_player(

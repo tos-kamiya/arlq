@@ -416,16 +416,16 @@ STAGE_TO_SPAWN_CONFIGS = [
 # Per-floor rosters for the multi-floor stages. Each entry is
 # (tribe character, population, empowered rank).
 STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
-    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("I", 1, 1), ("J", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("K", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("I", 1, 1), ("J", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("K", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
     [("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("d", 3, 1), ("d", 3, 2), ("l", 1, 1), ("w", 1, 1), ("W", 1, 1), ("H", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
 ]
 
 STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [("a", 22, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("e", 1, 1), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
     [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 2, 1), ("b", 4, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 2, 1), ("d", 4, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1), ("w", 1, 1), ("W", 1, 1), ("M", 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 2, 1), ("b", 4, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 2, 1), ("d", 4, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("w", 1, 1), ("W", 1, 1), ("M", 1, 1)],
 ]
 
 def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
@@ -441,7 +441,11 @@ def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
     )
 
 
-STAGE3_ROSTER_TRIBES: List[MonsterTribe] = _get_stage_roster_tribes(STAGE3_ROSTER)
+STAGE3_ROSTER_TRIBES: List[MonsterTribe] = sorted(
+    [*_get_stage_roster_tribes(STAGE3_ROSTER), CHAR_TO_MONSTER_TRIBE["C"]],
+    key=lambda tribe: tribe.level,
+    reverse=True,
+)
 # Collapse is a fixed stage object, but appears at level 1 on the strength gauge.
 STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
     [*_get_stage_roster_tribes(STAGE4_ROSTER), MonsterTribe(CHAR_COLLAPSE, level=1, feed=0)],
