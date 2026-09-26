@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 4.9.0 - 2026-09-27
+
+- Keep Stage 4 behind the `--dev` stage-selection option while it remains
+  experimental; move its detailed description to `docs/stage4.md`.
+- Add a keyboard controls help screen and an LP-based preview of reachable
+  explored cells.
+- Improve terminal map display and combat-loss respawn placement.
+
 ## 5.1.0 - 2026-09-27
 
 - Add a keyboard controls help screen accessible with `H` from the stage
