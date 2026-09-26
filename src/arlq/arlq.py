@@ -406,7 +406,7 @@ def reveal_entities_in_fov(
     entities: List[d.Entity],
     torch_radius: int = d.TORCH_RADIUS,
 ) -> None:
-    """Reveal ordinary monsters currently inside the player's FOV."""
+    """Reveal active monsters currently inside the player's FOV."""
     if player.companion is None or player.companion.tribe.char != "n":
         return
     torched = get_torched(player, torch_radius)
@@ -415,7 +415,7 @@ def reveal_entities_in_fov(
             continue
         if not torched[entity.y][entity.x]:
             continue
-        if isinstance(entity, d.Monster) and entity.tribe.char not in d.TRAP_MONSTER_DISGUISES:
+        if isinstance(entity, d.Monster) and entity.active:
             if entity.tribe.is_elf:
                 entity.revealed = True
             else:
@@ -534,7 +534,7 @@ def update_entities(
                 message = (MESSAGE_TICKS, tr(event_message))
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
-            if m.tribe.is_elf or m.tribe.char in d.TRAP_MONSTER_DISGUISES:
+            if m.tribe.is_elf:
                 m.revealed = True
             else:
                 player.known_monsters.add(d.monster_type_key(m))

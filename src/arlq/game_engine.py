@@ -896,8 +896,8 @@ def _rewind_to_history(
     for floor_data, preserved_seen in zip(floors, seen, strict=True):
         floor_data.seen = preserved_seen
     player.__dict__.update(restored_player_state.__dict__)
-    # Monster type identification and elf floor locations survive the
-    # rewind. Entity identity and encounter state are restored by replay.
+    # Monster and trap type identification and elf floor locations survive
+    # the rewind. Entity encounter state is restored by replay.
     player.known_monsters = known_monsters
     player.stage3_elf_floors = elf_floors
 
@@ -948,8 +948,6 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
             char = entity.tribe.char
             empowered = entity.empowered if isinstance(entity, d.Monster) else 1
             origin_floor = entity.origin_floor if isinstance(entity, d.Companion) else floor_index
-            trap_revealed = entity.revealed if isinstance(entity, d.Monster) else False
-            trap_active = entity.active if isinstance(entity, d.Monster) else True
             _spawn(
                 current.entities,
                 current.field,
@@ -959,9 +957,6 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
                 origin_floor,
                 empowered,
             )
-            if isinstance(entity, d.Monster) and char in d.TRAP_MONSTER_DISGUISES:
-                current.entities[-1].revealed = trap_revealed
-                current.entities[-1].active = trap_active
 
     for entity in current.entities:
         if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}:
@@ -1104,16 +1099,14 @@ def _resolve_monster_contact(
             return _ContactResult(tr(ELF_REPEAT_MESSAGES[ch]), end_turn=True)
         return _ContactResult(None, end_turn=True)
 
-    # Stage 3 keeps the W treasure hidden until W is defeated. Trap monsters
-    # track discovery per instance instead of entering the known-type set.
-    if ch != "W" and ch not in d.TRAP_MONSTER_DISGUISES and not entity.tribe.is_elf:
+    # Stage 3 keeps the W treasure hidden until W is defeated. Other monster
+    # identities, including M, are learned by species.
+    was_known = d.monster_type_key(entity) in player.known_monsters
+    if ch != "W" and not entity.tribe.is_elf:
         player.known_monsters.add(d.monster_type_key(entity))
     if entity.tribe.is_elf:
         entity.revealed = True
-    was_revealed = entity.revealed
-    if ch in d.TRAP_MONSTER_DISGUISES:
-        entity.revealed = True
-    if ch == "M" and not was_revealed and trace is not None:
+    if ch == "M" and not was_known and trace is not None:
         trace.record_contact({"type": "trap", "id": "M", "outcome": "triggered"})
     current.entities.pop(hit)
 
@@ -1158,13 +1151,13 @@ def _resolve_monster_contact(
     elif d.current_player_attack(player, stage_num) < d.monster_level(entity):
         # Losing still identifies the monster, including W. Treasure glyphs
         # remain gated separately by their unlock state in the renderer.
-        if ch not in d.TRAP_MONSTER_DISGUISES and not entity.tribe.is_elf:
+        if not entity.tribe.is_elf:
             player.known_monsters.add(d.monster_type_key(entity))
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity
         # here prevents a failed attack from deleting it.
         current.entities.append(entity)
-        first_mimic_contact = ch == "M" and not was_revealed
+        first_mimic_contact = ch == "M" and not was_known
         # Losing twice in a row to the very same monster (no other monster
         # contact in between) means it is blocking the only way through:
         # send the player somewhere random instead of back to the
@@ -1213,7 +1206,7 @@ def _resolve_monster_contact(
         )
         if ch == "M":
             current.entities.append(entity)
-        if ch == "M" and was_revealed:
+        if ch == "M" and was_known:
             event_message = tr("-- The Mimic was defeated!")
         elif ch == "M":
             event_message = tr("-- The treasure chest was a Mimic!")
@@ -1435,6 +1428,7 @@ def _step(
     if collapse_hit is not None and (player.x, player.y) != previous:
         from_floor = floor[0]
         collapse_hit.revealed = True
+        player.known_monsters.add(d.CHAR_COLLAPSE)
         floor[0] += 1
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [

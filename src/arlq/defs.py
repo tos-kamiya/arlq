@@ -107,7 +107,6 @@ CHAR_TREASURE: str = "T"
 CHAR_CALTROP: str = "x"
 CHAR_BARRIER: str = "="
 CHAR_COLLAPSE: str = "O"
-TRAP_MONSTER_DISGUISES: Dict[str, str] = {"M": CHAR_TREASURE, "V": "?"}
 
 Point = Tuple[int, int]
 Edge = Tuple[Point, Point]
@@ -271,7 +270,7 @@ class Player(Entity):
         self.karma: int = 0
         self.boss_defeated: bool = False
         self.treasure_collected: bool = False
-        # Ordinary monster identities are known by tribe across all floors.
+        # Identified monster and trap types are known across all floors.
         self.known_monsters: Set[str] = set()
         self.stage3_elf_floors: Dict[str, int] = {}
         # Stage 3 state. Keeping these on Player preserves the small shared
@@ -659,25 +658,32 @@ def player_appearance(player: Player) -> Tuple[str, Optional[str]]:
     return foreground, ("red" if low else None)
 
 
-def preview_entity_glyphs(entity: Entity, reveal_disguises: bool = False) -> List[FieldGlyph]:
+def preview_entity_glyphs(
+    entity: Entity,
+    reveal_disguises: bool = False,
+    known_types: Optional[Set[str]] = None,
+) -> List[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
+    known_types = known_types or set()
     if isinstance(entity, Monster) and not entity.active and not (
         entity.tribe.char == "M" and not entity.met and reveal_disguises
     ):
         return []
     char = None
     if isinstance(entity, Monster):
-        char = (
-            TRAP_MONSTER_DISGUISES[entity.tribe.char]
-            if entity.tribe.char in TRAP_MONSTER_DISGUISES and not entity.revealed and not reveal_disguises
-            else entity.tribe.char
-        )
+        char = entity.tribe.char
+        if char == "M" and monster_type_key(entity) not in known_types and not reveal_disguises:
+            char = CHAR_TREASURE
     elif isinstance(entity, Companion):
         char = entity.tribe.char
     elif isinstance(entity, Treasure):
         char = CHAR_TREASURE
     elif isinstance(entity, Collapse):
-        char = CHAR_COLLAPSE if entity.revealed or reveal_disguises else "?"
+        char = (
+            CHAR_COLLAPSE
+            if entity.revealed or CHAR_COLLAPSE in known_types or reveal_disguises
+            else "?"
+        )
     if char is None:
         return []
     tone = "stair" if isinstance(entity, Collapse) and char == CHAR_COLLAPSE else "default"
@@ -721,14 +727,14 @@ def revealed_entity_glyphs(
         char = entity.tribe.char
         if not entity.active:
             return []
-        if char in TRAP_MONSTER_DISGUISES and not entity.revealed and not reveal_disguises:
-            return [FieldGlyph(entity.x, entity.y, TRAP_MONSTER_DISGUISES[char], "yellow", bold=True)]
         known = (
             entity.revealed
-            if entity.tribe.is_elf or char == "M"
+            if entity.tribe.is_elf
             else monster_type_key(entity) in known_types
         )
-        if char not in TRAP_MONSTER_DISGUISES and not known:
+        if char == "M" and not known and not reveal_disguises:
+            return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
+        if char != "M" and not known:
             if show_entities:
                 return []
             return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
@@ -742,8 +748,9 @@ def revealed_entity_glyphs(
             glyphs.append(FieldGlyph(entity.x + 1, entity.y, "'", tone, bold=True, dim=dim))
         return glyphs
     if isinstance(entity, Collapse):
-        char = CHAR_COLLAPSE if entity.revealed else "?"
-        tone = "stair" if entity.revealed else "yellow"
+        known = entity.revealed or CHAR_COLLAPSE in known_types
+        char = CHAR_COLLAPSE if known else "?"
+        tone = "stair" if known else "yellow"
         return [FieldGlyph(entity.x, entity.y, char, tone, bold=True)]
     if isinstance(entity, Treasure):
         if entity.unlocked:

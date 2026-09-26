@@ -552,7 +552,9 @@ class PygletUI:
 
         if show_entities:
             for entity in entities:
-                for glyph in d.preview_entity_glyphs(entity, reveal_disguises=reveal_disguises):
+                for glyph in d.preview_entity_glyphs(
+                    entity, reveal_disguises=reveal_disguises, known_types=known_types
+                ):
                     paint(glyph)
 
         for entity in entities:
