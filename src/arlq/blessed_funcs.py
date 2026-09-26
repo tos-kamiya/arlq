@@ -28,6 +28,7 @@ class BlessedUI:
         self.term = term
         self.dots = dots
         self.map_mode = False
+        self.farthest_preview = False
         self.shift_direction = False
         self._last_stage: Optional[Tuple[Any, Any]] = None
 
@@ -95,9 +96,12 @@ class BlessedUI:
         stage_roster: Optional[List[d.MonsterTribe]] = None,
         floor_view: bool = False,
         floor_label: Optional[str] = None,
+        reachable_cells: Optional[Set[d.Point]] = None,
     ) -> str:
         output = [self.term.home + self.term.clear]
         reveal_disguises = debug_show_entities or monochrome
+        highlighted_cells = reachable_cells or set()
+        render_monochrome = monochrome and not highlighted_cells
 
         def put(
             x: int,
@@ -110,7 +114,13 @@ class BlessedUI:
         ):
             output.append(
                 self.term.move_xy(x, y)
-                + self._style(text, None if monochrome else color, bold, dim, None if monochrome else bg)
+                + self._style(
+                    text,
+                    None if render_monochrome else color,
+                    bold,
+                    dim,
+                    None if render_monochrome else bg,
+                )
             )
 
         player, px, py = None, None, None
@@ -121,6 +131,8 @@ class BlessedUI:
         assert player is not None and px is not None and py is not None
 
         def cell_background(x: int, y: int) -> Optional[str]:
+            if (x, y) in highlighted_cells:
+                return "blue"
             if self.dots or not (0 <= y < len(field) and 0 <= x < len(field[y])):
                 return None
             discovered = torched[y][x] or show_entities
@@ -137,19 +149,21 @@ class BlessedUI:
                             y,
                             cell,
                             "green" if cell == d.WALL_CHAR else "magenta" if cell == d.CHAR_CALTROP else None,
+                            bg="blue" if (x, y) in highlighted_cells else None,
                         )
                     elif discovered:
                         if cell == d.WALL_CHAR:
-                            put(x, y, cell, "green")
+                            put(x, y, cell, "green", bg="blue" if (x, y) in highlighted_cells else None)
                         elif cell == d.CHAR_FLOOR and (x + y) % 2 == 1:
-                            put(x, y, ".", dim=True)
+                            put(x, y, ".", dim=True, bg="blue" if (x, y) in highlighted_cells else None)
                         else:
-                            put(x, y, cell)
+                            put(x, y, cell, bg="blue" if (x, y) in highlighted_cells else None)
                     elif (x + y) % 2 == 1:
                         put(x, y, ".", dim=True)
                 else:
                     color = "green" if cell == d.WALL_CHAR else "magenta" if cell == d.CHAR_CALTROP else None
-                    put(x, y, cell if discovered else " ", color, bg="black" if discovered else None)
+                    background = "blue" if (x, y) in highlighted_cells else "black" if discovered else None
+                    put(x, y, cell if discovered else " ", color, bg=background)
 
         if (
             not floor_view
@@ -305,13 +319,14 @@ class BlessedUI:
         stage_roster: Optional[List[d.MonsterTribe]] = None,
         floor_view: bool = False,
         floor_label: Optional[str] = None,
+        reachable_cells: Optional[Set[d.Point]] = None,
     ):
         self._wait_for_terminal_size()
         show_entities = show_entities or self.map_mode
         stage_args = (
             entities, field, cur_torched, torched, known_types, show_entities,
             debug_show_entities, checkpoint, self.map_mode, dim_types,
-            stage_num, stage_roster, floor_view, floor_label,
+            stage_num, stage_roster, floor_view, floor_label, reachable_cells,
         )
         status_args = (player, hours, stage_num, message, extra_keys)
         self._last_stage = (stage_args, status_args)
@@ -323,10 +338,13 @@ class BlessedUI:
             key = self._read_key()
             if key.code == self.term.KEY_ESCAPE or str(key).lower() == "q":
                 return None
+            key_name = key.name or str(key)
+            if key_name.lower() in ("f", "key_f") or str(key).lower() == "f":
+                self.farthest_preview = not self.farthest_preview
+                return (0, 0)
             if str(key).lower() == "m":
                 self.map_mode = True
                 return (0, 0)
-            key_name = key.name or str(key)
             shift_names = {
                 "KEY_SLEFT": (-1, 0), "KEY_SRIGHT": (1, 0),
             }
