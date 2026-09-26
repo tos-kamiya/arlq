@@ -653,7 +653,7 @@ def player_appearance(player: Player) -> Tuple[str, Optional[str]]:
     return foreground, ("red" if low else None)
 
 
-def preview_entity_glyphs(entity: Entity) -> List[FieldGlyph]:
+def preview_entity_glyphs(entity: Entity, reveal_disguises: bool = False) -> List[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
     if isinstance(entity, (Monster, Treasure)) and not entity.active:
         return []
@@ -661,7 +661,7 @@ def preview_entity_glyphs(entity: Entity) -> List[FieldGlyph]:
     if isinstance(entity, Monster):
         char = (
             TRAP_MONSTER_DISGUISES[entity.tribe.char]
-            if entity.tribe.char in TRAP_MONSTER_DISGUISES and not entity.revealed
+            if entity.tribe.char in TRAP_MONSTER_DISGUISES and not entity.revealed and not reveal_disguises
             else entity.tribe.char
         )
     elif isinstance(entity, Companion):
@@ -683,6 +683,7 @@ def revealed_entity_glyphs(
     player_attack: int,
     unlocked_treasures: Optional[Set[str]],
     dim_types: Optional[Set[str]],
+    reveal_disguises: bool = False,
 ) -> List[FieldGlyph]:
     """Glyphs for an entity inside the explored map.
 
@@ -698,7 +699,7 @@ def revealed_entity_glyphs(
         if not entity.active:
             return []
         char = entity.tribe.char
-        if char in TRAP_MONSTER_DISGUISES and not entity.revealed:
+        if char in TRAP_MONSTER_DISGUISES and not entity.revealed and not reveal_disguises:
             return [FieldGlyph(entity.x, entity.y, TRAP_MONSTER_DISGUISES[char], "yellow", bold=True)]
         if char not in TRAP_MONSTER_DISGUISES and monster_type_key(entity) not in known_types:
             if show_entities:

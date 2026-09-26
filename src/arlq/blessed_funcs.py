@@ -87,6 +87,7 @@ class BlessedUI:
         torched: List[List[int]],
         known_types: Set[str],
         show_entities: bool = False,
+        debug_show_entities: bool = False,
         checkpoint: Optional[d.Point] = None,
         monochrome: bool = False,
         unlocked_treasures: Optional[Set[str]] = None,
@@ -191,14 +192,15 @@ class BlessedUI:
 
         if show_entities:
             for entity in entities:
-                for glyph in d.preview_entity_glyphs(entity):
+                for glyph in d.preview_entity_glyphs(entity, reveal_disguises=debug_show_entities):
                     paint(glyph)
 
         for entity in entities:
             if torched[entity.y][entity.x] == 0 or (entity.x, entity.y) == (px, py):
                 continue
             for glyph in d.revealed_entity_glyphs(
-                entity, known_types, show_entities, player_attack, unlocked_treasures, dim_types
+                entity, known_types, show_entities, player_attack, unlocked_treasures, dim_types,
+                reveal_disguises=debug_show_entities,
             ):
                 paint(glyph)
 
@@ -296,6 +298,7 @@ class BlessedUI:
         torched,
         known_types,
         show_entities,
+        debug_show_entities=False,
         stage_num=0,
         message=None,
         extra_keys=False,
@@ -312,7 +315,8 @@ class BlessedUI:
         show_entities = show_entities or self.map_mode
         stage_args = (
             entities, field, cur_torched, torched, known_types, show_entities,
-            checkpoint, self.map_mode, unlocked_treasures, dim_types, stage_num, stage_roster, floor_view, floor_label,
+            debug_show_entities, checkpoint, self.map_mode, unlocked_treasures, dim_types,
+            stage_num, stage_roster, floor_view, floor_label,
             arrow_marks,
             mimic_marks,
         )
