@@ -588,11 +588,11 @@ class PygletUI:
             d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
         )
         ranking_attack = d.current_player_attack(player, stage_num)
-        for y, (char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, self.field_height)):
-            if char is None:
+        for y, (strength_char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, self.field_height)):
+            if strength_char is None:
                 continue
             self._draw_text(
-                (0, y), char, COLOR_MAP["default"], bold=is_player,
+                (0, y), strength_char, COLOR_MAP["default"], bold=is_player,
                 x_offset=self.field_pixel_width + self.strength_column_padding
             )
 

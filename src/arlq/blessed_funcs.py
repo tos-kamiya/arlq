@@ -251,10 +251,10 @@ class BlessedUI:
             d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
         )
         ranking_attack = d.current_player_attack(player, stage_num)
-        for y, (char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, d.FIELD_HEIGHT)):
-            if char is None:
+        for y, (strength_char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, d.FIELD_HEIGHT)):
+            if strength_char is None:
                 continue
-            put(d.FIELD_WIDTH, y, char, bold=is_player)
+            put(d.FIELD_WIDTH, y, strength_char, bold=is_player)
 
         if floor_label:
             put(d.FIELD_WIDTH - len(floor_label), d.FIELD_HEIGHT - 1, floor_label)
