@@ -14,13 +14,17 @@ from .arlq import (
     get_torched,
     iterate_offsets,
     move_player,
+    respawn_entity,
     reveal_entities_in_fov,
     spawn_at,
+    spawn_entities,
     spread_caltrops,
     tick_message,
+    update_entities,
     unlock_treasure_for_defeat,
 )
 from .i18n import t as tr
+from .game_events import WorldEvent
 from .stage_maze import (
     generate_floor_field,
     room_center,
@@ -1130,6 +1134,41 @@ def _step(
     return (MESSAGE_TICKS, event_message) if event_message else None
 
 
+def _build_single_floor(config: GameConfig, stage_num: int) -> Tuple[List[Floor], d.Player]:
+    """Create the Stage 1/2 map inside the shared floor state model."""
+    spawn_config = d.STAGE_TO_SPAWN_CONFIGS[stage_num - 1]
+    field, entry, treasure_point = create_field(
+        config.corridor_h_width,
+        config.corridor_v_width,
+        d.WALL_CHAR,
+        margin_x=d.STAGE1_COLUMN_MARGIN if stage_num == 1 else 0,
+    )
+    entities: List[d.Entity] = []
+    treasure_tribes = [
+        spawn.tribe
+        for spawn in spawn_config
+        if isinstance(spawn.tribe, d.MonsterTribe)
+        and spawn.tribe.effect == d.EFFECT_UNLOCK_TREASURE
+    ]
+    assert len(treasure_tribes) == 1
+    entities.append(d.Treasure(*treasure_point, treasure_tribes[0].treasure_key))
+    player = d.Player(*entry, 1, d.LP_INIT)
+    entities.append(player)
+    spawn_entities(entities, field, spawn_config)
+    floor = Floor(
+        field=field,
+        entities=entities,
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        known_companions=set(),
+        up=entry,
+        down=treasure_point,
+        island=None,
+    )
+    # Legacy update_entities expects the player in the shared entity list.
+    floor.entities.append(player)
+    return [floor], player
+
+
 def run_game(
     ui: Any,
     seed_str: str,
@@ -1140,7 +1179,10 @@ def run_game(
 ) -> None:
     if config is None:
         config = GameConfig()
-    if stage_num == 5:
+    legacy_stage = stage_num in (1, 2)
+    if legacy_stage:
+        floors, player = _build_single_floor(config, stage_num)
+    elif stage_num == 5:
         floors, player = build_trap_test(config.corridor_h_width, config.corridor_v_width)
     else:
         floors, player = build(
@@ -1165,7 +1207,7 @@ def run_game(
     queue: Counter[Tuple[int, str]] = Counter()
     history: Deque[HistoryEntry] = deque()
     hours = 0
-    message: Tuple[int, str] = (
+    message: Tuple[int, str] = (-1, "") if legacy_stage else (
         5,
         tr("-- The King has ordered the Dread Wyrm (W) slain.")
         if stage_num == 3
@@ -1175,8 +1217,11 @@ def run_game(
             else "-- Explore the sealed rooms across four floors."
         ),
     )
+    legacy_respawn_queue: Counter[str] = Counter()
+    if legacy_stage:
+        hours = -1
 
-    while player.lp > 0 and (stage_num in (4, 5) or not player.stage3_won):
+    while player.lp > 0 and (legacy_stage or stage_num in (4, 5) or not player.stage3_won):
         current = floors[floor[0]]
         display_floor = floors[view_floor]
         cur = get_torched(player, config.torch_radius)
@@ -1199,9 +1244,25 @@ def run_game(
         # model separate and provide a render-only combined list.
         render_player = deepcopy(player) if floor_view else player
         render_player.stage3_floor = view_floor
-        render_entities = [render_player, *display_floor.entities]
-        known_types = player.known_monsters | display_floor.known_companions
+        render_entities = (
+            display_floor.entities if legacy_stage else [render_player, *display_floor.entities]
+        )
+        known_types = player.known_monsters | (
+            player.known_companions if legacy_stage else display_floor.known_companions
+        )
         no_current_visibility = [[0] * len(display_floor.field[0]) for _ in display_floor.field]
+        stage_draw_options = {}
+        if not legacy_stage:
+            stage_draw_options = {
+                "dim_types": player.met_elves,
+                "stage_roster": ROSTER_TRIBES if stage_num == 3 else STAGE4_ROSTER_TRIBES,
+                "floor_view": floor_view,
+                "floor_label": f"F: {view_floor + 1}",
+                "arrow_marks": [mark for marks in display_floor.arrow_marks.values() for mark in marks]
+                if stage_num == 4
+                else (),
+                "mimic_marks": display_floor.defeated_mimics if stage_num == 4 else (),
+            }
         ui.draw_stage(
             hours=hours,
             player=render_player,
@@ -1215,14 +1276,7 @@ def run_game(
             message=message[1],
             checkpoint=checkpoint[0],
             unlocked_treasures=player.unlocked_treasures,
-            dim_types=player.met_elves,
-            stage_roster=ROSTER_TRIBES if stage_num == 3 else STAGE4_ROSTER_TRIBES,
-            floor_view=floor_view,
-            floor_label=f"F: {view_floor + 1}",
-            arrow_marks=[mark for marks in display_floor.arrow_marks.values() for mark in marks]
-            if stage_num == 4
-            else (),
-            mimic_marks=display_floor.defeated_mimics if stage_num == 4 else (),
+            **stage_draw_options,
         )
 
         move = ui.input_direction()
@@ -1246,6 +1300,48 @@ def run_game(
                 raise RuntimeError("--trace-record does not support non-cardinal (e.g. diagonal joystick) movement")
             trace.begin_turn(key)
 
+        if legacy_stage:
+            update_result = update_entities(
+                move,
+                current.field,
+                player,
+                current.entities,
+                player.unlocked_treasures,
+                respawn_point=checkpoint[0],
+            )
+            if update_result.message is not None:
+                message = update_result.message
+            if update_result.tribes_to_be_respawned:
+                checkpoint[0] = (player.x, player.y)
+            for char in update_result.tribes_to_be_respawned:
+                if char not in d.NO_RESPAWN_MONSTERS:
+                    legacy_respawn_queue[char] += 1
+            if hours % d.MONSTER_RESPAWN_INTERVAL == 0:
+                for char in list(legacy_respawn_queue):
+                    if legacy_respawn_queue[char] <= 0:
+                        continue
+                    entity = respawn_entity(d.CHAR_TO_TRIBE[char], current.entities, current.field)
+                    legacy_respawn_queue[char] -= 1
+                    if trace is not None:
+                        if isinstance(entity, d.Monster):
+                            kind, event_id = "monster", d.monster_type_key(entity)
+                        else:
+                            kind, event_id = "companion", entity.tribe.char
+                        update_result.events.world.append(
+                            WorldEvent(kind, event_id, (entity.x, entity.y))
+                        )
+            if trace is not None:
+                trace.record_events(update_result.events)
+                trace.set_player(player, stage_num)
+                trace.commit_turn()
+            if update_result.effect == d.EFFECT_GOT_TREASURE:
+                if trace is not None:
+                    trace.set_outcome("win")
+                break
+            hours += 1
+            player.lp -= 1
+            continue
+
         event_message = _step(
             move, floors, player, floor, checkpoint, queue, history, hours,
             stage_num=stage_num, trace=trace,
@@ -1264,16 +1360,31 @@ def run_game(
         hours += 1
         player.lp -= 1
 
+    won = (legacy_stage and player.lp > 0) or (stage_num == 3 and player.stage3_won)
     if trace is not None:
-        trace.set_outcome("win" if stage_num == 3 and player.stage3_won else "lose")
+        trace.set_outcome("win" if won else "lose")
 
-    won = stage_num == 3 and player.stage3_won
-    message = (-1, tr(">> Treasure chest obtained! <<") if won else tr(">> Collapsed from hunger! <<"))
+    if not won:
+        message = (-1, tr(">> Collapsed from hunger! <<"))
+    elif legacy_stage:
+        message = (-1, tr(">> Treasure chest obtained! <<"))
     while True:
         current = floors[floor[0]]
         cur = get_torched(player, config.torch_radius)
-        render_entities = [player, *current.entities]
-        known_types = player.known_monsters | current.known_companions
+        render_entities = current.entities if legacy_stage else [player, *current.entities]
+        known_types = player.known_monsters | (
+            player.known_companions if legacy_stage else current.known_companions
+        )
+        stage_draw_options = {}
+        if not legacy_stage:
+            stage_draw_options = {
+                "dim_types": player.met_elves,
+                "stage_roster": ROSTER_TRIBES if stage_num == 3 else STAGE4_ROSTER_TRIBES,
+                "arrow_marks": [mark for marks in current.arrow_marks.values() for mark in marks]
+                if stage_num == 4
+                else (),
+                "mimic_marks": current.defeated_mimics if stage_num == 4 else (),
+            }
         ui.draw_stage(
             hours=hours,
             player=player,
@@ -1288,17 +1399,17 @@ def run_game(
             extra_keys=True,
             checkpoint=checkpoint[0],
             unlocked_treasures=player.unlocked_treasures,
-            dim_types=player.met_elves,
-            stage_roster=ROSTER_TRIBES if stage_num == 3 else STAGE4_ROSTER_TRIBES,
-            arrow_marks=[mark for marks in current.arrow_marks.values() for mark in marks]
-            if stage_num == 4
-            else (),
-            mimic_marks=current.defeated_mimics if stage_num == 4 else (),
+            **stage_draw_options,
         )
         key = ui.input_alphabet()
         if key is None:
             return
         if key == "m":
-            debug = not debug
+            if legacy_stage:
+                debug = True
+                if hasattr(ui, "map_mode"):
+                    ui.map_mode = True
+            else:
+                debug = not debug
         elif key == "s":
             message = (-1, tr("SEED: {seed_str}").format(seed_str=seed_str))
