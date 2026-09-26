@@ -51,12 +51,14 @@ def terminal_replay_interval(args) -> float:
         except (OSError, ValueError, TypeError, AttributeError):
             interval = None
     try:
-        interval = float(interval)
+        parsed_interval = (
+            float(interval) if isinstance(interval, (int, float, str)) else 0.25
+        )
     except (ValueError, TypeError):
-        interval = 0.25
-    if not math.isfinite(interval):
-        interval = 0.25
-    return min(1.0, max(0.1, interval))
+        parsed_interval = 0.25
+    if not math.isfinite(parsed_interval):
+        parsed_interval = 0.25
+    return min(1.0, max(0.1, parsed_interval))
 
 
 def tick_message(message: Tuple[int, str]) -> Tuple[int, str]:

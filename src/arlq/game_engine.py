@@ -372,14 +372,14 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
                 empowered,
             )
 
-    for entity in current.entities:
-        if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}:
+    for current_entity in current.entities:
+        if isinstance(current_entity, d.Monster) and current_entity.tribe.char in {"w", "W"}:
             protected = {
                 (fixed.x, fixed.y)
                 for fixed in current.entities
                 if isinstance(fixed, d.Collapse)
             } | current.collapse_landings
-            _place_barrier(current.field, (entity.x, entity.y), protected)
+            _place_barrier(current.field, (current_entity.x, current_entity.y), protected)
 
     known_collapses = {
         (entity.x, entity.y)
@@ -390,9 +390,9 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
         for x, cell in enumerate(row):
             if cell in (d.CHAR_FLOOR, d.CHAR_BARRIER) and (x, y) not in known_collapses:
                 current.seen[y][x] = 0
-    for entity in current.entities:
-        if isinstance(entity, d.Monster) and entity.tribe.char == "k":
-            entity.arrow_marks.clear()
+    for current_entity in current.entities:
+        if isinstance(current_entity, d.Monster) and current_entity.tribe.char == "k":
+            current_entity.arrow_marks.clear()
 
 
 def _defeat_monster(
@@ -1202,8 +1202,10 @@ def run_game(
                     if trace is not None:
                         if isinstance(entity, d.Monster):
                             kind, event_id = "monster", d.monster_type_key(entity)
-                        else:
+                        elif isinstance(entity, d.Companion):
                             kind, event_id = "companion", entity.tribe.char
+                        else:
+                            raise TypeError("Respawned entity must be a monster or companion")
                         update_result.events.world.append(
                             WorldEvent(kind, event_id, (entity.x, entity.y))
                         )
@@ -1234,7 +1236,7 @@ def run_game(
             else None,
         )
         if isinstance(step_result, _RewindRequest):
-            event_message = _rewind_to_history(
+            rewind_message = _rewind_to_history(
                 floors,
                 player,
                 floor,
@@ -1246,7 +1248,7 @@ def run_game(
                 if replay_context is not None
                 else None,
             )
-            event_message = (5, event_message)
+            event_message: Optional[Tuple[int, str]] = (5, rewind_message)
         else:
             event_message = step_result
         player.current_floor = floor[0]

@@ -177,7 +177,7 @@ def _place_roster_treasures_and_mimics(
     for ch, count, _ in roster:
         if ch == "M":
             for _ in range(count):
-                boss_char = (
+                mimic_boss_char = (
                     treasure_bosses[mimic_index % len(treasure_bosses)]
                     if treasure_bosses
                     else None
@@ -185,7 +185,7 @@ def _place_roster_treasures_and_mimics(
                 mimic = d.Monster(
                     *_treasure_spot(entities, field, reserved),
                     d.CHAR_TO_MONSTER_TRIBE["M"],
-                    mimic_boss_char=boss_char,
+                    mimic_boss_char=mimic_boss_char,
                 )
                 mimic.active = False
                 entities.append(mimic)
@@ -520,7 +520,7 @@ def _place_collapses(floors: List[Floor]) -> None:
         x, y = point
         return any(field[y + dy][x + dx] == d.WALL_CHAR for dx, dy in offsets)
 
-    placement_options = []
+    placement_options: List[Tuple[Floor, Floor, d.Point]] = []
     for upper, lower in zip(floors, floors[1:]):
         occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
         occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
