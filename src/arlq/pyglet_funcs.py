@@ -459,6 +459,7 @@ class PygletUI:
         stage_num: int = 0,
         message: Optional[str] = None,
         extra_keys: bool = False,
+        debug_show_entities: bool = False,
         checkpoint: Optional[d.Point] = None,
         unlocked_treasures: Optional[Set[str]] = None,
         dim_types: Optional[Set[str]] = None,
@@ -547,14 +548,15 @@ class PygletUI:
 
         if show_entities:
             for entity in entities:
-                for glyph in d.preview_entity_glyphs(entity):
+                for glyph in d.preview_entity_glyphs(entity, reveal_disguises=debug_show_entities):
                     paint(glyph)
 
         for entity in entities:
             if torched[entity.y][entity.x] == 0 or (entity.x, entity.y) == (px, py):
                 continue
             for glyph in d.revealed_entity_glyphs(
-                entity, known_types, show_entities, player_attack, unlocked_treasures, dim_types
+                entity, known_types, show_entities, player_attack, unlocked_treasures, dim_types,
+                reveal_disguises=debug_show_entities,
             ):
                 paint(glyph)
 
