@@ -361,8 +361,7 @@ class BlessedUI:
             return None
         return str(key).lower()
 
-    def select_stage(self) -> int:
-        stage_numbers = d.PUBLIC_STAGE_NUMBERS
+    def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         options = [tr("[q]uit")] + [tr("stage [{n}]").format(n=n) for n in stage_numbers]
         current_index = 1
         while True:

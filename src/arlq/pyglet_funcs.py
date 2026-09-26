@@ -936,7 +936,7 @@ class PygletUI:
                 if symbol in (pgkey.ESCAPE, pgkey.Q):
                     return
 
-    def select_stage(self) -> int:
+    def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         """
         Displays a stage selection menu where the user can navigate with arrow keys or D-pad,
         and confirm with Enter (or gamepad button 0), or directly press numeric keys or Q/ESC.
@@ -946,7 +946,6 @@ class PygletUI:
         Returns:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
         """
-        stage_numbers = d.PUBLIC_STAGE_NUMBERS
         assert len(stage_numbers) <= 9
 
         options = [tr("[q]uit")]
