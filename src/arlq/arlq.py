@@ -1,4 +1,4 @@
-from typing import Container, List, Tuple, Optional
+from typing import Callable, Container, List, Tuple, Optional
 
 import argparse
 import json
@@ -135,16 +135,41 @@ def tile_to_place_range(x: int, y: int) -> Tuple[d.Point, d.Point]:
     return lt, rb
 
 
-def find_random_place(entities: List[d.Entity], field: List[List[str]], distance: int = 1) -> d.Point:
+def find_random_place(
+    entities: List[d.Entity],
+    field: List[List[str]],
+    distance: int = 1,
+    *,
+    far_from: Optional[d.Point] = None,
+    min_manhattan_distance: int = 25,
+    far_attempts: int = 10,
+    avoid: Optional[Callable[[d.Point], bool]] = None,
+) -> d.Point:
     places = [(e.x, e.y) for e in entities]
+
+    def is_valid(x: int, y: int) -> bool:
+        point = (x, y)
+        return (
+            all(c == d.CHAR_FLOOR for c in field[y][x - 1 : x + 2])
+            and not any(
+                abs(p[0] - x) <= distance and abs(p[1] - y) <= distance
+                for p in places
+            )
+            and not (avoid is not None and avoid(point))
+        )
+
+    if far_from is not None:
+        for _ in range(far_attempts):
+            x = rand.randrange(d.FIELD_WIDTH - 2) + 1
+            y = rand.randrange(d.FIELD_HEIGHT - 2) + 1
+            manhattan_distance = abs(x - far_from[0]) + abs(y - far_from[1])
+            if is_valid(x, y) and manhattan_distance >= min_manhattan_distance:
+                return x, y
+
     while True:
         x = rand.randrange(d.FIELD_WIDTH - 2) + 1
         y = rand.randrange(d.FIELD_HEIGHT - 2) + 1
-        if all(
-            c == d.CHAR_FLOOR for c in field[y][x - 1 : x + 1 + 1]
-        ) and not any(  # both left and right cells are spaces (not walls)
-            abs(p[0] - x) <= distance and abs(p[1] - y) <= distance for p in places
-        ):
+        if is_valid(x, y):
             return x, y
 
 
@@ -541,11 +566,15 @@ def update_entities(
                 # back to the checkpoint, so a too-strong monster on a bridge
                 # corridor cannot soft-lock the map.
                 if player.last_contact_monster == contact_key:
-                    player.x, player.y = find_random_place(entities, field, distance=2)
+                    player.x, player.y = find_random_place(
+                        entities, field, distance=2, far_from=(m.x, m.y)
+                    )
                     message = (MESSAGE_TICKS, tr("-- Respawned to a random location."))
                 else:
                     if respawn_point is None:
-                        player.x, player.y = find_random_place(entities, field, distance=2)
+                        player.x, player.y = find_random_place(
+                            entities, field, distance=2, far_from=(m.x, m.y)
+                        )
                     else:
                         player.x, player.y = respawn_point
                     message = (MESSAGE_TICKS, tr("-- Respawned!"))
