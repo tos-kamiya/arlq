@@ -601,7 +601,7 @@ def status_prefix(player: Player, stage_num: int, hours: int) -> str:
     text = ""
     if stage_num != 0:
         text += f"ST: {stage_num}  "
-    text += f"HRS: {hours}  "
+    text += f"TURN: {hours}  "
     text += level_str + "  "
     text += item_str + "  "
     return text
