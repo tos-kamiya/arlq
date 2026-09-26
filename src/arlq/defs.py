@@ -413,13 +413,11 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [("a", 22, 1), ("A", 2, 1), ("b", 6, 1), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("e", 1, 1), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1)],
     [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
     [("a", 20, 1), ("A", 2, 1), ("b", 3, 1), ("b", 3, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 3, 1), ("d", 3, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1)],
-    [("a", 20, 1), ("A", 2, 1), ("b", 2, 1), ("b", 4, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 2, 1), ("d", 4, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1), ("w", 1, 1), ("W", 1, 1)],
+    [("a", 20, 1), ("A", 2, 1), ("b", 2, 1), ("b", 4, 2), ("c", 1, 1), ("c", 1, 2), ("C", 1, 1), ("d", 2, 1), ("d", 4, 2), ("k", 2, 1), ("l", 1, 1), ("n", 1, 1), ("o", 1, 1), (CHAR_PEGASUS, 1, 1), ("V", 1, 1), ("E", 1, 1), ("w", 1, 1), ("W", 1, 1), ("M", 1, 1)],
 ]
 
-def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]], include_mimic: bool = False):
+def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
     chars = dict.fromkeys(char for floor in roster for char, _, _ in floor)
-    if include_mimic:
-        chars.setdefault("M", None)
     return sorted(
         (
             CHAR_TO_MONSTER_TRIBE[char]
@@ -432,7 +430,7 @@ def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]], include_m
 
 
 STAGE3_ROSTER_TRIBES: List[MonsterTribe] = _get_stage_roster_tribes(STAGE3_ROSTER)
-STAGE4_ROSTER_TRIBES: List[MonsterTribe] = _get_stage_roster_tribes(STAGE4_ROSTER, include_mimic=True)
+STAGE4_ROSTER_TRIBES: List[MonsterTribe] = _get_stage_roster_tribes(STAGE4_ROSTER)
 
 
 def _stage3_javelin_active(player: Player) -> bool:

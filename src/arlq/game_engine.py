@@ -178,41 +178,45 @@ def _spawn_assigned_floor_elves(
                 _spawn(entities, field, ch, reserved, island_tile, floor_index, empowered)
 
 
-def _spawn_roster_wyrms(
+def _spawn_monsters_with_barriers(
     entries: List[Tuple[str, int, int]],
     entities: List[d.Entity],
     field: List[List[str]],
     reserved: Container[d.Point],
     down: d.Point,
     floor_index: int,
-    stage_num: int,
 ) -> None:
-    has_boss = False
     for ch, count, empowered in entries:
         for monster_index in range(count):
             if ch == "W" and monster_index == 0:
                 x, y = down
                 entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[ch], empowered))
-                has_boss = True
             else:
                 x, y = _spawn(entities, field, ch, reserved, floor_index=floor_index, empowered=empowered)
             _place_barrier(field, (x, y))
-    if has_boss:
-        _place_wyrm_chests(entities, field, reserved, stage_num)
 
 
-def _place_wyrm_chests(
-    entities: List[d.Entity], field: List[List[str]], reserved: Container[d.Point], stage_num: int
+def _place_roster_treasures_and_mimics(
+    roster: List[Tuple[str, int, int]],
+    entities: List[d.Entity],
+    field: List[List[str]],
+    reserved: Container[d.Point],
 ) -> None:
-    chest = d.Treasure(*_treasure_spot(entities, field, reserved), d.CHAR_TREASURE + "W")
-    entities.append(chest)
-    if stage_num == 4:
-        mimic = d.Monster(*_treasure_spot(entities, field, reserved), d.CHAR_TO_MONSTER_TRIBE["M"])
-        mimic.active = False
-        entities.append(mimic)
+    if any(ch == "W" and count for ch, count, _ in roster):
+        wyrm = d.CHAR_TO_MONSTER_TRIBE["W"]
+        entities.append(d.Treasure(*_treasure_spot(entities, field, reserved), wyrm.treasure_key))
+    for ch, count, _ in roster:
+        if ch == "M":
+            for _ in range(count):
+                mimic = d.Monster(
+                    *_treasure_spot(entities, field, reserved),
+                    d.CHAR_TO_MONSTER_TRIBE["M"],
+                )
+                mimic.active = False
+                entities.append(mimic)
 
 
-def _activate_wyrm_mimics(current: Floor) -> None:
+def _activate_mimics(current: Floor) -> None:
     for entity in current.entities:
         if isinstance(entity, d.Monster) and entity.tribe.char == "M":
             entity.active = True
@@ -279,13 +283,15 @@ def _build_floor(
 
     entities: List[d.Entity] = []
     reserved = {up, down}
-    ordinary_roster, elf_roster, wyrm_roster = _split_floor_roster(roster, elf_floors)
+    spawn_roster = [entry for entry in roster if entry[0] != "M"]
+    ordinary_roster, elf_roster, wyrm_roster = _split_floor_roster(spawn_roster, elf_floors)
     _spawn_roster_entries(ordinary_roster, entities, field, reserved, island_tile, index)
     _spawn_island_elf(field, entities, island_tile)
     _spawn_assigned_floor_elves(
         elf_roster, elf_floors, index, entities, field, reserved, island_tile
     )
-    _spawn_roster_wyrms(wyrm_roster, entities, field, reserved, down, index, stage_num)
+    _spawn_monsters_with_barriers(wyrm_roster, entities, field, reserved, down, index)
+    _place_roster_treasures_and_mimics(roster, entities, field, reserved)
 
     for ch, assigned_floor in special_floors.items():
         if index == assigned_floor:
@@ -431,7 +437,7 @@ def build_trap_test(
     entities: List[d.Entity] = [wyrm]
     _place_barrier(field, wyrm_point)
     reserved = {entry, wyrm_point}
-    _place_wyrm_chests(entities, field, reserved, 4)
+    _place_roster_treasures_and_mimics([("W", 1, 1), ("M", 1, 1)], entities, field, reserved)
     for _ in range(3):
         _spawn(entities, field, "b", reserved, floor_index=0)
         _spawn(entities, field, "d", reserved, floor_index=0)
@@ -803,7 +809,7 @@ def _defeat_monster(
     if ch == "W":
         player.stage3_flags |= d.STAGE3_W_FLAG
         unlock_treasure_for_defeat(entity, current.entities)
-        _activate_wyrm_mimics(current)
+        _activate_mimics(current)
         player.known_monsters.add(d.monster_type_key(entity))
         if player.stage3_treasure_collected:
             player.stage3_won = True
