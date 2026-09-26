@@ -263,14 +263,17 @@ def _spawn(
     return x, y
 
 
-def _find_escape_place(current: Floor) -> d.Point:
+def _find_escape_place(current: Floor, far_from: Optional[d.Point] = None) -> d.Point:
     """A random open cell for the player to be sent to, never inside a
     sealed island (e.g. the Isolated Elf's room)."""
     island_tile = current.island
-    while True:
-        x, y = find_random_place(current.entities, current.field, distance=2)
-        if not _inside_island((x, y), island_tile):
-            return x, y
+    return find_random_place(
+        current.entities,
+        current.field,
+        distance=2,
+        far_from=far_from,
+        avoid=lambda point: _inside_island(point, island_tile),
+    )
 
 
 def _split_floor_roster(
@@ -1168,7 +1171,7 @@ def _resolve_monster_contact(
         # checkpoint, so a too-strong monster on a bridge corridor cannot
         # soft-lock the floor.
         if player.last_contact_monster == contact_key:
-            player.x, player.y = _find_escape_place(current)
+            player.x, player.y = _find_escape_place(current, (entity.x, entity.y))
             event_message = tr("-- Respawned to a random location.")
         else:
             player.x, player.y = checkpoint[0]
