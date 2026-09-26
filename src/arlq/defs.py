@@ -47,7 +47,7 @@ STAGE4_FLOORS = 4
 LOOP_TURNS = 80
 STAGE4_MARKSMAN_ARROW_LIMIT = 20
 STAGE3_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
-STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 1), (0, 1), (0, 1), (0, 1)]
+STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 1), (0, 2), (0, 1), (0, 1)]
 STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
 STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
 # Order of the Stage 3 status-line marks. The treasure mark "T" is added separately.
@@ -442,7 +442,12 @@ def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
 
 
 STAGE3_ROSTER_TRIBES: List[MonsterTribe] = _get_stage_roster_tribes(STAGE3_ROSTER)
-STAGE4_ROSTER_TRIBES: List[MonsterTribe] = _get_stage_roster_tribes(STAGE4_ROSTER)
+# Collapse is a fixed stage object, but appears at level 1 on the strength gauge.
+STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
+    [*_get_stage_roster_tribes(STAGE4_ROSTER), MonsterTribe(CHAR_COLLAPSE, level=1, feed=0)],
+    key=lambda tribe: tribe.level,
+    reverse=True,
+)
 
 
 def _javelin_follower_active(player: Player) -> bool:
