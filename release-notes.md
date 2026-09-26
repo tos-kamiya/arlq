@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 5.0.0 - 2026-09-26
+
+- Add experimental Stage 4, a four-floor stage with new monsters, traps,
+  floor transitions, and a rematchable trap test arena.
+- Add Collapse traps that drop the player to the floor below, and allow
+  players to inspect explored maps on adjacent floors in Stages 3 and 4.
+- Adjust monster placement and combat balance, and unify stage completion
+  objectives across Stages 3 and 4.
+- Preserve companion and treasure state across gameplay events, and make Loop
+  Companion rewinds deterministic and repeatable.
+
 ## 4.8.1 - 2026-09-25
 
 - Improve terminal UI contrast on light themes: use the terminal's default
