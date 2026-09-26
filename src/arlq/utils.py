@@ -8,9 +8,13 @@ class MyRandom:
     def set_seed(self, seed):
         self._value = self.seed = seed
 
-    def randrange(self, r: int) -> int:
+    def randrange(self, start: int, stop: int | None = None) -> int:
+        if stop is None:
+            start, stop = 0, start
+        if stop <= start:
+            raise ValueError("empty range for randrange()")
         self._value = (1103515245 * self._value + 12345) % (2**32)
-        return self._value % r
+        return start + self._value % (stop - start)
 
     def choice(self, items):
         i = self.randrange(len(items))

@@ -621,15 +621,17 @@ def test_stage4_debug_floor_views_show_v_as_v():
         isinstance(entity, d.Monster) and entity.tribe.char == "V"
         for entity in by_floor["F: 1"]["entities"]
     )
-    for label in ("F: 2", "F: 3", "F: 4"):
-        vortex = next(
-            entity
-            for entity in by_floor[label]["entities"]
-            if isinstance(entity, d.Monster) and entity.tribe.char == "V"
-        )
-        assert d.preview_entity_glyphs(
-            vortex, reveal_disguises=by_floor[label]["debug_show_entities"]
-        )[0].char == "V"
+    vortex_draws = [
+        (label, entity)
+        for label in ("F: 2", "F: 3", "F: 4")
+        for entity in by_floor[label]["entities"]
+        if isinstance(entity, d.Monster) and entity.tribe.char == "V"
+    ]
+    assert len(vortex_draws) == 1
+    label, vortex = vortex_draws[0]
+    assert d.preview_entity_glyphs(
+        vortex, reveal_disguises=by_floor[label]["debug_show_entities"]
+    )[0].char == "V"
 
 
 def test_legacy_defeat_applies_item_and_caltrop_field_effect():
