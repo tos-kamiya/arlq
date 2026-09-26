@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 5.1.0 - 2026-09-27
+
+- Add a keyboard controls help screen accessible with `H` from the stage
+  selection screen and during gameplay.
+- Clarify that `M` enters map and entity display mode and cannot be undone.
+
 ## 5.0.3 - 2026-09-27
 
 - Add an `F`-key preview of explored cells reachable with the player's
