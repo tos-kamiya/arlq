@@ -87,6 +87,7 @@ FLOOR = (31, 38, 48)
 WALL = (67, 73, 84)
 VISIBLE_FLOOR = (43, 52, 65)
 VISIBLE_WALL = (86, 96, 111)
+REACHABLE_CELL_COLOR = (91, 129, 180)
 STRENGTH_COLUMN_BG = (30, 34, 48)
 STRENGTH_COLUMN_PADDING = 4
 
@@ -197,6 +198,8 @@ class PygletUI:
         self._closed = False
         self._key_queue: list = []
         self._stage_input_active = False
+        self.farthest_preview = False
+        self._f_key_held = False
         self._escape_key_held = False
         self.key_repeat_interval = self._valid_repeat_interval(
             _load_settings().get("key_repeat_interval", None)
@@ -222,6 +225,10 @@ class PygletUI:
                 if symbol in self._held_direction_keys:
                     return
                 self._held_direction_keys.add(symbol)
+            if self._stage_input_active and symbol == pgkey.F:
+                if self._f_key_held:
+                    return
+                self._f_key_held = True
             self._key_queue.append((symbol, modifiers))
             if symbol == pgkey.ESCAPE:
                 return pyglet.event.EVENT_HANDLED
@@ -230,6 +237,8 @@ class PygletUI:
         def on_key_release(symbol, modifiers):
             if symbol == pgkey.ESCAPE:
                 self._escape_key_held = False
+            if symbol == pgkey.F:
+                self._f_key_held = False
             was_held = symbol in self._held_direction_keys
             self._held_direction_keys.discard(symbol)
             if was_held and symbol in _DIRECTION_KEYS and not any(
@@ -467,6 +476,7 @@ class PygletUI:
         stage_roster: Optional[List[d.MonsterTribe]] = None,
         floor_view: bool = False,
         floor_label: Optional[str] = None,
+        reachable_cells: Optional[Set[d.Point]] = None,
     ):
         """
         Renders the game stage:
@@ -493,6 +503,8 @@ class PygletUI:
                     tile_color = (132, 70, 60)
                 if cell == d.CHAR_BARRIER and discovered:
                     tile_color = (67, 42, 45)
+                if reachable_cells and (x, y) in reachable_cells and not floor_view:
+                    tile_color = REACHABLE_CELL_COLOR
                 self._draw_rect(
                     self._field_col_x(x),
                     y * self.cell_size_y,
@@ -757,6 +769,9 @@ class PygletUI:
                     modifiers = 0
                 else:
                     symbol, modifiers = event
+                if symbol == pgkey.F:
+                    self.farthest_preview = not self.farthest_preview
+                    return (0, 0)
                 if symbol == pgkey.M:
                     self.map_mode = True
                     return (0, 0)

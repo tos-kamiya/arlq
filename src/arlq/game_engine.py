@@ -1,5 +1,6 @@
 """Shared stage loop with multi-floor rules for Stages 3 and 4."""
 
+import heapq
 from collections import Counter, deque
 from copy import deepcopy
 from dataclasses import dataclass, field as dataclass_field
@@ -82,6 +83,143 @@ class _ContactResult:
 @dataclass(frozen=True)
 class _RewindRequest:
     """Signal from a turn step to the game loop to run rewind handling."""
+
+
+def _marksman_damage_at(
+    field: List[List[str]],
+    entities: List[d.Entity],
+    known: List[List[int]],
+    point: d.Point,
+) -> int:
+    """Return damage from marksmen whose presence is known to the player."""
+    damage = 0
+    x, y = point
+    blockers = [
+        entity
+        for entity in entities
+        if not isinstance(entity, d.Player)
+        and 0 <= entity.x < len(field[0])
+        and 0 <= entity.y < len(field)
+        and known[entity.y][entity.x]
+    ]
+    shooters = [
+        entity
+        for entity in entities
+        if isinstance(entity, d.Monster)
+        and entity.tribe.char == "k"
+        and entity.active
+        and 0 <= entity.x < len(field[0])
+        and 0 <= entity.y < len(field)
+        and (known[entity.y][entity.x] or bool(entity.arrow_marks))
+    ]
+    for shooter in shooters:
+        dx, dy = x - shooter.x, y - shooter.y
+        if (dx == 0) == (dy == 0):
+            continue
+        distance = abs(dx or dy)
+        if distance <= 1:
+            continue
+        step_x = 0 if dx == 0 else (1 if dx > 0 else -1)
+        step_y = 0 if dy == 0 else (1 if dy > 0 else -1)
+        blocked = False
+        for offset in range(1, distance):
+            bx, by = shooter.x + step_x * offset, shooter.y + step_y * offset
+            if field[by][bx] in (
+                d.WALL_CHAR,
+                d.CHAR_CALTROP,
+                d.CHAR_BARRIER,
+                *d.STAIR_CHARS,
+            ):
+                blocked = True
+                break
+            if any(
+                (other.x, other.y) == (bx, by)
+                and (
+                    isinstance(other, d.Companion)
+                    or isinstance(other, d.Treasure)
+                    or isinstance(other, d.Collapse) and not other.revealed
+                    or isinstance(other, d.Monster) and other.active
+                )
+                for other in blockers
+            ):
+                blocked = True
+                break
+        if not blocked:
+            damage += d.MARKSMAN_LP_DAMAGE
+    return damage
+
+
+def reachable_known_cells(
+    field: List[List[str]],
+    seen: List[List[int]],
+    visible: List[List[int]],
+    entities: List[d.Entity],
+    player: d.Player,
+    stage_num: int,
+) -> Set[d.Point]:
+    """Find all known cells reachable before the player's LP reaches zero."""
+    height = len(field)
+    width = len(field[0]) if field else 0
+    if not width or not (0 <= player.x < width and 0 <= player.y < height):
+        return set()
+
+    known = [
+        [int(seen[y][x] or visible[y][x]) for x in range(width)]
+        for y in range(height)
+    ]
+    blocked = {
+        (entity.x, entity.y)
+        for entity in entities
+        if not isinstance(entity, d.Player)
+        and 0 <= entity.x < width
+        and 0 <= entity.y < height
+        and known[entity.y][entity.x]
+    }
+    start = (player.x, player.y)
+    distances = {start: 0}
+    pending = [(0, player.y, player.x)]
+    neighbors = ((0, -1), (-1, 0), (1, 0), (0, 1))
+
+    while pending:
+        cost, y, x = heapq.heappop(pending)
+        point = (x, y)
+        if cost != distances[point]:
+            continue
+        for dx, dy in neighbors:
+            nx, ny = x + dx, y + dy
+            if not (0 <= nx < width and 0 <= ny < height):
+                continue
+            if not known[ny][nx] or (nx, ny) in blocked:
+                continue
+
+            cell = field[ny][nx]
+            if cell == d.CHAR_FLOOR:
+                terrain_cost = 1
+            elif cell == d.CHAR_CALTROP:
+                terrain_cost = 1 + d.CALTROP_LP_DAMAGE
+            elif cell == d.CHAR_BARRIER and stage_num not in (1, 2):
+                damage = 0 if player.stage3_flags & d.STAGE3_H_FLAG else d.BARRIER_LP_DAMAGE
+                terrain_cost = 1 + damage
+            else:
+                # Walls, stairs, and unknown/special terrain are not safe
+                # walking cells for this estimate.
+                continue
+
+            ranged_damage = (
+                _marksman_damage_at(field, entities, known, (nx, ny))
+                if stage_num == 4
+                else 0
+            )
+            next_cost = cost + terrain_cost + ranged_damage
+            if next_cost >= player.lp:
+                continue
+            next_point = (nx, ny)
+            if next_cost >= distances.get(next_point, player.lp):
+                continue
+            distances[next_point] = next_cost
+            heapq.heappush(pending, (next_cost, ny, nx))
+
+    return set(distances)
 
 
 def _place_barrier(
@@ -1480,6 +1618,16 @@ def run_game(
 
         floor_view = view_floor != floor[0]
         show_entities = debug or getattr(ui, "map_mode", False)
+        reachable_cells: Set[d.Point] = set()
+        if getattr(ui, "farthest_preview", False) and not floor_view:
+            reachable_cells = reachable_known_cells(
+                current.field,
+                current.seen,
+                cur,
+                current.entities,
+                player,
+                stage_num,
+            )
         # The terminal renderer discovers the player from the entity list, while
         # the pygame renderer receives it separately. Keep the Stage 3 state
         # model separate and provide a render-only combined list.
@@ -1510,6 +1658,7 @@ def run_game(
             stage_num=stage_num,
             message=message[1],
             checkpoint=checkpoint[0],
+            reachable_cells=reachable_cells,
             **stage_draw_options,
         )
 
@@ -1521,6 +1670,8 @@ def run_game(
             return
         if move == (0, 0):
             continue
+        if getattr(ui, "farthest_preview", False):
+            ui.farthest_preview = False
         if getattr(ui, "shift_direction", False):
             view_floor = max(0, min(len(floors) - 1, view_floor + move[1]))
             continue
