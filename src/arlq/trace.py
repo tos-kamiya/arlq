@@ -3,7 +3,7 @@
 See docs/gameplay-trace-spec.md for the full specification. This module is
 internal developer/testing tooling (system-test golden masters), not a
 player-facing feature, so it is deliberately kept separate from arlq.py and
-stage3.py: those files call into `TraceRecorder` at a handful of points, and
+game_engine.py: those files call into `TraceRecorder` at a handful of points, and
 this module owns the trace file's schema plus the replay-side input source.
 """
 
@@ -33,7 +33,7 @@ KEY_TO_DIR: Dict[str, Tuple[int, int]] = {key: direction for direction, key in D
 
 class TraceRecorder:
     """Accumulates one play session's turns for --trace-record/--trace-replay
-    output. `run_game()` (arlq.py and stage3.py) calls `begin_turn()` /
+    output. `run_game()` (arlq.py and game_engine.py) calls `begin_turn()` /
     `set_player()` / `commit_turn()` / `record_quit()` / `set_outcome()`
     directly; `update_entities()` / `_step()` and their helpers call
     `record_wall()` / `record_contact()` / `add_expired()` /
@@ -173,7 +173,7 @@ def load_trace(path: Path) -> Dict[str, Any]:
 
 
 class ReplayUI:
-    """A UI stand-in that feeds recorded inputs to run_game()/stage3.run_game()
+    """A UI stand-in that feeds recorded inputs to run_game()/game_engine.run_game()
     in place of a human player, in place of any UI object.
 
     Draws are forwarded to `draw_ui` when given (--trace-replay-watch);
