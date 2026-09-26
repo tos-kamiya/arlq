@@ -569,6 +569,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
             continue
 
         player.lp -= d.MARKSMAN_LP_DAMAGE
+        player.known_monsters.add(d.monster_type_key(entity))
         mark = ((player.x - step_x, player.y - step_y), "-" if step_x else "|")
         marks = entity.arrow_marks
         marks[:] = [existing for existing in marks if existing[0] != mark[0]]
