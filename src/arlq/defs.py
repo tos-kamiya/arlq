@@ -66,7 +66,7 @@ ITEM_POISONED: str = "Poisoned"
 ITEM_TREASURE: str = "Treasure"
 
 EFFECT_SPECIAL_EXP: str = "Special Exp."
-EFFECT_LEVEL_HALVE: str = "Level Halve"
+EFFECT_LEVEL_REDUCE: str = "Level Reduce"
 EFFECT_FEED_MUCH: str = "Feed Much"
 EFFECT_UNLOCK_TREASURE: str = "Unlock Treasure"
 EFFECT_ENERGY_DRAIN: str = "Energy Drain"
@@ -81,7 +81,7 @@ PEGASUS_STEP_Y: int = 4
 CALTROP_SPREAD_RADIUS: int = 3
 CALTROP_WIDTH_EXPANSION_RATIO: float = 1.7
 CALTROP_LP_DAMAGE: int = 3
-MARKSMAN_LP_DAMAGE: int = 5
+MARKSMAN_LP_DAMAGE: int = 4
 BARRIER_LP_DAMAGE: int = 30
 
 ROCK_SPREAD_OFFSETS: List[Tuple[int, int]] = [
@@ -327,7 +327,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         treasure_key=CHAR_TREASURE + CHAR_DRAGON,
     ),  # Dragon
     _MT("e", 1, -5, effect=EFFECT_ENERGY_DRAIN, event_message="-- Your energy was drained!"),  # Erebus
-    _MT("E", 30, MIN_FOOD, effect=EFFECT_LEVEL_HALVE, event_message="-- Your level was halved!"),  # Erebus rare
+    _MT("E", 30, MIN_FOOD, effect=EFFECT_LEVEL_REDUCE, event_message="-- Your level was reduced!"),  # Erebus rare
     _MT(
         CHAR_FIRE_DRAKE,
         60,
@@ -471,8 +471,8 @@ def take_monster_item(
 
 
 def grant_defeat_level(player: Player, effect: Optional[str]) -> None:
-    if effect == EFFECT_LEVEL_HALVE:
-        player.level = max(1, player.level // 2)
+    if effect == EFFECT_LEVEL_REDUCE:
+        player.level = max(1, player.level * 2 // 3)
     else:
         player.level += 10 if effect == EFFECT_SPECIAL_EXP else 1
 

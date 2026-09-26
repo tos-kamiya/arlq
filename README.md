@@ -189,8 +189,8 @@ While playing Stage 3 or Stage 4, hold Shift and press Up or Down to inspect an 
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **k** Marksman | Level 80. After each player move, it shoots for 5 LP damage when aligned horizontally or vertically with a clear path. Walls, barriers, stairs, caltrops, monsters, and companions block its shot. Both chests block shots after W is defeated; while hidden, they do not. Unactivated `O` and `V` traps also block shots; Vortex disappears when defeated, and Collapse becomes an open hole when triggered. Arrows do not activate traps. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
-| **E** Rare Erebus | Level 30. When defeated, halves the player's level (rounded down, minimum 1) instead of granting the usual level increase; it restores 8 LP. It respawns after the usual interval. |
+| **k** Marksman | Level 80. After each player move, it shoots for 4 LP damage when aligned horizontally or vertically with a clear path. Walls, barriers, stairs, caltrops, monsters, and companions block its shot. Both chests block shots after W is defeated; while hidden, they do not. Unactivated `O` and `V` traps also block shots; Vortex disappears when defeated, and Collapse becomes an open hole when triggered. Arrows do not activate traps. It does not shoot at an adjacent player. Red `-` and `|` marks show where its arrows landed; each Marksman keeps up to 20 marks, oldest first, until it is defeated. |
+| **E** Rare Erebus | Level 30. When defeated, reduces the player's level to two-thirds (rounded down, minimum 1) instead of granting the usual level increase; it restores 8 LP. It respawns after the usual interval. |
 
 #### Traps
 
