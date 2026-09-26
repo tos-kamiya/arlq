@@ -265,8 +265,16 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
     assert golems[0][1].tribe.char == "g"
 
 
-def test_stage3_build_places_wyrm_treasure_without_mimics():
-    floors, _ = game_engine_module.build(stage_num=3)
+def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
+    random_state = game_engine_module.rand._value
+    random_seed = game_engine_module.rand.seed
+    try:
+        game_engine_module.rand.set_seed(12345)
+        floors, player = game_engine_module.build(stage_num=3)
+    finally:
+        game_engine_module.rand._value = random_state
+        game_engine_module.rand.seed = random_seed
+
     boss_floor = next(
         floor
         for floor in floors
@@ -285,6 +293,16 @@ def test_stage3_build_places_wyrm_treasure_without_mimics():
     assert len(treasures) == 1
     assert treasures[0].encounter_type == "TW"
     assert mimics == []
+    for char in ("J", "K", "H"):
+        assigned_floor = player.stage3_elf_floors[char] - 1
+        elves = [
+            entity
+            for floor in floors
+            for entity in floor.entities
+            if isinstance(entity, d.Monster) and entity.tribe.char == char
+        ]
+        assert len(elves) == 1
+        assert elves[0] in floors[assigned_floor].entities
 
 
 @pytest.mark.parametrize("blocking_tile", [
@@ -483,6 +501,33 @@ def test_stage4_displays_treasure_message_when_was_defeated_first():
     assert player.stage3_treasure_collected
 
 
+def test_stage3_win_replaces_last_combat_message_with_treasure_message(monkeypatch):
+    player = d.Player(2, 2, 200, d.LP_INIT)
+    wyrm = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
+    treasure = d.Treasure(4, 2, "TW")
+    floor = Floor(
+        field=blank_field(),
+        entities=[wyrm, treasure],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        up=(2, 2),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+    )
+    monkeypatch.setattr(game_engine_module, "build", lambda *_args, **_kwargs: ([floor], player))
+    messages = []
+    moves = iter([(1, 0), (1, 0), None])
+    ui = SimpleNamespace(
+        draw_stage=lambda **kwargs: messages.append(kwargs["message"]),
+        input_direction=moves.__next__,
+        input_alphabet=lambda: None,
+        map_mode=False,
+    )
+
+    game_engine_module.run_game(ui, "seed", stage_num=3)
+
+    assert messages[-1] == ">> Treasure chest obtained! <<"
+
+
 def test_stage4_chests_wait_for_w_defeat():
     player = d.Player(2, 2, 200, 90)
     treasure = d.Treasure(3, 2, "TW")
@@ -624,6 +669,37 @@ def test_legacy_respawn_queue_controls_actual_respawn(monkeypatch):
     respawn_entity(d.CHAR_TO_MONSTER_TRIBE["X"], entities, field)
 
     assert [(e.x, e.y, e.tribe.char) for e in entities if isinstance(e, d.Monster)] == [(5, 2, "X")]
+
+
+def test_legacy_respawned_companion_is_already_revealed(monkeypatch):
+    entities = []
+    field = blank_field()
+    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_args, **_kwargs: (5, 2))
+
+    companion = respawn_entity(d.CHAR_TO_TRIBE["n"], entities, field)
+
+    assert isinstance(companion, d.Companion)
+    assert companion.revealed
+
+
+def test_stage3_respawned_companion_is_already_revealed(monkeypatch):
+    floor = Floor(
+        field=blank_field(),
+        entities=[],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        up=(2, 2),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+    )
+    monkeypatch.setattr(game_engine_module, "find_random_place", lambda *_args, **_kwargs: (5, 2))
+
+    game_engine_module._process_respawn_queue(
+        [floor], d.Player(2, 2, 100, 90), [0], Counter({(0, "n"): 1}), 0
+    )
+
+    companion = next(entity for entity in floor.entities if isinstance(entity, d.Companion))
+    assert companion.tribe.char == "n"
+    assert companion.revealed
 
 
 def test_legacy_non_respawning_monster_does_not_enter_respawn_queue():

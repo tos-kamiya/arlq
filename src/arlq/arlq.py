@@ -190,7 +190,10 @@ def respawn_entity(
 ) -> d.Entity:
     """Place one monster or companion."""
     x, y = find_random_place(entities, field, distance=2)
-    return spawn_at(entities, x, y, tribe)
+    entity = spawn_at(entities, x, y, tribe)
+    if isinstance(entity, d.Companion):
+        entity.revealed = True
+    return entity
 
 
 def create_field(
