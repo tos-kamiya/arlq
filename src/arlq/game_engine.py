@@ -941,7 +941,7 @@ def _resolve_monster_contact(
             player.high_elf_refused = True
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
-    elif d.current_player_attack(player, 3) < d.monster_level(entity):
+    elif d.current_player_attack(player, stage_num) < d.monster_level(entity):
         # Losing still identifies the monster, including W. Treasure glyphs
         # remain gated separately by their unlock state in the renderer.
         if ch not in d.TRAP_MONSTER_DISGUISES and not entity.tribe.is_elf:

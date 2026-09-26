@@ -433,7 +433,7 @@ STAGE3_ROSTER_TRIBES: List[MonsterTribe] = _get_stage_roster_tribes(STAGE3_ROSTE
 STAGE4_ROSTER_TRIBES: List[MonsterTribe] = _get_stage_roster_tribes(STAGE4_ROSTER)
 
 
-def _stage3_javelin_active(player: Player) -> bool:
+def _javelin_follower_active(player: Player) -> bool:
     return any(follower[3] == "J" for follower in player.persistent_followers)
 
 
@@ -476,10 +476,10 @@ def grant_defeat_level(player: Player, effect: Optional[str]) -> None:
 
 def current_player_attack(player: Player, stage_num: int = 0) -> int:
     """
-    Player's current attack power: level and equipped item, plus Stage 3's
-    elf/flag bonuses when playing Stage 3. This is the single place that
-    combines those bonuses, so every caller (combat resolution, on-screen
-    color coding, the strength ranking column) sees the same value.
+    Player's current attack power: level and equipped item, plus permanent
+    bonuses from the Collector's flag and the Javelin Elf follower. Bonuses
+    apply in every stage, and this shared calculation keeps combat and display
+    consistent. `stage_num` is retained for existing callers.
     """
     if player.item == ITEM_SWORD_X1_5:
         value = player.level * 3 // 2
@@ -490,11 +490,10 @@ def current_player_attack(player: Player, stage_num: int = 0) -> int:
     else:
         value = player.level
 
-    if stage_num == 3:
-        if player.stage3_flags & STAGE3_K_FLAG:
-            value = (value * 6 + 1) // 5
-        if _stage3_javelin_active(player):
-            value = (value * 5 + 2) // 4
+    if player.stage3_flags & STAGE3_K_FLAG:
+        value = (value * 6 + 1) // 5
+    if _javelin_follower_active(player):
+        value = (value * 5 + 2) // 4
     return value
 
 
@@ -549,12 +548,12 @@ def build_strength_column(
 def level_item_labels(player: Player, stage_num: int) -> Tuple[str, str]:
     """Level and item fragments shared by both status bars.
 
-    Stage 3's K (x1.2) and J (+25%) suffixes apply only in that stage.
+    The Collector's x1.2 and Javelin Elf's +25% bonuses apply in every stage.
     x1.2 is omitted while a sword already replaces the base multiplier.
+    `stage_num` is retained for existing callers.
     """
-    stage3 = stage_num == 3
-    has_k = stage3 and bool(player.stage3_flags & STAGE3_K_FLAG)
-    has_j = stage3 and _stage3_javelin_active(player)
+    has_k = bool(player.stage3_flags & STAGE3_K_FLAG)
+    has_j = _javelin_follower_active(player)
     item = player.item
     if item == ITEM_SWORD_X1_5:
         level = f"LVL: {player.level} x1.5"

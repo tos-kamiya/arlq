@@ -1345,18 +1345,14 @@ def test_collector_and_javelin_elves_increase_stage3_attack():
     assert d.current_player_attack(player, 3) == 150
 
 
-@pytest.mark.parametrize("stage_num", [0, 1, 2])
-def test_stage3_bonuses_do_not_apply_outside_stage3(stage_num):
-    # Regression test: the on-screen red/blue color coding and the strength
-    # ranking column must use the same boosted attack value that Stage 3
-    # combat resolution uses, and only when actually in Stage 3 - otherwise a
-    # monster can be shown as unbeatable (red) while dying on contact, or
-    # vice versa.
+@pytest.mark.parametrize("stage_num", [0, 1, 2, 3, 4, 5])
+def test_collector_and_javelin_bonuses_apply_in_every_stage(stage_num):
+    # Field colors and combat must agree on permanent elf attack bonuses.
     player = d.Player(2, 2, 100, 90)
     player.stage3_flags = d.STAGE3_K_FLAG
     player.persistent_followers = [(2, 2, 0, "J")]
 
-    assert d.current_player_attack(player, stage_num) == 100
+    assert d.current_player_attack(player, stage_num) == 150
     assert d.current_player_attack(player, 3) == 150
 
 
@@ -1574,7 +1570,7 @@ def test_stage3_rare_amoeba_grants_the_special_exp_bonus():
     assert player.level == 12
 
 
-def test_level_item_labels_follow_the_stage3_attack_bonuses():
+def test_level_item_labels_follow_permanent_elf_attack_bonuses():
     player = d.Player(1, 1, 100, 90)
     player.item = d.ITEM_POISONED
     player.item_taken_from = "d"
@@ -1583,7 +1579,7 @@ def test_level_item_labels_follow_the_stage3_attack_bonuses():
     player.stage3_flags = d.STAGE3_K_FLAG
     player.persistent_followers.append((1, 1, 0, "J"))
     assert d.level_item_labels(player, 3) == ("LVL: 100 /2 x1.2 +25%", "+Poisoned(d)")
-    assert d.level_item_labels(player, 2) == ("LVL: 100 /2", "+Poisoned(d)")
+    assert d.level_item_labels(player, 2) == ("LVL: 100 /2 x1.2 +25%", "+Poisoned(d)")
 
     player.item = d.ITEM_SWORD_X1_5
     assert d.level_item_labels(player, 3)[0] == "LVL: 100 x1.5 +25%"
