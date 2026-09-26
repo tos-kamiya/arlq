@@ -51,6 +51,21 @@ def test_stage3_floor_declares_its_complete_state_shape():
     }
 
 
+def test_stage3_builder_supports_floors_without_island_or_filled_rooms():
+    layout = [(0, 0)] * stage3_module.FLOORS
+
+    floors, player = stage3_module.build(floor_layout=layout)
+
+    assert len(floors) == stage3_module.FLOORS
+    assert all(floor.island is None for floor in floors)
+    assert "I" not in player.stage3_elf_floors
+    assert not any(
+        isinstance(entity, d.Monster) and entity.tribe.char == "I"
+        for floor in floors
+        for entity in floor.entities
+    )
+
+
 def run_stage3_keys(keys, floors, player, floor, checkpoint, queue, history, stage_num=3):
     messages = []
     for key in keys:
