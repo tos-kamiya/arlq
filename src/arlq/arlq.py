@@ -763,19 +763,13 @@ def run_game(
     seed_value: Optional[int] = None,
     trace: Optional[TraceRecorder] = None,
     config: Optional[GameConfig] = None,
-    dev: bool = False,
 ) -> None:
     if config is None:
         config = GameConfig()
     show_entities = debug_show_entities
 
     if stage_num == 0:  # if stage is not selected yet
-        stage_numbers = (
-            d.PUBLIC_STAGE_NUMBERS
-            if dev
-            else tuple(stage for stage in d.PUBLIC_STAGE_NUMBERS if stage != 4)
-        )
-        r = ui.select_stage(stage_numbers)
+        r = ui.select_stage(d.PUBLIC_STAGE_NUMBERS)
         if r == 0:
             return
         stage_num = r
@@ -926,11 +920,6 @@ def main():
         help="GUI movement repeat delay and interval (0.1 to 1.0 seconds, or none); saves for future GUI starts.",
     )
     dev = parser.add_argument_group("Development and debugging options")
-    dev.add_argument(
-        "--dev",
-        action="store_true",
-        help="Show development stages in the stage selection menu.",
-    )
     dev.add_argument(
         "--trap-test", action="store_true", help="Start the one-floor trap test stage."
     )
@@ -1085,7 +1074,6 @@ def main():
                 None,
                 trace=trace_recorder,
                 config=game_config,
-                dev=args.dev,
             )
         else:
             run_game(
@@ -1096,7 +1084,6 @@ def main():
                 args.seed,
                 trace=trace_recorder,
                 config=game_config,
-                dev=args.dev,
             )
 
     if args.trace_replay and not args.trace_replay_watch:

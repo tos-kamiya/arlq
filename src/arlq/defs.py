@@ -6,7 +6,7 @@ TILE_NUM_X: int = 6
 TILE_NUM_Y: int = 3
 FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
-# Stage 4 is experimental but available from the game's UI and command line.
+# Stages available from the game's UI and command line.
 PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4)
 # Stages that feature elves and share the multi-floor progress state.
 ELF_STAGES = frozenset({3, 4})
