@@ -1419,6 +1419,13 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(
 
     monkeypatch.setattr(game_engine_module, "build", initial_state)
     monkeypatch.setattr(stage_replay_module, "build", initial_state)
+
+    def spawn_loop(entities, _field, char, _avoid, _island, _floor_index=None):
+        assert char == "l"
+        entities.append(d.Companion(12, 12, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        return 12, 12
+
+    monkeypatch.setattr(stage_replay_module, "_spawn", spawn_loop)
     player = d.Player(2, 2, 9, 30)
     player.known_monsters = {"MW"}
     player.stage3_elf_floors = {"I": 2}
@@ -1463,6 +1470,11 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(
     restored_companion = next(
         entity for entity in floors[0].entities if isinstance(entity, d.Companion)
     )
+    restored_loop = next(
+        entity
+        for entity in floors[0].entities
+        if isinstance(entity, d.Companion) and entity.tribe.char == "l"
+    )
     restored_chest = next(
         entity for entity in floors[0].entities if isinstance(entity, d.Treasure)
     )
@@ -1470,6 +1482,12 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(
     assert not restored_mimic.met
     assert restored_mimic.active
     assert not restored_companion.revealed
+    assert (restored_loop.x, restored_loop.y) == (12, 12)
+    assert restored_loop.revealed
+    assert (
+        d.revealed_entity_glyphs(restored_loop, set(), False, 200, None)[0].char
+        == "l"
+    )
     assert not restored_chest.unlocked
     assert player.known_monsters == {"MW"}
     assert player.stage3_elf_floors == {"I": 2}

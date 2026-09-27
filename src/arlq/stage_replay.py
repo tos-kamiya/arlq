@@ -152,7 +152,7 @@ def rewind_to_history(
         if isinstance(restored, d.Companion) and restored.tribe.char == "l":
             del restored_entities[index]
             break
-    _spawn(
+    l_position = _spawn(
         restored_entities,
         floors[floor[0]].field,
         "l",
@@ -160,5 +160,13 @@ def rewind_to_history(
         floors[floor[0]].island,
         floor[0],
     )
+    for restored in restored_entities:
+        if (
+            isinstance(restored, d.Companion)
+            and restored.tribe.char == "l"
+            and (restored.x, restored.y) == l_position
+        ):
+            restored.revealed = True
+            break
 
     return tr("-- Time folds back to the beginning of the recorded past.")
