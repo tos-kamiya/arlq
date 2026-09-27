@@ -28,14 +28,14 @@ The final floor contains the Dread Wyrm (`W`), its Wyrm guard (`w`),
 and the treasure chest and Mimic. Barriers cover ten percent of its eligible
 floor cells, giving the final floor a more hazardous feel.
 
-### Elf L
+### Lifebringer Elf (`L`)
 
-One Elf L appears on a random floor. Contact restores LP to 120 and raises the
-player's level by one. This can temporarily exceed the normal 100 LP gauge.
-After defeat, L respawns at a 65-turn monster respawn tick on a randomly
-selected floor. L counts toward the High Elf's two-elf requirement and has
-its own mark in the bottom progress display. Once met, L's floor number is
-shown as `?` there, so its respawn location is unknown.
+One Lifebringer Elf appears on a random floor. Meeting L restores LP to 120 and raises
+the player's level by one. This can temporarily exceed the normal 100 LP gauge.
+At a 65-turn respawn tick, L returns on a randomly selected floor. L counts
+toward the High Elf's two-elf requirement and has its own mark in the bottom
+progress display. Once met, L's floor number is shown as `?` there, so its
+respawn location is unknown.
 
 ### Monsters
 
@@ -71,9 +71,9 @@ place and can be used as a passage to the floor below.
 
 最終フロアにはドレッドウィルム（`W`）、護衛のウィルム（`w`）、宝箱、ミミックが配置されます。階段やエンティティのない床マスの10%がバリアになり、より危険な雰囲気になります。
 
-### エルフL
+### ライフブリンガーエルフ（`L`）
 
-エルフLはランダムなフロアに1体だけ登場します。接触するとレベルが1上がり、LPが120まで回復します。通常のLPゲージの上限である100を一時的に超えることがあります。Lはハイエルフの条件となる「エルフ2体と知り合う」に数えられ、画面下の進捗フラグにも表示されます。一度接触すると、進捗表示上のLの階数は `?` になり、再出現先は分からなくなります。倒した後は65ターン周期のモンスター再出現時に、ランダムなフロアへ再出現します。
+ライフブリンガーエルフはランダムなフロアに1体だけ登場します。接触するとレベルが1上がり、LPが120まで回復します。通常のLPゲージの上限である100を一時的に超えることがあります。Lはハイエルフの条件となる「エルフ2体と知り合う」に数えられ、画面下の進捗フラグにも表示されます。一度接触すると、進捗表示上のLの階数は `?` になり、再出現先は分からなくなります。65ターン周期の再出現時に、Lはランダムなフロアへ再出現します。
 
 ### モンスター
 

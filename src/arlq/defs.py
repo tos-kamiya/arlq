@@ -91,7 +91,6 @@ EFFECT_CALTROP_SPREAD: str = "Caltrop Spread"
 EFFECT_ROCK_SPREAD: str = "Rock Spread"
 EFFECT_VORTEX: str = "Vortex"
 EFFECT_GOT_TREASURE: str = "Got Treasure"
-EFFECT_LP_OVERCHARGE: str = "LP Overcharge"
 
 PEGASUS_STEP_X: int = 9
 PEGASUS_STEP_Y: int = 4
@@ -199,6 +198,19 @@ class MonsterTribe(Tribe):
         self.is_elf: bool = is_elf
 
 
+class ElfTribe(MonsterTribe):
+    """An elf tribe, kept separate from ordinary monster tribes."""
+
+    def __init__(
+        self,
+        char: str,
+        event_message: Optional[str] = None,
+        respawn_on_random_floor: bool = False,
+    ):
+        super().__init__(char, level=0, feed=0, event_message=event_message, is_elf=True)
+        self.respawn_on_random_floor = respawn_on_random_floor
+
+
 class CompanionTribe(Tribe):
     """
     Class representing companion tribes in the game.
@@ -260,6 +272,13 @@ class Monster(Entity):
         self.met: bool = False
         self.active: bool = True
         self.arrow_marks: List[Tuple[Point, str]] = []
+
+
+class Elf(Monster):
+    """An encounterable elf. Elves share map state with monsters but do not fight."""
+
+    def __init__(self, x: int, y: int, tribe: ElfTribe):
+        super().__init__(x, y, tribe)
 
 
 def monster_level(monster: Monster) -> int:
@@ -351,6 +370,7 @@ class SpawnConfig:
 
 
 _MT = MonsterTribe
+_ET = ElfTribe
 _CT = CompanionTribe
 
 MIN_FOOD = 8
@@ -409,40 +429,26 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         effect=EFFECT_CALTROP_SPREAD,
         event_message="-- Caltrops were scattered!",
     ),  # Caltrop Plant
-    _MT(
+    _ET(
         "I",
-        0,
-        0,
         event_message="-- The Isolated Elf told you about the history of the elves.",
-        is_elf=True,
     ),
-    _MT(
+    _ET(
         "J",
-        0,
-        0,
         event_message="-- The Javelin Elf joined your hunt for the Dread Wyrm!",
-        is_elf=True,
     ),
-    _MT(
+    _ET(
         "K",
-        0,
-        0,
         event_message="-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!",
-        is_elf=True,
     ),
-    _MT(
+    _ET(
         "H",
-        0,
-        0,
         event_message="-- The High Elf bestowed the talisman upon you!",
-        is_elf=True,
     ),
-    _MT(
+    _ET(
         "L",
-        0,
-        0,
-        effect=EFFECT_LP_OVERCHARGE,
-        event_message="-- Elf L restored your LP and raised your level!",
+        event_message="-- The Lifebringer Elf restored your LP and raised your level!",
+        respawn_on_random_floor=True,
     ),
     _MT("k", 80, MIN_FOOD),  # Marksman
     _MT("M", 85, 16, event_message="-- The treasure chest was a Mimic!"),  # Mimic
@@ -464,7 +470,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     ),
 ]
 assert len({tribe.char for tribe in MONSTER_TRIBES}) == len(MONSTER_TRIBES), (
-    "Duplicate monster tribe char"
+    "Duplicate tribe char"
 )
 
 COMPANION_TRIBES: List[CompanionTribe] = [
@@ -753,7 +759,6 @@ STAGE3_ROSTER_TRIBES: List[MonsterTribe] = sorted(
 STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
     [
         *_get_stage_roster_tribes(STAGE4_ROSTER),
-        CHAR_TO_MONSTER_TRIBE["L"],
         MonsterTribe(CHAR_COLLAPSE, level=1, feed=0),
     ],
     key=lambda tribe: tribe.level,
