@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 4.9.5 - 2026-09-28
+
+- Expand the Vortex's affected area to 90% of the field width.
+- Keep the Loop Companion revealed at its new position after a rewind.
+
 ## 4.9.4 - 2026-09-28
 
 - Add a yellow low-LP warning when the player's LP is 40 or below.
