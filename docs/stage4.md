@@ -4,19 +4,19 @@
 
 Stage 4 is experimental and appears in the stage selection menu when started
 with `--dev`. It has five floors and adds new enemies and traps to the Stage 3
-structure. Empowered enemies become more common on deeper floors; rank 3
-enemies use a double quote marker, such as `b"`. Its design and gameplay are
-subject to change.
+structure. Rank 2 and 3 enemies are concentrated on floors 4 and 5; rank 3
+enemies use a double quote marker, such as `b"`. The reduced Rare Amoeba (`A`)
+count makes leveling harder. Its design and gameplay are subject to change.
 
-| Floor | Rank 2 population | Rank 3 population |
-| ---: | ---: | ---: |
-| 1 | 4 | 0 |
-| 2 | 7 | 0 |
-| 3 | 12 | 2 |
-| 4 | 16 | 4 |
-| 5 | 21 | 5 |
+| Floor | `A` population | Rank 2 population | Rank 3 population |
+| ---: | ---: | ---: | ---: |
+| 1 | 1 | 3 | 0 |
+| 2 | 1 | 3 | 0 |
+| 3 | 1 | 3 | 0 |
+| 4 | 1 | 4 | 2 |
+| 5 | 1 | 2 | 1 |
 
-The final floor contains the rank 2 Dread Wyrm (`W'`), its Wyrm guard (`w`),
+The final floor contains the Dread Wyrm (`W`), its Wyrm guard (`w`),
 and the treasure chest and Mimic.
 
 ### Monsters
@@ -40,17 +40,17 @@ place and can be used as a passage to the floor below.
 
 ## 日本語
 
-ステージ4は実験版で、`--dev`を指定するとステージ選択メニューに表示されます。ステージ3を拡張した5フロア構成で、新たな敵やトラップが登場します。下層ほど強化個体が増え、rank 3の敵は `b"` のようにダブルクォートで表示されます。仕様やゲーム内容は今後変更される場合があります。
+ステージ4は実験版で、`--dev`を指定するとステージ選択メニューに表示されます。ステージ3を拡張した5フロア構成で、新たな敵やトラップが登場します。希少モンスターの `A` は各フロアに1体ずつ配置し、rank 2・3の敵はフロア4・5を中心に配置しています。rank 3の敵は `b"` のようにダブルクォートで表示されます。仕様やゲーム内容は今後変更される場合があります。
 
-| フロア | rank 2の個体数 | rank 3の個体数 |
-| ---: | ---: | ---: |
-| 1 | 4 | 0 |
-| 2 | 7 | 0 |
-| 3 | 12 | 2 |
-| 4 | 16 | 4 |
-| 5 | 21 | 5 |
+| フロア | `A`の数 | rank 2の個体数 | rank 3の個体数 |
+| ---: | ---: | ---: | ---: |
+| 1 | 1 | 3 | 0 |
+| 2 | 1 | 3 | 0 |
+| 3 | 1 | 3 | 0 |
+| 4 | 1 | 4 | 2 |
+| 5 | 1 | 2 | 1 |
 
-最終フロアにはrank 2のドレッドウィルム（`W'`）、護衛のウィルム（`w`）、宝箱、ミミックが配置されます。
+最終フロアにはドレッドウィルム（`W`）、護衛のウィルム（`w`）、宝箱、ミミックが配置されます。
 
 ### モンスター
 
