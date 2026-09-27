@@ -88,7 +88,7 @@ reproduce the same layout.
   The goal of the game is to explore a dungeon with procedurally generated corridors and find the treasure chest hidden by the dragon. In Stage 1, find the dragon's chest; in Stage 2, find the fire drake's chest.
   In Stages 3, 4, and 5, the two objectives are to defeat the `W` Dread Wyrm and claim its treasure chest. You must accomplish both to clear the stage. The elves' help is useful for accomplishing these objectives.
 
-  Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Four elves, `I`, `J`, `K`, and `H`, appear.
+  Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Discovering a stair also marks its matching cell on the adjacent floor as explored. Four elves, `I`, `J`, `K`, and `H`, appear.
 
 * **Player and Fog**  
   You control the character represented by `@` using the arrow keys or WASD.

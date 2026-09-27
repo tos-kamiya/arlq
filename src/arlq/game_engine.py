@@ -811,6 +811,22 @@ def _handle_floor_transition(
     return None
 
 
+def _reveal_paired_stair_cells(floors: List[Floor]) -> None:
+    """Mark a stair's matching cell on the adjacent floor as known."""
+    for index in range(len(floors) - 1):
+        upper = floors[index]
+        lower = floors[index + 1]
+        down_stairs = upper.down_stairs or [upper.down]
+        up_stairs = lower.up_stairs or [lower.up]
+        for stair_index, upper_point in enumerate(down_stairs):
+            lower_point = up_stairs[min(stair_index, len(up_stairs) - 1)]
+            ux, uy = upper_point
+            lx, ly = lower_point
+            if upper.seen[uy][ux] or lower.seen[ly][lx]:
+                upper.seen[uy][ux] = 1
+                lower.seen[ly][lx] = 1
+
+
 def _process_respawn_queue(
     floors: List[Floor],
     player: d.Player,
@@ -1106,6 +1122,7 @@ def run_game(
         for y in range(len(cur)):
             for x in range(len(cur[0])):
                 current.seen[y][x] |= cur[y][x]
+        _reveal_paired_stair_cells(floors)
 
         message = tick_message(message)
 
