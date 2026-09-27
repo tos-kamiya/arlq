@@ -432,7 +432,7 @@ def _defeat_monster(
     # Every ordinary monster replaces the current item. This is important
     # for d (Poisoned): defeating another monster with no item must clear
     # the poison and identify the new source.
-    if ch not in {"H", "L"}:
+    if ch != "H":
         old_item, old_source = player.item, player.item_taken_from
         d.take_monster_item(player, entity.tribe.item, ch)
         if trace is not None and old_item:
@@ -453,13 +453,8 @@ def _defeat_monster(
         player.stage3_flags |= d.STAGE3_H_FLAG
     if ch == "C":
         player.stage3_flags |= d.STAGE3_C_FLAG
-    if ch == "L":
-        player.stage3_flags |= d.STAGE_L_FLAG
-
     d.grant_defeat_level(player, entity.tribe.effect)
     d.apply_feed(player, entity.tribe.feed)
-    if entity.tribe.effect == d.EFFECT_LP_OVERCHARGE:
-        player.lp = d.LP_OVERCHARGE_MAX
     player.karma += 1
 
     if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
@@ -489,10 +484,7 @@ def _defeat_monster(
             )
         _vortex_rearrange(current, player, floor[0])
 
-    if (
-        (d.monster_level(entity) > 0 or ch == "L")
-        and ch not in d.STAGE3_NO_RESPAWN_MONSTERS
-    ):
+    if d.monster_level(entity) > 0 and ch not in d.STAGE3_NO_RESPAWN_MONSTERS:
         spawn_key = (floor[0], d.monster_type_key(entity))
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
 
@@ -609,6 +601,14 @@ def _resolve_monster_contact(
             player.high_elf_refused = True
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
+    elif ch == "L":
+        player.stage3_flags |= d.STAGE_L_FLAG
+        d.grant_defeat_level(player, None)
+        player.lp = d.LP_OVERCHARGE_MAX
+        spawn_key = (floor[0], d.monster_type_key(entity))
+        queue[spawn_key] = queue.get(spawn_key, 0) + 1
+        if trace is not None:
+            trace.record_contact({"type": "elf", "id": "L", "outcome": "granted"})
     elif d.current_player_attack(player) < d.monster_level(entity):
         # Losing still identifies the monster, including W. Treasure glyphs
         # remain gated separately by their unlock state in the renderer.
@@ -855,8 +855,11 @@ def _process_respawn_queue(
         if not count:
             continue
         ch = type_key[:-1] if type_key[-1].isdigit() else type_key
+        tribe = d.CHAR_TO_TRIBE[ch]
         spawn_floor = (
-            rand.randrange(len(floors)) if ch == "L" else queued_floor
+            rand.randrange(len(floors))
+            if getattr(tribe, "respawn_on_random_floor", False)
+            else queued_floor
         )
         avoid = {(player.x, player.y)} if spawn_floor == floor[0] else set()
         if type_key[-1].isdigit():
@@ -884,11 +887,12 @@ def _process_respawn_queue(
                 respawned.revealed = True
         queue[(queued_floor, type_key)] -= 1
         if trace is not None:
-            kind = (
-                "monster"
-                if isinstance(d.CHAR_TO_TRIBE[ch], d.MonsterTribe)
-                else "companion"
-            )
+            if isinstance(respawned, d.Elf):
+                kind = "elf"
+            elif isinstance(respawned, d.Monster):
+                kind = "monster"
+            else:
+                kind = "companion"
             trace.add_world_event(
                 {
                     "type": "respawn",

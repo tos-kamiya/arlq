@@ -184,7 +184,9 @@ def spawn_at(
     empowered: int = 1,
     origin_floor: Optional[int] = None,
 ) -> d.Entity:
-    if isinstance(tribe, d.MonsterTribe):
+    if isinstance(tribe, d.ElfTribe):
+        entity: d.Entity = d.Elf(x, y, tribe)
+    elif isinstance(tribe, d.MonsterTribe):
         entity: d.Entity = d.Monster(x, y, tribe, empowered=empowered)
     else:
         assert isinstance(tribe, d.CompanionTribe)
