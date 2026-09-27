@@ -358,7 +358,19 @@ def iterate_ellipse_points(
     for dy in range(-radius, radius + 1):
         y = center_y + dy
         if 0 <= y < d.FIELD_HEIGHT:
-            w = int(math.sqrt((radius * width_expansion_ratio) ** 2 - dy**2) + 0.5)
+            if radius == 0:
+                w = 0
+            else:
+                horizontal_radius = radius * width_expansion_ratio
+                vertical_position = max(
+                    0.0,
+                    (abs(dy) - d.ELLIPSE_CELL_EDGE_THRESHOLD) / radius,
+                )
+                w = int(
+                    horizontal_radius
+                    * math.sqrt(1 - vertical_position**2)
+                    + 0.5
+                )
             for dx in range(-w, w + 1):
                 x = center_x + dx
                 if 0 <= x < d.FIELD_WIDTH:
@@ -865,15 +877,6 @@ def main():
         "--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, 4, or 5)."
     )
     parser.add_argument(
-        "--dev",
-        action="store_true",
-        help="Show development stages in the stage selection menu.",
-    )
-    parser.add_argument(
-        "--trap-test", action="store_true", help="Start the one-floor trap test stage."
-    )
-
-    parser.add_argument(
         "--version", action="version", version="%(prog)s " + __version__
     )
 
@@ -903,9 +906,6 @@ def main():
         help="Use dots instead of background colors for unexplored areas in the terminal UI.",
     )
     parser.add_argument(
-        "--debug-show-entities", action="store_true", help="Debug option."
-    )
-    parser.add_argument(
         "--lang",
         choices=["auto", "en", "ja"],
         default="auto",
@@ -924,22 +924,34 @@ def main():
         default=argparse.SUPPRESS,
         help="GUI movement repeat delay and interval (0.1 to 1.0 seconds, or none); saves for future GUI starts.",
     )
-    parser.add_argument(
+    dev = parser.add_argument_group("Development and debugging options")
+    dev.add_argument(
+        "--dev",
+        action="store_true",
+        help="Show development stages in the stage selection menu.",
+    )
+    dev.add_argument(
+        "--trap-test", action="store_true", help="Start the one-floor trap test stage."
+    )
+    dev.add_argument(
+        "--debug-show-entities", action="store_true", help="Debug option."
+    )
+    dev.add_argument(
         "--trace-record",
         metavar="PATH",
         help="Internal/testing: record inputs and results of this session to a gameplay trace JSON file.",
     )
-    parser.add_argument(
+    dev.add_argument(
         "--trace-replay",
         metavar="PATH",
         help="Internal/testing: replay a gameplay trace JSON file headlessly and write a new trace file.",
     )
-    parser.add_argument(
+    dev.add_argument(
         "--trace-replay-output",
         metavar="OUT_PATH",
         help="Output path for --trace-replay (default: PATH with '.replay' inserted before its extension).",
     )
-    parser.add_argument(
+    dev.add_argument(
         "--trace-replay-watch",
         action="store_true",
         help="With --trace-replay, also render the replay to the real UI (pyglet/blessed) as it runs.",

@@ -174,6 +174,7 @@ The bottom-right marker shows the displayed floor as a fraction (for example, `3
 
 | Display & Name | Description |
 | -------------- | ----------- |
+| **m** Spore | Defeating it gives you Spores and clouds your vision. |
 | **w** Wyrm | Protected by a barrier. |
 | **W** Dread Wyrm | Protected by a barrier and unlocks the treasure chest when defeated. |
 
