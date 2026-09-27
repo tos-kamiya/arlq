@@ -91,6 +91,7 @@ def rewind_to_history(
     """Rebuild the state at the start of the recorded rewind window."""
     known_monsters = set(player.known_monsters)
     elf_floors = deepcopy(player.stage3_elf_floors)
+    known_elf_floors = set(player.known_elf_floors)
     seen = deepcopy([floor_data.seen for floor_data in floors])
 
     if replay_context is not None:
@@ -138,10 +139,11 @@ def rewind_to_history(
     for floor_data, preserved_seen in zip(floors, seen, strict=True):
         floor_data.seen = preserved_seen
     player.__dict__.update(restored_player_state.__dict__)
-    # Monster and trap type identification and elf floor locations survive
-    # the rewind. Entity encounter state is restored by replay.
+    # Monster/trap identification, elf floor locations, and known elf contacts
+    # survive the rewind. Entity encounter state is restored by replay.
     player.known_monsters = known_monsters
     player.stage3_elf_floors = elf_floors
+    player.known_elf_floors = known_elf_floors
 
     history.clear()
 

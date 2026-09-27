@@ -183,6 +183,8 @@ The bottom-right marker shows the displayed floor as a fraction (for example, `3
 
 The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first contact made while their condition is unmet; any contact after that sends you to a random location on the map.
 
+Stage 4 also has one Elf L on a random floor. Contact raises your level by one and restores LP to 120, temporarily above the normal 100 LP gauge. L counts toward the two-elf requirement for the High Elf and has its own progress mark. Once met, L's floor is shown as `?` in the progress display. After defeat, L returns at a 65-turn monster respawn tick on a randomly selected floor.
+
 Stage 4 and the experimental Stage 5 are documented in [docs/stage4.md](docs/stage4.md) and [docs/stage5.md](docs/stage5.md).
 
 ## Development commands

@@ -281,7 +281,13 @@ class BlessedUI:
         add(f"LP: {player.lp} [")
         bar_len = 8
         filled = round(max(0, min(player.lp, d.LP_MAX)) / d.LP_MAX * bar_len)
-        bar_color = "red" if player.lp <= d.LP_LOW_THRESHOLD else None
+        bar_color = (
+            "magenta"
+            if player.lp > d.LP_MAX
+            else "red"
+            if player.lp <= d.LP_LOW_THRESHOLD
+            else None
+        )
         add("#" * filled + "-" * (bar_len - filled), bar_color)
         add("]  ")
         add("/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit")
@@ -296,7 +302,7 @@ class BlessedUI:
         if message:
             available = self.term.width - x - 1
             if available > 0:
-                add(self.term.truncate(message, available), bold=True)
+                add(self.term.truncate(message, available), color="yellow")
         return "".join(output)
 
     def draw_stage(

@@ -637,9 +637,15 @@ class PygletUI:
         bar_width = bar_cells * self.cell_size_x
         bar_height = self.cell_size_y // 2
         y_offset = self.field_height * self.cell_size_y + (self.cell_size_y - bar_height) // 2
-        progress_ratio = player.lp / d.LP_MAX
+        progress_ratio = min(player.lp, d.LP_MAX) / d.LP_MAX
         fill_width = int(bar_width * progress_ratio)
-        lp_color = COLOR_MAP[CI_RED] if player.lp <= d.LP_LOW_THRESHOLD else COLOR_MAP["default"]
+        lp_color = (
+            COLOR_MAP[CI_MAGENTA]
+            if player.lp > d.LP_MAX
+            else COLOR_MAP[CI_RED]
+            if player.lp <= d.LP_LOW_THRESHOLD
+            else COLOR_MAP["default"]
+        )
 
         self._draw_rect_outline(x_offset, y_offset, bar_width, bar_height, COLOR_MAP["default"])
         if fill_width > 0:
@@ -650,16 +656,16 @@ class PygletUI:
         item_x_offset = x_offset + bar_width + 10
         self._draw_text((item_x_offset // self.cell_size_x, self.field_height), item_status, COLOR_MAP["default"])
 
+        progress_x = 0
         if stage_num in (3, 4, 5):
-            progress_x = 0
             for label, achieved in d.stage3_progress_marks(player):
                 color = COLOR_MAP["default"] if achieved else (100, 106, 118)
                 self._draw_text((progress_x, self.field_height + 1), label, color, bold=True)
                 progress_x += len(label) + 1
-            if message:
-                self._draw_text((18, self.field_height + 1), message, COLOR_MAP[CI_YELLOW], bold=True)
-        elif message:
-            self._draw_text((0, self.field_height + 1), message, COLOR_MAP["default"], bold=True)
+        if message:
+            self._draw_text(
+                (progress_x, self.field_height + 1), message, COLOR_MAP[CI_YELLOW]
+            )
 
     def _text_width(self, text: str, bold: bool = False) -> int:
         font_name: str

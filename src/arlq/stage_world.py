@@ -129,67 +129,6 @@ def _spawn_roster_entries(
             _spawn(entities, field, ch, reserved, island_tile, floor_index, empowered)
 
 
-def _spawn_island_chimera_pair(
-    components: Tuple[set[d.Point], ...],
-    entities: List[d.Entity],
-    field: List[List[str]],
-    reserved: Container[d.Point],
-    floor_index: int,
-    empowered: int,
-) -> None:
-    """Place each c beside a wall between the split room components."""
-    first, second = components
-    boundaries = []
-    for room in first:
-        for neighbor in (
-            (room[0] - 1, room[1]),
-            (room[0] + 1, room[1]),
-            (room[0], room[1] - 1),
-            (room[0], room[1] + 1),
-        ):
-            if neighbor in second:
-                boundaries.append((room, neighbor))
-    if not boundaries:
-        raise ValueError("split room components must share a wall")
-
-    room_a, room_b = rand.choice(boundaries)
-    if room_a[1] == room_b[1]:
-        wall_x = max(room_a[0], room_b[0]) * (d.TILE_WIDTH + 1)
-        center_y = room_center(room_a)[1]
-        points = [(wall_x - 2, center_y + 1), (wall_x + 2, center_y + 1)]
-    else:
-        wall_y = max(room_a[1], room_b[1]) * (d.TILE_HEIGHT + 1)
-        center_x = room_center(room_a)[0]
-        points = [(center_x + 1, wall_y - 2), (center_x + 1, wall_y + 2)]
-
-    # Leave one floor cell between each c and the split wall so neither
-    # occupies the passage endpoint. If a stair or entity occupies either
-    # cell, move both along the wall while keeping that gap.
-    offsets = [0, 1, -2, 2, -3, 3, -4]
-    for offset in offsets:
-        if room_a[1] == room_b[1]:
-            candidate_points = [(x, y + offset) for x, y in points]
-        else:
-            candidate_points = [(x + offset, y) for x, y in points]
-        if any(
-            point in reserved
-            or field[point[1]][point[0]] != d.CHAR_FLOOR
-            or any((entity.x, entity.y) == point for entity in entities)
-            for point in candidate_points
-        ):
-            continue
-        for point in candidate_points:
-            spawn_at(
-                entities,
-                *point,
-                d.CHAR_TO_TRIBE["c"],
-                empowered=empowered,
-                origin_floor=floor_index,
-            )
-        return
-    raise ValueError("could not place c beside the split room wall")
-
-
 def _spawn_assigned_floor_elves(
     entries: List[Tuple[str, int, int]],
     elf_floors: Dict[str, int],
@@ -317,6 +256,7 @@ def _build_floor(
     *,
     roster: List[Tuple[str, int, int]],
     stage_num: int = 3,
+    split_rooms: bool = False,
     up_point: Optional[d.Point] = None,
     down_point: Optional[d.Point] = None,
 ) -> Floor:
@@ -329,7 +269,6 @@ def _build_floor(
         else d.STAGE3_FLOORS
     )
     island_count, filled_count = room_counts
-    split_island_graph = stage_num == 4 and index in (1, 3)
     field, up, down, island_rooms, _, room_components = generate_floor_field(
         up_point if up_point is not None else entry_point,
         down_point,
@@ -337,7 +276,7 @@ def _build_floor(
         corridor_v_width,
         island_count,
         filled_count,
-        split_room_graph=split_island_graph,
+        split_room_graph=split_rooms,
     )
     island_tile = next(iter(island_rooms), None)
 
@@ -349,33 +288,9 @@ def _build_floor(
     entities: List[d.Entity] = []
     reserved = {up, down}
     spawn_roster = [entry for entry in roster if entry[0] != "M"]
-    if room_components:
-        c_count = sum(count for ch, count, _ in spawn_roster if ch == "c")
-        if c_count < len(room_components):
-            raise ValueError("split Stage 4 floor needs one c per room component")
-        c_to_remove = len(room_components)
-        adjusted_roster = []
-        for ch, count, empowered in spawn_roster:
-            if ch == "c" and c_to_remove:
-                removed = min(count, c_to_remove)
-                count -= removed
-                c_to_remove -= removed
-            if count:
-                adjusted_roster.append((ch, count, empowered))
-        spawn_roster = adjusted_roster
     ordinary_roster, elf_roster, wyrm_roster = _split_floor_roster(
         spawn_roster, elf_floors
     )
-    if room_components:
-        island_chimera_rank = 2 if index == 1 else 3
-        _spawn_island_chimera_pair(
-            room_components,
-            entities,
-            field,
-            reserved,
-            index,
-            island_chimera_rank,
-        )
     _spawn_roster_entries(
         ordinary_roster, entities, field, reserved, island_tile, index
     )
@@ -501,6 +416,8 @@ def build(
                 char: rand.randrange(1, floor_count) for char in ("V", "E")
             }
         special_floors = {"g": rand.randrange(floor_count)}
+        if stage_num == 4:
+            special_floors["L"] = rand.randrange(floor_count)
         m_floor = None
     else:
         special_floors = {}
@@ -513,6 +430,14 @@ def build(
         for _ in range(floor_count - 2):
             options = [tile for tile in tiles if tile != stair_tiles[-1]]
             stair_tiles.append(rand.choice(options))
+
+    split_floor_indices = set()
+    if stage_num == 4:
+        available_floors = list(range(1, floor_count))
+        for _ in range(2):
+            split_floor_indices.add(
+                available_floors.pop(rand.randrange(len(available_floors)))
+            )
 
     floors: List[Floor] = []
     entry_point = None
@@ -558,6 +483,7 @@ def build(
             layout_by_floor[index],
             roster=roster,
             stage_num=stage_num,
+            split_rooms=index in split_floor_indices,
             up_point=up_point,
             down_point=down_point,
         )
@@ -576,6 +502,8 @@ def build(
 
     player = d.Player(floors[0].up[0], floors[0].up[1], 1, d.LP_INIT)
     player.stage3_elf_floors = {char: floor + 1 for char, floor in elf_floors.items()}
+    if "L" in special_floors:
+        player.stage3_elf_floors["L"] = special_floors["L"] + 1
     return floors, player
 
 
@@ -648,31 +576,12 @@ def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
         return
     for index in range(len(floors) - 1):
         upper, lower = floors[index], floors[index + 1]
-        split_floor = (
-            lower
-            if lower.room_components
-            else upper
-            if upper.room_components
-            else None
-        )
-        target_rooms: Optional[Container[d.Point]] = None
-        avoid_stair_rooms = True
-        if split_floor is not None:
-            primary_stair = lower.up if split_floor is lower else upper.down
-            target_rooms = next(
-                rooms
-                for rooms in split_floor.room_components
-                if tile_at(primary_stair) in rooms
-            )
-            avoid_stair_rooms = False
         candidates = [
             point
             for point in _transition_candidates(
                 upper,
                 lower,
                 upper.down_stairs,
-                allowed_rooms=target_rooms,
-                avoid_stair_rooms=avoid_stair_rooms,
             )
             if point != upper.down and point != lower.up
         ]
@@ -698,8 +607,6 @@ def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
                     upper,
                     lower,
                     upper.down_stairs,
-                    allowed_rooms=target_rooms,
-                    avoid_stair_rooms=avoid_stair_rooms,
                 )
                 if candidate != upper.down and candidate != lower.up
             ]
