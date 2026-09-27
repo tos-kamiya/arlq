@@ -432,7 +432,7 @@ def _defeat_monster(
     # Every ordinary monster replaces the current item. This is important
     # for d (Poisoned): defeating another monster with no item must clear
     # the poison and identify the new source.
-    if ch != "H":
+    if ch not in {"H", "L"}:
         old_item, old_source = player.item, player.item_taken_from
         d.take_monster_item(player, entity.tribe.item, ch)
         if trace is not None and old_item:
@@ -453,9 +453,13 @@ def _defeat_monster(
         player.stage3_flags |= d.STAGE3_H_FLAG
     if ch == "C":
         player.stage3_flags |= d.STAGE3_C_FLAG
+    if ch == "L":
+        player.stage3_flags |= d.STAGE_L_FLAG
 
     d.grant_defeat_level(player, entity.tribe.effect)
     d.apply_feed(player, entity.tribe.feed)
+    if entity.tribe.effect == d.EFFECT_LP_OVERCHARGE:
+        player.lp = d.LP_OVERCHARGE_MAX
     player.karma += 1
 
     if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
@@ -485,7 +489,10 @@ def _defeat_monster(
             )
         _vortex_rearrange(current, player, floor[0])
 
-    if d.monster_level(entity) > 0 and ch not in d.STAGE3_NO_RESPAWN_MONSTERS:
+    if (
+        (d.monster_level(entity) > 0 or ch == "L")
+        and ch not in d.STAGE3_NO_RESPAWN_MONSTERS
+    ):
         spawn_key = (floor[0], d.monster_type_key(entity))
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
 
@@ -510,6 +517,7 @@ def _resolve_monster_contact(
 
     if entity.tribe.is_elf:
         player.stage3_elf_floors.setdefault(ch, floor[0] + 1)
+        player.known_elf_floors.add(ch)
 
     if entity.tribe.is_elf and entity.met:
         current.entities.pop(hit)
@@ -580,7 +588,13 @@ def _resolve_monster_contact(
     elif (
         ch == "H"
         and (
-            player.stage3_flags & (d.STAGE3_I_FLAG | d.STAGE3_J_FLAG | d.STAGE3_K_FLAG)
+            player.stage3_flags
+            & (
+                d.STAGE3_I_FLAG
+                | d.STAGE3_J_FLAG
+                | d.STAGE3_K_FLAG
+                | d.STAGE_L_FLAG
+            )
         ).bit_count()
         < 2
     ):
@@ -837,9 +851,13 @@ def _process_respawn_queue(
 ) -> None:
     if turn % d.MONSTER_RESPAWN_INTERVAL != 0:
         return
-    for (spawn_floor, type_key), count in list(queue.items()):
+    for (queued_floor, type_key), count in list(queue.items()):
         if not count:
             continue
+        ch = type_key[:-1] if type_key[-1].isdigit() else type_key
+        spawn_floor = (
+            rand.randrange(len(floors)) if ch == "L" else queued_floor
+        )
         avoid = {(player.x, player.y)} if spawn_floor == floor[0] else set()
         if type_key[-1].isdigit():
             ch = type_key[:-1]
@@ -864,7 +882,7 @@ def _process_respawn_queue(
             respawned = floors[spawn_floor].entities[-1]
             if isinstance(respawned, d.Companion):
                 respawned.revealed = True
-        queue[(spawn_floor, type_key)] -= 1
+        queue[(queued_floor, type_key)] -= 1
         if trace is not None:
             kind = (
                 "monster"

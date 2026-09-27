@@ -26,6 +26,7 @@ FOV_WIDTH_EXPANSION_RATIO: float = 1.4
 OCULAR_TORCH_EXTENSION: int = 3
 
 LP_MAX: int = 100
+LP_OVERCHARGE_MAX: int = 120
 LP_INIT: int = 90
 LP_RESPAWN_MIN: int = 20
 LP_RESPAWN_COST: int = 6
@@ -42,6 +43,7 @@ STAGE3_K_FLAG: int = 4
 STAGE3_H_FLAG: int = 8
 STAGE3_W_FLAG: int = 16
 STAGE3_J_FLAG: int = 64
+STAGE_L_FLAG: int = 128
 STAGE3_FLOORS = 3
 STAGE4_FLOORS = 5
 STAGE5_FLOORS = 4
@@ -89,6 +91,7 @@ EFFECT_CALTROP_SPREAD: str = "Caltrop Spread"
 EFFECT_ROCK_SPREAD: str = "Rock Spread"
 EFFECT_VORTEX: str = "Vortex"
 EFFECT_GOT_TREASURE: str = "Got Treasure"
+EFFECT_LP_OVERCHARGE: str = "LP Overcharge"
 
 PEGASUS_STEP_X: int = 9
 PEGASUS_STEP_Y: int = 4
@@ -305,6 +308,7 @@ class Player(Entity):
         # Identified monster and trap types are known across all floors.
         self.known_monsters: Set[str] = set()
         self.stage3_elf_floors: Dict[str, int] = {}
+        self.known_elf_floors: Set[str] = set()
         # Stage 3 state. Keeping these on Player preserves the small shared
         # entity model used by both frontends.
         self.stage3_flags: int = 0
@@ -432,6 +436,13 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         0,
         event_message="-- The High Elf bestowed the talisman upon you!",
         is_elf=True,
+    ),
+    _MT(
+        "L",
+        0,
+        0,
+        effect=EFFECT_LP_OVERCHARGE,
+        event_message="-- Elf L restored your LP and raised your level!",
     ),
     _MT("k", 80, MIN_FOOD),  # Marksman
     _MT("M", 85, 16, event_message="-- The treasure chest was a Mimic!"),  # Mimic
@@ -742,6 +753,7 @@ STAGE3_ROSTER_TRIBES: List[MonsterTribe] = sorted(
 STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
     [
         *_get_stage_roster_tribes(STAGE4_ROSTER),
+        CHAR_TO_MONSTER_TRIBE["L"],
         MonsterTribe(CHAR_COLLAPSE, level=1, feed=0),
     ],
     key=lambda tribe: tribe.level,
@@ -762,8 +774,10 @@ def _javelin_follower_active(player: Player) -> bool:
 
 
 def apply_feed(player: Player, feed: int) -> None:
-    # Feeding never drops LP below 1. Starvation is checked separately.
-    player.lp = max(1, min(LP_MAX, player.lp + feed))
+    # Preserve temporary LP above the normal cap until it is spent. Feeding
+    # cannot refill the overcharge once LP has risen above the normal cap.
+    cap = min(LP_OVERCHARGE_MAX, max(LP_MAX, player.lp))
+    player.lp = max(1, min(cap, player.lp + feed))
 
 
 def apply_respawn_penalty(player: Player) -> None:
@@ -930,16 +944,29 @@ def status_prefix(player: Player, stage_num: int, turn: int) -> str:
 
 
 def stage3_progress_marks(player: Player) -> List[Tuple[str, bool]]:
-    """Elf and treasure marks for the Stage 3 status line, in display order.
+    """Elf and treasure marks for the multi-floor stage status line.
 
-    Each entry is (label, achieved). With the Isolated Elf flag, an elf label
-    gains the floor number recorded in ``stage3_elf_floors``.
+    Each entry is (label, achieved). The Isolated Elf flag reveals all elf
+    floors; otherwise, contacting an elf reveals that elf's floor. If L is
+    present, its floor is shown as ``?`` after the player has met L.
     """
     show_floors = bool(player.stage3_flags & STAGE3_I_FLAG)
     marks: List[Tuple[str, bool]] = []
-    for label, bit in STAGE3_PROGRESS:
+    progress = list(STAGE3_PROGRESS)
+    if "L" in player.stage3_elf_floors or player.stage3_flags & STAGE_L_FLAG:
+        progress = [
+            *STAGE3_PROGRESS[:4],
+            ("L", STAGE_L_FLAG),
+            *STAGE3_PROGRESS[4:],
+        ]
+    for label, bit in progress:
         text = label
-        if show_floors and label in player.stage3_elf_floors:
+        if label == "L" and player.stage3_flags & STAGE_L_FLAG:
+            text += "?"
+        elif (
+            (show_floors or label in player.known_elf_floors)
+            and label in player.stage3_elf_floors
+        ):
             text += str(player.stage3_elf_floors[label])
         marks.append((text, bool(player.stage3_flags & bit)))
     marks.append(("T", player.treasure_collected))
