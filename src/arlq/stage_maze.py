@@ -32,8 +32,16 @@ def generate_floor_field(
     corridor_v_width: int,
     island_room_count: int,
     filled_room_count: int,
-) -> tuple[list[list[str]], d.Point, d.Point, set[d.Point], set[d.Point]]:
-    """Build one connected room graph and return its isolated/filled rooms."""
+    split_room_graph: bool = False,
+) -> tuple[
+    list[list[str]],
+    d.Point,
+    d.Point,
+    set[d.Point],
+    set[d.Point],
+    tuple[set[d.Point], ...],
+]:
+    """Build a floor and return its isolated, filled, and split graph rooms."""
     all_rooms = {(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)}
     for _ in range(1000):
         field, generated_up, generated_down = create_field(
@@ -94,6 +102,31 @@ def generate_floor_field(
         if connected != connected_rooms:
             continue
 
+        room_components: tuple[set[d.Point], ...] = ()
+        if split_room_graph:
+            split_options = []
+            for edge in edges:
+                remaining_edges = [candidate for candidate in edges if candidate != edge]
+                adjacency = {room: set() for room in connected_rooms}
+                for room_a, room_b in remaining_edges:
+                    adjacency[room_a].add(room_b)
+                    adjacency[room_b].add(room_a)
+                first = {edge[0]}
+                pending = [edge[0]]
+                while pending:
+                    room = pending.pop()
+                    for neighbor in adjacency[room] - first:
+                        first.add(neighbor)
+                        pending.append(neighbor)
+                second = connected_rooms - first
+                if len(first) >= 3 and len(second) >= 3:
+                    split_options.append((edge, first, second))
+            if not split_options:
+                continue
+            split_edge, first_component, second_component = rand.choice(split_options)
+            edges.remove(split_edge)
+            room_components = (first_component, second_component)
+
         for room in sealed_rooms:
             left = room[0] * (d.TILE_WIDTH + 1) + 1
             top = room[1] * (d.TILE_HEIGHT + 1) + 1
@@ -153,6 +186,6 @@ def generate_floor_field(
                 for x in range(left, left + d.TILE_WIDTH):
                     field[y][x] = d.CHAR_FLOOR
 
-        return field, up, down, island_rooms, filled_rooms
+        return field, up, down, island_rooms, filled_rooms, room_components
 
     raise RuntimeError("could not generate a connected room-graph floor")
