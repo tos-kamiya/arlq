@@ -107,7 +107,9 @@ def generate_floor_field(
             split_options = []
             for edge in edges:
                 remaining_edges = [candidate for candidate in edges if candidate != edge]
-                adjacency = {room: set() for room in connected_rooms}
+                adjacency: dict[d.Point, set[d.Point]] = {
+                    room: set() for room in connected_rooms
+                }
                 for room_a, room_b in remaining_edges:
                     adjacency[room_a].add(room_b)
                     adjacency[room_b].add(room_a)
