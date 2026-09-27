@@ -532,9 +532,13 @@ class PygletUI:
             self._draw_field_text(checkpoint, "+", COLOR_MAP[CI_YELLOW], bold=True)
 
         foreground, background = d.player_appearance(player)
-        if not floor_view and background == "red":
+        if not floor_view and background is not None:
             self._draw_rect(
-                self._field_col_x(px), py * self.cell_size_y, self.cell_size_x + 1, self.cell_size_y + 1, COLOR_MAP[CI_RED]
+                self._field_col_x(px),
+                py * self.cell_size_y,
+                self.cell_size_x + 1,
+                self.cell_size_y + 1,
+                COLOR_MAP[_TONE_INDEX[background]],
             )
         if not floor_view:
             self._draw_field_text((px, py), "@", self._tone_color(foreground), bold=True)
