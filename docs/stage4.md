@@ -72,3 +72,10 @@ place and can be used as a passage to the floor below.
 | `M` ミミック | 非表示、その後 `T` | Wを倒すと宝箱と同じ姿で現れ、接触すると正体を現して戦闘になる。倒すとマップから消える。 |
 | `O` 崩落 | `?` | 入ると1つ下のフロアの同じ座標へ落ちる。繰り返し利用できる。 |
 | `V` ボルテックス | `?` | 倒すとエルフ以外のモンスターや同行者、宝箱を再配置し、探索済みマスをリセットする。 |
+
+### Stair discovery / 階段の発見
+
+When a stair is discovered, its matching cell on the adjacent floor is marked
+as explored.
+
+階段を発見すると、隣接フロアにある対応位置のセルも探索済みになります。
