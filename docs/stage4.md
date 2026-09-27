@@ -3,8 +3,21 @@
 ## English
 
 Stage 4 is experimental and appears in the stage selection menu when started
-with `--dev`. It has four floors and adds new enemies and traps to the Stage 3
-structure. Its design and gameplay are subject to change.
+with `--dev`. It has five floors and adds new enemies and traps to the Stage 3
+structure. Empowered enemies become more common on deeper floors; rank 3
+enemies use a double quote marker, such as `b"`. Its design and gameplay are
+subject to change.
+
+| Floor | Rank 2 population | Rank 3 population |
+| ---: | ---: | ---: |
+| 1 | 4 | 0 |
+| 2 | 7 | 0 |
+| 3 | 12 | 2 |
+| 4 | 16 | 4 |
+| 5 | 21 | 5 |
+
+The final floor contains the rank 2 Dread Wyrm (`W'`), its Wyrm guard (`w`),
+and the treasure chest and Mimic.
 
 ### Monsters
 
@@ -27,7 +40,17 @@ place and can be used as a passage to the floor below.
 
 ## 日本語
 
-ステージ4は実験版で、`--dev`を指定するとステージ選択メニューに表示されます。ステージ3を拡張した4フロア構成で、新たな敵やトラップが登場します。仕様やゲーム内容は今後変更される場合があります。
+ステージ4は実験版で、`--dev`を指定するとステージ選択メニューに表示されます。ステージ3を拡張した5フロア構成で、新たな敵やトラップが登場します。下層ほど強化個体が増え、rank 3の敵は `b"` のようにダブルクォートで表示されます。仕様やゲーム内容は今後変更される場合があります。
+
+| フロア | rank 2の個体数 | rank 3の個体数 |
+| ---: | ---: | ---: |
+| 1 | 4 | 0 |
+| 2 | 7 | 0 |
+| 3 | 12 | 2 |
+| 4 | 16 | 4 |
+| 5 | 21 | 5 |
+
+最終フロアにはrank 2のドレッドウィルム（`W'`）、護衛のウィルム（`w`）、宝箱、ミミックが配置されます。
 
 ### モンスター
 

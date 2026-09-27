@@ -236,7 +236,14 @@ def _build_floor(
     up_point: Optional[d.Point] = None,
     down_point: Optional[d.Point] = None,
 ) -> Floor:
-    floor_count = d.STAGE4_FLOORS if stage_num == 4 else d.STAGE3_FLOORS
+    experimental_stage = stage_num in (4, 5)
+    floor_count = (
+        d.STAGE5_FLOORS
+        if stage_num == 5
+        else d.STAGE4_FLOORS
+        if stage_num == 4
+        else d.STAGE3_FLOORS
+    )
     island_count, filled_count = room_counts
     field, up, down, island_rooms, _ = generate_floor_field(
         up_point if up_point is not None else entry_point,
@@ -278,7 +285,7 @@ def _build_floor(
         entities=entities,
         seen=[[0] * len(field[0]) for _ in field],
         up=up,
-        down=up if stage_num == 4 and index == floor_count - 1 else down,
+        down=up if experimental_stage and index == floor_count - 1 else down,
         island=island_tile,
         up_stairs=[up] if index else [],
         down_stairs=[down] if index < floor_count - 1 else [],
@@ -301,18 +308,32 @@ def build(
     stair_pairs_per_transition: Optional[int] = None,
     floor_layout: Optional[List[Tuple[int, int]]] = None,
 ) -> Tuple[List[Floor], d.Player]:
-    if stage_num not in (3, 4):
-        raise ValueError("multi-floor builder supports stages 3 and 4")
+    if stage_num not in (3, 4, 5):
+        raise ValueError("multi-floor builder supports stages 3, 4, and 5")
     if stair_pairs_per_transition is None:
         stair_pairs_per_transition = (
             d.STAGE3_STAIR_PAIRS_PER_TRANSITION
             if stage_num == 3
+            else d.STAGE5_STAIR_PAIRS_PER_TRANSITION
+            if stage_num == 5
             else d.STAGE4_STAIR_PAIRS_PER_TRANSITION
         )
     if stair_pairs_per_transition < 1:
         raise ValueError("each floor transition needs at least one stair pair")
-    floor_count = d.STAGE4_FLOORS if stage_num == 4 else d.STAGE3_FLOORS
-    default_layout = d.STAGE3_FLOOR_LAYOUT if stage_num == 3 else d.STAGE4_FLOOR_LAYOUT
+    floor_count = (
+        d.STAGE5_FLOORS
+        if stage_num == 5
+        else d.STAGE4_FLOORS
+        if stage_num == 4
+        else d.STAGE3_FLOORS
+    )
+    default_layout = (
+        d.STAGE3_FLOOR_LAYOUT
+        if stage_num == 3
+        else d.STAGE5_FLOOR_LAYOUT
+        if stage_num == 5
+        else d.STAGE4_FLOOR_LAYOUT
+    )
     layout = list(default_layout if floor_layout is None else floor_layout)
     if len(layout) != floor_count:
         raise ValueError(f"floor_layout must contain {floor_count} entries")
@@ -340,7 +361,7 @@ def build(
             ch: rand.randrange(floor_count) for ch in ("m", "X", "e", "g")
         }
         m_floor = special_floors.pop("m")
-    elif stage_num == 4:
+    elif stage_num in (4, 5):
         elf_floors.update(
             {
                 "J": rand.randrange(floor_count),
@@ -348,7 +369,15 @@ def build(
                 "H": rand.randrange(floor_count),
             }
         )
-        voe_floors = {char: rand.randrange(1, floor_count) for char in ("V", "E")}
+        if stage_num == 4:
+            voe_options = list(range(1, floor_count - 1))
+            v_floor = voe_options.pop(rand.randrange(len(voe_options)))
+            e_floor = voe_options.pop(rand.randrange(len(voe_options)))
+            voe_floors = {"V": v_floor, "E": e_floor}
+        else:
+            voe_floors = {
+                char: rand.randrange(1, floor_count) for char in ("V", "E")
+            }
         special_floors = {"g": rand.randrange(floor_count)}
         m_floor = None
     else:
@@ -356,7 +385,7 @@ def build(
         m_floor = None
 
     stair_tiles: List[d.Point] = []
-    if stage_num == 4:
+    if stage_num in (4, 5):
         tiles = [(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)]
         stair_tiles.append(rand.choice(tiles))
         for _ in range(floor_count - 2):
@@ -368,18 +397,22 @@ def build(
     for index in range(floor_count):
         up_point = None
         down_point = None
-        if stage_num == 4:
+        if stage_num in (4, 5):
             up_point = None if index == 0 else room_center(stair_tiles[index - 1])
             down_point = (
                 None if index == floor_count - 1 else room_center(stair_tiles[index])
             )
         roster = list(
-            d.STAGE4_ROSTER[index] if stage_num == 4 else d.STAGE3_ROSTER[index]
+            d.STAGE5_ROSTER[index]
+            if stage_num == 5
+            else d.STAGE4_ROSTER[index]
+            if stage_num == 4
+            else d.STAGE3_ROSTER[index]
         )
         roster = [entry for entry in roster if entry[0] not in {"I", "J", "K", "H"}]
         if stage_num == 3 and elf_floors["K"] == index:
             roster.append(("C", 1, 1))
-        elif stage_num == 4:
+        elif stage_num in (4, 5):
             roster = [entry for entry in roster if entry[0] not in {"V", "E"}]
             roster.extend(
                 (char, 1, 1)
@@ -414,7 +447,7 @@ def build(
         floors,
         stair_pairs_per_transition,
     )
-    if stage_num == 4:
+    if stage_num in (4, 5):
         _place_collapses(floors)
 
     player = d.Player(floors[0].up[0], floors[0].up[1], 1, d.LP_INIT)
