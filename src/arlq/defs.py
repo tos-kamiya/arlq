@@ -6,8 +6,8 @@ TILE_NUM_X: int = 6
 TILE_NUM_Y: int = 3
 FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
-# Stages 4 and 5 are experimental but available from the game's UI and command line.
-PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5)
+# Stage 4 is experimental but available from the game's UI and command line.
+PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4)
 # Stage 1 is a smaller, introductory map: it walls off this many tile
 # columns on each of the left and right edges (6 -> 4 wide), leaving
 # TILE_NUM_Y unchanged.
@@ -49,12 +49,9 @@ STAGE3_J_FLAG: int = 64
 STAGE_L_FLAG: int = 128
 STAGE3_FLOORS = 3
 STAGE4_FLOORS = 5
-STAGE5_FLOORS = 4
 STAGE4_FINAL_FLOOR_BARRIER_PERCENT = 10
 LOOP_TURNS = 80
 STAGE4_MARKSMAN_ARROW_LIMIT = 20
-STAGE5_MARKSMAN_ARROW_LIMIT = 20
-STAGE5_MARKSMAN_LP_DAMAGE = 4
 STAGE3_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
 STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
     (1, 1),
@@ -65,10 +62,8 @@ STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
 ]
 # build() shuffles these counts across floors when no explicit layout is given.
 STAGE4_FILLED_ROOM_COUNTS: Tuple[int, ...] = (0, 1, 1, 2, 3)
-STAGE5_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 1), (0, 2), (0, 1), (0, 1)]
 STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
 STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
-STAGE5_STAIR_PAIRS_PER_TRANSITION = 2
 # Order of the Stage 3 status-line marks. The treasure mark "T" is added separately.
 STAGE3_PROGRESS: List[Tuple[str, int]] = [
     ("C", STAGE3_C_FLAG),
@@ -543,7 +538,6 @@ STAGE_TO_SPAWN_CONFIGS = [
     SPAWN_CONFIGS_ST2,
     [],  # Stage 3 uses its per-floor roster in game_engine.py.
     [],  # Stage 4 uses its per-floor roster in game_engine.py.
-    [],  # Stage 5 uses its per-floor roster in game_engine.py.
 ]
 
 # Per-floor rosters for the multi-floor stages. Each entry is
@@ -677,80 +671,6 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     ],
 ]
 
-# Stage 5 preserves the four-floor Stage 4 roster from before the expansion.
-STAGE5_ROSTER: List[List[Tuple[str, int, int]]] = [
-    [
-        ("a", 22, 1),
-        ("A", 2, 1),
-        ("b", 6, 1),
-        ("c", 1, 1),
-        ("c", 1, 2),
-        ("C", 1, 1),
-        ("d", 3, 1),
-        ("d", 3, 2),
-        ("e", 1, 1),
-        ("k", 2, 1),
-        ("l", 1, 1),
-        ("n", 1, 1),
-        ("o", 1, 1),
-        (CHAR_PEGASUS, 1, 1),
-    ],
-    [
-        ("a", 20, 1),
-        ("A", 2, 1),
-        ("b", 3, 1),
-        ("b", 3, 2),
-        ("c", 1, 1),
-        ("c", 1, 2),
-        ("C", 1, 1),
-        ("d", 3, 1),
-        ("d", 3, 2),
-        ("k", 2, 1),
-        ("l", 1, 1),
-        ("n", 1, 1),
-        ("o", 1, 1),
-        (CHAR_PEGASUS, 1, 1),
-        ("V", 1, 1),
-        ("E", 1, 1),
-    ],
-    [
-        ("a", 20, 1),
-        ("A", 2, 1),
-        ("b", 3, 1),
-        ("b", 3, 2),
-        ("c", 1, 1),
-        ("c", 1, 2),
-        ("C", 1, 1),
-        ("d", 3, 1),
-        ("d", 3, 2),
-        ("k", 2, 1),
-        ("l", 1, 1),
-        ("n", 1, 1),
-        ("o", 1, 1),
-        (CHAR_PEGASUS, 1, 1),
-    ],
-    [
-        ("a", 20, 1),
-        ("A", 2, 1),
-        ("b", 2, 1),
-        ("b", 4, 2),
-        ("c", 1, 1),
-        ("c", 1, 2),
-        ("C", 1, 1),
-        ("d", 2, 1),
-        ("d", 4, 2),
-        ("k", 2, 1),
-        ("l", 1, 1),
-        ("n", 1, 1),
-        ("o", 1, 1),
-        (CHAR_PEGASUS, 1, 1),
-        ("w", 1, 1),
-        ("W", 1, 1),
-        ("M", 1, 1),
-    ],
-]
-
-
 def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
     chars = dict.fromkeys(char for floor in roster for char, _, _ in floor)
     return sorted(
@@ -778,16 +698,6 @@ STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
     key=lambda tribe: tribe.level,
     reverse=True,
 )
-STAGE5_ROSTER_TRIBES: List[MonsterTribe] = sorted(
-    [
-        *_get_stage_roster_tribes(STAGE5_ROSTER),
-        MonsterTribe(CHAR_COLLAPSE, level=1, feed=0),
-    ],
-    key=lambda tribe: tribe.level,
-    reverse=True,
-)
-
-
 def _javelin_follower_active(player: Player) -> bool:
     return any(follower[3] == "J" for follower in player.persistent_followers)
 
