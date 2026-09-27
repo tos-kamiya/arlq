@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 4.9.4 - 2026-09-28
+
+- Add a yellow low-LP warning when the player's LP is 40 or below.
+- Allow the Pegasus to jump over barriers.
+- Refine the field-of-view ellipse and limit the Vortex's relocation and map-reset
+  effects to its affected area, expanded to 85% of the field width.
+
 ## 4.9.3 - 2026-09-28
 
 - Expand experimental Stage 4 to five floors with revised room layouts,
