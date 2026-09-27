@@ -188,9 +188,32 @@ The bottom-right marker shows the displayed floor as a fraction (for example, `3
 
 The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first contact made while their condition is unmet; any contact after that sends you to a random location on the map.
 
-Stage 4 also has one Lifebringer Elf (`L`) on a random floor. Meeting L raises your level by one and restores LP to 120, temporarily above the normal 100 LP gauge. L counts toward the two-elf requirement for the High Elf and has its own progress mark. Once met, L's floor is shown as `?` in the progress display. L returns on a randomly selected floor at a 65-turn respawn tick.
+### Stage 4
 
-Stage 4 is documented in [docs/stage4.md](docs/stage4.md).
+Stage 4 has five floors. Like Stage 3, it features elves, and the goal is to defeat the Dread Wyrm (`W`). Some rooms are filled in, and walls may divide floors. Wyrm barriers are scattered across the entire final floor.
+
+#### Monsters
+
+| Display & Name | Description |
+| -------------- | ----------- |
+| **E** Rare Erebus | A troublesome enemy that drains your level. |
+| **k** Marksman | Shoots arrows when it has a clear horizontal or vertical line of sight, but not from an adjacent cell. |
+
+#### Elves
+
+| Display & Name | Description |
+| -------------- | ----------- |
+| **L** Lifebringer Elf | Meeting L restores LP to 120, above the normal maximum, and L moves to a random floor. |
+
+#### Traps
+
+Unidentified traps appear as `?`. The Mimic appears with the same timing and symbol as the treasure chest.
+
+| Display | Name | Description |
+| ------- | ---- | ----------- |
+| `T` | Mimic | Appears as a treasure chest after W is defeated. |
+| `O` | Collapse | Contact opens a hole in the floor. |
+| `V` | Vortex | Repositions nearby monsters, companions, and treasure chests when defeated. |
 
 ## Development commands
 
