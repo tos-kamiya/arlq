@@ -324,11 +324,12 @@ def _vortex_rearrange(
     center: d.Point,
 ) -> None:
     """Reposition entities and forget explored cells near the Vortex."""
-    radius = round(d.FIELD_HEIGHT * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
-    width_expansion_ratio = d.FIELD_WIDTH / d.FIELD_HEIGHT
+    # Keep the horizontal reach while matching the FOV ellipse's proportions.
+    horizontal_radius = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
+    radius = round(horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO)
     affected_points = set(
         iterate_ellipse_points(
-            center[0], center[1], radius, width_expansion_ratio
+            center[0], center[1], radius, d.FOV_WIDTH_EXPANSION_RATIO
         )
     )
     movable = [
