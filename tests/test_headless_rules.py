@@ -58,6 +58,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "down_stairs",
         "contact_reveal",
         "collapse_landings",
+        "room_components",
     }
 
 
@@ -312,15 +313,15 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for _, count, rank in floor if rank == 2 or rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [3, 3, 3, 6, 3]
+    ] == [3, 3, 4, 6, 6]
     assert [
         sum(count for _, count, rank in floor if rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [0, 0, 0, 2, 1]
+    ] == [0, 0, 0, 2, 4]
     assert [
         sum(count for ch, count, _ in floor if ch == "d")
         for floor in d.STAGE4_ROSTER
-    ] == [6, 6, 5, 6, 3]
+    ] == [6, 6, 6, 6, 6]
     assert all(
         rank == 1
         for floor in d.STAGE4_ROSTER
@@ -393,7 +394,7 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
         if isinstance(entity, d.Monster) and entity.tribe.char == "M"
     ]
 
-    assert elves == {"I", "J", "K", "H"}
+    assert elves == {"I", "J", "K", "H", "L"}
     assert len(bosses) == 1
     assert len(floors) == 5
     special_floor = {
@@ -430,27 +431,6 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
         sum(floor_index == index for floor_index, _ in golems)
         for index in range(len(floors))
     ) == [2, 2, 2, 2, 3]
-
-
-def test_stage5_keeps_the_original_four_floor_stage4_copy():
-    floors, _ = game_engine_module.build(stage_num=5)
-
-    bosses = [
-        entity
-        for floor in floors
-        for entity in floor.entities
-        if isinstance(entity, d.Monster) and entity.tribe.char == "W"
-    ]
-    assert len(floors) == d.STAGE5_FLOORS == 4
-    assert len(bosses) == 1
-    assert bosses[0] in floors[3].entities
-    assert bosses[0].empowered == 1
-    assert not any(
-        entity.empowered == 3
-        for floor in floors
-        for entity in floor.entities
-        if isinstance(entity, d.Monster)
-    )
 
 
 def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
@@ -575,7 +555,7 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
     marksman.arrow_marks = [((19, 12), "-")]
     treasure = d.Treasure(10, 15, "TW")
     for center in ((dread_wyrm.x, dread_wyrm.y), (wyrm.x, wyrm.y)):
-        game_engine_module._place_barrier(field, center)
+        stage_world_module._place_barrier(field, center)
     seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
     field[4][4] = d.WALL_CHAR
     field[4][5] = d.CHAR_STAIRS_UP
@@ -588,26 +568,15 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
         island=None,
     )
 
-    new_positions = {"W": (30, 16), "w": (30, 8), "k": (30, 12)}
-
-    def fixed_spawn(
-        entities, spawn_field, char, _avoid, _island, origin_floor, empowered=1
-    ):
-        x, y = new_positions[char]
-        return game_engine_module.spawn_at(
-            entities,
-            x,
-            y,
-            d.CHAR_TO_TRIBE[char],
-            empowered=empowered,
-            origin_floor=origin_floor,
-        )
-
-    monkeypatch.setattr(game_engine_module, "_spawn", fixed_spawn)
-    monkeypatch.setattr(game_engine_module, "_treasure_spot", lambda *_args: (40, 16))
+    positions = iter([(30, 16), (30, 8), (30, 12), (40, 16)])
+    monkeypatch.setattr(
+        game_engine_module,
+        "find_random_place",
+        lambda *_args, **_kwargs: next(positions),
+    )
     player = d.Player(1, 1, 1, 90)
 
-    game_engine_module._vortex_rearrange(current, player, 2)
+    game_engine_module._vortex_rearrange(current, player, 2, (20, 12))
 
     relocated_wyrm = next(
         e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "w"
@@ -702,7 +671,7 @@ def test_stage3_empowered_roster_counts_are_rounded_down():
     ]
 
 
-@pytest.mark.parametrize("stage_num", [3, 4, 5])
+@pytest.mark.parametrize("stage_num", [3, 4])
 def test_treasure_requires_current_timeline_w_defeat(stage_num):
     player = d.Player(2, 2, 200, 90)
     treasure = d.Treasure(3, 2, "TW")
@@ -737,23 +706,6 @@ def test_stage4_treasure_uses_the_win_screen_message():
 
     messages = run_stage3_keys(
         "R", floors, player, [0], [(2, 2)], Counter(), deque(), stage_num=4
-    )
-
-    assert messages == [None]
-    assert player.treasure_collected
-    assert player.stage_won
-
-
-def test_stage5_treasure_does_not_set_a_step_message():
-    player = d.Player(2, 2, 200, 90)
-    player.stage3_flags |= d.STAGE3_W_FLAG
-    player.boss_defeated = True
-    treasure = d.Treasure(3, 2, "TW")
-    treasure.unlocked = True
-    floors, _ = stage3_state(player, [treasure])
-
-    messages = run_stage3_keys(
-        "R", floors, player, [0], [(2, 2)], Counter(), deque(), stage_num=5
     )
 
     assert messages == [None]
@@ -1884,7 +1836,7 @@ def test_collector_and_javelin_elves_increase_stage3_attack():
     assert d.current_player_attack(player, 3) == 150
 
 
-@pytest.mark.parametrize("stage_num", [0, 1, 2, 3, 4, 5])
+@pytest.mark.parametrize("stage_num", [0, 1, 2, 3, 4])
 def test_collector_and_javelin_bonuses_apply_in_every_stage(stage_num):
     # Field colors and combat must agree on permanent elf attack bonuses.
     player = d.Player(2, 2, 100, 90)

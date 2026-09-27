@@ -123,6 +123,10 @@ def _event_messages():
                 found.add(value.value)
             elif isinstance(value, ast.Constant) and value.value is None:
                 continue
+            elif isinstance(value, ast.Name) and value.id == "event_message":
+                # Forwarded through Tribe/ElfTribe constructors; the literal
+                # catalog keys are collected from the tribe declarations.
+                continue
             else:
                 raise AssertionError(f"{path}: event_message is not a string literal")
     return found

@@ -55,7 +55,7 @@ interface only; it has no effect when `arlq` starts the graphical interface.
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5` | Select a stage directly. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4` | Select a stage directly. |
 | `--dev` | Show development stages in the stage selection menu. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
@@ -86,7 +86,7 @@ reproduce the same layout.
 
 * **Objective**  
   The goal of the game is to explore a dungeon with procedurally generated corridors and find the treasure chest hidden by the dragon. In Stage 1, find the dragon's chest; in Stage 2, find the fire drake's chest.
-  In Stages 3, 4, and 5, the two objectives are to defeat the `W` Dread Wyrm and claim its treasure chest. You must accomplish both to clear the stage. The elves' help is useful for accomplishing these objectives.
+  In Stages 3 and 4, the two objectives are to defeat the `W` Dread Wyrm and claim its treasure chest. You must accomplish both to clear the stage. The elves' help is useful for accomplishing these objectives.
 
   Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Discovering a stair also marks its matching cell on the adjacent floor as explored. Four elves, `I`, `J`, `K`, and `H`, appear.
 
@@ -126,7 +126,7 @@ reproduce the same layout.
 
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
-| **l** Loop Companion | Appears in Stages 3, 4, and 5. Sends the world back 80 turns; monster identities remain known. |
+| **l** Loop Companion | Appears in Stages 3 and 4. Sends the world back 80 turns; monster identities remain known. |
 | **n** Nomicon  | Reveals the type of every monster within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |
@@ -160,7 +160,7 @@ Stage 2 contains four ordinary `b` Bison and two empowered `b` Bison (see Rare T
 | **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you.                                                         |
 
 Rare Erebus (`E`) and the Vortex (`V`) use random-floor respawns at a 65-turn
-tick and can return on any Stage 4 or 5 floor. The Caltrop Plant (`X`) also
+tick and can return on any Stage 4 floor. The Caltrop Plant (`X`) also
 uses random-floor respawns; Stage 2, where it appears, currently has one floor.
 
 ### Stage 3
@@ -191,7 +191,7 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 
 Stage 4 also has one Lifebringer Elf (`L`) on a random floor. Meeting L raises your level by one and restores LP to 120, temporarily above the normal 100 LP gauge. L counts toward the two-elf requirement for the High Elf and has its own progress mark. Once met, L's floor is shown as `?` in the progress display. L returns on a randomly selected floor at a 65-turn respawn tick.
 
-Stage 4 and the experimental Stage 5 are documented in [docs/stage4.md](docs/stage4.md) and [docs/stage5.md](docs/stage5.md).
+Stage 4 is documented in [docs/stage4.md](docs/stage4.md).
 
 ## Development commands
 

@@ -33,8 +33,6 @@ def replay_to_operation(
             stair_pairs_per_transition=(
                 d.STAGE3_STAIR_PAIRS_PER_TRANSITION
                 if replay.stage_num == 3
-                else d.STAGE5_STAIR_PAIRS_PER_TRANSITION
-                if replay.stage_num == 5
                 else d.STAGE4_STAIR_PAIRS_PER_TRANSITION
             ),
         )
