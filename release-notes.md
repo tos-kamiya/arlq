@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 4.9.3 - 2026-09-28
+
+- Expand experimental Stage 4 to five floors with revised room layouts,
+  grouped stairs, barriers, and floor-specific monster placements.
+- Add the Lifebringer Elf and random-floor respawns for Rare Erebus (`E`),
+  Caltrop Plant (`X`), and Vortex (`V`).
+- Improve multi-floor progress, map exploration, and stair navigation.
+
 ## 4.9.2 - 2026-09-27
 
 - No player-visible gameplay or UI changes.
