@@ -11,8 +11,10 @@ Golems are defeated.
 Rank 2 and 3 enemies are concentrated on floors 4 and 5; rank 3 enemies use a
 double quote marker, such as `b"`. The partitions on floor 2 have a rank 2
 Chimera (`c'`) on either side; floor 4 has rank 3 Chimeras (`c"`). Their swords
-can open passages between the islands. The reduced Rare Amoeba (`A`) count
-makes leveling harder. Its design and gameplay are subject to change.
+can open passages between the islands. On each split floor, all up stairs are
+on one island and all down stairs are on the other. The reduced Rare Amoeba
+(`A`) count makes leveling harder. Its design and gameplay are subject to
+change.
 
 | Floor | `A` population | Rank 2 population | Rank 3 population |
 | ---: | ---: | ---: | ---: |
@@ -47,7 +49,7 @@ place and can be used as a passage to the floor below.
 
 ## 日本語
 
-ステージ4は実験版で、`--dev`を指定するとステージ選択メニューに表示されます。ステージ3を拡張した5フロア構成で、新たな敵やトラップが登場します。埋める区画数は0、1、1、2、3の組み合わせを毎回シャッフルして各フロアに割り当てます。各フロアにはゴーレム（`g`）を2体配置し、ランダムに選んだ1フロアにはさらに1体追加します。倒したときに飛び散る岩でマークスマンの射線を遮れます。希少モンスターの `A` は各フロアに1体ずつ配置し、rank 2・3の敵はフロア4・5を中心に配置しています。フロア2では分断壁の両側に `c'` を、フロア4では `c"` を1体ずつ配置し、島の間に通路を開けられるようにしています。rank 3の敵は `b"` のようにダブルクォートで表示されます。仕様やゲーム内容は今後変更される場合があります。
+ステージ4は実験版で、`--dev`を指定するとステージ選択メニューに表示されます。ステージ3を拡張した5フロア構成で、新たな敵やトラップが登場します。埋める区画数は0、1、1、2、3の組み合わせを毎回シャッフルして各フロアに割り当てます。各フロアにはゴーレム（`g`）を2体配置し、ランダムに選んだ1フロアにはさらに1体追加します。倒したときに飛び散る岩でマークスマンの射線を遮れます。希少モンスターの `A` は各フロアに1体ずつ配置し、rank 2・3の敵はフロア4・5を中心に配置しています。フロア2では分断壁の両側に `c'` を、フロア4では `c"` を1体ずつ配置し、島の間に通路を開けられるようにしています。分断フロアでは、上り階段を一方の島に、下り階段をもう一方の島にまとめています。rank 3の敵は `b"` のようにダブルクォートで表示されます。仕様やゲーム内容は今後変更される場合があります。
 
 | フロア | `A`の数 | rank 2の個体数 | rank 3の個体数 |
 | ---: | ---: | ---: | ---: |

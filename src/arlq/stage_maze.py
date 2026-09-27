@@ -119,8 +119,12 @@ def generate_floor_field(
                         first.add(neighbor)
                         pending.append(neighbor)
                 second = connected_rooms - first
-                if len(first) >= 3 and len(second) >= 3:
+                if len(first) < 3 or len(second) < 3:
+                    continue
+                if up_tile in first and down_tile in second:
                     split_options.append((edge, first, second))
+                elif down_tile in first and up_tile in second:
+                    split_options.append((edge, second, first))
             if not split_options:
                 continue
             split_edge, first_component, second_component = rand.choice(split_options)

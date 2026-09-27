@@ -376,6 +376,7 @@ def _build_floor(
         island=island_tile,
         up_stairs=[up] if index else [],
         down_stairs=[down] if index < floor_count - 1 else [],
+        room_components=room_components,
     )
 
 
@@ -591,7 +592,11 @@ def build_trap_test(
 
 
 def _transition_candidates(
-    upper: Floor, lower: Floor, stairs_to_avoid: List[d.Point]
+    upper: Floor,
+    lower: Floor,
+    stairs_to_avoid: List[d.Point],
+    allowed_rooms: Optional[Container[d.Point]] = None,
+    avoid_stair_rooms: bool = True,
 ) -> List[d.Point]:
     """Return matching floor cells outside the stairs' and adjacent rooms."""
     stair_rooms = [tile_at(stair) for stair in stairs_to_avoid]
@@ -601,11 +606,14 @@ def _transition_candidates(
             if upper.field[y][x] != d.CHAR_FLOOR or lower.field[y][x] != d.CHAR_FLOOR:
                 continue
             room = tile_at((x, y))
-            if all(
+            if allowed_rooms is not None and room not in allowed_rooms:
+                continue
+            if avoid_stair_rooms and not all(
                 abs(room[0] - stair_room[0]) + abs(room[1] - stair_room[1]) > 1
                 for stair_room in stair_rooms
             ):
-                candidates.append((x, y))
+                continue
+            candidates.append((x, y))
     return candidates
 
 
@@ -615,9 +623,32 @@ def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
         return
     for index in range(len(floors) - 1):
         upper, lower = floors[index], floors[index + 1]
+        split_floor = (
+            lower
+            if lower.room_components
+            else upper
+            if upper.room_components
+            else None
+        )
+        target_rooms: Optional[Container[d.Point]] = None
+        avoid_stair_rooms = True
+        if split_floor is not None:
+            primary_stair = lower.up if split_floor is lower else upper.down
+            target_rooms = next(
+                rooms
+                for rooms in split_floor.room_components
+                if tile_at(primary_stair) in rooms
+            )
+            avoid_stair_rooms = False
         candidates = [
             point
-            for point in _transition_candidates(upper, lower, upper.down_stairs)
+            for point in _transition_candidates(
+                upper,
+                lower,
+                upper.down_stairs,
+                allowed_rooms=target_rooms,
+                avoid_stair_rooms=avoid_stair_rooms,
+            )
             if point != upper.down and point != lower.up
         ]
         while candidates and len(upper.down_stairs) < pair_count:
@@ -638,7 +669,13 @@ def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
             lower.up_stairs.append(point)
             candidates = [
                 candidate
-                for candidate in _transition_candidates(upper, lower, upper.down_stairs)
+                for candidate in _transition_candidates(
+                    upper,
+                    lower,
+                    upper.down_stairs,
+                    allowed_rooms=target_rooms,
+                    avoid_stair_rooms=avoid_stair_rooms,
+                )
                 if candidate != upper.down and candidate != lower.up
             ]
 
