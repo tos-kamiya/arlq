@@ -497,7 +497,11 @@ def move_player(
         if (
             0 <= jump_y < height
             and 0 <= jump_x < width
-            and field[jump_y][jump_x] in (d.CHAR_FLOOR, d.CHAR_CALTROP)
+            and field[jump_y][jump_x] in (
+                d.CHAR_FLOOR,
+                d.CHAR_CALTROP,
+                d.CHAR_BARRIER,
+            )
         ):
             player.x, player.y = jump_x, jump_y
             player.karma += 1

@@ -30,6 +30,7 @@ LP_OVERCHARGE_MAX: int = 120
 LP_INIT: int = 90
 LP_RESPAWN_MIN: int = 20
 LP_RESPAWN_COST: int = 6
+LP_WARNING_THRESHOLD: int = 40
 LP_LOW_THRESHOLD: int = 20  # LP bar/player "@" turn red at or below this
 
 MONSTER_RESPAWN_INTERVAL: int = 65
@@ -1009,19 +1010,20 @@ class FieldGlyph(NamedTuple):
 def player_appearance(player: Player) -> Tuple[str, Optional[str]]:
     """Foreground and background tones for '@'.
 
-    Low LP is a red background. Poison is magenta text. Both at once use
-    black text, because magenta on red is hard to read. Foreground
-    ``default`` is the frontend's normal text color.
+    Low LP is a red background and warning-level LP is yellow. Poison is
+    magenta text unless the background calls for black text for contrast.
     """
     low = player.lp <= LP_LOW_THRESHOLD
+    warning = player.lp <= LP_WARNING_THRESHOLD
     poisoned = player.item == ITEM_POISONED
-    if low and poisoned:
+    background = "red" if low else "yellow" if warning else None
+    if background == "yellow" or (background == "red" and poisoned):
         foreground = "black"
     elif poisoned:
         foreground = "magenta"
     else:
         foreground = "default"
-    return foreground, ("red" if low else None)
+    return foreground, background
 
 
 def preview_entity_glyphs(
