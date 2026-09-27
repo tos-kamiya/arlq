@@ -9,7 +9,7 @@
 - `src/arlq/defs.py`: `STAGE4_FLOORS = 5`、`STAGE4_FLOOR_LAYOUT`、`STAGE4_ROSTER`
 - `src/arlq/game_engine.py`: フロア生成、エルフ・特殊敵の配置、階段、最終階の処理
 - `tests/test_headless_rules.py`: 5フロア、強化ランク、最終階の配置を確認するテスト
-- `docs/stage4.md`: 実験版ステージの5フロア説明
+- `README.md`: ステージ4の概要
 
 現行レイアウトは1つの孤立部屋を持ち、埋める区画数0、1、1、2、3を毎回シャッフルして各階へ割り当てる。
 
