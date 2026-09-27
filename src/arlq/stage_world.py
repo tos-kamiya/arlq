@@ -262,7 +262,7 @@ def _build_floor(
     up_point: Optional[d.Point] = None,
     down_point: Optional[d.Point] = None,
 ) -> Floor:
-    experimental_stage = stage_num == 4
+    stage4_final_floor_has_no_down_stairs = stage_num == 4
     floor_count = d.STAGE4_FLOORS if stage_num == 4 else d.STAGE3_FLOORS
     island_count, filled_count = room_counts
     field, up, down, island_rooms, _, room_components = generate_floor_field(
@@ -306,7 +306,11 @@ def _build_floor(
         entities=entities,
         seen=[[0] * len(field[0]) for _ in field],
         up=up,
-        down=up if experimental_stage and index == floor_count - 1 else down,
+        down=(
+            up
+            if stage4_final_floor_has_no_down_stairs and index == floor_count - 1
+            else down
+        ),
         island=island_tile,
         up_stairs=[up] if index else [],
         down_stairs=[down] if index < floor_count - 1 else [],

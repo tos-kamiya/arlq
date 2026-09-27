@@ -1,6 +1,6 @@
 # ARLQ, another rogue-like quest game
 
-ARLQ (Another Rogue-Like Quest) is an experimental rogue-like game created
+ARLQ (Another Rogue-Like Quest) is a rogue-like game created
 through collaboration between humans and AIs. This repository contains
 the Python implementation with Pyglet and Blessed terminal frontends.
 
@@ -56,7 +56,6 @@ interface only; it has no effect when `arlq` starts the graphical interface.
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
 | `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4` | Select a stage directly. |
-| `--dev` | Show development stages in the stage selection menu. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
