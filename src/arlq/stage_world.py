@@ -335,6 +335,17 @@ def build(
         else d.STAGE4_FLOOR_LAYOUT
     )
     layout = list(default_layout if floor_layout is None else floor_layout)
+    if stage_num == 4 and floor_layout is None:
+        room_counts = list(d.STAGE4_FILLED_ROOM_COUNTS)
+        shuffled_room_counts = []
+        while room_counts:
+            shuffled_room_counts.append(
+                room_counts.pop(rand.randrange(len(room_counts)))
+            )
+        layout = [
+            (islands, shuffled_room_counts[index])
+            for index, (islands, _) in enumerate(layout)
+        ]
     if len(layout) != floor_count:
         raise ValueError(f"floor_layout must contain {floor_count} entries")
     if any(islands < 0 or filled < 0 for islands, filled in layout):

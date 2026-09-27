@@ -57,6 +57,8 @@ STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
     (0, 1),
     (0, 1),
 ]
+# build() shuffles these counts across floors when no explicit layout is given.
+STAGE4_FILLED_ROOM_COUNTS: Tuple[int, ...] = (0, 1, 1, 2, 3)
 STAGE5_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 1), (0, 2), (0, 1), (0, 1)]
 STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
 STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
