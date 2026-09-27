@@ -210,7 +210,7 @@ def reachable_known_cells(
 
             ranged_damage = (
                 _marksman_damage_at(field, entities, known, (nx, ny))
-                if stage_num == 4
+                if stage_num in (4, 5)
                 else 0
             )
             next_cost = cost + terrain_cost + ranged_damage
@@ -265,7 +265,7 @@ def _apply_terrain_hazards(
     return event_message
 
 
-def _marksman_shoot(current: Floor, player: d.Player) -> None:
+def _marksman_shoot(current: Floor, player: d.Player, stage_num: int = 4) -> None:
     """Resolve Stage 4 marksmen after a player move and retain their arrow marks."""
     for entity in current.entities:
         if (
@@ -311,13 +311,22 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
         if blocked:
             continue
 
-        player.lp -= d.MARKSMAN_LP_DAMAGE
+        player.lp -= (
+            d.STAGE5_MARKSMAN_LP_DAMAGE
+            if stage_num == 5
+            else d.MARKSMAN_LP_DAMAGE
+        )
         player.known_monsters.add(d.monster_type_key(entity))
         mark = ((player.x - step_x, player.y - step_y), "-" if step_x else "|")
         marks = entity.arrow_marks
         marks[:] = [existing for existing in marks if existing[0] != mark[0]]
         marks.append(mark)
-        if len(marks) > d.STAGE4_MARKSMAN_ARROW_LIMIT:
+        arrow_limit = (
+            d.STAGE5_MARKSMAN_ARROW_LIMIT
+            if stage_num == 5
+            else d.STAGE4_MARKSMAN_ARROW_LIMIT
+        )
+        if len(marks) > arrow_limit:
             del marks[0]
 
 
@@ -952,8 +961,10 @@ def _step(
     hazard_message = _apply_terrain_hazards(current, player, previous)
     if hazard_message is not None:
         event_message = hazard_message
-    if stage_num == 4 and ((player.x, player.y) != previous or collapse_transition):
-        _marksman_shoot(current, player)
+    if stage_num in (4, 5) and (
+        (player.x, player.y) != previous or collapse_transition
+    ):
+        _marksman_shoot(current, player, stage_num)
 
     hit = next(
         (
@@ -1038,7 +1049,7 @@ def run_game(
     legacy_stage = stage_num in (1, 2)
     if legacy_stage:
         floors, player = _build_single_floor(config, stage_num)
-    elif stage_num == 5:
+    elif stage_num == 6:
         floors, player = build_trap_test(
             config.corridor_h_width, config.corridor_v_width
         )
@@ -1050,6 +1061,8 @@ def run_game(
             stair_pairs_per_transition=(
                 d.STAGE3_STAIR_PAIRS_PER_TRANSITION
                 if stage_num == 3
+                else d.STAGE5_STAIR_PAIRS_PER_TRANSITION
+                if stage_num == 5
                 else d.STAGE4_STAIR_PAIRS_PER_TRANSITION
             ),
         )
@@ -1057,7 +1070,9 @@ def run_game(
     player.boss_defeated = False
     player.treasure_collected = False
     replay_context = (
-        ReplayContext(stage_num, initial_seed, config) if stage_num in (3, 4) else None
+        ReplayContext(stage_num, initial_seed, config)
+        if stage_num in (3, 4, 5)
+        else None
     )
     floor = [0]
     checkpoint = [floors[0].up]
@@ -1068,12 +1083,12 @@ def run_game(
     turn = 0
     if legacy_stage:
         message: Tuple[int, str] = (-1, "")
-    elif stage_num in (3, 4):
+    elif stage_num in (3, 4, 5):
         message = (5, tr("-- The King has ordered the Dread Wyrm (W) slain."))
-    elif stage_num == 5:
+    elif stage_num == 6:
         message = (5, "-- Trap test: Mimic, Vortex, W, treasure, b and d.")
     else:
-        message = (5, tr("-- Explore the sealed rooms across four floors."))
+        message = (5, tr("-- Explore the sealed rooms across five floors."))
     legacy_respawn_queue: Counter[str] = Counter()
     if legacy_stage:
         turn = -1
@@ -1125,6 +1140,8 @@ def run_game(
             stage_draw_options = {
                 "stage_roster": d.STAGE3_ROSTER_TRIBES
                 if stage_num == 3
+                else d.STAGE5_ROSTER_TRIBES
+                if stage_num == 5
                 else d.STAGE4_ROSTER_TRIBES,
                 "floor_view": floor_view,
                 "floor_label": f"{view_floor + 1}/{len(floors)}",
@@ -1287,9 +1304,11 @@ def run_game(
             stage_draw_options = {
                 "stage_roster": d.STAGE3_ROSTER_TRIBES
                 if stage_num == 3
+                else d.STAGE5_ROSTER_TRIBES
+                if stage_num == 5
                 else d.STAGE4_ROSTER_TRIBES,
             }
-            if stage_num in (3, 4):
+            if stage_num in (3, 4, 5):
                 stage_draw_options["floor_label"] = f"{floor[0] + 1}/{len(floors)}"
         ui.draw_stage(
             turn=turn,

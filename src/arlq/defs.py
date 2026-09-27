@@ -6,8 +6,8 @@ TILE_NUM_X: int = 6
 TILE_NUM_Y: int = 3
 FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
-# Stage 4 is experimental but available from the game's UI and command line.
-PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4)
+# Stages 4 and 5 are experimental but available from the game's UI and command line.
+PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5)
 # Stage 1 is a smaller, introductory map: it walls off this many tile
 # columns on each of the left and right edges (6 -> 4 wide), leaving
 # TILE_NUM_Y unchanged.
@@ -43,13 +43,24 @@ STAGE3_H_FLAG: int = 8
 STAGE3_W_FLAG: int = 16
 STAGE3_J_FLAG: int = 64
 STAGE3_FLOORS = 3
-STAGE4_FLOORS = 4
+STAGE4_FLOORS = 5
+STAGE5_FLOORS = 4
 LOOP_TURNS = 80
 STAGE4_MARKSMAN_ARROW_LIMIT = 20
+STAGE5_MARKSMAN_ARROW_LIMIT = 20
+STAGE5_MARKSMAN_LP_DAMAGE = 4
 STAGE3_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
-STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 1), (0, 2), (0, 1), (0, 1)]
+STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
+    (1, 1),
+    (0, 1),
+    (0, 1),
+    (0, 1),
+    (0, 1),
+]
+STAGE5_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 1), (0, 2), (0, 1), (0, 1)]
 STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
 STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
+STAGE5_STAIR_PAIRS_PER_TRANSITION = 2
 # Order of the Stage 3 status-line marks. The treasure mark "T" is added separately.
 STAGE3_PROGRESS: List[Tuple[str, int]] = [
     ("C", STAGE3_C_FLAG),
@@ -248,7 +259,10 @@ class Monster(Entity):
 def monster_level(monster: Monster) -> int:
     if monster.empowered == 1:
         return monster.tribe.level
-    return monster.tribe.level * 3 + 10
+    level = monster.tribe.level * 3 + 10
+    for _ in range(3, monster.empowered + 1):
+        level *= 3
+    return level
 
 
 def monster_type_key(monster: Monster) -> str:
@@ -495,6 +509,7 @@ STAGE_TO_SPAWN_CONFIGS = [
     SPAWN_CONFIGS_ST2,
     [],  # Stage 3 uses its per-floor roster in game_engine.py.
     [],  # Stage 4 uses its per-floor roster in game_engine.py.
+    [],  # Stage 5 uses its per-floor roster in game_engine.py.
 ]
 
 # Per-floor rosters for the multi-floor stages. Each entry is
@@ -547,6 +562,96 @@ STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
 ]
 
 STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
+    [
+        ("a", 22, 1),
+        ("A", 2, 1),
+        ("b", 6, 1),
+        ("c", 1, 1),
+        ("c", 1, 2),
+        ("C", 1, 1),
+        ("d", 3, 1),
+        ("d", 3, 2),
+        ("e", 1, 1),
+        ("l", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+    ],
+    [
+        ("a", 20, 1),
+        ("A", 2, 1),
+        ("b", 3, 1),
+        ("b", 3, 2),
+        ("c", 1, 1),
+        ("c", 1, 2),
+        ("C", 1, 1),
+        ("d", 3, 1),
+        ("d", 3, 2),
+        ("k", 2, 1),
+        ("l", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+        ("V", 1, 1),
+        ("E", 1, 1),
+    ],
+    [
+        ("a", 18, 1),
+        ("A", 3, 1),
+        ("a", 2, 2),
+        ("b", 6, 2),
+        ("b", 2, 3),
+        ("c", 1, 1),
+        ("c", 1, 2),
+        ("C", 1, 1),
+        ("d", 2, 1),
+        ("d", 3, 2),
+        ("k", 3, 1),
+        ("l", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+    ],
+    [
+        ("a", 14, 1),
+        ("A", 4, 1),
+        ("a", 4, 2),
+        ("b", 5, 2),
+        ("b", 2, 3),
+        ("c", 1, 1),
+        ("c", 2, 2),
+        ("C", 1, 1),
+        ("d", 5, 2),
+        ("d", 2, 3),
+        ("k", 3, 1),
+        ("l", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+    ],
+    [
+        ("a", 12, 1),
+        ("A", 5, 1),
+        ("a", 8, 2),
+        ("b", 5, 2),
+        ("b", 3, 3),
+        ("c", 3, 2),
+        ("c", 1, 3),
+        ("C", 1, 1),
+        ("d", 4, 2),
+        ("d", 1, 3),
+        ("l", 1, 1),
+        ("n", 1, 1),
+        ("o", 1, 1),
+        (CHAR_PEGASUS, 1, 1),
+        ("w", 1, 1),
+        ("W", 1, 2),
+        ("M", 1, 1),
+    ],
+]
+
+# Stage 5 preserves the four-floor Stage 4 roster from before the expansion.
+STAGE5_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 22, 1),
         ("A", 2, 1),
@@ -641,6 +746,14 @@ STAGE3_ROSTER_TRIBES: List[MonsterTribe] = sorted(
 STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
     [
         *_get_stage_roster_tribes(STAGE4_ROSTER),
+        MonsterTribe(CHAR_COLLAPSE, level=1, feed=0),
+    ],
+    key=lambda tribe: tribe.level,
+    reverse=True,
+)
+STAGE5_ROSTER_TRIBES: List[MonsterTribe] = sorted(
+    [
+        *_get_stage_roster_tribes(STAGE5_ROSTER),
         MonsterTribe(CHAR_COLLAPSE, level=1, feed=0),
     ],
     key=lambda tribe: tribe.level,
@@ -920,7 +1033,8 @@ def preview_entity_glyphs(
         )
     ]
     if isinstance(entity, Monster) and entity.empowered > 1:
-        glyphs.append(FieldGlyph(entity.x + 1, entity.y, "'", "default", dim=True))
+        marker = "'" if entity.empowered == 2 else '"'
+        glyphs.append(FieldGlyph(entity.x + 1, entity.y, marker, "default", dim=True))
     return glyphs
 
 
@@ -971,8 +1085,9 @@ def revealed_entity_glyphs(
         )
         glyphs = [FieldGlyph(entity.x, entity.y, char, tone, bold=True, dim=dim)]
         if entity.empowered > 1:
+            marker = "'" if entity.empowered == 2 else '"'
             glyphs.append(
-                FieldGlyph(entity.x + 1, entity.y, "'", tone, bold=True, dim=dim)
+                FieldGlyph(entity.x + 1, entity.y, marker, tone, bold=True, dim=dim)
             )
         return glyphs
     if isinstance(entity, Collapse):

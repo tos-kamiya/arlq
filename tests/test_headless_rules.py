@@ -208,16 +208,8 @@ def test_stage3_excludes_fire_lizard():
 
 
 def test_stage4_has_independent_per_floor_roster():
-    assert len(d.STAGE4_ROSTER) == 4
-    assert [entry for entry in d.STAGE4_ROSTER[1] if entry[0] not in {"V", "E"}] == [
-        entry for entry in d.STAGE4_ROSTER[2] if entry[0] not in {"V", "E"}
-    ]
-    assert sorted(filled_rooms for _, filled_rooms in d.STAGE4_FLOOR_LAYOUT) == [
-        1,
-        1,
-        1,
-        2,
-    ]
+    assert len(d.STAGE4_ROSTER) == d.STAGE4_FLOORS == 5
+    assert [filled_rooms for _, filled_rooms in d.STAGE4_FLOOR_LAYOUT] == [1] * 5
     assert sum(island_rooms for island_rooms, _ in d.STAGE4_FLOOR_LAYOUT) == 1
     assert all(
         filled_rooms == 1
@@ -233,17 +225,33 @@ def test_stage4_has_independent_per_floor_roster():
         for floor in d.STAGE4_ROSTER
         for ch, _, _ in floor
     )
+    for floor in d.STAGE4_ROSTER:
+        for char in {entry[0] for entry in floor}:
+            ranks = {rank for ch, _, rank in floor if ch == char}
+            assert any(ranks <= allowed for allowed in ({1}, {1, 2}, {2, 3}))
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[0] if ch == "a") == 22
     assert [
         sum(count for ch, count, _ in floor if ch == "k") for floor in d.STAGE4_ROSTER
-    ] == [2, 2, 2, 2]
+    ] == [0, 2, 3, 3, 0]
+    assert [
+        sum(count for _, count, rank in floor if rank == 2 or rank == 3)
+        for floor in d.STAGE4_ROSTER
+    ] == [4, 7, 14, 20, 26]
+    assert [
+        sum(count for _, count, rank in floor if rank == 3)
+        for floor in d.STAGE4_ROSTER
+    ] == [0, 0, 2, 4, 5]
     assert d.MARKSMAN_LP_DAMAGE == 4
     assert not any(ch == "G" for floor in d.STAGE4_ROSTER for ch, _, _ in floor)
-    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "w") == 1
-    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "W") == 1
-    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "M") == 1
+    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[4] if ch == "w") == 1
+    assert sum(
+        count
+        for ch, count, rank in d.STAGE4_ROSTER[4]
+        if ch == "W" and rank == 2
+    ) == 1
+    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[4] if ch == "M") == 1
     assert not any(
-        ch in {"w", "W"} for floor in d.STAGE4_ROSTER[:3] for ch, _, _ in floor
+        ch in {"w", "W"} for floor in d.STAGE4_ROSTER[:4] for ch, _, _ in floor
     )
     assert (
         sum(count for floor in d.STAGE4_ROSTER for ch, count, _ in floor if ch == "V")
@@ -256,10 +264,16 @@ def test_stage4_has_independent_per_floor_roster():
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[0] if ch == "e") == 1
     assert all(
         sum(count for ch, count, _ in d.STAGE4_ROSTER[index] if ch == "e") == 0
-        for index in (1, 2, 3)
+        for index in (1, 2, 3, 4)
     )
     assert (
         d.CHAR_TO_MONSTER_TRIBE["V"].level == d.CHAR_TO_MONSTER_TRIBE["E"].level == 30
+    )
+    assert all(
+        sum(count for ch, count, _ in floor if ch == special) == 0
+        for floor in d.STAGE4_ROSTER
+        for special in ("w", "W", "M")
+        if floor is not d.STAGE4_ROSTER[4]
     )
 
 
@@ -285,33 +299,31 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
         if isinstance(entity, d.Monster) and entity.tribe.char == "g"
     ]
     treasures = [
-        entity for entity in floors[3].entities if isinstance(entity, d.Treasure)
+        entity for entity in floors[4].entities if isinstance(entity, d.Treasure)
     ]
     mimics = [
         entity
-        for entity in floors[3].entities
+        for entity in floors[4].entities
         if isinstance(entity, d.Monster) and entity.tribe.char == "M"
     ]
 
     assert elves == {"I", "J", "K", "H"}
     assert len(bosses) == 1
-    assert len(floors) == 4
-    assert (
-        sum(
-            isinstance(entity, d.Monster) and entity.tribe.char == "V"
-            for floor in floors
-            for entity in floor.entities
+    assert len(floors) == 5
+    special_floor = {
+        char: next(
+            index
+            for index, floor in enumerate(floors)
+            if any(
+                isinstance(entity, d.Monster) and entity.tribe.char == char
+                for entity in floor.entities
+            )
         )
-        == 1
-    )
-    assert (
-        sum(
-            isinstance(entity, d.Monster) and entity.tribe.char == "E"
-            for floor in floors
-            for entity in floor.entities
-        )
-        == 1
-    )
+        for char in ("V", "E")
+    }
+    assert special_floor["V"] in (1, 2, 3)
+    assert special_floor["E"] in (1, 2, 3)
+    assert special_floor["V"] != special_floor["E"]
     assert (
         sum(
             isinstance(entity, d.Collapse)
@@ -320,7 +332,8 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
         )
         == 1
     )
-    assert bosses[0] in floors[3].entities
+    assert bosses[0] in floors[4].entities
+    assert bosses[0].empowered == 2
     assert len(treasures) == len(mimics) == 1
     assert treasures[0].encounter_type == "TW"
     assert d.monster_type_key(mimics[0]) == "MW"
@@ -328,6 +341,27 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
     assert not mimics[0].active
     assert len(golems) == 1
     assert golems[0][1].tribe.char == "g"
+
+
+def test_stage5_keeps_the_original_four_floor_stage4_copy():
+    floors, _ = game_engine_module.build(stage_num=5)
+
+    bosses = [
+        entity
+        for floor in floors
+        for entity in floor.entities
+        if isinstance(entity, d.Monster) and entity.tribe.char == "W"
+    ]
+    assert len(floors) == d.STAGE5_FLOORS == 4
+    assert len(bosses) == 1
+    assert bosses[0] in floors[3].entities
+    assert bosses[0].empowered == 1
+    assert not any(
+        entity.empowered == 3
+        for floor in floors
+        for entity in floor.entities
+        if isinstance(entity, d.Monster)
+    )
 
 
 def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
@@ -530,11 +564,14 @@ def test_erebus_rare_reduces_level_to_two_thirds_instead_of_granting_level(
 def test_empowered_monsters_scale_level_and_have_separate_identity():
     normal = d.Monster(2, 2, d.CHAR_TO_MONSTER_TRIBE["d"])
     empowered = d.Monster(2, 2, d.CHAR_TO_MONSTER_TRIBE["d"], empowered=2)
+    rank_three = d.Monster(2, 2, d.CHAR_TO_MONSTER_TRIBE["b"], empowered=3)
 
     assert d.monster_level(normal) == 20
     assert d.monster_level(empowered) == 70
+    assert d.monster_level(rank_three) == 75
     assert d.monster_type_key(normal) == "d"
     assert d.monster_type_key(empowered) == "d2"
+    assert d.monster_type_key(rank_three) == "b3"
     assert d.CHAR_TO_MONSTER_TRIBE["d"].feed == 60
 
 
@@ -635,7 +672,7 @@ def test_stage5_treasure_does_not_set_a_step_message():
     assert player.stage_won
 
 
-def test_stage5_shows_treasure_message_after_main_loop(monkeypatch):
+def test_trap_test_shows_treasure_message_after_main_loop(monkeypatch):
     player = d.Player(2, 2, 200, d.LP_INIT)
     wyrm = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
     treasure = d.Treasure(4, 2, "TW")
@@ -661,7 +698,7 @@ def test_stage5_shows_treasure_message_after_main_loop(monkeypatch):
         map_mode=False,
     )
 
-    game_engine_module.run_game(ui, "seed", stage_num=5)
+    game_engine_module.run_game(ui, "seed", stage_num=6)
 
     assert player.boss_defeated
     assert player.treasure_collected
@@ -878,15 +915,15 @@ def test_stage4_debug_floor_views_show_v_as_v():
     run_game(ui, "debug", 4, debug_show_entities=True)
 
     by_floor = {draw["floor_label"]: draw for draw in draws}
-    assert set(by_floor) == {"1/4", "2/4", "3/4", "4/4"}
+    assert set(by_floor) == {"1/5", "2/5", "3/5", "4/5"}
     assert all(draw["debug_show_entities"] for draw in draws)
     assert not any(
         isinstance(entity, d.Monster) and entity.tribe.char == "V"
-        for entity in by_floor["1/4"]["entities"]
+        for entity in by_floor["1/5"]["entities"]
     )
     vortex_draws = [
         (label, entity)
-        for label in ("2/4", "3/4", "4/4")
+        for label in ("2/5", "3/5", "4/5")
         for entity in by_floor[label]["entities"]
         if isinstance(entity, d.Monster) and entity.tribe.char == "V"
     ]
@@ -2057,4 +2094,17 @@ def test_revealed_entity_glyphs_distinguish_unknown_known_and_empowered():
     assert [(glyph.char, glyph.dim, glyph.bold) for glyph in preview] == [
         ("b", True, False),
         ("'", True, False),
+    ]
+
+    rank_three = d.Monster(4, 4, d.CHAR_TO_MONSTER_TRIBE["b"], empowered=3)
+    shown_rank_three = d.revealed_entity_glyphs(
+        rank_three, {d.monster_type_key(rank_three)}, False, 1, {"b"}
+    )
+    assert [(glyph.char, glyph.tone) for glyph in shown_rank_three] == [
+        ("b", "red"),
+        ('"', "red"),
+    ]
+    assert [glyph.char for glyph in d.preview_entity_glyphs(rank_three)] == [
+        "b",
+        '"',
     ]

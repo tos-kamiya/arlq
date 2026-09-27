@@ -731,7 +731,7 @@ def read_last_seed() -> Tuple[int, int]:
         stage, seed = int(parts[0]), int(parts[1])
     except ValueError as error:
         raise ValueError(f"invalid rematch stage or seed in {path}") from error
-    if stage not in d.PUBLIC_STAGE_NUMBERS and stage != 5:
+    if stage not in d.PUBLIC_STAGE_NUMBERS and stage != 6:
         raise ValueError(f"invalid rematch stage or seed in {path}")
     return stage, seed
 
@@ -754,7 +754,7 @@ def run_game(
         stage_numbers = (
             d.PUBLIC_STAGE_NUMBERS
             if dev
-            else tuple(stage for stage in d.PUBLIC_STAGE_NUMBERS if stage != 4)
+            else tuple(stage for stage in d.PUBLIC_STAGE_NUMBERS if stage not in (4, 5))
         )
         r = ui.select_stage(stage_numbers)
         if r == 0:
@@ -778,7 +778,7 @@ def run_game(
         remember_seed(stage_num, seed_value)
 
     stage_module = import_module(f".{GAME_ENGINE_MODULE}", package=__package__)
-    if stage_num in (1, 2, 4, 5):
+    if stage_num in (1, 2, 4, 5, 6):
         stage_module.run_game(
             ui,
             seed_str,
@@ -842,7 +842,7 @@ def parse_seed_string(args, seed_str, enforce_version: bool = True):
     except ValueError:
         exit("Error: Stage value in seed string is not a valid integer.")
     if args.stage not in d.PUBLIC_STAGE_NUMBERS:
-        exit("Error: Stage value in seed string must be 1, 2, 3, or 4.")
+        exit("Error: Stage value in seed string must be 1, 2, 3, 4, or 5.")
 
     try:
         args.seed = int(seed_value_str)
@@ -856,7 +856,7 @@ def main():
     )
 
     parser.add_argument(
-        "--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, or 4)."
+        "--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, 4, or 5)."
     )
     parser.add_argument(
         "--dev",
@@ -953,9 +953,9 @@ def main():
             parser.error(
                 "--trap-test cannot be combined with --stage, --seed, or trace options"
             )
-        args.stage = 5
+        args.stage = 6
     elif args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
-        parser.error("--stage must be 1, 2, 3, or 4")
+        parser.error("--stage must be 1, 2, 3, 4, or 5")
 
     if args.trace_record and args.trace_replay:
         parser.error("--trace-record cannot be combined with --trace-replay")
