@@ -294,8 +294,8 @@ class BlessedUI:
 
         y += 1
         x = 0
-        if stage_num in (3, 4):
-            marks = d.stage3_progress_marks(player)
+        if stage_num in d.ELF_STAGES:
+            marks = d.elf_stage_progress_marks(player)
             for index, (label, achieved) in enumerate(marks):
                 spacer = "" if index == len(marks) - 1 else " "
                 add(label + spacer, bold=achieved, dim=not achieved)

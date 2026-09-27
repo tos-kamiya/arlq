@@ -69,7 +69,7 @@ def test_stage3_builder_supports_floors_without_island_or_filled_rooms():
 
     assert len(floors) == d.STAGE3_FLOORS
     assert all(floor.island is None for floor in floors)
-    assert "I" not in player.stage3_elf_floors
+    assert "I" not in player.elf_stage_floors
     assert not any(
         isinstance(entity, d.Monster) and entity.tribe.char == "I"
         for floor in floors
@@ -464,7 +464,7 @@ def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
     assert treasures[0].encounter_type == "TW"
     assert mimics == []
     for char in ("J", "K", "H"):
-        assigned_floor = player.stage3_elf_floors[char] - 1
+        assigned_floor = player.elf_stage_floors[char] - 1
         elves = [
             entity
             for floor in floors
@@ -698,7 +698,7 @@ def test_treasure_requires_current_timeline_w_defeat(stage_num):
 
 def test_stage4_treasure_uses_the_win_screen_message():
     player = d.Player(2, 2, 200, 90)
-    player.stage3_flags |= d.STAGE3_W_FLAG
+    player.elf_stage_flags |= d.STAGE3_W_FLAG
     player.boss_defeated = True
     treasure = d.Treasure(3, 2, "TW")
     treasure.unlocked = True
@@ -1225,10 +1225,10 @@ def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypat
 def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     player.known_monsters = {"a", "W"}
-    player.stage3_flags |= d.STAGE3_W_FLAG
+    player.elf_stage_flags |= d.STAGE3_W_FLAG
     player.boss_defeated = True
     player.treasure_collected = True
-    player.stage3_elf_floors = {"I": 1, "J": 3, "K": 2, "H": 1}
+    player.elf_stage_floors = {"I": 1, "J": 3, "K": 2, "H": 1}
     loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
     known_companion = d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
     known_companion.revealed = True
@@ -1284,7 +1284,7 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
         if isinstance(entity, d.Companion) and entity.tribe.char == "n"
     )
     assert not restored_companion.revealed
-    assert player.stage3_elf_floors == {"I": 1, "J": 3, "K": 2, "H": 1}
+    assert player.elf_stage_floors == {"I": 1, "J": 3, "K": 2, "H": 1}
     assert not player.stage_won
     assert len(current_floors[0].entities) == 3
     assert any(
@@ -1297,7 +1297,7 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
 
 def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     player = d.Player(2, 2, 100, 90)
-    player.stage3_flags = d.STAGE3_H_FLAG
+    player.elf_stage_flags = d.ELF_STAGE_H_FLAG
     current_high_elf = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
     current_high_elf.revealed = True
     current_high_elf.met = True
@@ -1305,7 +1305,7 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     current_floors, _ = stage3_state(player, [loop, current_high_elf])
 
     old_player = d.Player(5, 5, 7, 60)
-    old_player.stage3_flags = 0
+    old_player.elf_stage_flags = 0
     old_loop = d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"])
     old_high_elf = d.Monster(7, 5, d.CHAR_TO_MONSTER_TRIBE["H"])
     old_floors, _ = stage3_state(old_player, [old_loop, old_high_elf])
@@ -1320,7 +1320,7 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     monkeypatch.setattr(game_engine_module, "_spawn", spawn_loop)
     run_stage3_keys("R", current_floors, player, floor, checkpoint, queue, history)
 
-    assert not (player.stage3_flags & d.STAGE3_H_FLAG)
+    assert not (player.elf_stage_flags & d.ELF_STAGE_H_FLAG)
     restored_high_elf = next(
         entity
         for entity in current_floors[0].entities
@@ -1380,7 +1380,7 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(
     monkeypatch.setattr(stage_replay_module, "_spawn", spawn_loop)
     player = d.Player(2, 2, 9, 30)
     player.known_monsters = {"MW"}
-    player.stage3_elf_floors = {"I": 2}
+    player.elf_stage_floors = {"I": 2}
     loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
     floors, _ = stage3_state(player, [loop])
     floors[0].seen[1][1] = 7
@@ -1442,7 +1442,7 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(
     )
     assert not restored_chest.unlocked
     assert player.known_monsters == {"MW"}
-    assert player.stage3_elf_floors == {"I": 2}
+    assert player.elf_stage_floors == {"I": 2}
     assert floors[0].seen[2][2] == (3 if has_vortex_map else 0)
     assert floors[0].seen[1][1] == (0 if has_vortex_map else 7)
 
@@ -1771,25 +1771,25 @@ def test_stage3_special_floor_cells_are_passable_without_using_sword(cell):
         (
             "I",
             0,
-            d.STAGE3_I_FLAG,
+            d.ELF_STAGE_I_FLAG,
             "-- The Isolated Elf told you about the history of the elves.",
         ),
         (
             "J",
             0,
-            d.STAGE3_J_FLAG,
+            d.ELF_STAGE_J_FLAG,
             "-- The Javelin Elf joined your hunt for the Dread Wyrm!",
         ),
         (
             "K",
-            d.STAGE3_C_FLAG,
-            d.STAGE3_C_FLAG | d.STAGE3_K_FLAG,
+            d.ELF_STAGE_C_FLAG,
+            d.ELF_STAGE_C_FLAG | d.ELF_STAGE_K_FLAG,
             "-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!",
         ),
         (
             "H",
-            d.STAGE3_I_FLAG | d.STAGE3_J_FLAG,
-            d.STAGE3_I_FLAG | d.STAGE3_J_FLAG | d.STAGE3_H_FLAG,
+            d.ELF_STAGE_I_FLAG | d.ELF_STAGE_J_FLAG,
+            d.ELF_STAGE_I_FLAG | d.ELF_STAGE_J_FLAG | d.ELF_STAGE_H_FLAG,
             "-- The High Elf bestowed the talisman upon you!",
         ),
     ],
@@ -1798,7 +1798,7 @@ def test_elf_encounters_apply_their_conditions(
     elf, initial_flags, expected_flags, expected_message
 ):
     player = d.Player(2, 2, 100, 90)
-    player.stage3_flags = initial_flags
+    player.elf_stage_flags = initial_flags
     if elf == "K":
         player.item = d.ITEM_SWORD_CURSED
         player.item_uses = 2
@@ -1813,12 +1813,12 @@ def test_elf_encounters_apply_their_conditions(
     messages = run_stage3_keys("R", floors, player, floor, checkpoint, queue, history)
 
     assert messages == [expected_message]
-    assert player.stage3_flags == expected_flags
+    assert player.elf_stage_flags == expected_flags
     if elf == "J":
         assert player.persistent_followers == [(2, 2, 0, "J")]
         assert floors[0].entities == []
     elif elf == "H":
-        assert player.stage3_flags & d.STAGE3_H_FLAG
+        assert player.elf_stage_flags & d.ELF_STAGE_H_FLAG
         assert floors[0].entities == [entity]
     else:
         assert floors[0].entities == [entity]
@@ -1828,9 +1828,9 @@ def test_elf_encounters_apply_their_conditions(
             assert player.item_taken_from is None
 
 
-def test_collector_and_javelin_elves_increase_stage3_attack():
+def test_collector_and_javelin_elves_increase_elf_stage_attack():
     player = d.Player(2, 2, 100, 90)
-    player.stage3_flags = d.STAGE3_K_FLAG
+    player.elf_stage_flags = d.ELF_STAGE_K_FLAG
     player.persistent_followers = [(2, 2, 0, "J")]
 
     assert d.current_player_attack(player, 3) == 150
@@ -1840,7 +1840,7 @@ def test_collector_and_javelin_elves_increase_stage3_attack():
 def test_collector_and_javelin_bonuses_apply_in_every_stage(stage_num):
     # Field colors and combat must agree on permanent elf attack bonuses.
     player = d.Player(2, 2, 100, 90)
-    player.stage3_flags = d.STAGE3_K_FLAG
+    player.elf_stage_flags = d.ELF_STAGE_K_FLAG
     player.persistent_followers = [(2, 2, 0, "J")]
 
     assert d.current_player_attack(player, stage_num) == 150
@@ -1849,11 +1849,11 @@ def test_collector_and_javelin_bonuses_apply_in_every_stage(stage_num):
 
 @pytest.mark.parametrize(
     ("elf", "initial_flags"),
-    [("I", 0), ("K", d.STAGE3_C_FLAG), ("H", d.STAGE3_I_FLAG | d.STAGE3_J_FLAG)],
+    [("I", 0), ("K", d.ELF_STAGE_C_FLAG), ("H", d.ELF_STAGE_I_FLAG | d.ELF_STAGE_J_FLAG)],
 )
 def test_elf_repeat_contact_shows_follow_up_message(elf, initial_flags):
     player = d.Player(2, 2, 100, 90)
-    player.stage3_flags = initial_flags
+    player.elf_stage_flags = initial_flags
     entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[elf])
     floors, _ = stage3_state(player, [entity])
     floor = [0]
@@ -1888,7 +1888,7 @@ def test_stage3_high_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
     assert messages == ["-- The High Elf does not recognize you yet."]
     assert (player.x, player.y) == (3, 2)
     assert player.high_elf_refused is True
-    assert player.stage3_flags == 0
+    assert player.elf_stage_flags == 0
 
     messages = run_stage3_keys("LL", floors, player, floor, checkpoint, queue, history)
     assert messages == [None, None]
@@ -1922,7 +1922,7 @@ def test_stage3_collector_elf_refuses_once_then_sends_player_elsewhere(monkeypat
     assert messages == ["-- Please bring the cursed sword (C)."]
     assert (player.x, player.y) == (3, 2)
     assert player.k_elf_refused is True
-    assert player.stage3_flags == 0
+    assert player.elf_stage_flags == 0
 
     messages = run_stage3_keys("LL", floors, player, floor, checkpoint, queue, history)
     assert messages == [None, None]
@@ -2030,7 +2030,7 @@ def test_non_isolated_elf_repeat_contact_does_not_relocate_player():
     """Regression guard: only the Isolated Elf's repeat contact should
     relocate the player. Other elves keep their existing in-place message."""
     player = d.Player(2, 2, 100, 90)
-    player.stage3_flags = d.STAGE3_C_FLAG
+    player.elf_stage_flags = d.ELF_STAGE_C_FLAG
     entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["K"])
     floors, _ = stage3_state(player, [entity])
     floor = [0]
@@ -2061,14 +2061,14 @@ def test_repeated_elf_contact_ends_turn_before_companion_expiration():
     assert queue == Counter()
 
 
-def test_stage3_flags_keep_their_bit_values():
+def test_elf_stage_flags_keep_their_bit_values():
     assert (
-        d.STAGE3_C_FLAG,
-        d.STAGE3_I_FLAG,
-        d.STAGE3_K_FLAG,
-        d.STAGE3_H_FLAG,
+        d.ELF_STAGE_C_FLAG,
+        d.ELF_STAGE_I_FLAG,
+        d.ELF_STAGE_K_FLAG,
+        d.ELF_STAGE_H_FLAG,
         d.STAGE3_W_FLAG,
-        d.STAGE3_J_FLAG,
+        d.ELF_STAGE_J_FLAG,
     ) == (1, 2, 4, 8, 16, 64)
     assert d.STAGE3_NO_RESPAWN_MONSTERS == {
         "a", "A", "b", "c", "C", "M", "W", "w"
@@ -2091,7 +2091,7 @@ def test_level_item_labels_follow_permanent_elf_attack_bonuses():
     player.item_taken_from = "d"
     assert d.level_item_labels(player, 1) == ("LVL: 100 /2", "+Poisoned(d)")
 
-    player.stage3_flags = d.STAGE3_K_FLAG
+    player.elf_stage_flags = d.ELF_STAGE_K_FLAG
     player.persistent_followers.append((1, 1, 0, "J"))
     assert d.level_item_labels(player, 3) == ("LVL: 100 /2 x1.2 +25%", "+Poisoned(d)")
     assert d.level_item_labels(player, 2) == ("LVL: 100 /2 x1.2 +25%", "+Poisoned(d)")
@@ -2103,13 +2103,13 @@ def test_level_item_labels_follow_permanent_elf_attack_bonuses():
     )
 
 
-def test_stage3_progress_marks_add_elf_floors_after_the_isolated_elf():
+def test_elf_stage_progress_marks_add_elf_floors_after_the_isolated_elf():
     player = d.Player(1, 1, 1, 90)
-    player.stage3_flags = d.STAGE3_I_FLAG | d.STAGE3_K_FLAG
-    player.stage3_elf_floors = {"K": 2, "H": 3}
+    player.elf_stage_flags = d.ELF_STAGE_I_FLAG | d.ELF_STAGE_K_FLAG
+    player.elf_stage_floors = {"K": 2, "H": 3}
     player.treasure_collected = True
 
-    assert d.stage3_progress_marks(player) == [
+    assert d.elf_stage_progress_marks(player) == [
         ("C", False),
         ("I", True),
         ("J", False),

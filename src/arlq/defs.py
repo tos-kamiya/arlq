@@ -8,6 +8,8 @@ FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 # Stage 4 is experimental but available from the game's UI and command line.
 PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4)
+# Stages that feature elves and share the multi-floor progress state.
+ELF_STAGES = frozenset({3, 4})
 # Stage 1 is a smaller, introductory map: it walls off this many tile
 # columns on each of the left and right edges (6 -> 4 wide), leaving
 # TILE_NUM_Y unchanged.
@@ -40,18 +42,16 @@ SWORD_USES: int = 3
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
 # W, w, and M stay down for the rest of a multi-floor run.
 STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w", "M"}
-STAGE3_C_FLAG: int = 1
-STAGE3_I_FLAG: int = 2
-STAGE3_K_FLAG: int = 4
-STAGE3_H_FLAG: int = 8
+ELF_STAGE_C_FLAG: int = 1
+ELF_STAGE_I_FLAG: int = 2
+ELF_STAGE_K_FLAG: int = 4
+ELF_STAGE_H_FLAG: int = 8
 STAGE3_W_FLAG: int = 16
-STAGE3_J_FLAG: int = 64
-STAGE_L_FLAG: int = 128
-STAGE3_FLOORS = 3
-STAGE4_FLOORS = 5
+ELF_STAGE_J_FLAG: int = 64
+ELF_STAGE_L_FLAG: int = 128
 STAGE4_FINAL_FLOOR_BARRIER_PERCENT = 10
 LOOP_TURNS = 80
-STAGE4_MARKSMAN_ARROW_LIMIT = 20
+MARKSMAN_ARROW_LIMIT = 20
 STAGE3_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
 STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
     (1, 1),
@@ -64,13 +64,13 @@ STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
 STAGE4_FILLED_ROOM_COUNTS: Tuple[int, ...] = (0, 1, 1, 2, 3)
 STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
 STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
-# Order of the Stage 3 status-line marks. The treasure mark "T" is added separately.
-STAGE3_PROGRESS: List[Tuple[str, int]] = [
-    ("C", STAGE3_C_FLAG),
-    ("I", STAGE3_I_FLAG),
-    ("J", STAGE3_J_FLAG),
-    ("K", STAGE3_K_FLAG),
-    ("H", STAGE3_H_FLAG),
+# Order of the elf-stage status-line marks. Treasure "T" is added separately.
+ELF_STAGE_PROGRESS: List[Tuple[str, int]] = [
+    ("C", ELF_STAGE_C_FLAG),
+    ("I", ELF_STAGE_I_FLAG),
+    ("J", ELF_STAGE_J_FLAG),
+    ("K", ELF_STAGE_K_FLAG),
+    ("H", ELF_STAGE_H_FLAG),
     ("W", STAGE3_W_FLAG),
 ]
 
@@ -332,11 +332,10 @@ class Player(Entity):
         self.treasure_collected: bool = False
         # Identified monster and trap types are known across all floors.
         self.known_monsters: Set[str] = set()
-        self.stage3_elf_floors: Dict[str, int] = {}
+        self.elf_stage_floors: Dict[str, int] = {}
         self.known_elf_floors: Set[str] = set()
-        # Stage 3 state. Keeping these on Player preserves the small shared
-        # entity model used by both frontends.
-        self.stage3_flags: int = 0
+        # Shared progress for the elf stages, including Stage 3's W flag.
+        self.elf_stage_flags: int = 0
         self.current_floor: int = 0
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
         # (floor, x, y) of the monster involved in the most recent monster
@@ -671,6 +670,9 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     ],
 ]
 
+STAGE3_FLOORS = len(STAGE3_ROSTER)
+STAGE4_FLOORS = len(STAGE4_ROSTER)
+
 def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
     chars = dict.fromkeys(char for floor in roster for char, _, _ in floor)
     return sorted(
@@ -757,7 +759,7 @@ def current_player_attack(player: Player, stage_num: int = 0) -> int:
     else:
         value = player.level
 
-    if player.stage3_flags & STAGE3_K_FLAG:
+    if player.elf_stage_flags & ELF_STAGE_K_FLAG:
         value = (value * 6 + 1) // 5
     if _javelin_follower_active(player):
         value = (value * 5 + 2) // 4
@@ -835,7 +837,7 @@ def level_item_labels(player: Player, stage_num: int) -> Tuple[str, str]:
     x1.2 is omitted while a sword already replaces the base multiplier.
     `stage_num` is retained for existing callers.
     """
-    has_k = bool(player.stage3_flags & STAGE3_K_FLAG)
+    has_k = bool(player.elf_stage_flags & ELF_STAGE_K_FLAG)
     has_j = _javelin_follower_active(player)
     item = player.item
     if item == ITEM_SWORD_X1_5:
@@ -872,32 +874,32 @@ def status_prefix(player: Player, stage_num: int, turn: int) -> str:
     return text
 
 
-def stage3_progress_marks(player: Player) -> List[Tuple[str, bool]]:
+def elf_stage_progress_marks(player: Player) -> List[Tuple[str, bool]]:
     """Elf and treasure marks for the multi-floor stage status line.
 
     Each entry is (label, achieved). The Isolated Elf flag reveals all elf
     floors; otherwise, contacting an elf reveals that elf's floor. If L is
     present, its floor is shown as ``?`` after the player has met L.
     """
-    show_floors = bool(player.stage3_flags & STAGE3_I_FLAG)
+    show_floors = bool(player.elf_stage_flags & ELF_STAGE_I_FLAG)
     marks: List[Tuple[str, bool]] = []
-    progress = list(STAGE3_PROGRESS)
-    if "L" in player.stage3_elf_floors or player.stage3_flags & STAGE_L_FLAG:
+    progress = list(ELF_STAGE_PROGRESS)
+    if "L" in player.elf_stage_floors or player.elf_stage_flags & ELF_STAGE_L_FLAG:
         progress = [
-            *STAGE3_PROGRESS[:4],
-            ("L", STAGE_L_FLAG),
-            *STAGE3_PROGRESS[4:],
+            *ELF_STAGE_PROGRESS[:4],
+            ("L", ELF_STAGE_L_FLAG),
+            *ELF_STAGE_PROGRESS[4:],
         ]
     for label, bit in progress:
         text = label
-        if label == "L" and player.stage3_flags & STAGE_L_FLAG:
+        if label == "L" and player.elf_stage_flags & ELF_STAGE_L_FLAG:
             text += "?"
         elif (
             (show_floors or label in player.known_elf_floors)
-            and label in player.stage3_elf_floors
+            and label in player.elf_stage_floors
         ):
-            text += str(player.stage3_elf_floors[label])
-        marks.append((text, bool(player.stage3_flags & bit)))
+            text += str(player.elf_stage_floors[label])
+        marks.append((text, bool(player.elf_stage_flags & bit)))
     marks.append(("T", player.treasure_collected))
     return marks
 

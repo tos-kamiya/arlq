@@ -330,7 +330,7 @@ def build(
     stair_pairs_per_transition: Optional[int] = None,
     floor_layout: Optional[List[Tuple[int, int]]] = None,
 ) -> Tuple[List[Floor], d.Player]:
-    if stage_num not in (3, 4):
+    if stage_num not in d.ELF_STAGES:
         raise ValueError("multi-floor builder supports stages 3 and 4")
     if stair_pairs_per_transition is None:
         stair_pairs_per_transition = (
@@ -475,9 +475,9 @@ def build(
         _place_stage4_final_floor_barriers(floors[-1])
 
     player = d.Player(floors[0].up[0], floors[0].up[1], 1, d.LP_INIT)
-    player.stage3_elf_floors = {char: floor + 1 for char, floor in elf_floors.items()}
+    player.elf_stage_floors = {char: floor + 1 for char, floor in elf_floors.items()}
     if "L" in special_floors:
-        player.stage3_elf_floors["L"] = special_floors["L"] + 1
+        player.elf_stage_floors["L"] = special_floors["L"] + 1
     return floors, player
 
 
@@ -513,8 +513,8 @@ def build_trap_test(
         island=None,
     )
     player = d.Player(entry[0], entry[1], 150, d.LP_INIT)
-    player.stage3_elf_floors = {}
-    player.stage3_flags |= d.STAGE3_H_FLAG
+    player.elf_stage_floors = {}
+    player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
     return [arena], player
 
 
