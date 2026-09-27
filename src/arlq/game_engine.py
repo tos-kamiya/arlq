@@ -12,6 +12,7 @@ from .arlq import (
     activate_mimic_for_defeat,
     find_random_place,
     get_torched,
+    iterate_ellipse_points,
     iterate_offsets,
     move_player,
     respawn_entity,
@@ -35,8 +36,6 @@ from .stage_types import (
 from .stage_world import (
     _build_single_floor,
     _inside_island,
-    _place_barrier,
-    _treasure_spot,
     build,
     build_trap_test,
 )
@@ -330,17 +329,32 @@ def _marksman_shoot(current: Floor, player: d.Player, stage_num: int = 4) -> Non
             del marks[0]
 
 
-def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> None:
-    """Reposition mobile floor entities and forget explored floor cells."""
+def _vortex_rearrange(
+    current: Floor,
+    player: d.Player,
+    floor_index: int,
+    center: d.Point,
+) -> None:
+    """Reposition entities and forget explored cells near the Vortex."""
+    radius = round(d.FIELD_HEIGHT * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
+    width_expansion_ratio = d.FIELD_WIDTH / d.FIELD_HEIGHT
+    affected_points = set(
+        iterate_ellipse_points(
+            center[0], center[1], radius, width_expansion_ratio
+        )
+    )
     movable = [
         entity
         for entity in current.entities
-        if isinstance(entity, (d.Companion, d.Treasure))
-        or (
-            isinstance(entity, d.Monster)
-            and entity.active
-            and not entity.tribe.is_elf
-            and entity.tribe.effect != d.EFFECT_VORTEX
+        if (entity.x, entity.y) in affected_points
+        and (
+            isinstance(entity, (d.Companion, d.Treasure))
+            or (
+                isinstance(entity, d.Monster)
+                and entity.active
+                and not entity.tribe.is_elf
+                and entity.tribe.effect != d.EFFECT_VORTEX
+            )
         )
     ]
     avoid = {(player.x, player.y)} | {(entity.x, entity.y) for entity in movable}
@@ -351,18 +365,39 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
         entity for entity in current.entities if entity not in movable
     ]
 
-    # Barriers belong to the Wyrms. Clear them before moving the Wyrms, then
-    # place them around every new position after the shuffle.
-    for y, row in enumerate(current.field):
-        for x, cell in enumerate(row):
-            if cell == d.CHAR_BARRIER:
-                current.field[y][x] = d.CHAR_FLOOR
+    # Clear and rebuild only barriers inside the Vortex's affected area.
+    for x, y in affected_points:
+        if current.field[y][x] == d.CHAR_BARRIER:
+            current.field[y][x] = d.CHAR_FLOOR
+
+    def relocate(char: str, origin_floor: Optional[int], empowered: int = 1) -> None:
+        x, y = find_random_place(
+            current.entities,
+            current.field,
+            distance=2,
+            avoid=lambda point: point not in affected_points
+            or point in avoid
+            or _inside_island(point, current.island),
+        )
+        spawn_at(
+            current.entities,
+            x,
+            y,
+            d.CHAR_TO_TRIBE[char],
+            empowered=empowered,
+            origin_floor=origin_floor,
+        )
 
     for entity in movable:
         if isinstance(entity, d.Treasure):
-            stairs = set(current.up_stairs + current.down_stairs)
-            entity.x, entity.y = _treasure_spot(
-                current.entities, current.field, avoid | stairs
+            reserved = avoid | set(current.up_stairs + current.down_stairs)
+            entity.x, entity.y = find_random_place(
+                current.entities,
+                current.field,
+                distance=2,
+                avoid=lambda point: point not in affected_points
+                or point in reserved
+                or _inside_island(point, current.island),
             )
             current.entities.append(entity)
         else:
@@ -371,15 +406,7 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
             origin_floor = (
                 entity.origin_floor if isinstance(entity, d.Companion) else floor_index
             )
-            _spawn(
-                current.entities,
-                current.field,
-                char,
-                avoid,
-                current.island,
-                origin_floor,
-                empowered,
-            )
+            relocate(char, origin_floor, empowered)
 
     for current_entity in current.entities:
         if isinstance(current_entity, d.Monster) and current_entity.tribe.char in {"w", "W"}:
@@ -388,20 +415,29 @@ def _vortex_rearrange(current: Floor, player: d.Player, floor_index: int) -> Non
                 for fixed in current.entities
                 if isinstance(fixed, d.Collapse)
             } | current.collapse_landings
-            _place_barrier(current.field, (current_entity.x, current_entity.y), protected)
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    point = (current_entity.x + dx, current_entity.y + dy)
+                    x, y = point
+                    if (
+                        (dx or dy)
+                        and point in affected_points
+                        and current.field[y][x] == d.CHAR_FLOOR
+                        and point not in protected
+                    ):
+                        current.field[y][x] = d.CHAR_BARRIER
 
     known_collapses = {
         (entity.x, entity.y)
         for entity in current.entities
         if isinstance(entity, d.Collapse) and entity.revealed
     }
-    for y, row in enumerate(current.field):
-        for x, cell in enumerate(row):
-            if cell in (d.CHAR_FLOOR, d.CHAR_BARRIER) and (x, y) not in known_collapses:
-                current.seen[y][x] = 0
-    for current_entity in current.entities:
-        if isinstance(current_entity, d.Monster) and current_entity.tribe.char == "k":
-            current_entity.arrow_marks.clear()
+    for x, y in affected_points:
+        if (
+            current.field[y][x] in (d.CHAR_FLOOR, d.CHAR_BARRIER)
+            and (x, y) not in known_collapses
+        ):
+            current.seen[y][x] = 0
 
 
 def _defeat_monster(
@@ -482,7 +518,7 @@ def _defeat_monster(
                     deepcopy([floor_data.seen for floor_data in floors]),
                 )
             )
-        _vortex_rearrange(current, player, floor[0])
+        _vortex_rearrange(current, player, floor[0], (entity.x, entity.y))
 
     if d.monster_level(entity) > 0 and ch not in d.STAGE3_NO_RESPAWN_MONSTERS:
         spawn_key = (floor[0], d.monster_type_key(entity))
