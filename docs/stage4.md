@@ -43,7 +43,7 @@ respawn location is unknown.
 | -------------- | ----------- |
 | **g** Golem | Rocks scatter when defeated; yields no food. |
 | **k** Marksman | Shoots arrows when the player is in its line of sight. |
-| **E** Rare Erebus | Restores LP when defeated but lowers the player's level. |
+| **E** Rare Erebus | Restores LP when defeated but lowers the player's level. Returns at a 65-turn respawn tick on a randomly selected floor. |
 
 ### Traps
 
@@ -55,7 +55,7 @@ place and can be used as a passage to the floor below.
 | ---- | ------------------------ | ----------- |
 | **M** Mimic | Hidden, then `T` | Appears as a chest after W is defeated; contact reveals it and starts combat. It disappears from the map when defeated. |
 | **O** Collapse | `?` | Drops the player to the same coordinates on the floor below. It can be used repeatedly. |
-| **V** Vortex | `?` | Repositions monsters, companions, and chests when defeated; explored areas are reset. |
+| **V** Vortex | `?` | Repositions monsters, companions, and chests when defeated; explored areas are reset. Returns at a 65-turn respawn tick on a randomly selected floor. |
 
 ## 日本語
 
@@ -81,7 +81,7 @@ place and can be used as a passage to the floor below.
 | --- | --- | --- |
 | `g` | ゴーレム | 倒すと岩が飛び散り、食料は得られない。 |
 | `k` | マークスマン | 射線が通ると矢を放つ。 |
-| `E` | レアエレボス | 倒すとLPを回復するが、レベルが下がる。 |
+| `E` | レアエレボス | 倒すとLPを回復するが、レベルが下がる。65ターン周期の再出現時にランダムなフロアへ出現する。 |
 
 ### トラップ
 
@@ -91,7 +91,7 @@ place and can be used as a passage to the floor below.
 | --- | --- | --- |
 | `M` ミミック | 非表示、その後 `T` | Wを倒すと宝箱と同じ姿で現れ、接触すると正体を現して戦闘になる。倒すとマップから消える。 |
 | `O` 崩落 | `?` | 入ると1つ下のフロアの同じ座標へ落ちる。繰り返し利用できる。 |
-| `V` ボルテックス | `?` | 倒すとエルフ以外のモンスターや同行者、宝箱を再配置し、探索済みマスをリセットする。 |
+| `V` ボルテックス | `?` | 倒すとエルフ以外のモンスターや同行者、宝箱を再配置し、探索済みマスをリセットする。65ターン周期の再出現時にランダムなフロアへ出現する。 |
 
 ### Stair discovery / 階段の発見
 

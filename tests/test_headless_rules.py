@@ -2100,7 +2100,9 @@ def test_stage3_flags_keep_their_bit_values():
         d.STAGE3_W_FLAG,
         d.STAGE3_J_FLAG,
     ) == (1, 2, 4, 8, 16, 64)
-    assert d.STAGE3_NO_RESPAWN_MONSTERS == {"a", "A", "b", "c", "C", "M", "V", "W", "w"}
+    assert d.STAGE3_NO_RESPAWN_MONSTERS == {
+        "a", "A", "b", "c", "C", "M", "W", "w"
+    }
 
 
 def test_stage3_rare_amoeba_grants_the_special_exp_bonus():

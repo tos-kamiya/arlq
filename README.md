@@ -158,6 +158,10 @@ Stage 2 contains four ordinary `b` Bison and two empowered `b` Bison (see Rare T
 | **H** High Elf      | Too powerful to defeat.                                                                                               |
 | **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you.                                                         |
 
+Rare Erebus (`E`) and the Vortex (`V`) use random-floor respawns at a 65-turn
+tick and can return on any Stage 4 or 5 floor. The Caltrop Plant (`X`) also
+uses random-floor respawns; Stage 2, where it appears, currently has one floor.
+
 ### Stage 3
 
 Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
