@@ -25,6 +25,29 @@ def _place_barrier(
                 field[y][x] = d.CHAR_BARRIER
 
 
+def _place_stage4_final_floor_barriers(floor: Floor) -> None:
+    """Cover ten percent of eligible final-floor cells with barriers."""
+    occupied = {(entity.x, entity.y) for entity in floor.entities}
+    protected = {
+        floor.up,
+        floor.down,
+        *floor.up_stairs,
+        *floor.down_stairs,
+        *floor.collapse_landings,
+        *occupied,
+    }
+    candidates = [
+        (x, y)
+        for y, row in enumerate(floor.field)
+        for x, cell in enumerate(row)
+        if cell == d.CHAR_FLOOR and (x, y) not in protected
+    ]
+    count = len(candidates) * d.STAGE4_FINAL_FLOOR_BARRIER_PERCENT // 100
+    for _ in range(count):
+        x, y = candidates.pop(rand.randrange(len(candidates)))
+        floor.field[y][x] = d.CHAR_BARRIER
+
+
 def _inside_island(point: Optional[d.Point], island_tile: Optional[d.Point]) -> bool:
     if point is None or island_tile is None:
         return False
@@ -548,6 +571,8 @@ def build(
     )
     if stage_num in (4, 5):
         _place_collapses(floors)
+    if stage_num == 4:
+        _place_stage4_final_floor_barriers(floors[-1])
 
     player = d.Player(floors[0].up[0], floors[0].up[1], 1, d.LP_INIT)
     player.stage3_elf_floors = {char: floor + 1 for char, floor in elf_floors.items()}

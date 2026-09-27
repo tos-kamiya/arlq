@@ -6,6 +6,7 @@ import pytest
 from arlq import defs as d
 from arlq import game_engine as game_engine_module
 from arlq import stage_replay as stage_replay_module
+from arlq import stage_world as stage_world_module
 from arlq.arlq import (
     GameConfig,
     activate_mimic_for_defeat,
@@ -126,6 +127,38 @@ def test_stage3_respawn_on_up_stairs_does_not_ascend_automatically():
     _step((0, 0), floors, player, floor, checkpoint, Counter(), deque(), 2)
 
     assert floor[0] == 1
+
+
+def test_stage4_final_floor_barriers_cover_ten_percent_of_open_cells():
+    field = blank_field()
+    field[1][1] = d.CHAR_STAIRS_UP
+    entity = d.Monster(2, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
+    floor = Floor(
+        field=field,
+        entities=[entity],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        up=(1, 1),
+        down=(3, 3),
+        island=None,
+        up_stairs=[(1, 1)],
+    )
+    protected = {(1, 1), (2, 2), (3, 3)}
+    eligible_count = d.FIELD_WIDTH * d.FIELD_HEIGHT - len(protected)
+    expected_barriers = (
+        eligible_count * d.STAGE4_FINAL_FLOOR_BARRIER_PERCENT // 100
+    )
+
+    stage_world_module._place_stage4_final_floor_barriers(floor)
+
+    barrier_points = {
+        (x, y)
+        for y, row in enumerate(floor.field)
+        for x, cell in enumerate(row)
+        if cell == d.CHAR_BARRIER
+    }
+    assert len(barrier_points) == expected_barriers
+    assert not barrier_points & protected
+    assert floor.field[entity.y][entity.x] == d.CHAR_FLOOR
 
 
 def test_game_config_from_args_does_not_mutate_gameplay_constants():

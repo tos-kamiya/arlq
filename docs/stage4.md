@@ -25,7 +25,8 @@ change.
 | 5 | 1 | 2 | 1 |
 
 The final floor contains the Dread Wyrm (`W`), its Wyrm guard (`w`),
-and the treasure chest and Mimic.
+and the treasure chest and Mimic. Barriers cover ten percent of its eligible
+floor cells, giving the final floor a more hazardous feel.
 
 ### Monsters
 
@@ -59,7 +60,7 @@ place and can be used as a passage to the floor below.
 | 4 | 1 | 4 | 4 |
 | 5 | 1 | 2 | 1 |
 
-最終フロアにはドレッドウィルム（`W`）、護衛のウィルム（`w`）、宝箱、ミミックが配置されます。
+最終フロアにはドレッドウィルム（`W`）、護衛のウィルム（`w`）、宝箱、ミミックが配置されます。階段やエンティティのない床マスの10%がバリアになり、より危険な雰囲気になります。
 
 ### モンスター
 
