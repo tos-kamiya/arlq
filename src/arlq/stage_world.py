@@ -242,7 +242,9 @@ def _spawn_island_elf(
         if field[y][x] == d.CHAR_FLOOR
     ]
     x, y = rand.choice(spots)
-    entities.append(d.Elf(x, y, d.CHAR_TO_MONSTER_TRIBE["I"]))
+    tribe = d.CHAR_TO_MONSTER_TRIBE["I"]
+    assert isinstance(tribe, d.ElfTribe)
+    entities.append(d.Elf(x, y, tribe))
 
 
 def _build_floor(
