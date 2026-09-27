@@ -238,6 +238,10 @@ def test_stage4_has_independent_per_floor_roster():
         sum(count for ch, count, _ in floor if ch == "k") for floor in d.STAGE4_ROSTER
     ] == [0, 2, 3, 3, 0]
     assert [
+        sum(count for ch, count, _ in floor if ch == "g")
+        for floor in d.STAGE4_ROSTER
+    ] == [2, 2, 2, 2, 2]
+    assert [
         sum(count for _, count, rank in floor if rank == 2 or rank == 3)
         for floor in d.STAGE4_ROSTER
     ] == [3, 3, 3, 6, 3]
@@ -353,8 +357,11 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
     assert d.monster_type_key(mimics[0]) == "MW"
     assert not treasures[0].unlocked
     assert not mimics[0].active
-    assert len(golems) == 1
-    assert golems[0][1].tribe.char == "g"
+    assert len(golems) == 11
+    assert sorted(
+        sum(floor_index == index for floor_index, _ in golems)
+        for index in range(len(floors))
+    ) == [2, 2, 2, 2, 3]
 
 
 def test_stage5_keeps_the_original_four_floor_stage4_copy():
