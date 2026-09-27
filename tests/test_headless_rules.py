@@ -93,6 +93,41 @@ def run_stage3_keys(
     return messages
 
 
+def test_stage3_respawn_on_up_stairs_does_not_ascend_automatically():
+    upper = Floor(
+        field=blank_field(),
+        entities=[],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        up=(1, 1),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+        down_stairs=[(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2)],
+    )
+    lower = Floor(
+        field=blank_field(),
+        entities=[d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["C"])],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        up=(1, 2),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+        up_stairs=[(1, 2)],
+    )
+    floors = [upper, lower]
+    player = d.Player(2, 2, 1, 90)
+    floor = [1]
+    checkpoint = [(1, 2)]
+
+    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), deque(), 1)
+
+    assert (player.x, player.y) == (1, 2)
+    assert floor[0] == 1
+
+    # A turn that leaves the player on the stair must not trigger it either.
+    _step((0, 0), floors, player, floor, checkpoint, Counter(), deque(), 2)
+
+    assert floor[0] == 1
+
+
 def test_game_config_from_args_does_not_mutate_gameplay_constants():
     original = (d.TORCH_RADIUS, d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH)
 

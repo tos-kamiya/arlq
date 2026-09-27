@@ -903,6 +903,7 @@ def _step(
 
     previous = (player.x, player.y)
     _move_player(direction, current, player, trace=trace)
+    movement_destination = (player.x, player.y)
 
     # l contact is a control-flow event, not an ordinary gameplay turn. Detect
     # it before terrain hazards, monster actions, follower movement, stairs,
@@ -1036,7 +1037,11 @@ def _step(
     floor_before = floor[0]
     transition_message = (
         None
-        if collapse_transition
+        if (
+            collapse_transition
+            or movement_destination == previous
+            or (player.x, player.y) != movement_destination
+        )
         else _handle_floor_transition(current, floors, player, floor, checkpoint)
     )
     if transition_message is not None:
