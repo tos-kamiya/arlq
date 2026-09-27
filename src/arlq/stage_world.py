@@ -106,6 +106,67 @@ def _spawn_roster_entries(
             _spawn(entities, field, ch, reserved, island_tile, floor_index, empowered)
 
 
+def _spawn_island_chimera_pair(
+    components: Tuple[set[d.Point], ...],
+    entities: List[d.Entity],
+    field: List[List[str]],
+    reserved: Container[d.Point],
+    floor_index: int,
+    empowered: int,
+) -> None:
+    """Place each c beside a wall between the split room components."""
+    first, second = components
+    boundaries = []
+    for room in first:
+        for neighbor in (
+            (room[0] - 1, room[1]),
+            (room[0] + 1, room[1]),
+            (room[0], room[1] - 1),
+            (room[0], room[1] + 1),
+        ):
+            if neighbor in second:
+                boundaries.append((room, neighbor))
+    if not boundaries:
+        raise ValueError("split room components must share a wall")
+
+    room_a, room_b = rand.choice(boundaries)
+    if room_a[1] == room_b[1]:
+        wall_x = max(room_a[0], room_b[0]) * (d.TILE_WIDTH + 1)
+        center_y = room_center(room_a)[1]
+        points = [(wall_x - 2, center_y + 1), (wall_x + 2, center_y + 1)]
+    else:
+        wall_y = max(room_a[1], room_b[1]) * (d.TILE_HEIGHT + 1)
+        center_x = room_center(room_a)[0]
+        points = [(center_x + 1, wall_y - 2), (center_x + 1, wall_y + 2)]
+
+    # Leave one floor cell between each c and the split wall so neither
+    # occupies the passage endpoint. If a stair or entity occupies either
+    # cell, move both along the wall while keeping that gap.
+    offsets = [0, 1, -2, 2, -3, 3, -4]
+    for offset in offsets:
+        if room_a[1] == room_b[1]:
+            candidate_points = [(x, y + offset) for x, y in points]
+        else:
+            candidate_points = [(x + offset, y) for x, y in points]
+        if any(
+            point in reserved
+            or field[point[1]][point[0]] != d.CHAR_FLOOR
+            or any((entity.x, entity.y) == point for entity in entities)
+            for point in candidate_points
+        ):
+            continue
+        for point in candidate_points:
+            spawn_at(
+                entities,
+                *point,
+                d.CHAR_TO_TRIBE["c"],
+                empowered=empowered,
+                origin_floor=floor_index,
+            )
+        return
+    raise ValueError("could not place c beside the split room wall")
+
+
 def _spawn_assigned_floor_elves(
     entries: List[Tuple[str, int, int]],
     elf_floors: Dict[str, int],
@@ -245,13 +306,15 @@ def _build_floor(
         else d.STAGE3_FLOORS
     )
     island_count, filled_count = room_counts
-    field, up, down, island_rooms, _ = generate_floor_field(
+    split_island_graph = stage_num == 4 and index in (1, 3)
+    field, up, down, island_rooms, _, room_components = generate_floor_field(
         up_point if up_point is not None else entry_point,
         down_point,
         corridor_h_width,
         corridor_v_width,
         island_count,
         filled_count,
+        split_room_graph=split_island_graph,
     )
     island_tile = next(iter(island_rooms), None)
 
@@ -263,9 +326,33 @@ def _build_floor(
     entities: List[d.Entity] = []
     reserved = {up, down}
     spawn_roster = [entry for entry in roster if entry[0] != "M"]
+    if room_components:
+        c_count = sum(count for ch, count, _ in spawn_roster if ch == "c")
+        if c_count < len(room_components):
+            raise ValueError("split Stage 4 floor needs one c per room component")
+        c_to_remove = len(room_components)
+        adjusted_roster = []
+        for ch, count, empowered in spawn_roster:
+            if ch == "c" and c_to_remove:
+                removed = min(count, c_to_remove)
+                count -= removed
+                c_to_remove -= removed
+            if count:
+                adjusted_roster.append((ch, count, empowered))
+        spawn_roster = adjusted_roster
     ordinary_roster, elf_roster, wyrm_roster = _split_floor_roster(
         spawn_roster, elf_floors
     )
+    if room_components:
+        island_chimera_rank = 2 if index == 1 else 3
+        _spawn_island_chimera_pair(
+            room_components,
+            entities,
+            field,
+            reserved,
+            index,
+            island_chimera_rank,
+        )
     _spawn_roster_entries(
         ordinary_roster, entities, field, reserved, island_tile, index
     )
