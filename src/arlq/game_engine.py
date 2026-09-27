@@ -1256,8 +1256,15 @@ def run_game(
                 for char in list(legacy_respawn_queue):
                     if legacy_respawn_queue[char] <= 0:
                         continue
+                    tribe = d.CHAR_TO_TRIBE[char]
+                    spawn_floor = (
+                        rand.randrange(len(floors))
+                        if getattr(tribe, "respawn_on_random_floor", False)
+                        else floor[0]
+                    )
+                    respawn_target = floors[spawn_floor]
                     entity = respawn_entity(
-                        d.CHAR_TO_TRIBE[char], current.entities, current.field
+                        tribe, respawn_target.entities, respawn_target.field
                     )
                     legacy_respawn_queue[char] -= 1
                     if trace is not None:
@@ -1268,7 +1275,12 @@ def run_game(
                         else:
                             raise TypeError("Respawned entity must be a monster or companion")
                         update_result.events.world.append(
-                            WorldEvent(kind, event_id, (entity.x, entity.y))
+                            WorldEvent(
+                                kind,
+                                event_id,
+                                (entity.x, entity.y),
+                                floor=spawn_floor if len(floors) > 1 else None,
+                            )
                         )
             if trace is not None:
                 trace.record_events(update_result.events)

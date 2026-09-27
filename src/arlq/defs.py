@@ -35,8 +35,8 @@ LP_LOW_THRESHOLD: int = 20  # LP bar/player "@" turn red at or below this
 MONSTER_RESPAWN_INTERVAL: int = 65
 SWORD_USES: int = 3
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
-# W and w stay down for the rest of a Stage 3 run.
-STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w", "V", "M"}
+# W, w, and M stay down for the rest of a multi-floor run.
+STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w", "M"}
 STAGE3_C_FLAG: int = 1
 STAGE3_I_FLAG: int = 2
 STAGE3_K_FLAG: int = 4
@@ -189,6 +189,7 @@ class MonsterTribe(Tribe):
         item: Optional[str] = None,
         effect: Optional[str] = None,
         is_elf: bool = False,
+        respawn_on_random_floor: bool = False,
     ):
         super().__init__(char, event_message)
         self.level: int = level
@@ -196,6 +197,7 @@ class MonsterTribe(Tribe):
         self.item: Optional[str] = item
         self.effect: Optional[str] = effect
         self.is_elf: bool = is_elf
+        self.respawn_on_random_floor: bool = respawn_on_random_floor
 
 
 class ElfTribe(MonsterTribe):
@@ -207,8 +209,14 @@ class ElfTribe(MonsterTribe):
         event_message: Optional[str] = None,
         respawn_on_random_floor: bool = False,
     ):
-        super().__init__(char, level=0, feed=0, event_message=event_message, is_elf=True)
-        self.respawn_on_random_floor = respawn_on_random_floor
+        super().__init__(
+            char,
+            level=0,
+            feed=0,
+            event_message=event_message,
+            is_elf=True,
+            respawn_on_random_floor=respawn_on_random_floor,
+        )
 
 
 class CompanionTribe(Tribe):
@@ -412,6 +420,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         MIN_FOOD,
         effect=EFFECT_LEVEL_REDUCE,
         event_message="-- Your level was reduced!",
+        respawn_on_random_floor=True,
     ),  # Erebus rare
     _MT(
         CHAR_FIRE_DRAKE,
@@ -428,6 +437,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         MIN_FOOD,
         effect=EFFECT_CALTROP_SPREAD,
         event_message="-- Caltrops were scattered!",
+        respawn_on_random_floor=True,
     ),  # Caltrop Plant
     _ET(
         "I",
@@ -467,6 +477,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         MIN_FOOD,
         effect=EFFECT_VORTEX,
         event_message="-- The Vortex rearranges the floor!",
+        respawn_on_random_floor=True,
     ),
 ]
 assert len({tribe.char for tribe in MONSTER_TRIBES}) == len(MONSTER_TRIBES), (
