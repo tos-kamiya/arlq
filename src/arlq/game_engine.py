@@ -199,7 +199,7 @@ def reachable_known_cells(
                 terrain_cost = 1 + d.CALTROP_LP_DAMAGE
             elif cell == d.CHAR_BARRIER and stage_num not in (1, 2):
                 damage = (
-                    0 if player.stage3_flags & d.STAGE3_H_FLAG else d.BARRIER_LP_DAMAGE
+                    0 if player.elf_stage_flags & d.ELF_STAGE_H_FLAG else d.BARRIER_LP_DAMAGE
                 )
                 terrain_cost = 1 + damage
             else:
@@ -207,11 +207,7 @@ def reachable_known_cells(
                 # walking cells for this estimate.
                 continue
 
-            ranged_damage = (
-                _marksman_damage_at(field, entities, known, (nx, ny))
-                if stage_num == 4
-                else 0
-            )
+            ranged_damage = _marksman_damage_at(field, entities, known, (nx, ny))
             next_cost = cost + terrain_cost + ranged_damage
             if next_cost >= player.lp:
                 continue
@@ -253,7 +249,7 @@ def _apply_terrain_hazards(
     event_message = None
     if (
         field[player.y][player.x] == d.CHAR_BARRIER
-        and not (player.stage3_flags & d.STAGE3_H_FLAG)
+        and not (player.elf_stage_flags & d.ELF_STAGE_H_FLAG)
         and (player.x, player.y) != previous
     ):
         player.lp -= d.BARRIER_LP_DAMAGE
@@ -316,7 +312,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
         marks = entity.arrow_marks
         marks[:] = [existing for existing in marks if existing[0] != mark[0]]
         marks.append(mark)
-        arrow_limit = d.STAGE4_MARKSMAN_ARROW_LIMIT
+        arrow_limit = d.MARKSMAN_ARROW_LIMIT
         if len(marks) > arrow_limit:
             del marks[0]
 
@@ -471,16 +467,16 @@ def _defeat_monster(
     unlock_treasure_for_defeat(entity, current.entities)
     activate_mimic_for_defeat(entity, current.entities)
     if ch == "W":
-        player.stage3_flags |= d.STAGE3_W_FLAG
+        player.elf_stage_flags |= d.STAGE3_W_FLAG
         player.known_monsters.add(d.monster_type_key(entity))
         player.boss_defeated = True
     if ch == "K":
-        player.stage3_flags |= d.STAGE3_K_FLAG
+        player.elf_stage_flags |= d.ELF_STAGE_K_FLAG
         d.clear_player_item(player)
     if ch == "H":
-        player.stage3_flags |= d.STAGE3_H_FLAG
+        player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
     if ch == "C":
-        player.stage3_flags |= d.STAGE3_C_FLAG
+        player.elf_stage_flags |= d.ELF_STAGE_C_FLAG
     d.grant_defeat_level(player, entity.tribe.effect)
     d.apply_feed(player, entity.tribe.feed)
     player.karma += 1
@@ -536,7 +532,7 @@ def _resolve_monster_contact(
     contact_key = (floor[0], entity.x, entity.y)
 
     if entity.tribe.is_elf:
-        player.stage3_elf_floors.setdefault(ch, floor[0] + 1)
+        player.elf_stage_floors.setdefault(ch, floor[0] + 1)
         player.known_elf_floors.add(ch)
 
     if entity.tribe.is_elf and entity.met:
@@ -585,15 +581,15 @@ def _resolve_monster_contact(
     current.entities.pop(hit)
 
     if ch == "I":
-        player.stage3_flags |= d.STAGE3_I_FLAG
+        player.elf_stage_flags |= d.ELF_STAGE_I_FLAG
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "I", "outcome": "granted"})
     elif ch == "J":
-        player.stage3_flags |= d.STAGE3_J_FLAG
+        player.elf_stage_flags |= d.ELF_STAGE_J_FLAG
         player.persistent_followers.append((player.x, player.y, floor[0], "J"))
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "J", "outcome": "granted"})
-    elif ch == "K" and not (player.stage3_flags & d.STAGE3_C_FLAG):
+    elif ch == "K" and not (player.elf_stage_flags & d.ELF_STAGE_C_FLAG):
         current.entities.append(entity)
         # The first refusal only shows a message; any later refusal sends the
         # player elsewhere, like repeat contact with the Isolated Elf.
@@ -608,12 +604,12 @@ def _resolve_monster_contact(
     elif (
         ch == "H"
         and (
-            player.stage3_flags
+            player.elf_stage_flags
             & (
-                d.STAGE3_I_FLAG
-                | d.STAGE3_J_FLAG
-                | d.STAGE3_K_FLAG
-                | d.STAGE_L_FLAG
+                d.ELF_STAGE_I_FLAG
+                | d.ELF_STAGE_J_FLAG
+                | d.ELF_STAGE_K_FLAG
+                | d.ELF_STAGE_L_FLAG
             )
         ).bit_count()
         < 2
@@ -630,7 +626,7 @@ def _resolve_monster_contact(
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
     elif ch == "L":
-        player.stage3_flags |= d.STAGE_L_FLAG
+        player.elf_stage_flags |= d.ELF_STAGE_L_FLAG
         d.grant_defeat_level(player, None)
         player.lp = d.LP_OVERCHARGE_MAX
         spawn_key = (floor[0], d.monster_type_key(entity))
@@ -752,7 +748,7 @@ def _resolve_contact(
         if collected:
             current.entities.pop(hit)
             player.treasure_collected = True
-            if not (player.stage3_flags & d.STAGE3_W_FLAG):
+            if not (player.elf_stage_flags & d.STAGE3_W_FLAG):
                 event_message = tr(
                     "-- You took the treasure chest, but the King's request remains."
                 )
@@ -1028,9 +1024,7 @@ def _step(
     hazard_message = _apply_terrain_hazards(current, player, previous)
     if hazard_message is not None:
         event_message = hazard_message
-    if stage_num == 4 and (
-        (player.x, player.y) != previous or collapse_transition
-    ):
+    if (player.x, player.y) != previous or collapse_transition:
         _marksman_shoot(current, player)
 
     hit = next(
@@ -1140,7 +1134,7 @@ def run_game(
     player.treasure_collected = False
     replay_context = (
         ReplayContext(stage_num, initial_seed, config)
-        if stage_num in (3, 4)
+        if stage_num in d.ELF_STAGES
         else None
     )
     floor = [0]
@@ -1152,7 +1146,7 @@ def run_game(
     turn = 0
     if legacy_stage:
         message: Tuple[int, str] = (-1, "")
-    elif stage_num in (3, 4):
+    elif stage_num in d.ELF_STAGES:
         message = (5, tr("-- The King has ordered the Dread Wyrm (W) slain."))
     elif stage_num == 6:
         message = (5, "-- Trap test: Mimic, Vortex, W, treasure, b and d.")
@@ -1384,7 +1378,7 @@ def run_game(
                 if stage_num == 3
                 else d.STAGE4_ROSTER_TRIBES,
             }
-            if stage_num in (3, 4):
+            if stage_num in d.ELF_STAGES:
                 stage_draw_options["floor_label"] = f"{floor[0] + 1}/{len(floors)}"
         ui.draw_stage(
             turn=turn,

@@ -365,7 +365,7 @@ def test_stage3_wall_blocked_when_pegasus_jump_target_is_solid():
 def test_stage3_elf_contact_granted_and_refused():
     for char, outcome, flags in [("I", "granted", 0), ("J", "granted", 0), ("K", "refused", 0), ("H", "refused", 0)]:
         player = d.Player(2, 2, 1, 90)
-        player.stage3_flags = flags
+        player.elf_stage_flags = flags
         elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[char])
         floors = [one_floor([elf])]
         floor = [0]
