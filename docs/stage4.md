@@ -4,9 +4,11 @@
 
 Stage 4 is experimental and appears in the stage selection menu when started
 with `--dev`. It has five floors and adds new enemies and traps to the Stage 3
-structure. Rank 2 and 3 enemies are concentrated on floors 4 and 5; rank 3
-enemies use a double quote marker, such as `b"`. The reduced Rare Amoeba (`A`)
-count makes leveling harder. Its design and gameplay are subject to change.
+structure. Each floor has two Golems (`g`), and one randomly selected floor has
+an additional Golem. Rocks can obstruct marksman lines when Golems are defeated.
+Rank 2 and 3 enemies are concentrated on floors 4 and 5; rank 3 enemies use a
+double quote marker, such as `b"`. The reduced Rare Amoeba (`A`) count makes
+leveling harder. Its design and gameplay are subject to change.
 
 | Floor | `A` population | Rank 2 population | Rank 3 population |
 | ---: | ---: | ---: | ---: |
@@ -23,6 +25,7 @@ and the treasure chest and Mimic.
 
 | Display & Name | Description |
 | -------------- | ----------- |
+| **g** Golem | Rocks scatter when defeated; yields no food. |
 | **k** Marksman | Shoots arrows when the player is in its line of sight. |
 | **E** Rare Erebus | Restores LP when defeated but lowers the player's level. |
 
@@ -40,7 +43,7 @@ place and can be used as a passage to the floor below.
 
 ## 日本語
 
-ステージ4は実験版で、`--dev`を指定するとステージ選択メニューに表示されます。ステージ3を拡張した5フロア構成で、新たな敵やトラップが登場します。希少モンスターの `A` は各フロアに1体ずつ配置し、rank 2・3の敵はフロア4・5を中心に配置しています。rank 3の敵は `b"` のようにダブルクォートで表示されます。仕様やゲーム内容は今後変更される場合があります。
+ステージ4は実験版で、`--dev`を指定するとステージ選択メニューに表示されます。ステージ3を拡張した5フロア構成で、新たな敵やトラップが登場します。各フロアにはゴーレム（`g`）を2体配置し、ランダムに選んだ1フロアにはさらに1体追加します。倒したときに飛び散る岩でマークスマンの射線を遮れます。希少モンスターの `A` は各フロアに1体ずつ配置し、rank 2・3の敵はフロア4・5を中心に配置しています。rank 3の敵は `b"` のようにダブルクォートで表示されます。仕様やゲーム内容は今後変更される場合があります。
 
 | フロア | `A`の数 | rank 2の個体数 | rank 3の個体数 |
 | ---: | ---: | ---: | ---: |
@@ -56,6 +59,7 @@ place and can be used as a passage to the floor below.
 
 | 表示 | 名前 | 説明 |
 | --- | --- | --- |
+| `g` | ゴーレム | 倒すと岩が飛び散り、食料は得られない。 |
 | `k` | マークスマン | 射線が通ると矢を放つ。 |
 | `E` | レアエレボス | 倒すとLPを回復するが、レベルが下がる。 |
 
