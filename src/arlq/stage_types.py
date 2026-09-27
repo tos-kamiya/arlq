@@ -26,6 +26,7 @@ class Floor:
     down_stairs: List[d.Point] = dataclass_field(default_factory=list)
     contact_reveal: Optional[d.Point] = None
     collapse_landings: set[d.Point] = dataclass_field(default_factory=set)
+    room_components: Tuple[set[d.Point], ...] = ()
 
 
 HistoryEntry = Optional[
