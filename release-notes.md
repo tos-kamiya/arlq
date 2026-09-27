@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 5.1.1 - 2026-09-28
+
+- Match the Vortex effect area to the FOV ellipse proportions and reduce its
+  width to 80% of the field.
+- Release Stage 4 in the standard stage selection menu and remove the `--dev`
+  option previously required to show it.
+- Update the English and Japanese README descriptions for Stage 4.
+
 ## 4.9.5 - 2026-09-28
 
 - Expand the Vortex's affected area to 90% of the field width.
