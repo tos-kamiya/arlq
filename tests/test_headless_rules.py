@@ -231,23 +231,37 @@ def test_stage4_has_independent_per_floor_roster():
             assert any(ranks <= allowed for allowed in ({1}, {1, 2}, {2, 3}))
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[0] if ch == "a") == 22
     assert [
+        sum(count for ch, count, _ in floor if ch == "A")
+        for floor in d.STAGE4_ROSTER
+    ] == [1, 1, 1, 1, 1]
+    assert [
         sum(count for ch, count, _ in floor if ch == "k") for floor in d.STAGE4_ROSTER
     ] == [0, 2, 3, 3, 0]
     assert [
         sum(count for _, count, rank in floor if rank == 2 or rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [4, 7, 14, 20, 26]
+    ] == [3, 3, 3, 6, 3]
     assert [
         sum(count for _, count, rank in floor if rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [0, 0, 2, 4, 5]
+    ] == [0, 0, 0, 2, 1]
+    assert [
+        sum(count for ch, count, _ in floor if ch == "d")
+        for floor in d.STAGE4_ROSTER
+    ] == [6, 6, 5, 6, 3]
+    assert all(
+        rank == 1
+        for floor in d.STAGE4_ROSTER
+        for ch, _, rank in floor
+        if ch in {"a", "A", "b", "c"}
+    )
     assert d.MARKSMAN_LP_DAMAGE == 4
     assert not any(ch == "G" for floor in d.STAGE4_ROSTER for ch, _, _ in floor)
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[4] if ch == "w") == 1
     assert sum(
         count
         for ch, count, rank in d.STAGE4_ROSTER[4]
-        if ch == "W" and rank == 2
+        if ch == "W" and rank == 1
     ) == 1
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[4] if ch == "M") == 1
     assert not any(
@@ -333,7 +347,7 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
         == 1
     )
     assert bosses[0] in floors[4].entities
-    assert bosses[0].empowered == 2
+    assert bosses[0].empowered == 1
     assert len(treasures) == len(mimics) == 1
     assert treasures[0].encounter_type == "TW"
     assert d.monster_type_key(mimics[0]) == "MW"
