@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 5.1.3 - 2026-09-29
+
+- Make the Lifebringer permanently raise the LP maximum to 105 while restoring
+  LP to 120, without raising the player's level.
+- Keep the respawned Lifebringer identified, and show an elf's floor after its
+  identity is revealed by the Nomicon.
+
 ## 5.1.2 - 2026-09-28
 
 - Adjust monster rosters and balance across Stages 3 and 4.
