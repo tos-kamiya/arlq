@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Set, Tuple, Union
+from typing import Any, List, Optional, Set, Tuple
 
 from blessed import Terminal
 
@@ -24,12 +24,9 @@ def key_to_dir(key: str) -> Optional[d.Point]:
 
 
 class BlessedUI:
-    def __init__(self, term: Terminal, dots: bool = False, theme: str = "dark"):
-        if theme not in {"dark", "light"}:
-            raise ValueError("theme must be 'dark' or 'light'")
+    def __init__(self, term: Terminal, dots: bool = False):
         self.term = term
         self.dots = dots
-        self.theme = theme
         self.map_mode = False
         self.farthest_preview = False
         self.shift_direction = False
@@ -75,17 +72,8 @@ class BlessedUI:
         color: Optional[str] = None,
         bold: bool = False,
         dim: bool = False,
-        bg: Optional[Union[str, int]] = None,
+        bg: Optional[str] = None,
     ) -> str:
-        if isinstance(bg, int):
-            styled = self.term.on_color(bg)(text)
-            if color:
-                styled = getattr(self.term, color)(styled)
-            if dim:
-                styled = self.term.dim(styled)
-            if bold:
-                styled = self.term.bold(styled)
-            return styled
         attr_name = f"{color}_on_{bg}" if color and bg else (f"on_{bg}" if bg else color)
         if dim:
             text = self.term.dim(text)
@@ -127,7 +115,7 @@ class BlessedUI:
             color: Optional[str] = None,
             bold: bool = False,
             dim: bool = False,
-            bg: Optional[Union[str, int]] = None,
+            bg: Optional[str] = None,
         ):
             output.append(
                 self.term.move_xy(x, y)
@@ -147,23 +135,19 @@ class BlessedUI:
                 px, py = entity.x, entity.y
         assert player is not None and px is not None and py is not None
 
-        def cell_background(x: int, y: int) -> Optional[Union[str, int]]:
+        def cell_background(x: int, y: int) -> Optional[str]:
             if (x, y) in highlighted_cells:
                 return "blue"
             if self.dots or not (0 <= y < len(field) and 0 <= x < len(field[y])):
                 return None
             discovered = torched[y][x] or show_entities
-            if self.theme == "dark":
-                return "black" if discovered else None
-            return None if discovered else 250
+            return "black" if discovered else None
 
         def visible_default_foreground(
-            color: Optional[str], background: Optional[Union[str, int]]
+            color: Optional[str], background: Optional[str]
         ) -> Optional[str]:
             if color is None and background == "blue":
                 return "white"
-            if color is None and background == 250:
-                return "black"
             if color is None and background == "black":
                 return "white"
             return color
