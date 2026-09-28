@@ -16,11 +16,12 @@ experiment in developing code and manuals with humans and AIs.
 
 Explore a procedurally generated dungeon, manage your LP (Life Points), learn
 the identities of monsters, and find the treasure guarded by the dragon. The
-game includes three stages:
+game includes four stages:
 
 - Stage 1: Find the Dragon's treasure chest.
 - Stage 2: Find the Fire Drake's treasure chest.
 - Stage 3: Defeat the Dread Wyrm and claim its treasure chest with help from the elves.
+- Stage 4: Explore five floors with traps, and defeat the Dread Wyrm to claim its treasure chest.
 
 Features include:
 
