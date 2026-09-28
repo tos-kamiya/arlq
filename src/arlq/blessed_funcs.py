@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, List, Optional, Set, Tuple, Union
 
 from blessed import Terminal
 
@@ -24,9 +24,12 @@ def key_to_dir(key: str) -> Optional[d.Point]:
 
 
 class BlessedUI:
-    def __init__(self, term: Terminal, dots: bool = False):
+    def __init__(self, term: Terminal, dots: bool = False, theme: str = "dark"):
+        if theme not in {"dark", "light"}:
+            raise ValueError("theme must be 'dark' or 'light'")
         self.term = term
         self.dots = dots
+        self.theme = theme
         self.map_mode = False
         self.farthest_preview = False
         self.shift_direction = False
@@ -67,8 +70,22 @@ class BlessedUI:
                 return key
 
     def _style(
-        self, text: str, color: Optional[str] = None, bold: bool = False, dim: bool = False, bg: Optional[str] = None
+        self,
+        text: str,
+        color: Optional[str] = None,
+        bold: bool = False,
+        dim: bool = False,
+        bg: Optional[Union[str, int]] = None,
     ) -> str:
+        if isinstance(bg, int):
+            styled = self.term.on_color(bg)(text)
+            if color:
+                styled = getattr(self.term, color)(styled)
+            if dim:
+                styled = self.term.dim(styled)
+            if bold:
+                styled = self.term.bold(styled)
+            return styled
         attr_name = f"{color}_on_{bg}" if color and bg else (f"on_{bg}" if bg else color)
         if dim:
             text = self.term.dim(text)
@@ -110,7 +127,7 @@ class BlessedUI:
             color: Optional[str] = None,
             bold: bool = False,
             dim: bool = False,
-            bg: Optional[str] = None,
+            bg: Optional[Union[str, int]] = None,
         ):
             output.append(
                 self.term.move_xy(x, y)
@@ -130,13 +147,26 @@ class BlessedUI:
                 px, py = entity.x, entity.y
         assert player is not None and px is not None and py is not None
 
-        def cell_background(x: int, y: int) -> Optional[str]:
+        def cell_background(x: int, y: int) -> Optional[Union[str, int]]:
             if (x, y) in highlighted_cells:
                 return "blue"
             if self.dots or not (0 <= y < len(field) and 0 <= x < len(field[y])):
                 return None
             discovered = torched[y][x] or show_entities
-            return "black" if discovered else None
+            if self.theme == "dark":
+                return "black" if discovered else None
+            return None if discovered else 250
+
+        def visible_default_foreground(
+            color: Optional[str], background: Optional[Union[str, int]]
+        ) -> Optional[str]:
+            if color is None and background == "blue":
+                return "white"
+            if color is None and background == 250:
+                return "black"
+            if color is None and background == "black":
+                return "white"
+            return color
 
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
@@ -160,7 +190,7 @@ class BlessedUI:
                         put(x, y, ".", dim=True)
                 else:
                     color = "green" if cell == d.WALL_CHAR else "magenta" if cell == d.CHAR_CALTROP else None
-                    background = "blue" if (x, y) in highlighted_cells else "black" if discovered else None
+                    background = cell_background(x, y)
                     put(x, y, cell if discovered else " ", color, bg=background)
 
         if (
@@ -189,14 +219,15 @@ class BlessedUI:
 
         def paint(glyph: d.FieldGlyph) -> None:
             color = None if glyph.tone in ("companion", "default", "stair") else glyph.tone
+            background = cell_background(glyph.x, glyph.y)
             put(
                 glyph.x,
                 glyph.y,
                 glyph.char,
-                color,
+                visible_default_foreground(color, background),
                 bold=False if glyph.tone == "stair" else glyph.bold,
                 dim=glyph.dim,
-                bg=cell_background(glyph.x, glyph.y),
+                bg=background,
             )
 
         if show_entities:
@@ -225,17 +256,28 @@ class BlessedUI:
                 and torched[fy][fx]
                 and (fx, fy) != (px, py)
             ):
-                put(fx, fy, fchar, "green", bold=True, bg=cell_background(fx, fy))
+                background = cell_background(fx, fy)
+                put(
+                    fx,
+                    fy,
+                    fchar,
+                    visible_default_foreground(None, background),
+                    bg=background,
+                )
 
         foreground, background = d.player_appearance(player)
         if not floor_view:
+            player_background = background or cell_background(px, py)
             put(
                 px,
                 py,
                 "@",
-                None if foreground == "default" else foreground,
+                visible_default_foreground(
+                    None if foreground == "default" else foreground,
+                    player_background,
+                ),
                 bold=True,
-                bg=background or cell_background(px, py),
+                bg=player_background,
             )
         if not floor_view and player.companion and px + 1 < d.FIELD_WIDTH:
             put(

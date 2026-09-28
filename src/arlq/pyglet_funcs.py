@@ -575,7 +575,7 @@ class PygletUI:
         # independently of the temporary companion slot.
         for fx, fy, ffloor, fchar in getattr(player, "persistent_followers", []):
             if not floor_view and ffloor == player.current_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
-                self._draw_field_text((fx, fy), fchar, COLOR_MAP[CI_GREEN], bold=True)
+                self._draw_field_text((fx, fy), fchar, COLOR_MAP["default"])
 
         # Draw the right-edge strength column: the stage's monster tribes and
         # the player, ranked strongest-first. A tinted background (full

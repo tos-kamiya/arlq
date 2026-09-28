@@ -1024,17 +1024,28 @@ def revealed_entity_glyphs(
         if char != "M" and not known:
             if show_entities:
                 return []
+            if entity.tribe.is_elf:
+                return [FieldGlyph(entity.x, entity.y, "&", "default", bold=True)]
             return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
-        if monster_level(entity) <= player_attack:
+        if entity.tribe.is_elf:
+            tone = "default"
+        elif monster_level(entity) <= player_attack:
             tone = "yellow" if entity.tribe.effect == EFFECT_UNLOCK_TREASURE else "blue"
         else:
             tone = "red"
-        dim = (
-            entity.met
-            if entity.tribe.is_elf or char == "M"
-            else bool(dim_types and char in dim_types)
+        dim = False if entity.tribe.is_elf else (
+            entity.met if char == "M" else bool(dim_types and char in dim_types)
         )
-        glyphs = [FieldGlyph(entity.x, entity.y, char, tone, bold=True, dim=dim)]
+        glyphs = [
+            FieldGlyph(
+                entity.x,
+                entity.y,
+                char,
+                tone,
+                bold=True,
+                dim=dim,
+            )
+        ]
         if entity.empowered > 1:
             marker = "'" if entity.empowered == 2 else '"'
             glyphs.append(

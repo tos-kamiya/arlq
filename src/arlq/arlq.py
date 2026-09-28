@@ -901,6 +901,12 @@ def main():
         help="Use dots instead of background colors for unexplored areas in the terminal UI.",
     )
     parser.add_argument(
+        "--theme",
+        choices=["dark", "light"],
+        default="dark",
+        help="Terminal color theme (default: dark).",
+    )
+    parser.add_argument(
         "--lang",
         choices=["auto", "en", "ja"],
         default="auto",
@@ -1095,7 +1101,7 @@ def main():
 
         term = Terminal()
         with term.fullscreen(), term.cbreak(), term.hidden_cursor():
-            play(BlessedUI(term, dots=args.dots))
+            play(BlessedUI(term, dots=args.dots, theme=args.theme))
     else:
         from .pyglet_funcs import PygletUI
 
