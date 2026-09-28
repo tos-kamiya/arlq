@@ -34,7 +34,7 @@ from .stage_types import (
     _RewindRequest,
 )
 from .stage_world import (
-    _build_single_floor,
+    build_single_floor,
     _inside_island,
     build,
     build_trap_test,
@@ -1116,7 +1116,7 @@ def run_game(
     initial_seed = rand.get_seed()
     legacy_stage = stage_num in (1, 2)
     if legacy_stage:
-        floors, player = _build_single_floor(config, stage_num)
+        floors, player = build_single_floor(config, stage_num)
     elif stage_num == 6:
         floors, player = build_trap_test(
             config.corridor_h_width, config.corridor_v_width

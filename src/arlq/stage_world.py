@@ -635,7 +635,7 @@ def _place_collapses(floors: List[Floor]) -> None:
         lower.collapse_landings.add(point)
 
 
-def _build_single_floor(
+def build_single_floor(
     config: GameConfig, stage_num: int
 ) -> Tuple[List[Floor], d.Player]:
     """Create the Stage 1/2 map inside the shared floor state model."""
