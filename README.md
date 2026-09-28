@@ -164,7 +164,7 @@ uses random-floor respawns; Stage 2, where it appears, currently has one floor.
 
 ### Stage 3
 
-Stage 3 has three connected floors. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
+Stage 3 has three connected floors. One of the two floor transitions randomly has an extra matching pair of stairs. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
 Stage 3 features empowered versions of `b`, `c`, and `d`: `b'`, `c'`, and `d'`.
 
 The bottom-right marker shows the displayed floor as a fraction (for example, `3/4`). Hold Shift and press Up or Down in GUI mode, or Shift and W or S in `arlq-cli`, to inspect another floor. Unexplored areas remain hidden. A normal movement input returns the display to the player's floor and moves as usual.

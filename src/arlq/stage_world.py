@@ -336,15 +336,21 @@ def build(
 ) -> Tuple[List[Floor], d.Player]:
     if stage_num not in d.ELF_STAGES:
         raise ValueError("multi-floor builder supports stages 3 and 4")
+    floor_count = d.STAGE4_FLOORS if stage_num == 4 else d.STAGE3_FLOORS
+    random_stage3_stair_transition = (
+        stage_num == 3 and stair_pairs_per_transition is None
+    )
     if stair_pairs_per_transition is None:
-        stair_pairs_per_transition = (
+        default_pair_count = (
             d.STAGE3_STAIR_PAIRS_PER_TRANSITION
             if stage_num == 3
             else d.STAGE4_STAIR_PAIRS_PER_TRANSITION
         )
-    if stair_pairs_per_transition < 1:
-        raise ValueError("each floor transition needs at least one stair pair")
-    floor_count = d.STAGE4_FLOORS if stage_num == 4 else d.STAGE3_FLOORS
+        stair_pair_counts = [default_pair_count] * (floor_count - 1)
+    else:
+        if stair_pairs_per_transition < 1:
+            raise ValueError("each floor transition needs at least one stair pair")
+        stair_pair_counts = [stair_pairs_per_transition] * (floor_count - 1)
     default_layout = d.STAGE3_FLOOR_LAYOUT if stage_num == 3 else d.STAGE4_FLOOR_LAYOUT
     layout = list(default_layout if floor_layout is None else floor_layout)
     if stage_num == 4 and floor_layout is None:
@@ -469,10 +475,9 @@ def build(
         if stage_num == 3:
             entry_point = floor.down
 
-    _add_additional_stairs(
-        floors,
-        stair_pairs_per_transition,
-    )
+    if random_stage3_stair_transition:
+        stair_pair_counts[rand.randrange(floor_count - 1)] += 1
+    _add_additional_stairs(floors, stair_pair_counts)
     if stage_num == 4:
         _place_collapses(floors)
     if stage_num == 4:
@@ -548,11 +553,12 @@ def _transition_candidates(
     return candidates
 
 
-def _add_additional_stairs(floors: List[Floor], pair_count: int) -> None:
-    """Add matching stair pairs up to the configured count per floor link."""
-    if pair_count <= 1:
-        return
+def _add_additional_stairs(floors: List[Floor], pair_counts: List[int]) -> None:
+    """Add matching stair pairs until each floor link reaches its target."""
     for index in range(len(floors) - 1):
+        pair_count = pair_counts[index]
+        if pair_count <= 1:
+            continue
         upper, lower = floors[index], floors[index + 1]
         candidates = [
             point

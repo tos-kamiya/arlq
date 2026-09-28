@@ -30,11 +30,6 @@ def replay_to_operation(
             replay.config.corridor_h_width,
             replay.config.corridor_v_width,
             replay.stage_num,
-            stair_pairs_per_transition=(
-                d.STAGE3_STAIR_PAIRS_PER_TRANSITION
-                if replay.stage_num == 3
-                else d.STAGE4_STAIR_PAIRS_PER_TRANSITION
-            ),
         )
         player.known_monsters = set()
         player.boss_defeated = False
