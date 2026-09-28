@@ -1124,11 +1124,6 @@ def run_game(
             config.corridor_h_width,
             config.corridor_v_width,
             stage_num,
-            stair_pairs_per_transition=(
-                d.STAGE3_STAIR_PAIRS_PER_TRANSITION
-                if stage_num == 3
-                else d.STAGE4_STAIR_PAIRS_PER_TRANSITION
-            ),
         )
     player.known_monsters = set()
     player.boss_defeated = False
