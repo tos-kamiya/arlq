@@ -911,6 +911,8 @@ def _process_respawn_queue(
                 respawned.revealed = True
             elif isinstance(respawned, d.Elf):
                 respawned.met = True
+                if respawned.tribe.char == "L":
+                    respawned.revealed = True
         queue[(queued_floor, type_key)] -= 1
         if trace is not None:
             if isinstance(respawned, d.Elf):

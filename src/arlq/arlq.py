@@ -476,6 +476,7 @@ def reveal_entities_in_fov(
         if isinstance(entity, d.Monster) and entity.active:
             if entity.tribe.is_elf:
                 entity.revealed = True
+                player.known_elf_floors.add(entity.tribe.char)
             else:
                 player.known_monsters.add(d.monster_type_key(entity))
 
