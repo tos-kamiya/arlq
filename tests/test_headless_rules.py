@@ -77,6 +77,23 @@ def test_stage3_builder_supports_floors_without_island_or_filled_rooms():
     )
 
 
+def test_stage3_adds_one_random_extra_stair_pair():
+    extra_transition_indices = set()
+    for seed in range(8):
+        game_engine_module.rand.set_seed(seed)
+        floors, _ = game_engine_module.build(stage_num=3)
+        pair_counts = [len(floor.down_stairs) for floor in floors[:-1]]
+
+        assert sorted(pair_counts) == [1, 2]
+        assert all(
+            set(upper.down_stairs) == set(lower.up_stairs)
+            for upper, lower in zip(floors, floors[1:])
+        )
+        extra_transition_indices.add(pair_counts.index(2))
+
+    assert extra_transition_indices == {0, 1}
+
+
 def run_stage3_keys(
     keys, floors, player, floor, checkpoint, queue, history, stage_num=3
 ):
@@ -298,7 +315,14 @@ def test_stage4_has_independent_per_floor_roster():
         for char in {entry[0] for entry in floor}:
             ranks = {rank for ch, _, rank in floor if ch == char}
             assert any(ranks <= allowed for allowed in ({1}, {1, 2}, {2, 3}))
-    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[0] if ch == "a") == 22
+    assert [
+        sum(count for ch, count, _ in floor if ch == "a")
+        for floor in d.STAGE4_ROSTER
+    ] == [20, 16, 12, 8, 4]
+    assert [
+        sum(count for ch, count, _ in floor if ch == "c")
+        for floor in d.STAGE4_ROSTER
+    ] == [1, 1, 1, 1, 1]
     assert [
         sum(count for ch, count, _ in floor if ch == "A")
         for floor in d.STAGE4_ROSTER
@@ -317,7 +341,7 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for _, count, rank in floor if rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [0, 0, 0, 2, 4]
+    ] == [0, 0, 0, 3, 4]
     assert [
         sum(count for ch, count, _ in floor if ch == "d")
         for floor in d.STAGE4_ROSTER
@@ -651,6 +675,14 @@ def test_stage2_rebalances_bison_and_comodo_dragon_counts():
 
 def test_stage3_empowered_roster_counts_are_rounded_down():
     assert [
+        sum(count for ch, count, _ in floor if ch == "a")
+        for floor in d.STAGE3_ROSTER
+    ] == [20, 16, 12]
+    assert [
+        sum(count for ch, count, _ in floor if ch == "b")
+        for floor in d.STAGE3_ROSTER
+    ] == [10, 10, 10]
+    assert [
         (ch, count, power) for ch, count, power in d.STAGE3_ROSTER[0] if power == 2
     ] == [
         ("c", 1, 2),
@@ -659,14 +691,14 @@ def test_stage3_empowered_roster_counts_are_rounded_down():
     assert [
         (ch, count, power) for ch, count, power in d.STAGE3_ROSTER[1] if power == 2
     ] == [
-        ("b", 3, 2),
+        ("b", 4, 2),
         ("c", 1, 2),
         ("d", 3, 2),
     ]
     assert [
         (ch, count, power) for ch, count, power in d.STAGE3_ROSTER[2] if power == 2
     ] == [
-        ("b", 3, 2),
+        ("b", 8, 2),
         ("d", 3, 2),
     ]
 
