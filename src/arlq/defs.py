@@ -594,7 +594,6 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("A", 1, 1),
         ("b", 6, 1),
         ("c", 1, 1),
-        ("C", 1, 1),
         ("g", 2, 1),
         ("d", 3, 1),
         ("d", 3, 2),
@@ -609,7 +608,6 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("A", 1, 1),
         ("b", 6, 1),
         ("c", 1, 1),
-        ("C", 1, 1),
         ("g", 2, 1),
         ("d", 3, 1),
         ("d", 3, 2),
@@ -626,7 +624,6 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("A", 1, 1),
         ("b", 6, 1),
         ("c", 1, 1),
-        ("C", 1, 1),
         ("g", 2, 1),
         ("d", 2, 1),
         ("d", 4, 2),
@@ -639,9 +636,8 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 8, 1),
         ("A", 1, 1),
-        ("b", 5, 1),
+        ("b", 6, 1),
         ("c", 1, 1),
-        ("C", 1, 1),
         ("g", 2, 1),
         ("d", 3, 2),
         ("d", 3, 3),
@@ -654,9 +650,8 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 4, 1),
         ("A", 1, 1),
-        ("b", 4, 1),
+        ("b", 6, 1),
         ("c", 1, 1),
-        ("C", 1, 1),
         ("g", 2, 1),
         ("d", 2, 2),
         ("d", 4, 3),
@@ -695,6 +690,7 @@ STAGE3_ROSTER_TRIBES: List[MonsterTribe] = sorted(
 STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
     [
         *_get_stage_roster_tribes(STAGE4_ROSTER),
+        CHAR_TO_MONSTER_TRIBE["C"],
         MonsterTribe(CHAR_COLLAPSE, level=1, feed=0),
     ],
     key=lambda tribe: tribe.level,
