@@ -702,7 +702,7 @@ def _resolve_monster_contact(
         if ch == "W" and player.treasure_collected:
             event_message = tr(">> The King's request is complete! <<")
 
-    if entity.tribe.is_elf and ch != "J" and entity not in current.entities:
+    if entity.tribe.is_elf and ch not in ("J", "L") and entity not in current.entities:
         entity.met = True
         current.entities.append(entity)
     elif entity.tribe.is_elf and entity not in current.entities:
@@ -910,6 +910,8 @@ def _process_respawn_queue(
             respawned = floors[spawn_floor].entities[-1]
             if isinstance(respawned, d.Companion):
                 respawned.revealed = True
+            elif isinstance(respawned, d.Elf):
+                respawned.met = True
         queue[(queued_floor, type_key)] -= 1
         if trace is not None:
             if isinstance(respawned, d.Elf):
