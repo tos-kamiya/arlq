@@ -379,6 +379,30 @@ def test_stage3_elf_contact_granted_and_refused():
         assert trace.turns[-1]["contact"] == {"type": "monster", "id": char, "outcome": outcome}, char
 
 
+def test_lifebringer_raises_permanent_lp_cap_and_restores_to_120():
+    player = d.Player(2, 2, 1, 90)
+    lifebringer = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["L"])
+    floors = [one_floor([lifebringer])]
+    floor = [0]
+
+    assert d.player_lp_max(player) == d.LP_MAX
+
+    _step(KEYS["R"], floors, player, floor, [(2, 2)], Counter(), deque(), 1)
+
+    assert player.elf_stage_flags & d.ELF_STAGE_L_FLAG
+    assert d.player_lp_max(player) == 105
+    assert player.lp == d.LP_OVERCHARGE_MAX
+
+
+def test_lifebringer_cap_limits_feeding_after_overcharge_is_spent():
+    player = d.Player(2, 2, 1, 104)
+    player.elf_stage_flags |= d.ELF_STAGE_L_FLAG
+
+    d.apply_feed(player, 10)
+
+    assert player.lp == 105
+
+
 def test_stage3_repeat_elf_contact_is_refused():
     player = d.Player(2, 2, 1, 90)
     high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])

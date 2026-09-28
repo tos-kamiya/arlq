@@ -641,11 +641,12 @@ class PygletUI:
         bar_width = bar_cells * self.cell_size_x
         bar_height = self.cell_size_y // 2
         y_offset = self.field_height * self.cell_size_y + (self.cell_size_y - bar_height) // 2
-        progress_ratio = min(player.lp, d.LP_MAX) / d.LP_MAX
+        lp_max = d.player_lp_max(player)
+        progress_ratio = min(player.lp, lp_max) / lp_max
         fill_width = int(bar_width * progress_ratio)
         lp_color = (
             COLOR_MAP[CI_MAGENTA]
-            if player.lp > d.LP_MAX
+            if player.lp > lp_max
             else COLOR_MAP[CI_RED]
             if player.lp <= d.LP_LOW_THRESHOLD
             else COLOR_MAP["default"]
