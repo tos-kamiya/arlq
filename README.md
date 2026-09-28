@@ -47,11 +47,8 @@ it is enlarged again.
 Use `arlq-cli --dots` or `arlq --terminal --dots` to show unexplored areas
 with dots instead of background colors. `--dots` affects the terminal
 interface only; it has no effect when `arlq` starts the graphical interface.
-In the terminal interface, unexplored areas have a gray background;
-explored areas use the terminal's default background and foreground colors in
-the light theme, and a black background in the dark theme (the default).
-Choose a palette with `arlq-cli --theme=light` or
-`arlq --terminal --theme=light`; `--theme=dark` selects the default palette.
+On light terminal themes, use `--dots` to keep unexplored areas distinct
+without applying a dark background to explored areas.
 
 ### Options shared by `arlq-cli` and `arlq`
 
@@ -62,7 +59,6 @@ Choose a palette with `arlq-cli --theme=light` or
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
 | `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4` | Select a stage directly. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
-| `--theme dark`, `--theme light` | Choose the terminal color theme. The default is `dark`; this option affects only the terminal interface. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
 At game start, the stage and seed are saved to `arlq/last-seed` under the user
