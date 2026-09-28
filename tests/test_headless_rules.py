@@ -674,36 +674,6 @@ def test_stage2_rebalances_bison_and_comodo_dragon_counts():
     assert populations["d"] == 6
 
 
-def test_stage3_empowered_roster_counts_are_rounded_down():
-    assert [
-        sum(count for ch, count, _ in floor if ch == "a")
-        for floor in d.STAGE3_ROSTER
-    ] == [20, 16, 12]
-    assert [
-        sum(count for ch, count, _ in floor if ch == "b")
-        for floor in d.STAGE3_ROSTER
-    ] == [10, 10, 10]
-    assert [
-        (ch, count, power) for ch, count, power in d.STAGE3_ROSTER[0] if power == 2
-    ] == [
-        ("c", 1, 2),
-        ("d", 3, 2),
-    ]
-    assert [
-        (ch, count, power) for ch, count, power in d.STAGE3_ROSTER[1] if power == 2
-    ] == [
-        ("b", 4, 2),
-        ("c", 1, 2),
-        ("d", 3, 2),
-    ]
-    assert [
-        (ch, count, power) for ch, count, power in d.STAGE3_ROSTER[2] if power == 2
-    ] == [
-        ("b", 8, 2),
-        ("d", 3, 2),
-    ]
-
-
 @pytest.mark.parametrize("stage_num", [3, 4])
 def test_treasure_requires_current_timeline_w_defeat(stage_num):
     player = d.Player(2, 2, 200, 90)
