@@ -206,7 +206,7 @@ One Rare Chimera (`C`) appears on a randomly selected floor, independently of th
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **L** Lifebringer Elf | Meeting L restores LP to 120, above the normal maximum, and L moves to a random floor. |
+| **L** Lifebringer Elf | Meeting L permanently raises your LP maximum to 105 and restores LP to 120. L then moves to a random floor. |
 
 #### Traps
 

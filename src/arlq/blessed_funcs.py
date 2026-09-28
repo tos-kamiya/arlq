@@ -306,10 +306,11 @@ class BlessedUI:
         add(d.status_prefix(player, stage_num, turn))
         add(f"LP: {player.lp} [")
         bar_len = 8
-        filled = round(max(0, min(player.lp, d.LP_MAX)) / d.LP_MAX * bar_len)
+        lp_max = d.player_lp_max(player)
+        filled = round(max(0, min(player.lp, lp_max)) / lp_max * bar_len)
         bar_color = (
             "magenta"
-            if player.lp > d.LP_MAX
+            if player.lp > lp_max
             else "red"
             if player.lp <= d.LP_LOW_THRESHOLD
             else None

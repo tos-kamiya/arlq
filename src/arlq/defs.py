@@ -30,6 +30,7 @@ ELLIPSE_CELL_EDGE_THRESHOLD: float = 0.65
 VORTEX_FLOOR_DIAMETER_RATIO: float = 0.8
 
 LP_MAX: int = 100
+LP_MAX_LIFEBRINGER: int = 105
 LP_OVERCHARGE_MAX: int = 120
 LP_INIT: int = 90
 LP_RESPAWN_MIN: int = 20
@@ -454,7 +455,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     ),
     _ET(
         "L",
-        event_message="-- The Lifebringer Elf restored your LP and raised your level!",
+        event_message="-- The Lifebringer Elf restored your LP, raised its maximum to 105, and raised your level!",
         respawn_on_random_floor=True,
     ),
     _MT("k", 80, MIN_FOOD),  # Marksman
@@ -700,10 +701,19 @@ def _javelin_follower_active(player: Player) -> bool:
     return any(follower[3] == "J" for follower in player.persistent_followers)
 
 
+def player_lp_max(player: Player) -> int:
+    """Return the player's permanent LP maximum, including Lifebringer's bonus."""
+    return (
+        LP_MAX_LIFEBRINGER
+        if player.elf_stage_flags & ELF_STAGE_L_FLAG
+        else LP_MAX
+    )
+
+
 def apply_feed(player: Player, feed: int) -> None:
-    # Preserve temporary LP above the normal cap until it is spent. Feeding
-    # cannot refill the overcharge once LP has risen above the normal cap.
-    cap = min(LP_OVERCHARGE_MAX, max(LP_MAX, player.lp))
+    # Preserve temporary LP above the permanent cap until it is spent. Feeding
+    # cannot refill the overcharge once LP has risen above that cap.
+    cap = min(LP_OVERCHARGE_MAX, max(player_lp_max(player), player.lp))
     player.lp = max(1, min(cap, player.lp + feed))
 
 
