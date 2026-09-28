@@ -97,24 +97,23 @@ reproduce the same layout.
   The game uses a fog system where only the areas you have walked on are visible. Combined with auto-mapping, areas once visited remain visible on the map.
   Press `F` to toggle a highlight on every explored-map cell reachable with your remaining LP. Moving closes the preview. The estimate avoids entities shown on the map and stairs, does not break walls or count LP recovery, and includes known terrain damage and Stage 4 marksman shots when that individual is in a known area or has fired at least once. Unexplored cells remain hidden. It does not show a route.
 
-* **Monsters and Companions**  
-  Unencountered monsters are displayed as `?` and companions as `!`. Once you make contact, the type is revealed, and other entities of the same kind are shown with that character. Ordinary monsters and temporary companions do not move on their own, but the Javelin Elf follows the player, moving to the position the player was at before its last move.
+* **Monsters, Companions, and Elves**  
+  Unencountered monsters are displayed as `?`, companions as `!`, and unidentified elves as `&`. Contact reveals an entity's type.
 
-  Monster identification persists across floors. Companion identification in Stage 3, however, is tracked per floor, so an unencountered companion is shown again as `!` on a new floor.
+  Monster identification persists across floors. Companion identification is tracked separately on each floor in every stage, so an unencountered companion is shown again as `!` on a new floor.
 
   Contacting a monster starts combat. Defeating an enemy at or below your attack power levels you up and lets you obtain its belongings and food. Losing to a stronger monster sends you back to the checkpoint. However, if you lose to the very same monster twice in a row without contacting any other monster in between, you instead escape to a random location on the map (this prevents the game from becoming unwinnable when an unbeatable monster blocks a corridor).
 
-  `a`, `A`, `b`, `c`, and `C` do not respawn once defeated. Companions provide their unique benefit for a limited time.
+  Some monsters, such as `d`, respawn. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked `T` clears the stage.
 
-  Defeating the dragon or fire drake unlocks the treasure chest, and making contact with the unlocked `T` clears the stage. A sword can break up to three walls, and being poisoned halves your attack power.
+  Companions provide their unique benefit for a limited time. For example, the Nomicon identifies monsters and elves in its field of vision.
 
-* **Rare Types and Empowered Types**  
-  Some monsters have rare variants with special features that differ from the normal ones.  
-  For example:  
-  - `A` (Rare Amoeba): Significantly boosts your level upon defeat.  
-  - `C` (Rare Chimera): Grants a cursed sword that greatly increases combat power at the cost of LP.
+  Most elves appear from Stage 3 onward and provide support, such as increased attack power, when you meet certain conditions.
 
-  Some monsters also have empowered variants, starting from Stage 2. Unlike rare types, being empowered is not a benefit to you — it's simply a stronger version of the same monster. Rank 2 has strength equal to its normal level × 3 + 10; rank 3 triples that value. Rank 2 monsters are displayed with one apostrophe (`b'`) and rank 3 with a double quote (`b"`). Each rank is treated as a separate monster type for discovery.
+* **Rare Monster Types and Empowered Monsters**  
+  Some monsters have rare variants with features that differ from normal monsters. For example, `A` (Rare Amoeba) significantly boosts your level when defeated, and `C` (Rare Chimera) grants a cursed sword that greatly increases combat power at the cost of LP. Both have special effects that benefit the player.
+
+  Empowered variants also appear from Stage 2 onward. Unlike rare variants, they are stronger enemies, not a benefit to the player. Rank 2 has strength equal to the normal level × 3 + 10; rank 3 is three times as strong as rank 2. Rank 2 monsters are displayed with one apostrophe (`b'`) and rank 3 with a double quote (`b"`). Each rank is identified as a separate monster type.
 
 * **LP System**
   The player has LP (Life Points) that decrease with every move.
@@ -149,7 +148,7 @@ reproduce the same layout.
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 contains four ordinary `b` Bison and two empowered `b` Bison (see Rare Types and Empowered Types above).
+Stage 2 also features empowered Bison (`b'`).
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -167,7 +166,7 @@ uses random-floor respawns; Stage 2, where it appears, currently has one floor.
 ### Stage 3
 
 Stage 3 has three connected floors. One of the two floor transitions randomly has an extra matching pair of stairs. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
-Stage 3 features empowered versions of `b`, `c`, and `d`: `b'`, `c'`, and `d'`.
+Stage 3 features empowered Bison, Chimeras, and Komodo Dragons (`b'`, `c'`, and `d'`).
 
 The bottom-right marker shows the displayed floor as a fraction (for example, `3/4`). Hold Shift and press Up or Down in GUI mode, or Shift and W or S in `arlq-cli`, to inspect another floor. Unexplored areas remain hidden. A normal movement input returns the display to the player's floor and moves as usual.
 
@@ -194,6 +193,7 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 
 Stage 4 has five floors. Like Stage 3, it features elves, and the goal is to defeat the Dread Wyrm (`W`). Some rooms are filled in, and walls may divide floors. Wyrm barriers are scattered across the entire final floor.
 One Rare Chimera (`C`) appears on a randomly selected floor, independently of the Collector Elf's (`K`) floor.
+Stage 4 also features empowered Komodo Dragons (`d'` and `d"`).
 
 #### Monsters
 
@@ -202,13 +202,9 @@ One Rare Chimera (`C`) appears on a randomly selected floor, independently of th
 | **E** Rare Erebus | A troublesome enemy that drains your level. |
 | **k** Marksman | Shoots arrows when it has a clear horizontal or vertical line of sight, but not from an adjacent cell. |
 
-#### Elves
-
-| Display & Name | Description |
-| -------------- | ----------- |
-| **L** Lifebringer Elf | Meeting L permanently raises your LP maximum to 105 and restores LP to 120. L then moves to a random floor. |
-
 #### Traps
+
+Traps are monsters with special abilities, such as disguising themselves as treasure chests or changing the field.
 
 Unidentified traps appear as `?`. The Mimic appears with the same timing and symbol as the treasure chest.
 
@@ -217,6 +213,12 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | `T` | Mimic | Appears as a treasure chest after W is defeated. |
 | `O` | Collapse | Contact opens a hole in the floor. |
 | `V` | Vortex | Repositions nearby monsters, companions, and treasure chests when defeated. |
+
+#### Elves
+
+| Display & Name | Description |
+| -------------- | ----------- |
+| **L** Lifebringer Elf | Meeting L permanently raises your LP maximum to 105 and restores LP to 120. L then moves to a random floor. |
 
 ## Development commands
 
