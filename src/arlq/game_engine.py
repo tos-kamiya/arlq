@@ -982,7 +982,7 @@ def _step(
                 operation_index=operation_index,
             )
             if contact.rewind_requested:
-                return _RewindRequest()
+                return _RewindRequest(floor[0])
 
     event_message: Optional[str] = None
     collapse_transition = False
@@ -1332,6 +1332,7 @@ def run_game(
                 operation_count=len(replay_context.operations)
                 if replay_context is not None
                 else None,
+                loop_floor_index=step_result.floor_index,
             )
             event_message: Optional[Tuple[int, str]] = (5, rewind_message)
         else:

@@ -63,6 +63,7 @@ def replay_to_operation(
                     history,
                     replay,
                     operation_count=index + 1,
+                    loop_floor_index=result.floor_index,
                 )
             turn += 1
             player.lp -= 1
@@ -80,6 +81,7 @@ def rewind_to_history(
     history: Deque[HistoryEntry],
     replay_context: Optional[ReplayContext] = None,
     operation_count: Optional[int] = None,
+    loop_floor_index: Optional[int] = None,
 ) -> str:
     """Rebuild the state at the start of the recorded rewind window."""
     known_monsters = set(player.known_monsters)
@@ -140,18 +142,20 @@ def rewind_to_history(
 
     history.clear()
 
-    restored_entities = floors[floor[0]].entities
+    respawn_floor = floor[0] if loop_floor_index is None else loop_floor_index
+    loop_floor = floors[respawn_floor]
+    restored_entities = loop_floor.entities
     for index, restored in enumerate(restored_entities):
         if isinstance(restored, d.Companion) and restored.tribe.char == "l":
             del restored_entities[index]
             break
     l_position = _spawn(
         restored_entities,
-        floors[floor[0]].field,
+        loop_floor.field,
         "l",
-        {(player.x, player.y)},
-        floors[floor[0]].island,
-        floor[0],
+        {(player.x, player.y)} if respawn_floor == floor[0] else set(),
+        loop_floor.island,
+        respawn_floor,
     )
     for restored in restored_entities:
         if (
