@@ -1025,7 +1025,15 @@ def revealed_entity_glyphs(
             if show_entities:
                 return []
             if entity.tribe.is_elf:
-                return [FieldGlyph(entity.x, entity.y, "&", "default", bold=True)]
+                return [
+                    FieldGlyph(
+                        entity.x,
+                        entity.y,
+                        "&",
+                        "default",
+                        bold=not entity.met,
+                    )
+                ]
             return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
         if entity.tribe.is_elf:
             tone = "default"
@@ -1042,7 +1050,7 @@ def revealed_entity_glyphs(
                 entity.y,
                 char,
                 tone,
-                bold=True,
+                bold=not (entity.tribe.is_elf and entity.met),
                 dim=dim,
             )
         ]
