@@ -191,6 +191,7 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 ### Stage 4
 
 Stage 4 has five floors. Like Stage 3, it features elves, and the goal is to defeat the Dread Wyrm (`W`). Some rooms are filled in, and walls may divide floors. Wyrm barriers are scattered across the entire final floor.
+One Rare Chimera (`C`) appears on a randomly selected floor, independently of the Collector Elf's (`K`) floor.
 
 #### Monsters
 

@@ -376,6 +376,7 @@ def build(
         None,
     )
     elf_floors: Dict[str, int] = {}
+    cursed_sword_floor: Optional[int] = None
     if island_floor is not None:
         elf_floors["I"] = island_floor
     if stage_num == 3:
@@ -391,6 +392,7 @@ def build(
         }
         m_floor = special_floors.pop("m")
     elif stage_num == 4:
+        cursed_sword_floor = rand.randrange(floor_count)
         elf_floors.update(
             {
                 "J": rand.randrange(floor_count),
@@ -445,6 +447,8 @@ def build(
             roster.append(("C", 1, 1))
         elif stage_num == 4:
             roster = [entry for entry in roster if entry[0] not in {"V", "E"}]
+            if cursed_sword_floor == index:
+                roster.append(("C", 1, 1))
             roster.extend(
                 (char, 1, 1)
                 for char, assigned_floor in voe_floors.items()
