@@ -910,9 +910,13 @@ def _process_respawn_queue(
             if isinstance(respawned, d.Companion):
                 respawned.revealed = True
             elif isinstance(respawned, d.Elf):
-                respawned.met = True
                 if respawned.tribe.char == "L":
+                    # Lifebringer grants its LP restoration on every contact,
+                    # so a respawned L must be treated as not yet met.
+                    respawned.met = False
                     respawned.revealed = True
+                else:
+                    respawned.met = True
         queue[(queued_floor, type_key)] -= 1
         if trace is not None:
             if isinstance(respawned, d.Elf):
