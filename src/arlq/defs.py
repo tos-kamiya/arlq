@@ -884,7 +884,7 @@ def elf_stage_progress_marks(player: Player) -> List[Tuple[str, bool]]:
     """Elf and treasure marks for the multi-floor stage status line.
 
     Each entry is (label, achieved). The Isolated Elf flag reveals all elf
-    floors; otherwise, contacting an elf reveals that elf's floor. If L is
+    floors; otherwise, identifying an elf reveals that elf's floor. If L is
     present, its floor is shown as ``?`` after the player has met L.
     """
     show_floors = bool(player.elf_stage_flags & ELF_STAGE_I_FLAG)
