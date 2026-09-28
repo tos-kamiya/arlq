@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 5.1.2 - 2026-09-28
+
+- Adjust monster rosters and balance across Stages 3 and 4.
+- Add a randomly placed extra stair pair to one Stage 3 floor transition.
+- Remove the old Life-bringer Elf from its original cell after contact and mark
+  its respawned instance as already met.
+
 ## 5.1.1 - 2026-09-28
 
 - Match the Vortex effect area to the FOV ellipse proportions and reduce its
