@@ -60,3 +60,5 @@ class _ContactResult:
 @dataclass(frozen=True)
 class _RewindRequest:
     """Signal from a turn step to the game loop to run rewind handling."""
+
+    floor_index: int

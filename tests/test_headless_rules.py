@@ -1,4 +1,5 @@
 from collections import Counter, deque
+from copy import deepcopy
 from types import SimpleNamespace
 
 import pytest
@@ -1380,6 +1381,83 @@ def test_loop_contact_returns_rewind_request_before_normal_turn_processing(monke
     assert loop in floors[0].entities
     assert loop.revealed
     assert len(history) == 1
+
+
+def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
+    player = d.Player(2, 2, 20, d.LP_INIT)
+    first_floor_loop = d.Companion(8, 8, d.CHAR_TO_COMPANION_TRIBE["l"])
+    second_floor_loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
+    floors = [
+        Floor(
+            field=blank_field(),
+            entities=[first_floor_loop],
+            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            up=(2, 2),
+            down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+            island=None,
+        ),
+        Floor(
+            field=blank_field(),
+            entities=[second_floor_loop],
+            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            up=(2, 2),
+            down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+            island=None,
+        ),
+    ]
+    saved_floors = deepcopy(floors)
+    saved_player = deepcopy(player)
+    floor = [1]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque([(saved_floors, saved_player, 0, (2, 2), Counter())])
+    respawn_position = (6, 6)
+
+    def spawn_loop(entities, _field, char, _avoid, _island, floor_index=None):
+        assert char == "l"
+        assert floor_index == 1
+        entities.append(
+            d.Companion(*respawn_position, d.CHAR_TO_COMPANION_TRIBE["l"])
+        )
+        return respawn_position
+
+    monkeypatch.setattr(stage_replay_module, "_spawn", spawn_loop)
+
+    result = _step(
+        KEYS["R"], floors, player, floor, checkpoint, queue, history, turn=1
+    )
+
+    assert isinstance(result, game_engine_module._RewindRequest)
+    assert result.floor_index == 1
+    game_engine_module._rewind_to_history(
+        floors,
+        player,
+        floor,
+        checkpoint,
+        queue,
+        history,
+        loop_floor_index=result.floor_index,
+    )
+
+    assert floor == [0]
+    assert (player.x, player.y) == (2, 2)
+    restored_first_floor_loop = next(
+        entity
+        for entity in floors[0].entities
+        if isinstance(entity, d.Companion) and entity.tribe.char == "l"
+    )
+    respawned_loop = next(
+        entity
+        for entity in floors[1].entities
+        if isinstance(entity, d.Companion) and entity.tribe.char == "l"
+    )
+    assert (restored_first_floor_loop.x, restored_first_floor_loop.y) == (8, 8)
+    assert (respawned_loop.x, respawned_loop.y) == respawn_position
+    assert respawned_loop.revealed
+    assert (
+        d.revealed_entity_glyphs(respawned_loop, set(), False, 200, None)[0].char
+        == "l"
+    )
 
 
 @pytest.mark.parametrize("has_vortex_map", [False, True])
