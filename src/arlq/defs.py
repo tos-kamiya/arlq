@@ -455,7 +455,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     ),
     _ET(
         "L",
-        event_message="-- The Lifebringer Elf restored your LP, raised its maximum to 105, and raised your level!",
+        event_message="-- The Lifebringer Elf restored your LP and raised its maximum!",
         respawn_on_random_floor=True,
     ),
     _MT("k", 80, MIN_FOOD),  # Marksman

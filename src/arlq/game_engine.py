@@ -628,7 +628,6 @@ def _resolve_monster_contact(
             trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
     elif ch == "L":
         player.elf_stage_flags |= d.ELF_STAGE_L_FLAG
-        d.grant_defeat_level(player, None)
         player.lp = d.LP_OVERCHARGE_MAX
         spawn_key = (floor[0], d.monster_type_key(entity))
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
