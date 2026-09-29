@@ -886,7 +886,7 @@ def test_stage4_chests_wait_for_w_defeat():
     assert messages == [
         None,
         ">> Dread Wyrm (W) defeated! <<",
-        "-- The treasure chest was a Mimic!",
+        "-- You defeated the Mimic, but were sent somewhere else.",
         None,
         None,
     ]
@@ -930,26 +930,18 @@ def test_spores_reduce_torch_radius_and_are_shown_as_an_item():
     assert d.level_item_labels(player, 3) == ("LVL: 100", "+Spores(m)")
 
 
-def test_mimic_uses_species_knowledge_after_first_contact():
+def test_level_one_mimic_cannot_defeat_player_on_first_contact():
     player = d.Player(2, 2, 1, 90)
     mimic = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
     floors, _ = stage3_state(player, [mimic])
     floor, checkpoint, queue, history = [0], [(2, 2)], Counter(), deque()
 
+    assert d.monster_level(mimic) == 1
     assert run_stage3_keys(
         "R", floors, player, floor, checkpoint, queue, history, stage_num=4
-    ) == ["-- The treasure chest was a Mimic! You respawned."]
-    assert "MW" in player.known_monsters
-    assert not mimic.revealed
-    assert (
-        d.revealed_entity_glyphs(mimic, player.known_monsters, False, 1, None)[0].char
-        == "M"
-    )
-
-    player.level = 100
-    assert run_stage3_keys(
-        "R", floors, player, floor, checkpoint, queue, history, stage_num=4
-    ) == ["-- The Mimic was defeated!"]
+    ) == ["-- You defeated the Mimic, but were sent somewhere else."]
+    assert "MW" not in player.known_monsters
+    assert not mimic.active
     assert not mimic.revealed
 
 
@@ -1268,7 +1260,7 @@ def test_legacy_stage2_high_elf_refuses_once_then_sends_player_elsewhere(monkeyp
         KEYS["R"], field, player, entities, respawn_point=(2, 2)
     )
 
-    assert message == (8, "-- Respawned to a random location.")
+    assert message == (8, "-- You were sent somewhere else.")
     assert (player.x, player.y) == (10, 10)
     assert (
         player.lp == 100
@@ -1967,7 +1959,7 @@ def test_stage3_special_floor_cells_are_passable_without_using_sword(cell):
             "H",
             d.ELF_STAGE_I_FLAG | d.ELF_STAGE_J_FLAG,
             d.ELF_STAGE_I_FLAG | d.ELF_STAGE_J_FLAG | d.ELF_STAGE_H_FLAG,
-            "-- The High Elf bestowed the talisman upon you!",
+            "-- The High Elf bestowed the protective amulet upon you!",
         ),
     ],
 )
@@ -2077,7 +2069,7 @@ def test_stage3_high_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
     )
     messages = run_stage3_keys("RR", floors, player, floor, checkpoint, queue, history)
 
-    assert messages[-1] == "-- Respawned to a random location."
+    assert messages[-1] == "-- You were sent somewhere else."
     assert (player.x, player.y) == (10, 10)
 
 

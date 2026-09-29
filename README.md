@@ -185,7 +185,7 @@ The bottom-right marker shows the displayed floor as a fraction (for example, `3
 | **I** Isolated Elf | Reveals information about the other elves. It is in a sealed room, which you must enter by breaking a wall with a sword, flying in with Pegasus, or using stairs or a Collapse. On the second and later contacts, it sends the player to a random location on the map. |
 | **J** Javelin Elf | Follows the player and increases attack power by 25%. |
 | **K** Collector Elf | Exchanges the cursed sword for a permanent 1.2x attack enhancement; it cannot break walls. |
-| **H** High Elf | Grants the talisman after meeting any two of `I`, `J`, and `K`. |
+| **H** High Elf | Grants the protective amulet after meeting any two of `I`, `J`, and `K`. |
 | **S** Sylvan Elf | Gives the player fairy nectar. Future companions other than `l` last 1.25 times as long. The nectar remains until a Loop Companion rewinds time past its acquisition. |
 
 The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first contact made while their condition is unmet; any contact after that sends you to a random location on the map.
