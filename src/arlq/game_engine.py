@@ -356,7 +356,10 @@ def _vortex_rearrange(
 
     # Clear and rebuild only barriers inside the Vortex's affected area.
     for x, y in affected_points:
-        if current.field[y][x] == d.CHAR_BARRIER:
+        if (
+            current.field[y][x] == d.CHAR_BARRIER
+            and (x, y) not in current.persistent_barriers
+        ):
             current.field[y][x] = d.CHAR_FLOOR
 
     def relocate(char: str, origin_floor: Optional[int], empowered: int = 1) -> None:
@@ -425,6 +428,7 @@ def _vortex_rearrange(
         if (
             current.field[y][x] in (d.CHAR_FLOOR, d.CHAR_BARRIER)
             and (x, y) not in known_collapses
+            and (x, y) not in current.persistent_barriers
         ):
             current.seen[y][x] = 0
 
