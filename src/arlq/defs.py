@@ -128,6 +128,19 @@ CHAR_COLLAPSE: str = "O"
 Point = Tuple[int, int]
 Edge = Tuple[Point, Point]
 
+COLLAPSE_FOOTPRINT_OFFSETS: Tuple[Point, ...] = (
+    (0, 0),
+    (0, -1),
+    (1, 0),
+    (0, 1),
+    (-1, 0),
+)
+
+
+def collapse_footprint(center: Point) -> Set[Point]:
+    x, y = center
+    return {(x + dx, y + dy) for dx, dy in COLLAPSE_FOOTPRINT_OFFSETS}
+
 
 class Entity:
     """Base class for entities in the game that have x and y coordinates."""
@@ -148,11 +161,10 @@ class Treasure(Entity):
 
 
 class Collapse(Entity):
-    """A fixed hole that drops the player to the same point on the next floor."""
+    """A hidden five-cell trap that drops the player to the next floor."""
 
     def __init__(self, x: int, y: int):
         super().__init__(x, y)
-        self.revealed: bool = False
 
 
 class Tribe:
@@ -971,16 +983,10 @@ def preview_entity_glyphs(
     elif isinstance(entity, Treasure):
         char = CHAR_TREASURE
     elif isinstance(entity, Collapse):
-        char = (
-            CHAR_COLLAPSE
-            if entity.revealed or reveal_disguises
-            else "?"
-        )
+        return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if char is None:
         return []
-    tone = (
-        "stair" if isinstance(entity, Collapse) and char == CHAR_COLLAPSE else "default"
-    )
+    tone = "default"
     glyphs = [
         FieldGlyph(
             entity.x,
@@ -1069,10 +1075,7 @@ def revealed_entity_glyphs(
             )
         return glyphs
     if isinstance(entity, Collapse):
-        known = entity.revealed
-        char = CHAR_COLLAPSE if known else "?"
-        tone = "stair" if known else "yellow"
-        return [FieldGlyph(entity.x, entity.y, char, tone, bold=True)]
+        return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if isinstance(entity, Treasure):
         if entity.unlocked:
             return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
