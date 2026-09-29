@@ -852,6 +852,30 @@ class PygletUI:
 
             time.sleep(1 / 30)
 
+    def input_game_over(self):
+        """Wait for a game-over command or a shifted floor-view direction."""
+        while True:
+            self._pump()
+            if self._closed:
+                return None
+
+            while self._key_queue:
+                event = self._next_key_event()
+                symbol, modifiers = event
+                if symbol in (pgkey.ESCAPE, pgkey.Q):
+                    return None
+                if symbol == pgkey.M:
+                    return "m"
+                if symbol == pgkey.S:
+                    return "s"
+                if symbol == pgkey.H:
+                    self.controls_menu()
+                    return (0, 0, False)
+                if symbol in _DIRECTION_KEYS:
+                    return (*_DIRECTION_KEYS[symbol], bool(modifiers & pgkey.MOD_SHIFT))
+
+            time.sleep(1 / 30)
+
     def quit(self):
         """Closes the game window."""
         self.window.close()
