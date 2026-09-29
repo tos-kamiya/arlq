@@ -105,10 +105,10 @@ def _split_floor_roster(
     """Separate ordinary spawns, assigned-floor elves, and Wyrm encounters."""
     ordinary, elves, wyrms = [], [], []
     for entry in roster:
-        ch = entry[0]
+        ch, _, empowered = entry
         if ch == "I":
             continue  # I is placed inside the generated isolated room.
-        if ch in {"w", "W"}:
+        if ch in {"w", "W"} or (ch == d.CHAR_FIRE_DRAKE and empowered == 2):
             wyrms.append(entry)
         elif ch in elf_floors:
             elves.append(entry)
@@ -157,7 +157,10 @@ def _spawn_monsters_with_barriers(
 ) -> None:
     for ch, count, empowered in entries:
         for monster_index in range(count):
-            if ch == "W" and monster_index == 0:
+            if (
+                ch == "W"
+                or (ch == d.CHAR_FIRE_DRAKE and empowered == 2)
+            ) and monster_index == 0:
                 x, y = down
                 entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[ch], empowered))
             else:
@@ -169,7 +172,8 @@ def _spawn_monsters_with_barriers(
                     floor_index=floor_index,
                     empowered=empowered,
                 )
-            _place_barrier(field, (x, y))
+            if ch in {"w", "W"}:
+                _place_barrier(field, (x, y))
 
 
 def _place_roster_treasures_and_mimics(

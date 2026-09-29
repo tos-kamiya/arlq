@@ -42,8 +42,8 @@ LP_LOW_THRESHOLD: int = 20  # LP bar/player "@" turn red at or below this
 MONSTER_RESPAWN_INTERVAL: int = 65
 SWORD_USES: int = 3
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
-# W, w, and M stay down for the rest of a multi-floor run.
-STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w", "M"}
+# Wyrms, the Stage 4 boss, and mimics stay down for the rest of a multi-floor run.
+STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w", "M", "F"}
 ELF_STAGE_C_FLAG: int = 1
 ELF_STAGE_I_FLAG: int = 2
 ELF_STAGE_K_FLAG: int = 4
@@ -464,7 +464,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     ),
     _ET(
         "J",
-        event_message="-- The Javelin Elf joined your hunt for the Dread Wyrm!",
+        event_message="-- The Javelin Elf joined your hunt!",
     ),
     _ET(
         "K",
@@ -674,6 +674,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("n", 1, 1),
         ("o", 1, 1),
         (CHAR_PEGASUS, 1, 1),
+        ("w", 2, 1),
     ],
     [
         ("a", 4, 1),
@@ -687,8 +688,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("n", 1, 1),
         ("o", 1, 1),
         (CHAR_PEGASUS, 1, 1),
-        ("w", 1, 1),
-        ("W", 1, 1),
+        ("F", 1, 2),
         ("M", 1, 1),
     ],
 ]
