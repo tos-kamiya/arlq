@@ -211,7 +211,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | Display | Name | Description |
 | ------- | ---- | ----------- |
 | `T` | Mimic | Appears as a treasure chest after W is defeated. |
-| `O` | Collapse | Contact opens a hole in the floor. |
+| `?` / `O` | Collapse | Stepping on the `?` cell or one of its four orthogonal neighbors drops the player to the next floor. The `?` stays unchanged; each neighboring cell is marked `O` only if the player lands on that cell. |
 | `V` | Vortex | Repositions nearby monsters, companions, and treasure chests when defeated. |
 
 #### Elves

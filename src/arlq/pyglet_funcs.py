@@ -517,6 +517,10 @@ class PygletUI:
                     self._draw_field_text((x, y), cell, COLOR_MAP[CI_YELLOW], bold=True)
                 elif discovered and cell == d.CHAR_BARRIER:
                     self._draw_field_text((x, y), d.CHAR_BARRIER, COLOR_MAP[CI_RED], bold=True)
+                elif discovered and cell == d.CHAR_COLLAPSE:
+                    self._draw_field_text(
+                        (x, y), d.CHAR_COLLAPSE, COLOR_MAP[CI_YELLOW]
+                    )
 
         for entity in entities:
             if not isinstance(entity, d.Monster) or entity.tribe.char != "k":

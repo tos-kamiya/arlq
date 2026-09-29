@@ -602,46 +602,81 @@ def _add_additional_stairs(floors: List[Floor], pair_counts: List[int]) -> None:
 
 
 def _place_collapses(floors: List[Floor]) -> None:
-    """Place one Collapse on each of two distinct floor transitions."""
-    offsets = [(dx, dy) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dx or dy]
-
-    def has_wall_neighbors(field: List[List[str]], point: d.Point) -> bool:
-        x, y = point
-        return any(field[y + dy][x + dx] == d.WALL_CHAR for dx, dy in offsets)
-
-    transition_options: List[List[Tuple[Floor, Floor, d.Point]]] = []
-    for upper, lower in zip(floors, floors[1:]):
-        occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
-        occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
-        upper_fixed = {upper.up, upper.down, *upper.up_stairs, *upper.down_stairs}
-        lower_fixed = {lower.up, lower.down, *lower.up_stairs, *lower.down_stairs}
-        stair_points = upper.down_stairs + lower.up_stairs
-        candidates = [
-            point
-            for point in _transition_candidates(upper, lower, stair_points)
-            if point not in occupied_upper
-            and point not in occupied_lower
-            and point not in upper_fixed
-            and point not in lower_fixed
-            and point not in upper.collapse_landings
-            and point not in lower.collapse_landings
-            and not has_wall_neighbors(upper.field, point)
-            and not has_wall_neighbors(lower.field, point)
-        ]
-        if candidates:
-            transition_options.append(
-                [(upper, lower, point) for point in candidates]
+    """Place up to two five-cell Collapses on distinct floor transitions."""
+    used_transitions: set[int] = set()
+    for _ in range(2):
+        transition_options: List[Tuple[int, List[d.Point]]] = []
+        for index, (upper, lower) in enumerate(zip(floors, floors[1:])):
+            if index in used_transitions:
+                continue
+            stair_points = upper.down_stairs + lower.up_stairs
+            upper_fixed = {
+                upper.up,
+                upper.down,
+                *upper.up_stairs,
+                *upper.down_stairs,
+            }
+            lower_fixed = {
+                lower.up,
+                lower.down,
+                *lower.up_stairs,
+                *lower.down_stairs,
+            }
+            occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
+            occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
+            upper_collapse_cells = set().union(
+                *(
+                    d.collapse_footprint((entity.x, entity.y))
+                    for entity in upper.entities
+                    if isinstance(entity, d.Collapse)
+                )
+            )
+            lower_collapse_cells = set().union(
+                *(
+                    d.collapse_footprint((entity.x, entity.y))
+                    for entity in lower.entities
+                    if isinstance(entity, d.Collapse)
+                )
             )
 
-    selected_transitions = []
-    for _ in range(min(2, len(transition_options))):
-        selected_transitions.append(
-            transition_options.pop(rand.randrange(len(transition_options)))
-        )
-    for placement_options in selected_transitions:
-        upper, lower, point = rand.choice(placement_options)
+            candidates = []
+            for point in _transition_candidates(upper, lower, stair_points):
+                footprint = d.collapse_footprint(point)
+                if any(
+                    not (0 <= x < len(floor.field[0]) and 0 <= y < len(floor.field))
+                    for floor in (upper, lower)
+                    for x, y in footprint
+                ):
+                    continue
+                if any(
+                    floor.field[y][x] != d.CHAR_FLOOR
+                    for floor in (upper, lower)
+                    for x, y in footprint
+                ):
+                    continue
+                if (
+                    footprint & occupied_upper
+                    or footprint & occupied_lower
+                    or footprint & upper_fixed
+                    or footprint & lower_fixed
+                    or footprint & upper.collapse_landings
+                    or footprint & lower.collapse_landings
+                    or footprint & upper_collapse_cells
+                    or footprint & lower_collapse_cells
+                ):
+                    continue
+                candidates.append(point)
+            if candidates:
+                transition_options.append((index, candidates))
+
+        if not transition_options:
+            break
+        index, candidates = rand.choice(transition_options)
+        point = rand.choice(candidates)
+        upper, lower = floors[index], floors[index + 1]
         upper.entities.append(d.Collapse(*point))
-        lower.collapse_landings.add(point)
+        lower.collapse_landings.update(d.collapse_footprint(point))
+        used_transitions.add(index)
 
 
 def build_single_floor(

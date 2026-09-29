@@ -127,6 +127,7 @@ def _marksman_damage_at(
                 d.WALL_CHAR,
                 d.CHAR_CALTROP,
                 d.CHAR_BARRIER,
+                d.CHAR_COLLAPSE,
                 *d.STAIR_CHARS,
             ):
                 blocked = True
@@ -137,7 +138,6 @@ def _marksman_damage_at(
                     isinstance(other, d.Companion)
                     or isinstance(other, d.Treasure)
                     or isinstance(other, d.Collapse)
-                    and not other.revealed
                     or isinstance(other, d.Monster)
                     and other.active
                 )
@@ -197,6 +197,8 @@ def reachable_known_cells(
                 terrain_cost = 1
             elif cell == d.CHAR_CALTROP:
                 terrain_cost = 1 + d.CALTROP_LP_DAMAGE
+            elif cell == d.CHAR_COLLAPSE:
+                terrain_cost = 1
             elif cell == d.CHAR_BARRIER and stage_num not in (1, 2):
                 damage = (
                     0 if player.elf_stage_flags & d.ELF_STAGE_H_FLAG else d.BARRIER_LP_DAMAGE
@@ -231,7 +233,13 @@ def _move_player(
         direction,
         current.field,
         player,
-        (d.CHAR_FLOOR, d.CHAR_CALTROP, *d.STAIR_CHARS, d.CHAR_BARRIER),
+        (
+            d.CHAR_FLOOR,
+            d.CHAR_CALTROP,
+            d.CHAR_COLLAPSE,
+            *d.STAIR_CHARS,
+            d.CHAR_BARRIER,
+        ),
     )
     if trace is not None and wall_result is not None:
         trace.record_wall(wall_result)
@@ -285,6 +293,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
                 d.WALL_CHAR,
                 d.CHAR_CALTROP,
                 d.CHAR_BARRIER,
+                d.CHAR_COLLAPSE,
                 *d.STAIR_CHARS,
             ):
                 blocked = True
@@ -295,7 +304,6 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
                     isinstance(other, d.Companion)
                     or isinstance(other, d.Treasure)
                     or isinstance(other, d.Collapse)
-                    and not other.revealed
                     or isinstance(other, d.Monster)
                     and other.active
                 )
@@ -402,11 +410,13 @@ def _vortex_rearrange(
 
     for current_entity in current.entities:
         if isinstance(current_entity, d.Monster) and current_entity.tribe.char in {"w", "W"}:
-            protected = {
-                (fixed.x, fixed.y)
-                for fixed in current.entities
-                if isinstance(fixed, d.Collapse)
-            } | current.collapse_landings
+            protected = current.collapse_landings | set().union(
+                *(
+                    d.collapse_footprint((fixed.x, fixed.y))
+                    for fixed in current.entities
+                    if isinstance(fixed, d.Collapse)
+                )
+            )
             for dx in (-1, 0, 1):
                 for dy in (-1, 0, 1):
                     point = (current_entity.x + dx, current_entity.y + dy)
@@ -419,15 +429,9 @@ def _vortex_rearrange(
                     ):
                         current.field[y][x] = d.CHAR_BARRIER
 
-    known_collapses = {
-        (entity.x, entity.y)
-        for entity in current.entities
-        if isinstance(entity, d.Collapse) and entity.revealed
-    }
     for x, y in affected_points:
         if (
             current.field[y][x] in (d.CHAR_FLOOR, d.CHAR_BARRIER)
-            and (x, y) not in known_collapses
             and (x, y) not in current.persistent_barriers
         ):
             current.seen[y][x] = 0
@@ -489,13 +493,20 @@ def _defeat_monster(
     if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
         spread_caltrops(current.field, (player.x, player.y), current.entities)
     elif entity.tribe.effect == d.EFFECT_ROCK_SPREAD:
+        protected_collapse_cells = current.collapse_landings | set().union(
+            *(
+                d.collapse_footprint((collapse.x, collapse.y))
+                for collapse in current.entities
+                if isinstance(collapse, d.Collapse)
+            )
+        )
         for x, y in iterate_offsets(
             player.x,
             player.y,
             d.ROCK_SPREAD_OFFSETS,
             except_for_entities=current.entities,
         ):
-            if (x, y) not in current.collapse_landings and current.field[y][
+            if (x, y) not in protected_collapse_cells and current.field[y][
                 x
             ] == d.CHAR_FLOOR:
                 current.field[y][x] = d.WALL_CHAR
@@ -1014,13 +1025,18 @@ def _step(
             entity
             for entity in current.entities
             if isinstance(entity, d.Collapse)
-            and (entity.x, entity.y) == (player.x, player.y)
+            and (player.x, player.y)
+            in d.collapse_footprint((entity.x, entity.y))
         ),
         None,
     )
     if collapse_hit is not None and (player.x, player.y) != previous:
         from_floor = floor[0]
-        collapse_hit.revealed = True
+        collapse_point = (player.x, player.y)
+        current.seen[collapse_hit.y][collapse_hit.x] = 1
+        current.seen[collapse_point[1]][collapse_point[0]] = 1
+        if collapse_point != (collapse_hit.x, collapse_hit.y):
+            current.field[collapse_point[1]][collapse_point[0]] = d.CHAR_COLLAPSE
         floor[0] += 1
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [
