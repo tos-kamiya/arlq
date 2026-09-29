@@ -15,7 +15,7 @@ from .__about__ import __version__
 
 from .utils import rand
 from . import defs as d
-from .i18n import t as tr, set_language, get_language
+from .i18n import trp, set_language, get_language
 from .trace import ReplayUI, TraceRecorder, default_replay_output_path, load_trace
 from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent
 
@@ -69,6 +69,20 @@ def tick_message(message: Tuple[int, str]) -> Tuple[int, str]:
     if ticks < 0:
         return (-1, "")
     return (ticks, text)
+
+
+def prefer_event_message(
+    current: Optional[str], candidate: Optional[str]
+) -> Optional[str]:
+    """Keep the more important event message when several occur in one turn."""
+    if candidate is None:
+        return current
+    if current is None:
+        return candidate
+
+    current_importance = getattr(current, "importance", 0)
+    candidate_importance = getattr(candidate, "importance", 0)
+    return candidate if candidate_importance >= current_importance else current
 
 
 def generate_maze(
@@ -583,7 +597,7 @@ def update_entities(
             collected = t.unlocked
             events.contact = ContactEvent("treasure", t.unlock_key, collected=collected)
             if collected:
-                message = (10, tr(">> Treasure chest obtained! <<"))
+                message = (10, trp(">> Treasure chest obtained! <<", 9))
                 del entities[eei]
                 effect = d.EFFECT_GOT_TREASURE
                 player.treasure_collected = True
@@ -604,7 +618,10 @@ def update_entities(
 
             event_message = c.tribe.event_message
             if event_message:
-                message = (MESSAGE_TICKS, tr(event_message))
+                message = (
+                    MESSAGE_TICKS,
+                    trp(event_message, c.tribe.event_message_importance),
+                )
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
             if m.tribe.is_elf:
@@ -622,11 +639,14 @@ def update_entities(
                 events.contact = ContactEvent("monster", "H", outcome="refused")
                 if player.high_elf_refused:
                     player.x, player.y = find_random_place(entities, field, distance=2)
-                    message = (MESSAGE_TICKS, tr("-- You were sent somewhere else."))
+                    message = (
+                        MESSAGE_TICKS,
+                        trp("-- You were sent somewhere else.", 3),
+                    )
                 else:
                     message = (
                         MESSAGE_TICKS,
-                        tr("-- The High Elf seems uninterested in you."),
+                        trp("-- The High Elf seems uninterested in you.", 3),
                     )
                     player.high_elf_refused = True
                 player.last_contact_monster = contact_key
@@ -645,7 +665,10 @@ def update_entities(
                     player.x, player.y = find_random_place(
                         entities, field, distance=2, far_from=(m.x, m.y)
                     )
-                    message = (MESSAGE_TICKS, tr("-- Respawned to a random location."))
+                    message = (
+                        MESSAGE_TICKS,
+                        trp("-- Respawned to a random location.", 5),
+                    )
                 else:
                     if respawn_point is None:
                         player.x, player.y = find_random_place(
@@ -653,7 +676,7 @@ def update_entities(
                         )
                     else:
                         player.x, player.y = respawn_point
-                    message = (MESSAGE_TICKS, tr("-- Respawned!"))
+                    message = (MESSAGE_TICKS, trp("-- Respawned!", 5))
                 events.contact = ContactEvent(
                     "monster",
                     monster_id,
@@ -713,7 +736,10 @@ def update_entities(
 
                 event_message = m.tribe.event_message
                 if event_message:
-                    message = (MESSAGE_TICKS, tr(event_message))
+                    message = (
+                        MESSAGE_TICKS,
+                        trp(event_message, m.tribe.event_message_importance),
+                    )
 
             player.last_contact_monster = contact_key
 
@@ -723,7 +749,11 @@ def update_entities(
         player.companion is not None
         and player.karma >= player.companion.durability
     ):
-        message = (MESSAGE_TICKS, tr("-- The companion vanishes."))
+        candidate_message = trp("-- The companion vanishes.", 3)
+        if prefer_event_message(
+            message[1] if message is not None else None, candidate_message
+        ) == candidate_message:
+            message = (MESSAGE_TICKS, candidate_message)
         char = player.companion.tribe.char
         events.expired.append(ExpiredEvent("companion_departed", event_id=char))
         tribes_to_be_respawned.append(char)
