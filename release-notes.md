@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 5.2.1 - 2026-09-30
+
+- Show empowered monster ranks on the strength gauge and refine GUI field and
+  font sizing for clearer alignment.
+
 ## 5.2.0 - 2026-09-29
 
 - Add the Sylvan Elf (`S`), which grants Fairy Nectar to extend future companion
