@@ -218,7 +218,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **L** Lifebringer Elf | Meeting L permanently raises your LP maximum to 105 and restores LP to 120. L then moves to a random floor. |
+| **L** Lifebringer Elf | Each meeting raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then moves to a random floor. |
 
 ## Development commands
 

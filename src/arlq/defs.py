@@ -30,7 +30,8 @@ ELLIPSE_CELL_EDGE_THRESHOLD: float = 0.65
 VORTEX_FLOOR_DIAMETER_RATIO: float = 0.8
 
 LP_MAX: int = 100
-LP_MAX_LIFEBRINGER: int = 105
+LP_MAX_LIFEBRINGER: int = 120
+LIFEBRINGER_LP_MAX_INCREASE: int = 5
 LP_OVERCHARGE_MAX: int = 120
 LP_INIT: int = 90
 LP_RESPAWN_MIN: int = 20
@@ -337,6 +338,7 @@ class Player(Entity):
         self.known_elf_floors: Set[str] = set()
         # Shared progress for the elf stages, including Stage 3's W flag.
         self.elf_stage_flags: int = 0
+        self.lifebringer_lp_max: int = LP_MAX
         self.current_floor: int = 0
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
         # (floor, x, y) of the monster involved in the most recent monster
@@ -455,7 +457,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     ),
     _ET(
         "L",
-        event_message="-- The Lifebringer Elf restored your LP and raised its maximum!",
+        event_message="-- The Lifebringer Elf restored your LP to 120!",
         respawn_on_random_floor=True,
     ),
     _MT("k", 80, MIN_FOOD),  # Marksman
@@ -593,11 +595,11 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 20, 1),
         ("A", 1, 1),
-        ("b", 6, 1),
+        ("b", 10, 1),
         ("c", 1, 1),
         ("g", 2, 1),
-        ("d", 3, 1),
-        ("d", 3, 2),
+        ("d", 4, 1),
+        ("d", 2, 2),
         ("e", 1, 1),
         ("l", 1, 1),
         ("n", 1, 1),
@@ -607,11 +609,11 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 16, 1),
         ("A", 1, 1),
-        ("b", 6, 1),
+        ("b", 5, 1),
+        ("b", 4, 2),
         ("c", 1, 1),
         ("g", 2, 1),
-        ("d", 3, 1),
-        ("d", 3, 2),
+        ("d", 6, 2),
         ("k", 2, 1),
         ("l", 1, 1),
         ("n", 1, 1),
@@ -623,11 +625,10 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 12, 1),
         ("A", 1, 1),
-        ("b", 6, 1),
+        ("b", 8, 2),
         ("c", 1, 1),
         ("g", 2, 1),
-        ("d", 2, 1),
-        ("d", 4, 2),
+        ("d", 6, 2),
         ("k", 3, 1),
         ("l", 1, 1),
         ("n", 1, 1),
@@ -637,11 +638,12 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 8, 1),
         ("A", 1, 1),
-        ("b", 6, 1),
+        ("b", 4, 2),
+        ("b", 3, 3),
         ("c", 1, 1),
         ("g", 2, 1),
-        ("d", 3, 2),
-        ("d", 3, 3),
+        ("d", 4, 2),
+        ("d", 2, 3),
         ("k", 3, 1),
         ("l", 1, 1),
         ("n", 1, 1),
@@ -651,7 +653,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 4, 1),
         ("A", 1, 1),
-        ("b", 6, 1),
+        ("b", 6, 3),
         ("c", 1, 1),
         ("g", 2, 1),
         ("d", 2, 2),
@@ -703,11 +705,7 @@ def _javelin_follower_active(player: Player) -> bool:
 
 def player_lp_max(player: Player) -> int:
     """Return the player's permanent LP maximum, including Lifebringer's bonus."""
-    return (
-        LP_MAX_LIFEBRINGER
-        if player.elf_stage_flags & ELF_STAGE_L_FLAG
-        else LP_MAX
-    )
+    return min(player.lifebringer_lp_max, LP_MAX_LIFEBRINGER)
 
 
 def apply_feed(player: Player, feed: int) -> None:
