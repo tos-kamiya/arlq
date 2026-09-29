@@ -390,7 +390,6 @@ def build(
                 "J": rand.randrange(floor_count),
                 "K": rand.randrange(d.STAGE3_FLOORS - 1),
                 "H": rand.randrange(floor_count),
-                "S": rand.randrange(floor_count),
             }
         )
         special_floors = {
