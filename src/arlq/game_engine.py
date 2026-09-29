@@ -45,8 +45,8 @@ from .utils import rand
 
 ELF_REPEAT_MESSAGES = {
     "K": "-- The Collector Elf (K) looks satisfied.",
-    "H": "-- Keep the talisman close to your skin.",
-    "S": "-- The Sylvan Elf has already shared the fairy nectar.",
+    "H": "-- Keep the protective amulet close to your skin.",
+    "S": "-- The Sylvan Elf replenished your fairy nectar.",
 }
 
 
@@ -640,7 +640,7 @@ def _resolve_monster_contact(
         # player elsewhere, like repeat contact with the Isolated Elf.
         if player.high_elf_refused:
             player.x, player.y = _find_escape_place(current)
-            event_message = tr("-- Respawned to a random location.")
+            event_message = tr("-- You were sent somewhere else.")
         else:
             event_message = tr("-- The High Elf does not recognize you yet.")
             player.high_elf_refused = True
@@ -656,11 +656,11 @@ def _resolve_monster_contact(
         player.lp = d.LP_OVERCHARGE_MAX
         if player.lifebringer_lp_max > old_lp_max:
             event_message = tr(
-                "-- The Lifebringer Elf raised your permanent LP maximum "
-                "and restored your LP to 120!"
+                "-- The Lifebringer Elf restored your health and increased "
+                "your LP maximum!"
             )
         else:
-            event_message = tr("-- The Lifebringer Elf restored your LP to 120!")
+            event_message = tr("-- The Lifebringer Elf restored your health!")
         spawn_key = (floor[0], d.monster_type_key(entity))
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
         if trace is not None:
@@ -678,6 +678,7 @@ def _resolve_monster_contact(
                     {"type": "elf", "id": "S", "outcome": "granted"}
                 )
     elif d.current_player_attack(player) < d.monster_level(entity):
+        assert ch != "M", "A Mimic must not defeat the player."
         # Losing still identifies the monster, including W. Treasure glyphs
         # remain gated separately by their unlock state in the renderer.
         if not entity.tribe.is_elf:
@@ -688,7 +689,6 @@ def _resolve_monster_contact(
         # resolves combat before removing the monster; keeping the entity
         # here prevents a failed attack from deleting it.
         current.entities.append(entity)
-        first_mimic_contact = ch == "M" and not was_known
         # Losing twice in a row to the very same monster (no other monster
         # contact in between) means it is blocking the only way through:
         # send the player somewhere random instead of back to the
@@ -703,8 +703,6 @@ def _resolve_monster_contact(
             # frame, even when the checkpoint is outside its FOV.
             current.contact_reveal = (entity.x, entity.y)
             event_message = tr("-- Respawned!")
-        if first_mimic_contact:
-            event_message = tr("-- The treasure chest was a Mimic! You respawned.")
         if trace is not None:
             trace.record_contact(
                 {
@@ -741,10 +739,10 @@ def _resolve_monster_contact(
         if ch == "M":
             current.entities.append(entity)
             player.x, player.y = _find_escape_place(current)
-        if ch == "M" and was_known:
-            event_message = tr("-- The Mimic was defeated!")
-        elif ch == "M":
-            event_message = tr("-- The treasure chest was a Mimic!")
+        if ch == "M":
+            event_message = tr(
+                "-- You defeated the Mimic, but were sent somewhere else."
+            )
         if ch == "W" and player.treasure_collected:
             event_message = tr(">> The King's request is complete! <<")
         elif ch == d.CHAR_FIRE_DRAKE and entity.empowered == 2:

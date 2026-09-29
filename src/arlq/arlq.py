@@ -622,7 +622,7 @@ def update_entities(
                 events.contact = ContactEvent("monster", "H", outcome="refused")
                 if player.high_elf_refused:
                     player.x, player.y = find_random_place(entities, field, distance=2)
-                    message = (MESSAGE_TICKS, tr("-- Respawned to a random location."))
+                    message = (MESSAGE_TICKS, tr("-- You were sent somewhere else."))
                 else:
                     message = (
                         MESSAGE_TICKS,

@@ -473,11 +473,11 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     ),
     _ET(
         "H",
-        event_message="-- The High Elf bestowed the talisman upon you!",
+        event_message="-- The High Elf bestowed the protective amulet upon you!",
     ),
     _ET(
         "L",
-        event_message="-- The Lifebringer Elf restored your LP to 120!",
+        event_message="-- The Lifebringer Elf restored your health!",
         respawn_on_random_floor=True,
     ),
     _ET(
@@ -487,7 +487,12 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         ),
     ),
     _MT("k", 80, MIN_FOOD),  # Marksman
-    _MT("M", 85, 1, event_message="-- The treasure chest was a Mimic!"),  # Mimic
+    _MT(
+        "M",
+        1,
+        1,
+        event_message="-- You defeated the Mimic, but were sent somewhere else.",
+    ),  # Mimic
     _MT(
         "m",
         5,
