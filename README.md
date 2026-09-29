@@ -87,7 +87,7 @@ reproduce the same layout.
 
 * **Objective**  
   The goal of the game is to explore a dungeon with procedurally generated corridors and find the treasure chest hidden by the dragon. In Stage 1, find the dragon's chest; in Stage 2, find the fire drake's chest.
-  In Stages 3 and 4, the two objectives are to defeat the `W` Dread Wyrm and claim its treasure chest. You must accomplish both to clear the stage. The elves' help is useful for accomplishing these objectives.
+  In Stage 3, defeat the `W` Dread Wyrm and claim its treasure chest. In Stage 4, defeat the empowered Fire Drake (`F'`) and claim its treasure chest. Both objectives are required to clear either stage. The elves' help is useful for accomplishing them.
 
   Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Discovering a stair also marks its matching cell on the adjacent floor as explored. Five elves, `I`, `J`, `K`, `H`, and `S`, appear.
 
@@ -192,7 +192,7 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 
 ### Stage 4
 
-Stage 4 has five floors. Like Stage 3, it features elves, including one Sylvan Elf (`S`), and the goal is to defeat the Dread Wyrm (`W`). Some rooms are filled in, and walls may divide floors. Wyrm barriers are scattered across the entire final floor.
+Stage 4 has five floors. Like Stage 3, it features elves, including one Sylvan Elf (`S`). The goal is to defeat the empowered Fire Drake (`F'`) on the final floor and claim its treasure chest. Two barrier-protected Wyrms (`w`) appear on the fourth floor. Some rooms are filled in, and walls may divide floors. Barriers are scattered across the final floor; the Fire Drake has no barriers placed around it.
 One Rare Chimera (`C`) appears on a randomly selected floor, independently of the Collector Elf's (`K`) floor.
 Stage 4 also features empowered Komodo Dragons (`d'` and `d"`).
 
@@ -211,7 +211,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 | Display | Name | Description |
 | ------- | ---- | ----------- |
-| `T` | Mimic | Appears as a treasure chest after W is defeated. |
+| `T` | Mimic | Appears as a treasure chest after the stage boss is defeated. |
 | `?` / `O` | Collapse | Stepping on the `?` cell or one of its four orthogonal neighbors drops the player to the next floor. The `?` stays unchanged; each neighboring cell is marked `O` only if the player lands on that cell. |
 | `V` | Vortex | Repositions nearby monsters, companions, and treasure chests when defeated. |
 

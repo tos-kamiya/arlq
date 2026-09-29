@@ -480,6 +480,9 @@ def _defeat_monster(
         player.elf_stage_flags |= d.STAGE3_W_FLAG
         player.known_monsters.add(d.monster_type_key(entity))
         player.boss_defeated = True
+    elif ch == d.CHAR_FIRE_DRAKE and entity.empowered == 2:
+        player.known_monsters.add(d.monster_type_key(entity))
+        player.boss_defeated = True
     if ch == "K":
         player.elf_stage_flags |= d.ELF_STAGE_K_FLAG
         d.clear_player_item(player)
@@ -742,6 +745,11 @@ def _resolve_monster_contact(
             event_message = tr("-- The treasure chest was a Mimic!")
         if ch == "W" and player.treasure_collected:
             event_message = tr(">> The King's request is complete! <<")
+        elif ch == d.CHAR_FIRE_DRAKE and entity.empowered == 2:
+            if player.treasure_collected:
+                event_message = tr(">> The King's request is complete! <<")
+            else:
+                event_message = tr(">> Strong Fire Drake (F') defeated! <<")
 
     if entity.tribe.is_elf and ch not in ("J", "L") and entity not in current.entities:
         entity.met = True
@@ -790,7 +798,7 @@ def _resolve_contact(
         if collected:
             current.entities.pop(hit)
             player.treasure_collected = True
-            if not (player.elf_stage_flags & d.STAGE3_W_FLAG):
+            if not player.boss_defeated:
                 event_message = tr(
                     "-- You took the treasure chest, but the King's request remains."
                 )
@@ -1201,7 +1209,14 @@ def run_game(
     if legacy_stage:
         message: Tuple[int, str] = (-1, "")
     elif stage_num in d.ELF_STAGES:
-        message = (5, tr("-- The King has ordered the Dread Wyrm (W) slain."))
+        message = (
+            5,
+            tr(
+                "-- The King has ordered the Dread Wyrm (W) slain."
+                if stage_num == 3
+                else "-- The King has ordered the Strong Fire Drake (F') slain."
+            ),
+        )
     elif stage_num == 6:
         message = (5, "-- Trap test: Mimic, Vortex, W, treasure, b and d.")
     legacy_respawn_queue: Counter[str] = Counter()

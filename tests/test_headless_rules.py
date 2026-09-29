@@ -59,6 +59,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "down_stairs",
         "contact_reveal",
         "collapse_landings",
+        "persistent_barriers",
         "room_components",
     }
 
@@ -338,11 +339,11 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for _, count, rank in floor if rank == 2 or rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [3, 3, 4, 6, 6]
+    ] == [2, 10, 14, 13, 13]
     assert [
         sum(count for _, count, rank in floor if rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [0, 0, 0, 3, 4]
+    ] == [0, 0, 0, 5, 10]
     assert [
         sum(count for ch, count, _ in floor if ch == "d")
         for floor in d.STAGE4_ROSTER
@@ -351,20 +352,18 @@ def test_stage4_has_independent_per_floor_roster():
         rank == 1
         for floor in d.STAGE4_ROSTER
         for ch, _, rank in floor
-        if ch in {"a", "A", "b", "c"}
+        if ch in {"a", "A", "c"}
     )
     assert d.MARKSMAN_LP_DAMAGE == 4
     assert not any(ch == "G" for floor in d.STAGE4_ROSTER for ch, _, _ in floor)
-    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[4] if ch == "w") == 1
+    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "w") == 2
     assert sum(
         count
         for ch, count, rank in d.STAGE4_ROSTER[4]
-        if ch == "W" and rank == 1
+        if ch == d.CHAR_FIRE_DRAKE and rank == 2
     ) == 1
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[4] if ch == "M") == 1
-    assert not any(
-        ch in {"w", "W"} for floor in d.STAGE4_ROSTER[:4] for ch, _, _ in floor
-    )
+    assert not any(ch == "W" for floor in d.STAGE4_ROSTER for ch, _, _ in floor)
     assert (
         sum(count for floor in d.STAGE4_ROSTER for ch, count, _ in floor if ch == "V")
         == 1
@@ -384,12 +383,20 @@ def test_stage4_has_independent_per_floor_roster():
     assert all(
         sum(count for ch, count, _ in floor if ch == special) == 0
         for floor in d.STAGE4_ROSTER
-        for special in ("w", "W", "M")
+        for special in ("F", "M")
         if floor is not d.STAGE4_ROSTER[4]
+    )
+    assert all(
+        sum(count for ch, count, _ in floor if ch == "w") == 0
+        for index, floor in enumerate(d.STAGE4_ROSTER)
+        if index != 3
     )
 
 
-def test_stage4_builds_all_elves_and_dread_wyrm_boss():
+def test_stage4_builds_elves_fire_drake_boss_and_barrier_wyrms(monkeypatch):
+    monkeypatch.setattr(
+        stage_world_module, "_place_stage4_final_floor_barriers", lambda _floor: None
+    )
     floors, _ = game_engine_module.build(stage_num=4)
 
     elves = {
@@ -402,7 +409,14 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
         entity
         for floor in floors
         for entity in floor.entities
-        if isinstance(entity, d.Monster) and entity.tribe.char == "W"
+        if isinstance(entity, d.Monster)
+        and entity.tribe.char == d.CHAR_FIRE_DRAKE
+        and entity.empowered == 2
+    ]
+    wyrms = [
+        entity
+        for entity in floors[3].entities
+        if isinstance(entity, d.Monster) and entity.tribe.char == "w"
     ]
     golems = [
         (floor_index, entity)
@@ -422,6 +436,32 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
     assert elves == {"I", "J", "K", "H", "L", "S"}
     assert len(bosses) == 1
     assert len(floors) == 5
+    assert not any(
+        isinstance(entity, d.Monster) and entity.tribe.char == "W"
+        for floor in floors
+        for entity in floor.entities
+    )
+    assert bosses[0] in floors[4].entities
+    assert bosses[0].empowered == 2
+    assert len(wyrms) == 2
+    assert all(
+        any(
+            floors[3].field[y][x] == d.CHAR_BARRIER
+            for x, y in (
+                (wyrm.x - 1, wyrm.y),
+                (wyrm.x + 1, wyrm.y),
+                (wyrm.x, wyrm.y - 1),
+                (wyrm.x, wyrm.y + 1),
+            )
+        )
+        for wyrm in wyrms
+    )
+    assert all(
+        floors[4].field[bosses[0].y + dy][bosses[0].x + dx] != d.CHAR_BARRIER
+        for dx in (-1, 0, 1)
+        for dy in (-1, 0, 1)
+        if dx or dy
+    )
     special_floor = {
         char: next(
             index
@@ -436,19 +476,16 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
     assert special_floor["V"] in (1, 2, 3)
     assert special_floor["E"] in (1, 2, 3)
     assert special_floor["V"] != special_floor["E"]
-    assert (
-        sum(
-            isinstance(entity, d.Collapse)
-            for floor in floors
-            for entity in floor.entities
-        )
-        == 1
-    )
+    assert 1 <= sum(
+        isinstance(entity, d.Collapse)
+        for floor in floors
+        for entity in floor.entities
+    ) <= 2
     assert bosses[0] in floors[4].entities
-    assert bosses[0].empowered == 1
+    assert bosses[0].empowered == 2
     assert len(treasures) == len(mimics) == 1
-    assert treasures[0].encounter_type == "TW"
-    assert d.monster_type_key(mimics[0]) == "MW"
+    assert treasures[0].encounter_type == "TF"
+    assert d.monster_type_key(mimics[0]) == "MF"
     assert not treasures[0].unlocked
     assert not mimics[0].active
     assert len(golems) == 11
@@ -714,6 +751,30 @@ def test_stage4_treasure_uses_the_win_screen_message():
     assert messages == [None]
     assert player.treasure_collected
     assert player.stage_won
+
+
+def test_stage4_empowered_fire_drake_unlocks_treasure_and_completes_stage():
+    player = d.Player(2, 2, 200, 90)
+    boss = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_FIRE_DRAKE], empowered=2)
+    treasure = d.Treasure(4, 2, "TF")
+    floors, _ = stage3_state(player, [boss, treasure])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    messages = run_stage3_keys(
+        "RR", floors, player, floor, checkpoint, queue, history, stage_num=4
+    )
+
+    assert messages[0] == ">> Strong Fire Drake (F') defeated! <<"
+    assert messages[1] is None
+    assert player.boss_defeated
+    assert not (player.elf_stage_flags & d.STAGE3_W_FLAG)
+    assert player.treasure_collected
+    assert player.stage_won
+    assert treasure not in floors[0].entities
+    assert not queue
 
 
 def test_trap_test_shows_treasure_message_after_main_loop(monkeypatch):
@@ -1894,7 +1955,7 @@ def test_stage3_special_floor_cells_are_passable_without_using_sword(cell):
             "J",
             0,
             d.ELF_STAGE_J_FLAG,
-            "-- The Javelin Elf joined your hunt for the Dread Wyrm!",
+            "-- The Javelin Elf joined your hunt!",
         ),
         (
             "K",
@@ -2239,7 +2300,7 @@ def test_elf_stage_flags_keep_their_bit_values():
         d.ELF_STAGE_J_FLAG,
     ) == (1, 2, 4, 8, 32, 16, 64)
     assert d.STAGE3_NO_RESPAWN_MONSTERS == {
-        "a", "A", "b", "c", "C", "M", "W", "w"
+        "a", "A", "b", "c", "C", "F", "M", "W", "w"
     }
 
 
