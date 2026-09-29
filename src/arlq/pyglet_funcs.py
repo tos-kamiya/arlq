@@ -604,6 +604,15 @@ class PygletUI:
                 x_offset=self.field_pixel_width + self.strength_column_padding
             )
 
+        if stage_num in d.ELF_STAGES:
+            progress_x = 0
+            for label, achieved in d.elf_stage_progress_marks(player):
+                color = COLOR_MAP["default"] if achieved else (100, 106, 118)
+                self._draw_text(
+                    (progress_x, self.field_height - 1), label, color, bold=True
+                )
+                progress_x += len(label) + 1
+
         if floor_label:
             label_width = len(floor_label) * self.cell_size_x
             label_x = max(0, self.field_pixel_width - label_width)
@@ -665,15 +674,9 @@ class PygletUI:
         item_x_offset = x_offset + bar_width + 10
         self._draw_text((item_x_offset // self.cell_size_x, self.field_height), item_status, COLOR_MAP["default"])
 
-        progress_x = 0
-        if stage_num in d.ELF_STAGES:
-            for label, achieved in d.elf_stage_progress_marks(player):
-                color = COLOR_MAP["default"] if achieved else (100, 106, 118)
-                self._draw_text((progress_x, self.field_height + 1), label, color, bold=True)
-                progress_x += len(label) + 1
         if message:
             self._draw_text(
-                (progress_x, self.field_height + 1), message, COLOR_MAP[CI_YELLOW]
+                (0, self.field_height + 1), message, COLOR_MAP[CI_YELLOW]
             )
 
     def _text_width(self, text: str, bold: bool = False) -> int:

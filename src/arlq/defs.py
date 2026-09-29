@@ -351,6 +351,8 @@ class Player(Entity):
         self.treasure_collected: bool = False
         # Identified monster types are known across all floors.
         self.known_monsters: Set[str] = set()
+        # Floors where the Cursed Chimera has been identified or defeated us.
+        self.known_c_floors: Set[int] = set()
         self.elf_stage_floors: Dict[str, int] = {}
         self.known_elf_floors: Set[str] = set()
         # Shared progress for the elf stages, including Stage 3's W flag.
@@ -919,7 +921,9 @@ def elf_stage_progress_marks(player: Player) -> List[Tuple[str, bool]]:
         ]
     for label, bit in progress:
         text = label
-        if label == "L" and player.elf_stage_flags & ELF_STAGE_L_FLAG:
+        if label == "C" and player.known_c_floors:
+            text += "".join(str(floor) for floor in sorted(player.known_c_floors))
+        elif label == "L" and player.elf_stage_flags & ELF_STAGE_L_FLAG:
             text += "?"
         elif (
             (show_floors or label in player.known_elf_floors)

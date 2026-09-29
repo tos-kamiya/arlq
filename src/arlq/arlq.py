@@ -463,6 +463,7 @@ def reveal_entities_in_fov(
     player: d.Player,
     entities: List[d.Entity],
     torch_radius: int = d.TORCH_RADIUS,
+    floor_index: int = 0,
 ) -> None:
     """Reveal active monsters currently inside the player's FOV."""
     if player.companion is None or player.companion.tribe.char != "n":
@@ -479,6 +480,8 @@ def reveal_entities_in_fov(
                 player.known_elf_floors.add(entity.tribe.char)
             else:
                 player.known_monsters.add(d.monster_type_key(entity))
+                if entity.tribe.char == "C":
+                    player.known_c_floors.add(floor_index + 1)
 
 
 def move_player(
