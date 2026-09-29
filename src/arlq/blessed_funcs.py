@@ -417,6 +417,35 @@ class BlessedUI:
             return None
         return str(key).lower()
 
+    def input_game_over(self):
+        """Wait for a game-over command or a shifted floor-view direction."""
+        while True:
+            key = self._read_key()
+            key_name = key.name or str(key)
+            key_text = str(key).lower()
+            if key.code == self.term.KEY_ESCAPE or key_text == "q":
+                return None
+            shifted_directions = {
+                "W": (0, -1), "S": (0, 1),
+                "KEY_SUP": (0, -1), "KEY_SDOWN": (0, 1),
+                "KEY_SLEFT": (-1, 0), "KEY_SRIGHT": (1, 0),
+                "KEY_SHIFT_UP": (0, -1), "KEY_SHIFT_DOWN": (0, 1),
+                "KEY_SHIFT_LEFT": (-1, 0), "KEY_SHIFT_RIGHT": (1, 0),
+                "KEY_SHIFT_W": (0, -1), "KEY_SHIFT_S": (0, 1),
+            }
+            if key_name in shifted_directions:
+                return (*shifted_directions[key_name], True)
+            if key_text == "m":
+                return "m"
+            if key_text == "s":
+                return "s"
+            if key_text == "h":
+                self.controls_menu()
+                return (0, 0, False)
+            direction = key_to_dir(key_name)
+            if direction is not None:
+                return (*direction, False)
+
     def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         options = [tr("[q]uit")] + [tr("stage [{n}]").format(n=n) for n in stage_numbers]
         current_index = 1

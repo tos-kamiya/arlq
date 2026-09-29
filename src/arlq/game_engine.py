@@ -1434,11 +1434,15 @@ def run_game(
         message = (-1, tr(">> Collapsed from hunger! <<"))
     else:
         message = (-1, tr(">> Treasure chest obtained! <<"))
+    view_floor = floor[0]
     while True:
-        current = floors[floor[0]]
+        display_floor = floors[view_floor]
+        floor_view = view_floor != floor[0]
         cur = get_torched(player, config.torch_radius)
+        render_player = deepcopy(player) if floor_view else player
+        render_player.current_floor = view_floor
         render_entities = (
-            current.entities if legacy_stage else [player, *current.entities]
+            display_floor.entities if legacy_stage else [render_player, *display_floor.entities]
         )
         known_types = player.known_monsters
         stage_draw_options = {}
@@ -1449,32 +1453,39 @@ def run_game(
                 else d.STAGE4_ROSTER_TRIBES,
             }
             if stage_num in d.ELF_STAGES:
-                stage_draw_options["floor_label"] = f"{floor[0] + 1}/{len(floors)}"
+                stage_draw_options["floor_label"] = f"{view_floor + 1}/{len(floors)}"
         ui.draw_stage(
             turn=turn,
-            player=player,
+            player=render_player,
             entities=render_entities,
-            field=current.field,
-            cur_torched=cur,
-            torched=current.seen,
+            field=display_floor.field,
+            cur_torched=(
+                [[0] * len(display_floor.field[0]) for _ in display_floor.field]
+                if floor_view else cur
+            ),
+            torched=display_floor.seen,
             known_types=known_types,
-            show_entities=debug,
+            show_entities=debug or getattr(ui, "map_mode", False),
             debug_show_entities=debug,
             stage_num=stage_num,
             message=message[1],
             extra_keys=True,
             checkpoint=checkpoint[0],
+            floor_view=floor_view,
             **stage_draw_options,
         )
-        key = ui.input_alphabet()
+        input_game_over = getattr(ui, "input_game_over", None)
+        key = input_game_over() if input_game_over is not None else ui.input_alphabet()
         if key is None:
             return
         if key == "m":
-            if legacy_stage:
-                debug = True
-                if hasattr(ui, "map_mode"):
-                    ui.map_mode = True
+            if hasattr(ui, "map_mode"):
+                ui.map_mode = True
             else:
-                debug = not debug
+                debug = True
         elif key == "s":
             message = (-1, tr("SEED: {seed_str}").format(seed_str=seed_str))
+        elif isinstance(key, tuple) and len(key) == 3:
+            _, dy, shifted = key
+            if shifted:
+                view_floor = max(0, min(len(floors) - 1, view_floor + dy))
