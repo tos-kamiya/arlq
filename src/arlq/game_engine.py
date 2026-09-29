@@ -627,8 +627,20 @@ def _resolve_monster_contact(
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
     elif ch == "L":
+        old_lp_max = d.player_lp_max(player)
+        player.lifebringer_lp_max = min(
+            old_lp_max + d.LIFEBRINGER_LP_MAX_INCREASE,
+            d.LP_MAX_LIFEBRINGER,
+        )
         player.elf_stage_flags |= d.ELF_STAGE_L_FLAG
         player.lp = d.LP_OVERCHARGE_MAX
+        if player.lifebringer_lp_max > old_lp_max:
+            event_message = tr(
+                "-- The Lifebringer Elf raised your permanent LP maximum "
+                "and restored your LP to 120!"
+            )
+        else:
+            event_message = tr("-- The Lifebringer Elf restored your LP to 120!")
         spawn_key = (floor[0], d.monster_type_key(entity))
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
         if trace is not None:
