@@ -46,6 +46,7 @@ def _place_stage4_final_floor_barriers(floor: Floor) -> None:
     for _ in range(count):
         x, y = candidates.pop(rand.randrange(len(candidates)))
         floor.field[y][x] = d.CHAR_BARRIER
+        floor.persistent_barriers.add((x, y))
 
 
 def _inside_island(point: Optional[d.Point], island_tile: Optional[d.Point]) -> bool:
