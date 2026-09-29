@@ -95,11 +95,6 @@ CELL_SIZE_Y = 20
 CELL_SIZE_X = 13
 STRENGTH_COLUMN_WIDTH = 2 * CELL_SIZE_X + 2 * STRENGTH_COLUMN_PADDING
 
-# The field's leftmost and rightmost columns are always walls (see
-# create_field), so they're rendered at a reduced width to trim the window.
-FIELD_EDGE_WALL_WIDTH = 2
-FIELD_EDGE_SHIFT = FIELD_EDGE_WALL_WIDTH - CELL_SIZE_X
-
 MIN_UI_SCALE = 0.5
 MAX_UI_SCALE = 4.0
 UI_SCALE_CHOICES = tuple(n / 100 for n in range(50, 401, 25))
@@ -291,9 +286,7 @@ class PygletUI:
         self.cell_size_y = max(1, round(CELL_SIZE_Y * self.scale))
         self.strength_column_padding = max(1, round(STRENGTH_COLUMN_PADDING * self.scale))
         self.strength_column_width = 2 * self.cell_size_x + 2 * self.strength_column_padding
-        self.field_edge_wall_width = max(1, round(FIELD_EDGE_WALL_WIDTH * self.scale))
-        self.field_edge_shift = self.field_edge_wall_width - self.cell_size_x
-        self.field_pixel_width = self.field_edge_wall_width * 2 + (self.field_width - 2) * self.cell_size_x
+        self.field_pixel_width = self.field_width * self.cell_size_x
         self.window_width = self.field_pixel_width + self.strength_column_width
         self.window_height = (self.field_height + 2) * self.cell_size_y
 
@@ -408,22 +401,16 @@ class PygletUI:
         return result
 
     def _field_col_x(self, col: int) -> int:
-        """Pixel x-start of field column `col`, accounting for the narrower
-        edge columns; every column from 1 onward shifts left by the same
-        amount so they stay contiguous."""
-        if col == 0:
-            return 0
-        return col * self.cell_size_x + self.field_edge_shift
+        """Pixel x-start of field column `col`."""
+        return col * self.cell_size_x
 
-    def _field_col_width(self, col: int) -> int:
-        if col == 0 or col == self.field_width - 1:
-            return self.field_edge_wall_width
+    def _field_col_width(self, _col: int) -> int:
         return self.cell_size_x
 
     def _draw_field_text(self, pos: d.Point, text: str, color: Tuple[int, int, int], bold: bool = False):
         """Draws text at a field grid cell (never an edge column), applying
-        the same shift as `_field_col_x`."""
-        self._draw_text(pos, text, color, bold=bold, x_offset=self.field_edge_shift)
+        the same grid alignment as the other field columns."""
+        self._draw_text(pos, text, color, bold=bold)
 
     def _draw_rect(self, x: int, y: int, width: int, height: int, color: Tuple[int, int, int]):
         rect = pyglet.shapes.Rectangle(
