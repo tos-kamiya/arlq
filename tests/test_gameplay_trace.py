@@ -398,6 +398,7 @@ def test_lifebringer_raises_permanent_lp_cap_and_restores_to_120():
 def test_lifebringer_cap_limits_feeding_after_overcharge_is_spent():
     player = d.Player(2, 2, 1, 104)
     player.elf_stage_flags |= d.ELF_STAGE_L_FLAG
+    player.lifebringer_lp_max = 105
 
     d.apply_feed(player, 10)
 

@@ -339,11 +339,11 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for _, count, rank in floor if rank == 2 or rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [2, 10, 14, 13, 13]
+    ] == [2, 10, 13, 12, 12]
     assert [
         sum(count for _, count, rank in floor if rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [0, 0, 0, 5, 10]
+    ] == [0, 0, 0, 5, 9]
     assert [
         sum(count for ch, count, _ in floor if ch == "d")
         for floor in d.STAGE4_ROSTER
@@ -855,13 +855,21 @@ def test_multifloor_win_screen_shows_treasure_and_floor(monkeypatch, stage_num):
     assert draws[-1]["floor_label"] == f"1/{3 if stage_num == 3 else 4}"
 
 
-def test_stage4_chests_wait_for_w_defeat():
+def test_stage4_chests_wait_for_fire_drake_defeat():
     player = d.Player(2, 2, 200, 90)
-    treasure = d.Treasure(3, 2, "TW")
-    wyrm = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
-    mimic = d.Monster(5, 2, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
+    treasure = d.Treasure(3, 2, "TF")
+    fire_drake = d.Monster(
+        4, 2, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_FIRE_DRAKE], empowered=2
+    )
+    mimic = d.Monster(
+        5,
+        2,
+        d.CHAR_TO_MONSTER_TRIBE["M"],
+        mimic_boss_char=d.CHAR_FIRE_DRAKE,
+    )
     mimic.active = False
-    floors, _ = stage3_state(player, [treasure, wyrm, mimic])
+    floors, _ = stage3_state(player, [treasure, fire_drake, mimic])
+    assert not treasure.unlocked
     assert d.revealed_entity_glyphs(treasure, set(), False, 200, None) == []
     assert d.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
     assert d.preview_entity_glyphs(treasure)[0].char == "T"
@@ -885,18 +893,19 @@ def test_stage4_chests_wait_for_w_defeat():
 
     assert messages == [
         None,
-        ">> Dread Wyrm (W) defeated! <<",
+        ">> Strong Fire Drake (F') defeated! <<",
         "-- You defeated the Mimic, but were sent somewhere else.",
         None,
         None,
     ]
+    assert treasure.unlocked
+    assert player.boss_defeated
     assert mimic in floors[0].entities
     assert not mimic.active
     assert not mimic.revealed and mimic.met
-    assert "MW" in player.known_monsters
+    assert "MF" in player.known_monsters
     assert d.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
     assert d.preview_entity_glyphs(mimic) == []
-    assert player.stage_won
 
 
 def test_spores_are_a_temporary_item_replaced_by_the_next_monster():
@@ -932,7 +941,12 @@ def test_spores_reduce_torch_radius_and_are_shown_as_an_item():
 
 def test_level_one_mimic_cannot_defeat_player_on_first_contact():
     player = d.Player(2, 2, 1, 90)
-    mimic = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
+    mimic = d.Monster(
+        3,
+        2,
+        d.CHAR_TO_MONSTER_TRIBE["M"],
+        mimic_boss_char=d.CHAR_FIRE_DRAKE,
+    )
     floors, _ = stage3_state(player, [mimic])
     floor, checkpoint, queue, history = [0], [(2, 2)], Counter(), deque()
 
@@ -940,6 +954,7 @@ def test_level_one_mimic_cannot_defeat_player_on_first_contact():
     assert run_stage3_keys(
         "R", floors, player, floor, checkpoint, queue, history, stage_num=4
     ) == ["-- You defeated the Mimic, but were sent somewhere else."]
+    assert "MF" in player.known_monsters
     assert "MW" not in player.known_monsters
     assert not mimic.active
     assert not mimic.revealed
@@ -2258,12 +2273,12 @@ def test_sylvan_elf_grants_nectar_once_and_stays_in_place():
     assert companion.durability == 10
     assert elf.met and elf in floors[0].entities
     assert (player.x, player.y) == (3, 2)
-    assert messages[-1] == "-- The Sylvan Elf has already shared the fairy nectar."
+    assert messages[-1] == "-- The Sylvan Elf replenished your fairy nectar."
 
 
 @pytest.mark.parametrize(
     ("char", "expected_durability"),
-    [("n", 15), ("o", 30), ("p", 8), ("l", 1)],
+    [("n", 13), ("o", 25), ("p", 7), ("l", 1)],
 )
 def test_fairy_nectar_extends_future_companions_except_loop_companion(
     char, expected_durability
