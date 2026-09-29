@@ -525,7 +525,7 @@ def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
     assert len(treasures) == 1
     assert treasures[0].encounter_type == "TW"
     assert mimics == []
-    for char in ("J", "K", "H", "S"):
+    for char in ("J", "K", "H"):
         assigned_floor = player.elf_stage_floors[char] - 1
         elves = [
             entity
@@ -535,6 +535,12 @@ def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
         ]
         assert len(elves) == 1
         assert elves[0] in floors[assigned_floor].entities
+    assert "S" not in player.elf_stage_floors
+    assert not any(
+        isinstance(entity, d.Monster) and entity.tribe.char == "S"
+        for floor in floors
+        for entity in floor.entities
+    )
 
 
 @pytest.mark.parametrize(
@@ -704,7 +710,7 @@ def test_stage2_rebalances_bison_and_comodo_dragon_counts():
     }
 
     assert [(config.population, config.empowered) for config in b_configs] == [
-        (4, 1),
+        (6, 1),
         (2, 2),
     ]
     assert populations["A"] == 3
