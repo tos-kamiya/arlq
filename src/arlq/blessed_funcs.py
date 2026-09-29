@@ -296,6 +296,18 @@ class BlessedUI:
                 continue
             put(d.FIELD_WIDTH, y, strength_char, bold=is_player)
 
+        if stage_num in d.ELF_STAGES:
+            progress_x = 0
+            for label, achieved in d.elf_stage_progress_marks(player):
+                put(
+                    progress_x,
+                    d.FIELD_HEIGHT - 1,
+                    label,
+                    bold=achieved,
+                    dim=not achieved,
+                )
+                progress_x += len(label) + 1
+
         if floor_label:
             put(d.FIELD_WIDTH - len(floor_label), d.FIELD_HEIGHT - 1, floor_label)
 
@@ -335,11 +347,6 @@ class BlessedUI:
 
         y += 1
         x = 0
-        if stage_num in d.ELF_STAGES:
-            marks = d.elf_stage_progress_marks(player)
-            for index, (label, achieved) in enumerate(marks):
-                spacer = "" if index == len(marks) - 1 else " "
-                add(label + spacer, bold=achieved, dim=not achieved)
         if message:
             available = self.term.width - x - 1
             if available > 0:

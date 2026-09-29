@@ -919,6 +919,26 @@ def test_nomicon_identifies_active_mimic_in_fov():
     assert not mimic.revealed
 
 
+def test_nomicon_records_cursed_chimera_floor_in_fov():
+    player = d.Player(2, 2, 1, 90)
+    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
+    chimera = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["C"])
+
+    reveal_entities_in_fov(player, [chimera], torch_radius=3, floor_index=1)
+
+    assert player.known_c_floors == {2}
+
+
+def test_non_nomicon_fov_does_not_record_cursed_chimera_floor():
+    player = d.Player(2, 2, 1, 90)
+    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
+    chimera = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["C"])
+
+    reveal_entities_in_fov(player, [chimera], torch_radius=3, floor_index=2)
+
+    assert player.known_c_floors == set()
+
+
 def test_debug_entity_display_reveals_mimic_identity():
     monster = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
 
@@ -1228,6 +1248,7 @@ def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypat
 def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     player.known_monsters = {"a", "W"}
+    player.known_c_floors = {2}
     player.elf_stage_flags |= d.STAGE3_W_FLAG
     player.boss_defeated = True
     player.treasure_collected = True
@@ -1274,6 +1295,7 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
     assert current_floors[0].field[10][10] == " "
     assert current_floors[0].seen[1][1] == 9
     assert player.known_monsters == {"a", "W"}
+    assert player.known_c_floors == {2}
     assert not next(
         entity
         for entity in current_floors[0].entities
@@ -2032,6 +2054,19 @@ def test_stage3_collector_elf_refuses_once_then_sends_player_elsewhere(monkeypat
     assert (player.x, player.y) == (10, 10)
 
 
+@pytest.mark.parametrize(("level", "expected_floors"), [(1, {1}), (100, set())])
+def test_cursed_chimera_floor_is_recorded_on_loss_but_not_on_victory(
+    level, expected_floors
+):
+    player = d.Player(2, 2, level, 90)
+    chimera = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["C"])
+    floors, _ = stage3_state(player, [chimera])
+
+    run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter(), deque())
+
+    assert player.known_c_floors == expected_floors
+
+
 def test_stage3_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(
     monkeypatch,
 ):
@@ -2240,10 +2275,11 @@ def test_elf_stage_progress_marks_add_elf_floors_after_the_isolated_elf():
     player = d.Player(1, 1, 1, 90)
     player.elf_stage_flags = d.ELF_STAGE_I_FLAG | d.ELF_STAGE_K_FLAG
     player.elf_stage_floors = {"K": 2, "H": 3}
+    player.known_c_floors = {3, 2}
     player.treasure_collected = True
 
     assert d.elf_stage_progress_marks(player) == [
-        ("C", False),
+        ("C23", False),
         ("I", True),
         ("J", False),
         ("K2", True),

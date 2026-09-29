@@ -678,6 +678,8 @@ def _resolve_monster_contact(
         # remain gated separately by their unlock state in the renderer.
         if not entity.tribe.is_elf:
             player.known_monsters.add(d.monster_type_key(entity))
+            if ch == "C":
+                player.known_c_floors.add(floor[0] + 1)
         # The encounter remains on the map when the player loses. Rust
         # resolves combat before removing the monster; keeping the entity
         # here prevents a failed attack from deleting it.
@@ -1130,7 +1132,7 @@ def _step(
         if trace is not None:
             trace.add_expired({"type": "companion_departed", "id": ch})
 
-    reveal_entities_in_fov(player, current.entities)
+    reveal_entities_in_fov(player, current.entities, floor_index=floor[0])
     _advance_persistent_followers(
         player, floor[0], (player.x, player.y) != previous, previous
     )
