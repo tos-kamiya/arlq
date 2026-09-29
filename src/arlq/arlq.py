@@ -598,7 +598,9 @@ def update_entities(
             player.companion = c
             player.karma = 0
             if c.tribe.char != "l" and player.elf_stage_flags & d.ELF_STAGE_S_FLAG:
-                c.durability = (c.tribe.durability * 3 + 1) // 2
+                c.durability = math.ceil(
+                    c.tribe.durability * d.SYLVAN_COMPANION_DURATION_MULTIPLIER
+                )
 
             event_message = c.tribe.event_message
             if event_message:
