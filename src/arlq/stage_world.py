@@ -632,9 +632,11 @@ def _place_collapses(floors: List[Floor]) -> None:
                 [(upper, lower, point) for point in candidates]
             )
 
-    selected_transitions = rand.sample(
-        transition_options, min(2, len(transition_options))
-    )
+    selected_transitions = []
+    for _ in range(min(2, len(transition_options))):
+        selected_transitions.append(
+            transition_options.pop(rand.randrange(len(transition_options)))
+        )
     for placement_options in selected_transitions:
         upper, lower, point = rand.choice(placement_options)
         upper.entities.append(d.Collapse(*point))

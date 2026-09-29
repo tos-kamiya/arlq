@@ -464,7 +464,7 @@ def reveal_entities_in_fov(
     entities: List[d.Entity],
     torch_radius: int = d.TORCH_RADIUS,
 ) -> None:
-    """Reveal active monsters currently inside the player's FOV."""
+    """Reveal active monsters and Collapse traps inside the player's FOV."""
     if player.companion is None or player.companion.tribe.char != "n":
         return
     torched = get_torched(player, torch_radius)
@@ -473,7 +473,9 @@ def reveal_entities_in_fov(
             continue
         if not torched[entity.y][entity.x]:
             continue
-        if isinstance(entity, d.Monster) and entity.active:
+        if isinstance(entity, d.Collapse):
+            entity.revealed = True
+        elif isinstance(entity, d.Monster) and entity.active:
             if entity.tribe.is_elf:
                 entity.revealed = True
                 player.known_elf_floors.add(entity.tribe.char)

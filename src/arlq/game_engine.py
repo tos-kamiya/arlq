@@ -1017,7 +1017,6 @@ def _step(
     if collapse_hit is not None and (player.x, player.y) != previous:
         from_floor = floor[0]
         collapse_hit.revealed = True
-        player.known_monsters.add(d.CHAR_COLLAPSE)
         floor[0] += 1
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [

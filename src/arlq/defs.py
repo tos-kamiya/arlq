@@ -332,7 +332,7 @@ class Player(Entity):
         self.karma: int = 0
         self.boss_defeated: bool = False
         self.treasure_collected: bool = False
-        # Identified monster and trap types are known across all floors.
+        # Identified monster types are known across all floors.
         self.known_monsters: Set[str] = set()
         self.elf_stage_floors: Dict[str, int] = {}
         self.known_elf_floors: Set[str] = set()
@@ -973,7 +973,7 @@ def preview_entity_glyphs(
     elif isinstance(entity, Collapse):
         char = (
             CHAR_COLLAPSE
-            if entity.revealed or CHAR_COLLAPSE in known_types or reveal_disguises
+            if entity.revealed or reveal_disguises
             else "?"
         )
     if char is None:
@@ -1069,7 +1069,7 @@ def revealed_entity_glyphs(
             )
         return glyphs
     if isinstance(entity, Collapse):
-        known = entity.revealed or CHAR_COLLAPSE in known_types
+        known = entity.revealed
         char = CHAR_COLLAPSE if known else "?"
         tone = "stair" if known else "yellow"
         return [FieldGlyph(entity.x, entity.y, char, tone, bold=True)]
