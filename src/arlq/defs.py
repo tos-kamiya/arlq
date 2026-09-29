@@ -177,11 +177,18 @@ class Tribe:
     Attributes:
         char: Character representation of the tribe.
         event_message: Event message specific to the tribe.
+        event_message_importance: Display priority for the event message.
     """
 
-    def __init__(self, char: str, event_message: Optional[str]):
+    def __init__(
+        self,
+        char: str,
+        event_message: Optional[str],
+        event_message_importance: int = 5,
+    ):
         self.char: str = char
         self.event_message: Optional[str] = event_message
+        self.event_message_importance = event_message_importance
 
 
 class MonsterTribe(Tribe):
@@ -205,8 +212,9 @@ class MonsterTribe(Tribe):
         effect: Optional[str] = None,
         is_elf: bool = False,
         respawn_on_random_floor: bool = False,
+        event_message_importance: int = 5,
     ):
-        super().__init__(char, event_message)
+        super().__init__(char, event_message, event_message_importance)
         self.level: int = level
         self.feed: int = feed
         self.item: Optional[str] = item
@@ -223,12 +231,14 @@ class ElfTribe(MonsterTribe):
         char: str,
         event_message: Optional[str] = None,
         respawn_on_random_floor: bool = False,
+        event_message_importance: int = 5,
     ):
         super().__init__(
             char,
             level=0,
             feed=0,
             event_message=event_message,
+            event_message_importance=event_message_importance,
             is_elf=True,
             respawn_on_random_floor=respawn_on_random_floor,
         )
@@ -243,9 +253,13 @@ class CompanionTribe(Tribe):
     """
 
     def __init__(
-        self, char: str, durability: int = 1, event_message: Optional[str] = None
+        self,
+        char: str,
+        durability: int = 1,
+        event_message: Optional[str] = None,
+        event_message_importance: int = 5,
     ):
-        super().__init__(char, event_message)
+        super().__init__(char, event_message, event_message_importance)
         self.durability: int = durability
 
 
@@ -410,7 +424,12 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     ),  # Amoeba rare
     _MT("b", 5, 60, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
     _MT(
-        "c", 10, MIN_FOOD, item=ITEM_SWORD_X1_5, event_message="-- Got a sword (c)!"
+        "c",
+        10,
+        MIN_FOOD,
+        item=ITEM_SWORD_X1_5,
+        event_message="-- Got a sword (c)!",
+        event_message_importance=7,
     ),  # Chimera
     _MT(
         "C",
@@ -418,6 +437,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         MIN_FOOD,
         item=ITEM_SWORD_CURSED,
         event_message="-- Got a cursed sword (C)!",
+        event_message_importance=7,
     ),  # Chimera rare
     _MT("d", 20, 60, item=ITEM_POISONED),  # Comodo Dragon
     _MT(
@@ -426,6 +446,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         MIN_FOOD,
         effect=EFFECT_UNLOCK_TREASURE,
         event_message="-- Unlocked the Dragon's treasure chest!",
+        event_message_importance=7,
     ),  # Dragon
     _MT(
         "e",
@@ -448,6 +469,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         MIN_FOOD,
         effect=EFFECT_UNLOCK_TREASURE,
         event_message="-- Unlocked the Fire Drake's treasure chest!",
+        event_message_importance=7,
     ),  # Fire Drake
     _MT("f", 50, MIN_FOOD),  # Fire Lizard
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
@@ -462,18 +484,22 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _ET(
         "I",
         event_message="-- The Isolated Elf told you about the history of the elves.",
+        event_message_importance=3,
     ),
     _ET(
         "J",
         event_message="-- The Javelin Elf joined your hunt!",
+        event_message_importance=7,
     ),
     _ET(
         "K",
         event_message="-- The Collector Elf (K) gave you a rustless blade for your Cursed Sword!",
+        event_message_importance=7,
     ),
     _ET(
         "H",
         event_message="-- The High Elf bestowed the protective amulet upon you!",
+        event_message_importance=7,
     ),
     _ET(
         "L",
@@ -485,6 +511,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         event_message=(
             "-- The Sylvan Elf gave you fairy nectar! Companions will stay with you longer."
         ),
+        event_message_importance=7,
     ),
     _MT("k", 80, MIN_FOOD),  # Marksman
     _MT(
@@ -501,7 +528,13 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         event_message="-- Spores cloud your vision!",
     ),
     _MT("w", 50, MIN_FOOD),
-    _MT("W", 150, MIN_FOOD, event_message=">> Dread Wyrm (W) defeated! <<"),
+    _MT(
+        "W",
+        150,
+        MIN_FOOD,
+        event_message=">> Dread Wyrm (W) defeated! <<",
+        event_message_importance=9,
+    ),
     _MT(
         "V",
         30,
@@ -519,9 +552,14 @@ COMPANION_TRIBES: List[CompanionTribe] = [
     _CT(
         "l"
     ),  # Looping companion; contact always rewinds via _rewind_to_history, so no event_message here
-    _CT("n", 10, event_message="-- Nomicon joined!"),  # Nomicon
-    _CT("o", 20, event_message="-- Ocular joined!"),  # Ocular
-    _CT(CHAR_PEGASUS, 5, event_message="-- Pegasus joined!"),  # Pegasus
+    _CT("n", 10, event_message="-- Nomicon joined!", event_message_importance=3),
+    _CT("o", 20, event_message="-- Ocular joined!", event_message_importance=3),
+    _CT(
+        CHAR_PEGASUS,
+        5,
+        event_message="-- Pegasus joined!",
+        event_message_importance=3,
+    ),
 ]
 
 CHAR_TO_TRIBE: Dict[str, Tribe] = {

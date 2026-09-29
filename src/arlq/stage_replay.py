@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Deque, List, Optional, Tuple
 
 from . import defs as d
-from .i18n import t as tr
+from .i18n import trp
 from .stage_types import Floor, HistoryEntry, ReplayContext, _RewindRequest
 from .stage_world import _spawn, build
 from .utils import rand
@@ -168,4 +168,4 @@ def rewind_to_history(
             restored.revealed = True
             break
 
-    return tr("-- Time folds back to the beginning of the recorded past.")
+    return trp("-- Time folds back to the beginning of the recorded past.", 9)

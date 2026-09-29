@@ -16,6 +16,7 @@ from .arlq import (
     iterate_ellipse_points,
     iterate_offsets,
     move_player,
+    prefer_event_message,
     respawn_entity,
     reveal_entities_in_fov,
     spawn_at,
@@ -25,7 +26,7 @@ from .arlq import (
     update_entities,
 )
 from .game_events import WorldEvent
-from .i18n import t as tr
+from .i18n import t as tr, trp
 from .stage_replay import rewind_to_history as _rewind_to_history
 from .stage_types import (
     Floor,
@@ -263,7 +264,7 @@ def _apply_terrain_hazards(
         and (player.x, player.y) != previous
     ):
         player.lp -= d.BARRIER_LP_DAMAGE
-        event_message = tr("-- The barrier burns you.")
+        event_message = trp("-- The barrier burns you.", 5)
     if field[player.y][player.x] == d.CHAR_CALTROP:
         player.lp -= d.CALTROP_LP_DAMAGE
         field[player.y][player.x] = d.CHAR_FLOOR
@@ -567,14 +568,17 @@ def _resolve_monster_contact(
             current.entities.append(entity)
             player.x, player.y = _find_escape_place(current)
             return _ContactResult(
-                tr(
-                    "-- The Isolated Elf wants to be left alone, and sends you elsewhere."
+                trp(
+                    "-- The Isolated Elf wants to be left alone, and sends you elsewhere.",
+                    3,
                 ),
                 end_turn=True,
             )
         if ch in ELF_REPEAT_MESSAGES:
             current.entities.append(entity)
-            return _ContactResult(tr(ELF_REPEAT_MESSAGES[ch]), end_turn=True)
+            return _ContactResult(
+                trp(ELF_REPEAT_MESSAGES[ch], 7 if ch == "H" else 3), end_turn=True
+            )
         return _ContactResult(None, end_turn=True)
 
     # Stage 3 keeps the W treasure hidden until W is defeated. Other monster
@@ -616,9 +620,9 @@ def _resolve_monster_contact(
         # player elsewhere, like repeat contact with the Isolated Elf.
         if player.k_elf_refused:
             player.x, player.y = _find_escape_place(current)
-            event_message = tr("-- Respawned to a random location.")
+            event_message = trp("-- Respawned to a random location.", 5)
         else:
-            event_message = tr("-- Please bring the cursed sword (C).")
+            event_message = trp("-- Please bring the cursed sword (C).", 7)
             player.k_elf_refused = True
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "K", "outcome": "refused"})
@@ -640,9 +644,9 @@ def _resolve_monster_contact(
         # player elsewhere, like repeat contact with the Isolated Elf.
         if player.high_elf_refused:
             player.x, player.y = _find_escape_place(current)
-            event_message = tr("-- You were sent somewhere else.")
+            event_message = trp("-- You were sent somewhere else.", 3)
         else:
-            event_message = tr("-- The High Elf does not recognize you yet.")
+            event_message = trp("-- The High Elf does not recognize you yet.", 3)
             player.high_elf_refused = True
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
@@ -655,24 +659,27 @@ def _resolve_monster_contact(
         player.elf_stage_flags |= d.ELF_STAGE_L_FLAG
         player.lp = d.LP_OVERCHARGE_MAX
         if player.lifebringer_lp_max > old_lp_max:
-            event_message = tr(
+            event_message = trp(
                 "-- The Lifebringer Elf restored your health and increased "
-                "your LP maximum!"
+                "your LP maximum!",
+                7,
             )
         else:
-            event_message = tr("-- The Lifebringer Elf restored your health!")
+            event_message = trp("-- The Lifebringer Elf restored your health!", 5)
         spawn_key = (floor[0], d.monster_type_key(entity))
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
         if trace is not None:
             trace.record_contact({"type": "elf", "id": "L", "outcome": "granted"})
     elif ch == "S":
         if player.elf_stage_flags & d.ELF_STAGE_S_FLAG:
-            event_message = tr(ELF_REPEAT_MESSAGES["S"])
+            event_message = trp(ELF_REPEAT_MESSAGES["S"], 3)
         else:
             player.elf_stage_flags |= d.ELF_STAGE_S_FLAG
             event_message = entity.tribe.event_message
             if event_message:
-                event_message = tr(event_message)
+                event_message = trp(
+                    event_message, entity.tribe.event_message_importance
+                )
             if trace is not None:
                 trace.record_contact(
                     {"type": "elf", "id": "S", "outcome": "granted"}
@@ -696,13 +703,13 @@ def _resolve_monster_contact(
         # soft-lock the floor.
         if player.last_contact_monster == contact_key:
             player.x, player.y = _find_escape_place(current, (entity.x, entity.y))
-            event_message = tr("-- Respawned to a random location.")
+            event_message = trp("-- Respawned to a random location.", 5)
         else:
             player.x, player.y = checkpoint[0]
             # Keep the monster that caused this respawn visible for the next
             # frame, even when the checkpoint is outside its FOV.
             current.contact_reveal = (entity.x, entity.y)
-            event_message = tr("-- Respawned!")
+            event_message = trp("-- Respawned!", 5)
         if trace is not None:
             trace.record_contact(
                 {
@@ -740,16 +747,16 @@ def _resolve_monster_contact(
             current.entities.append(entity)
             player.x, player.y = _find_escape_place(current)
         if ch == "M":
-            event_message = tr(
-                "-- You defeated the Mimic, but were sent somewhere else."
+            event_message = trp(
+                "-- You defeated the Mimic, but were sent somewhere else.", 5
             )
         if ch == "W" and player.treasure_collected:
-            event_message = tr(">> The King's request is complete! <<")
+            event_message = trp(">> The King's request is complete! <<", 9)
         elif ch == d.CHAR_FIRE_DRAKE and entity.empowered == 2:
             if player.treasure_collected:
-                event_message = tr(">> The King's request is complete! <<")
+                event_message = trp(">> The King's request is complete! <<", 9)
             else:
-                event_message = tr(">> Strong Fire Drake (F') defeated! <<")
+                event_message = trp(">> Strong Fire Drake (F') defeated! <<", 9)
 
     if entity.tribe.is_elf and ch not in ("J", "L") and entity not in current.entities:
         entity.met = True
@@ -762,7 +769,9 @@ def _resolve_monster_contact(
     if event_message is None:
         tribe_message = entity.tribe.event_message
         if tribe_message:
-            event_message = tr(tribe_message)
+            event_message = trp(
+                tribe_message, entity.tribe.event_message_importance
+            )
 
     return _ContactResult(event_message)
 
@@ -799,8 +808,9 @@ def _resolve_contact(
             current.entities.pop(hit)
             player.treasure_collected = True
             if not player.boss_defeated:
-                event_message = tr(
-                    "-- You took the treasure chest, but the King's request remains."
+                event_message = trp(
+                    "-- You took the treasure chest, but the King's request remains.",
+                    7,
                 )
         return _ContactResult(event_message)
 
@@ -826,7 +836,11 @@ def _resolve_contact(
         player.companion = entity
         player.karma = 0
         tribe_message = entity.tribe.event_message
-        return _ContactResult(tr(tribe_message) if tribe_message else None)
+        return _ContactResult(
+            trp(tribe_message, entity.tribe.event_message_importance)
+            if tribe_message
+            else None
+        )
 
     assert isinstance(entity, d.Monster)
     if entity.tribe.char == "M" and not entity.active:
@@ -885,7 +899,7 @@ def _handle_floor_transition(
             (player.x, player.y, floor[0], ch)
             for _, _, _, ch in player.persistent_followers
         ]
-        return tr("-- Descended to floor {n}/{total}.").format(
+        return trp("-- Descended to floor {n}/{total}.", 1).format(
             n=floor[0] + 1, total=floor_count
         )
     if floor[0] > 0 and point in up_stairs:
@@ -900,7 +914,7 @@ def _handle_floor_transition(
             (player.x, player.y, floor[0], ch)
             for _, _, _, ch in player.persistent_followers
         ]
-        return tr("-- Ascended to floor {n}/{total}.").format(
+        return trp("-- Ascended to floor {n}/{total}.", 1).format(
             n=floor[0] + 1, total=floor_count
         )
     return None
@@ -1084,8 +1098,8 @@ def _step(
                     "at": [player.x, player.y],
                 }
             )
-        event_message = tr(
-            "-- The floor gives way! You fall to floor {n}/{total}."
+        event_message = trp(
+            "-- The floor gives way! You fall to floor {n}/{total}.", 5
         ).format(n=floor[0] + 1, total=len(floors))
         current = floors[floor[0]]
         collapse_transition = True
@@ -1121,8 +1135,13 @@ def _step(
             operation_index=operation_index,
         )
         if contact.end_turn:
-            return (contact.message_ticks, contact.message) if contact.message else None
-        event_message = contact.message
+            end_turn_message = prefer_event_message(event_message, contact.message)
+            return (
+                (contact.message_ticks, end_turn_message)
+                if end_turn_message
+                else None
+            )
+        event_message = prefer_event_message(event_message, contact.message)
 
     if (
         player.companion is not None
@@ -1138,7 +1157,9 @@ def _step(
         spawn_key = (origin_floor, ch)
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
         player.companion = None
-        event_message = tr("-- The companion vanishes.")
+        event_message = prefer_event_message(
+            event_message, trp("-- The companion vanishes.", 3)
+        )
         if trace is not None:
             trace.add_expired({"type": "companion_departed", "id": ch})
 
@@ -1158,7 +1179,7 @@ def _step(
         else _handle_floor_transition(current, floors, player, floor, checkpoint)
     )
     if transition_message is not None:
-        event_message = transition_message
+        event_message = prefer_event_message(event_message, transition_message)
         if trace is not None:
             trace.record_contact(
                 {"type": "stairs", "from_floor": floor_before, "to_floor": floor[0]}
@@ -1213,14 +1234,15 @@ def run_game(
     elif stage_num in d.ELF_STAGES:
         message = (
             5,
-            tr(
+            trp(
                 "-- The King has ordered the Dread Wyrm (W) slain."
                 if stage_num == 3
-                else "-- The King has ordered the Strong Fire Drake (F') slain."
+                else "-- The King has ordered the Strong Fire Drake (F') slain.",
+                1,
             ),
         )
     elif stage_num == 6:
-        message = (5, "-- Trap test: Mimic, Vortex, W, treasure, b and d.")
+        message = (5, trp("-- Trap test: Mimic, Vortex, W, treasure, b and d.", 1))
     legacy_respawn_queue: Counter[str] = Counter()
     if legacy_stage:
         turn = -1
@@ -1333,7 +1355,12 @@ def run_game(
                 respawn_point=checkpoint[0],
             )
             if update_result.message is not None:
-                message = update_result.message
+                candidate_message = update_result.message
+                if prefer_event_message(
+                    message[1] if message is not None else None,
+                    candidate_message[1],
+                ) == candidate_message[1]:
+                    message = candidate_message
             if update_result.tribes_to_be_respawned:
                 checkpoint[0] = (player.x, player.y)
             for char in update_result.tribes_to_be_respawned:
@@ -1417,7 +1444,10 @@ def run_game(
         # the displayed floor in sync so the next frame shows the new floor.
         view_floor = floor[0]
         if event_message is not None:
-            message = event_message
+            if prefer_event_message(
+                message[1] if message is not None else None, event_message[1]
+            ) == event_message[1]:
+                message = event_message
 
         if trace is not None:
             trace.set_player(player, stage_num)
@@ -1433,9 +1463,9 @@ def run_game(
         trace.set_outcome("win" if won else "lose")
 
     if not won:
-        message = (-1, tr(">> Collapsed from hunger! <<"))
+        message = (-1, trp(">> Collapsed from hunger! <<", 9))
     else:
-        message = (-1, tr(">> Treasure chest obtained! <<"))
+        message = (-1, trp(">> Treasure chest obtained! <<", 9))
     view_floor = floor[0]
     while True:
         display_floor = floors[view_floor]

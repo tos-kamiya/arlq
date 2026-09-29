@@ -33,6 +33,20 @@ from typing import Dict, List, Optional
 
 _catalog_cache: Dict[str, Optional[Dict[str, str]]] = {}
 
+
+class PrioritizedMessage(str):
+    """Translated message text carrying its event-display importance."""
+
+    importance: int
+
+    def __new__(cls, text: str, importance: int):
+        message = super().__new__(cls, text)
+        message.importance = importance
+        return message
+
+    def format(self, *args, **kwargs):
+        return type(self)(super().format(*args, **kwargs), self.importance)
+
 _lang = "en"
 
 
@@ -224,3 +238,10 @@ def t(text: str) -> str:
     current language. Falls back to `text` unchanged if untranslated."""
     catalog = _load_catalog(_lang) or {}
     return catalog.get(text, text)
+
+
+def trp(text: str, importance: int) -> PrioritizedMessage:
+    """Translate an event message and attach its display importance."""
+    if importance not in {1, 3, 5, 7, 9}:
+        raise ValueError("importance must be one of 1, 3, 5, 7, or 9")
+    return PrioritizedMessage(t(text), importance)
