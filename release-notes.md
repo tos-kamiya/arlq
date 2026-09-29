@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 5.2.2 - 2026-09-30
+
+- Increase the Stage 2 Bison (`b`) population to six and remove the Sylvan Elf
+  (`S`) from Stage 3.
+- Update the English and Japanese README stage descriptions to match.
+
 ## 5.2.1 - 2026-09-30
 
 - Show empowered monster ranks on the strength gauge and refine GUI field and
