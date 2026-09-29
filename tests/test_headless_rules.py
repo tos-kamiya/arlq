@@ -308,7 +308,7 @@ def test_stage4_has_independent_per_floor_roster():
         for stage4_floor, stage3_floor in zip(d.STAGE4_ROSTER, d.STAGE3_ROSTER)
     )
     assert all(
-        ch not in {"I", "J", "K", "H"}
+        ch not in {"I", "J", "K", "H", "S"}
         for floor in d.STAGE4_ROSTER
         for ch, _, _ in floor
     )
@@ -419,7 +419,7 @@ def test_stage4_builds_all_elves_and_dread_wyrm_boss():
         if isinstance(entity, d.Monster) and entity.tribe.char == "M"
     ]
 
-    assert elves == {"I", "J", "K", "H", "L"}
+    assert elves == {"I", "J", "K", "H", "L", "S"}
     assert len(bosses) == 1
     assert len(floors) == 5
     special_floor = {
@@ -488,7 +488,7 @@ def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
     assert len(treasures) == 1
     assert treasures[0].encounter_type == "TW"
     assert mimics == []
-    for char in ("J", "K", "H"):
+    for char in ("J", "K", "H", "S"):
         assigned_floor = player.elf_stage_floors[char] - 1
         elves = [
             entity
@@ -1300,18 +1300,24 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
 
 def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     player = d.Player(2, 2, 100, 90)
-    player.elf_stage_flags = d.ELF_STAGE_H_FLAG
+    player.elf_stage_flags = d.ELF_STAGE_H_FLAG | d.ELF_STAGE_S_FLAG
     current_high_elf = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
     current_high_elf.revealed = True
     current_high_elf.met = True
+    current_sylvan_elf = d.Monster(5, 2, d.CHAR_TO_MONSTER_TRIBE["S"])
+    current_sylvan_elf.revealed = True
+    current_sylvan_elf.met = True
     loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
-    current_floors, _ = stage3_state(player, [loop, current_high_elf])
+    current_floors, _ = stage3_state(
+        player, [loop, current_high_elf, current_sylvan_elf]
+    )
 
     old_player = d.Player(5, 5, 7, 60)
     old_player.elf_stage_flags = 0
     old_loop = d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"])
     old_high_elf = d.Monster(7, 5, d.CHAR_TO_MONSTER_TRIBE["H"])
-    old_floors, _ = stage3_state(old_player, [old_loop, old_high_elf])
+    old_sylvan_elf = d.Monster(8, 5, d.CHAR_TO_MONSTER_TRIBE["S"])
+    old_floors, _ = stage3_state(old_player, [old_loop, old_high_elf, old_sylvan_elf])
     history = deque([(old_floors, old_player, 0, (4, 5), Counter())])
     floor = [0]
     checkpoint = [(2, 2)]
@@ -1324,6 +1330,7 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     run_stage3_keys("R", current_floors, player, floor, checkpoint, queue, history)
 
     assert not (player.elf_stage_flags & d.ELF_STAGE_H_FLAG)
+    assert not (player.elf_stage_flags & d.ELF_STAGE_S_FLAG)
     restored_high_elf = next(
         entity
         for entity in current_floors[0].entities
@@ -1331,6 +1338,13 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     )
     assert not restored_high_elf.revealed
     assert not restored_high_elf.met
+    restored_sylvan_elf = next(
+        entity
+        for entity in current_floors[0].entities
+        if isinstance(entity, d.Monster) and entity.tribe.char == "S"
+    )
+    assert not restored_sylvan_elf.revealed
+    assert not restored_sylvan_elf.met
 
 
 def test_loop_contact_returns_rewind_request_before_normal_turn_processing(monkeypatch):
@@ -2141,15 +2155,54 @@ def test_repeated_elf_contact_ends_turn_before_companion_expiration():
     assert queue == Counter()
 
 
+def test_sylvan_elf_grants_nectar_once_and_stays_in_place():
+    player = d.Player(2, 2, 100, 90)
+    companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
+    player.companion = companion
+    elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["S"])
+    floors, _ = stage3_state(player, [elf])
+
+    messages = run_stage3_keys(
+        "RLR", floors, player, [0], [(2, 2)], Counter(), deque()
+    )
+
+    assert player.elf_stage_flags & d.ELF_STAGE_S_FLAG
+    assert companion.durability == 10
+    assert elf.met and elf in floors[0].entities
+    assert (player.x, player.y) == (3, 2)
+    assert messages[-1] == "-- The Sylvan Elf has already shared the fairy nectar."
+
+
+@pytest.mark.parametrize(
+    ("char", "expected_durability"),
+    [("n", 15), ("o", 30), ("p", 8), ("l", 1)],
+)
+def test_fairy_nectar_extends_future_companions_except_loop_companion(
+    char, expected_durability
+):
+    player = d.Player(2, 2, 100, 90)
+    player.elf_stage_flags |= d.ELF_STAGE_S_FLAG
+    companion = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE[char])
+    floors, _ = stage3_state(player, [companion])
+
+    game_engine_module._resolve_contact(
+        0, floors[0], floors, player, [0], [(2, 2)], Counter(), deque(), None
+    )
+
+    assert player.companion is companion
+    assert companion.durability == expected_durability
+
+
 def test_elf_stage_flags_keep_their_bit_values():
     assert (
         d.ELF_STAGE_C_FLAG,
         d.ELF_STAGE_I_FLAG,
         d.ELF_STAGE_K_FLAG,
         d.ELF_STAGE_H_FLAG,
+        d.ELF_STAGE_S_FLAG,
         d.STAGE3_W_FLAG,
         d.ELF_STAGE_J_FLAG,
-    ) == (1, 2, 4, 8, 16, 64)
+    ) == (1, 2, 4, 8, 32, 16, 64)
     assert d.STAGE3_NO_RESPAWN_MONSTERS == {
         "a", "A", "b", "c", "C", "M", "W", "w"
     }
@@ -2195,6 +2248,7 @@ def test_elf_stage_progress_marks_add_elf_floors_after_the_isolated_elf():
         ("J", False),
         ("K2", True),
         ("H3", False),
+        ("S", False),
         ("W", False),
         ("T", True),
     ]

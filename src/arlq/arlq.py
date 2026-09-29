@@ -594,6 +594,8 @@ def update_entities(
 
             player.companion = c
             player.karma = 0
+            if c.tribe.char != "l" and player.elf_stage_flags & d.ELF_STAGE_S_FLAG:
+                c.durability = (c.tribe.durability * 3 + 1) // 2
 
             event_message = c.tribe.event_message
             if event_message:
@@ -714,7 +716,7 @@ def update_entities(
 
     if (
         player.companion is not None
-        and player.karma >= player.companion.tribe.durability
+        and player.karma >= player.companion.durability
     ):
         message = (MESSAGE_TICKS, tr("-- The companion vanishes."))
         char = player.companion.tribe.char

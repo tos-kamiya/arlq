@@ -45,6 +45,7 @@ from .utils import rand
 ELF_REPEAT_MESSAGES = {
     "K": "-- The Collector Elf (K) looks satisfied.",
     "H": "-- Keep the talisman close to your skin.",
+    "S": "-- The Sylvan Elf has already shared the fairy nectar.",
 }
 
 
@@ -660,6 +661,18 @@ def _resolve_monster_contact(
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
         if trace is not None:
             trace.record_contact({"type": "elf", "id": "L", "outcome": "granted"})
+    elif ch == "S":
+        if player.elf_stage_flags & d.ELF_STAGE_S_FLAG:
+            event_message = tr(ELF_REPEAT_MESSAGES["S"])
+        else:
+            player.elf_stage_flags |= d.ELF_STAGE_S_FLAG
+            event_message = entity.tribe.event_message
+            if event_message:
+                event_message = tr(event_message)
+            if trace is not None:
+                trace.record_contact(
+                    {"type": "elf", "id": "S", "outcome": "granted"}
+                )
     elif d.current_player_attack(player) < d.monster_level(entity):
         # Losing still identifies the monster, including W. Treasure glyphs
         # remain gated separately by their unlock state in the renderer.
@@ -793,6 +806,11 @@ def _resolve_contact(
             )
         entity.revealed = True
         current.entities.pop(hit)
+        if (
+            ch != "l"
+            and player.elf_stage_flags & d.ELF_STAGE_S_FLAG
+        ):
+            entity.durability = (entity.tribe.durability * 3 + 1) // 2
         player.companion = entity
         player.karma = 0
         tribe_message = entity.tribe.event_message
@@ -1096,7 +1114,7 @@ def _step(
 
     if (
         player.companion is not None
-        and player.karma >= player.companion.tribe.durability
+        and player.karma >= player.companion.durability
     ):
         ch = player.companion.tribe.char
         # Respawn on the floor the companion came from, not wherever it was

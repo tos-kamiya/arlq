@@ -89,7 +89,7 @@ reproduce the same layout.
   The goal of the game is to explore a dungeon with procedurally generated corridors and find the treasure chest hidden by the dragon. In Stage 1, find the dragon's chest; in Stage 2, find the fire drake's chest.
   In Stages 3 and 4, the two objectives are to defeat the `W` Dread Wyrm and claim its treasure chest. You must accomplish both to clear the stage. The elves' help is useful for accomplishing these objectives.
 
-  Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Discovering a stair also marks its matching cell on the adjacent floor as explored. Four elves, `I`, `J`, `K`, and `H`, appear.
+  Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Discovering a stair also marks its matching cell on the adjacent floor as explored. Five elves, `I`, `J`, `K`, `H`, and `S`, appear.
 
 * **Player and Fog**  
   You control the character represented by `@` using the arrow keys or WASD.
@@ -106,7 +106,7 @@ reproduce the same layout.
 
   Some monsters, such as `d`, respawn. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked `T` clears the stage.
 
-  Companions provide their unique benefit for a limited time. For example, the Nomicon identifies monsters and elves in its field of vision.
+  Companions provide their unique benefit for a limited time. Defeating a monster consumes one unit of this duration, and each Pegasus phase jump consumes one unit as well. For example, the Nomicon identifies monsters and elves in its field of vision.
 
   Most elves appear from Stage 3 onward and provide support, such as increased attack power, when you meet certain conditions.
 
@@ -186,12 +186,13 @@ The bottom-right marker shows the displayed floor as a fraction (for example, `3
 | **J** Javelin Elf | Follows the player and increases attack power by 25%. |
 | **K** Collector Elf | Exchanges the cursed sword for a permanent 1.2x attack enhancement; it cannot break walls. |
 | **H** High Elf | Grants the talisman after meeting any two of `I`, `J`, and `K`. |
+| **S** Sylvan Elf | Gives the player fairy nectar. Future companions other than `l` last 1.5 times as long. The nectar remains until a Loop Companion rewinds time past its acquisition. |
 
 The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first contact made while their condition is unmet; any contact after that sends you to a random location on the map.
 
 ### Stage 4
 
-Stage 4 has five floors. Like Stage 3, it features elves, and the goal is to defeat the Dread Wyrm (`W`). Some rooms are filled in, and walls may divide floors. Wyrm barriers are scattered across the entire final floor.
+Stage 4 has five floors. Like Stage 3, it features elves, including one Sylvan Elf (`S`), and the goal is to defeat the Dread Wyrm (`W`). Some rooms are filled in, and walls may divide floors. Wyrm barriers are scattered across the entire final floor.
 One Rare Chimera (`C`) appears on a randomly selected floor, independently of the Collector Elf's (`K`) floor.
 Stage 4 also features empowered Komodo Dragons (`d'` and `d"`).
 
