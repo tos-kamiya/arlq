@@ -93,7 +93,8 @@ STRENGTH_COLUMN_PADDING = 4
 
 CELL_SIZE_Y = 20
 CELL_SIZE_X = 13
-STRENGTH_COLUMN_WIDTH = 2 * CELL_SIZE_X + 2 * STRENGTH_COLUMN_PADDING
+FONT_WIDTH_RATIO = 0.95
+FONT_HEIGHT_RATIO = 0.87
 
 MIN_UI_SCALE = 0.5
 MAX_UI_SCALE = 4.0
@@ -172,6 +173,7 @@ class PygletUI:
         self.field_height = d.FIELD_HEIGHT
 
         self.scale = self._valid_scale(load_ui_scale() if scale is None else scale)
+        self.font_name = "Courier New"
         self._set_scaled_dimensions()
 
         self.window = pyglet.window.Window(
@@ -181,8 +183,8 @@ class PygletUI:
         )
         self.window.set_mouse_visible(False)
 
-        self.font_name = "Courier New"
-        self.font_size = int(self.cell_size_y * 0.82)
+        self._select_font_size()
+
         # Lazily resolved (font_name, size_scale) for non-ASCII text; see
         # _non_ascii_font(). None until first computed.
         self._non_ascii_font_result: Optional[Tuple[str, float]] = None
@@ -284,18 +286,62 @@ class PygletUI:
     def _set_scaled_dimensions(self) -> None:
         self.cell_size_x = max(1, round(CELL_SIZE_X * self.scale))
         self.cell_size_y = max(1, round(CELL_SIZE_Y * self.scale))
+        self.font_size = max(1, round(self.cell_size_y * FONT_HEIGHT_RATIO))
         self.strength_column_padding = max(1, round(STRENGTH_COLUMN_PADDING * self.scale))
         self.strength_column_width = 2 * self.cell_size_x + 2 * self.strength_column_padding
         self.field_pixel_width = self.field_width * self.cell_size_x
         self.window_width = self.field_pixel_width + self.strength_column_width
         self.window_height = (self.field_height + 2) * self.cell_size_y
 
+    def _select_font_size(self) -> None:
+        """Choose a font size that best fits measured glyphs inside a cell."""
+        target_size_x = self.cell_size_x / FONT_WIDTH_RATIO
+        target_size_y = self.cell_size_y / FONT_HEIGHT_RATIO
+        target_font_size = (target_size_x + target_size_y) / 2
+        nominal_size = max(1, round(target_font_size))
+        candidate_sizes = range(max(1, nominal_size - 8), nominal_size + 9)
+        sample = "".join(chr(codepoint) for codepoint in range(32, 127))
+        candidates = []
+        try:
+            for size in candidate_sizes:
+                glyph_width = 0
+                glyph_height = 0
+                for weight in ("normal", "bold"):
+                    font = pyglet.font.load(
+                        self.font_name, size=size, weight=weight
+                    )
+                    glyphs, _ = font.get_glyphs(sample)
+                    glyph_width = max(
+                        glyph_width,
+                        *(max(glyph.advance, glyph.width) for glyph in glyphs),
+                    )
+                    glyph_height = max(
+                        glyph_height, *(glyph.height for glyph in glyphs)
+                    )
+                fits = (
+                    glyph_width <= self.cell_size_x
+                    and glyph_height <= self.cell_size_y
+                )
+                candidates.append(
+                    (
+                        not fits,
+                        abs(size - target_font_size),
+                        size,
+                    )
+                )
+        except Exception:
+            # Keep the nominal size if this platform cannot expose glyph metrics.
+            return
+
+        if candidates:
+            self.font_size = min(candidates)[-1]
+
     def set_scale(self, scale: float, save: bool = True) -> None:
         """Resize the GUI and its grid cells without changing gameplay."""
         self.scale = self._valid_scale(scale)
         self._set_scaled_dimensions()
-        self.font_size = int(self.cell_size_y * 0.82)
         self._non_ascii_font_result = None
+        self._select_font_size()
         self.window.set_size(self.window_width, self.window_height)
         # Process the resize immediately.  Otherwise the stage-selection
         # screen can be drawn with the old viewport until the next key event.
@@ -607,7 +653,7 @@ class PygletUI:
                 progress_x += len(label) + 1
 
         if floor_label:
-            label_width = len(floor_label) * self.cell_size_x
+            label_width = self._text_width(floor_label)
             label_x = max(
                 0, self.field_pixel_width - label_width - 2 * self.cell_size_x
             )
