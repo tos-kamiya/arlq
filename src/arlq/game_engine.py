@@ -740,6 +740,7 @@ def _resolve_monster_contact(
         )
         if ch == "M":
             current.entities.append(entity)
+            player.x, player.y = _find_escape_place(current)
         if ch == "M" and was_known:
             event_message = tr("-- The Mimic was defeated!")
         elif ch == "M":

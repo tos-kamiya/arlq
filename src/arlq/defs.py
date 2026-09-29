@@ -487,7 +487,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         ),
     ),
     _MT("k", 80, MIN_FOOD),  # Marksman
-    _MT("M", 85, 16, event_message="-- The treasure chest was a Mimic!"),  # Mimic
+    _MT("M", 85, 1, event_message="-- The treasure chest was a Mimic!"),  # Mimic
     _MT(
         "m",
         5,
@@ -680,7 +680,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 4, 1),
         ("A", 1, 1),
-        ("b", 6, 3),
+        ("b", 3, 3),
         ("c", 1, 1),
         ("g", 2, 1),
         ("d", 2, 2),
