@@ -89,7 +89,7 @@ reproduce the same layout.
   The goal of the game is to explore a dungeon with procedurally generated corridors and find the treasure chest hidden by the dragon. In Stage 1, find the dragon's chest; in Stage 2, find the fire drake's chest.
   In Stage 3, defeat the `W` Dread Wyrm and claim its treasure chest. In Stage 4, defeat the empowered Fire Drake (`F'`) and claim its treasure chest. Both objectives are required to clear either stage. The elves' help is useful for accomplishing them.
 
-  Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Discovering a stair also marks its matching cell on the adjacent floor as explored. Five elves, `I`, `J`, `K`, `H`, and `S`, appear.
+  Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Discovering a stair also marks its matching cell on the adjacent floor as explored. Four elves, `I`, `J`, `K`, and `H`, appear.
 
 * **Player and Fog**  
   You control the character represented by `@` using the arrow keys or WASD.
@@ -165,7 +165,7 @@ uses random-floor respawns; Stage 2, where it appears, currently has one floor.
 
 ### Stage 3
 
-Stage 3 has three connected floors. One of the two floor transitions randomly has an extra matching pair of stairs. The elves can help you defeat the Dread Wyrm and claim its treasure chest.
+Stage 3 has three connected floors. One of the two floor transitions randomly has an extra matching pair of stairs. The elves can help you defeat the Dread Wyrm and claim its treasure chest. The elves are `I`, `J`, `K`, and `H`.
 Stage 3 features empowered Bison, Chimeras, and Komodo Dragons (`b'`, `c'`, and `d'`).
 
 The bottom-right marker shows the displayed floor as a fraction (for example, `3/4`). Elf progress and discovered floors appear at the bottom-left of the field. Contacting `I` reveals the floors of all elves. The floors where `C` was identified by the Nomicon or defeated the player are appended to `C` (for example, `C23`). Hold Shift and press Up or Down in GUI mode, or Shift and W or S in `arlq-cli`, to inspect another floor. Unexplored areas remain hidden. A normal movement input returns the display to the player's floor and moves as usual.
@@ -186,13 +186,12 @@ The bottom-right marker shows the displayed floor as a fraction (for example, `3
 | **J** Javelin Elf | Follows the player and increases attack power by 25%. |
 | **K** Collector Elf | Exchanges the cursed sword for a permanent 1.2x attack enhancement; it cannot break walls. |
 | **H** High Elf | Grants the protective amulet after meeting any two of `I`, `J`, and `K`. |
-| **S** Sylvan Elf | Gives the player fairy nectar. Future companions other than `l` last 1.25 times as long. The nectar remains until a Loop Companion rewinds time past its acquisition. |
 
 The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first contact made while their condition is unmet; any contact after that sends you to a random location on the map.
 
 ### Stage 4
 
-Stage 4 has five floors. Like Stage 3, it features elves, including one Sylvan Elf (`S`). The goal is to defeat the empowered Fire Drake (`F'`) on the final floor and claim its treasure chest. Two barrier-protected Wyrms (`w`) appear on the fourth floor. Some rooms are filled in, and walls may divide floors. Barriers are scattered across the final floor; the Fire Drake has no barriers placed around it.
+Stage 4 has five floors. Like Stage 3, it features elves, including one Sylvan Elf (`S`) who gives the player fairy nectar. Future companions other than `l` last 1.25 times as long, until a Loop Companion rewinds time past the nectar's acquisition. The goal is to defeat the empowered Fire Drake (`F'`) on the final floor and claim its treasure chest. Two barrier-protected Wyrms (`w`) appear on the fourth floor. Some rooms are filled in, and walls may divide floors. Barriers are scattered across the final floor; the Fire Drake has no barriers placed around it.
 One Rare Chimera (`C`) appears on a randomly selected floor, independently of the Collector Elf's (`K`) floor.
 Stage 4 also features empowered Komodo Dragons (`d'` and `d"`).
 
