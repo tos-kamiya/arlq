@@ -386,6 +386,7 @@ def build(
                 "J": rand.randrange(floor_count),
                 "K": rand.randrange(d.STAGE3_FLOORS - 1),
                 "H": rand.randrange(floor_count),
+                "S": rand.randrange(floor_count),
             }
         )
         special_floors = {
@@ -399,6 +400,7 @@ def build(
                 "J": rand.randrange(floor_count),
                 "K": rand.randrange(floor_count - 1),
                 "H": rand.randrange(floor_count),
+                "S": rand.randrange(floor_count),
             }
         )
         voe_options = list(range(1, floor_count - 1))
@@ -443,7 +445,9 @@ def build(
             if stage_num == 4
             else d.STAGE3_ROSTER[index]
         )
-        roster = [entry for entry in roster if entry[0] not in {"I", "J", "K", "H"}]
+        roster = [
+            entry for entry in roster if entry[0] not in {"I", "J", "K", "H", "S"}
+        ]
         if stage_num == 3 and elf_floors["K"] == index:
             roster.append(("C", 1, 1))
         elif stage_num == 4:

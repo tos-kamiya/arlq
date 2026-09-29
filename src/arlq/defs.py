@@ -49,6 +49,7 @@ ELF_STAGE_I_FLAG: int = 2
 ELF_STAGE_K_FLAG: int = 4
 ELF_STAGE_H_FLAG: int = 8
 STAGE3_W_FLAG: int = 16
+ELF_STAGE_S_FLAG: int = 32
 ELF_STAGE_J_FLAG: int = 64
 ELF_STAGE_L_FLAG: int = 128
 STAGE4_FINAL_FLOOR_BARRIER_PERCENT = 10
@@ -73,6 +74,7 @@ ELF_STAGE_PROGRESS: List[Tuple[str, int]] = [
     ("J", ELF_STAGE_J_FLAG),
     ("K", ELF_STAGE_K_FLAG),
     ("H", ELF_STAGE_H_FLAG),
+    ("S", ELF_STAGE_S_FLAG),
     ("W", STAGE3_W_FLAG),
 ]
 
@@ -260,6 +262,9 @@ class Companion(Entity):
     def __init__(self, x, y, tribe: CompanionTribe, origin_floor: Optional[int] = None):
         super().__init__(x, y)
         self.tribe: CompanionTribe = tribe
+        # Per-instance effective lifetime; bonuses must not change the
+        # tribe's shared base durability.
+        self.durability: int = tribe.durability
         self.origin_floor: Optional[int] = origin_floor
         self.revealed: bool = False
 
@@ -471,6 +476,12 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         "L",
         event_message="-- The Lifebringer Elf restored your LP to 120!",
         respawn_on_random_floor=True,
+    ),
+    _ET(
+        "S",
+        event_message=(
+            "-- The Sylvan Elf gave you fairy nectar! Companion effects last 1.5 times as long."
+        ),
     ),
     _MT("k", 80, MIN_FOOD),  # Marksman
     _MT("M", 85, 16, event_message="-- The treasure chest was a Mimic!"),  # Mimic
