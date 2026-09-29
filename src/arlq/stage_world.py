@@ -601,14 +601,14 @@ def _add_additional_stairs(floors: List[Floor], pair_counts: List[int]) -> None:
 
 
 def _place_collapses(floors: List[Floor]) -> None:
-    """Place at most one fixed Collapse on a random floor transition."""
+    """Place one Collapse on each of two distinct floor transitions."""
     offsets = [(dx, dy) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dx or dy]
 
     def has_wall_neighbors(field: List[List[str]], point: d.Point) -> bool:
         x, y = point
         return any(field[y + dy][x + dx] == d.WALL_CHAR for dx, dy in offsets)
 
-    placement_options: List[Tuple[Floor, Floor, d.Point]] = []
+    transition_options: List[List[Tuple[Floor, Floor, d.Point]]] = []
     for upper, lower in zip(floors, floors[1:]):
         occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
         occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
@@ -627,9 +627,15 @@ def _place_collapses(floors: List[Floor]) -> None:
             and not has_wall_neighbors(upper.field, point)
             and not has_wall_neighbors(lower.field, point)
         ]
-        placement_options.extend((upper, lower, point) for point in candidates)
+        if candidates:
+            transition_options.append(
+                [(upper, lower, point) for point in candidates]
+            )
 
-    if placement_options:
+    selected_transitions = rand.sample(
+        transition_options, min(2, len(transition_options))
+    )
+    for placement_options in selected_transitions:
         upper, lower, point = rand.choice(placement_options)
         upper.entities.append(d.Collapse(*point))
         lower.collapse_landings.add(point)
