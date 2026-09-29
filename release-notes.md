@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 5.2.0 - 2026-09-29
+
+- Add the Sylvan Elf (`S`), which grants Fairy Nectar to extend future companion
+  durations, and keep it at its encounter point to respawn the player.
+- Move elf floor information onto the field overlay and show discovered or
+  fatal-contact floors for the Cursed Chimera (`C`).
+
 ## 5.1.4 - 2026-09-29
 
 - Place two Collapse traps in Stage 4 and show their revealed adjacent cells as
