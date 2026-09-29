@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 5.1.4 - 2026-09-29
+
+- Place two Collapse traps in Stage 4 and show their revealed adjacent cells as
+  `O` terrain while keeping the trap center marked as `?`.
+- Preserve Stage 4's persistent barriers when a Vortex rearranges the floor.
+
 ## 5.1.3 - 2026-09-29
 
 - Make the Lifebringer permanently raise the LP maximum to 105 while restoring
