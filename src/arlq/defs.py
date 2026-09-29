@@ -740,14 +740,28 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
 STAGE3_FLOORS = len(STAGE3_ROSTER)
 STAGE4_FLOORS = len(STAGE4_ROSTER)
 
+
+def _empowered_strength_tribe(char: str, empowered: int) -> MonsterTribe:
+    tribe = CHAR_TO_MONSTER_TRIBE[char]
+    level = (
+        tribe.level
+        if empowered == 1
+        else (tribe.level * 3 + 10) * 3 ** (empowered - 2)
+    )
+    marker = "'" if empowered == 2 else '"'
+    return MonsterTribe(f"{char}{marker}" if empowered > 1 else char, level, tribe.feed)
+
+
 def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
-    chars = dict.fromkeys(char for floor in roster for char, _, _ in floor)
+    variants = dict.fromkeys(
+        (char, empowered)
+        for floor in roster
+        for char, _, empowered in floor
+        if char in CHAR_TO_MONSTER_TRIBE
+        and not CHAR_TO_MONSTER_TRIBE[char].is_elf
+    )
     return sorted(
-        (
-            CHAR_TO_MONSTER_TRIBE[char]
-            for char in chars
-            if char in CHAR_TO_MONSTER_TRIBE and not CHAR_TO_MONSTER_TRIBE[char].is_elf
-        ),
+        (_empowered_strength_tribe(char, empowered) for char, empowered in variants),
         key=lambda tribe: tribe.level,
         reverse=True,
     )
@@ -842,13 +856,15 @@ def current_player_attack(player: Player, stage_num: int = 0) -> int:
 def get_stage_roster_tribes(stage_num: int) -> List[MonsterTribe]:
     """Distinct, non-elf monster tribes that can appear in stage 1 or 2, strongest first."""
     configs = STAGE_TO_SPAWN_CONFIGS[stage_num - 1]
-    chars = dict.fromkeys(
-        sc.tribe.char
+    variants = dict.fromkeys(
+        (sc.tribe.char, sc.empowered)
         for sc in configs
         if isinstance(sc.tribe, MonsterTribe) and not sc.tribe.is_elf
     )
     return sorted(
-        (CHAR_TO_MONSTER_TRIBE[c] for c in chars), key=lambda t: t.level, reverse=True
+        (_empowered_strength_tribe(char, empowered) for char, empowered in variants),
+        key=lambda t: t.level,
+        reverse=True,
     )
 
 

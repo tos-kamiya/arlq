@@ -93,7 +93,7 @@ STRENGTH_COLUMN_PADDING = 4
 
 CELL_SIZE_Y = 20
 CELL_SIZE_X = 13
-STRENGTH_COLUMN_WIDTH = CELL_SIZE_X + 2 * STRENGTH_COLUMN_PADDING
+STRENGTH_COLUMN_WIDTH = 2 * CELL_SIZE_X + 2 * STRENGTH_COLUMN_PADDING
 
 # The field's leftmost and rightmost columns are always walls (see
 # create_field), so they're rendered at a reduced width to trim the window.
@@ -290,7 +290,7 @@ class PygletUI:
         self.cell_size_x = max(1, round(CELL_SIZE_X * self.scale))
         self.cell_size_y = max(1, round(CELL_SIZE_Y * self.scale))
         self.strength_column_padding = max(1, round(STRENGTH_COLUMN_PADDING * self.scale))
-        self.strength_column_width = self.cell_size_x + 2 * self.strength_column_padding
+        self.strength_column_width = 2 * self.cell_size_x + 2 * self.strength_column_padding
         self.field_edge_wall_width = max(1, round(FIELD_EDGE_WALL_WIDTH * self.scale))
         self.field_edge_shift = self.field_edge_wall_width - self.cell_size_x
         self.field_pixel_width = self.field_edge_wall_width * 2 + (self.field_width - 2) * self.cell_size_x
@@ -599,9 +599,15 @@ class PygletUI:
         for y, (strength_char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, self.field_height)):
             if strength_char is None:
                 continue
+            text_width = self._text_width(strength_char, bold=is_player)
             self._draw_text(
                 (0, y), strength_char, COLOR_MAP["default"], bold=is_player,
-                x_offset=self.field_pixel_width + self.strength_column_padding
+                x_offset=(
+                    self.field_pixel_width
+                    + self.strength_column_width
+                    - self.strength_column_padding
+                    - text_width
+                ),
             )
 
         if stage_num in d.ELF_STAGES:
@@ -615,7 +621,9 @@ class PygletUI:
 
         if floor_label:
             label_width = len(floor_label) * self.cell_size_x
-            label_x = max(0, self.field_pixel_width - label_width)
+            label_x = max(
+                0, self.field_pixel_width - label_width - 2 * self.cell_size_x
+            )
             self._draw_text(
                 (0, self.field_height - 1), floor_label, COLOR_MAP["default"], x_offset=label_x
             )

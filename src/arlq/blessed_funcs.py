@@ -294,7 +294,8 @@ class BlessedUI:
         for y, (strength_char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, d.FIELD_HEIGHT)):
             if strength_char is None:
                 continue
-            put(d.FIELD_WIDTH, y, strength_char, bold=is_player)
+            gauge_x = d.FIELD_WIDTH - (len(strength_char) - 1)
+            put(gauge_x, y, strength_char, bold=is_player)
 
         if stage_num in d.ELF_STAGES:
             progress_x = 0
@@ -309,7 +310,7 @@ class BlessedUI:
                 progress_x += len(label) + 1
 
         if floor_label:
-            put(d.FIELD_WIDTH - len(floor_label), d.FIELD_HEIGHT - 1, floor_label)
+            put(d.FIELD_WIDTH - len(floor_label) - 2, d.FIELD_HEIGHT - 1, floor_label)
 
         return "".join(output) + self.term.normal
 
