@@ -52,6 +52,7 @@ STAGE3_W_FLAG: int = 16
 ELF_STAGE_S_FLAG: int = 32
 ELF_STAGE_J_FLAG: int = 64
 ELF_STAGE_L_FLAG: int = 128
+SYLVAN_COMPANION_DURATION_MULTIPLIER: float = 1.25
 STAGE4_FINAL_FLOOR_BARRIER_PERCENT = 10
 LOOP_TURNS = 80
 MARKSMAN_ARROW_LIMIT = 20
@@ -482,7 +483,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _ET(
         "S",
         event_message=(
-            "-- The Sylvan Elf gave you fairy nectar! Companion effects last 1.5 times as long."
+            "-- The Sylvan Elf gave you fairy nectar! Companions will stay with you longer."
         ),
     ),
     _MT("k", 80, MIN_FOOD),  # Marksman

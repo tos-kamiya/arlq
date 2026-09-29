@@ -1,6 +1,7 @@
 """Shared stage loop with multi-floor rules for Stages 3 and 4."""
 
 import heapq
+import math
 from collections import Counter, deque
 from copy import deepcopy
 from typing import Any, Container, Deque, List, Optional, Set, Tuple
@@ -820,7 +821,9 @@ def _resolve_contact(
             ch != "l"
             and player.elf_stage_flags & d.ELF_STAGE_S_FLAG
         ):
-            entity.durability = (entity.tribe.durability * 3 + 1) // 2
+            entity.durability = math.ceil(
+                entity.tribe.durability * d.SYLVAN_COMPANION_DURATION_MULTIPLIER
+            )
         player.companion = entity
         player.karma = 0
         tribe_message = entity.tribe.event_message
