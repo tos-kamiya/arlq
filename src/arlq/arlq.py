@@ -16,7 +16,7 @@ from .__about__ import __version__
 from .utils import rand
 from . import defs as d
 from .i18n import trp, set_language, get_language
-from .trace import ReplayUI, TraceRecorder, default_replay_output_path, load_trace
+from .trace import ReplayUI, TraceRecorder, load_trace, timestamped_trace_path
 from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent
 
 MESSAGE_TICKS = 8
@@ -859,6 +859,10 @@ def last_seed_path() -> Path:
     return Path(user_cache_dir("arlq")) / "last-seed"
 
 
+def last_trace_path() -> Path:
+    return Path(user_cache_dir("arlq")) / "last-trace.json"
+
+
 def remember_seed(stage: int, seed: int) -> None:
     try:
         path = last_seed_path()
@@ -1057,24 +1061,22 @@ def main():
         "--debug-show-entities", action="store_true", help="Debug option."
     )
     dev.add_argument(
-        "--trace-record",
+        "--trace",
+        dest="trace_path",
         metavar="PATH",
-        help="Internal/testing: record inputs and results of this session to a gameplay trace JSON file.",
+        help="Replay a trace in the UI without saving replay output. Use 'auto' for the cached last trace.",
     )
     dev.add_argument(
-        "--trace-replay",
+        "--output",
+        dest="trace_output",
         metavar="PATH",
-        help="Internal/testing: replay a gameplay trace JSON file headlessly and write a new trace file.",
+        help="Also export a normal or continued session trace to PATH; cache copies are saved too.",
     )
     dev.add_argument(
-        "--trace-replay-output",
-        metavar="OUT_PATH",
-        help="Output path for --trace-replay (default: PATH with '.replay' inserted before its extension).",
-    )
-    dev.add_argument(
-        "--trace-replay-watch",
+        "--continue",
+        dest="continue_trace",
         action="store_true",
-        help="With --trace-replay, also render the replay to the real UI (pyglet/blessed) as it runs.",
+        help="With --trace, ignore recorded Q inputs and continue with live input when replay input ends.",
     )
 
     args = parser.parse_args()
@@ -1085,8 +1087,8 @@ def main():
         if (
             args.stage
             or args.seed is not None
-            or args.trace_record
-            or args.trace_replay
+            or args.trace_path
+            or args.trace_output
         ):
             parser.error(
                 "--trap-test cannot be combined with --stage, --seed, or trace options"
@@ -1095,15 +1097,14 @@ def main():
     elif args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
         parser.error("--stage must be 1, 2, 3, or 4")
 
-    if args.trace_record and args.trace_replay:
-        parser.error("--trace-record cannot be combined with --trace-replay")
-    if args.trace_replay_output and not args.trace_replay:
-        parser.error("--trace-replay-output requires --trace-replay")
-    if args.trace_replay_watch and not args.trace_replay:
-        parser.error("--trace-replay-watch requires --trace-replay")
+    if args.continue_trace and not args.trace_path:
+        parser.error("--continue requires --trace")
+    if args.trace_path and args.trace_output and not args.continue_trace:
+        parser.error("--output with --trace requires --continue")
 
     trace_data = None
-    if args.trace_replay:
+    trace_input_path = None
+    if args.trace_path:
         if (
             args.rematch
             or args.seed is not None
@@ -1113,13 +1114,25 @@ def main():
             or args.narrower_corridors
         ):
             parser.error(
-                "--trace-replay cannot be combined with --seed, --stage, --rematch, -T, -t, or -n"
+                "--trace cannot be combined with --seed, --stage, --rematch, -T, -t, or -n"
             )
 
+        requested_trace_path = (
+            Path(args.trace_path) if args.trace_path != "auto" else None
+        )
+        trace_input_path = (
+            last_trace_path()
+            if requested_trace_path is None
+            or (
+                requested_trace_path.name == "last-trace.json"
+                and not requested_trace_path.exists()
+            )
+            else requested_trace_path
+        )
         try:
-            trace_data = load_trace(Path(args.trace_replay))
+            trace_data = load_trace(trace_input_path)
         except (OSError, ValueError) as error:
-            sys.exit(f"Error: cannot load trace file {args.trace_replay}: {error}")
+            sys.exit(f"Error: cannot load trace file {trace_input_path}: {error}")
 
         if trace_data.get("arlq_version") != __version__:
             print(
@@ -1175,7 +1188,7 @@ def main():
     game_config = game_config_from_args(args)
 
     trace_recorder: Optional[TraceRecorder] = None
-    if args.trace_record or args.trace_replay:
+    if trace_data is None or args.continue_trace:
         trace_recorder = TraceRecorder(
             params={
                 "stage": args.stage,
@@ -1187,14 +1200,15 @@ def main():
         )
 
     def play(ui) -> None:
-        if args.trace_replay:
+        if trace_data is not None:
             replay_ui = ReplayUI(
                 trace_data["turns"],
                 args.stage,
-                ui if args.trace_replay_watch else None,
+                ui,
                 draw_interval=terminal_replay_interval(args)
-                if args.trace_replay_watch and args.terminal
+                if args.terminal
                 else 0.0,
+                continue_play=args.continue_trace,
             )
             run_game(
                 replay_ui,
@@ -1216,9 +1230,7 @@ def main():
                 config=game_config,
             )
 
-    if args.trace_replay and not args.trace_replay_watch:
-        play(None)
-    elif args.terminal:
+    if args.terminal:
         from blessed import Terminal
 
         from .blessed_funcs import BlessedUI
@@ -1239,15 +1251,12 @@ def main():
         play(ui)
 
     if trace_recorder is not None:
-        if args.trace_replay:
-            output_path = (
-                Path(args.trace_replay_output)
-                if args.trace_replay_output
-                else default_replay_output_path(Path(args.trace_replay))
-            )
-        else:
-            output_path = Path(args.trace_record)
-        trace_recorder.write(output_path)
+        cache_dir = Path(user_cache_dir("arlq"))
+        archive_path = timestamped_trace_path(cache_dir)
+        output_paths = [archive_path, last_trace_path()]
+        if args.trace_output:
+            output_paths.append(Path(args.trace_output))
+        trace_recorder.write_outputs(output_paths)
 
 
 def main_cli():
