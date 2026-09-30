@@ -56,6 +56,7 @@ SYLVAN_COMPANION_DURATION_MULTIPLIER: float = 1.25
 STAGE4_FINAL_FLOOR_BARRIER_PERCENT = 10
 LOOP_TURNS = 80
 MARKSMAN_ARROW_LIMIT = 20
+MARKSMAN_COOLDOWN_TURNS = 2
 STAGE3_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
 STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
     (1, 1),
@@ -312,6 +313,7 @@ class Monster(Entity):
         self.met: bool = False
         self.active: bool = True
         self.arrow_marks: List[Tuple[Point, str]] = []
+        self.marksman_cooldown: int = 0
 
 
 class Elf(Monster):
@@ -695,7 +697,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("a", 12, 1),
         ("X", 1, 1),
         ("A", 1, 1),
-        ("b", 7, 2),
+        ("b", 8, 2),
         ("c", 1, 1),
         ("g", 2, 1),
         ("d", 6, 2),
@@ -709,8 +711,8 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("a", 8, 1),
         ("X", 1, 1),
         ("A", 1, 1),
-        ("b", 3, 2),
-        ("b", 3, 3),
+        ("b", 4, 2),
+        ("b", 4, 3),
         ("c", 1, 1),
         ("g", 2, 1),
         ("d", 4, 2),
@@ -725,7 +727,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 4, 1),
         ("A", 1, 1),
-        ("b", 5, 3),
+        ("b", 8, 3),
         ("c", 1, 1),
         ("g", 2, 1),
         ("d", 2, 2),

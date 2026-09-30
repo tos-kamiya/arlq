@@ -285,6 +285,10 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
             or not entity.active
         ):
             continue
+        if entity.marksman_cooldown > 0:
+            entity.marksman_cooldown -= 1
+            if entity.marksman_cooldown > 0:
+                continue
         dx, dy = player.x - entity.x, player.y - entity.y
         if (dx == 0) == (dy == 0):
             continue
@@ -319,6 +323,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
             continue
 
         player.lp -= d.MARKSMAN_LP_DAMAGE
+        entity.marksman_cooldown = d.MARKSMAN_COOLDOWN_TURNS
         player.known_monsters.add(d.monster_type_key(entity))
         mark = ((player.x - step_x, player.y - step_y), "-" if step_x else "|")
         marks = entity.arrow_marks
