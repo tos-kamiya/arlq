@@ -518,11 +518,10 @@ def build(
 
     split_floor_indices = set()
     if stage_num == 4:
-        available_floors = list(range(1, floor_count))
-        for _ in range(2):
-            split_floor_indices.add(
-                available_floors.pop(rand.randrange(len(available_floors)))
-            )
+        available_floors = list(range(1, floor_count - 1))
+        split_floor_indices.add(
+            available_floors.pop(rand.randrange(len(available_floors)))
+        )
 
     floors: List[Floor] = []
     entry_point = None
