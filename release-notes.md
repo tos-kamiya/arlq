@@ -5,6 +5,11 @@
 - Have the Lifebringer Elf cure poison when met.
 - Restrict Stage 4 Collapse traps to floors 2–4.
 
+## 5.3.0 - 2026-10-01
+
+- Add a two-turn cooldown between Marksman shots.
+- Rebalance Stage 4 Bison populations.
+
 ## 5.2.3 - 2026-09-30
 
 - Make the Stage 2 High Elf a passive decoy and rebalance monster populations
