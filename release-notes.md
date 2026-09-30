@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 5.3.5 - 2026-10-01
+
+- Allow interrupting trace replay with the window close button, `q`, or `Esc`.
+- Make terminal trace replay instant by default and add `--replay-interval` to
+  control its pacing independently of key repeat.
+
 ## 5.3.4 - 2026-10-01
 
 - Configure each stage's boss explicitly and use its configured label in the
