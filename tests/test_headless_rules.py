@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from arlq import arlq as arlq_module
 from arlq import defs as d
 from arlq import game_engine as game_engine_module
 from arlq import stage_replay as stage_replay_module
@@ -334,6 +335,10 @@ def test_stage4_has_independent_per_floor_roster():
         sum(count for ch, count, _ in floor if ch == "k") for floor in d.STAGE4_ROSTER
     ] == [0, 2, 3, 3, 0]
     assert [
+        sum(count for ch, count, _ in floor if ch == "X")
+        for floor in d.STAGE4_ROSTER
+    ] == [1, 1, 1, 1, 1]
+    assert [
         sum(count for ch, count, _ in floor if ch == "g")
         for floor in d.STAGE4_ROSTER
     ] == [2, 2, 2, 2, 2]
@@ -482,6 +487,13 @@ def test_stage4_builds_elves_fire_drake_boss_and_barrier_wyrms(monkeypatch):
         for floor in floors
         for entity in floor.entities
     ) <= 2
+    assert [
+        sum(
+            isinstance(entity, d.Monster) and entity.tribe.char == "X"
+            for entity in floor.entities
+        )
+        for floor in floors
+    ] == [1, 1, 1, 1, 1]
     assert bosses[0] in floors[4].entities
     assert bosses[0].empowered == 2
     assert len(treasures) == len(mimics) == 1
@@ -494,6 +506,38 @@ def test_stage4_builds_elves_fire_drake_boss_and_barrier_wyrms(monkeypatch):
         sum(floor_index == index for floor_index, _ in golems)
         for index in range(len(floors))
     ) == [2, 2, 2, 2, 3]
+
+
+def test_trap_test_places_requested_entities_and_collapse_landing():
+    floors, _ = stage_world_module.build_trap_test()
+
+    assert len(floors) == 2
+    assert all(cell == d.WALL_CHAR for row in floors[0].field for cell in row[:13])
+    assert all(cell == d.WALL_CHAR for row in floors[0].field for cell in row[52:])
+    assert sum(isinstance(entity, d.Collapse) for entity in floors[0].entities) == 1
+    assert [
+        sum(
+            isinstance(entity, d.Monster) and entity.tribe.char == char
+            for entity in floors[0].entities
+        )
+        for char in ("k", "X", "g")
+    ] == [1, 1, 1]
+    collapse = next(
+        entity for entity in floors[0].entities if isinstance(entity, d.Collapse)
+    )
+    assert d.collapse_footprint((collapse.x, collapse.y)) <= floors[1].collapse_landings
+
+
+def test_marksman_spawn_chooses_best_of_three_candidates(monkeypatch):
+    scores = {(1, 1): 0, (2, 1): 4, (3, 1): 2}
+    monkeypatch.setattr(arlq_module.rand, "randrange", lambda _length: 0)
+    monkeypatch.setattr(
+        arlq_module,
+        "_marksman_sight_score",
+        lambda _entities, _field, point: scores[point],
+    )
+
+    assert arlq_module.find_marksman_place([], blank_field()) == (2, 1)
 
 
 def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
@@ -545,17 +589,18 @@ def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
 
 
 @pytest.mark.parametrize(
-    "blocking_tile",
+    ("terrain", "blocked"),
     [
-        d.CHAR_CALTROP,
-        d.WALL_CHAR,
-        d.CHAR_BARRIER,
-        *d.STAIR_CHARS,
+        (d.CHAR_CALTROP, False),
+        (d.CHAR_BARRIER, False),
+        (d.CHAR_COLLAPSE, False),
+        (d.WALL_CHAR, True),
+        *((stair, True) for stair in d.STAIR_CHARS),
     ],
 )
-def test_marksman_shots_are_blocked_by_terrain(blocking_tile):
+def test_marksman_shots_are_blocked_only_by_opaque_terrain(terrain, blocked):
     field = blank_field()
-    field[2][3] = blocking_tile
+    field[2][3] = terrain
     marksman = d.Monster(1, 2, d.CHAR_TO_MONSTER_TRIBE["k"])
     current = Floor(
         field=field,
@@ -569,8 +614,9 @@ def test_marksman_shots_are_blocked_by_terrain(blocking_tile):
 
     game_engine_module._marksman_shoot(current, player)
 
-    assert player.lp == 90
-    assert marksman.arrow_marks == []
+    expected_lp = 90 if blocked else 90 - d.MARKSMAN_LP_DAMAGE
+    assert player.lp == expected_lp
+    assert marksman.arrow_marks == ([] if blocked else [((4, 2), "-")])
 
 
 @pytest.mark.parametrize("old_arrow_mark", [False, True])

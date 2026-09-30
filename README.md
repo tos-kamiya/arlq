@@ -193,14 +193,15 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 
 Stage 4 has five floors. Like Stage 3, it features elves, including one Sylvan Elf (`S`) who gives the player fairy nectar. Future companions other than `l` last 1.25 times as long, until a Loop Companion rewinds time past the nectar's acquisition. The goal is to defeat the empowered Fire Drake (`F'`) on the final floor and claim its treasure chest. Two barrier-protected Wyrms (`w`) appear on the fourth floor. Some rooms are filled in, and walls may divide floors. Barriers are scattered across the final floor; the Fire Drake has no barriers placed around it.
 One Rare Chimera (`C`) appears on a randomly selected floor, independently of the Collector Elf's (`K`) floor.
-Stage 4 also features empowered Komodo Dragons (`d'` and `d"`).
+Stage 4 also features empowered Komodo Dragons (`d'` and `d"`), plus one Caltrop Plant (`X`) on each floor.
 
 #### Monsters
 
 | Display & Name | Description |
 | -------------- | ----------- |
 | **E** Rare Erebus | A troublesome enemy that drains your level. |
-| **k** Marksman | Shoots arrows when it has a clear horizontal or vertical line of sight, but not from an adjacent cell. |
+| **k** Marksman | Shoots arrows along a horizontal or vertical line, but not from an adjacent cell. Walls, stairs, companions, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. |
+| **X** Caltrop Plant | Scatters caltrops around itself. One appears on each floor. |
 
 #### Traps
 
