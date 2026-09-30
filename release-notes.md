@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.3.2 - 2026-10-01
+
+- Keep Stage 4's fifth floor outside the island-room split layout.
+
 ## 5.3.1 - 2026-10-01
 
 - Have the Lifebringer Elf cure poison when met.
