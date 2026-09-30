@@ -325,6 +325,7 @@ class BlessedUI:
         stage_num: int = 0,
         message: Optional[str] = None,
         extra_keys: bool = False,
+        game_start_turn: Optional[int] = None,
     ) -> str:
         output = []
         x, y = 0, d.FIELD_HEIGHT
@@ -334,7 +335,7 @@ class BlessedUI:
             output.append(self.term.move_xy(x, y) + self._style(text, color, bold, dim))
             x += self.term.length(text)
 
-        add(d.status_prefix(player, stage_num, turn))
+        add(d.status_prefix(player, stage_num, turn, game_start_turn))
         add(f"LP: {player.lp} [")
         bar_len = 8
         lp_max = d.player_lp_max(player)
@@ -362,6 +363,7 @@ class BlessedUI:
         self,
         *,
         turn,
+        game_start_turn=None,
         player,
         entities,
         field,
@@ -387,7 +389,14 @@ class BlessedUI:
             debug_show_entities, checkpoint, self.map_mode, dim_types,
             stage_num, stage_roster, floor_view, floor_label, reachable_cells,
         )
-        status_args = (player, turn, stage_num, message, extra_keys)
+        status_args = (
+            player,
+            turn,
+            stage_num,
+            message,
+            extra_keys,
+            game_start_turn,
+        )
         self._last_stage = (stage_args, status_args)
         self._render_last_stage()
 

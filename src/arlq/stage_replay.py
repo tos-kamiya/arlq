@@ -93,9 +93,13 @@ def rewind_to_history(
     if replay_context is not None:
         if operation_count is None:
             raise ValueError("operation_count is required when replaying a rewind")
-        # The rewind window follows the complete recorded input timeline, not
-        # the post-rewind history deque (which is cleared after each l).
-        target_count = max(0, operation_count - d.LOOP_TURNS)
+        # Live sessions record the chronological operation prefix that
+        # corresponds to the game-start turn reached by this rewind. This
+        # preserves earlier branch changes when replaying a later rewind.
+        target_count = replay_context.rewind_targets.get(
+            operation_count,
+            max(0, operation_count - d.LOOP_TURNS),
+        )
         first_vortex_map = next(
             (
                 map_state

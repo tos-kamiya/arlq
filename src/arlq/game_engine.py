@@ -1255,6 +1255,8 @@ def run_game(
         if stage_num in d.ELF_STAGES
         else None
     )
+    game_start_turn = 0
+    has_rewound = False
     floor = [0]
     checkpoint = [floors[0].up]
     player.current_floor = 0
@@ -1277,8 +1279,6 @@ def run_game(
     elif stage_num == 6:
         message = (5, trp("-- Trap test: Mimic, Vortex, W, treasure, b and d.", 1))
     legacy_respawn_queue: Counter[str] = Counter()
-    if legacy_stage:
-        turn = -1
 
     while player.lp > 0:
         current = floors[floor[0]]
@@ -1334,6 +1334,7 @@ def run_game(
             }
         ui.draw_stage(
             turn=turn,
+            game_start_turn=game_start_turn if has_rewound else None,
             player=render_player,
             entities=render_entities,
             field=display_floor.field,
@@ -1378,6 +1379,10 @@ def run_game(
 
         if replay_context is not None:
             replay_context.operations.append(move)
+            game_start_turn += 1
+            replay_context.turn_to_operation[game_start_turn] = len(
+                replay_context.operations
+            )
 
         if legacy_stage:
             update_result = update_entities(
@@ -1464,6 +1469,15 @@ def run_game(
             else None,
         )
         if isinstance(step_result, _RewindRequest):
+            operation_count = (
+                len(replay_context.operations) if replay_context is not None else None
+            )
+            rewind_turn = max(0, game_start_turn - d.LOOP_TURNS)
+            if replay_context is not None and operation_count is not None:
+                rewind_operation = replay_context.turn_to_operation.get(
+                    rewind_turn, 0
+                )
+                replay_context.rewind_targets[operation_count] = rewind_operation
             rewind_message = _rewind_to_history(
                 floors,
                 player,
@@ -1472,11 +1486,16 @@ def run_game(
                 queue,
                 history,
                 replay_context,
-                operation_count=len(replay_context.operations)
-                if replay_context is not None
-                else None,
+                operation_count=operation_count,
                 loop_floor_index=step_result.floor_index,
             )
+            if replay_context is not None and operation_count is not None:
+                for recorded_turn in tuple(replay_context.turn_to_operation):
+                    if recorded_turn > rewind_turn:
+                        del replay_context.turn_to_operation[recorded_turn]
+                replay_context.turn_to_operation[rewind_turn] = operation_count
+                game_start_turn = rewind_turn
+                has_rewound = True
             event_message: Optional[Tuple[int, str]] = (5, rewind_message)
         else:
             event_message = step_result
@@ -1529,6 +1548,7 @@ def run_game(
                 stage_draw_options["floor_label"] = f"{view_floor + 1}/{len(floors)}"
         ui.draw_stage(
             turn=turn,
+            game_start_turn=game_start_turn if has_rewound else None,
             player=render_player,
             entities=render_entities,
             field=display_floor.field,

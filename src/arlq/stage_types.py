@@ -3,7 +3,7 @@
 from collections import Counter
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from . import defs as d
 from .arlq import MESSAGE_TICKS
@@ -43,6 +43,10 @@ class ReplayContext:
     seed: int
     config: "GameConfig"
     operations: List[d.Point] = dataclass_field(default_factory=list)
+    turn_to_operation: Dict[int, int] = dataclass_field(
+        default_factory=lambda: {0: 0}
+    )
+    rewind_targets: Dict[int, int] = dataclass_field(default_factory=dict)
     vortex_maps: List[Tuple[int, List[List[List[int]]]]] = dataclass_field(
         default_factory=list
     )
