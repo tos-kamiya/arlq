@@ -493,6 +493,7 @@ class PygletUI:
         self,
         *,
         turn: int,
+        game_start_turn: Optional[int] = None,
         player: d.Player,
         entities: List[d.Entity],
         field: List[List[str]],
@@ -666,7 +667,9 @@ class PygletUI:
             )
 
         # Draw the status bar
-        self.draw_status_bar(turn, player, stage_num, message, extra_keys)
+        self.draw_status_bar(
+            turn, player, stage_num, message, extra_keys, game_start_turn
+        )
 
         self._flip()
 
@@ -677,13 +680,16 @@ class PygletUI:
         stage_num: int,
         message: Optional[str],
         extra_keys: bool,
+        game_start_turn: Optional[int] = None,
     ):
         """
         Draws the status bar at the bottom of the screen similar to the terminal version.
         This includes stage, turn, level (with item modifiers), item info,
         beatable monsters, LP value, and a rectangular LP bar.
         """
-        status_line = d.status_prefix(player, stage_num, turn) + "LP: "
+        status_line = (
+            d.status_prefix(player, stage_num, turn, game_start_turn) + "LP: "
+        )
 
         self._draw_text((0, self.field_height), status_line, COLOR_MAP["default"])
         text_width = self._text_width(status_line)
