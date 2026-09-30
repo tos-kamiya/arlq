@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Have the Lifebringer Elf cure poison when met.
+
 ## 5.2.3 - 2026-09-30
 
 - Make the Stage 2 High Elf a passive decoy and rebalance monster populations

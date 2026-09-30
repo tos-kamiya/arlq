@@ -652,6 +652,17 @@ def _resolve_monster_contact(
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "H", "outcome": "refused"})
     elif ch == "L":
+        if player.item == d.ITEM_POISONED:
+            poison_source = player.item_taken_from
+            d.clear_player_item(player)
+            if trace is not None and poison_source is not None:
+                trace.add_expired(
+                    {
+                        "type": "item_expired",
+                        "item": poison_source,
+                        "reason": "cleansed",
+                    }
+                )
         old_lp_max = d.player_lp_max(player)
         player.lifebringer_lp_max = min(
             old_lp_max + d.LIFEBRINGER_LP_MAX_INCREASE,

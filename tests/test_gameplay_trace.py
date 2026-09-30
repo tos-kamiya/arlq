@@ -381,18 +381,31 @@ def test_stage3_elf_contact_granted_and_refused():
 
 def test_lifebringer_raises_permanent_lp_cap_and_restores_to_120():
     player = d.Player(2, 2, 1, 90)
+    player.item = d.ITEM_POISONED
+    player.item_taken_from = "d"
     lifebringer = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["L"])
     floors = [one_floor([lifebringer])]
     floor = [0]
+    trace = TraceRecorder(params={})
+    trace.begin_turn("R")
 
     assert d.player_lp_max(player) == d.LP_MAX
 
-    _step(KEYS["R"], floors, player, floor, [(2, 2)], Counter(), deque(), 1)
+    _step(
+        KEYS["R"], floors, player, floor, [(2, 2)], Counter(), deque(), 1,
+        trace=trace,
+    )
+    trace.commit_turn()
 
     assert player.elf_stage_flags & d.ELF_STAGE_L_FLAG
     assert d.player_lp_max(player) == 105
     assert player.lp == d.LP_OVERCHARGE_MAX
     assert player.level == 1
+    assert player.item is None
+    assert player.item_taken_from is None
+    assert trace.turns[-1]["expired"] == [
+        {"type": "item_expired", "item": "d", "reason": "cleansed"}
+    ]
 
 
 def test_lifebringer_cap_limits_feeding_after_overcharge_is_spent():
