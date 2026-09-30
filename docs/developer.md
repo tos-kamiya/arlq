@@ -53,6 +53,9 @@ always requires an argument.
 Add `--continue` to ignore recorded `Q` inputs and switch to live input when
 the replay inputs run out. This records the replay and continued play as a new
 session trace, saved to the cache. `--output PATH` can export that trace too.
+`--rewind INDEX` instead replays through the selected checkpoint update, then
+switches to live input. Positive indexes start at 1; negative indexes count
+backward, so `-1` selects the latest checkpoint. Rewind also saves a new trace.
 
 ```bash
 # Play normally; the latest trace is saved automatically.
@@ -63,6 +66,9 @@ uv run -p .venv/bin/python python -m arlq --trace auto
 
 # Ignore a recorded quit, continue playing, and export the resulting trace.
 uv run -p .venv/bin/python python -m arlq --trace trace.json --continue --output continued.json
+
+# Resume immediately after the most recent checkpoint update.
+uv run -p .venv/bin/python python -m arlq --trace auto --rewind -1
 ```
 
 ## Validation

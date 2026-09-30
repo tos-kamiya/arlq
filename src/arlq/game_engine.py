@@ -465,6 +465,10 @@ def _defeat_monster(
     # matching the legacy stages and the Rust port.
     if not entity.tribe.is_elf:
         checkpoint[0] = (player.x, player.y)
+        if trace is not None:
+            trace.record_checkpoint(
+                "monster_defeated", (player.x, player.y), floor[0]
+            )
 
     # Every ordinary monster replaces the current item. This is important
     # for d (Poisoned): defeating another monster with no item must clear
@@ -1099,6 +1103,8 @@ def _step(
         current.seen[collapse_point[1]][collapse_point[0]] = 1
         floor[0] += 1
         checkpoint[0] = (player.x, player.y)
+        if trace is not None:
+            trace.record_checkpoint("trap_fall", (player.x, player.y), floor[0])
         player.persistent_followers = [
             (player.x, player.y, floor[0], char)
             for _, _, _, char in player.persistent_followers
@@ -1205,6 +1211,7 @@ def _step(
             trace.record_contact(
                 {"type": "stairs", "from_floor": floor_before, "to_floor": floor[0]}
             )
+            trace.record_checkpoint("stairs", (player.x, player.y), floor[0])
 
     _process_respawn_queue(floors, player, floor, queue, turn, trace=trace)
 
@@ -1385,6 +1392,13 @@ def run_game(
                     message = candidate_message
             if update_result.tribes_to_be_respawned:
                 checkpoint[0] = (player.x, player.y)
+                if trace is not None:
+                    trace.record_checkpoint(
+                        "legacy_respawn_queue",
+                        (player.x, player.y),
+                        floor[0],
+                        entities=update_result.tribes_to_be_respawned,
+                    )
             for char in update_result.tribes_to_be_respawned:
                 if char not in d.NO_RESPAWN_MONSTERS:
                     legacy_respawn_queue[char] += 1
