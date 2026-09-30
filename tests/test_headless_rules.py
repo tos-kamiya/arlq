@@ -2140,6 +2140,32 @@ def test_stage3_high_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
     assert (player.x, player.y) == (10, 10)
 
 
+def test_stage4_high_elf_accepts_l_and_s_after_initial_refusal():
+    player = d.Player(2, 2, 100, 90)
+    high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
+    floors, _ = stage3_state(player, [high_elf])
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+    history = deque()
+
+    messages = run_stage3_keys(
+        "R", floors, player, floor, checkpoint, queue, history, stage_num=4
+    )
+    assert messages == ["-- The High Elf does not recognize you yet."]
+
+    player.elf_stage_flags |= d.ELF_STAGE_L_FLAG | d.ELF_STAGE_S_FLAG
+    messages = run_stage3_keys(
+        "LR", floors, player, floor, checkpoint, queue, history, stage_num=4
+    )
+
+    assert messages == [
+        None,
+        "-- The High Elf bestowed the protective amulet upon you!",
+    ]
+    assert player.elf_stage_flags & d.ELF_STAGE_H_FLAG
+
+
 def test_stage3_collector_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
     """Before the player has the cursed sword, Stage 3's Collector Elf (K)
     behaves like the High Elf: the first refusal only shows a message and
