@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 5.3.3 - 2026-10-01
+
+- Change the Cursed Sword to consume vitality when breaking walls or contacting
+  monsters, while keeping its triple attack power and three wall breaks.
+
 ## 5.3.2 - 2026-10-01
 
 - Keep Stage 4's fifth floor outside the island-room split layout.
