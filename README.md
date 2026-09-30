@@ -60,6 +60,7 @@ without applying a dark background to explored areas.
 | `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4` | Select a stage directly. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
+| `--replay-interval SECONDS` | Set the delay between turns when replaying a trace in the terminal interface. The default is `0` seconds, matching GUI replay speed; use a positive value to slow playback. |
 
 At game start, the stage and seed are saved to `arlq/last-seed` under the user
 cache directory. `--rematch` starts the saved stage without showing the stage

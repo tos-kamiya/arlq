@@ -66,6 +66,13 @@ class BlessedUI:
             if key:
                 return key
 
+    def poll_events(self) -> bool:
+        """Read a pending replay cancel key without waiting for input."""
+        key = self.term.inkey(timeout=0)
+        if not key:
+            return False
+        return key.code == self.term.KEY_ESCAPE or str(key).lower() == "q"
+
     def _style(
         self,
         text: str,

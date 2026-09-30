@@ -46,25 +46,15 @@ def game_config_from_args(args) -> GameConfig:
     )
 
 
-def terminal_replay_interval(args) -> float:
-    """Match terminal replay pacing to the saved GUI key repeat interval."""
-    interval = getattr(args, "key_repeat_interval", None)
-    if interval is None:
-        settings_path = Path(user_config_dir("arlq")) / "settings.json"
-        try:
-            settings = json.loads(settings_path.read_text(encoding="utf-8"))
-            interval = settings.get("key_repeat_interval")
-        except (OSError, ValueError, TypeError, AttributeError):
-            interval = None
+def parse_replay_interval(value: str) -> float:
+    """Parse a nonnegative terminal replay delay in seconds."""
     try:
-        parsed_interval = (
-            float(interval) if isinstance(interval, (int, float, str)) else 0.25
-        )
+        parsed_interval = float(value)
     except (ValueError, TypeError):
-        parsed_interval = 0.25
-    if not math.isfinite(parsed_interval):
-        parsed_interval = 0.25
-    return min(1.0, max(0.1, parsed_interval))
+        raise argparse.ArgumentTypeError("must be a number of seconds") from None
+    if not math.isfinite(parsed_interval) or parsed_interval < 0:
+        raise argparse.ArgumentTypeError("must be a finite, nonnegative number")
+    return parsed_interval
 
 
 def tick_message(message: Tuple[int, str]) -> Tuple[int, str]:
@@ -1067,6 +1057,13 @@ def main():
         default=argparse.SUPPRESS,
         help="GUI movement repeat delay and interval (0.1 to 1.0 seconds, or none); saves for future GUI starts.",
     )
+    parser.add_argument(
+        "--replay-interval",
+        type=parse_replay_interval,
+        metavar="SECONDS",
+        default=0.0,
+        help="Delay between turns during terminal trace replay (default: 0, fastest).",
+    )
     dev = parser.add_argument_group("Development and debugging options")
     dev.add_argument(
         "--trap-test", action="store_true", help="Start the trap test stage."
@@ -1244,7 +1241,7 @@ def main():
                 trace_data["turns"],
                 args.stage,
                 ui,
-                draw_interval=terminal_replay_interval(args)
+                draw_interval=args.replay_interval
                 if args.terminal
                 else 0.0,
                 continue_play=args.continue_trace or args.rewind is not None,

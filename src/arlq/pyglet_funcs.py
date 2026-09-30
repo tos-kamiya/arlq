@@ -788,6 +788,11 @@ class PygletUI:
     def _pump(self):
         self.window.dispatch_events()
 
+    def poll_events(self) -> bool:
+        """Process pending window events and report whether the window closed."""
+        self._pump()
+        return self._closed
+
     def _next_key(self) -> Optional[int]:
         """Pops the oldest queued key symbol, or None if no key is queued."""
         if self._key_queue:

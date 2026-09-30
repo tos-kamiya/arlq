@@ -276,6 +276,12 @@ class ReplayUI:
         return self._stage
 
     def input_direction(self) -> Optional[Tuple[int, int]]:
+        # Replays consume recorded input without entering the normal UI input
+        # loop, so give event-driven UIs a chance to process window-close
+        # events between turns.
+        poll_events = getattr(self._draw_ui, "poll_events", None)
+        if poll_events is not None and poll_events():
+            return None
         while self._inputs:
             key = self._inputs.popleft()
             if key == "Q" and self._continue_play:
