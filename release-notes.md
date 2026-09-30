@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 5.2.3 - 2026-09-30
+
+- Make the Stage 2 High Elf a passive decoy and rebalance monster populations
+  across Stages 1, 2, and 4. Add a Caltrop Plant to the first four Stage 4 floors
+  and reduce the Golem population on each floor.
+- Delay Collapse falls until the turn after the player steps onto the affected
+  cell. Let Marksman arrows pass through caltrops, Collapse terrain, and barriers,
+  and favor spawn and respawn locations with more open firing lanes.
+- Expand `--trap-test` with a Marksman, Caltrop Plant, Collapse trap, and Golem,
+  plus a 3-by-3 arena and a safe lower-floor landing.
+
 ## 5.2.2 - 2026-09-30
 
 - Increase the Stage 2 Bison (`b`) population to six and remove the Sylvan Elf
