@@ -337,11 +337,11 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for ch, count, _ in floor if ch == "X")
         for floor in d.STAGE4_ROSTER
-    ] == [1, 1, 1, 1, 0]
+    ] == [0, 1, 1, 1, 0]
     assert [
         sum(count for ch, count, _ in floor if ch == "g")
         for floor in d.STAGE4_ROSTER
-    ] == [2, 2, 2, 2, 2]
+    ] == [0, 2, 2, 2, 2]
     assert [
         sum(count for _, count, rank in floor if rank == 2 or rank == 3)
         for floor in d.STAGE4_ROSTER
@@ -482,18 +482,21 @@ def test_stage4_builds_elves_fire_drake_boss_and_barrier_wyrms(monkeypatch):
     assert special_floor["V"] in (1, 2, 3)
     assert special_floor["E"] in (1, 2, 3)
     assert special_floor["V"] != special_floor["E"]
-    assert 1 <= sum(
-        isinstance(entity, d.Collapse)
-        for floor in floors
+    collapse_floors = [
+        floor_index
+        for floor_index, floor in enumerate(floors)
         for entity in floor.entities
-    ) <= 2
+        if isinstance(entity, d.Collapse)
+    ]
+    assert 1 <= len(collapse_floors) <= 2
+    assert all(1 <= floor_index <= 3 for floor_index in collapse_floors)
     assert [
         sum(
             isinstance(entity, d.Monster) and entity.tribe.char == "X"
             for entity in floor.entities
         )
         for floor in floors
-    ] == [1, 1, 1, 1, 0]
+    ] == [0, 1, 1, 1, 0]
     assert bosses[0] in floors[4].entities
     assert bosses[0].empowered == 2
     assert len(treasures) == len(mimics) == 1
@@ -501,11 +504,11 @@ def test_stage4_builds_elves_fire_drake_boss_and_barrier_wyrms(monkeypatch):
     assert d.monster_type_key(mimics[0]) == "MF"
     assert not treasures[0].unlocked
     assert not mimics[0].active
-    assert len(golems) == 11
+    assert len(golems) == 9
     assert sorted(
         sum(floor_index == index for floor_index, _ in golems)
         for index in range(len(floors))
-    ) == [2, 2, 2, 2, 3]
+    ) == [0, 2, 2, 2, 3]
 
 
 def test_trap_test_places_requested_entities_and_collapse_landing():

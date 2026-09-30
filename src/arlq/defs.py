@@ -663,11 +663,9 @@ STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
 STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 20, 1),
-        ("X", 1, 1),
         ("A", 1, 1),
         ("b", 10, 1),
         ("c", 1, 1),
-        ("g", 2, 1),
         ("d", 4, 1),
         ("d", 2, 2),
         ("e", 1, 1),
