@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+## 5.3.1 - 2026-10-01
+
 - Have the Lifebringer Elf cure poison when met.
 - Restrict Stage 4 Collapse traps to floors 2–4.
+- Restore Loop Companion rewinds using the game-start turn count, and show both
+  the game turn and operation count after a rewind.
+- Start the Stage 1 and 2 turn counter at 0, matching Stages 3 and 4.
 
 ## 5.3.0 - 2026-10-01
 
