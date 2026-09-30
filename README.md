@@ -152,7 +152,7 @@ Stage 2 also features empowered Bison (`b'`).
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **C** Rare Chimera  | Wields a cursed sword. Using it triples attack power at the cost of vitality. |
+| **C** Rare Chimera  | Its Cursed Sword gives 3x attack power at the cost of vitality. |
 | **e** Erebus        | Battling it drains your vitality by a small amount.                                                                     |
 | **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
 | **g** Golem         | When defeated, rocks scatter. It yields no food.                                                                        |
@@ -191,10 +191,7 @@ The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first 
 
 ### Stage 4
 
-Stage 4 has five floors. Like Stage 3, it features elves, including one Sylvan Elf (`S`) who gives the player fairy nectar. Future companions other than `l` last 1.25 times as long, until a Loop Companion rewinds time past the nectar's acquisition. The goal is to defeat the empowered Fire Drake (`F'`) on the final floor and claim its treasure chest. Two barrier-protected Wyrms (`w`) appear on the fourth floor. Some rooms are filled in, and walls may divide floors. Barriers are scattered across the final floor; the Fire Drake has no barriers placed around it.
-The High Elf (`H`) also appears and grants its protective amulet after you meet any two of `I`, `J`, `K`, `L`, and `S`.
-One Rare Chimera (`C`) appears on a randomly selected floor, independently of the Collector Elf's (`K`) floor.
-Stage 4 also features empowered Komodo Dragons (`d'` and `d"`), plus one Caltrop Plant (`X`) on each floor.
+Like Stage 3, Stage 4 features elves, including some new ones. New monsters and traps also appear. The boss is the empowered Fire Drake (`F'`).
 
 #### Monsters
 
@@ -213,7 +210,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | Display | Name | Description |
 | ------- | ---- | ----------- |
 | `T` | Mimic | Appears as a treasure chest after the stage boss is defeated. It has level 1; defeating it moves the player to a random position on the same floor. |
-| `?` / `O` | Collapse | Appears on Stage 4 floors 2–4. Stepping on the `?` cell or one of its four orthogonal neighbors marks the landing cell as collapse terrain. The trap remains `?`, and a neighboring cell appears as `O` after you land on it. At the start of your next turn on a collapse cell, you fall to the next floor regardless of the direction you press. |
+| `?` / `O` | Collapse | Displayed as `?`; stepping on it creates a pit in that cell or one of its four adjacent cells. |
 | `V` | Vortex | Repositions nearby monsters, companions, and treasure chests when defeated. |
 
 #### Elves
