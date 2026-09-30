@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Have the Lifebringer Elf cure poison when met.
+- Restrict Stage 4 Collapse traps to floors 2–4.
 
 ## 5.2.3 - 2026-09-30
 

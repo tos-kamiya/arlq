@@ -659,12 +659,12 @@ def _add_additional_stairs(floors: List[Floor], pair_counts: List[int]) -> None:
 
 
 def _place_collapses(floors: List[Floor]) -> None:
-    """Place up to two five-cell Collapses on distinct floor transitions."""
+    """Place up to two five-cell Collapses on transitions below floors 2–4."""
     used_transitions: set[int] = set()
     for _ in range(2):
         transition_options: List[Tuple[int, List[d.Point]]] = []
         for index, (upper, lower) in enumerate(zip(floors, floors[1:])):
-            if index in used_transitions:
+            if index not in (1, 2, 3) or index in used_transitions:
                 continue
             stair_points = upper.down_stairs + lower.up_stairs
             upper_fixed = {
