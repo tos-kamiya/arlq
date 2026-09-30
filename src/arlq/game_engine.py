@@ -636,6 +636,7 @@ def _resolve_monster_contact(
                 | d.ELF_STAGE_J_FLAG
                 | d.ELF_STAGE_K_FLAG
                 | d.ELF_STAGE_L_FLAG
+                | d.ELF_STAGE_S_FLAG
             )
         ).bit_count()
         < 2
