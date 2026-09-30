@@ -562,6 +562,7 @@ def update_entities(
     entities: List[d.Entity],
     sword_uses: int = d.SWORD_USES,
     respawn_point: Optional[d.Point] = None,
+    stage_num: int = 1,
 ) -> UpdateResult:
     events = TurnEvents()
     effect = None
@@ -630,11 +631,24 @@ def update_entities(
                 player.known_monsters.add(d.monster_type_key(m))
             contact_key = (0, m.x, m.y)
 
-            # High Elf is a Stage 3-style gatekeeper in Stage 2 as well. It
-            # remains in place until the required elf progress is available,
-            # and must not establish a respawn checkpoint on contact. The
-            # first refusal only shows a message; any later refusal sends the
-            # player elsewhere, like repeat contact with the Isolated Elf.
+            # Stage 2's H is a passive decoy: reveal it, but never fight,
+            # remove, or respawn from it.
+            if m.tribe.char == "H" and stage_num == 2:
+                m.revealed = True
+                player.known_monsters.add(d.monster_type_key(m))
+                events.contact = ContactEvent("monster", "H", outcome="passive")
+                message = (
+                    MESSAGE_TICKS,
+                    trp(
+                        "-- It looks powerful, but doesn't seem to intend to attack you.",
+                        3,
+                    ),
+                )
+                player.last_contact_monster = contact_key
+                continue
+
+            # High Elf is a Stage 3-style gatekeeper. The first refusal only
+            # shows a message; later refusals send the player elsewhere.
             if m.tribe.char == "H":
                 events.contact = ContactEvent("monster", "H", outcome="refused")
                 if player.high_elf_refused:

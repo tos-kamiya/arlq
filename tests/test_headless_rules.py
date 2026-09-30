@@ -20,6 +20,7 @@ from arlq.arlq import (
     update_entities,
 )
 from arlq.game_engine import Floor, _step
+from arlq.game_events import ContactEvent
 
 KEYS = {
     "U": (0, -1),
@@ -1244,48 +1245,44 @@ def test_legacy_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(
     assert (player.x, player.y) == (10, 10)
 
 
-def test_legacy_stage2_high_elf_refuses_once_then_sends_player_elsewhere(monkeypatch):
-    """Stage 2's High Elf never actually fights (no checkpoint repel, no LP
-    cost). The first refusal only shows a message and leaves the player in
-    place; any later contact (even after an unrelated monster in between)
-    sends the player elsewhere, like repeat contact with the Isolated Elf."""
+def test_stage2_high_elf_is_passive_red_monster_decoy(monkeypatch):
+    """Stage 2's High Elf is identified on contact and never fights or respawns."""
     player = d.Player(2, 2, 1, 90)
     high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
-    weak = d.Monster(1, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
     field = blank_field()
-    entities = [player, high_elf, weak]
-
-    _, _, message, _ = update_entities(
-        KEYS["R"], field, player, entities, respawn_point=(2, 2)
+    entities = [player, high_elf]
+    hidden_glyph = d.revealed_entity_glyphs(
+        high_elf, set(), False, 1, None, stage_num=2
     )
-    assert message == (8, "-- The High Elf seems uninterested in you.")
+    assert hidden_glyph[0].char == "?"
+    monkeypatch.setattr(
+        "arlq.arlq.find_random_place",
+        lambda *_a, **_k: pytest.fail("passive H must not respawn the player"),
+    )
+
+    result = update_entities(
+        KEYS["R"], field, player, entities, respawn_point=(2, 2), stage_num=2
+    )
+    assert result.message == (
+        8,
+        "-- It looks powerful, but doesn't seem to intend to attack you.",
+    )
     assert high_elf.revealed
+    revealed_glyph = d.revealed_entity_glyphs(
+        high_elf, set(), False, 1, None, stage_num=2
+    )
+    assert (revealed_glyph[0].char, revealed_glyph[0].tone) == ("H", "red")
     assert (player.x, player.y) == (3, 2)
     assert player.lp == 90
-    assert player.high_elf_refused is True
+    assert high_elf in entities
+    assert "H" in player.known_monsters
+    assert result.events.contact == ContactEvent("monster", "H", outcome="passive")
 
-    # Move back and defeat an unrelated monster; unlike the ordinary
-    # too-strong-monster streak, this must NOT clear the High Elf refusal.
-    update_entities(KEYS["L"], field, player, entities, respawn_point=(2, 2))
-    _, _, message, _ = update_entities(
-        KEYS["L"], field, player, entities, respawn_point=(2, 2)
-    )
-    assert message is None
-    assert (player.x, player.y) == (1, 2)
-    assert weak not in entities
-    assert player.high_elf_refused is True
-
-    update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
-    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (10, 10))
-    _, _, message, _ = update_entities(
-        KEYS["R"], field, player, entities, respawn_point=(2, 2)
-    )
-
-    assert message == (8, "-- You were sent somewhere else.")
-    assert (player.x, player.y) == (10, 10)
-    assert (
-        player.lp == 100
-    )  # unchanged by the High Elf; raised earlier by defeating the amoeba
+    update_entities(KEYS["L"], field, player, entities, stage_num=2)
+    result = update_entities(KEYS["R"], field, player, entities, stage_num=2)
+    assert result.events.contact == ContactEvent("monster", "H", outcome="passive")
+    assert (player.x, player.y) == (3, 2)
+    assert high_elf in entities
 
 
 def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypatch):
