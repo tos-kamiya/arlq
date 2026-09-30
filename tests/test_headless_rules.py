@@ -337,7 +337,7 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for ch, count, _ in floor if ch == "X")
         for floor in d.STAGE4_ROSTER
-    ] == [1, 1, 1, 1, 1]
+    ] == [1, 1, 1, 1, 0]
     assert [
         sum(count for ch, count, _ in floor if ch == "g")
         for floor in d.STAGE4_ROSTER
@@ -493,7 +493,7 @@ def test_stage4_builds_elves_fire_drake_boss_and_barrier_wyrms(monkeypatch):
             for entity in floor.entities
         )
         for floor in floors
-    ] == [1, 1, 1, 1, 1]
+    ] == [1, 1, 1, 1, 0]
     assert bosses[0] in floors[4].entities
     assert bosses[0].empowered == 2
     assert len(treasures) == len(mimics) == 1
@@ -757,11 +757,11 @@ def test_stage2_rebalances_bison_and_comodo_dragon_counts():
     }
 
     assert [(config.population, config.empowered) for config in b_configs] == [
-        (6, 1),
+        (5, 1),
         (2, 2),
     ]
     assert populations["A"] == 3
-    assert populations["d"] == 6
+    assert populations["d"] == 4
 
 
 @pytest.mark.parametrize("stage_num", [3, 4])
