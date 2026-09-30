@@ -44,26 +44,26 @@ See [`gameplay-trace-spec.md`](gameplay-trace-spec.md) for the full specificatio
 (including an "Implementation Notes" section on where the implementation
 resolved details the spec had left open).
 
+Every normal play writes a timestamped trace to the application cache and
+updates `last-trace.json` there. `--output PATH` also exports the same trace to
+an explicit path. `--trace PATH` replays a trace in the real UI and does not
+write a new trace. `--trace auto` reads the cached `last-trace.json`; `--trace`
+always requires an argument.
+
+Add `--continue` to ignore recorded `Q` inputs and switch to live input when
+the replay inputs run out. This records the replay and continued play as a new
+session trace, saved to the cache. `--output PATH` can export that trace too.
+
 ```bash
-# Play normally (GUI or --terminal) while recording inputs/results:
-uv run -p .venv/bin/python python -m arlq --trace-record trace.json
+# Play normally; the latest trace is saved automatically.
+uv run -p .venv/bin/python python -m arlq
 
-# Replay headlessly and write trace.replay.json; diff the two to spot
-# behavior changes after a code change:
-uv run -p .venv/bin/python python -m arlq --trace-replay trace.json
+# Replay the latest cached trace without creating a new trace.
+uv run -p .venv/bin/python python -m arlq --trace auto
 
-# Same, but also render the replay to the real UI as it runs:
-uv run -p .venv/bin/python python -m arlq --trace-replay trace.json --trace-replay-watch
-
-# Compare the recorded trace against the replayed one to spot behavior
-# changes (e.g. after a code change). "recorded_at" always differs (it is a
-# timestamp), so ignore that line; any other diff means behavior changed.
-diff trace.json trace.replay.json
+# Ignore a recorded quit, continue playing, and export the resulting trace.
+uv run -p .venv/bin/python python -m arlq --trace trace.json --continue --output continued.json
 ```
-
-`--trace-replay` writes its output next to the input trace by default
-(`trace.json` -> `trace.replay.json`; see `--trace-replay-output` to pick a
-different path).
 
 ## Validation
 

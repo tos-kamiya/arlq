@@ -32,7 +32,7 @@ KEY_TO_DIR: Dict[str, Tuple[int, int]] = {key: direction for direction, key in D
 
 
 class TraceRecorder:
-    """Accumulates one play session's turns for --trace-record/--trace-replay
+    """Accumulates one play session's turns for --trace/--output
     output. `run_game()` (arlq.py and game_engine.py) calls `begin_turn()` /
     `set_player()` / `commit_turn()` / `record_quit()` / `set_outcome()`
     directly; `update_entities()` / `_step()` and their helpers call
@@ -151,12 +151,25 @@ class TraceRecorder:
 
     def write(self, path: Path) -> None:
         data = self.to_dict()
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    def write_outputs(self, paths: List[Path]) -> None:
+        """Write identical trace data to each requested destination."""
+        contents = json.dumps(self.to_dict(), indent=2, ensure_ascii=False) + "\n"
+        for path in paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(contents, encoding="utf-8")
+
+
+def timestamped_trace_path(cache_dir: Path) -> Path:
+    """Return a collision-resistant timestamped trace path in the cache."""
+    stamp = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S-%f")
+    return cache_dir / f"trace-{stamp}.json"
 
 
 def default_replay_output_path(path: Path) -> Path:
-    """The default --trace-replay-output path: `path` with '.replay' inserted
-    before its extension (e.g. "foo.json" -> "foo.replay.json")."""
+    """Return a sibling path with '.replay' inserted before the extension."""
     return path.with_name(f"{path.stem}.replay{path.suffix}")
 
 
@@ -176,8 +189,8 @@ class ReplayUI:
     """A UI stand-in that feeds recorded inputs to run_game()/game_engine.run_game()
     in place of a human player, in place of any UI object.
 
-    Draws are forwarded to `draw_ui` when given (--trace-replay-watch);
-    otherwise drawing is a no-op, for a fast headless replay. `select_stage()`
+    Draws are forwarded to `draw_ui` when provided; otherwise drawing is a
+    no-op. `select_stage()`
     returns `stage` directly rather than replaying the selection screen's key
     presses: both frontends' selection screens support direct numeric-key
     selection, so this is behaviorally equivalent and avoids depending on
@@ -190,13 +203,30 @@ class ReplayUI:
         stage: int,
         draw_ui: Optional[Any] = None,
         draw_interval: float = 0.0,
+        continue_play: bool = False,
     ) -> None:
         self._inputs: Deque[str] = deque(turn["input"] for turn in turns)
         self._stage = stage
         self._draw_ui = draw_ui
         self._draw_interval = draw_interval
-        self.map_mode = False
+        self._continue_play = continue_play
         self.ran_dry = False
+
+    def __getattr__(self, name: str) -> Any:
+        draw_ui = self.__dict__.get("_draw_ui")
+        if draw_ui is not None and hasattr(draw_ui, name):
+            return getattr(draw_ui, name)
+        raise AttributeError(name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name.startswith("_") or name == "ran_dry":
+            object.__setattr__(self, name, value)
+            return
+        draw_ui = self.__dict__.get("_draw_ui")
+        if draw_ui is not None and hasattr(draw_ui, name):
+            setattr(draw_ui, name, value)
+        else:
+            object.__setattr__(self, name, value)
 
     def draw_stage(self, **kwargs: Any) -> None:
         if self._draw_ui is not None:
@@ -208,13 +238,17 @@ class ReplayUI:
         return self._stage
 
     def input_direction(self) -> Optional[Tuple[int, int]]:
-        if not self._inputs:
-            self.ran_dry = True
-            return None
-        key = self._inputs.popleft()
-        if key == "Q":
-            return None
-        return KEY_TO_DIR[key]
+        while self._inputs:
+            key = self._inputs.popleft()
+            if key == "Q" and self._continue_play:
+                continue
+            if key == "Q":
+                return None
+            return KEY_TO_DIR[key]
+        if self._continue_play and self._draw_ui is not None:
+            return self._draw_ui.input_direction()
+        self.ran_dry = True
+        return None
 
     def input_alphabet(self) -> Optional[str]:
         # The game-over screen (map/seed keys) is out of scope for

@@ -1360,7 +1360,7 @@ def run_game(
             key = DIR_TO_KEY.get(move)
             if key is None:
                 raise RuntimeError(
-                    "--trace-record does not support non-cardinal (e.g. diagonal joystick) movement"
+                    "--trace does not support non-cardinal (e.g. diagonal joystick) movement"
                 )
             trace.begin_turn(key)
 
