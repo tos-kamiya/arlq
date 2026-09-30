@@ -120,7 +120,8 @@ def _split_floor_roster(
     """Separate ordinary spawns, assigned-floor elves, and Wyrm encounters."""
     ordinary, elves, wyrms = [], [], []
     for entry in roster:
-        ch, _, empowered = entry
+        roster_char, _, empowered = entry
+        ch, _, _, _ = d.decode_stage_roster_entry(roster_char, empowered)
         if ch == "I":
             continue  # I is placed inside the generated isolated room.
         if ch in {"w", "W"} or (ch == d.CHAR_FIRE_DRAKE and empowered == 2):
@@ -199,8 +200,11 @@ def _place_roster_treasures_and_mimics(
 ) -> None:
     treasure_bosses = list(
         dict.fromkeys(
-            ch
-            for ch, count, _ in roster
+            (ch, empowered)
+            for roster_char, count, empowered in roster
+            for ch, _, _, _ in [
+                d.decode_stage_roster_entry(roster_char, empowered)
+            ]
             if count
             and ch in d.CHAR_TO_MONSTER_TRIBE
             and (
@@ -209,7 +213,7 @@ def _place_roster_treasures_and_mimics(
             )
         )
     )
-    for boss_char in treasure_bosses:
+    for boss_char, _ in treasure_bosses:
         entities.append(
             d.Treasure(
                 *_treasure_spot(entities, field, reserved),
@@ -217,18 +221,21 @@ def _place_roster_treasures_and_mimics(
             )
         )
     mimic_index = 0
-    for ch, count, _ in roster:
+    for roster_char, count, empowered in roster:
+        ch, _, mimic_boss_char, mimic_boss_empowered = (
+            d.decode_stage_roster_entry(roster_char, empowered)
+        )
         if ch == "M":
+            if mimic_boss_char is None and treasure_bosses:
+                mimic_boss_char, mimic_boss_empowered = treasure_bosses[
+                    mimic_index % len(treasure_bosses)
+                ]
             for _ in range(count):
-                mimic_boss_char = (
-                    treasure_bosses[mimic_index % len(treasure_bosses)]
-                    if treasure_bosses
-                    else None
-                )
                 mimic = d.Monster(
                     *_treasure_spot(entities, field, reserved),
                     d.CHAR_TO_MONSTER_TRIBE["M"],
                     mimic_boss_char=mimic_boss_char,
+                    mimic_boss_empowered=mimic_boss_empowered,
                 )
                 mimic.active = False
                 entities.append(mimic)
@@ -374,7 +381,11 @@ def _build_floor(
 
     entities: List[d.Entity] = []
     reserved = {up, down}
-    spawn_roster = [entry for entry in roster if entry[0] != "M"]
+    spawn_roster = [
+        entry
+        for entry in roster
+        if d.decode_stage_roster_entry(entry[0], entry[2])[0] != "M"
+    ]
     ordinary_roster, elf_roster, wyrm_roster = _split_floor_roster(
         spawn_roster, elf_floors
     )

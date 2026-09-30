@@ -303,7 +303,7 @@ class BlessedUI:
 
         if stage_num in d.ELF_STAGES:
             progress_x = 0
-            for label, achieved in d.elf_stage_progress_marks(player):
+            for label, achieved in d.elf_stage_progress_marks(player, stage_num):
                 put(
                     progress_x,
                     d.FIELD_HEIGHT - 1,

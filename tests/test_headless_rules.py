@@ -368,7 +368,7 @@ def test_stage4_has_independent_per_floor_roster():
         for ch, count, rank in d.STAGE4_ROSTER[4]
         if ch == d.CHAR_FIRE_DRAKE and rank == 2
     ) == 1
-    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[4] if ch == "M") == 1
+    assert sum(count for ch, count, _ in d.STAGE4_ROSTER[4] if ch == "MF'") == 1
     assert not any(ch == "W" for floor in d.STAGE4_ROSTER for ch, _, _ in floor)
     assert (
         sum(count for floor in d.STAGE4_ROSTER for ch, count, _ in floor if ch == "V")
@@ -501,7 +501,7 @@ def test_stage4_builds_elves_fire_drake_boss_and_barrier_wyrms(monkeypatch):
     assert bosses[0].empowered == 2
     assert len(treasures) == len(mimics) == 1
     assert treasures[0].encounter_type == "TF"
-    assert d.monster_type_key(mimics[0]) == "MF"
+    assert d.monster_type_key(mimics[0]) == "MF'"
     assert not treasures[0].unlocked
     assert not mimics[0].active
     assert len(golems) == 9
@@ -1194,6 +1194,34 @@ def test_defeated_boss_activates_only_its_mimics():
 
     assert wyrm_mimic.active
     assert not dragon_mimic.active
+
+
+def test_defeated_empowered_boss_activates_only_matching_mimic():
+    empowered_fire_drake = d.Monster(
+        2, 2, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_FIRE_DRAKE], empowered=2
+    )
+    mimic = d.Monster(
+        3,
+        2,
+        d.CHAR_TO_MONSTER_TRIBE["M"],
+        mimic_boss_char=d.CHAR_FIRE_DRAKE,
+        mimic_boss_empowered=2,
+    )
+    ordinary_fire_drake_mimic = d.Monster(
+        4,
+        2,
+        d.CHAR_TO_MONSTER_TRIBE["M"],
+        mimic_boss_char=d.CHAR_FIRE_DRAKE,
+        mimic_boss_empowered=1,
+    )
+    mimic.active = ordinary_fire_drake_mimic.active = False
+
+    activate_mimic_for_defeat(
+        empowered_fire_drake, [mimic, ordinary_fire_drake_mimic]
+    )
+
+    assert mimic.active
+    assert not ordinary_fire_drake_mimic.active
 
 
 def test_legacy_respawn_queue_controls_actual_respawn(monkeypatch):
@@ -2424,7 +2452,7 @@ def test_elf_stage_progress_marks_add_elf_floors_after_the_isolated_elf():
     player.known_c_floors = {3, 2}
     player.treasure_collected = True
 
-    assert d.elf_stage_progress_marks(player) == [
+    assert d.elf_stage_progress_marks(player, 3) == [
         ("C23", False),
         ("I", True),
         ("J", False),
@@ -2434,6 +2462,30 @@ def test_elf_stage_progress_marks_add_elf_floors_after_the_isolated_elf():
         ("W", False),
         ("T", True),
     ]
+
+
+def test_elf_stage_progress_marks_use_stage_specific_boss_labels():
+    player = d.Player(1, 1, 1, 90)
+    player.elf_stage_flags = d.STAGE3_W_FLAG
+
+    assert d.stage_boss_label(3) == "W"
+    assert d.stage_boss_label(4) == "F'"
+    assert ("W", False) in d.elf_stage_progress_marks(player, 3)
+    assert ("F'", False) in d.elf_stage_progress_marks(player, 4)
+
+    player.boss_defeated = True
+
+    assert ("W", True) in d.elf_stage_progress_marks(player, 3)
+    assert ("F'", True) in d.elf_stage_progress_marks(player, 4)
+    assert ("F'", True) not in d.elf_stage_progress_marks(player, 3)
+    assert ("W", True) not in d.elf_stage_progress_marks(player, 4)
+
+    assert d.STAGE_BOSSES[3] in {
+        (char, rank) for floor in d.STAGE3_ROSTER for char, _, rank in floor
+    }
+    assert d.STAGE_BOSSES[4] in {
+        (char, rank) for floor in d.STAGE4_ROSTER for char, _, rank in floor
+    }
 
 
 def test_revealed_entity_glyphs_distinguish_unknown_known_and_empowered():

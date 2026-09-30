@@ -552,6 +552,10 @@ def activate_mimic_for_defeat(
             isinstance(entity, d.Monster)
             and entity.tribe.char == "M"
             and entity.mimic_boss_char == boss_char
+            and (
+                entity.mimic_boss_empowered is None
+                or entity.mimic_boss_empowered == monster.empowered
+            )
         ):
             entity.active = True
 
