@@ -41,6 +41,7 @@ LP_LOW_THRESHOLD: int = 20  # LP bar/player "@" turn red at or below this
 
 MONSTER_RESPAWN_INTERVAL: int = 65
 SWORD_USES: int = 3
+CURSED_SWORD_LP_COST: int = 10
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
 # Wyrms, the Stage 4 boss, and mimics stay down for the rest of a multi-floor run.
 STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w", "M", "F"}
@@ -823,8 +824,6 @@ def take_monster_item(
     player.item = item
     player.item_taken_from = source
     player.item_uses = sword_uses if item in (ITEM_SWORD_X1_5, ITEM_SWORD_CURSED) else 0
-    if item == ITEM_SWORD_CURSED:
-        player.lp = (player.lp * 3 + 3) // 4
 
 
 def grant_defeat_level(player: Player, effect: Optional[str]) -> None:

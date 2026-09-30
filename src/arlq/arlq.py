@@ -630,6 +630,8 @@ def move_player(
     ):
         player.x, player.y = nx, ny
         field[ny][nx] = d.CHAR_FLOOR
+        if player.item == d.ITEM_SWORD_CURSED:
+            player.lp -= d.CURSED_SWORD_LP_COST
         player.item_uses -= 1
         if player.item_uses == 0:
             d.clear_player_item(player)
@@ -708,6 +710,8 @@ def update_entities(
                 )
         elif isinstance(ee, d.Monster):
             m: d.Monster = ee
+            if player.item == d.ITEM_SWORD_CURSED:
+                player.lp -= d.CURSED_SWORD_LP_COST
             if m.tribe.is_elf:
                 m.revealed = True
             else:

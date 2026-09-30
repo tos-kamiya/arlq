@@ -562,6 +562,8 @@ def _resolve_monster_contact(
     """Resolve contact with a monster, including early-ending elf encounters."""
     ch = entity.tribe.char
     contact_key = (floor[0], entity.x, entity.y)
+    if player.item == d.ITEM_SWORD_CURSED:
+        player.lp -= d.CURSED_SWORD_LP_COST
 
     if entity.tribe.is_elf:
         player.elf_stage_floors.setdefault(ch, floor[0] + 1)
