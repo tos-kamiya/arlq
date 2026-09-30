@@ -16,7 +16,13 @@ from .__about__ import __version__
 from .utils import rand
 from . import defs as d
 from .i18n import trp, set_language, get_language
-from .trace import ReplayUI, TraceRecorder, load_trace, timestamped_trace_path
+from .trace import (
+    ReplayUI,
+    TraceRecorder,
+    checkpoint_turn_index,
+    load_trace,
+    timestamped_trace_path,
+)
 from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, WallEvent
 
 MESSAGE_TICKS = 8
@@ -1078,6 +1084,12 @@ def main():
         action="store_true",
         help="With --trace, ignore recorded Q inputs and continue with live input when replay input ends.",
     )
+    dev.add_argument(
+        "--rewind",
+        type=int,
+        metavar="INDEX",
+        help="With --trace, continue from immediately after checkpoint event INDEX (positive from start, negative from end).",
+    )
 
     args = parser.parse_args()
 
@@ -1099,7 +1111,16 @@ def main():
 
     if args.continue_trace and not args.trace_path:
         parser.error("--continue requires --trace")
-    if args.trace_path and args.trace_output and not args.continue_trace:
+    if args.rewind is not None and not args.trace_path:
+        parser.error("--rewind requires --trace")
+    if args.continue_trace and args.rewind is not None:
+        parser.error("--continue cannot be combined with --rewind")
+    if (
+        args.trace_path
+        and args.trace_output
+        and not args.continue_trace
+        and args.rewind is None
+    ):
         parser.error("--output with --trace requires --continue")
 
     trace_data = None
@@ -1133,6 +1154,16 @@ def main():
             trace_data = load_trace(trace_input_path)
         except (OSError, ValueError) as error:
             sys.exit(f"Error: cannot load trace file {trace_input_path}: {error}")
+
+        if args.rewind is not None:
+            try:
+                rewind_turn_index = checkpoint_turn_index(
+                    trace_data["turns"], args.rewind
+                )
+            except ValueError as error:
+                parser.error(str(error))
+            trace_data = dict(trace_data)
+            trace_data["turns"] = trace_data["turns"][: rewind_turn_index + 1]
 
         if trace_data.get("arlq_version") != __version__:
             print(
@@ -1188,7 +1219,7 @@ def main():
     game_config = game_config_from_args(args)
 
     trace_recorder: Optional[TraceRecorder] = None
-    if trace_data is None or args.continue_trace:
+    if trace_data is None or args.continue_trace or args.rewind is not None:
         trace_recorder = TraceRecorder(
             params={
                 "stage": args.stage,
@@ -1208,7 +1239,7 @@ def main():
                 draw_interval=terminal_replay_interval(args)
                 if args.terminal
                 else 0.0,
-                continue_play=args.continue_trace,
+                continue_play=args.continue_trace or args.rewind is not None,
             )
             run_game(
                 replay_ui,

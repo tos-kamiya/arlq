@@ -121,6 +121,23 @@ class TraceRecorder:
         if self._current is not None:
             self._current.setdefault("world", []).append(event)
 
+    def record_checkpoint(
+        self,
+        reason: str,
+        at: Tuple[int, int],
+        floor: int,
+        entities: Optional[List[str]] = None,
+    ) -> None:
+        if self._current is not None:
+            event: Dict[str, Any] = {
+                "reason": reason,
+                "at": list(at),
+                "floor": floor,
+            }
+            if entities:
+                event["entities"] = list(entities)
+            self._current.setdefault("checkpoint", []).append(event)
+
     def commit_turn(self) -> None:
         if self._current is None:
             return
@@ -183,6 +200,27 @@ def load_trace(path: Path) -> Dict[str, Any]:
     if "params" not in data or "turns" not in data:
         raise ValueError("trace file is missing required 'params' or 'turns' fields")
     return data
+
+
+def checkpoint_turn_index(turns: List[Dict[str, Any]], index: int) -> int:
+    """Return the input-turn index containing the requested checkpoint event.
+
+    Positive indexes are one-based; negative indexes count from the end.
+    """
+    if index == 0:
+        raise ValueError("--rewind index cannot be 0")
+    event_turns = [
+        turn_index
+        for turn_index, turn in enumerate(turns)
+        for _ in (turn.get("checkpoint") or [])
+    ]
+    event_index = index - 1 if index > 0 else len(event_turns) + index
+    if event_index < 0 or event_index >= len(event_turns):
+        raise ValueError(
+            f"checkpoint event index {index} is out of range "
+            f"(trace contains {len(event_turns)} checkpoint events)"
+        )
+    return event_turns[event_index]
 
 
 class ReplayUI:
