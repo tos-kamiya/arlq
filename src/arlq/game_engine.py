@@ -1353,6 +1353,7 @@ def run_game(
                 player,
                 current.entities,
                 respawn_point=checkpoint[0],
+                stage_num=stage_num,
             )
             if update_result.message is not None:
                 candidate_message = update_result.message

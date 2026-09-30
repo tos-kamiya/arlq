@@ -1035,6 +1035,7 @@ def preview_entity_glyphs(
     entity: Entity,
     reveal_disguises: bool = False,
     known_types: Optional[Set[str]] = None,
+    stage_num: int = 0,
 ) -> List[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
     known_types = known_types or set()
@@ -1061,7 +1062,17 @@ def preview_entity_glyphs(
         return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if char is None:
         return []
-    tone = "default"
+    stage2_high_elf = (
+        isinstance(entity, Monster)
+        and entity.tribe.char == "H"
+        and stage_num == 2
+    )
+    known = (
+        entity.revealed or monster_type_key(entity) in known_types
+        if stage2_high_elf
+        else False
+    )
+    tone = "red" if known else "default"
     glyphs = [
         FieldGlyph(
             entity.x,
@@ -1086,6 +1097,7 @@ def revealed_entity_glyphs(
     dim_types: Optional[Set[str]],
     reveal_disguises: bool = False,
     debug_show_entities: bool = False,
+    stage_num: int = 0,
 ) -> List[FieldGlyph]:
     """Glyphs for an entity inside the explored map.
 
@@ -1103,17 +1115,19 @@ def revealed_entity_glyphs(
         char = entity.tribe.char
         if not entity.active:
             return []
-        known = (
-            entity.revealed
-            if entity.tribe.is_elf
-            else monster_type_key(entity) in known_types
-        )
+        stage2_high_elf = char == "H" and stage_num == 2
+        if stage2_high_elf:
+            known = entity.revealed or monster_type_key(entity) in known_types
+        elif entity.tribe.is_elf:
+            known = entity.revealed
+        else:
+            known = monster_type_key(entity) in known_types
         if char == "M" and not known and not reveal_disguises:
             return [FieldGlyph(entity.x, entity.y, CHAR_TREASURE, "yellow", bold=True)]
         if char != "M" and not known:
             if show_entities:
                 return []
-            if entity.tribe.is_elf:
+            if entity.tribe.is_elf and not stage2_high_elf:
                 return [
                     FieldGlyph(
                         entity.x,
@@ -1124,8 +1138,10 @@ def revealed_entity_glyphs(
                     )
                 ]
             return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
-        if entity.tribe.is_elf:
+        if entity.tribe.is_elf and not stage2_high_elf:
             tone = "default"
+        elif stage2_high_elf:
+            tone = "red"
         elif monster_level(entity) <= player_attack:
             tone = "yellow" if entity.tribe.effect == EFFECT_UNLOCK_TREASURE else "blue"
         else:
