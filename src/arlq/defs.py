@@ -663,6 +663,7 @@ STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
 STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 20, 1),
+        ("X", 1, 1),
         ("A", 1, 1),
         ("b", 10, 1),
         ("c", 1, 1),
@@ -677,6 +678,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     ],
     [
         ("a", 16, 1),
+        ("X", 1, 1),
         ("A", 1, 1),
         ("b", 4, 1),
         ("b", 4, 2),
@@ -693,6 +695,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     ],
     [
         ("a", 12, 1),
+        ("X", 1, 1),
         ("A", 1, 1),
         ("b", 7, 2),
         ("c", 1, 1),
@@ -706,6 +709,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     ],
     [
         ("a", 8, 1),
+        ("X", 1, 1),
         ("A", 1, 1),
         ("b", 3, 2),
         ("b", 3, 3),
@@ -722,6 +726,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     ],
     [
         ("a", 4, 1),
+        ("X", 1, 1),
         ("A", 1, 1),
         ("b", 5, 3),
         ("c", 1, 1),

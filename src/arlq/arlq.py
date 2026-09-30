@@ -190,6 +190,66 @@ def find_random_place(
             return x, y
 
 
+def find_marksman_place(
+    entities: List[d.Entity],
+    field: List[List[str]],
+    distance: int = 2,
+    *,
+    avoid: Optional[Callable[[d.Point], bool]] = None,
+) -> d.Point:
+    """Choose the best firing position among up to three valid spawn cells."""
+    occupied = [(entity.x, entity.y) for entity in entities]
+    valid_points = [
+        (x, y)
+        for y in range(1, len(field) - 1)
+        for x in range(1, len(field[0]) - 1)
+        if all(cell == d.CHAR_FLOOR for cell in field[y][x - 1 : x + 2])
+        and not any(
+            abs(px - x) <= distance and abs(py - y) <= distance
+            for px, py in occupied
+        )
+        and not (avoid is not None and avoid((x, y)))
+    ]
+    if not valid_points:
+        return find_random_place(entities, field, distance=distance, avoid=avoid)
+
+    candidates = []
+    for _ in range(min(3, len(valid_points))):
+        candidates.append(valid_points.pop(rand.randrange(len(valid_points))))
+    return max(
+        candidates,
+        key=lambda point: _marksman_sight_score(entities, field, point),
+    )
+
+
+def _marksman_sight_score(
+    entities: List[d.Entity], field: List[List[str]], point: d.Point
+) -> int:
+    """Count cells a marksman at point could target along clear cardinal rays."""
+    blocked_entities = {
+        (entity.x, entity.y)
+        for entity in entities
+        if isinstance(entity, (d.Companion, d.Treasure))
+    }
+    score = 0
+    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+        x, y = point
+        distance = 0
+        while True:
+            x += dx
+            y += dy
+            distance += 1
+            if not (0 <= y < len(field) and 0 <= x < len(field[0])):
+                break
+            if field[y][x] in (d.WALL_CHAR, *d.STAIR_CHARS):
+                break
+            if (x, y) in blocked_entities:
+                break
+            if distance > 1:
+                score += 1
+    return score
+
+
 def spawn_at(
     entities: List[d.Entity],
     x: int,
@@ -224,7 +284,10 @@ def spawn_entities(
         if isinstance(population, float):
             population = 1 if rand.randrange(100) / 100 < population else 0
         for _ in range(population):
-            x, y = find_random_place(entities, field, distance=2)
+            if config.tribe.char == "k":
+                x, y = find_marksman_place(entities, field, distance=2)
+            else:
+                x, y = find_random_place(entities, field, distance=2)
             spawn_at(entities, x, y, config.tribe, empowered=config.empowered)
 
 
@@ -234,7 +297,10 @@ def respawn_entity(
     field: List[List[str]],
 ) -> d.Entity:
     """Place one monster or companion."""
-    x, y = find_random_place(entities, field, distance=2)
+    if tribe.char == "k":
+        x, y = find_marksman_place(entities, field, distance=2)
+    else:
+        x, y = find_random_place(entities, field, distance=2)
     entity = spawn_at(entities, x, y, tribe)
     if isinstance(entity, d.Companion):
         entity.revealed = True
@@ -247,6 +313,7 @@ def create_field(
     wall_char: str,
     excluded_tile: Optional[d.Point] = None,
     margin_x: int = 0,
+    tile_columns: Optional[int] = None,
 ) -> Tuple[List[List[str]], d.Point, d.Point]:
     def find_empty_cell(
         field: List[List[str]], left_top: d.Point, right_bottom: d.Point
@@ -260,9 +327,15 @@ def create_field(
             if field[y][x] == d.CHAR_FLOOR:
                 return x, y
 
-    # margin_x walls off that many tile columns on each of the left and
-    # right edges, leaving a narrower maze centered in the same field size.
+    # margin_x keeps the existing symmetric crop; tile_columns allows callers
+    # to choose an exact active maze width within the fixed-size field.
     tile_num_x = d.TILE_NUM_X - 2 * margin_x
+    tile_offset_x = margin_x
+    if tile_columns is not None:
+        if not 1 <= tile_columns <= d.TILE_NUM_X:
+            raise ValueError("tile_columns must fit within the field")
+        tile_num_x = tile_columns
+        tile_offset_x = (d.TILE_NUM_X - tile_num_x) // 2
 
     field: List[List[str]] = [
         [d.CHAR_FLOOR for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)
@@ -301,13 +374,13 @@ def create_field(
 
     # Create corridors
     edges, first_p, last_p = generate_maze(tile_num_x, d.TILE_NUM_Y, excluded_tile)
-    first_p = (first_p[0] + margin_x, first_p[1])
-    last_p = (last_p[0] + margin_x, last_p[1])
+    first_p = (first_p[0] + tile_offset_x, first_p[1])
+    last_p = (last_p[0] + tile_offset_x, last_p[1])
     for edge in edges:
         (x1, y1), (x2, y2) = sorted(edge)
         assert x1 <= x2
         assert y1 <= y2
-        x1, x2 = x1 + margin_x, x2 + margin_x
+        x1, x2 = x1 + tile_offset_x, x2 + tile_offset_x
         if y1 == y2:
             offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
             for y in range(corridor_h_width):
@@ -326,7 +399,7 @@ def create_field(
     # Rust's stage 3 adds a short bypass on the adjacent row at an outer edge.
     if excluded_tile is not None:
         island_x, island_y = excluded_tile
-        if 0 < island_x < d.TILE_NUM_X - 1:
+        if 0 < island_x < tile_num_x - 1:
             bypass_y = (
                 1
                 if island_y == 0
@@ -338,14 +411,18 @@ def create_field(
                 offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
                 for y in range(corridor_h_width):
                     row = bypass_y * (d.TILE_HEIGHT + 1) + offset + y
-                    field[row][island_x * (d.TILE_WIDTH + 1)] = d.CHAR_FLOOR
-                    field[row][(island_x + 1) * (d.TILE_WIDTH + 1)] = d.CHAR_FLOOR
+                    field[row][
+                        (island_x + tile_offset_x) * (d.TILE_WIDTH + 1)
+                    ] = d.CHAR_FLOOR
+                    field[row][
+                        (island_x + 1 + tile_offset_x) * (d.TILE_WIDTH + 1)
+                    ] = d.CHAR_FLOOR
 
     # Wall off the margin columns entirely so they read as removed, rather
     # than as a disconnected strip of tiny rooms.
-    if margin_x > 0:
-        left_edge = margin_x * (d.TILE_WIDTH + 1)
-        right_edge = (d.TILE_NUM_X - margin_x) * (d.TILE_WIDTH + 1)
+    if tile_offset_x > 0 or tile_offset_x + tile_num_x < d.TILE_NUM_X:
+        left_edge = tile_offset_x * (d.TILE_WIDTH + 1)
+        right_edge = (tile_offset_x + tile_num_x) * (d.TILE_WIDTH + 1)
         for y in range(d.FIELD_HEIGHT):
             for x in range(0, left_edge):
                 field[y][x] = wall_char
@@ -974,7 +1051,7 @@ def main():
     )
     dev = parser.add_argument_group("Development and debugging options")
     dev.add_argument(
-        "--trap-test", action="store_true", help="Start the one-floor trap test stage."
+        "--trap-test", action="store_true", help="Start the trap test stage."
     )
     dev.add_argument(
         "--debug-show-entities", action="store_true", help="Debug option."

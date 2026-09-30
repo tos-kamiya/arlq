@@ -11,6 +11,7 @@ from .arlq import (
     MESSAGE_TICKS,
     GameConfig,
     activate_mimic_for_defeat,
+    find_marksman_place,
     find_random_place,
     get_torched,
     iterate_ellipse_points,
@@ -72,10 +73,18 @@ def _spawn(
     empowered: int = 1,
 ) -> d.Point:
     """Spawn an entity through the shared game helpers."""
-    while True:
-        x, y = find_random_place(entities, field, distance=2)
-        if (x, y) not in avoid and not _inside_island((x, y), island_tile):
-            break
+    if ch == "k":
+        x, y = find_marksman_place(
+            entities,
+            field,
+            distance=2,
+            avoid=lambda point: point in avoid or _inside_island(point, island_tile),
+        )
+    else:
+        while True:
+            x, y = find_random_place(entities, field, distance=2)
+            if (x, y) not in avoid and not _inside_island((x, y), island_tile):
+                break
     spawn_at(
         entities,
         x,
@@ -128,9 +137,6 @@ def _marksman_damage_at(
             bx, by = shooter.x + step_x * offset, shooter.y + step_y * offset
             if field[by][bx] in (
                 d.WALL_CHAR,
-                d.CHAR_CALTROP,
-                d.CHAR_BARRIER,
-                d.CHAR_COLLAPSE,
                 *d.STAIR_CHARS,
             ):
                 blocked = True
@@ -140,7 +146,6 @@ def _marksman_damage_at(
                 and (
                     isinstance(other, d.Companion)
                     or isinstance(other, d.Treasure)
-                    or isinstance(other, d.Collapse)
                     or isinstance(other, d.Monster)
                     and other.active
                 )
@@ -294,9 +299,6 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
             x, y = entity.x + step_x * offset, entity.y + step_y * offset
             if current.field[y][x] in (
                 d.WALL_CHAR,
-                d.CHAR_CALTROP,
-                d.CHAR_BARRIER,
-                d.CHAR_COLLAPSE,
                 *d.STAIR_CHARS,
             ):
                 blocked = True
@@ -306,7 +308,6 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
                 and (
                     isinstance(other, d.Companion)
                     or isinstance(other, d.Treasure)
-                    or isinstance(other, d.Collapse)
                     or isinstance(other, d.Monster)
                     and other.active
                 )

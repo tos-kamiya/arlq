@@ -3,7 +3,14 @@
 from typing import Container, Dict, List, Optional, Tuple
 
 from . import defs as d
-from .arlq import GameConfig, create_field, find_random_place, spawn_at, spawn_entities
+from .arlq import (
+    GameConfig,
+    create_field,
+    find_marksman_place,
+    find_random_place,
+    spawn_at,
+    spawn_entities,
+)
 from .stage_maze import generate_floor_field, room_center, shuffle_floor_layout, tile_at
 from .stage_types import Floor
 from .utils import rand
@@ -69,10 +76,18 @@ def _spawn(
     floor_index: Optional[int] = None,
     empowered: int = 1,
 ) -> d.Point:
-    while True:
-        x, y = find_random_place(entities, field, distance=2)
-        if (x, y) not in avoid and not _inside_island((x, y), island_tile):
-            break
+    if ch == "k":
+        x, y = find_marksman_place(
+            entities,
+            field,
+            distance=2,
+            avoid=lambda point: point in avoid or _inside_island(point, island_tile),
+        )
+    else:
+        while True:
+            x, y = find_random_place(entities, field, distance=2)
+            if (x, y) not in avoid and not _inside_island((x, y), island_tile):
+                break
     spawn_at(
         entities,
         x,
@@ -506,12 +521,12 @@ def build_trap_test(
     corridor_h_width: int = d.CORRIDOR_H_WIDTH,
     corridor_v_width: int = d.CORRIDOR_V_WIDTH,
 ) -> Tuple[List[Floor], d.Player]:
-    """Build a one-floor arena for manually exercising Stage 4 traps."""
+    """Build an arena for manually exercising Stage 4 monsters and traps."""
     field, entry, wyrm_point = create_field(
         corridor_h_width,
         corridor_v_width,
         d.WALL_CHAR,
-        margin_x=d.STAGE1_COLUMN_MARGIN,
+        tile_columns=3,
     )
     wyrm = d.Monster(*wyrm_point, d.CHAR_TO_MONSTER_TRIBE["W"])
     entities: List[d.Entity] = [wyrm]
@@ -524,6 +539,28 @@ def build_trap_test(
         _spawn(entities, field, "b", reserved, floor_index=0)
         _spawn(entities, field, "d", reserved, floor_index=0)
     _spawn(entities, field, "V", reserved, floor_index=0)
+    _spawn(entities, field, "k", reserved, floor_index=0)
+    _spawn(entities, field, "X", reserved, floor_index=0)
+    _spawn(entities, field, "g", reserved, floor_index=0)
+
+    stair_point = find_random_place(
+        entities, field, distance=2, avoid=lambda point: point in reserved
+    )
+    field[stair_point[1]][stair_point[0]] = d.CHAR_STAIRS_DOWN
+    collapse_candidates = []
+    occupied = {(entity.x, entity.y) for entity in entities} | reserved
+    for y in range(1, len(field) - 1):
+        for x in range(1, len(field[0]) - 1):
+            point = (x, y)
+            footprint = d.collapse_footprint(point)
+            if point == stair_point or footprint & occupied or stair_point in footprint:
+                continue
+            if all(field[fy][fx] == d.CHAR_FLOOR for fx, fy in footprint):
+                collapse_candidates.append(point)
+    if not collapse_candidates:
+        raise RuntimeError("could not place the trap-test Collapse")
+    collapse_point = rand.choice(collapse_candidates)
+    entities.append(d.Collapse(*collapse_point))
 
     arena = Floor(
         field=field,
@@ -532,11 +569,24 @@ def build_trap_test(
         up=entry,
         down=wyrm_point,
         island=None,
+        down_stairs=[stair_point],
+    )
+    lower_field = [row.copy() for row in field]
+    lower_field[stair_point[1]][stair_point[0]] = d.CHAR_STAIRS_UP
+    landing_floor = Floor(
+        field=lower_field,
+        entities=[],
+        seen=[[0] * len(lower_field[0]) for _ in lower_field],
+        up=stair_point,
+        down=stair_point,
+        island=None,
+        up_stairs=[stair_point],
+        collapse_landings=set(d.collapse_footprint(collapse_point)),
     )
     player = d.Player(entry[0], entry[1], 150, d.LP_INIT)
     player.elf_stage_floors = {}
     player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
-    return [arena], player
+    return [arena, landing_floor], player
 
 
 def _transition_candidates(
