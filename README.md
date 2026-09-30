@@ -211,7 +211,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | Display | Name | Description |
 | ------- | ---- | ----------- |
 | `T` | Mimic | Appears as a treasure chest after the stage boss is defeated. It has level 1; defeating it moves the player to a random position on the same floor. |
-| `?` / `O` | Collapse | Stepping on the `?` cell or one of its four orthogonal neighbors drops the player to the next floor. The `?` stays unchanged; each neighboring cell is marked `O` only if the player lands on that cell. |
+| `?` / `O` | Collapse | Stepping on the `?` cell or one of its four orthogonal neighbors marks the landing cell as collapse terrain. The trap remains `?`, and a neighboring cell appears as `O` after you land on it. At the start of your next turn on a collapse cell, you fall to the next floor regardless of the direction you press. |
 | `V` | Vortex | Repositions nearby monsters, companions, and treasure chests when defeated. |
 
 #### Elves

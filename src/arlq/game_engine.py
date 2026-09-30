@@ -1027,7 +1027,11 @@ def _step(
         history.popleft()
 
     previous = (player.x, player.y)
-    _move_player(direction, current, player, trace=trace)
+    standing_on_collapse = (
+        current.field[previous[1]][previous[0]] == d.CHAR_COLLAPSE
+    )
+    if not standing_on_collapse:
+        _move_player(direction, current, player, trace=trace)
     movement_destination = (player.x, player.y)
 
     # l contact is a control-flow event, not an ordinary gameplay turn. Detect
@@ -1042,7 +1046,7 @@ def _step(
         ),
         None,
     )
-    if hit is not None:
+    if hit is not None and not standing_on_collapse:
         entity = current.entities[hit]
         if isinstance(entity, d.Companion) and entity.tribe.char == "l" and history:
             contact = _resolve_contact(
@@ -1069,18 +1073,17 @@ def _step(
             entity
             for entity in current.entities
             if isinstance(entity, d.Collapse)
-            and (player.x, player.y)
+            and (previous if standing_on_collapse else (player.x, player.y))
             in d.collapse_footprint((entity.x, entity.y))
         ),
         None,
     )
-    if collapse_hit is not None and (player.x, player.y) != previous:
+    if standing_on_collapse:
         from_floor = floor[0]
-        collapse_point = (player.x, player.y)
-        current.seen[collapse_hit.y][collapse_hit.x] = 1
+        collapse_point = previous
+        if collapse_hit is not None:
+            current.seen[collapse_hit.y][collapse_hit.x] = 1
         current.seen[collapse_point[1]][collapse_point[0]] = 1
-        if collapse_point != (collapse_hit.x, collapse_hit.y):
-            current.field[collapse_point[1]][collapse_point[0]] = d.CHAR_COLLAPSE
         floor[0] += 1
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [
@@ -1103,6 +1106,11 @@ def _step(
         ).format(n=floor[0] + 1, total=len(floors))
         current = floors[floor[0]]
         collapse_transition = True
+    elif collapse_hit is not None and (player.x, player.y) != previous:
+        collapse_point = (player.x, player.y)
+        current.seen[collapse_hit.y][collapse_hit.x] = 1
+        current.seen[collapse_point[1]][collapse_point[0]] = 1
+        current.field[collapse_point[1]][collapse_point[0]] = d.CHAR_COLLAPSE
 
     hazard_message = _apply_terrain_hazards(current, player, previous)
     if hazard_message is not None:
