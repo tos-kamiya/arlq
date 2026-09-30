@@ -650,7 +650,7 @@ class PygletUI:
 
         if stage_num in d.ELF_STAGES:
             progress_x = 0
-            for label, achieved in d.elf_stage_progress_marks(player):
+            for label, achieved in d.elf_stage_progress_marks(player, stage_num):
                 color = COLOR_MAP["default"] if achieved else (100, 106, 118)
                 self._draw_text(
                     (progress_x, self.field_height - 1), label, color, bold=True

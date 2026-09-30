@@ -70,7 +70,8 @@ STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
 STAGE4_FILLED_ROOM_COUNTS: Tuple[int, ...] = (0, 1, 1, 2, 3)
 STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
 STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
-# Order of the elf-stage status-line marks. Treasure "T" is added separately.
+# Order of the elf-stage status-line marks. The stage boss and treasure "T"
+# are added separately.
 ELF_STAGE_PROGRESS: List[Tuple[str, int]] = [
     ("C", ELF_STAGE_C_FLAG),
     ("I", ELF_STAGE_I_FLAG),
@@ -78,7 +79,6 @@ ELF_STAGE_PROGRESS: List[Tuple[str, int]] = [
     ("K", ELF_STAGE_K_FLAG),
     ("H", ELF_STAGE_H_FLAG),
     ("S", ELF_STAGE_S_FLAG),
-    ("W", STAGE3_W_FLAG),
 ]
 
 ITEM_SWORD_X1_5: str = "Sword"
@@ -302,6 +302,7 @@ class Monster(Entity):
         tribe: MonsterTribe,
         empowered: int = 1,
         mimic_boss_char: Optional[str] = None,
+        mimic_boss_empowered: Optional[int] = None,
     ):
         super().__init__(x, y)
         self.tribe: MonsterTribe = tribe
@@ -310,6 +311,7 @@ class Monster(Entity):
         self.empowered: int = empowered
         # Mimics are identified by the boss whose treasure they imitate.
         self.mimic_boss_char: Optional[str] = mimic_boss_char
+        self.mimic_boss_empowered: Optional[int] = mimic_boss_empowered
         self.revealed: bool = False
         self.met: bool = False
         self.active: bool = True
@@ -337,6 +339,12 @@ def monster_type_key(monster: Monster) -> str:
     char = monster.tribe.char
     if char == "M" and monster.mimic_boss_char is not None:
         char += monster.mimic_boss_char
+        if (
+            monster.mimic_boss_empowered is not None
+            and monster.mimic_boss_empowered > 1
+        ):
+            marker = "'" if monster.mimic_boss_empowered == 2 else '"'
+            char += marker
     return char if monster.empowered == 1 else f"{char}{monster.empowered}"
 
 
@@ -738,12 +746,44 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("o", 1, 1),
         (CHAR_PEGASUS, 1, 1),
         ("F", 1, 2),
-        ("M", 1, 1),
+        ("MF'", 1, 1),
     ],
 ]
 
 STAGE3_FLOORS = len(STAGE3_ROSTER)
 STAGE4_FLOORS = len(STAGE4_ROSTER)
+STAGE_BOSSES: Dict[int, Tuple[str, int]] = {
+    3: ("W", 1),
+    4: (CHAR_FIRE_DRAKE, 2),
+}
+
+
+def decode_stage_roster_entry(
+    roster_char: str, empowered: int
+) -> Tuple[str, int, Optional[str], int]:
+    """Decode a roster token into monster and optional mimic target data.
+
+    ``MF'`` means a rank-1 Mimic linked to a rank-2 Fire Drake. ``MW``
+    links a Mimic to a normal Wyrm. The tuple result is monster character,
+    monster rank, mimic boss character, and mimic boss rank.
+    """
+    if roster_char == "M":
+        return "M", empowered, None, 1
+    if roster_char.startswith("M"):
+        target = roster_char[1:]
+        if target.endswith("'"):
+            boss_empowered = 2
+            boss_char = target[:-1]
+        elif target.endswith('"'):
+            boss_empowered = 3
+            boss_char = target[:-1]
+        else:
+            boss_empowered = 1
+            boss_char = target
+        if len(boss_char) == 1 and boss_char in CHAR_TO_MONSTER_TRIBE:
+            return "M", empowered, boss_char, boss_empowered
+        raise ValueError(f"invalid mimic roster token: {roster_char!r}")
+    return roster_char, empowered, None, 1
 
 
 def _empowered_strength_tribe(char: str, empowered: int) -> MonsterTribe:
@@ -753,20 +793,39 @@ def _empowered_strength_tribe(char: str, empowered: int) -> MonsterTribe:
         if empowered == 1
         else (tribe.level * 3 + 10) * 3 ** (empowered - 2)
     )
+    return MonsterTribe(monster_variant_label(char, empowered), level, tribe.feed)
+
+
+def monster_variant_label(char: str, empowered: int) -> str:
+    """Return the roster/display label for a monster and its rank."""
+    if empowered == 1:
+        return char
     marker = "'" if empowered == 2 else '"'
-    return MonsterTribe(f"{char}{marker}" if empowered > 1 else char, level, tribe.feed)
+    return f"{char}{marker}"
+
+
+def stage_boss_label(stage_num: int) -> str:
+    """Return a stage boss's display label from its stage configuration."""
+    char, empowered = STAGE_BOSSES[stage_num]
+    return monster_variant_label(char, empowered)
 
 
 def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
     variants = dict.fromkeys(
-        (char, empowered)
+        (monster_char, monster_empowered)
         for floor in roster
         for char, _, empowered in floor
-        if char in CHAR_TO_MONSTER_TRIBE
-        and not CHAR_TO_MONSTER_TRIBE[char].is_elf
+        for monster_char, monster_empowered, _, _ in [
+            decode_stage_roster_entry(char, empowered)
+        ]
+        if monster_char in CHAR_TO_MONSTER_TRIBE
+        and not CHAR_TO_MONSTER_TRIBE[monster_char].is_elf
     )
     return sorted(
-        (_empowered_strength_tribe(char, empowered) for char, empowered in variants),
+        (
+            _empowered_strength_tribe(char, empowered)
+            for char, empowered in variants
+        ),
         key=lambda tribe: tribe.level,
         reverse=True,
     )
@@ -974,7 +1033,9 @@ def status_prefix(
     return text
 
 
-def elf_stage_progress_marks(player: Player) -> List[Tuple[str, bool]]:
+def elf_stage_progress_marks(
+    player: Player, stage_num: int
+) -> List[Tuple[str, bool]]:
     """Elf and treasure marks for the multi-floor stage status line.
 
     Each entry is (label, achieved). The Isolated Elf flag reveals all elf
@@ -1002,6 +1063,7 @@ def elf_stage_progress_marks(player: Player) -> List[Tuple[str, bool]]:
         ):
             text += str(player.elf_stage_floors[label])
         marks.append((text, bool(player.elf_stage_flags & bit)))
+    marks.append((stage_boss_label(stage_num), player.boss_defeated))
     marks.append(("T", player.treasure_collected))
     return marks
 
