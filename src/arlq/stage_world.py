@@ -267,6 +267,75 @@ def _spawn_island_elf(
     entities.append(d.Elf(x, y, tribe))
 
 
+def _add_stage4_wall_spurs(
+    field: List[List[str]], up: d.Point, down: d.Point, island_tile: Optional[d.Point]
+) -> None:
+    """Add short room-wall spurs on some rooms of Stage 4's final floors."""
+    stair_rooms = {tile_at(up), tile_at(down)}
+    for ty in range(d.TILE_NUM_Y):
+        for tx in range(d.TILE_NUM_X):
+            room = (tx, ty)
+            if room in stair_rooms or room == island_tile:
+                continue
+            left = tx * (d.TILE_WIDTH + 1) + 1
+            top = ty * (d.TILE_HEIGHT + 1) + 1
+            right = left + d.TILE_WIDTH - 1
+            bottom = top + d.TILE_HEIGHT - 1
+            if field[(top + bottom) // 2][(left + right) // 2] != d.CHAR_FLOOR:
+                continue
+            if rand.randrange(3) != 0:
+                continue
+
+            candidates = []
+            for wall_x, spur_x, direction in (
+                (left - 1, left, 1),
+                (right + 1, right - 1, -1),
+            ):
+                if any(
+                    field[y][wall_x] == d.CHAR_FLOOR
+                    for y in range(top, bottom + 1)
+                ):
+                    continue
+                for start in range(top + 1, bottom - 1):
+                    boundary_cells = [(wall_x, y) for y in range(start - 1, start + 3)]
+                    spur_cells = [
+                        (spur_x + offset * direction, y)
+                        for offset in range(2)
+                        for y in (start, start + 1)
+                    ]
+                    if all(
+                        field[y][x] == d.WALL_CHAR for x, y in boundary_cells
+                    ) and all(
+                        field[y][x] == d.CHAR_FLOOR for x, y in spur_cells
+                    ):
+                        candidates.append(spur_cells)
+            for wall_y, spur_y, direction in (
+                (top - 1, top, 1),
+                (bottom + 1, bottom - 1, -1),
+            ):
+                if any(
+                    field[wall_y][x] == d.CHAR_FLOOR
+                    for x in range(left, right + 1)
+                ):
+                    continue
+                for start in range(left + 1, right - 1):
+                    boundary_cells = [(x, wall_y) for x in range(start - 1, start + 3)]
+                    spur_cells = [
+                        (x, spur_y + offset * direction)
+                        for offset in range(2)
+                        for x in (start, start + 1)
+                    ]
+                    if all(
+                        field[y][x] == d.WALL_CHAR for x, y in boundary_cells
+                    ) and all(
+                        field[y][x] == d.CHAR_FLOOR for x, y in spur_cells
+                    ):
+                        candidates.append(spur_cells)
+            if candidates:
+                for x, y in rand.choice(candidates):
+                    field[y][x] = d.WALL_CHAR
+
+
 def _build_floor(
     index: int,
     special_floors: Dict[str, int],
@@ -295,6 +364,8 @@ def _build_floor(
         split_room_graph=split_rooms,
     )
     island_tile = next(iter(island_rooms), None)
+    if stage_num == 4 and index >= 2:
+        _add_stage4_wall_spurs(field, up, down, island_tile)
 
     if index < floor_count - 1:
         field[down[1]][down[0]] = d.CHAR_STAIRS_DOWN
@@ -373,24 +444,29 @@ def build(
         stair_pair_counts = [stair_pairs_per_transition] * (floor_count - 1)
     default_layout = d.STAGE3_FLOOR_LAYOUT if stage_num == 3 else d.STAGE4_FLOOR_LAYOUT
     layout = list(default_layout if floor_layout is None else floor_layout)
-    if stage_num == 4 and floor_layout is None:
-        room_counts = list(d.STAGE4_FILLED_ROOM_COUNTS)
-        shuffled_room_counts = []
-        while room_counts:
-            shuffled_room_counts.append(
-                room_counts.pop(rand.randrange(len(room_counts)))
-            )
-        layout = [
-            (islands, shuffled_room_counts[index])
-            for index, (islands, _) in enumerate(layout)
-        ]
     if len(layout) != floor_count:
         raise ValueError(f"floor_layout must contain {floor_count} entries")
     if any(islands < 0 or filled < 0 for islands, filled in layout):
         raise ValueError("room counts cannot be negative")
     if sum(islands for islands, _ in layout) > 1:
         raise ValueError("the multi-floor builder supports at most one isolated room")
-    layout_by_floor = shuffle_floor_layout(layout)
+    if stage_num == 4 and floor_layout is None:
+        island_counts = [islands for islands, _ in layout]
+        shuffled_island_counts = []
+        while island_counts:
+            shuffled_island_counts.append(
+                island_counts.pop(rand.randrange(len(island_counts)))
+            )
+        filled_counts = list(d.STAGE4_FILLED_ROOM_COUNTS)
+        filled_counts.remove(0)
+        shuffled_filled_counts = [0]
+        while filled_counts:
+            shuffled_filled_counts.append(
+                filled_counts.pop(rand.randrange(len(filled_counts)))
+            )
+        layout_by_floor = list(zip(shuffled_island_counts, shuffled_filled_counts))
+    else:
+        layout_by_floor = shuffle_floor_layout(layout)
     island_floor = next(
         (index for index, counts in enumerate(layout_by_floor) if counts[0]),
         None,
