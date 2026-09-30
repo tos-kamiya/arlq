@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 5.3.4 - 2026-10-01
+
+- Configure each stage's boss explicitly and use its configured label in the
+  progress display. Link Mimics to their configured boss, including empowered
+  variants such as the Stage 4 Fire Drake (`F'`).
+
 ## 5.3.3 - 2026-10-01
 
 - Change the Cursed Sword to consume vitality when breaking walls or contacting
