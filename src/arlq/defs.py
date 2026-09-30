@@ -984,7 +984,7 @@ def build_strength_column(
 def level_item_labels(player: Player, stage_num: int) -> Tuple[str, str]:
     """Level and item fragments shared by both status bars.
 
-    The Collector's x1.2 and Javelin Elf's +25% bonuses apply in every stage.
+    The Collector's x1.2 and Javelin Elf's x1.25 bonuses apply in every stage.
     x1.2 is omitted while a sword already replaces the base multiplier.
     `stage_num` is retained for existing callers.
     """
@@ -1009,7 +1009,7 @@ def level_item_labels(player: Player, stage_num: int) -> Tuple[str, str]:
     if has_k:
         level += " x1.2"
     if has_j:
-        level += " +25%"
+        level += " x1.25"
     return level, item_str
 
 

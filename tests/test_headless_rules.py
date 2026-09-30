@@ -2435,13 +2435,13 @@ def test_level_item_labels_follow_permanent_elf_attack_bonuses():
 
     player.elf_stage_flags = d.ELF_STAGE_K_FLAG
     player.persistent_followers.append((1, 1, 0, "J"))
-    assert d.level_item_labels(player, 3) == ("LVL: 100 /2 x1.2 +25%", "+Poisoned(d)")
-    assert d.level_item_labels(player, 2) == ("LVL: 100 /2 x1.2 +25%", "+Poisoned(d)")
+    assert d.level_item_labels(player, 3) == ("LVL: 100 /2 x1.2 x1.25", "+Poisoned(d)")
+    assert d.level_item_labels(player, 2) == ("LVL: 100 /2 x1.2 x1.25", "+Poisoned(d)")
 
     player.item = d.ITEM_SWORD_X1_5
-    assert d.level_item_labels(player, 3)[0] == "LVL: 100 x1.5 x1.2 +25%"
+    assert d.level_item_labels(player, 3)[0] == "LVL: 100 x1.5 x1.2 x1.25"
     assert d.status_prefix(player, 3, 4).endswith(
-        "LVL: 100 x1.5 x1.2 +25%  +Sword(d)  "
+        "LVL: 100 x1.5 x1.2 x1.25  +Sword(d)  "
     )
 
 
