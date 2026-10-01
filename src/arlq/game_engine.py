@@ -4,7 +4,7 @@ import heapq
 import math
 from collections import Counter, deque
 from copy import deepcopy
-from typing import Any, Container, Deque, List, Optional, Set, Tuple
+from typing import Any, Deque, List, Optional, Set, Tuple
 
 from . import defs as d
 from .arlq import (
@@ -14,7 +14,6 @@ from .arlq import (
     apply_barrier_damage,
     barrier_lp_damage,
     activate_mimic_for_defeat,
-    find_marksman_place,
     find_random_place,
     get_torched,
     iterate_ellipse_points,
@@ -39,6 +38,7 @@ from .stage_types import (
 from .stage_world import (
     build_single_floor,
     _inside_island,
+    _spawn,
     build,
     build_trap_test,
 )
@@ -61,39 +61,6 @@ def _find_escape_place(current: Floor, far_from: Optional[d.Point] = None) -> d.
         far_from=far_from,
         avoid=lambda point: _inside_island(point, current.island),
     )
-
-
-def _spawn(
-    entities: List[d.Entity],
-    field: List[List[str]],
-    ch: str,
-    avoid: Container[d.Point] = (),
-    island_tile: Optional[d.Point] = None,
-    floor_index: Optional[int] = None,
-    empowered: int = 1,
-) -> d.Point:
-    """Spawn an entity through the shared game helpers."""
-    if ch == "k":
-        x, y = find_marksman_place(
-            entities,
-            field,
-            distance=2,
-            avoid=lambda point: point in avoid or _inside_island(point, island_tile),
-        )
-    else:
-        while True:
-            x, y = find_random_place(entities, field, distance=2)
-            if (x, y) not in avoid and not _inside_island((x, y), island_tile):
-                break
-    spawn_at(
-        entities,
-        x,
-        y,
-        d.CHAR_TO_TRIBE[ch],
-        empowered=empowered,
-        origin_floor=floor_index,
-    )
-    return x, y
 
 
 def _marksman_damage_at(
