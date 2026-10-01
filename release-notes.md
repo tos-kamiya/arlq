@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Organize CLI options into general, GUI, terminal, and development groups.
+- Apply `--replay-interval` to trace replay in both GUI and terminal modes, and
+  document the option in the developer notes.
+
 ## 5.4.0 - 2026-10-01
 
 - Refactor command-line startup and shared display calculations into dedicated
