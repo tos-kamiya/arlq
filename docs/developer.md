@@ -49,6 +49,8 @@ updates `last-trace.json` there. `--output PATH` also exports the same trace to
 an explicit path. `--trace PATH` replays a trace in the real UI and does not
 write a new trace. `--trace auto` reads the cached `last-trace.json`; `--trace`
 always requires an argument.
+`--replay-interval SECONDS` sets the delay between replayed turns in either UI;
+the default is `0` (fastest).
 
 Add `--continue` to ignore recorded `Q` inputs and switch to live input when
 the replay inputs run out. This records the replay and continued play as a new
@@ -63,6 +65,9 @@ uv run -p .venv/bin/python python -m arlq
 
 # Replay the latest cached trace without creating a new trace.
 uv run -p .venv/bin/python python -m arlq --trace auto
+
+# Replay with a half-second delay between turns in either UI.
+uv run -p .venv/bin/python python -m arlq --trace auto --replay-interval 0.5
 
 # Ignore a recorded quit, continue playing, and export the resulting trace.
 uv run -p .venv/bin/python python -m arlq --trace trace.json --continue --output continued.json
