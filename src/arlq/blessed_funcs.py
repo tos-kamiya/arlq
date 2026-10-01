@@ -3,6 +3,7 @@ from typing import Any, List, Optional, Set, Tuple
 from blessed import Terminal
 
 from . import defs as d
+from . import display as ui_display
 from .i18n import t as tr
 
 
@@ -222,7 +223,7 @@ class BlessedUI:
 
         player_attack = d.current_player_attack(player, stage_num)
 
-        def paint(glyph: d.FieldGlyph) -> None:
+        def paint(glyph: ui_display.FieldGlyph) -> None:
             color = None if glyph.tone in ("companion", "default", "stair") else glyph.tone
             background = cell_background(glyph.x, glyph.y)
             put(
@@ -237,7 +238,7 @@ class BlessedUI:
 
         if show_entities:
             for entity in entities:
-                for glyph in d.preview_entity_glyphs(
+                for glyph in ui_display.preview_entity_glyphs(
                     entity,
                     reveal_disguises=reveal_disguises,
                     known_types=known_types,
@@ -248,7 +249,7 @@ class BlessedUI:
         for entity in entities:
             if torched[entity.y][entity.x] == 0 or (entity.x, entity.y) == (px, py):
                 continue
-            for glyph in d.revealed_entity_glyphs(
+            for glyph in ui_display.revealed_entity_glyphs(
                 entity, known_types, show_entities, player_attack, dim_types,
                 reveal_disguises=reveal_disguises,
                 debug_show_entities=debug_show_entities,
@@ -274,7 +275,7 @@ class BlessedUI:
                     bg=background,
                 )
 
-        foreground, background = d.player_appearance(player)
+        foreground, background = ui_display.player_appearance(player)
         if not floor_view:
             player_background = background or cell_background(px, py)
             put(
@@ -302,7 +303,7 @@ class BlessedUI:
             d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
         )
         ranking_attack = d.current_player_attack(player, stage_num)
-        for y, (strength_char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, d.FIELD_HEIGHT)):
+        for y, (strength_char, is_player) in enumerate(ui_display.build_strength_column(tribes, ranking_attack, d.FIELD_HEIGHT)):
             if strength_char is None:
                 continue
             gauge_x = d.FIELD_WIDTH - (len(strength_char) - 1)
@@ -310,7 +311,7 @@ class BlessedUI:
 
         if stage_num in d.ELF_STAGES:
             progress_x = 0
-            for label, achieved in d.elf_stage_progress_marks(player, stage_num):
+            for label, achieved in ui_display.elf_stage_progress_marks(player, stage_num):
                 put(
                     progress_x,
                     d.FIELD_HEIGHT - 1,
@@ -342,7 +343,7 @@ class BlessedUI:
             output.append(self.term.move_xy(x, y) + self._style(text, color, bold, dim))
             x += self.term.length(text)
 
-        add(d.status_prefix(player, stage_num, turn, game_start_turn))
+        add(ui_display.status_prefix(player, stage_num, turn, game_start_turn))
         add(f"LP: {player.lp} [")
         bar_len = 8
         lp_max = d.player_lp_max(player)

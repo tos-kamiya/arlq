@@ -42,6 +42,7 @@ from pyglet.window import key as pgkey
 
 from .__about__ import __version__
 from . import defs as d
+from . import display as ui_display
 from .arlq import barrier_lp_damage
 from .i18n import t as tr
 
@@ -574,7 +575,7 @@ class PygletUI:
         if not floor_view and checkpoint is not None and checkpoint != (px, py):
             self._draw_field_text(checkpoint, "+", COLOR_MAP[CI_YELLOW], bold=True)
 
-        foreground, background = d.player_appearance(player)
+        foreground, background = ui_display.player_appearance(player)
         if not floor_view and background is not None:
             self._draw_rect(
                 self._field_col_x(px),
@@ -592,14 +593,14 @@ class PygletUI:
         # Draw entities (monster and treasures)
         player_attack = d.current_player_attack(player, stage_num)
 
-        def paint(glyph: d.FieldGlyph) -> None:
+        def paint(glyph: ui_display.FieldGlyph) -> None:
             self._draw_field_text(
                 (glyph.x, glyph.y), glyph.char, self._tone_color(glyph.tone, glyph.dim), bold=glyph.bold
             )
 
         if show_entities:
             for entity in entities:
-                for glyph in d.preview_entity_glyphs(
+                for glyph in ui_display.preview_entity_glyphs(
                     entity,
                     reveal_disguises=reveal_disguises,
                     known_types=known_types,
@@ -610,7 +611,7 @@ class PygletUI:
         for entity in entities:
             if torched[entity.y][entity.x] == 0 or (entity.x, entity.y) == (px, py):
                 continue
-            for glyph in d.revealed_entity_glyphs(
+            for glyph in ui_display.revealed_entity_glyphs(
                 entity, known_types, show_entities, player_attack, dim_types,
                 reveal_disguises=reveal_disguises,
                 debug_show_entities=debug_show_entities,
@@ -639,7 +640,7 @@ class PygletUI:
             d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
         )
         ranking_attack = d.current_player_attack(player, stage_num)
-        for y, (strength_char, is_player) in enumerate(d.build_strength_column(tribes, ranking_attack, self.field_height)):
+        for y, (strength_char, is_player) in enumerate(ui_display.build_strength_column(tribes, ranking_attack, self.field_height)):
             if strength_char is None:
                 continue
             text_width = self._text_width(strength_char, bold=is_player)
@@ -655,7 +656,7 @@ class PygletUI:
 
         if stage_num in d.ELF_STAGES:
             progress_x = 0
-            for label, achieved in d.elf_stage_progress_marks(player, stage_num):
+            for label, achieved in ui_display.elf_stage_progress_marks(player, stage_num):
                 color = COLOR_MAP["default"] if achieved else (100, 106, 118)
                 self._draw_text(
                     (progress_x, self.field_height - 1), label, color, bold=True
@@ -693,7 +694,7 @@ class PygletUI:
         beatable monsters, LP value, and a rectangular LP bar.
         """
         status_line = (
-            d.status_prefix(player, stage_num, turn, game_start_turn) + "LP: "
+            ui_display.status_prefix(player, stage_num, turn, game_start_turn) + "LP: "
         )
 
         self._draw_text((0, self.field_height), status_line, COLOR_MAP["default"])
