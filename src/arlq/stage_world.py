@@ -914,6 +914,6 @@ def build_single_floor(
             and entity.tribe.char == d.CHAR_FIRE_DRAKE
         )
         _place_stage2_boss_barriers(floor, boss, config.torch_radius)
-    # Legacy update_entities expects the player in the shared entity list.
-    floor.entities.append(player)
+    # The shared turn engine stores the player separately from floor entities.
+    floor.entities.remove(player)
     return [floor], player

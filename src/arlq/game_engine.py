@@ -21,15 +21,12 @@ from .arlq import (
     iterate_offsets,
     move_player,
     prefer_event_message,
-    respawn_entity,
     reveal_entities_in_fov,
     spawn_at,
     spread_caltrops,
     tick_message,
     unlock_treasure_for_defeat,
-    update_entities,
 )
-from .game_events import UpdateResult, WorldEvent
 from .i18n import t as tr, trp
 from .stage_replay import rewind_to_history as _rewind_to_history
 from .stage_types import (
@@ -446,6 +443,7 @@ def _defeat_monster(
     floors: Optional[List[Floor]] = None,
     replay_context: Optional[ReplayContext] = None,
     operation_index: Optional[int] = None,
+    stage_num: int = 3,
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
     ch = entity.tribe.char
@@ -455,8 +453,7 @@ def _defeat_monster(
         entity.met = True
         entity.active = False
 
-    # A successful monster defeat establishes the next respawn point,
-    # matching the legacy stages and the Rust port.
+    # A successful monster defeat establishes the next respawn point.
     if not entity.tribe.is_elf:
         checkpoint[0] = (player.x, player.y)
         if trace is not None:
@@ -477,6 +474,8 @@ def _defeat_monster(
 
     unlock_treasure_for_defeat(entity, current.entities)
     activate_mimic_for_defeat(entity, current.entities)
+    if entity.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
+        player.boss_defeated = True
     if ch == "W":
         player.elf_stage_flags |= d.STAGE3_W_FLAG
         player.known_monsters.add(d.monster_type_key(entity))
@@ -529,8 +528,13 @@ def _defeat_monster(
             )
         _vortex_rearrange(current, player, floor[0], (entity.x, entity.y))
 
-    if d.monster_level(entity) > 0 and ch not in d.STAGE3_NO_RESPAWN_MONSTERS:
-        spawn_key = (floor[0], d.monster_type_key(entity))
+    if (
+        d.monster_level(entity) > 0
+        and ch not in d.STAGE3_NO_RESPAWN_MONSTERS
+        and entity.tribe.effect != d.EFFECT_UNLOCK_TREASURE
+    ):
+        type_key = ch if stage_num in (1, 2) else d.monster_type_key(entity)
+        spawn_key = (floor[0], type_key)
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
 
 
@@ -547,12 +551,26 @@ def _resolve_monster_contact(
     floors: Optional[List[Floor]] = None,
     replay_context: Optional[ReplayContext] = None,
     operation_index: Optional[int] = None,
+    stage_num: int = 3,
 ) -> _ContactResult:
     """Resolve contact with a monster, including early-ending elf encounters."""
     ch = entity.tribe.char
     contact_key = (floor[0], entity.x, entity.y)
     if player.item == d.ITEM_SWORD_CURSED:
         player.lp -= d.CURSED_SWORD_LP_COST
+
+    # Stage 2's H is a passive decoy rather than a combat encounter.
+    if ch == "H" and stage_num == 2:
+        entity.revealed = True
+        player.known_monsters.add(d.monster_type_key(entity))
+        player.last_contact_monster = contact_key
+        if trace is not None:
+            trace.record_contact(
+                {"type": "monster", "id": "H", "outcome": "passive"}
+            )
+        return _ContactResult(
+            trp("-- It looks powerful, but doesn't seem to intend to attack you.", 3)
+        )
 
     if entity.tribe.is_elf:
         player.elf_stage_floors.setdefault(ch, floor[0] + 1)
@@ -755,6 +773,7 @@ def _resolve_monster_contact(
             floors=floors,
             replay_context=replay_context,
             operation_index=operation_index,
+            stage_num=stage_num,
         )
         if ch == "M":
             current.entities.append(entity)
@@ -802,6 +821,7 @@ def _resolve_contact(
     trace: Optional[TraceRecorder] = None,
     replay_context: Optional[ReplayContext] = None,
     operation_index: Optional[int] = None,
+    stage_num: int = 3,
 ) -> _ContactResult:
     """Resolve contact with the entity at `hit` in current.entities.
 
@@ -871,6 +891,7 @@ def _resolve_contact(
         floors=floors,
         replay_context=replay_context,
         operation_index=operation_index,
+        stage_num=stage_num,
     )
 
 
@@ -1075,6 +1096,7 @@ def _process_multi_floor_turn(
                 trace=trace,
                 replay_context=replay_context,
                 operation_index=operation_index,
+                stage_num=stage_num,
             )
             if contact.rewind_requested:
                 return _RewindRequest(floor[0])
@@ -1156,6 +1178,7 @@ def _process_multi_floor_turn(
             trace=trace,
             replay_context=replay_context,
             operation_index=operation_index,
+            stage_num=stage_num,
         )
         if contact.end_turn:
             end_turn_message = prefer_event_message(event_message, contact.message)
@@ -1214,72 +1237,6 @@ def _process_multi_floor_turn(
     return (MESSAGE_TICKS, event_message) if event_message else None
 
 
-def _process_single_floor_turn(
-    direction: d.Point,
-    floors: List[Floor],
-    player: d.Player,
-    floor: List[int],
-    checkpoint: List[d.Point],
-    legacy_respawn_queue: Counter[str],
-    turn: int,
-    stage_num: int,
-    trace: Optional[TraceRecorder] = None,
-) -> UpdateResult:
-    """Resolve one legacy-stage turn, including its scheduled respawns."""
-    current = floors[floor[0]]
-    update_result = update_entities(
-        direction,
-        current.field,
-        player,
-        current.entities,
-        respawn_point=checkpoint[0],
-        stage_num=stage_num,
-    )
-    if update_result.tribes_to_be_respawned:
-        checkpoint[0] = (player.x, player.y)
-        if trace is not None:
-            trace.record_checkpoint(
-                "legacy_respawn_queue",
-                (player.x, player.y),
-                floor[0],
-                entities=update_result.tribes_to_be_respawned,
-            )
-    for char in update_result.tribes_to_be_respawned:
-        if char not in d.NO_RESPAWN_MONSTERS:
-            legacy_respawn_queue[char] += 1
-    if turn % d.MONSTER_RESPAWN_INTERVAL == 0:
-        for char in list(legacy_respawn_queue):
-            if legacy_respawn_queue[char] <= 0:
-                continue
-            tribe = d.CHAR_TO_TRIBE[char]
-            spawn_floor = (
-                rand.randrange(len(floors))
-                if getattr(tribe, "respawn_on_random_floor", False)
-                else floor[0]
-            )
-            respawn_target = floors[spawn_floor]
-            entity = respawn_entity(
-                tribe, respawn_target.entities, respawn_target.field
-            )
-            legacy_respawn_queue[char] -= 1
-            if trace is not None:
-                if isinstance(entity, d.Monster):
-                    kind, event_id = "monster", d.monster_type_key(entity)
-                elif isinstance(entity, d.Companion):
-                    kind, event_id = "companion", entity.tribe.char
-                else:
-                    raise TypeError("Respawned entity must be a monster or companion")
-                update_result.events.world.append(
-                    WorldEvent(
-                        kind,
-                        event_id,
-                        (entity.x, entity.y),
-                        floor=spawn_floor if len(floors) > 1 else None,
-                    )
-                )
-    return update_result
-
-
 # Keep the old private name for tests and external tooling that imported it.
 _step = _process_multi_floor_turn
 
@@ -1295,8 +1252,8 @@ def run_game(
     if config is None:
         config = GameConfig()
     initial_seed = rand.get_seed()
-    legacy_stage = stage_num in (1, 2)
-    if legacy_stage:
+    single_floor_stage = stage_num in (1, 2)
+    if single_floor_stage:
         floors, player = build_single_floor(config, stage_num)
     elif stage_num == 6:
         floors, player = build_trap_test(
@@ -1325,7 +1282,7 @@ def run_game(
     queue: Counter[Tuple[int, str]] = Counter()
     history: Deque[HistoryEntry] = deque()
     turn = 0
-    if legacy_stage:
+    if single_floor_stage:
         message: Tuple[int, str] = (-1, "")
     elif stage_num in d.ELF_STAGES:
         message = (
@@ -1339,8 +1296,6 @@ def run_game(
         )
     elif stage_num == 6:
         message = (5, trp("-- Trap test: Mimic, Vortex, W, treasure, b and d.", 1))
-    legacy_respawn_queue: Counter[str] = Counter()
-
     while player.lp > 0:
         current = floors[floor[0]]
         display_floor = floors[view_floor]
@@ -1370,22 +1325,17 @@ def run_game(
                 player,
                 stage_num,
             )
-        # The terminal renderer discovers the player from the entity list, while
-        # the pygame renderer receives it separately. Keep the Stage 3 state
-        # model separate and provide a render-only combined list.
+        # Floor entities exclude the player for every stage. The terminal
+        # renderer still discovers it through this render-only combined list.
         render_player = deepcopy(player) if floor_view else player
         render_player.current_floor = view_floor
-        render_entities = (
-            display_floor.entities
-            if legacy_stage
-            else [render_player, *display_floor.entities]
-        )
+        render_entities = [render_player, *display_floor.entities]
         known_types = player.known_monsters
         no_current_visibility = [
             [0] * len(display_floor.field[0]) for _ in display_floor.field
         ]
         stage_draw_options = {}
-        if not legacy_stage:
+        if not single_floor_stage:
             stage_draw_options = {
                 "stage_roster": d.STAGE3_ROSTER_TRIBES
                 if stage_num == 3
@@ -1444,35 +1394,6 @@ def run_game(
             replay_context.turn_to_operation[game_start_turn] = len(
                 replay_context.operations
             )
-
-        if legacy_stage:
-            update_result = _process_single_floor_turn(
-                move,
-                floors,
-                player,
-                floor,
-                checkpoint,
-                legacy_respawn_queue,
-                turn,
-                stage_num,
-                trace=trace,
-            )
-            if update_result.message is not None:
-                candidate_message = update_result.message
-                if prefer_event_message(
-                    message[1] if message is not None else None,
-                    candidate_message[1],
-                ) == candidate_message[1]:
-                    message = candidate_message
-            if trace is not None:
-                trace.record_events(update_result.events)
-                trace.set_player(player, stage_num)
-                trace.commit_turn()
-            if update_result.effect == d.EFFECT_GOT_TREASURE:
-                break
-            turn += 1
-            player.lp -= 1
-            continue
 
         step_result = _process_multi_floor_turn(
             move,
@@ -1555,12 +1476,10 @@ def run_game(
         cur = get_torched(player, config.torch_radius)
         render_player = deepcopy(player) if floor_view else player
         render_player.current_floor = view_floor
-        render_entities = (
-            display_floor.entities if legacy_stage else [render_player, *display_floor.entities]
-        )
+        render_entities = [render_player, *display_floor.entities]
         known_types = player.known_monsters
         stage_draw_options = {}
-        if not legacy_stage:
+        if not single_floor_stage:
             stage_draw_options = {
                 "stage_roster": d.STAGE3_ROSTER_TRIBES
                 if stage_num == 3
