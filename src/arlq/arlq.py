@@ -27,6 +27,13 @@ from .game_events import ContactEvent, ExpiredEvent, TurnEvents, UpdateResult, W
 
 MESSAGE_TICKS = 8
 GAME_ENGINE_MODULE = "game_engine"
+PLAYER_PASSABLE_CELLS = (
+    d.CHAR_FLOOR,
+    d.CHAR_CALTROP,
+    d.CHAR_COLLAPSE,
+    *d.STAIR_CHARS,
+    d.CHAR_BARRIER,
+)
 
 
 @dataclass(frozen=True)
@@ -605,12 +612,7 @@ def move_player(
         if (
             0 <= jump_y < height
             and 0 <= jump_x < width
-            and field[jump_y][jump_x] in (
-                d.CHAR_FLOOR,
-                d.CHAR_CALTROP,
-                d.CHAR_COLLAPSE,
-                d.CHAR_BARRIER,
-            )
+            and field[jump_y][jump_x] in PLAYER_PASSABLE_CELLS
         ):
             player.x, player.y = jump_x, jump_y
             player.karma += 1
@@ -634,6 +636,30 @@ def move_player(
     return WallEvent("blocked")
 
 
+def barrier_lp_damage(player: d.Player) -> int:
+    """Return the LP cost for entering a barrier cell."""
+    return (
+        0
+        if player.elf_stage_flags & d.ELF_STAGE_H_FLAG
+        else d.BARRIER_LP_DAMAGE
+    )
+
+
+def apply_barrier_damage(
+    field: List[List[str]], player: d.Player, previous: d.Point
+) -> bool:
+    """Apply the shared barrier cost after movement and report whether it burned."""
+    if (player.x, player.y) == previous:
+        return False
+    if field[player.y][player.x] != d.CHAR_BARRIER:
+        return False
+    damage = barrier_lp_damage(player)
+    if damage == 0:
+        return False
+    player.lp -= damage
+    return True
+
+
 def update_entities(
     move_direction: d.Point,
     field: List[List[str]],
@@ -647,8 +673,9 @@ def update_entities(
     effect = None
     tribes_to_be_respawned = []
     message = None
+    previous = (player.x, player.y)
     wall_result = move_player(
-        move_direction, field, player, (d.CHAR_FLOOR, d.CHAR_CALTROP)
+        move_direction, field, player, PLAYER_PASSABLE_CELLS
     )
 
     if wall_result is not None:
@@ -658,6 +685,8 @@ def update_entities(
     if field[player.y][player.x] == d.CHAR_CALTROP:
         player.lp -= d.CALTROP_LP_DAMAGE
         field[player.y][player.x] = d.CHAR_FLOOR
+    if apply_barrier_damage(field, player, previous):
+        message = (MESSAGE_TICKS, trp("-- The barrier burns you.", 5))
 
     # Find encountered entity
     enc_entity_infos: List[Tuple[int, d.Entity]] = []

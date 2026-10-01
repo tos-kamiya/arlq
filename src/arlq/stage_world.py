@@ -8,6 +8,7 @@ from .arlq import (
     create_field,
     find_marksman_place,
     find_random_place,
+    iterate_ellipse_points,
     place_to_tile,
     spawn_at,
     spawn_entities,
@@ -55,6 +56,43 @@ def _place_stage4_final_floor_barriers(floor: Floor) -> None:
         x, y = candidates.pop(rand.randrange(len(candidates)))
         floor.field[y][x] = d.CHAR_BARRIER
         floor.persistent_barriers.add((x, y))
+
+
+def _place_stage2_boss_barriers(
+    floor: Floor, boss: d.Monster, torch_radius: int
+) -> None:
+    """Place a few separated persistent barriers around the Stage 2 boss."""
+    occupied = {(entity.x, entity.y) for entity in floor.entities}
+    candidates = []
+    for point in iterate_ellipse_points(
+        boss.x, boss.y, torch_radius, d.FOV_WIDTH_EXPANSION_RATIO
+    ):
+        x, y = point
+        if (
+            floor.field[y][x] == d.CHAR_FLOOR
+            and max(abs(x - boss.x), abs(y - boss.y)) > 1
+            and point not in occupied
+            and point not in {floor.up, floor.down}
+        ):
+            candidates.append(point)
+    barriers_placed = 0
+    while candidates and barriers_placed < d.STAGE2_BOSS_BARRIER_COUNT:
+        available = [
+            candidate
+            for candidate in candidates
+            if all(
+                max(abs(candidate[0] - bx), abs(candidate[1] - by)) > 1
+                for bx, by in floor.persistent_barriers
+            )
+        ]
+        if not available:
+            break
+        point = available[rand.randrange(len(available))]
+        candidates.remove(point)
+        x, y = point
+        floor.field[y][x] = d.CHAR_BARRIER
+        floor.persistent_barriers.add(point)
+        barriers_placed += 1
 
 
 def _inside_island(point: Optional[d.Point], island_tile: Optional[d.Point]) -> bool:
@@ -868,6 +906,14 @@ def build_single_floor(
         down=treasure_point,
         island=None,
     )
+    if stage_num == 2:
+        boss = next(
+            entity
+            for entity in entities
+            if isinstance(entity, d.Monster)
+            and entity.tribe.char == d.CHAR_FIRE_DRAKE
+        )
+        _place_stage2_boss_barriers(floor, boss, config.torch_radius)
     # Legacy update_entities expects the player in the shared entity list.
     floor.entities.append(player)
     return [floor], player

@@ -596,6 +596,7 @@ SPAWN_CONFIGS_ST1 = [
 ]
 
 # Stage 2 spawn configurations.
+STAGE2_BOSS_BARRIER_COUNT: int = 5
 SPAWN_CONFIGS_ST2 = [
     _SC(CHAR_TO_TRIBE["a"], 20),
     _SC(CHAR_TO_TRIBE["A"], 3),
