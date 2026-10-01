@@ -1141,11 +1141,9 @@ def preview_entity_glyphs(
         and entity.tribe.char == "H"
         and stage_num == 2
     )
-    known = (
-        entity.revealed or monster_type_key(entity) in known_types
-        if stage2_high_elf
-        else False
-    )
+    known = False
+    if isinstance(entity, Monster) and stage2_high_elf:
+        known = entity.revealed or monster_type_key(entity) in known_types
     tone = "red" if known else "default"
     glyphs = [
         FieldGlyph(
