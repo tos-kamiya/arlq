@@ -206,11 +206,11 @@ Traps are monsters with special abilities, such as disguising themselves as trea
 
 Unidentified traps appear as `?`. The Mimic appears with the same timing and symbol as the treasure chest.
 
-| Display | Name | Description |
-| ------- | ---- | ----------- |
-| `T` | Mimic | Appears as a treasure chest after the stage boss is defeated. It has level 1; defeating it moves the player to a random position on the same floor. |
-| `?` / `O` | Collapse | Displayed as `?`; stepping on it creates a pit in that cell or one of its four adjacent cells. |
-| `V` | Vortex | Repositions nearby monsters, companions, and treasure chests when defeated. |
+| Display & Name | Description |
+| -------------- | ----------- |
+| `T` Mimic | Appears as a treasure chest after the stage boss is defeated. It has level 1; defeating it moves the player to a random position on the same floor. |
+| `?` / `O` Collapse | Displayed as `?`; stepping on it creates a pit in that cell or one of its four adjacent cells. |
+| `V` Vortex | Repositions nearby monsters, companions, and treasure chests when defeated. |
 
 #### Elves
 
