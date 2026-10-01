@@ -585,7 +585,7 @@ _SC = SpawnConfig
 
 # Stage 1 spawn configurations.
 SPAWN_CONFIGS_ST1 = [
-    _SC(CHAR_TO_TRIBE["a"], 10),
+    _SC(CHAR_TO_TRIBE["a"], 9),
     _SC(CHAR_TO_TRIBE["A"], 2),
     _SC(CHAR_TO_TRIBE["b"], 5),
     _SC(CHAR_TO_TRIBE["c"], 1),
