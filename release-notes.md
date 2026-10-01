@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+## 5.4.1 - 2026-10-02
+
 - Organize CLI options into general, GUI, terminal, and development groups.
+- Keep GUI-only options out of `arlq-cli` and order general and development
+  options consistently.
 - Apply `--replay-interval` to trace replay in both GUI and terminal modes, and
   document the option in the developer notes.
 
