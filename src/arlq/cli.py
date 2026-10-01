@@ -25,65 +25,68 @@ def _prepare_cli_session():
     parser = argparse.ArgumentParser(
         description="A Rogue-Like game.",
     )
+    general = parser.add_argument_group("General options")
+    gui = parser.add_argument_group("GUI options")
+    terminal = parser.add_argument_group("Terminal options")
+    dev = parser.add_argument_group("Development options")
 
-    parser.add_argument(
+    general.add_argument(
         "--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, or 4)."
     )
-    parser.add_argument(
+    general.add_argument(
         "--version", action="version", version="%(prog)s " + __version__
     )
 
-    g = parser.add_mutually_exclusive_group()
+    g = general.add_mutually_exclusive_group()
     g.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
     g.add_argument("-t", "--small-torch", action="store_true", help="Small torch.")
-    parser.add_argument(
+    general.add_argument(
         "-n", "--narrower-corridors", action="store_true", help="Narrower corridors."
     )
 
-    parser.add_argument("--seed", action="store", help="Seed value or seed string")
-    parser.add_argument(
+    general.add_argument("--seed", action="store", help="Seed value or seed string")
+    general.add_argument(
         "--rematch",
         action="store_true",
         help="Replay the last stage with the same seed.",
     )
-    parser.add_argument(
+    terminal.add_argument(
         "--terminal",
         "--curses",
         dest="terminal",
         action="store_true",
         help="Use the Blessed terminal UI (--curses is a deprecated alias).",
     )
-    parser.add_argument(
+    terminal.add_argument(
         "--dots",
         action="store_true",
         help="Use dots instead of background colors for unexplored areas in the terminal UI.",
     )
-    parser.add_argument(
+    general.add_argument(
         "--lang",
         choices=["auto", "en", "ja"],
         default="auto",
         help="UI message language ('auto' detects it from the locale; default: auto).",
     )
-    parser.add_argument(
+    gui.add_argument(
         "--scale",
         type=float,
         metavar="FACTOR",
         help="GUI display scale (0.5 to 4.0); saves the value for future GUI starts.",
     )
-    parser.add_argument(
+    gui.add_argument(
         "--key-repeat-interval",
         type=lambda value: None if value.lower() == "none" else float(value),
         metavar="SECONDS|none",
         default=argparse.SUPPRESS,
         help="GUI movement repeat delay and interval (0.1 to 1.0 seconds, or none); saves for future GUI starts.",
     )
-    dev = parser.add_argument_group("Development and debugging options")
     dev.add_argument(
         "--replay-interval",
         type=game.parse_replay_interval,
         metavar="SECONDS",
         default=0.0,
-        help="Delay between turns during terminal trace replay (default: 0, fastest).",
+        help="Delay between turns during trace replay in either UI (default: 0, fastest).",
     )
     dev.add_argument(
         "--trap-test", action="store_true", help="Start the trap test stage."
@@ -260,7 +263,7 @@ def main():
                 trace_data["turns"],
                 args.stage,
                 ui,
-                draw_interval=args.replay_interval if args.terminal else 0.0,
+                draw_interval=args.replay_interval,
                 continue_play=args.continue_trace or args.rewind is not None,
             )
             game.run_game(
