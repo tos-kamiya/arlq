@@ -1047,8 +1047,9 @@ def main():
 
 
 def main_cli():
-    sys.argv.append("--terminal")
-    main()
+    from .cli import main as cli_main
+
+    cli_main(terminal_only=True)
 
 
 if __name__ == "__main__":
