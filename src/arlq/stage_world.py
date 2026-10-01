@@ -8,6 +8,7 @@ from .arlq import (
     create_field,
     find_marksman_place,
     find_random_place,
+    place_to_tile,
     spawn_at,
     spawn_entities,
 )
@@ -850,6 +851,15 @@ def build_single_floor(
     player = d.Player(*entry, 1, d.LP_INIT)
     entities.append(player)
     spawn_entities(entities, field, spawn_config)
+    if stage_num == 1:
+        player_tile = place_to_tile(*entry)
+        amoeba_point = find_random_place(
+            entities,
+            field,
+            distance=2,
+            avoid=lambda point: place_to_tile(*point) != player_tile,
+        )
+        spawn_at(entities, *amoeba_point, d.CHAR_TO_TRIBE["a"])
     floor = Floor(
         field=field,
         entities=entities,
