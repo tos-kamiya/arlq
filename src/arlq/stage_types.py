@@ -1,4 +1,4 @@
-"""Shared state types for multi-floor stages."""
+"""State and result types shared by the game loop and replay code."""
 
 from collections import Counter
 from dataclasses import dataclass
@@ -54,7 +54,7 @@ class ReplayContext:
 
 @dataclass(frozen=True)
 class _ContactResult:
-    """Outcome of an entity contact within one Stage 3 turn."""
+    """Package-private outcome of an entity contact during one game turn."""
 
     message: Optional[str]
     end_turn: bool = False
@@ -64,6 +64,6 @@ class _ContactResult:
 
 @dataclass(frozen=True)
 class _RewindRequest:
-    """Signal from a turn step to the game loop to run rewind handling."""
+    """Package-private signal to the game loop to run rewind handling."""
 
     floor_index: int

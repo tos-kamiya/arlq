@@ -16,7 +16,7 @@ ELF_STAGES = frozenset({3, 4})
 STAGE1_COLUMN_MARGIN: int = 1
 CORRIDOR_V_WIDTH: int = 3
 CORRIDOR_H_WIDTH: int = 2
-WALL_CHAR: str = "#"
+CHAR_WALL: str = "#"
 CHAR_FLOOR: str = " "
 CHAR_STAIRS_UP: str = "^"
 CHAR_STAIRS_DOWN: str = "v"
@@ -42,8 +42,8 @@ MONSTER_RESPAWN_INTERVAL: int = 65
 SWORD_USES: int = 3
 CURSED_SWORD_LP_COST: int = 10
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
-# Wyrms, the Stage 4 boss, and mimics stay down for the rest of a multi-floor run.
-STAGE3_NO_RESPAWN_MONSTERS = NO_RESPAWN_MONSTERS | {"W", "w", "M", "F"}
+# These monsters do not respawn after defeat in the current game engine.
+MONSTERS_EXCLUDED_FROM_RESPAWN = NO_RESPAWN_MONSTERS | {"W", "w", "M", "F"}
 ELF_STAGE_C_FLAG: int = 1
 ELF_STAGE_I_FLAG: int = 2
 ELF_STAGE_K_FLAG: int = 4
@@ -268,7 +268,7 @@ class Companion(Entity):
 
     Attributes:
         tribe: Tribe information of the companion (CompanionTribe instance).
-        origin_floor: (Stage 3 only) index of the floor this companion was
+        origin_floor: (multi-floor stages) index of the floor this companion was
             spawned on, used to respawn it there after it is carried to
             another floor and expires.
     """

@@ -145,7 +145,7 @@ def test_replay_ui_draw_stage_forwards_only_when_given_a_draw_target():
 def test_legacy_wall_blocked():
     player = d.Player(2, 2, 1, 90)
     field = blank_field()
-    field[2][3] = d.WALL_CHAR
+    field[2][3] = d.CHAR_WALL
     trace = TraceRecorder(params={})
 
     turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set())
@@ -159,7 +159,7 @@ def test_legacy_wall_sword_break_reports_remaining_uses():
     player.item = d.ITEM_SWORD_X1_5
     player.item_uses = 1
     field = blank_field()
-    field[2][3] = d.WALL_CHAR
+    field[2][3] = d.CHAR_WALL
     trace = TraceRecorder(params={})
 
     turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set())
@@ -172,7 +172,7 @@ def test_legacy_wall_pegasus_phase():
     player = d.Player(2, 2, 1, 90)
     player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
     field = blank_field()
-    field[2][3] = d.WALL_CHAR
+    field[2][3] = d.CHAR_WALL
     trace = TraceRecorder(params={})
 
     turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set())
@@ -393,7 +393,7 @@ def test_stage3_wall_pegasus_phase():
     player = d.Player(2, 2, 1, 90)
     player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
     floor_data = one_floor([])
-    floor_data.field[2][3] = d.WALL_CHAR
+    floor_data.field[2][3] = d.CHAR_WALL
     trace = TraceRecorder(params={})
 
     trace.begin_turn("R")
@@ -408,7 +408,7 @@ def test_stage3_wall_pegasus_phase_after_player_state_is_deepcopied():
     player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE[d.CHAR_PEGASUS])
     player = deepcopy(player)
     floor_data = one_floor([])
-    floor_data.field[2][3] = d.WALL_CHAR
+    floor_data.field[2][3] = d.CHAR_WALL
 
     _move_player(KEYS["R"], floor_data, player)
 
@@ -419,8 +419,8 @@ def test_stage3_wall_blocked_when_pegasus_jump_target_is_solid():
     player = d.Player(2, 2, 1, 90)
     player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
     floor_data = one_floor([])
-    floor_data.field[2][3] = d.WALL_CHAR
-    floor_data.field[2][2 + d.PEGASUS_STEP_X] = d.WALL_CHAR
+    floor_data.field[2][3] = d.CHAR_WALL
+    floor_data.field[2][2 + d.PEGASUS_STEP_X] = d.CHAR_WALL
     trace = TraceRecorder(params={})
 
     trace.begin_turn("R")

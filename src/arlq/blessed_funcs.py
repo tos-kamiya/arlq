@@ -170,7 +170,7 @@ class BlessedUI:
                             y,
                             cell,
                             "green"
-                            if cell == d.WALL_CHAR
+                            if cell == d.CHAR_WALL
                             else "magenta"
                             if cell == d.CHAR_CALTROP
                             else "yellow"
@@ -179,7 +179,7 @@ class BlessedUI:
                             bg="blue" if (x, y) in highlighted_cells else None,
                         )
                     elif discovered:
-                        if cell == d.WALL_CHAR:
+                        if cell == d.CHAR_WALL:
                             put(x, y, cell, "green", bg="blue" if (x, y) in highlighted_cells else None)
                         else:
                             put(x, y, cell, bg="blue" if (x, y) in highlighted_cells else None)
@@ -188,7 +188,7 @@ class BlessedUI:
                 else:
                     color = (
                         "green"
-                        if cell == d.WALL_CHAR
+                        if cell == d.CHAR_WALL
                         else "magenta"
                         if cell == d.CHAR_CALTROP
                         else "yellow"

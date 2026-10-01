@@ -529,9 +529,9 @@ class PygletUI:
             for x, cell in enumerate(row):
                 discovered = bool(torched[y][x] or show_entities)
                 if cur_torched[y][x]:
-                    tile_color = VISIBLE_WALL if cell == d.WALL_CHAR else VISIBLE_FLOOR
+                    tile_color = VISIBLE_WALL if cell == d.CHAR_WALL else VISIBLE_FLOOR
                 elif discovered:
-                    tile_color = WALL if cell == d.WALL_CHAR else FLOOR
+                    tile_color = WALL if cell == d.CHAR_WALL else FLOOR
                 else:
                     tile_color = FOG
                 if cell == d.CHAR_CALTROP and discovered:

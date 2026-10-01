@@ -1,4 +1,4 @@
-"""Floor construction and map generation for the multi-floor stages."""
+"""Floor construction and map generation for Stages 1–4."""
 
 from typing import Container, Dict, Iterable, List, Optional, Tuple
 
@@ -69,7 +69,7 @@ def _has_four_wall_neighbors(
     return all(
         (x + dx, y + dy) in added_walls
         or not (0 <= x + dx < width and 0 <= y + dy < height)
-        or field[y + dy][x + dx] == d.WALL_CHAR
+        or field[y + dy][x + dx] == d.CHAR_WALL
         for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
     )
 
@@ -104,7 +104,7 @@ def _add_filled_room_wall_notches(
         for x, y in edge_cells:
             if not (0 < x < width - 1 and 0 < y < height - 1):
                 continue
-            if field[y][x] != d.WALL_CHAR:
+            if field[y][x] != d.CHAR_WALL:
                 continue
             if _has_four_wall_neighbors(field, (x, y)):
                 continue
@@ -122,7 +122,7 @@ def _add_stage1_margin_notches(field: List[List[str]]) -> None:
             for y in range(top + 1, bottom):
                 if not _is_wall_notch_point((x, y)):
                     continue
-                if field[y][x] != d.WALL_CHAR:
+                if field[y][x] != d.CHAR_WALL:
                     continue
                 if _has_four_wall_neighbors(field, (x, y)):
                     continue
@@ -375,14 +375,14 @@ def _spawn_island_elf(
             field[y][x] = d.CHAR_FLOOR
     for x in range(left, left + d.TILE_WIDTH):
         if island_tile[1] > 0:
-            field[top - 1][x] = d.WALL_CHAR
+            field[top - 1][x] = d.CHAR_WALL
         if island_tile[1] < d.TILE_NUM_Y - 1:
-            field[top + d.TILE_HEIGHT][x] = d.WALL_CHAR
+            field[top + d.TILE_HEIGHT][x] = d.CHAR_WALL
     for y in range(top, top + d.TILE_HEIGHT):
         if island_tile[0] > 0:
-            field[y][left - 1] = d.WALL_CHAR
+            field[y][left - 1] = d.CHAR_WALL
         if island_tile[0] < d.TILE_NUM_X - 1:
-            field[y][left + d.TILE_WIDTH] = d.WALL_CHAR
+            field[y][left + d.TILE_WIDTH] = d.CHAR_WALL
     spots = [
         (x, y)
         for y in range(top, top + d.TILE_HEIGHT)
@@ -438,7 +438,7 @@ def _add_stage4_wall_spurs(
                         for y in (start, start + 1)
                     ]
                     if all(
-                        field[y][x] == d.WALL_CHAR for x, y in boundary_cells
+                        field[y][x] == d.CHAR_WALL for x, y in boundary_cells
                     ) and all(
                         field[y][x] == d.CHAR_FLOOR for x, y in spur_cells
                     ):
@@ -462,7 +462,7 @@ def _add_stage4_wall_spurs(
                         for x in (start, start + 1)
                     ]
                     if all(
-                        field[y][x] == d.WALL_CHAR for x, y in boundary_cells
+                        field[y][x] == d.CHAR_WALL for x, y in boundary_cells
                     ) and all(
                         field[y][x] == d.CHAR_FLOOR for x, y in spur_cells
                     ):
@@ -474,7 +474,7 @@ def _add_stage4_wall_spurs(
             ]
             if candidates:
                 for x, y in rand.choice(candidates):
-                    field[y][x] = d.WALL_CHAR
+                    field[y][x] = d.CHAR_WALL
 
 
 def _build_floor(
@@ -753,7 +753,7 @@ def build_trap_test(
     field, entry, wyrm_point = create_field(
         corridor_h_width,
         corridor_v_width,
-        d.WALL_CHAR,
+        d.CHAR_WALL,
         tile_columns=3,
     )
     wyrm = d.Monster(*wyrm_point, d.CHAR_TO_MONSTER_TRIBE["W"])
@@ -972,7 +972,7 @@ def build_single_floor(
     field, entry, treasure_point = create_field(
         config.corridor_h_width,
         config.corridor_v_width,
-        d.WALL_CHAR,
+        d.CHAR_WALL,
         margin_x=d.STAGE1_COLUMN_MARGIN if stage_num == 1 else 0,
     )
     if stage_num == 1:

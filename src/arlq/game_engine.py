@@ -1,4 +1,4 @@
-"""Shared stage loop with multi-floor rules for Stages 3 and 4."""
+"""Shared game loop for Stages 1–4 and the internal Stage 6 test field."""
 
 import heapq
 import math
@@ -103,7 +103,7 @@ def _marksman_damage_at(
         for offset in range(1, distance):
             bx, by = shooter.x + step_x * offset, shooter.y + step_y * offset
             if field[by][bx] in (
-                d.WALL_CHAR,
+                d.CHAR_WALL,
                 *d.STAIR_CHARS,
             ):
                 blocked = True
@@ -255,7 +255,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
         for offset in range(1, distance):
             x, y = entity.x + step_x * offset, entity.y + step_y * offset
             if current.field[y][x] in (
-                d.WALL_CHAR,
+                d.CHAR_WALL,
                 *d.STAIR_CHARS,
             ):
                 blocked = True
@@ -480,7 +480,7 @@ def _defeat_monster(
             if (x, y) not in protected_collapse_cells and current.field[y][
                 x
             ] == d.CHAR_FLOOR:
-                current.field[y][x] = d.WALL_CHAR
+                current.field[y][x] = d.CHAR_WALL
     elif entity.tribe.effect == d.EFFECT_VORTEX:
         if (
             replay_context is not None
@@ -497,7 +497,7 @@ def _defeat_monster(
 
     if (
         d.monster_level(entity) > 0
-        and ch not in d.STAGE3_NO_RESPAWN_MONSTERS
+        and ch not in d.MONSTERS_EXCLUDED_FROM_RESPAWN
         and entity.tribe.effect != d.EFFECT_UNLOCK_TREASURE
     ):
         type_key = ch if stage_num in (1, 2) else d.monster_type_key(entity)
@@ -1211,7 +1211,7 @@ _step = _process_multi_floor_turn
 def run_game(
     ui: Any,
     seed_str: str,
-    debug: bool = False,
+    debug_show_entities: bool = False,
     trace: Optional[TraceRecorder] = None,
     config: Optional[GameConfig] = None,
     stage_num: int = 3,
@@ -1281,7 +1281,7 @@ def run_game(
         message = tick_message(message)
 
         floor_view = view_floor != floor[0]
-        show_entities = debug or getattr(ui, "map_mode", False)
+        show_entities = debug_show_entities or getattr(ui, "map_mode", False)
         reachable_cells: Set[d.Point] = set()
         if getattr(ui, "farthest_preview", False) and not floor_view:
             reachable_cells = reachable_known_cells(
@@ -1320,7 +1320,7 @@ def run_game(
             torched=display_floor.seen,
             known_types=known_types,
             show_entities=show_entities,
-            debug_show_entities=debug,
+            debug_show_entities=debug_show_entities,
             stage_num=stage_num,
             message=message[1],
             checkpoint=checkpoint[0],
@@ -1466,8 +1466,8 @@ def run_game(
             ),
             torched=display_floor.seen,
             known_types=known_types,
-            show_entities=debug or getattr(ui, "map_mode", False),
-            debug_show_entities=debug,
+            show_entities=debug_show_entities or getattr(ui, "map_mode", False),
+            debug_show_entities=debug_show_entities,
             stage_num=stage_num,
             message=message[1],
             extra_keys=True,
@@ -1483,7 +1483,7 @@ def run_game(
             if hasattr(ui, "map_mode"):
                 ui.map_mode = True
             else:
-                debug = True
+                debug_show_entities = True
         elif key == "s":
             message = (-1, tr("SEED: {seed_str}").format(seed_str=seed_str))
         elif isinstance(key, tuple) and len(key) == 3:

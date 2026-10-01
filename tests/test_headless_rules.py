@@ -210,8 +210,8 @@ def test_stage3_receives_the_per_run_game_config(monkeypatch):
     config = GameConfig(torch_radius=5, corridor_h_width=1, corridor_v_width=2)
     received = []
 
-    def fake_run_game(ui, seed_str, debug, trace=None, config=None):
-        received.append((ui, seed_str, debug, trace, config))
+    def fake_run_game(ui, seed_str, debug_show_entities, trace=None, config=None):
+        received.append((ui, seed_str, debug_show_entities, trace, config))
 
     monkeypatch.setattr(game_engine_module, "run_game", fake_run_game)
 
@@ -515,8 +515,8 @@ def test_trap_test_places_requested_entities_and_collapse_landing():
     floors, _ = stage_world_module.build_trap_test()
 
     assert len(floors) == 2
-    assert all(cell == d.WALL_CHAR for row in floors[0].field for cell in row[:13])
-    assert all(cell == d.WALL_CHAR for row in floors[0].field for cell in row[52:])
+    assert all(cell == d.CHAR_WALL for row in floors[0].field for cell in row[:13])
+    assert all(cell == d.CHAR_WALL for row in floors[0].field for cell in row[52:])
     assert sum(isinstance(entity, d.Collapse) for entity in floors[0].entities) == 1
     assert [
         sum(
@@ -597,7 +597,7 @@ def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
         (d.CHAR_CALTROP, False),
         (d.CHAR_BARRIER, False),
         (d.CHAR_COLLAPSE, False),
-        (d.WALL_CHAR, True),
+        (d.CHAR_WALL, True),
         *((stair, True) for stair in d.STAIR_CHARS),
     ],
 )
@@ -675,7 +675,7 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
     for center in ((dread_wyrm.x, dread_wyrm.y), (wyrm.x, wyrm.y)):
         stage_world_module._place_barrier(field, center)
     seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
-    field[4][4] = d.WALL_CHAR
+    field[4][4] = d.CHAR_WALL
     field[4][5] = d.CHAR_STAIRS_UP
     current = Floor(
         field=field,
@@ -1410,7 +1410,7 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
         player, [loop, known_companion, current_treasure]
     )
     current_floors[0].seen[1][1] = 9
-    current_field[10][10] = d.WALL_CHAR
+    current_field[10][10] = d.CHAR_WALL
 
     old_player = d.Player(5, 5, 7, 60)
     old_loop = d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"])
@@ -1966,7 +1966,7 @@ def test_sword_breaks_wall_and_consumes_one_use():
     player.item = d.ITEM_SWORD_CURSED
     player.item_uses = 2
     field = blank_field()
-    field[2][3] = d.WALL_CHAR
+    field[2][3] = d.CHAR_WALL
 
     effect, respawns, message, contact = update_entities(
         KEYS["R"], field, player, [player], respawn_point=(2, 2)
@@ -1988,7 +1988,7 @@ def test_sword_breaking_its_last_wall_clears_all_equipment_state():
     player.item_uses = 1
     player.item_taken_from = "C"
     field = blank_field()
-    field[2][3] = d.WALL_CHAR
+    field[2][3] = d.CHAR_WALL
 
     update_entities(KEYS["R"], field, player, [player], respawn_point=(2, 2))
 
@@ -2003,7 +2003,7 @@ def test_stage3_sword_breaking_its_last_wall_clears_all_equipment_state():
     player.item_uses = 1
     player.item_taken_from = "C"
     floors, field = stage3_state(player, [])
-    field[2][3] = d.WALL_CHAR
+    field[2][3] = d.CHAR_WALL
 
     run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter(), deque())
 
@@ -2412,7 +2412,7 @@ def test_elf_stage_flags_keep_their_bit_values():
         d.STAGE3_W_FLAG,
         d.ELF_STAGE_J_FLAG,
     ) == (1, 2, 4, 8, 32, 16, 64)
-    assert d.STAGE3_NO_RESPAWN_MONSTERS == {
+    assert d.MONSTERS_EXCLUDED_FROM_RESPAWN == {
         "a", "A", "b", "c", "C", "F", "M", "W", "w"
     }
 
