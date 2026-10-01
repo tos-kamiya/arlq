@@ -45,7 +45,7 @@ def generate_floor_field(
     all_rooms = {(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)}
     for _ in range(1000):
         field, generated_up, generated_down = create_field(
-            corridor_h_width, corridor_v_width, d.WALL_CHAR
+            corridor_h_width, corridor_v_width, d.CHAR_WALL
         )
         up = up_point if up_point is not None else generated_up
         down = down_point if down_point is not None else generated_down
@@ -135,7 +135,7 @@ def generate_floor_field(
             top = room[1] * (d.TILE_HEIGHT + 1) + 1
             for y in range(top, top + d.TILE_HEIGHT):
                 for x in range(left, left + d.TILE_WIDTH):
-                    field[y][x] = d.WALL_CHAR
+                    field[y][x] = d.CHAR_WALL
 
         # Rebuild internal partitions, opening only the accepted room tree.
         for ty in range(d.TILE_NUM_Y):
@@ -144,14 +144,14 @@ def generate_floor_field(
                 for y in range(
                     ty * (d.TILE_HEIGHT + 1) + 1, (ty + 1) * (d.TILE_HEIGHT + 1)
                 ):
-                    field[y][x] = d.WALL_CHAR
+                    field[y][x] = d.CHAR_WALL
         for ty in range(d.TILE_NUM_Y - 1):
             y = (ty + 1) * (d.TILE_HEIGHT + 1)
             for tx in range(d.TILE_NUM_X):
                 for x in range(
                     tx * (d.TILE_WIDTH + 1) + 1, (tx + 1) * (d.TILE_WIDTH + 1)
                 ):
-                    field[y][x] = d.WALL_CHAR
+                    field[y][x] = d.CHAR_WALL
 
         for (x1, y1), (x2, y2) in edges:
             if y1 == y2:

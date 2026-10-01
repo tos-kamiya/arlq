@@ -243,7 +243,7 @@ def _marksman_sight_score(
             distance += 1
             if not (0 <= y < len(field) and 0 <= x < len(field[0])):
                 break
-            if field[y][x] in (d.WALL_CHAR, *d.STAIR_CHARS):
+            if field[y][x] in (d.CHAR_WALL, *d.STAIR_CHARS):
                 break
             if (x, y) in blocked_entities:
                 break
@@ -490,7 +490,7 @@ def spread_caltrops(
         except_for_center=True,
         except_for_entities=entities,
     ):
-        if (x + y) % 2 == 0 and field[y][x] in (d.CHAR_FLOOR, d.WALL_CHAR):
+        if (x + y) % 2 == 0 and field[y][x] in (d.CHAR_FLOOR, d.CHAR_WALL):
             field[y][x] = d.CHAR_CALTROP
 
 
@@ -625,7 +625,7 @@ def move_player(
     if (
         player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
         and player.item_uses > 0
-        and cell == d.WALL_CHAR
+        and cell == d.CHAR_WALL
     ):
         player.x, player.y = nx, ny
         field[ny][nx] = d.CHAR_FLOOR
@@ -855,7 +855,7 @@ def update_entities(
                         except_for_entities=entities,
                     ):
                         if field[y][x] == d.CHAR_FLOOR:
-                            field[y][x] = d.WALL_CHAR
+                            field[y][x] = d.CHAR_WALL
 
                 d.apply_feed(player, m.tribe.feed)
 
@@ -972,14 +972,18 @@ def run_game(
         stage_module.run_game(
             ui,
             seed_str,
-            debug_show_entities,
+            debug_show_entities=debug_show_entities,
             trace=trace,
             config=config,
             stage_num=stage_num,
         )
     else:
         stage_module.run_game(
-            ui, seed_str, debug_show_entities, trace=trace, config=config
+            ui,
+            seed_str,
+            debug_show_entities=debug_show_entities,
+            trace=trace,
+            config=config,
         )
 
 
