@@ -505,28 +505,17 @@ def _defeat_monster(
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
 
 
-def _resolve_monster_contact(
+def _resolve_passive_or_repeat_contact(
     hit: int,
     entity: d.Monster,
     current: Floor,
     player: d.Player,
-    floor: List[int],
-    checkpoint: List[d.Point],
-    queue: Counter[Tuple[int, str]],
-    event_message: Optional[str],
-    trace: Optional[TraceRecorder] = None,
-    floors: Optional[List[Floor]] = None,
-    replay_context: Optional[ReplayContext] = None,
-    operation_index: Optional[int] = None,
-    stage_num: int = 3,
-) -> _ContactResult:
-    """Resolve contact with a monster, including early-ending elf encounters."""
+    contact_key: Tuple[int, int, int],
+    trace: Optional[TraceRecorder],
+    stage_num: int,
+) -> Optional[_ContactResult]:
+    """Handle passive Stage 2 H and elves the player has already met."""
     ch = entity.tribe.char
-    contact_key = (floor[0], entity.x, entity.y)
-    if player.item == d.ITEM_SWORD_CURSED:
-        player.lp -= d.CURSED_SWORD_LP_COST
-
-    # Stage 2's H is a passive decoy rather than a combat encounter.
     if ch == "H" and stage_num == 2:
         entity.revealed = True
         player.known_monsters.add(d.monster_type_key(entity))
@@ -539,58 +528,44 @@ def _resolve_monster_contact(
             trp("-- It looks powerful, but doesn't seem to intend to attack you.", 3)
         )
 
-    if entity.tribe.is_elf:
-        player.elf_stage_floors.setdefault(ch, floor[0] + 1)
-        player.known_elf_floors.add(ch)
+    if not entity.tribe.is_elf or not entity.met:
+        return None
 
-    if entity.tribe.is_elf and entity.met:
-        current.entities.pop(hit)
-        if trace is not None:
-            trace.record_contact({"type": "monster", "id": ch, "outcome": "refused"})
-        if ch == "I":
-            # The sealed Isolated Elf island has no other way out (see
-            # _inside_island): once the player has met "I", every further
-            # visit sends them back out instead of trapping them inside.
-            current.entities.append(entity)
-            player.x, player.y = _find_escape_place(current)
-            return _ContactResult(
-                trp(
-                    "-- The Isolated Elf wants to be left alone, and sends you elsewhere.",
-                    3,
-                ),
-                end_turn=True,
-            )
-        if ch in ELF_REPEAT_MESSAGES:
-            current.entities.append(entity)
-            return _ContactResult(
-                trp(ELF_REPEAT_MESSAGES[ch], 7 if ch == "H" else 3), end_turn=True
-            )
-        return _ContactResult(None, end_turn=True)
-
-    # Stage 3 keeps the W treasure hidden until W is defeated. Other monster
-    # identities, including M, are learned by species.
-    was_known = d.monster_type_key(entity) in player.known_monsters
-    if ch != "W" and not entity.tribe.is_elf:
-        player.known_monsters.add(d.monster_type_key(entity))
-    if entity.tribe.is_elf:
-        entity.revealed = True
-        if player.item == d.ITEM_SPORES:
-            source = player.item_taken_from
-            d.clear_player_item(player)
-            if trace is not None and source is not None:
-                trace.add_expired(
-                    {
-                        "type": "item_expired",
-                        "item": source,
-                        "reason": "cleared_on_contact",
-                    }
-                )
-    if ch == "M" and not was_known and trace is not None:
-        trace.record_contact(
-            {"type": "trap", "id": d.monster_type_key(entity), "outcome": "triggered"}
-        )
     current.entities.pop(hit)
+    if trace is not None:
+        trace.record_contact({"type": "monster", "id": ch, "outcome": "refused"})
+    if ch == "I":
+        # The sealed Isolated Elf island has no other way out (see
+        # _inside_island): once the player has met "I", every further
+        # visit sends them back out instead of trapping them inside.
+        current.entities.append(entity)
+        player.x, player.y = _find_escape_place(current)
+        return _ContactResult(
+            trp(
+                "-- The Isolated Elf wants to be left alone, and sends you elsewhere.",
+                3,
+            ),
+            end_turn=True,
+        )
+    if ch in ELF_REPEAT_MESSAGES:
+        current.entities.append(entity)
+        return _ContactResult(
+            trp(ELF_REPEAT_MESSAGES[ch], 7 if ch == "H" else 3), end_turn=True
+        )
+    return _ContactResult(None, end_turn=True)
 
+
+def _resolve_elf_contact(
+    entity: d.Monster,
+    current: Floor,
+    player: d.Player,
+    floor: List[int],
+    queue: Counter[Tuple[int, str]],
+    trace: Optional[TraceRecorder],
+    event_message: Optional[str],
+) -> Tuple[bool, Optional[str]]:
+    """Apply a first-time elf's reward or refusal, if this elf is eligible."""
+    ch = entity.tribe.char
     if ch == "I":
         player.elf_stage_flags |= d.ELF_STAGE_I_FLAG
         if trace is not None:
@@ -602,8 +577,6 @@ def _resolve_monster_contact(
             trace.record_contact({"type": "monster", "id": "J", "outcome": "granted"})
     elif ch == "K" and not (player.elf_stage_flags & d.ELF_STAGE_C_FLAG):
         current.entities.append(entity)
-        # The first refusal only shows a message; any later refusal sends the
-        # player elsewhere, like repeat contact with the Isolated Elf.
         if player.k_elf_refused:
             player.x, player.y = _find_escape_place(current)
             event_message = trp("-- Respawned to a random location.", 5)
@@ -627,8 +600,6 @@ def _resolve_monster_contact(
         < 2
     ):
         current.entities.append(entity)
-        # The first refusal only shows a message; any later refusal sends the
-        # player elsewhere, like repeat contact with the Isolated Elf.
         if player.high_elf_refused:
             player.x, player.y = _find_escape_place(current)
             event_message = trp("-- You were sent somewhere else.", 3)
@@ -682,7 +653,73 @@ def _resolve_monster_contact(
                 trace.record_contact(
                     {"type": "elf", "id": "S", "outcome": "granted"}
                 )
-    elif d.current_player_attack(player) < d.monster_level(entity):
+    else:
+        return False, event_message
+    return True, event_message
+
+
+def _resolve_monster_contact(
+    hit: int,
+    entity: d.Monster,
+    current: Floor,
+    player: d.Player,
+    floor: List[int],
+    checkpoint: List[d.Point],
+    queue: Counter[Tuple[int, str]],
+    event_message: Optional[str],
+    trace: Optional[TraceRecorder] = None,
+    floors: Optional[List[Floor]] = None,
+    replay_context: Optional[ReplayContext] = None,
+    operation_index: Optional[int] = None,
+    stage_num: int = 3,
+) -> _ContactResult:
+    """Resolve contact with a monster, including early-ending elf encounters."""
+    ch = entity.tribe.char
+    contact_key = (floor[0], entity.x, entity.y)
+    if player.item == d.ITEM_SWORD_CURSED:
+        player.lp -= d.CURSED_SWORD_LP_COST
+
+    early_contact = _resolve_passive_or_repeat_contact(
+        hit, entity, current, player, contact_key, trace, stage_num
+    )
+    if early_contact is not None:
+        return early_contact
+
+    if entity.tribe.is_elf:
+        player.elf_stage_floors.setdefault(ch, floor[0] + 1)
+        player.known_elf_floors.add(ch)
+
+    # Stage 3 keeps the W treasure hidden until W is defeated. Other monster
+    # identities, including M, are learned by species.
+    was_known = d.monster_type_key(entity) in player.known_monsters
+    if ch != "W" and not entity.tribe.is_elf:
+        player.known_monsters.add(d.monster_type_key(entity))
+    if entity.tribe.is_elf:
+        entity.revealed = True
+        if player.item == d.ITEM_SPORES:
+            source = player.item_taken_from
+            d.clear_player_item(player)
+            if trace is not None and source is not None:
+                trace.add_expired(
+                    {
+                        "type": "item_expired",
+                        "item": source,
+                        "reason": "cleared_on_contact",
+                    }
+                )
+    if ch == "M" and not was_known and trace is not None:
+        trace.record_contact(
+            {"type": "trap", "id": d.monster_type_key(entity), "outcome": "triggered"}
+        )
+    current.entities.pop(hit)
+
+    handled_elf = False
+    if entity.tribe.is_elf:
+        handled_elf, event_message = _resolve_elf_contact(
+            entity, current, player, floor, queue, trace, event_message
+        )
+
+    if not handled_elf and d.current_player_attack(player) < d.monster_level(entity):
         assert ch != "M", "A Mimic must not defeat the player."
         # Losing still identifies the monster, including W. Treasure glyphs
         # remain gated separately by their unlock state in the renderer.
@@ -724,7 +761,7 @@ def _resolve_monster_contact(
             trace.add_expired(
                 {"type": "item_expired", "item": old_source, "reason": "lost_on_defeat"}
             )
-    else:
+    elif not handled_elf:
         if trace is not None:
             trace.record_contact(
                 {"type": "monster", "id": d.monster_type_key(entity), "outcome": "win"}
@@ -1208,6 +1245,25 @@ def _process_multi_floor_turn(
 _step = _process_multi_floor_turn
 
 
+def _stage_draw_options(
+    stage_num: int,
+    floors: List[Floor],
+    view_floor: int,
+    single_floor_stage: bool,
+    show_floor_label: bool,
+) -> dict[str, Any]:
+    if single_floor_stage:
+        return {}
+    options: dict[str, Any] = {
+        "stage_roster": d.STAGE3_ROSTER_TRIBES
+        if stage_num == 3
+        else d.STAGE4_ROSTER_TRIBES,
+    }
+    if show_floor_label or stage_num in d.ELF_STAGES:
+        options["floor_label"] = f"{view_floor + 1}/{len(floors)}"
+    return options
+
+
 def run_game(
     ui: Any,
     seed_str: str,
@@ -1301,15 +1357,11 @@ def run_game(
         no_current_visibility = [
             [0] * len(display_floor.field[0]) for _ in display_floor.field
         ]
-        stage_draw_options = {}
-        if not single_floor_stage:
-            stage_draw_options = {
-                "stage_roster": d.STAGE3_ROSTER_TRIBES
-                if stage_num == 3
-                else d.STAGE4_ROSTER_TRIBES,
-                "floor_view": floor_view,
-                "floor_label": f"{view_floor + 1}/{len(floors)}",
-            }
+        stage_draw_options = _stage_draw_options(
+            stage_num, floors, view_floor, single_floor_stage, show_floor_label=True
+        )
+        if stage_draw_options:
+            stage_draw_options["floor_view"] = floor_view
         ui.draw_stage(
             turn=turn,
             game_start_turn=game_start_turn if has_rewound else None,
@@ -1445,15 +1497,9 @@ def run_game(
         render_player.current_floor = view_floor
         render_entities = [render_player, *display_floor.entities]
         known_types = player.known_monsters
-        stage_draw_options = {}
-        if not single_floor_stage:
-            stage_draw_options = {
-                "stage_roster": d.STAGE3_ROSTER_TRIBES
-                if stage_num == 3
-                else d.STAGE4_ROSTER_TRIBES,
-            }
-            if stage_num in d.ELF_STAGES:
-                stage_draw_options["floor_label"] = f"{view_floor + 1}/{len(floors)}"
+        stage_draw_options = _stage_draw_options(
+            stage_num, floors, view_floor, single_floor_stage, show_floor_label=False
+        )
         ui.draw_stage(
             turn=turn,
             game_start_turn=game_start_turn if has_rewound else None,
