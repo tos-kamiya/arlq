@@ -1,7 +1,4 @@
-"""Tests for the gameplay trace record/replay instrumentation
-(docs/gameplay-trace-spec.md): the TraceRecorder hooks in update_entities()
-(arlq.py) and _step() (game_engine.py), plus the ReplayUI/loader in trace.py.
-"""
+"""Tests for gameplay traces, legacy low-level helpers, and replay tooling."""
 
 import json
 from collections import Counter, deque
@@ -142,7 +139,7 @@ def test_replay_ui_draw_stage_forwards_only_when_given_a_draw_target():
     assert calls == [((), {"turn": 1, "player": 2, "message": "x"})]
 
 
-# --- Legacy stage (arlq.py update_entities) wall/contact/expired events ----
+# --- Legacy arlq.arlq compatibility API -----------------------------------
 
 
 def test_legacy_wall_blocked():
@@ -305,7 +302,91 @@ def test_legacy_world_respawn_event_reports_position(monkeypatch):
     assert trace.turns[-1]["world"] == [{"type": "respawn", "kind": "monster", "id": "X", "at": [7, 3]}]
 
 
-# --- Stage 3 (game_engine.py _step / _move_player / _process_respawn_queue) ----
+# --- Current game_engine turn path ----------------------------------------
+
+
+def process_engine_turn(trace, key, floors, player, stage_num, turn=1):
+    floor = [0]
+    checkpoint = [(player.x, player.y)]
+    trace.begin_turn(key)
+    _step(
+        KEYS[key],
+        floors,
+        player,
+        floor,
+        checkpoint,
+        Counter(),
+        deque(),
+        turn,
+        stage_num=stage_num,
+        trace=trace,
+    )
+    trace.commit_turn()
+    return trace.turns[-1]
+
+
+def test_current_stage1_turn_records_boss_defeat_and_treasure_collection():
+    player = d.Player(2, 2, 200, 90)
+    dragon = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_DRAGON])
+    treasure = d.Treasure(4, 2, "TD")
+    floors = [one_floor([dragon, treasure])]
+    trace = TraceRecorder(params={})
+
+    defeat_turn = process_engine_turn(trace, "R", floors, player, stage_num=1)
+    collect_turn = process_engine_turn(trace, "R", floors, player, stage_num=1, turn=2)
+
+    assert defeat_turn["contact"] == {
+        "type": "monster",
+        "id": d.CHAR_DRAGON,
+        "outcome": "win",
+    }
+    assert treasure.unlocked
+    assert collect_turn["contact"] == {
+        "type": "treasure",
+        "id": "TD",
+        "collected": True,
+    }
+    assert player.boss_defeated
+    assert player.treasure_collected
+
+
+def test_current_stage2_high_elf_is_passive_and_traced():
+    player = d.Player(2, 2, 1, 90)
+    high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
+    floors = [one_floor([high_elf])]
+    trace = TraceRecorder(params={})
+
+    turn = process_engine_turn(trace, "R", floors, player, stage_num=2)
+
+    assert turn["contact"] == {"type": "monster", "id": "H", "outcome": "passive"}
+    assert player.lp == 90
+    assert (player.x, player.y) == (3, 2)
+    assert high_elf in floors[0].entities
+    assert high_elf.revealed
+    assert "H" in player.known_monsters
+
+
+def test_current_stage1_turn_records_respawn_created_by_the_same_turn(monkeypatch):
+    player = d.Player(2, 2, 100, 90)
+    monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["d"])
+    floors = [one_floor([monster])]
+    trace = TraceRecorder(params={})
+    monkeypatch.setattr(
+        "arlq.stage_world.find_random_place", lambda *_a, **_k: (5, 2)
+    )
+
+    turn = process_engine_turn(trace, "R", floors, player, stage_num=1, turn=65)
+
+    assert turn["contact"] == {"type": "monster", "id": "d", "outcome": "win"}
+    assert turn["world"] == [
+        {"type": "respawn", "kind": "monster", "id": "d", "at": [5, 2], "floor": 0}
+    ]
+    assert any(
+        isinstance(entity, d.Monster)
+        and entity.tribe.char == "d"
+        and (entity.x, entity.y) == (5, 2)
+        for entity in floors[0].entities
+    )
 
 
 def test_stage3_wall_pegasus_phase():

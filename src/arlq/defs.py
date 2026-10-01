@@ -388,7 +388,7 @@ class Player(Entity):
         # None. Losing combat against the same (floor, x, y) twice in a row,
         # with no other monster contact in between, means that monster is
         # blocking the only way through a bridge corridor; see the escape
-        # branch in update_entities()/_resolve_monster_contact().
+        # branch in game_engine._resolve_monster_contact().
         self.last_contact_monster: Optional[Tuple[int, int, int]] = None
         # Whether the player has already been turned away by an unrecognized
         # High Elf at least once (Stage 2's gatekeeper, or Stage 3's before

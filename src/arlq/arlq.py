@@ -298,7 +298,11 @@ def respawn_entity(
     entities: List[d.Entity],
     field: List[List[str]],
 ) -> d.Entity:
-    """Place one monster or companion."""
+    """Place one monster or companion for legacy single-floor callers.
+
+    Companion instances are returned revealed, matching the former respawn
+    helper's behavior.
+    """
     if tribe.char == "k":
         x, y = find_marksman_place(entities, field, distance=2)
     else:
@@ -671,6 +675,12 @@ def update_entities(
     respawn_point: Optional[d.Point] = None,
     stage_num: int = 1,
 ) -> UpdateResult:
+    """Run one legacy single-floor turn for direct module callers.
+
+    Player sessions use ``game_engine.run_game()`` for every stage. This
+    helper preserves the earlier low-level ``arlq.arlq`` API, including the
+    four-value ``UpdateResult`` unpacking contract.
+    """
     events = TurnEvents()
     effect = None
     tribes_to_be_respawned = []

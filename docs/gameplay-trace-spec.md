@@ -8,7 +8,7 @@
 
 ## 1. 目的
 
-`tests/` にある関数単位のヘッドレステスト（`update_entities()`/`_step()` を直接呼ぶユニットテスト）ではカバーできない、**実際のプレイセッション全体を通した回帰検出**（ゴールデンマスター的な結合テスト）を可能にする。
+`tests/` の関数単位のヘッドレステストに加え、**実際のプレイセッション全体を通した回帰検出**（ゴールデンマスター的な結合テスト）を可能にする。
 
 想定運用：
 
@@ -182,9 +182,11 @@ CLI引数または選択画面で実際に確定した値（起動時に生成�
 
 ## 7. アーキテクチャ方針
 
-`update_entities()`（`arlq.py`）／`_step()`（`game_engine.py`）はターンごとに必要な材料（`effect`, `contact_happened`, `tribes_to_be_respawned`、呼び出し前後の `player`/`entities`）を既に持っている。ここに最小限のコールバック引数（例：`on_turn_result(input, pre_player, post_player, effect, contact_happened, ...)`）を追加し、`run_game()` 側から任意で渡せるようにする。これが最も小さく確実な変更であり、`tests/test_headless_rules.py` が既に使っている呼び出し方（`update_entities()`/`_step()` を直接叩く）とも整合する。
+実装では全ステージのプレイを `game_engine.run_game()` に集約し、ターン処理を `_process_multi_floor_turn()` とその下位関数に置く。ゲームエンジンは `TraceRecorder` に接触・失効・ワールドイベントを直接記録する。`game_engine._step` は巻き戻し再構築と既存の関数テストが使う互換エイリアスである。
 
-record/replay は、この共通コールバックに加えて**入力ソース**と**描画先**という2つの独立した差し替えポイントだけで実現する（`run_game()` 自体のロジックは変更しない・複製しない）：
+`arlq.arlq.update_entities()` と `respawn_entity()` は旧シングルフロアAPIとの互換用に残している。現行のプレイ経路からは呼ばれず、`arlq` パッケージのトップレベル公開エントリポイントにも含まれない。旧APIを直接呼ぶコード向けに、`UpdateResult` の4値アンパックと単体ターン／配置動作を維持し、互換テストで保護する。`TraceRecorder.record_events()` はこの旧APIが返すイベントをシリアライズするために残す。現行エンジンは個別のイベント記録メソッドを呼ぶ。
+
+record/replay は、現行の `game_engine.run_game()` に入力ソースと描画先を渡して実現する。
 
 - 入力ソース：`RealInput`（既存の `PygletUI`/`BlessedUI` そのまま、人間のキー入力）／`TraceInput`（トレースファイルから読み込んだ `"U"/"D"/"L"/"R"/"Q"` の列を、あたかも実際に押されたかのように順に返す。`select_stage()` 到達時は3章の通り `params.stage` から合成した入力を返す）。
 - 描画先：実際のUI（pyglet/blessed）。
@@ -219,21 +221,15 @@ record/replay は、この共通コールバックに加えて**入力ソース*
 ## 11. 実装メモ（Implementation Notes）
 
 本機能は実装済み（`src/arlq/trace.py` の `TraceRecorder`/`ReplayUI`/`load_trace`、
-および `arlq.py`/`game_engine.py` 側の計装、`main()` のCLI配線）。3章までで
+`game_engine.py` 側の計装、`arlq.py` のCLI配線）。3章までで
 「実装時に確認が必要」としていた点への回答と、実装上の単純化を記録する。
 
 - 通常プレイもセッション終了時に自動記録する。キャッシュ内へマイクロ秒付き日時名のファイルを作り、`last-trace.json` と `--output` 指定先へ同一内容を書き出す。
 - チェックポイント更新時に `turns[].checkpoint` を記録する。`ReplayUI` は `--continue` または `--rewind` 指定時に実UI入力へ切り替え、`--continue` の場合はトレース内の `Q` も読み飛ばす。
 
-- **コールバックの実装方式**：単一の汎用コールバックオブジェクトではなく、
-  `trace: Optional[TraceRecorder] = None` を `update_entities()`/`_step()` と
-  その下位ヘルパー（`respawn_entity()` 呼び出し元、`_resolve_contact()`、
-  `_resolve_monster_contact()`、`_defeat_monster()`、`_process_respawn_queue()`
-  など）に直接引き回す方式にした。`run_game()`（両方の実装）が
-  `begin_turn()`/`set_player()`/`commit_turn()`/`record_quit()`/`set_outcome()`
-  を呼び、`update_entities()`/`_step()` 側が `record_wall()`/`record_contact()`/
-  `add_expired()`/`add_world_event()` を呼ぶ、という役割分担。既存コードへの
-  差分が最小になり、`trace=None`（デフォルト）のときは一切の分岐が増えない。
+- **トレース記録方式**：`game_engine.run_game()` がターン境界とプレイヤー状態を記録し、
+  `_process_multi_floor_turn()` と下位関数が `TraceRecorder` のイベント記録メソッドを呼ぶ。
+  旧 `arlq.arlq.update_entities()` は互換用であり、現在のプレイセッションには使わない。
 - **`select_stage()` の再現**：実際にはキー入力の合成を行っていない。
   `--trace` は `params.stage` を直接 `run_game(..., stage_num=params.stage, ...)`
   に渡すため、`select_stage()` 自体が呼ばれない（`ReplayUI.select_stage()` は
@@ -251,9 +247,9 @@ record/replay は、この共通コールバックに加えて**入力ソース*
   満たした K/H の成立は、コード上は通常のモンスター戦闘勝利分岐
   （`_defeat_monster()`）にそのまま合流するため、`outcome: "win"` として記録
   される（`id` はエルフの文字そのもの）。
-- **legacy Stage 2 の "H"**：現行コードには granted に至る分岐が存在しない
-  （常に refused）。したがって legacy 側の H 接触は常に
-  `{"type": "monster", "id": "H", "outcome": "refused"}` として記録される。
+- **Stage 2 の "H"**：旧 `update_entities()` 互換経路では `refused` を記録する。
+  現行ゲーム経路では H は戦闘せず、その場に残る受動的な decoy として扱い、
+  `{"type": "monster", "id": "H", "outcome": "passive"}` を記録する。
 - **`item_expired` の `reason: "overwritten"`**：新しいアイテムが実際に
   付与されたかどうかに関わらず、`take_monster_item()` 呼び出し前に
   プレイヤーが何らかのアイテムを保持していた場合に発生したものとして

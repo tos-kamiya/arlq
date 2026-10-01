@@ -33,11 +33,11 @@ KEY_TO_DIR: Dict[str, Tuple[int, int]] = {key: direction for direction, key in D
 
 class TraceRecorder:
     """Accumulates one play session's turns for --trace/--output
-    output. `run_game()` (arlq.py and game_engine.py) calls `begin_turn()` /
-    `set_player()` / `commit_turn()` / `record_quit()` / `set_outcome()`
-    directly; `update_entities()` / `_step()` and their helpers call
-    `record_wall()` / `record_contact()` / `add_expired()` /
-    `add_world_event()` for the turn currently being built.
+    output. ``game_engine.run_game()`` calls ``begin_turn()`` /
+    ``set_player()`` / ``commit_turn()`` / ``record_quit()`` /
+    ``set_outcome()`` directly, while the current turn handler records events
+    as they happen. ``record_events()`` remains available for callers of the
+    legacy ``arlq.arlq.update_entities()`` helper.
     """
 
     def __init__(self, params: Dict[str, Any]) -> None:
