@@ -9,7 +9,10 @@ from typing import Any, Container, Deque, List, Optional, Set, Tuple
 from . import defs as d
 from .arlq import (
     MESSAGE_TICKS,
+    PLAYER_PASSABLE_CELLS,
     GameConfig,
+    apply_barrier_damage,
+    barrier_lp_damage,
     activate_mimic_for_defeat,
     find_marksman_place,
     find_random_place,
@@ -26,7 +29,7 @@ from .arlq import (
     unlock_treasure_for_defeat,
     update_entities,
 )
-from .game_events import WorldEvent
+from .game_events import UpdateResult, WorldEvent
 from .i18n import t as tr, trp
 from .stage_replay import rewind_to_history as _rewind_to_history
 from .stage_types import (
@@ -207,11 +210,8 @@ def reachable_known_cells(
                 terrain_cost = 1 + d.CALTROP_LP_DAMAGE
             elif cell == d.CHAR_COLLAPSE:
                 terrain_cost = 1
-            elif cell == d.CHAR_BARRIER and stage_num not in (1, 2):
-                damage = (
-                    0 if player.elf_stage_flags & d.ELF_STAGE_H_FLAG else d.BARRIER_LP_DAMAGE
-                )
-                terrain_cost = 1 + damage
+            elif cell == d.CHAR_BARRIER:
+                terrain_cost = 1 + barrier_lp_damage(player)
             else:
                 # Walls, stairs, and unknown/special terrain are not safe
                 # walking cells for this estimate.
@@ -241,13 +241,7 @@ def _move_player(
         direction,
         current.field,
         player,
-        (
-            d.CHAR_FLOOR,
-            d.CHAR_CALTROP,
-            d.CHAR_COLLAPSE,
-            *d.STAIR_CHARS,
-            d.CHAR_BARRIER,
-        ),
+        PLAYER_PASSABLE_CELLS,
     )
     if trace is not None and wall_result is not None:
         trace.record_wall(wall_result)
@@ -263,12 +257,7 @@ def _apply_terrain_hazards(
     """
     field = current.field
     event_message = None
-    if (
-        field[player.y][player.x] == d.CHAR_BARRIER
-        and not (player.elf_stage_flags & d.ELF_STAGE_H_FLAG)
-        and (player.x, player.y) != previous
-    ):
-        player.lp -= d.BARRIER_LP_DAMAGE
+    if apply_barrier_damage(field, player, previous):
         event_message = trp("-- The barrier burns you.", 5)
     if field[player.y][player.x] == d.CHAR_CALTROP:
         player.lp -= d.CALTROP_LP_DAMAGE
@@ -1031,7 +1020,7 @@ def _process_respawn_queue(
             )
 
 
-def _step(
+def _process_multi_floor_turn(
     direction: d.Point,
     floors: List[Floor],
     player: d.Player,
@@ -1225,6 +1214,76 @@ def _step(
     return (MESSAGE_TICKS, event_message) if event_message else None
 
 
+def _process_single_floor_turn(
+    direction: d.Point,
+    floors: List[Floor],
+    player: d.Player,
+    floor: List[int],
+    checkpoint: List[d.Point],
+    legacy_respawn_queue: Counter[str],
+    turn: int,
+    stage_num: int,
+    trace: Optional[TraceRecorder] = None,
+) -> UpdateResult:
+    """Resolve one legacy-stage turn, including its scheduled respawns."""
+    current = floors[floor[0]]
+    update_result = update_entities(
+        direction,
+        current.field,
+        player,
+        current.entities,
+        respawn_point=checkpoint[0],
+        stage_num=stage_num,
+    )
+    if update_result.tribes_to_be_respawned:
+        checkpoint[0] = (player.x, player.y)
+        if trace is not None:
+            trace.record_checkpoint(
+                "legacy_respawn_queue",
+                (player.x, player.y),
+                floor[0],
+                entities=update_result.tribes_to_be_respawned,
+            )
+    for char in update_result.tribes_to_be_respawned:
+        if char not in d.NO_RESPAWN_MONSTERS:
+            legacy_respawn_queue[char] += 1
+    if turn % d.MONSTER_RESPAWN_INTERVAL == 0:
+        for char in list(legacy_respawn_queue):
+            if legacy_respawn_queue[char] <= 0:
+                continue
+            tribe = d.CHAR_TO_TRIBE[char]
+            spawn_floor = (
+                rand.randrange(len(floors))
+                if getattr(tribe, "respawn_on_random_floor", False)
+                else floor[0]
+            )
+            respawn_target = floors[spawn_floor]
+            entity = respawn_entity(
+                tribe, respawn_target.entities, respawn_target.field
+            )
+            legacy_respawn_queue[char] -= 1
+            if trace is not None:
+                if isinstance(entity, d.Monster):
+                    kind, event_id = "monster", d.monster_type_key(entity)
+                elif isinstance(entity, d.Companion):
+                    kind, event_id = "companion", entity.tribe.char
+                else:
+                    raise TypeError("Respawned entity must be a monster or companion")
+                update_result.events.world.append(
+                    WorldEvent(
+                        kind,
+                        event_id,
+                        (entity.x, entity.y),
+                        floor=spawn_floor if len(floors) > 1 else None,
+                    )
+                )
+    return update_result
+
+
+# Keep the old private name for tests and external tooling that imported it.
+_step = _process_multi_floor_turn
+
+
 def run_game(
     ui: Any,
     seed_str: str,
@@ -1387,13 +1446,16 @@ def run_game(
             )
 
         if legacy_stage:
-            update_result = update_entities(
+            update_result = _process_single_floor_turn(
                 move,
-                current.field,
+                floors,
                 player,
-                current.entities,
-                respawn_point=checkpoint[0],
-                stage_num=stage_num,
+                floor,
+                checkpoint,
+                legacy_respawn_queue,
+                turn,
+                stage_num,
+                trace=trace,
             )
             if update_result.message is not None:
                 candidate_message = update_result.message
@@ -1402,48 +1464,6 @@ def run_game(
                     candidate_message[1],
                 ) == candidate_message[1]:
                     message = candidate_message
-            if update_result.tribes_to_be_respawned:
-                checkpoint[0] = (player.x, player.y)
-                if trace is not None:
-                    trace.record_checkpoint(
-                        "legacy_respawn_queue",
-                        (player.x, player.y),
-                        floor[0],
-                        entities=update_result.tribes_to_be_respawned,
-                    )
-            for char in update_result.tribes_to_be_respawned:
-                if char not in d.NO_RESPAWN_MONSTERS:
-                    legacy_respawn_queue[char] += 1
-            if turn % d.MONSTER_RESPAWN_INTERVAL == 0:
-                for char in list(legacy_respawn_queue):
-                    if legacy_respawn_queue[char] <= 0:
-                        continue
-                    tribe = d.CHAR_TO_TRIBE[char]
-                    spawn_floor = (
-                        rand.randrange(len(floors))
-                        if getattr(tribe, "respawn_on_random_floor", False)
-                        else floor[0]
-                    )
-                    respawn_target = floors[spawn_floor]
-                    entity = respawn_entity(
-                        tribe, respawn_target.entities, respawn_target.field
-                    )
-                    legacy_respawn_queue[char] -= 1
-                    if trace is not None:
-                        if isinstance(entity, d.Monster):
-                            kind, event_id = "monster", d.monster_type_key(entity)
-                        elif isinstance(entity, d.Companion):
-                            kind, event_id = "companion", entity.tribe.char
-                        else:
-                            raise TypeError("Respawned entity must be a monster or companion")
-                        update_result.events.world.append(
-                            WorldEvent(
-                                kind,
-                                event_id,
-                                (entity.x, entity.y),
-                                floor=spawn_floor if len(floors) > 1 else None,
-                            )
-                        )
             if trace is not None:
                 trace.record_events(update_result.events)
                 trace.set_player(player, stage_num)
@@ -1454,7 +1474,7 @@ def run_game(
             player.lp -= 1
             continue
 
-        step_result = _step(
+        step_result = _process_multi_floor_turn(
             move,
             floors,
             player,
