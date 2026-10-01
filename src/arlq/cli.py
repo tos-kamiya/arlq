@@ -77,14 +77,14 @@ def _prepare_cli_session():
         default=argparse.SUPPRESS,
         help="GUI movement repeat delay and interval (0.1 to 1.0 seconds, or none); saves for future GUI starts.",
     )
-    parser.add_argument(
+    dev = parser.add_argument_group("Development and debugging options")
+    dev.add_argument(
         "--replay-interval",
         type=game.parse_replay_interval,
         metavar="SECONDS",
         default=0.0,
         help="Delay between turns during terminal trace replay (default: 0, fastest).",
     )
-    dev = parser.add_argument_group("Development and debugging options")
     dev.add_argument(
         "--trap-test", action="store_true", help="Start the trap test stage."
     )
