@@ -640,7 +640,10 @@ def barrier_lp_damage(player: d.Player) -> int:
     """Return the LP cost for entering a barrier cell."""
     return (
         0
-        if player.elf_stage_flags & d.ELF_STAGE_H_FLAG
+        if (
+            player.elf_stage_flags & d.ELF_STAGE_H_FLAG
+            and player.item != d.ITEM_SWORD_CURSED
+        )
         else d.BARRIER_LP_DAMAGE
     )
 

@@ -42,6 +42,7 @@ from pyglet.window import key as pgkey
 
 from .__about__ import __version__
 from . import defs as d
+from .arlq import barrier_lp_damage
 from .i18n import t as tr
 
 # "Courier New" (the game's normal font) has no Japanese glyphs, so a label
@@ -535,7 +536,11 @@ class PygletUI:
                     tile_color = FOG
                 if cell == d.CHAR_CALTROP and discovered:
                     tile_color = (132, 70, 60)
-                if cell == d.CHAR_BARRIER and discovered:
+                if (
+                    cell == d.CHAR_BARRIER
+                    and discovered
+                    and barrier_lp_damage(player) > 0
+                ):
                     tile_color = (67, 42, 45)
                 if reachable_cells and (x, y) in reachable_cells and not floor_view:
                     tile_color = REACHABLE_CELL_COLOR
