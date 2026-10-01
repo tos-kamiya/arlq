@@ -217,7 +217,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | Display & Name | Description |
 | -------------- | ----------- |
 | **L** Lifebringer Elf | Each meeting cures poison, raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then moves to a random floor. |
-| **S** Sylvan Elf | Gives you fairy nectar. Companions recruited afterward, except `l`, stay with you 1.25 times longer. Rewinding a Loop Companion to a point before you received the nectar also removes its benefit. |
+| **S** Sylvan Elf | Gives you fairy nectar. Companions recruited afterward, except `l`, stay with you 1.25 times longer. |
 
 ## Development commands
 
