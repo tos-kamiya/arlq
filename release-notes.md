@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 5.3.6 - 2026-10-01
+
+- Unify Stage 1 and 2 turn processing while preserving Stage 2's passive High
+  Elf and rank-1 monster respawns.
+- Make the amulet ineffective against barriers while carrying the Cursed Sword,
+  and show the barrier's red background only when it causes damage.
+- Add irregular notches to Stage 1's filled side columns and filled rooms, and
+  prevent wall features from enclosing floor cells.
+
 ## 5.3.5 - 2026-10-01
 
 - Allow interrupting trace replay with the window close button, `q`, or `Esc`.
