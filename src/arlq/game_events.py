@@ -56,7 +56,7 @@ class UpdateResult:
     events: TurnEvents
 
     def __iter__(self) -> Iterator[object]:
-        """Keep the legacy four-value unpacking API during migration."""
+        """Keep the earlier four-value unpacking API for direct callers."""
         yield self.effect
         yield self.tribes_to_be_respawned
         yield self.message
