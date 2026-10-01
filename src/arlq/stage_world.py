@@ -1,6 +1,6 @@
 """Floor construction and map generation for the multi-floor stages."""
 
-from typing import Container, Dict, List, Optional, Tuple
+from typing import Container, Dict, Iterable, List, Optional, Tuple
 
 from . import defs as d
 from .arlq import (
@@ -17,6 +17,10 @@ from .stage_maze import generate_floor_field, room_center, shuffle_floor_layout,
 from .stage_types import Floor
 from .utils import rand
 
+WALL_NOTCH_PRIMES = frozenset(
+    {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59}
+)
+
 
 def _place_barrier(
     field: List[List[str]], center: d.Point, protected: Container[d.Point] = ()
@@ -32,6 +36,97 @@ def _place_barrier(
             # perimeter when another Stage 3 feature is nearby.
             if field[y][x] == d.CHAR_FLOOR and (x, y) not in protected:
                 field[y][x] = d.CHAR_BARRIER
+
+
+def _would_enclose_floor_cell(
+    field: List[List[str]], wall_cells: Iterable[d.Point]
+) -> bool:
+    """Return whether adding walls would leave a floor cell walled on four sides."""
+    added_walls = set(wall_cells)
+    affected = {
+        (x + dx, y + dy)
+        for x, y in added_walls
+        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+    }
+    height, width = len(field), len(field[0])
+    for x, y in affected:
+        if not (0 <= x < width and 0 <= y < height):
+            continue
+        if (x, y) in added_walls or field[y][x] != d.CHAR_FLOOR:
+            continue
+        if _has_four_wall_neighbors(field, (x, y), added_walls):
+            return True
+    return False
+
+
+def _has_four_wall_neighbors(
+    field: List[List[str]],
+    point: d.Point,
+    added_walls: Container[d.Point] = (),
+) -> bool:
+    x, y = point
+    height, width = len(field), len(field[0])
+    return all(
+        (x + dx, y + dy) in added_walls
+        or not (0 <= x + dx < width and 0 <= y + dy < height)
+        or field[y + dy][x + dx] == d.WALL_CHAR
+        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+    )
+
+
+def _is_wall_notch_point(point: d.Point) -> bool:
+    x, y = point
+    return (x + y * d.FIELD_WIDTH) % 61 in WALL_NOTCH_PRIMES
+
+
+def _add_filled_room_wall_notches(
+    field: List[List[str]], filled_rooms: Iterable[d.Point]
+) -> None:
+    """Open irregularly spaced blocks along the outer edge of each filled room."""
+    height, width = len(field), len(field[0])
+    for tx, ty in filled_rooms:
+        left = tx * (d.TILE_WIDTH + 1) + 1
+        top = ty * (d.TILE_HEIGHT + 1) + 1
+        right = left + d.TILE_WIDTH - 1
+        bottom = top + d.TILE_HEIGHT - 1
+        edges = [
+            [(left - 1, y) for y in range(top, bottom + 1)],
+            [(right + 1, y) for y in range(top, bottom + 1)],
+            [(x, top - 1) for x in range(left, right + 1)],
+            [(x, bottom + 1) for x in range(left, right + 1)],
+        ]
+        edge_cells = [
+            point
+            for edge in edges
+            for point in edge[1:-1]
+            if _is_wall_notch_point(point)
+        ]
+        for x, y in edge_cells:
+            if not (0 < x < width - 1 and 0 < y < height - 1):
+                continue
+            if field[y][x] != d.WALL_CHAR:
+                continue
+            if _has_four_wall_neighbors(field, (x, y)):
+                continue
+            field[y][x] = d.CHAR_FLOOR
+
+
+def _add_stage1_margin_notches(field: List[List[str]]) -> None:
+    """Break up the inner edges of Stage 1's filled side columns."""
+    left_edge = d.STAGE1_COLUMN_MARGIN * (d.TILE_WIDTH + 1)
+    right_edge = (d.TILE_NUM_X - d.STAGE1_COLUMN_MARGIN) * (d.TILE_WIDTH + 1)
+    for tile_y in range(d.TILE_NUM_Y):
+        top = tile_y * (d.TILE_HEIGHT + 1) + 1
+        bottom = top + d.TILE_HEIGHT - 1
+        for x in (left_edge, right_edge):
+            for y in range(top + 1, bottom):
+                if not _is_wall_notch_point((x, y)):
+                    continue
+                if field[y][x] != d.WALL_CHAR:
+                    continue
+                if _has_four_wall_neighbors(field, (x, y)):
+                    continue
+                field[y][x] = d.CHAR_FLOOR
 
 
 def _place_stage4_final_floor_barriers(floor: Floor) -> None:
@@ -314,7 +409,11 @@ def _spawn_island_elf(
 
 
 def _add_stage4_wall_spurs(
-    field: List[List[str]], up: d.Point, down: d.Point, island_tile: Optional[d.Point]
+    field: List[List[str]],
+    up: d.Point,
+    down: d.Point,
+    island_tile: Optional[d.Point],
+    filled_rooms: Container[d.Point],
 ) -> None:
     """Add short room-wall spurs on some rooms of Stage 4's final floors."""
     stair_rooms = {tile_at(up), tile_at(down)}
@@ -333,10 +432,12 @@ def _add_stage4_wall_spurs(
                 continue
 
             candidates = []
-            for wall_x, spur_x, direction in (
-                (left - 1, left, 1),
-                (right + 1, right - 1, -1),
+            for wall_x, spur_x, direction, neighbor_room in (
+                (left - 1, left, 1, (tx - 1, ty)),
+                (right + 1, right - 1, -1, (tx + 1, ty)),
             ):
+                if neighbor_room in filled_rooms:
+                    continue
                 if any(
                     field[y][wall_x] == d.CHAR_FLOOR
                     for y in range(top, bottom + 1)
@@ -355,10 +456,12 @@ def _add_stage4_wall_spurs(
                         field[y][x] == d.CHAR_FLOOR for x, y in spur_cells
                     ):
                         candidates.append(spur_cells)
-            for wall_y, spur_y, direction in (
-                (top - 1, top, 1),
-                (bottom + 1, bottom - 1, -1),
+            for wall_y, spur_y, direction, neighbor_room in (
+                (top - 1, top, 1, (tx, ty - 1)),
+                (bottom + 1, bottom - 1, -1, (tx, ty + 1)),
             ):
+                if neighbor_room in filled_rooms:
+                    continue
                 if any(
                     field[wall_y][x] == d.CHAR_FLOOR
                     for x in range(left, right + 1)
@@ -377,6 +480,11 @@ def _add_stage4_wall_spurs(
                         field[y][x] == d.CHAR_FLOOR for x, y in spur_cells
                     ):
                         candidates.append(spur_cells)
+            candidates = [
+                spur_cells
+                for spur_cells in candidates
+                if not _would_enclose_floor_cell(field, spur_cells)
+            ]
             if candidates:
                 for x, y in rand.choice(candidates):
                     field[y][x] = d.WALL_CHAR
@@ -400,7 +508,14 @@ def _build_floor(
     stage4_final_floor_has_no_down_stairs = stage_num == 4
     floor_count = d.STAGE4_FLOORS if stage_num == 4 else d.STAGE3_FLOORS
     island_count, filled_count = room_counts
-    field, up, down, island_rooms, _, room_components = generate_floor_field(
+    (
+        field,
+        up,
+        down,
+        island_rooms,
+        filled_rooms,
+        room_components,
+    ) = generate_floor_field(
         up_point if up_point is not None else entry_point,
         down_point,
         corridor_h_width,
@@ -411,7 +526,8 @@ def _build_floor(
     )
     island_tile = next(iter(island_rooms), None)
     if stage_num == 4 and index >= 2:
-        _add_stage4_wall_spurs(field, up, down, island_tile)
+        _add_stage4_wall_spurs(field, up, down, island_tile, filled_rooms)
+    _add_filled_room_wall_notches(field, filled_rooms)
 
     if index < floor_count - 1:
         field[down[1]][down[0]] = d.CHAR_STAIRS_DOWN
@@ -872,6 +988,8 @@ def build_single_floor(
         d.WALL_CHAR,
         margin_x=d.STAGE1_COLUMN_MARGIN if stage_num == 1 else 0,
     )
+    if stage_num == 1:
+        _add_stage1_margin_notches(field)
     entities: List[d.Entity] = []
     treasure_tribes = [
         spawn.tribe
