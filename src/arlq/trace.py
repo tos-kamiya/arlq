@@ -185,11 +185,6 @@ def timestamped_trace_path(cache_dir: Path) -> Path:
     return cache_dir / f"trace-{stamp}.json"
 
 
-def default_replay_output_path(path: Path) -> Path:
-    """Return a sibling path with '.replay' inserted before the extension."""
-    return path.with_name(f"{path.stem}.replay{path.suffix}")
-
-
 def load_trace(path: Path) -> Dict[str, Any]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if data.get("schema_version") != SCHEMA_VERSION:

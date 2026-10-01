@@ -17,7 +17,6 @@ from arlq.trace import (
     KEY_TO_DIR,
     ReplayUI,
     TraceRecorder,
-    default_replay_output_path,
     load_trace,
 )
 
@@ -141,18 +140,6 @@ def test_replay_ui_draw_stage_forwards_only_when_given_a_draw_target():
 
     ReplayUI([], stage=1, draw_ui=Recorder()).draw_stage(turn=1, player=2, message="x")
     assert calls == [((), {"turn": 1, "player": 2, "message": "x"})]
-
-
-@pytest.mark.parametrize(
-    ("path", "expected"),
-    [
-        ("foo.json", "foo.replay.json"),
-        ("dir/foo.json", "dir/foo.replay.json"),
-        ("foo", "foo.replay"),
-    ],
-)
-def test_default_replay_output_path(path, expected):
-    assert default_replay_output_path(Path(path)) == Path(expected)
 
 
 # --- Legacy stage (arlq.py update_entities) wall/contact/expired events ----

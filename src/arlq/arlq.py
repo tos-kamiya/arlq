@@ -1,7 +1,6 @@
 from typing import Callable, Container, List, Tuple, Optional
 
 import argparse
-import json
 from dataclasses import dataclass
 from importlib import import_module
 import math
@@ -9,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-from appdirs import user_cache_dir, user_config_dir
+from appdirs import user_cache_dir
 
 from .__about__ import __version__
 
@@ -936,8 +935,6 @@ def run_game(
 ) -> None:
     if config is None:
         config = GameConfig()
-    show_entities = debug_show_entities
-
     if stage_num == 0:  # if stage is not selected yet
         r = ui.select_stage(d.PUBLIC_STAGE_NUMBERS)
         if r == 0:

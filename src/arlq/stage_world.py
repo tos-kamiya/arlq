@@ -233,19 +233,6 @@ def _spawn(
     return x, y
 
 
-def _find_escape_place(current: Floor, far_from: Optional[d.Point] = None) -> d.Point:
-    """A random open cell for the player to be sent to, never inside a
-    sealed island (e.g. the Isolated Elf's room)."""
-    island_tile = current.island
-    return find_random_place(
-        current.entities,
-        current.field,
-        distance=2,
-        far_from=far_from,
-        avoid=lambda point: _inside_island(point, island_tile),
-    )
-
-
 def _split_floor_roster(
     roster: List[Tuple[str, int, int]], elf_floors: Dict[str, int]
 ) -> Tuple[

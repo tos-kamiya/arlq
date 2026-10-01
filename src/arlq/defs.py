@@ -23,7 +23,6 @@ CHAR_STAIRS_DOWN: str = "v"
 STAIR_CHARS: Tuple[str, str] = (CHAR_STAIRS_UP, CHAR_STAIRS_DOWN)
 
 TORCH_RADIUS: int = 3
-TORCH_WIDTH_EXPANSION_RATIO: float = 1.7
 FOV_WIDTH_EXPANSION_RATIO: float = 1.4
 OCULAR_TORCH_EXTENSION: int = 3
 ELLIPSE_CELL_EDGE_THRESHOLD: float = 0.65
@@ -85,8 +84,6 @@ ITEM_SWORD_X1_5: str = "Sword"
 ITEM_SWORD_CURSED: str = "Cursed Sword"
 ITEM_POISONED: str = "Poisoned"
 ITEM_SPORES: str = "Spores"
-ITEM_TREASURE: str = "Treasure"
-
 EFFECT_SPECIAL_EXP: str = "Special Exp."
 EFFECT_LEVEL_REDUCE: str = "Level Reduce"
 EFFECT_FEED_MUCH: str = "Feed Much"
