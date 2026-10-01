@@ -496,7 +496,7 @@ def test_stage3_world_respawn_event_includes_floor(monkeypatch):
     queue = Counter({(1, "a"): 1})
     trace = TraceRecorder(params={})
 
-    monkeypatch.setattr("arlq.game_engine.find_random_place", lambda *_a, **_k: (6, 4))
+    monkeypatch.setattr("arlq.stage_world.find_random_place", lambda *_a, **_k: (6, 4))
 
     trace.begin_turn("R")
     _process_respawn_queue(floors, player, floor, queue, turn=0, trace=trace)
