@@ -56,16 +56,3 @@ def block_progress_cells(
         ch = block_chars[units]
         cells.append((ch, bar_attr))
     return cells
-
-
-def draw_block_progress_bar(stdscr, x, y, bar_len, value, attr_thresholds):
-    for threshold, color in attr_thresholds:
-        if value <= threshold:
-            attr = color
-            break
-    else:
-        attr = attr_thresholds[-1][1]
-    maximum = attr_thresholds[-1][0]
-    cells = block_progress_cells(value, maximum, bar_len, attr)
-    for i, (ch, attr) in enumerate(cells):
-        stdscr.addstr(y, x + i, ch, attr)
