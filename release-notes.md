@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 5.4.0 - 2026-10-01
+
+- Refactor command-line startup and shared display calculations into dedicated
+  modules without changing gameplay behavior.
+
 ## 5.3.6 - 2026-10-01
 
 - Unify Stage 1 and 2 turn processing while preserving Stage 2's passive High
