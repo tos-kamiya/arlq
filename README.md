@@ -199,7 +199,6 @@ Like Stage 3, Stage 4 features elves, including some new ones. New monsters and 
 | -------------- | ----------- |
 | **E** Rare Erebus | A troublesome enemy that drains your level. |
 | **k** Marksman | Shoots arrows along a horizontal or vertical line, but not from an adjacent cell. Walls, stairs, companions, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. |
-| **X** Caltrop Plant | Scatters caltrops around itself. One appears on each floor. |
 
 #### Traps
 
