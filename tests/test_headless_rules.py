@@ -235,6 +235,7 @@ def test_game_loop_draws_with_keyword_arguments_only():
     assert len(draws) == 1
     assert set(draws[0]) == {
         "turn",
+        "game_start_turn",
         "player",
         "entities",
         "field",
@@ -248,6 +249,7 @@ def test_game_loop_draws_with_keyword_arguments_only():
         "checkpoint",
         "reachable_cells",
     }
+    assert draws[0]["game_start_turn"] is None
     assert draws[0]["stage_num"] == 1
     assert draws[0]["reachable_cells"] == set()
 
@@ -345,11 +347,11 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for _, count, rank in floor if rank == 2 or rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [2, 10, 13, 12, 12]
+    ] == [2, 10, 14, 14, 15]
     assert [
         sum(count for _, count, rank in floor if rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [0, 0, 0, 5, 9]
+    ] == [0, 0, 0, 6, 12]
     assert [
         sum(count for ch, count, _ in floor if ch == "d")
         for floor in d.STAGE4_ROSTER
