@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 5.5.0 - 2026-10-02
+
+- Add GUI gamepad navigation and movement with the D-pad or left stick, with
+  repeat timing shared with keyboard movement.
+- Add configurable automatic repeat stopping near known hazards and displayed
+  entities, and after encounters and other movement events. It is enabled by
+  default and can be changed in Settings or with `--auto-repeat-stop` and
+  `--no-auto-repeat-stop`.
+
 ## 5.4.1 - 2026-10-02
 
 - Organize CLI options into general, GUI, terminal, and development groups.
