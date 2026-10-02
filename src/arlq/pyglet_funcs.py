@@ -97,6 +97,7 @@ CELL_SIZE_Y = 20
 CELL_SIZE_X = 13
 FONT_WIDTH_RATIO = 0.95
 FONT_HEIGHT_RATIO = 0.87
+MESSAGE_FONT_SIZE_SCALE = 0.95
 
 MIN_UI_SCALE = 0.5
 MAX_UI_SCALE = 4.0
@@ -435,6 +436,7 @@ class PygletUI:
         color: Tuple[int, int, int],
         bold: bool = False,
         x_offset: int = 0,
+        size_scale: float = 1.0,
     ):
         """
         Draws text at the grid cell defined by pos, optionally nudged by
@@ -442,10 +444,13 @@ class PygletUI:
         """
         font_size: float
         if text.isascii():
-            font_name, font_size = self.font_name, self.font_size
+            font_name, font_size = self.font_name, self.font_size * size_scale
         else:
-            non_ascii_font_name, size_scale = self._non_ascii_font()
-            font_name, font_size = non_ascii_font_name, self.font_size * size_scale
+            non_ascii_font_name, non_ascii_size_scale = self._non_ascii_font()
+            font_name, font_size = (
+                non_ascii_font_name,
+                self.font_size * non_ascii_size_scale * size_scale,
+            )
         label = pyglet.text.Label(
             text,
             font_name=font_name,
@@ -780,17 +785,25 @@ class PygletUI:
 
         if message:
             self._draw_text(
-                (0, self.field_height + 1), message, COLOR_MAP[CI_YELLOW]
+                (0, self.field_height + 1),
+                message,
+                COLOR_MAP[CI_YELLOW],
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
 
-    def _text_width(self, text: str, bold: bool = False) -> int:
+    def _text_width(
+        self, text: str, bold: bool = False, size_scale: float = 1.0
+    ) -> int:
         font_name: str
         font_size: float
         if text.isascii():
-            font_name, font_size = self.font_name, self.font_size
+            font_name, font_size = self.font_name, self.font_size * size_scale
         else:
-            non_ascii_font_name, size_scale = self._non_ascii_font()
-            font_name, font_size = non_ascii_font_name, self.font_size * size_scale
+            non_ascii_font_name, non_ascii_size_scale = self._non_ascii_font()
+            font_name, font_size = (
+                non_ascii_font_name,
+                self.font_size * non_ascii_size_scale * size_scale,
+            )
         label = pyglet.text.Label(
             text,
             font_name=font_name,
@@ -1050,40 +1063,89 @@ class PygletUI:
         row = 0
         while True:
             self._clear_drawables()
-            self._draw_text((8, 5), tr("Settings"), COLOR_MAP[CI_YELLOW], bold=True)
+            self._draw_text(
+                (8, 5),
+                tr("Settings"),
+                COLOR_MAP[CI_YELLOW],
+                bold=True,
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
+            )
             scale_label = tr("Interface scale")
             scale_heading = f"{'>' if row == 0 else ' '} {scale_label}"
-            self._draw_text((8, 8), scale_heading, COLOR_MAP["default"], bold=row == 0)
+            self._draw_text(
+                (8, 8),
+                scale_heading,
+                COLOR_MAP["default"],
+                bold=row == 0,
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
+            )
             self._draw_text(
                 (8, 8),
                 f"<  {int(UI_SCALE_CHOICES[current_index] * 100)}%  >",
                 COLOR_MAP["default"],
                 bold=row == 0,
-                x_offset=self._text_width(scale_heading, bold=row == 0) + self.cell_size_x,
+                x_offset=self._text_width(
+                    scale_heading,
+                    bold=row == 0,
+                    size_scale=MESSAGE_FONT_SIZE_SCALE,
+                ) + self.cell_size_x,
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             repeat_label = tr("Movement repeat interval")
             repeat_heading = f"{'>' if row == 1 else ' '} {repeat_label}"
-            self._draw_text((8, 10), repeat_heading, COLOR_MAP["default"], bold=row == 1)
+            self._draw_text(
+                (8, 10),
+                repeat_heading,
+                COLOR_MAP["default"],
+                bold=row == 1,
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
+            )
             self._draw_text(
                 (8, 10),
                 f"<  {'None' if KEY_REPEAT_CHOICES[repeat_index] is None else format(KEY_REPEAT_CHOICES[repeat_index], '.1f') + 's'}  >",
                 COLOR_MAP["default"],
                 bold=row == 1,
-                x_offset=self._text_width(repeat_heading, bold=row == 1) + self.cell_size_x,
+                x_offset=self._text_width(
+                    repeat_heading,
+                    bold=row == 1,
+                    size_scale=MESSAGE_FONT_SIZE_SCALE,
+                ) + self.cell_size_x,
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             stop_label = tr("Automatic repeat stop")
             stop_heading = f"{'>' if row == 2 else ' '} {stop_label}"
-            self._draw_text((8, 12), stop_heading, COLOR_MAP["default"], bold=row == 2)
+            self._draw_text(
+                (8, 12),
+                stop_heading,
+                COLOR_MAP["default"],
+                bold=row == 2,
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
+            )
             self._draw_text(
                 (8, 12),
                 f"<  {tr('On') if auto_repeat_stop_enabled else tr('Off')}  >",
                 COLOR_MAP["default"],
                 bold=row == 2,
-                x_offset=self._text_width(stop_heading, bold=row == 2) + self.cell_size_x,
+                x_offset=self._text_width(
+                    stop_heading,
+                    bold=row == 2,
+                    size_scale=MESSAGE_FONT_SIZE_SCALE,
+                ) + self.cell_size_x,
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             help_color = (145, 150, 160)
-            self._draw_text((8, 15), tr("Up/Down: item   Left/Right: value"), help_color)
-            self._draw_text((8, 17), tr("Enter / Gamepad button 0: apply   Esc / Gamepad button 1: cancel"), help_color)
+            self._draw_text(
+                (8, 15),
+                tr("Up/Down: item   Left/Right: value"),
+                help_color,
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
+            )
+            self._draw_text(
+                (8, 17),
+                tr("Enter / Gamepad button 0: apply   Esc / Gamepad button 1: cancel"),
+                help_color,
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
+            )
             self._flip()
 
             while True:
@@ -1181,7 +1243,13 @@ class PygletUI:
 
         while True:
             self._clear_drawables()
-            self._draw_text((8, 5), tr("Stage Selection"), COLOR_MAP[CI_YELLOW], bold=True)
+            self._draw_text(
+                (8, 5),
+                tr("Stage Selection"),
+                COLOR_MAP[CI_YELLOW],
+                bold=True,
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
+            )
 
             base_x = 8
             base_y = 8
@@ -1192,8 +1260,14 @@ class PygletUI:
                     f"{prefix} {option}",
                     COLOR_MAP["default"],
                     bold=(i == current_index),
+                    size_scale=MESSAGE_FONT_SIZE_SCALE,
                 )
-            self._draw_text((8, base_y + len(options) + 1), tr("[h]elp: controls"), (145, 150, 160))
+            self._draw_text(
+                (8, base_y + len(options) + 1),
+                tr("[h]elp: controls"),
+                (145, 150, 160),
+                size_scale=MESSAGE_FONT_SIZE_SCALE,
+            )
 
             self._flip()
 
