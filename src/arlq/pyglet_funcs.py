@@ -323,8 +323,12 @@ class PygletUI:
 
         hat_x = int(getattr(joystick, "hat_x", 0))
         hat_y = int(getattr(joystick, "hat_y", 0))
-        if hat_x or hat_y:
-            return (hat_x, -hat_y)
+        if hat_x and hat_y:
+            return (0, 0)
+        if hat_y:
+            return (0, -hat_y)
+        if hat_x:
+            return (hat_x, 0)
 
         # Pyglet normalizes joystick axes to [-1, 1]. Ignore small values so
         # stick drift does not move the player, and choose one axis for the
