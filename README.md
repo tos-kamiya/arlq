@@ -39,6 +39,8 @@ arlq-cli
 
 Running `arlq` without options opens the graphical interface. Running
 `arlq-cli` without options starts the terminal interface.
+In the GUI, use a connected gamepad's D-pad or left stick to move. Button 0
+confirms the selected stage on the stage selection screen.
 
 The terminal interface requires a terminal at least 80 columns wide and 24
 lines high. If the terminal is resized below that size, the game pauses until

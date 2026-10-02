@@ -4,7 +4,7 @@ import math
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple
 
 from appdirs import user_config_dir
 
@@ -257,8 +257,9 @@ class PygletUI:
         self.joystick = joystick
 
         self.joystick_interval_timer = 0
-        # Direction tuple while moving; hat-y int on the stage-select screen.
-        self.joystick_previous_direction: Optional[Union[Tuple[int, int], int]] = None
+        self.joystick_previous_direction: Optional[Tuple[int, int]] = None
+        self._gamepad_held_buttons: Set[int] = set()
+        self._gamepad_pressed_buttons: Set[int] = set()
         self.map_mode = False
         self.shift_direction = False
 
@@ -284,6 +285,28 @@ class PygletUI:
     def set_key_repeat_interval(self, interval: Optional[float]) -> None:
         self.key_repeat_interval = self._valid_repeat_interval(interval)
         save_key_repeat_interval(self.key_repeat_interval)
+
+    @staticmethod
+    def _joystick_direction(joystick) -> Tuple[int, int]:
+        """Return a cardinal direction from a gamepad D-pad or left stick."""
+        if joystick is None:
+            return (0, 0)
+
+        hat_x = int(getattr(joystick, "hat_x", 0))
+        hat_y = int(getattr(joystick, "hat_y", 0))
+        if hat_x or hat_y:
+            return (hat_x, -hat_y)
+
+        # Pyglet normalizes joystick axes to [-1, 1]. Ignore small values so
+        # stick drift does not move the player, and choose one axis for the
+        # game's four-direction movement.
+        x = float(getattr(joystick, "x", 0.0))
+        y = float(getattr(joystick, "y", 0.0))
+        if max(abs(x), abs(y)) < 0.5:
+            return (0, 0)
+        if abs(x) > abs(y):
+            return (1 if x > 0 else -1, 0)
+        return (0, 1 if y > 0 else -1)
 
     def _set_scaled_dimensions(self) -> None:
         self.cell_size_x = max(1, round(CELL_SIZE_X * self.scale))
@@ -793,6 +816,14 @@ class PygletUI:
 
     def _pump(self):
         self.window.dispatch_events()
+        # Pyglet's regular app loop polls open input devices (including
+        # joysticks) from the platform event loop. This UI has its own loop,
+        # so perform a non-blocking step here to keep device state current.
+        pyglet.app.platform_event_loop.step(0)
+        buttons = getattr(self.joystick, "buttons", ()) if self.joystick else ()
+        held_buttons = {index for index, pressed in enumerate(buttons) if pressed}
+        self._gamepad_pressed_buttons = held_buttons - self._gamepad_held_buttons
+        self._gamepad_held_buttons = held_buttons
 
     def poll_events(self) -> bool:
         """Process pending window events and report whether the window closed."""
@@ -828,7 +859,7 @@ class PygletUI:
     def _input_direction(self) -> Optional[Tuple[int, int]]:
         """
         Waits for a directional input.
-        Returns a tuple (dx, dy) if an arrow key, WASD key, or D-pad.
+        Returns a tuple (dx, dy) if an arrow key, WASD key, D-pad, or left stick.
         Returns None if ESC or 'q' is pressed, or the window is closed.
         """
         self.shift_direction = False
@@ -875,9 +906,7 @@ class PygletUI:
                 return self._held_direction
 
             if self.joystick:
-                hat_x = int(self.joystick.hat_x)
-                hat_y = int(self.joystick.hat_y)
-                current_direction: Tuple[int, int] = (hat_x, -hat_y)
+                current_direction = self._joystick_direction(self.joystick)
 
                 if current_direction != self.joystick_previous_direction:
                     self.joystick_previous_direction = current_direction
@@ -943,11 +972,12 @@ class PygletUI:
         self.window.close()
 
     def controls_menu(self) -> None:
-        """Show keyboard controls until the player dismisses the help screen."""
+        """Show controls until the player dismisses the help screen."""
         self._clear_drawables()
-        self._draw_text((8, 4), tr("Keyboard Controls"), COLOR_MAP[CI_YELLOW], bold=True)
+        self._draw_text((8, 4), tr("Controls"), COLOR_MAP[CI_YELLOW], bold=True)
         controls = (
             "Arrow keys / WASD: move",
+            "Gamepad: D-pad / left stick move, button 0 confirm",
             "F: toggle reachable-area preview",
             "M: enter map and entity display mode (cannot be undone)",
             "Shift + Up/Down: view another floor (Stages 3 and 4)",
@@ -998,7 +1028,7 @@ class PygletUI:
             )
             help_color = (145, 150, 160)
             self._draw_text((8, 13), tr("Up/Down: item   Left/Right: value"), help_color)
-            self._draw_text((8, 15), tr("Enter: apply   Esc: cancel"), help_color)
+            self._draw_text((8, 15), tr("Enter / Gamepad button 0: apply   Esc / Gamepad button 1: cancel"), help_color)
             self._flip()
 
             while True:
@@ -1006,33 +1036,62 @@ class PygletUI:
                 if self._closed:
                     return
                 event = self._next_key_event()
-                if event is None:
-                    time.sleep(1 / 30)
-                    continue
-                symbol, _ = event
-                if symbol == pgkey.UP:
-                    row = (row - 1) % 2
-                    break
-                if symbol == pgkey.DOWN:
-                    row = (row + 1) % 2
-                    break
-                if symbol == pgkey.LEFT:
-                    if row == 0:
-                        current_index = max(0, current_index - 1)
-                    elif row == 1:
-                        repeat_index = max(0, repeat_index - 1)
-                    break
-                if symbol == pgkey.RIGHT:
-                    if row == 0:
-                        current_index = min(len(UI_SCALE_CHOICES) - 1, current_index + 1)
-                    elif row == 1:
-                        repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
-                    break
-                if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
+                if event is not None:
+                    symbol, _ = event
+                    if symbol == pgkey.UP:
+                        row = (row - 1) % 2
+                        break
+                    if symbol == pgkey.DOWN:
+                        row = (row + 1) % 2
+                        break
+                    if symbol == pgkey.LEFT:
+                        if row == 0:
+                            current_index = max(0, current_index - 1)
+                        else:
+                            repeat_index = max(0, repeat_index - 1)
+                        break
+                    if symbol == pgkey.RIGHT:
+                        if row == 0:
+                            current_index = min(len(UI_SCALE_CHOICES) - 1, current_index + 1)
+                        else:
+                            repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
+                        break
+                    if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
+                        self.set_scale(UI_SCALE_CHOICES[current_index])
+                        self.set_key_repeat_interval(KEY_REPEAT_CHOICES[repeat_index])
+                        return
+                    if symbol in (pgkey.ESCAPE, pgkey.Q):
+                        return
+
+                # Use the same navigation and value changes for the gamepad
+                # as for the keyboard. Gamepad button 0 applies; button 1
+                # cancels.
+                direction = self._joystick_direction(self.joystick)
+                if direction != getattr(self, "joystick_previous_direction", None):
+                    self.joystick_previous_direction = direction
+                    if direction == (0, -1):
+                        row = (row - 1) % 2
+                        break
+                    if direction == (0, 1):
+                        row = (row + 1) % 2
+                        break
+                    if direction == (-1, 0):
+                        if row == 0:
+                            current_index = max(0, current_index - 1)
+                        else:
+                            repeat_index = max(0, repeat_index - 1)
+                        break
+                    if direction == (1, 0):
+                        if row == 0:
+                            current_index = min(len(UI_SCALE_CHOICES) - 1, current_index + 1)
+                        else:
+                            repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
+                        break
+                if 0 in getattr(self, "_gamepad_pressed_buttons", ()):
                     self.set_scale(UI_SCALE_CHOICES[current_index])
                     self.set_key_repeat_interval(KEY_REPEAT_CHOICES[repeat_index])
                     return
-                if symbol in (pgkey.ESCAPE, pgkey.Q):
+                if 1 in getattr(self, "_gamepad_pressed_buttons", ()):
                     return
 
     def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
@@ -1069,7 +1128,7 @@ class PygletUI:
                     COLOR_MAP["default"],
                     bold=(i == current_index),
                 )
-            self._draw_text((8, base_y + len(options) + 1), tr("[h]elp: keyboard controls"), (145, 150, 160))
+            self._draw_text((8, base_y + len(options) + 1), tr("[h]elp: controls"), (145, 150, 160))
 
             self._flip()
 
@@ -1078,7 +1137,7 @@ class PygletUI:
                 if self._closed:
                     return 0
 
-                if self.joystick and self.joystick.buttons and self.joystick.buttons[0]:
+                if 0 in getattr(self, "_gamepad_pressed_buttons", ()):
                     if current_index == 0:
                         return 0
                     if current_index == settings_index:
@@ -1118,11 +1177,11 @@ class PygletUI:
                     break
 
                 if self.joystick:
-                    hat_y = int(self.joystick.hat_y)
-                    if hat_y != self.joystick_previous_direction:
-                        self.joystick_previous_direction = hat_y
-                        if hat_y != 0:
-                            current_index = (current_index - hat_y) % len(options)
+                    direction = self._joystick_direction(self.joystick)
+                    if direction != self.joystick_previous_direction:
+                        self.joystick_previous_direction = direction
+                        if direction[1]:
+                            current_index = (current_index + direction[1]) % len(options)
                             break
 
                 time.sleep(1 / 30)
