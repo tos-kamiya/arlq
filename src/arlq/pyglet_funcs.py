@@ -98,6 +98,7 @@ CELL_SIZE_X = 13
 FONT_WIDTH_RATIO = 0.95
 FONT_HEIGHT_RATIO = 0.87
 MESSAGE_FONT_SIZE_SCALE = 0.95
+MENU_ROW_SPACING = 1.2
 
 MIN_UI_SCALE = 0.5
 MAX_UI_SCALE = 4.0
@@ -431,7 +432,7 @@ class PygletUI:
 
     def _draw_text(
         self,
-        pos: d.Point,
+        pos: Tuple[float, float],
         text: str,
         color: Tuple[int, int, int],
         bold: bool = False,
@@ -791,19 +792,14 @@ class PygletUI:
                 size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
 
-    def _text_width(
-        self, text: str, bold: bool = False, size_scale: float = 1.0
-    ) -> int:
+    def _text_width(self, text: str, bold: bool = False) -> int:
         font_name: str
         font_size: float
         if text.isascii():
-            font_name, font_size = self.font_name, self.font_size * size_scale
+            font_name, font_size = self.font_name, self.font_size
         else:
-            non_ascii_font_name, non_ascii_size_scale = self._non_ascii_font()
-            font_name, font_size = (
-                non_ascii_font_name,
-                self.font_size * non_ascii_size_scale * size_scale,
-            )
+            non_ascii_font_name, size_scale = self._non_ascii_font()
+            font_name, font_size = non_ascii_font_name, self.font_size * size_scale
         label = pyglet.text.Label(
             text,
             font_name=font_name,
@@ -1041,9 +1037,12 @@ class PygletUI:
             "S: show the seed",
             "Q / Esc: quit the stage",
         )
-        for row, line in enumerate(controls, start=7):
-            self._draw_text((8, row), tr(line), COLOR_MAP["default"])
-        self._draw_text((8, 16), tr("Press any key to return"), (145, 150, 160))
+        for index, line in enumerate(controls):
+            self._draw_text(
+                (8, 7 + MENU_ROW_SPACING * index), tr(line), COLOR_MAP["default"]
+            )
+        return_y = 7 + MENU_ROW_SPACING * (len(controls) - 1) + 2
+        self._draw_text((8, return_y), tr("Press any key to return"), (145, 150, 160))
         self._flip()
         while not self._closed:
             self._pump()
@@ -1068,7 +1067,6 @@ class PygletUI:
                 tr("Settings"),
                 COLOR_MAP[CI_YELLOW],
                 bold=True,
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             scale_label = tr("Interface scale")
             scale_heading = f"{'>' if row == 0 else ' '} {scale_label}"
@@ -1077,7 +1075,6 @@ class PygletUI:
                 scale_heading,
                 COLOR_MAP["default"],
                 bold=row == 0,
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             self._draw_text(
                 (8, 8),
@@ -1087,9 +1084,7 @@ class PygletUI:
                 x_offset=self._text_width(
                     scale_heading,
                     bold=row == 0,
-                    size_scale=MESSAGE_FONT_SIZE_SCALE,
                 ) + self.cell_size_x,
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             repeat_label = tr("Movement repeat interval")
             repeat_heading = f"{'>' if row == 1 else ' '} {repeat_label}"
@@ -1098,7 +1093,6 @@ class PygletUI:
                 repeat_heading,
                 COLOR_MAP["default"],
                 bold=row == 1,
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             self._draw_text(
                 (8, 10),
@@ -1108,9 +1102,7 @@ class PygletUI:
                 x_offset=self._text_width(
                     repeat_heading,
                     bold=row == 1,
-                    size_scale=MESSAGE_FONT_SIZE_SCALE,
                 ) + self.cell_size_x,
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             stop_label = tr("Automatic repeat stop")
             stop_heading = f"{'>' if row == 2 else ' '} {stop_label}"
@@ -1119,7 +1111,6 @@ class PygletUI:
                 stop_heading,
                 COLOR_MAP["default"],
                 bold=row == 2,
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             self._draw_text(
                 (8, 12),
@@ -1129,22 +1120,18 @@ class PygletUI:
                 x_offset=self._text_width(
                     stop_heading,
                     bold=row == 2,
-                    size_scale=MESSAGE_FONT_SIZE_SCALE,
                 ) + self.cell_size_x,
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             help_color = (145, 150, 160)
             self._draw_text(
                 (8, 15),
                 tr("Up/Down: item   Left/Right: value"),
                 help_color,
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             self._draw_text(
                 (8, 17),
                 tr("Enter / Gamepad button 0: apply   Esc / Gamepad button 1: cancel"),
                 help_color,
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
             self._flip()
 
@@ -1248,7 +1235,6 @@ class PygletUI:
                 tr("Stage Selection"),
                 COLOR_MAP[CI_YELLOW],
                 bold=True,
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
 
             base_x = 8
@@ -1256,17 +1242,15 @@ class PygletUI:
             for i, option in enumerate(options):
                 prefix = ">" if i == current_index else " "
                 self._draw_text(
-                    (base_x, base_y + i),
+                    (base_x, base_y + MENU_ROW_SPACING * i),
                     f"{prefix} {option}",
                     COLOR_MAP["default"],
                     bold=(i == current_index),
-                    size_scale=MESSAGE_FONT_SIZE_SCALE,
                 )
             self._draw_text(
-                (8, base_y + len(options) + 1),
+                (8, base_y + MENU_ROW_SPACING * (len(options) - 1) + 2),
                 tr("[h]elp: controls"),
                 (145, 150, 160),
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
             )
 
             self._flip()
