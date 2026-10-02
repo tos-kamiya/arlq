@@ -151,6 +151,24 @@ def save_key_repeat_interval(interval: Optional[float]) -> None:
     except OSError:
         pass
 
+
+def load_auto_repeat_stop_enabled() -> bool:
+    """Load whether automatic movement repeat should stop at game events."""
+    value = _load_settings().get("auto_repeat_stop_enabled", True)
+    return value if isinstance(value, bool) else True
+
+
+def save_auto_repeat_stop_enabled(enabled: bool) -> None:
+    """Persist the automatic repeat stop setting without discarding other settings."""
+    path = _settings_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        settings = _load_settings()
+        settings["auto_repeat_stop_enabled"] = bool(enabled)
+        path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
 # Keys that map to a movement direction, shared by input_direction().
 _DIRECTION_KEYS = {
     pgkey.UP: (0, -1),
@@ -204,6 +222,7 @@ class PygletUI:
             _load_settings().get("key_repeat_interval", None)
             if key_repeat_interval is None else key_repeat_interval
         )
+        self.auto_repeat_stop_enabled = load_auto_repeat_stop_enabled()
         self._held_direction: Optional[Tuple[int, int]] = None
         self._held_direction_keys: Set[int] = set()
         self._next_repeat_at = 0.0
@@ -286,6 +305,10 @@ class PygletUI:
     def set_key_repeat_interval(self, interval: Optional[float]) -> None:
         self.key_repeat_interval = self._valid_repeat_interval(interval)
         save_key_repeat_interval(self.key_repeat_interval)
+
+    def set_auto_repeat_stop_enabled(self, enabled: bool) -> None:
+        self.auto_repeat_stop_enabled = bool(enabled)
+        save_auto_repeat_stop_enabled(self.auto_repeat_stop_enabled)
 
     @staticmethod
     def _joystick_direction(joystick) -> Tuple[int, int]:
@@ -998,7 +1021,7 @@ class PygletUI:
         controls = (
             "Arrow keys / WASD: move",
             "Gamepad: D-pad / left stick move, button 0 confirm",
-            "Auto-repeat stops near visible entities and known hazards",
+            "Automatic repeat stopping can be disabled in Settings",
             "F: toggle reachable-area preview",
             "M: enter map and entity display mode (cannot be undone)",
             "Shift + Up/Down: view another floor (Stages 3 and 4)",
@@ -1016,13 +1039,14 @@ class PygletUI:
             time.sleep(1 / 30)
 
     def settings_menu(self) -> None:
-        """Show GUI settings and persist the selected display scale and key repeat."""
+        """Show GUI settings and persist the selected display and input options."""
         current_index = min(
             range(len(UI_SCALE_CHOICES)),
             key=lambda index: abs(UI_SCALE_CHOICES[index] - self.scale),
         )
 
         repeat_index = KEY_REPEAT_CHOICES.index(self.key_repeat_interval) if self.key_repeat_interval in KEY_REPEAT_CHOICES else 0
+        auto_repeat_stop_enabled = self.auto_repeat_stop_enabled
         row = 0
         while True:
             self._clear_drawables()
@@ -1047,9 +1071,19 @@ class PygletUI:
                 bold=row == 1,
                 x_offset=self._text_width(repeat_heading, bold=row == 1) + self.cell_size_x,
             )
+            stop_label = tr("Automatic repeat stop")
+            stop_heading = f"{'>' if row == 2 else ' '} {stop_label}"
+            self._draw_text((8, 12), stop_heading, COLOR_MAP["default"], bold=row == 2)
+            self._draw_text(
+                (8, 12),
+                f"<  {tr('On') if auto_repeat_stop_enabled else tr('Off')}  >",
+                COLOR_MAP["default"],
+                bold=row == 2,
+                x_offset=self._text_width(stop_heading, bold=row == 2) + self.cell_size_x,
+            )
             help_color = (145, 150, 160)
-            self._draw_text((8, 13), tr("Up/Down: item   Left/Right: value"), help_color)
-            self._draw_text((8, 15), tr("Enter / Gamepad button 0: apply   Esc / Gamepad button 1: cancel"), help_color)
+            self._draw_text((8, 15), tr("Up/Down: item   Left/Right: value"), help_color)
+            self._draw_text((8, 17), tr("Enter / Gamepad button 0: apply   Esc / Gamepad button 1: cancel"), help_color)
             self._flip()
 
             while True:
@@ -1060,26 +1094,31 @@ class PygletUI:
                 if event is not None:
                     symbol, _ = event
                     if symbol == pgkey.UP:
-                        row = (row - 1) % 2
+                        row = (row - 1) % 3
                         break
                     if symbol == pgkey.DOWN:
-                        row = (row + 1) % 2
+                        row = (row + 1) % 3
                         break
                     if symbol == pgkey.LEFT:
                         if row == 0:
                             current_index = max(0, current_index - 1)
-                        else:
+                        elif row == 1:
                             repeat_index = max(0, repeat_index - 1)
+                        else:
+                            auto_repeat_stop_enabled = not auto_repeat_stop_enabled
                         break
                     if symbol == pgkey.RIGHT:
                         if row == 0:
                             current_index = min(len(UI_SCALE_CHOICES) - 1, current_index + 1)
-                        else:
+                        elif row == 1:
                             repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
+                        else:
+                            auto_repeat_stop_enabled = not auto_repeat_stop_enabled
                         break
                     if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
                         self.set_scale(UI_SCALE_CHOICES[current_index])
                         self.set_key_repeat_interval(KEY_REPEAT_CHOICES[repeat_index])
+                        self.set_auto_repeat_stop_enabled(auto_repeat_stop_enabled)
                         return
                     if symbol in (pgkey.ESCAPE, pgkey.Q):
                         return
@@ -1099,18 +1138,23 @@ class PygletUI:
                     if direction == (-1, 0):
                         if row == 0:
                             current_index = max(0, current_index - 1)
-                        else:
+                        elif row == 1:
                             repeat_index = max(0, repeat_index - 1)
+                        else:
+                            auto_repeat_stop_enabled = not auto_repeat_stop_enabled
                         break
                     if direction == (1, 0):
                         if row == 0:
                             current_index = min(len(UI_SCALE_CHOICES) - 1, current_index + 1)
-                        else:
+                        elif row == 1:
                             repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
+                        else:
+                            auto_repeat_stop_enabled = not auto_repeat_stop_enabled
                         break
                 if 0 in getattr(self, "_gamepad_pressed_buttons", ()):
                     self.set_scale(UI_SCALE_CHOICES[current_index])
                     self.set_key_repeat_interval(KEY_REPEAT_CHOICES[repeat_index])
+                    self.set_auto_repeat_stop_enabled(auto_repeat_stop_enabled)
                     return
                 if 1 in getattr(self, "_gamepad_pressed_buttons", ()):
                     return

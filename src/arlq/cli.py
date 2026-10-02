@@ -83,6 +83,12 @@ def _prepare_cli_session(terminal_only=False):
             default=argparse.SUPPRESS,
             help="GUI movement repeat delay and interval (0.1 to 1.0 seconds, or none); saves for future GUI starts.",
         )
+        gui.add_argument(
+            "--auto-repeat-stop",
+            action=argparse.BooleanOptionalAction,
+            default=argparse.SUPPRESS,
+            help="Stop held movement near hazards and after encounters (saves for future GUI starts).",
+        )
     dev.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
     dev.add_argument(
         "--trap-test", action="store_true", help="Start the trap test stage."
@@ -308,6 +314,8 @@ def main(terminal_only=False):
             save_ui_scale(ui.scale)
         if hasattr(args, "key_repeat_interval"):
             ui.set_key_repeat_interval(args.key_repeat_interval)
+        if hasattr(args, "auto_repeat_stop"):
+            ui.set_auto_repeat_stop_enabled(args.auto_repeat_stop)
         play(ui)
 
     if trace_recorder is not None:

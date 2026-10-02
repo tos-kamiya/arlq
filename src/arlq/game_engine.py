@@ -8,14 +8,13 @@ from typing import Any, Deque, List, Optional, Set, Tuple
 
 from . import defs as d
 from . import display as ui_display
-from .game_events import WallEvent
 from .arlq import (
     MESSAGE_TICKS,
     PLAYER_PASSABLE_CELLS,
     GameConfig,
+    activate_mimic_for_defeat,
     apply_barrier_damage,
     barrier_lp_damage,
-    activate_mimic_for_defeat,
     find_random_place,
     get_torched,
     iterate_ellipse_points,
@@ -28,7 +27,9 @@ from .arlq import (
     tick_message,
     unlock_treasure_for_defeat,
 )
-from .i18n import t as tr, trp
+from .game_events import WallEvent
+from .i18n import t as tr
+from .i18n import trp
 from .stage_replay import rewind_to_history as _rewind_to_history
 from .stage_types import (
     Floor,
@@ -38,10 +39,10 @@ from .stage_types import (
     _RewindRequest,
 )
 from .stage_world import (
-    build_single_floor,
     _inside_island,
     _spawn,
     build,
+    build_single_floor,
     build_trap_test,
 )
 from .trace import DIR_TO_KEY, TraceRecorder
@@ -1506,13 +1507,18 @@ def run_game(
 
         # A real movement always returns the display to the player's floor.
         view_floor = floor[0]
-        if getattr(ui, "input_was_repeat", False) and _should_stop_movement_repeat(
-            move,
-            current,
-            player,
-            show_all_entities=show_entities,
-            known_types=known_types,
-            stage_num=stage_num,
+        repeat_stop_enabled = getattr(ui, "auto_repeat_stop_enabled", True)
+        if (
+            repeat_stop_enabled
+            and getattr(ui, "input_was_repeat", False)
+            and _should_stop_movement_repeat(
+                move,
+                current,
+                player,
+                show_all_entities=show_entities,
+                known_types=known_types,
+                stage_num=stage_num,
+            )
         ):
             _stop_movement_repeat(ui)
             continue
@@ -1532,7 +1538,9 @@ def run_game(
                 replay_context.operations
             )
 
-        repeat_stop_reasons: Set[str] = set()
+        repeat_stop_reasons: Optional[Set[str]] = (
+            set() if repeat_stop_enabled else None
+        )
         step_result = _process_multi_floor_turn(
             move,
             floors,

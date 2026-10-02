@@ -1,5 +1,6 @@
 """Keyboard navigation checks for the GUI menus."""
 
+import json
 from collections import deque
 
 from pyglet.window import key
@@ -16,6 +17,7 @@ def _menu_ui(monkeypatch, events):
     ui.joystick = None
     ui.scale = 1.0
     ui.key_repeat_interval = None
+    ui.auto_repeat_stop_enabled = True
     ui.cell_size_x = 13
     ui._events = deque(events)
     ui._pump = lambda: None
@@ -56,3 +58,21 @@ def test_entering_settings_from_stage_list_and_escape_keeps_app_open(monkeypatch
     assert selected_stage == 1
     assert ui.quit_called is False
     assert ui._closed is False
+
+
+def test_settings_can_disable_and_persist_automatic_repeat_stop(monkeypatch, tmp_path):
+    settings_path = tmp_path / "settings.json"
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: settings_path)
+    ui = _menu_ui(
+        monkeypatch,
+        [(key.DOWN, 0), (key.DOWN, 0), (key.RIGHT, 0), (key.RETURN, 0)],
+    )
+    ui.set_scale = lambda scale: setattr(ui, "scale", scale)
+
+    ui.settings_menu()
+
+    assert ui.auto_repeat_stop_enabled is False
+    assert json.loads(settings_path.read_text()) == {
+        "key_repeat_interval": None,
+        "auto_repeat_stop_enabled": False,
+    }

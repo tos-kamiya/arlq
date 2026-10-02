@@ -5,6 +5,8 @@ from collections import Counter, deque
 import pytest
 
 from arlq import defs as d
+from arlq import game_engine
+from arlq.arlq import GameConfig
 from arlq.game_engine import (
     Floor,
     _ContactResult,
@@ -166,7 +168,8 @@ def test_entity_contact_marks_repeat_stop_reason(monkeypatch):
     monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
     floor = floor_with([monster])
     monkeypatch.setattr(
-        "arlq.game_engine._resolve_contact", lambda *_args, **_kwargs: _ContactResult(None)
+        "arlq.game_engine._resolve_contact",
+        lambda *_args, **_kwargs: _ContactResult(None),
     )
 
     reasons = run_step_for_repeat_reasons(player, [floor], (1, 0))
@@ -243,3 +246,47 @@ def test_marksman_hit_marks_repeat_stop_reason(monkeypatch):
     reasons = run_step_for_repeat_reasons(player, [floor], (1, 0), stage_num=4)
 
     assert "marksman_hit" in reasons
+
+
+def test_disabling_automatic_repeat_stop_skips_precheck_and_event_stop(monkeypatch):
+    player = d.Player(2, 2, 100, 90)
+    floor = floor_with()
+    monkeypatch.setattr(
+        game_engine, "build_single_floor", lambda *_args: ([floor], player)
+    )
+    precheck_calls = []
+    monkeypatch.setattr(
+        game_engine,
+        "_should_stop_movement_repeat",
+        lambda *_args, **_kwargs: precheck_calls.append(True) or True,
+    )
+    step_repeat_reasons = []
+
+    def fake_step(*_args, **kwargs):
+        step_repeat_reasons.append(kwargs["repeat_stop_reasons"])
+        player.lp = 0
+
+    monkeypatch.setattr(game_engine, "_process_multi_floor_turn", fake_step)
+
+    class UI:
+        auto_repeat_stop_enabled = False
+        input_was_repeat = True
+        farthest_preview = False
+        shift_direction = False
+
+        def __init__(self):
+            self.moves = iter([(1, 0)])
+
+        def draw_stage(self, **_kwargs):
+            pass
+
+        def input_direction(self):
+            return next(self.moves, None)
+
+        def input_alphabet(self):
+            return None
+
+    game_engine.run_game(UI(), "test-seed", config=GameConfig(), stage_num=1)
+
+    assert precheck_calls == []
+    assert step_repeat_reasons == [None]
