@@ -271,18 +271,18 @@ class PygletUI:
                 self._held_direction = None
                 self._next_repeat_at = 0.0
 
-        joysticks = pyglet.input.get_joysticks()
-        joystick = None
-        if joysticks:
-            joystick = joysticks[0]
+        controllers = pyglet.input.get_controllers()
+        controller = None
+        if controllers:
+            controller = controllers[0]
             try:
-                joystick.open()
+                controller.open()
             except Exception:
-                joystick = None
-        self.joystick = joystick
+                controller = None
+        self.controller = controller
 
-        self.joystick_previous_direction: Optional[Tuple[int, int]] = None
-        self._next_joystick_repeat_at = 0.0
+        self.gamepad_previous_direction: Optional[Tuple[int, int]] = None
+        self._next_gamepad_repeat_at = 0.0
         self._gamepad_held_buttons: Set[int] = set()
         self._gamepad_pressed_buttons: Set[int] = set()
         self.map_mode = False
@@ -316,30 +316,39 @@ class PygletUI:
         save_auto_repeat_stop_enabled(self.auto_repeat_stop_enabled)
 
     @staticmethod
-    def _joystick_direction(joystick) -> Tuple[int, int]:
-        """Return a cardinal direction from a gamepad D-pad or left stick."""
-        if joystick is None:
+    def _controller_direction(controller) -> Tuple[int, int]:
+        """Return a cardinal direction from a controller D-pad or left stick."""
+        if controller is None:
             return (0, 0)
 
-        hat_x = int(getattr(joystick, "hat_x", 0))
-        hat_y = int(getattr(joystick, "hat_y", 0))
-        if hat_x and hat_y:
-            return (0, 0)
-        if hat_y:
-            return (0, -hat_y)
-        if hat_x:
-            return (hat_x, 0)
+        dpad_x = getattr(controller, "dpadx", None)
+        dpad_y = getattr(controller, "dpady", None)
+        if dpad_x is None or dpad_y is None:
+            dpad_x = int(bool(getattr(controller, "dpright", False))) - int(
+                bool(getattr(controller, "dpleft", False))
+            )
+            dpad_y = int(bool(getattr(controller, "dpup", False))) - int(
+                bool(getattr(controller, "dpdown", False))
+            )
+        dpad_x = float(dpad_x or 0.0)
+        dpad_y = float(dpad_y or 0.0)
+        if abs(dpad_x) > 0.5 or abs(dpad_y) > 0.5:
+            if abs(dpad_x) > 0.5 and abs(dpad_y) > 0.5:
+                return (0, 0)
+            if abs(dpad_x) > 0.5:
+                return (1 if dpad_x > 0 else -1, 0)
+            return (0, -1 if dpad_y > 0 else 1)
 
-        # Pyglet normalizes joystick axes to [-1, 1]. Ignore small values so
+        # Pyglet normalizes controller axes to [-1, 1]. Ignore small values so
         # stick drift does not move the player, and choose one axis for the
         # game's four-direction movement.
-        x = float(getattr(joystick, "x", 0.0))
-        y = float(getattr(joystick, "y", 0.0))
+        x = float(getattr(controller, "leftx", 0.0) or 0.0)
+        y = float(getattr(controller, "lefty", 0.0) or 0.0)
         if max(abs(x), abs(y)) < 0.5:
             return (0, 0)
         if abs(x) > abs(y):
             return (1 if x > 0 else -1, 0)
-        return (0, 1 if y > 0 else -1)
+        return (0, -1 if y > 0 else 1)
 
     def _set_scaled_dimensions(self) -> None:
         self.cell_size_x = max(1, round(CELL_SIZE_X * self.scale))
@@ -857,11 +866,15 @@ class PygletUI:
     def _pump(self):
         self.window.dispatch_events()
         # Pyglet's regular app loop polls open input devices (including
-        # joysticks) from the platform event loop. This UI has its own loop,
+        # controllers) from the platform event loop. This UI has its own loop,
         # so perform a non-blocking step here to keep device state current.
         pyglet.app.platform_event_loop.step(0)
-        buttons = getattr(self.joystick, "buttons", ()) if self.joystick else ()
-        held_buttons = {index for index, pressed in enumerate(buttons) if pressed}
+        button_names = ("a", "b", "x", "y")
+        held_buttons = {
+            index
+            for index, name in enumerate(button_names)
+            if self.controller and bool(getattr(self.controller, name, False))
+        }
         was_preview_held = 2 in self._gamepad_held_buttons
         self._gamepad_pressed_buttons = held_buttons - self._gamepad_held_buttons
         self._gamepad_held_buttons = held_buttons
@@ -914,13 +927,14 @@ class PygletUI:
         """Require held movement controls to be released before repeating again."""
         self._held_direction = None
         self._next_repeat_at = 0.0
-        if self.joystick_previous_direction not in (None, (0, 0)):
-            self._next_joystick_repeat_at = float("inf")
+        if getattr(self, "gamepad_previous_direction", None) not in (None, (0, 0)):
+            self._next_gamepad_repeat_at = float("inf")
 
     def _input_direction(self) -> Optional[Tuple[int, int]]:
         """
         Waits for a directional input.
-        Returns a tuple (dx, dy) if an arrow key, WASD key, D-pad, or left stick.
+        Returns a tuple (dx, dy) if an arrow key, WASD key, controller D-pad,
+        or left stick is used.
         Returns None if ESC or 'q' is pressed, or the window is closed.
         """
         self.shift_direction = False
@@ -976,35 +990,36 @@ class PygletUI:
                 self.input_was_repeat = True
                 return self._held_direction
 
-            if self.joystick:
-                current_direction = self._joystick_direction(self.joystick)
+            controller = getattr(self, "controller", None)
+            if controller:
+                current_direction = self._controller_direction(controller)
 
-                if current_direction != self.joystick_previous_direction:
-                    self.joystick_previous_direction = current_direction
+                if current_direction != self.gamepad_previous_direction:
+                    self.gamepad_previous_direction = current_direction
                     if current_direction != (0, 0):
                         if self._gamepad_preview_held:
                             if current_direction[0] != 0:
-                                self._next_joystick_repeat_at = float("inf")
+                                self._next_gamepad_repeat_at = float("inf")
                                 time.sleep(1 / 30)
                                 continue
                             self.shift_direction = True
-                        self._next_joystick_repeat_at = (
+                        self._next_gamepad_repeat_at = (
                             time.monotonic() + self.key_repeat_interval
                             if self.key_repeat_interval is not None else float("inf")
                         )
                         return current_direction
-                    self._next_joystick_repeat_at = 0.0
+                    self._next_gamepad_repeat_at = 0.0
                 elif (
                     current_direction != (0, 0)
                     and self.key_repeat_interval is not None
-                    and time.monotonic() >= self._next_joystick_repeat_at
+                    and time.monotonic() >= self._next_gamepad_repeat_at
                 ):
                     if self._gamepad_preview_held:
                         if current_direction[0] != 0:
                             time.sleep(1 / 30)
                             continue
                         self.shift_direction = True
-                    self._next_joystick_repeat_at = time.monotonic() + self.key_repeat_interval
+                    self._next_gamepad_repeat_at = time.monotonic() + self.key_repeat_interval
                     self.input_was_repeat = True
                     return current_direction
 
@@ -1229,9 +1244,9 @@ class PygletUI:
                 # Use the same navigation and value changes for the gamepad
                 # as for the keyboard. Gamepad button 0 applies; button 1
                 # cancels.
-                direction = self._joystick_direction(self.joystick)
-                if direction != getattr(self, "joystick_previous_direction", None):
-                    self.joystick_previous_direction = direction
+                direction = self._controller_direction(getattr(self, "controller", None))
+                if direction != getattr(self, "gamepad_previous_direction", None):
+                    self.gamepad_previous_direction = direction
                     if direction == (0, -1):
                         row = (row - 1) % 2
                         break
@@ -1356,10 +1371,11 @@ class PygletUI:
                             return n
                     break
 
-                if self.joystick:
-                    direction = self._joystick_direction(self.joystick)
-                    if direction != self.joystick_previous_direction:
-                        self.joystick_previous_direction = direction
+                controller = getattr(self, "controller", None)
+                if controller:
+                    direction = self._controller_direction(controller)
+                    if direction != self.gamepad_previous_direction:
+                        self.gamepad_previous_direction = direction
                         if direction[1]:
                             current_index = (current_index + direction[1]) % len(options)
                             break
