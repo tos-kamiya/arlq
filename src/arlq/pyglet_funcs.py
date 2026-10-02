@@ -256,8 +256,8 @@ class PygletUI:
                 joystick = None
         self.joystick = joystick
 
-        self.joystick_interval_timer = 0
         self.joystick_previous_direction: Optional[Tuple[int, int]] = None
+        self._next_joystick_repeat_at = 0.0
         self._gamepad_held_buttons: Set[int] = set()
         self._gamepad_pressed_buttons: Set[int] = set()
         self.map_mode = False
@@ -910,10 +910,19 @@ class PygletUI:
 
                 if current_direction != self.joystick_previous_direction:
                     self.joystick_previous_direction = current_direction
-                    self.joystick_interval_timer = 0
-                else:
-                    self.joystick_interval_timer = (self.joystick_interval_timer + 1) % 7
-                if self.joystick_interval_timer == 0 and current_direction != (0, 0):
+                    if current_direction != (0, 0):
+                        self._next_joystick_repeat_at = (
+                            time.monotonic() + self.key_repeat_interval
+                            if self.key_repeat_interval is not None else float("inf")
+                        )
+                        return current_direction
+                    self._next_joystick_repeat_at = 0.0
+                elif (
+                    current_direction != (0, 0)
+                    and self.key_repeat_interval is not None
+                    and time.monotonic() >= self._next_joystick_repeat_at
+                ):
+                    self._next_joystick_repeat_at = time.monotonic() + self.key_repeat_interval
                     return current_direction
 
             time.sleep(1 / 30)
@@ -1016,7 +1025,7 @@ class PygletUI:
                 bold=row == 0,
                 x_offset=self._text_width(scale_heading, bold=row == 0) + self.cell_size_x,
             )
-            repeat_label = tr("Key repeat interval")
+            repeat_label = tr("Movement repeat interval")
             repeat_heading = f"{'>' if row == 1 else ' '} {repeat_label}"
             self._draw_text((8, 10), repeat_heading, COLOR_MAP["default"], bold=row == 1)
             self._draw_text(
