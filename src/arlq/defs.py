@@ -748,6 +748,12 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     ],
 ]
 
+# Elves placed by the multi-floor builder instead of the static floor rosters.
+STAGE_RUNTIME_ELVES: Dict[int, Tuple[str, ...]] = {
+    3: ("C", "I"),
+    4: ("C", "I", "J", "K", "H", "S", "L"),
+}
+
 STAGE3_FLOORS = len(STAGE3_ROSTER)
 STAGE4_FLOORS = len(STAGE4_ROSTER)
 STAGE_BOSSES: Dict[int, Tuple[str, int]] = {

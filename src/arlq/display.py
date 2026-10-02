@@ -119,12 +119,25 @@ def elf_stage_progress_marks(
     """
     show_floors = bool(player.elf_stage_flags & d.ELF_STAGE_I_FLAG)
     marks: List[Tuple[str, bool]] = []
-    progress = list(d.ELF_STAGE_PROGRESS)
+    stage_roster = d.STAGE3_ROSTER if stage_num == 3 else d.STAGE4_ROSTER
+    roster_elves = {
+        char
+        for floor in stage_roster
+        for roster_char, _, empowered in floor
+        for char, _, _, _ in [d.decode_stage_roster_entry(roster_char, empowered)]
+        if char in d.CHAR_TO_MONSTER_TRIBE
+        and d.CHAR_TO_MONSTER_TRIBE[char].is_elf
+    }
+    # These elves are added by the floor builder rather than the static roster.
+    roster_elves.update(d.STAGE_RUNTIME_ELVES.get(stage_num, ()))
+    progress = [
+        entry for entry in d.ELF_STAGE_PROGRESS if entry[0] in roster_elves
+    ]
     if "L" in player.elf_stage_floors or player.elf_stage_flags & d.ELF_STAGE_L_FLAG:
         progress = [
-            *d.ELF_STAGE_PROGRESS[:4],
+            *[entry for entry in progress if entry[0] in {"C", "I", "J", "K"}],
             ("L", d.ELF_STAGE_L_FLAG),
-            *d.ELF_STAGE_PROGRESS[4:],
+            *[entry for entry in progress if entry[0] not in {"C", "I", "J", "K"}],
         ]
     for label, bit in progress:
         text = label

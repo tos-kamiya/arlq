@@ -2460,7 +2460,6 @@ def test_elf_stage_progress_marks_add_elf_floors_after_the_isolated_elf():
         ("J", False),
         ("K2", True),
         ("H3", False),
-        ("S", False),
         ("W", False),
         ("T", True),
     ]
