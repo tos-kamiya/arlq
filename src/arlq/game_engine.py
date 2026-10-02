@@ -1497,6 +1497,9 @@ def run_game(
                     "unfinished" if getattr(ui, "ran_dry", False) else "quit"
                 )
             return
+        if getattr(ui, "floor_view_reset_requested", False):
+            view_floor = floor[0]
+            ui.floor_view_reset_requested = False
         if move == (0, 0):
             continue
         if getattr(ui, "farthest_preview", False):

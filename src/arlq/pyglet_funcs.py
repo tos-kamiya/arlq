@@ -217,7 +217,10 @@ class PygletUI:
         self._closed = False
         self._key_queue: list = []
         self._stage_input_active = False
-        self.farthest_preview = False
+        self._keyboard_farthest_preview = False
+        self._gamepad_preview_held = False
+        self._gamepad_preview_changed = False
+        self.floor_view_reset_requested = False
         self._f_key_held = False
         self._escape_key_held = False
         self.key_repeat_interval = self._valid_repeat_interval(
@@ -855,8 +858,22 @@ class PygletUI:
         pyglet.app.platform_event_loop.step(0)
         buttons = getattr(self.joystick, "buttons", ()) if self.joystick else ()
         held_buttons = {index for index, pressed in enumerate(buttons) if pressed}
+        was_preview_held = 2 in self._gamepad_held_buttons
         self._gamepad_pressed_buttons = held_buttons - self._gamepad_held_buttons
         self._gamepad_held_buttons = held_buttons
+        self._gamepad_preview_held = 2 in held_buttons
+        if self._gamepad_preview_held != was_preview_held:
+            self._gamepad_preview_changed = True
+            if was_preview_held and not self._gamepad_preview_held:
+                self.floor_view_reset_requested = True
+
+    @property
+    def farthest_preview(self) -> bool:
+        return self._keyboard_farthest_preview or self._gamepad_preview_held
+
+    @farthest_preview.setter
+    def farthest_preview(self, enabled: bool) -> None:
+        self._keyboard_farthest_preview = bool(enabled)
 
     def poll_events(self) -> bool:
         """Process pending window events and report whether the window closed."""
@@ -909,6 +926,10 @@ class PygletUI:
             if self._closed:
                 return None
 
+            if self._gamepad_preview_changed:
+                self._gamepad_preview_changed = False
+                return (0, 0)
+
             while self._key_queue:
                 event = self._next_key_event()
                 if event is None:
@@ -917,7 +938,7 @@ class PygletUI:
                 else:
                     symbol, modifiers = event
                 if symbol == pgkey.F:
-                    self.farthest_preview = not self.farthest_preview
+                    self._keyboard_farthest_preview = not self._keyboard_farthest_preview
                     return (0, 0)
                 if symbol == pgkey.M:
                     self.map_mode = True
@@ -953,6 +974,12 @@ class PygletUI:
                 if current_direction != self.joystick_previous_direction:
                     self.joystick_previous_direction = current_direction
                     if current_direction != (0, 0):
+                        if self._gamepad_preview_held:
+                            if current_direction[0] != 0:
+                                self._next_joystick_repeat_at = float("inf")
+                                time.sleep(1 / 30)
+                                continue
+                            self.shift_direction = True
                         self._next_joystick_repeat_at = (
                             time.monotonic() + self.key_repeat_interval
                             if self.key_repeat_interval is not None else float("inf")
@@ -964,6 +991,11 @@ class PygletUI:
                     and self.key_repeat_interval is not None
                     and time.monotonic() >= self._next_joystick_repeat_at
                 ):
+                    if self._gamepad_preview_held:
+                        if current_direction[0] != 0:
+                            time.sleep(1 / 30)
+                            continue
+                        self.shift_direction = True
                     self._next_joystick_repeat_at = time.monotonic() + self.key_repeat_interval
                     self.input_was_repeat = True
                     return current_direction
@@ -1029,11 +1061,11 @@ class PygletUI:
         self._draw_text((8, 4), tr("Controls"), COLOR_MAP[CI_YELLOW], bold=True)
         controls = (
             "Arrow keys / WASD: move",
-            "Gamepad: D-pad / left stick move, button 0 confirm",
-            "Automatic repeat stopping can be disabled in Settings",
+            "Gamepad: D-pad / left stick move, button 0 confirm, hold button 2 to preview",
             "F: toggle reachable-area preview",
             "M: enter map and entity display mode (cannot be undone)",
             "Shift + Up/Down: view another floor (Stages 3 and 4)",
+            "Hold gamepad button 2 + Up/Down: view another floor (Stages 3 and 4)",
             "S: show the seed",
             "Q / Esc: quit the stage",
         )
