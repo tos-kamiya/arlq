@@ -4,7 +4,7 @@
 
 ## 5.5.3 - 2026-10-03
 
-- Show “リピートなし” for the disabled movement repeat interval in Japanese.
+- Show “No repeat” for the disabled movement repeat interval in the settings menu.
 
 ## 5.5.2 - 2026-10-02
 
