@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 5.5.2 - 2026-10-02
+
+- Add gamepad controls to hold button 2 for reachable-area previews and floor
+  inspection, and use button 3 to open or close the controls help.
+- Ignore diagonal D-pad input so it cannot cause unsupported diagonal movement.
+- Clarify the Japanese gamepad button labels.
+
 ## 5.5.1 - 2026-10-02
 
 - Reduce the GUI message font slightly to make event messages easier to read.
