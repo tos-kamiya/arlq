@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -45,7 +45,7 @@ requires-dist = [
     { name = "appdirs", specifier = ">=1.4" },
     { name = "blessed", specifier = ">=1.28" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
-    { name = "pyglet", specifier = ">=2" },
+    { name = "pyglet", specifier = ">=2.0.14" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
 ]
