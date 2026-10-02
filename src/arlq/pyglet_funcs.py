@@ -934,6 +934,10 @@ class PygletUI:
                 self._gamepad_preview_changed = False
                 return (0, 0)
 
+            if 3 in self._gamepad_pressed_buttons:
+                self.controls_menu()
+                return (0, 0)
+
             while self._key_queue:
                 event = self._next_key_event()
                 if event is None:
@@ -1028,6 +1032,9 @@ class PygletUI:
                     return "h"
                 key_name = pgkey.symbol_string(symbol)
                 return key_name.lower()
+            if 3 in self._gamepad_pressed_buttons:
+                self.controls_menu()
+                return "h"
 
             time.sleep(1 / 30)
 
@@ -1037,6 +1044,10 @@ class PygletUI:
             self._pump()
             if self._closed:
                 return None
+
+            if 3 in self._gamepad_pressed_buttons:
+                self.controls_menu()
+                return (0, 0, False)
 
             while self._key_queue:
                 event = self._next_key_event()
@@ -1066,6 +1077,7 @@ class PygletUI:
         controls = (
             "Arrow keys / WASD: move",
             "Gamepad: D-pad / left stick move, button 0 confirm, hold button 2 to preview",
+            "Gamepad button 3: open / close this help",
             "F: toggle reachable-area preview",
             "M: enter map and entity display mode (cannot be undone)",
             "Shift + Up/Down: view another floor (Stages 3 and 4)",
@@ -1078,11 +1090,17 @@ class PygletUI:
                 (8, 7 + MENU_ROW_SPACING * index), tr(line), COLOR_MAP["default"]
             )
         return_y = 7 + MENU_ROW_SPACING * (len(controls) - 1) + 2
-        self._draw_text((8, return_y), tr("Press any key to return"), (145, 150, 160))
+        self._draw_text(
+            (8, return_y),
+            tr("Press any key or gamepad button 3 to return"),
+            (145, 150, 160),
+        )
         self._flip()
         while not self._closed:
             self._pump()
             if self._next_key_event() is not None:
+                return
+            if 3 in self._gamepad_pressed_buttons:
                 return
             time.sleep(1 / 30)
 
@@ -1285,7 +1303,7 @@ class PygletUI:
                 )
             self._draw_text(
                 (8, base_y + MENU_ROW_SPACING * (len(options) - 1) + 2),
-                tr("[h]elp: controls"),
+                tr("[h]elp / Gamepad button 3: controls"),
                 (145, 150, 160),
             )
 
@@ -1304,6 +1322,9 @@ class PygletUI:
                         self._discard_queued_key(pgkey.ESCAPE)
                         break
                     return current_index
+                if 3 in getattr(self, "_gamepad_pressed_buttons", ()):
+                    self.controls_menu()
+                    break
 
                 event = self._next_key_event()
                 if event is not None:
