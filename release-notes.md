@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.5.1 - 2026-10-02
+
+- Reduce the GUI message font slightly to make event messages easier to read.
+
 ## 5.5.0 - 2026-10-02
 
 - Add GUI gamepad navigation and movement with the D-pad or left stick, with
