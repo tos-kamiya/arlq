@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.5.4 - 2026-10-03
+
+- Add linked screenshot thumbnails to the English and Japanese READMEs.
+
 ## 5.5.3 - 2026-10-03
 
 - Show “No repeat” for the disabled movement repeat interval in the settings menu.
