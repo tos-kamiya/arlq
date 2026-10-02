@@ -203,7 +203,7 @@ def checkpoint_turn_index(turns: List[Dict[str, Any]], index: int) -> int:
     Positive indexes are one-based; negative indexes count from the end.
     """
     if index == 0:
-        raise ValueError("--rewind index cannot be 0")
+        raise ValueError("--to-checkpoint index cannot be 0")
     event_turns = [
         turn_index
         for turn_index, turn in enumerate(turns)
@@ -237,12 +237,16 @@ class ReplayUI:
         draw_ui: Optional[Any] = None,
         draw_interval: float = 0.0,
         continue_play: bool = False,
+        final_state_only: bool = False,
     ) -> None:
         self._inputs: Deque[str] = deque(turn["input"] for turn in turns)
         self._stage = stage
         self._draw_ui = draw_ui
         self._draw_interval = draw_interval
         self._continue_play = continue_play
+        self._final_state_only = final_state_only
+        self._last_draw: Optional[Dict[str, Any]] = None
+        self._last_state_drawn = False
         self._using_live_input = False
         self.ran_dry = False
 
@@ -276,10 +280,28 @@ class ReplayUI:
             object.__setattr__(self, name, value)
 
     def draw_stage(self, **kwargs: Any) -> None:
+        if self._final_state_only:
+            self._last_draw = kwargs
+            # The loop draws once more after its last recorded move. At that
+            # point the input queue is empty and the game state is complete.
+            if self._inputs:
+                self._last_state_drawn = False
+                return
         if self._draw_ui is not None:
             self._draw_ui.draw_stage(**kwargs)
+            if self._final_state_only:
+                self._last_state_drawn = True
             if self._draw_interval > 0:
                 time.sleep(self._draw_interval)
+
+    def _draw_last_state(self) -> None:
+        if (
+            self._draw_ui is not None
+            and self._last_draw is not None
+            and not self._last_state_drawn
+        ):
+            self._draw_ui.draw_stage(**self._last_draw)
+            self._last_state_drawn = True
 
     def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         return self._stage
@@ -289,7 +311,11 @@ class ReplayUI:
         # Replays consume recorded input without entering the normal UI input
         # loop, so give event-driven UIs a chance to process window-close
         # events between turns.
-        poll_events = getattr(self._draw_ui, "poll_events", None)
+        poll_events = (
+            None
+            if self._final_state_only
+            else getattr(self._draw_ui, "poll_events", None)
+        )
         if poll_events is not None and poll_events():
             return None
         while self._inputs:
@@ -297,9 +323,13 @@ class ReplayUI:
             if key == "Q" and self._continue_play:
                 continue
             if key == "Q":
+                if self._final_state_only:
+                    self._draw_last_state()
                 return None
             return KEY_TO_DIR[key]
         if self._continue_play and self._draw_ui is not None:
+            if self._final_state_only:
+                self._draw_last_state()
             self._using_live_input = True
             return self._draw_ui.input_direction()
         self.ran_dry = True
@@ -308,4 +338,15 @@ class ReplayUI:
     def input_alphabet(self) -> Optional[str]:
         # The game-over screen (map/seed keys) is out of scope for
         # replay: run_game() exits as soon as this returns None.
+        if self._final_state_only:
+            self._draw_last_state()
         return None
+
+    def input_game_over(self) -> Optional[str]:
+        # The game-over loop may be reached before all trace inputs are
+        # consumed (for example, if a trace contains turns after a win).
+        if self._final_state_only:
+            self._draw_last_state()
+            return None
+        input_game_over = getattr(self._draw_ui, "input_game_over", None)
+        return input_game_over() if input_game_over is not None else self.input_alphabet()

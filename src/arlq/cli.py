@@ -112,20 +112,46 @@ def _prepare_cli_session(terminal_only=False):
         help="Also export a normal or continued session trace to PATH; cache copies are saved too.",
     )
     dev.add_argument(
-        "--rewind",
+        "--to-checkpoint",
         type=int,
+        dest="checkpoint_index",
         metavar="INDEX",
-        help="With --trace, continue from immediately after checkpoint event INDEX (positive from start, negative from end).",
+        help="With --trace, replay through checkpoint event INDEX (positive from start, negative from end).",
     )
     dev.add_argument(
+        "--rewind",
+        type=int,
+        dest="rewind_index",
+        metavar="INDEX",
+        help="Shortcut for --to-checkpoint INDEX --continue.",
+    )
+    replay_speed = dev.add_mutually_exclusive_group()
+    replay_speed.add_argument(
         "--replay-interval",
         type=game.parse_replay_interval,
         metavar="SECONDS",
         default=0.0,
         help="Delay between turns during trace replay in either UI (default: 0, fastest).",
     )
+    replay_speed.add_argument(
+        "--replay-fast-forward",
+        action="store_true",
+        dest="replay_fast_forward",
+        help="Replay a trace without intermediate screen updates, then show its final state.",
+    )
 
     args = parser.parse_args()
+
+    if args.rewind_index is not None:
+        if args.checkpoint_index is not None:
+            parser.error("--rewind cannot be combined with --to-checkpoint")
+        if args.continue_trace:
+            print(
+                "Warning: --continue is implied by --rewind and has no additional effect.",
+                file=sys.stderr,
+            )
+        args.checkpoint_index = args.rewind_index
+        args.continue_trace = True
 
     set_language(args.lang)
 
@@ -140,15 +166,16 @@ def _prepare_cli_session(terminal_only=False):
 
     if args.continue_trace and not args.trace_path:
         parser.error("--continue requires --trace")
-    if args.rewind is not None and not args.trace_path:
-        parser.error("--rewind requires --trace")
-    if args.continue_trace and args.rewind is not None:
-        parser.error("--continue cannot be combined with --rewind")
+    if args.checkpoint_index is not None and not args.trace_path:
+        option = "--rewind" if args.rewind_index is not None else "--to-checkpoint"
+        parser.error(f"{option} requires --trace")
+    if args.replay_fast_forward and not args.trace_path:
+        parser.error("--replay-fast-forward requires --trace")
     if (
         args.trace_path
         and args.trace_output
         and not args.continue_trace
-        and args.rewind is None
+        and args.checkpoint_index is None
     ):
         parser.error("--output with --trace requires --continue")
 
@@ -184,10 +211,10 @@ def _prepare_cli_session(terminal_only=False):
         except (OSError, ValueError) as error:
             sys.exit(f"Error: cannot load trace file {trace_input_path}: {error}")
 
-        if args.rewind is not None:
+        if args.checkpoint_index is not None:
             try:
                 rewind_turn_index = checkpoint_turn_index(
-                    trace_data["turns"], args.rewind
+                    trace_data["turns"], args.checkpoint_index
                 )
             except ValueError as error:
                 parser.error(str(error))
@@ -215,9 +242,10 @@ def _prepare_cli_session(terminal_only=False):
                 rematch_stage, args.seed = game.read_last_seed()
             except ValueError as error:
                 parser.error(str(error))
-            if args.stage and args.stage != rematch_stage:
-                parser.error(
-                    f"--rematch can only be combined with --stage {rematch_stage}"
+            if args.stage:
+                print(
+                    f"Warning: --rematch uses saved stage {rematch_stage}; ignoring --stage {args.stage}.",
+                    file=sys.stderr,
                 )
             args.stage = rematch_stage
         elif args.seed is not None:
@@ -248,7 +276,7 @@ def _prepare_cli_session(terminal_only=False):
     game_config = game.game_config_from_args(args)
 
     trace_recorder: Optional[TraceRecorder] = None
-    if trace_data is None or args.continue_trace or args.rewind is not None:
+    if trace_data is None or args.continue_trace or args.checkpoint_index is not None:
         trace_recorder = TraceRecorder(
             params={
                 "stage": args.stage,
@@ -274,7 +302,8 @@ def main(terminal_only=False):
                 args.stage,
                 ui,
                 draw_interval=args.replay_interval,
-                continue_play=args.continue_trace or args.rewind is not None,
+                continue_play=args.continue_trace,
+                final_state_only=args.replay_fast_forward,
             )
             game.run_game(
                 replay_ui,
