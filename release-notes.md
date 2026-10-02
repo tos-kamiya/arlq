@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.5.3 - 2026-10-03
+
+- Show “リピートなし” for the disabled movement repeat interval in Japanese.
+
 ## 5.5.2 - 2026-10-02
 
 - Add gamepad controls to hold button 2 for reachable-area previews and floor
