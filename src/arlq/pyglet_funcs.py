@@ -1165,7 +1165,7 @@ class PygletUI:
             )
             self._draw_text(
                 (8, 10),
-                f"<  {'None' if KEY_REPEAT_CHOICES[repeat_index] is None else format(KEY_REPEAT_CHOICES[repeat_index], '.1f') + 's'}  >",
+                f"<  {tr('No repeat') if KEY_REPEAT_CHOICES[repeat_index] is None else format(KEY_REPEAT_CHOICES[repeat_index], '.1f') + 's'}  >",
                 COLOR_MAP["default"],
                 bold=row == 1,
                 x_offset=self._text_width(
