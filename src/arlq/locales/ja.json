@@ -62,6 +62,7 @@
     "Controls": "操作方法",
     "Arrow keys / WASD: move": "矢印キー / WASD: 移動",
     "Gamepad: D-pad / left stick move, button 0 confirm": "ゲームパッド: 十字キー / 左スティックで移動、ボタン0で決定",
+    "Auto-repeat stops near visible entities and known hazards": "自動リピートは、見えているエンティティや既知の危険箇所の手前で停止",
     "F: toggle reachable-area preview": "F: LPで到達できる範囲の表示切替",
     "M: enter map and entity display mode (cannot be undone)": "M: マップとエンティティを表示するモードに移行（元に戻せません）",
     "Shift + Up/Down: view another floor (Stages 3 and 4)": "Shift + 上/下: 別フロアを表示（ステージ3・4）",

@@ -207,6 +207,7 @@ class PygletUI:
         self._held_direction: Optional[Tuple[int, int]] = None
         self._held_direction_keys: Set[int] = set()
         self._next_repeat_at = 0.0
+        self.input_was_repeat = False
 
         window = self.window
 
@@ -856,6 +857,13 @@ class PygletUI:
         finally:
             self._stage_input_active = False
 
+    def stop_movement_repeat(self) -> None:
+        """Require held movement controls to be released before repeating again."""
+        self._held_direction = None
+        self._next_repeat_at = 0.0
+        if self.joystick_previous_direction not in (None, (0, 0)):
+            self._next_joystick_repeat_at = float("inf")
+
     def _input_direction(self) -> Optional[Tuple[int, int]]:
         """
         Waits for a directional input.
@@ -863,6 +871,7 @@ class PygletUI:
         Returns None if ESC or 'q' is pressed, or the window is closed.
         """
         self.shift_direction = False
+        self.input_was_repeat = False
         while True:
             self._pump()
             if self._closed:
@@ -903,6 +912,7 @@ class PygletUI:
                 and time.monotonic() >= self._next_repeat_at
             ):
                 self._next_repeat_at = time.monotonic() + repeat_interval
+                self.input_was_repeat = True
                 return self._held_direction
 
             if self.joystick:
@@ -923,6 +933,7 @@ class PygletUI:
                     and time.monotonic() >= self._next_joystick_repeat_at
                 ):
                     self._next_joystick_repeat_at = time.monotonic() + self.key_repeat_interval
+                    self.input_was_repeat = True
                     return current_direction
 
             time.sleep(1 / 30)
@@ -987,6 +998,7 @@ class PygletUI:
         controls = (
             "Arrow keys / WASD: move",
             "Gamepad: D-pad / left stick move, button 0 confirm",
+            "Auto-repeat stops near visible entities and known hazards",
             "F: toggle reachable-area preview",
             "M: enter map and entity display mode (cannot be undone)",
             "Shift + Up/Down: view another floor (Stages 3 and 4)",

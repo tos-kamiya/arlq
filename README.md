@@ -95,6 +95,7 @@ reproduce the same layout.
 
 * **Player and Fog**  
   You control the character represented by `@` using the arrow keys or WASD.
+  When movement repeat is enabled, holding a direction repeats movement. Auto-repeat stops before known special terrain and nearby displayed entities, and after combat, marksman damage, wall interactions, Pegasus jumps, or floor transitions. Release and press the direction again to resume.
   The background behind `@` turns yellow at 40 LP or below and red at 20 LP or below.
   The game uses a fog system where only the areas you have walked on are visible. Combined with auto-mapping, areas once visited remain visible on the map.
   Press `F` to toggle a highlight on every explored-map cell reachable with your remaining LP. Moving closes the preview. The estimate avoids entities shown on the map and stairs, does not break walls or count LP recovery, and includes known terrain damage and Stage 4 marksman shots when that individual is in a known area or has fired at least once. Unexplored cells remain hidden. It does not show a route.
