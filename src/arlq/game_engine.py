@@ -7,6 +7,8 @@ from copy import deepcopy
 from typing import Any, Deque, List, Optional, Set, Tuple
 
 from . import defs as d
+from . import display as ui_display
+from .game_events import WallEvent
 from .arlq import (
     MESSAGE_TICKS,
     PLAYER_PASSABLE_CELLS,
@@ -199,7 +201,7 @@ def _move_player(
     current: Floor,
     player: d.Player,
     trace: Optional[TraceRecorder] = None,
-) -> None:
+) -> Optional[WallEvent]:
     """Apply one step of player movement, including sword-breaking and Pegasus jumps."""
     wall_result = move_player(
         direction,
@@ -209,6 +211,93 @@ def _move_player(
     )
     if trace is not None and wall_result is not None:
         trace.record_wall(wall_result)
+    return wall_result
+
+
+def _visible_auto_stop_entities(
+    current: Floor,
+    player: d.Player,
+    show_all_entities: bool,
+    known_types: Set[str],
+    stage_num: int,
+) -> List[d.Entity]:
+    """Return entities currently represented on the player's map."""
+    visible: List[d.Entity] = []
+    height = len(current.field)
+    width = len(current.field[0]) if current.field else 0
+    player_attack = d.current_player_attack(player, stage_num)
+    for entity in current.entities:
+        x, y = entity.x, entity.y
+        if (x, y) == (player.x, player.y) or not (0 <= x < width and 0 <= y < height):
+            continue
+        if show_all_entities:
+            glyphs = ui_display.preview_entity_glyphs(
+                entity,
+                reveal_disguises=True,
+                known_types=known_types,
+                stage_num=stage_num,
+            )
+        elif current.seen[y][x]:
+            glyphs = ui_display.revealed_entity_glyphs(
+                entity,
+                known_types,
+                False,
+                player_attack,
+                None,
+                stage_num=stage_num,
+            )
+        else:
+            glyphs = []
+        if not glyphs:
+            continue
+        visible.append(entity)
+    return visible
+
+
+def _should_stop_movement_repeat(
+    direction: d.Point,
+    current: Floor,
+    player: d.Player,
+    show_all_entities: bool = False,
+    known_types: Optional[Set[str]] = None,
+    stage_num: int = 0,
+) -> bool:
+    """Check visible terrain and entities before an automatic repeated step."""
+    dx, dy = direction
+    nx, ny = player.x + dx, player.y + dy
+    height = len(current.field)
+    width = len(current.field[0]) if current.field else 0
+    if not (0 <= nx < width and 0 <= ny < height):
+        return True
+
+    known_cell = bool(current.seen[ny][nx]) or show_all_entities
+    if known_cell and current.field[ny][nx] in (
+        d.CHAR_WALL,
+        d.CHAR_CALTROP,
+        d.CHAR_BARRIER,
+        d.CHAR_COLLAPSE,
+        *d.STAIR_CHARS,
+    ):
+        return True
+
+    next_position = (nx, ny)
+    for entity in _visible_auto_stop_entities(
+        current, player, show_all_entities, known_types or set(), stage_num
+    ):
+        distance = abs(entity.x - player.x) + abs(entity.y - player.y)
+        next_distance = abs(entity.x - next_position[0]) + abs(entity.y - next_position[1])
+        # Stop when an automatic step would move closer to an entity that is
+        # already within two Manhattan cells. Moving away remains possible,
+        # and undiscovered positions are never inspected.
+        if distance <= 2 and next_distance < distance:
+            return True
+    return False
+
+
+def _stop_movement_repeat(ui: Any) -> None:
+    stop_repeat = getattr(ui, "stop_movement_repeat", None)
+    if stop_repeat is not None:
+        stop_repeat()
 
 
 def _apply_terrain_hazards(
@@ -229,8 +318,9 @@ def _apply_terrain_hazards(
     return event_message
 
 
-def _marksman_shoot(current: Floor, player: d.Player) -> None:
+def _marksman_shoot(current: Floor, player: d.Player) -> bool:
     """Resolve Stage 4 marksmen after a player move and retain their arrow marks."""
+    was_hit = False
     for entity in current.entities:
         if (
             not isinstance(entity, d.Monster)
@@ -276,6 +366,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
             continue
 
         player.lp -= d.MARKSMAN_LP_DAMAGE
+        was_hit = True
         entity.marksman_cooldown = d.MARKSMAN_COOLDOWN_TURNS
         player.known_monsters.add(d.monster_type_key(entity))
         mark = ((player.x - step_x, player.y - step_y), "-" if step_x else "|")
@@ -285,6 +376,7 @@ def _marksman_shoot(current: Floor, player: d.Player) -> None:
         arrow_limit = d.MARKSMAN_ARROW_LIMIT
         if len(marks) > arrow_limit:
             del marks[0]
+    return was_hit
 
 
 def _vortex_rearrange(
@@ -1058,6 +1150,7 @@ def _process_multi_floor_turn(
     trace: Optional[TraceRecorder] = None,
     replay_context: Optional[ReplayContext] = None,
     operation_index: Optional[int] = None,
+    repeat_stop_reasons: Optional[Set[str]] = None,
 ) -> Optional[Tuple[int, str]] | _RewindRequest:
     current = floors[floor[0]]
     history.append(None)
@@ -1068,8 +1161,13 @@ def _process_multi_floor_turn(
     standing_on_collapse = (
         current.field[previous[1]][previous[0]] == d.CHAR_COLLAPSE
     )
+    wall_result = None
     if not standing_on_collapse:
-        _move_player(direction, current, player, trace=trace)
+        wall_result = _move_player(direction, current, player, trace=trace)
+    if wall_result is not None and repeat_stop_reasons is not None:
+        repeat_stop_reasons.add("wall_interaction")
+    if standing_on_collapse and repeat_stop_reasons is not None:
+        repeat_stop_reasons.add("collapse_transition")
     movement_destination = (player.x, player.y)
 
     # l contact is a control-flow event, not an ordinary gameplay turn. Detect
@@ -1085,6 +1183,8 @@ def _process_multi_floor_turn(
         None,
     )
     if hit is not None and not standing_on_collapse:
+        if repeat_stop_reasons is not None:
+            repeat_stop_reasons.add("entity_contact")
         entity = current.entities[hit]
         if isinstance(entity, d.Companion) and entity.tribe.char == "l" and history:
             contact = _resolve_contact(
@@ -1148,6 +1248,8 @@ def _process_multi_floor_turn(
         current = floors[floor[0]]
         collapse_transition = True
     elif collapse_hit is not None and (player.x, player.y) != previous:
+        if repeat_stop_reasons is not None:
+            repeat_stop_reasons.add("collapse_triggered")
         collapse_point = (player.x, player.y)
         current.seen[collapse_hit.y][collapse_hit.x] = 1
         current.seen[collapse_point[1]][collapse_point[0]] = 1
@@ -1157,7 +1259,9 @@ def _process_multi_floor_turn(
     if hazard_message is not None:
         event_message = hazard_message
     if (player.x, player.y) != previous or collapse_transition:
-        _marksman_shoot(current, player)
+        marksman_hit = _marksman_shoot(current, player)
+        if marksman_hit and repeat_stop_reasons is not None:
+            repeat_stop_reasons.add("marksman_hit")
 
     hit = next(
         (
@@ -1169,6 +1273,8 @@ def _process_multi_floor_turn(
         None,
     )
     if hit is not None:
+        if repeat_stop_reasons is not None:
+            repeat_stop_reasons.add("entity_contact")
         contact = _resolve_contact(
             hit,
             current,
@@ -1229,6 +1335,8 @@ def _process_multi_floor_turn(
         else _handle_floor_transition(current, floors, player, floor, checkpoint)
     )
     if transition_message is not None:
+        if repeat_stop_reasons is not None:
+            repeat_stop_reasons.add("floor_transition")
         event_message = prefer_event_message(event_message, transition_message)
         if trace is not None:
             trace.record_contact(
@@ -1398,6 +1506,16 @@ def run_game(
 
         # A real movement always returns the display to the player's floor.
         view_floor = floor[0]
+        if getattr(ui, "input_was_repeat", False) and _should_stop_movement_repeat(
+            move,
+            current,
+            player,
+            show_all_entities=show_entities,
+            known_types=known_types,
+            stage_num=stage_num,
+        ):
+            _stop_movement_repeat(ui)
+            continue
 
         if trace is not None:
             key = DIR_TO_KEY.get(move)
@@ -1414,6 +1532,7 @@ def run_game(
                 replay_context.operations
             )
 
+        repeat_stop_reasons: Set[str] = set()
         step_result = _process_multi_floor_turn(
             move,
             floors,
@@ -1429,7 +1548,10 @@ def run_game(
             operation_index=len(replay_context.operations) - 1
             if replay_context is not None
             else None,
+            repeat_stop_reasons=repeat_stop_reasons,
         )
+        if repeat_stop_reasons:
+            _stop_movement_repeat(ui)
         if isinstance(step_result, _RewindRequest):
             operation_count = (
                 len(replay_context.operations) if replay_context is not None else None

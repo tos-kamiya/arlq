@@ -243,7 +243,21 @@ class ReplayUI:
         self._draw_ui = draw_ui
         self._draw_interval = draw_interval
         self._continue_play = continue_play
+        self._using_live_input = False
         self.ran_dry = False
+
+    @property
+    def input_was_repeat(self) -> bool:
+        if not self._using_live_input or self._draw_ui is None:
+            return False
+        return bool(getattr(self._draw_ui, "input_was_repeat", False))
+
+    def stop_movement_repeat(self) -> None:
+        if not self._using_live_input or self._draw_ui is None:
+            return
+        stop_repeat = getattr(self._draw_ui, "stop_movement_repeat", None)
+        if stop_repeat is not None:
+            stop_repeat()
 
     def __getattr__(self, name: str) -> Any:
         draw_ui = self.__dict__.get("_draw_ui")
@@ -271,6 +285,7 @@ class ReplayUI:
         return self._stage
 
     def input_direction(self) -> Optional[Tuple[int, int]]:
+        self._using_live_input = False
         # Replays consume recorded input without entering the normal UI input
         # loop, so give event-driven UIs a chance to process window-close
         # events between turns.
@@ -285,6 +300,7 @@ class ReplayUI:
                 return None
             return KEY_TO_DIR[key]
         if self._continue_play and self._draw_ui is not None:
+            self._using_live_input = True
             return self._draw_ui.input_direction()
         self.ran_dry = True
         return None
