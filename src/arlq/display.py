@@ -199,6 +199,8 @@ def preview_entity_glyphs(
 ) -> List[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
     known_types = known_types or set()
+    if isinstance(entity, d.Collapse):
+        return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if (
         isinstance(entity, d.Monster)
         and not entity.active
@@ -218,8 +220,6 @@ def preview_entity_glyphs(
         char = entity.tribe.char
     elif isinstance(entity, d.Treasure):
         char = d.CHAR_TREASURE
-    elif isinstance(entity, d.Collapse):
-        return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if char is None:
         return []
     stage2_high_elf = (
@@ -260,6 +260,8 @@ def revealed_entity_glyphs(
     Empty when the entity stays hidden (an unknown monster while the whole
     map is already shown, or a treasure that is still locked).
     """
+    if isinstance(entity, d.Collapse):
+        return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if isinstance(entity, d.Companion):
         char = entity.tribe.char
         known = entity.revealed
@@ -327,8 +329,6 @@ def revealed_entity_glyphs(
                 FieldGlyph(entity.x + 1, entity.y, marker, tone, bold=True, dim=dim)
             )
         return glyphs
-    if isinstance(entity, d.Collapse):
-        return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if isinstance(entity, d.Treasure):
         if entity.unlocked:
             return [

@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
 TILE_WIDTH: int = 12
 TILE_HEIGHT: int = 6
@@ -21,6 +21,7 @@ CHAR_FLOOR: str = " "
 CHAR_STAIRS_UP: str = "^"
 CHAR_STAIRS_DOWN: str = "v"
 STAIR_CHARS: Tuple[str, str] = (CHAR_STAIRS_UP, CHAR_STAIRS_DOWN)
+CHAR_COLLAPSE: str = "O"
 
 TORCH_RADIUS: int = 3
 FOV_WIDTH_EXPANSION_RATIO: float = 1.4
@@ -43,7 +44,13 @@ SWORD_USES: int = 3
 CURSED_SWORD_LP_COST: int = 10
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
 # These monsters do not respawn after defeat in the current game engine.
-MONSTERS_EXCLUDED_FROM_RESPAWN = NO_RESPAWN_MONSTERS | {"W", "w", "M", "F"}
+MONSTERS_EXCLUDED_FROM_RESPAWN = NO_RESPAWN_MONSTERS | {
+    "W",
+    "w",
+    "M",
+    "F",
+    CHAR_COLLAPSE,
+}
 ELF_STAGE_C_FLAG: int = 1
 ELF_STAGE_I_FLAG: int = 2
 ELF_STAGE_K_FLAG: int = 4
@@ -125,7 +132,6 @@ CHAR_PEGASUS: str = "p"
 CHAR_TREASURE: str = "T"
 CHAR_CALTROP: str = "x"
 CHAR_BARRIER: str = "="
-CHAR_COLLAPSE: str = "O"
 
 Point = Tuple[int, int]
 Edge = Tuple[Point, Point]
@@ -144,6 +150,23 @@ def collapse_footprint(center: Point) -> Set[Point]:
     return {(x + dx, y + dy) for dx, dy in COLLAPSE_FOOTPRINT_OFFSETS}
 
 
+def collapse_placement_cells_valid(
+    point: Point, *fields: Sequence[Sequence[str]]
+) -> bool:
+    """Check that a Collapse footprint contains only floor or wall cells."""
+    if not fields:
+        return False
+    for field in fields:
+        height = len(field)
+        width = len(field[0]) if field else 0
+        for x, y in collapse_footprint(point):
+            if not (0 <= x < width and 0 <= y < height):
+                return False
+            if field[y][x] not in (CHAR_FLOOR, CHAR_WALL):
+                return False
+    return True
+
+
 class Entity:
     """Base class for entities in the game that have x and y coordinates."""
 
@@ -160,13 +183,6 @@ class Treasure(Entity):
         self.encounter_type = encounter_type
         self.unlock_key = unlock_key or encounter_type
         self.unlocked: bool = False
-
-
-class Collapse(Entity):
-    """A hidden five-cell trap that drops the player to the next floor."""
-
-    def __init__(self, x: int, y: int):
-        super().__init__(x, y)
 
 
 class Tribe:
@@ -314,6 +330,13 @@ class Monster(Entity):
         self.active: bool = True
         self.arrow_marks: List[Tuple[Point, str]] = []
         self.marksman_cooldown: int = 0
+
+
+class Collapse(Monster):
+    """A fixed level-one monster that reveals nearby Collapse holes."""
+
+    def __init__(self, x: int, y: int):
+        super().__init__(x, y, MonsterTribe(CHAR_COLLAPSE, level=1, feed=0))
 
 
 class Elf(Monster):

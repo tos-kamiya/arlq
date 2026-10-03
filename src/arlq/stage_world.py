@@ -783,7 +783,10 @@ def build_trap_test(
             footprint = d.collapse_footprint(point)
             if point == stair_point or footprint & occupied or stair_point in footprint:
                 continue
-            if all(field[fy][fx] == d.CHAR_FLOOR for fx, fy in footprint):
+            if (
+                field[y][x] == d.CHAR_FLOOR
+                and d.collapse_placement_cells_valid(point, field)
+            ):
                 collapse_candidates.append(point)
     if not collapse_candidates:
         raise RuntimeError("could not place the trap-test Collapse")
@@ -933,10 +936,12 @@ def _place_collapses(floors: List[Floor]) -> None:
                     for x, y in footprint
                 ):
                     continue
-                if any(
-                    floor.field[y][x] != d.CHAR_FLOOR
-                    for floor in (upper, lower)
-                    for x, y in footprint
+                if (
+                    upper.field[point[1]][point[0]] != d.CHAR_FLOOR
+                    or lower.field[point[1]][point[0]] != d.CHAR_FLOOR
+                    or not d.collapse_placement_cells_valid(
+                        point, upper.field, lower.field
+                    )
                 ):
                     continue
                 if (
