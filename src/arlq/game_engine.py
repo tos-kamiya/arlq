@@ -276,7 +276,6 @@ def _should_stop_movement_repeat(
         d.CHAR_WALL,
         d.CHAR_CALTROP,
         d.CHAR_BARRIER,
-        d.CHAR_COLLAPSE,
         *d.STAIR_CHARS,
     ):
         return True
@@ -385,6 +384,7 @@ def _vortex_rearrange(
     player: d.Player,
     floor_index: int,
     center: d.Point,
+    floors: Optional[List[Floor]] = None,
 ) -> None:
     """Reposition entities and forget explored cells near the Vortex."""
     # Keep the horizontal reach while matching the FOV ellipse's proportions.
@@ -404,11 +404,30 @@ def _vortex_rearrange(
             or (
                 isinstance(entity, d.Monster)
                 and entity.active
-                and not entity.tribe.is_elf
-                and entity.tribe.effect != d.EFFECT_VORTEX
+                and (
+                    isinstance(entity, d.Collapse)
+                    or (
+                        not entity.tribe.is_elf
+                        and entity.tribe.effect != d.EFFECT_VORTEX
+                    )
+                )
             )
         )
     ]
+    lower = (
+        floors[floor_index + 1]
+        if floors is not None and floor_index + 1 < len(floors)
+        else None
+    )
+    reserved_collapse_cells = current.collapse_landings | set().union(
+        *(
+            d.collapse_footprint((entity.x, entity.y))
+            for entity in current.entities
+            if isinstance(entity, d.Collapse)
+        )
+    )
+    if lower is not None:
+        reserved_collapse_cells.update(lower.collapse_landings)
     avoid = {(player.x, player.y)} | {(entity.x, entity.y) for entity in movable}
     for entity in movable:
         if isinstance(entity, d.Monster) and entity.tribe.char == "k":
@@ -444,6 +463,58 @@ def _vortex_rearrange(
         )
 
     for entity in movable:
+        if isinstance(entity, d.Collapse):
+            old_footprint = d.collapse_footprint((entity.x, entity.y))
+            destination = None
+            if lower is not None:
+                occupied = {
+                    (other.x, other.y)
+                    for other in (*current.entities, *lower.entities)
+                } | avoid
+                fixed = {
+                    current.up,
+                    current.down,
+                    *current.up_stairs,
+                    *current.down_stairs,
+                    lower.up,
+                    lower.down,
+                    *lower.up_stairs,
+                    *lower.down_stairs,
+                }
+                for point in sorted(affected_points, key=lambda item: (item[1], item[0])):
+                    footprint = d.collapse_footprint(point)
+                    if (
+                        footprint & reserved_collapse_cells
+                        or footprint & occupied
+                        or footprint & fixed
+                    ):
+                        continue
+                    if (
+                        current.field[point[1]][point[0]] != d.CHAR_FLOOR
+                        or lower.field[point[1]][point[0]] != d.CHAR_FLOOR
+                    ):
+                        continue
+                    if not d.collapse_placement_cells_valid(
+                        point, current.field, lower.field
+                    ):
+                        continue
+                    destination = point
+                    break
+            if destination is None:
+                current.entities.append(entity)
+                continue
+
+            entity.x, entity.y = destination
+            current.entities.append(entity)
+            new_footprint = d.collapse_footprint(destination)
+            reserved_collapse_cells.difference_update(old_footprint)
+            reserved_collapse_cells.update(new_footprint)
+            avoid.update(new_footprint)
+            if lower is not None:
+                lower.collapse_landings.difference_update(old_footprint)
+                lower.collapse_landings.update(new_footprint)
+            continue
+
         if isinstance(entity, d.Treasure):
             reserved = avoid | set(current.up_stairs + current.down_stairs)
             entity.x, entity.y = find_random_place(
@@ -586,7 +657,9 @@ def _defeat_monster(
                     deepcopy([floor_data.seen for floor_data in floors]),
                 )
             )
-        _vortex_rearrange(current, player, floor[0], (entity.x, entity.y))
+        _vortex_rearrange(
+            current, player, floor[0], (entity.x, entity.y), floors=floors
+        )
 
     if (
         d.monster_level(entity) > 0
@@ -1169,6 +1242,42 @@ def _process_multi_floor_turn(
         repeat_stop_reasons.add("wall_interaction")
     if standing_on_collapse and repeat_stop_reasons is not None:
         repeat_stop_reasons.add("collapse_transition")
+
+    collapse_contact = next(
+        (
+            entity
+            for entity in current.entities
+            if isinstance(entity, d.Collapse)
+            and (entity.x, entity.y) == (player.x, player.y)
+        ),
+        None,
+    )
+    if (
+        not standing_on_collapse
+        and collapse_contact is not None
+        and previous != (collapse_contact.x, collapse_contact.y)
+    ):
+        if repeat_stop_reasons is not None:
+            repeat_stop_reasons.add("collapse_triggered")
+        current.seen[collapse_contact.y][collapse_contact.x] = 1
+        # Walking onto the Collapse reveals the four neighboring pits. Walls
+        # keep their terrain and cannot become pit cells.
+        for dx, dy in d.COLLAPSE_FOOTPRINT_OFFSETS[1:]:
+            x = collapse_contact.x + dx
+            y = collapse_contact.y + dy
+            if 0 <= y < len(current.field) and 0 <= x < len(current.field[y]):
+                if current.field[y][x] != d.CHAR_WALL:
+                    current.field[y][x] = d.CHAR_COLLAPSE
+                    current.seen[y][x] = 1
+
+    entered_pit = (
+        not standing_on_collapse
+        and (player.x, player.y) != previous
+        and current.field[player.y][player.x] == d.CHAR_COLLAPSE
+    )
+    if entered_pit and repeat_stop_reasons is not None:
+        repeat_stop_reasons.add("collapse_transition")
+
     movement_destination = (player.x, player.y)
 
     # l contact is a control-flow event, not an ordinary gameplay turn. Detect
@@ -1178,8 +1287,7 @@ def _process_multi_floor_turn(
         (
             i
             for i, entity in enumerate(current.entities)
-            if not isinstance(entity, d.Collapse)
-            and (entity.x, entity.y) == (player.x, player.y)
+            if (entity.x, entity.y) == (player.x, player.y)
         ),
         None,
     )
@@ -1218,9 +1326,9 @@ def _process_multi_floor_turn(
         ),
         None,
     )
-    if standing_on_collapse:
+    if standing_on_collapse or entered_pit:
         from_floor = floor[0]
-        collapse_point = previous
+        collapse_point = previous if standing_on_collapse else (player.x, player.y)
         if collapse_hit is not None:
             current.seen[collapse_hit.y][collapse_hit.x] = 1
         current.seen[collapse_point[1]][collapse_point[0]] = 1
@@ -1248,14 +1356,6 @@ def _process_multi_floor_turn(
         ).format(n=floor[0] + 1, total=len(floors))
         current = floors[floor[0]]
         collapse_transition = True
-    elif collapse_hit is not None and (player.x, player.y) != previous:
-        if repeat_stop_reasons is not None:
-            repeat_stop_reasons.add("collapse_triggered")
-        collapse_point = (player.x, player.y)
-        current.seen[collapse_hit.y][collapse_hit.x] = 1
-        current.seen[collapse_point[1]][collapse_point[0]] = 1
-        current.field[collapse_point[1]][collapse_point[0]] = d.CHAR_COLLAPSE
-
     hazard_message = _apply_terrain_hazards(current, player, previous)
     if hazard_message is not None:
         event_message = hazard_message
@@ -1268,8 +1368,7 @@ def _process_multi_floor_turn(
         (
             i
             for i, entity in enumerate(current.entities)
-            if not isinstance(entity, d.Collapse)
-            and (entity.x, entity.y) == (player.x, player.y)
+            if (entity.x, entity.y) == (player.x, player.y)
         ),
         None,
     )

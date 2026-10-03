@@ -227,7 +227,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | Display & Name | Description |
 | -------------- | ----------- |
 | `T` Mimic | Appears as a treasure chest after the stage boss is defeated. It has level 1; defeating it moves the player to a random position on the same floor. |
-| `?` / `O` Collapse | Displayed as `?`; stepping on it creates a pit in that cell or one of its four adjacent cells. |
+| `?` / `O` Collapse | Entering its `?` cell reveals pits (`O`) in the four adjacent cells, except where a wall already exists. On the next move, entering a pit drops the player to the next floor. Defeating Collapse removes the `?`; it does not respawn. |
 | `V` Vortex | Repositions nearby monsters, companions, and treasure chests when defeated. |
 
 #### Elves
