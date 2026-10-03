@@ -276,6 +276,7 @@ def _should_stop_movement_repeat(
         d.CHAR_WALL,
         d.CHAR_CALTROP,
         d.CHAR_BARRIER,
+        d.CHAR_COLLAPSE,
         *d.STAIR_CHARS,
     ):
         return True
@@ -284,12 +285,8 @@ def _should_stop_movement_repeat(
     for entity in _visible_auto_stop_entities(
         current, player, show_all_entities, known_types or set(), stage_num
     ):
-        distance = abs(entity.x - player.x) + abs(entity.y - player.y)
-        next_distance = abs(entity.x - next_position[0]) + abs(entity.y - next_position[1])
-        # Stop when an automatic step would move closer to an entity that is
-        # already within two Manhattan cells. Moving away remains possible,
-        # and undiscovered positions are never inspected.
-        if distance <= 2 and next_distance < distance:
+        # Stop only when this step would enter a visible entity's cell.
+        if (entity.x, entity.y) == next_position:
             return True
     return False
 
