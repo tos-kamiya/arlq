@@ -94,10 +94,23 @@ reproduce the same layout.
 
 * **Player and Fog**  
   You control the character represented by `@` using the arrow keys or WASD.
+
   When movement repeat is enabled, holding a direction repeats movement. Automatic repeat stopping is enabled by default and can be switched off in `Settings` or with `--no-auto-repeat-stop`. When enabled, it stops before known special terrain and nearby displayed entities, and after combat, marksman damage, wall interactions, Pegasus jumps, or floor transitions. Release and press the direction again to resume.
+
   The background behind `@` turns yellow at 40 LP or below and red at 20 LP or below.
-  The game uses a fog system where only the areas you have walked on are visible. Combined with auto-mapping, areas once visited remain visible on the map.
-  Press `F` to toggle a highlight on every explored-map cell reachable with your remaining LP. With a gamepad, the preview button can show it while held or toggle it on and off. While preview is active, press Up or Down to inspect another floor in Stages 3 and 4. Moving closes the keyboard preview. The estimate avoids entities shown on the map and stairs, does not break walls or count LP recovery, and includes known terrain damage and Stage 4 marksman shots when that individual is in a known area or has fired at least once. Unexplored cells remain hidden. It does not show a route.
+  Your vision is centered on your current location, and explored areas remain visible on the automap.
+
+  Overshoot assist automatically cancels an accidental move sequence when you return to the same position within five turns, provided the sequence caused no contact, damage, floor change, or new map or monster knowledge. Potential return cells are marked with a dark gray `.` while the assist is available.
+
+  Press `F` to toggle a highlight on every explored-map cell reachable with your remaining LP. With a gamepad, the preview button can show it while held or toggle it on and off.
+
+  While preview is active, press Up or Down to inspect another floor in Stages 3 and 4. Moving closes the keyboard preview.
+
+  Reachable cells are calculated using these rules:
+
+  - Unexplored cells remain hidden, and no route is shown.
+  - The estimate avoids entities displayed on the map and stairs. It does not break walls or count LP recovery.
+  - Arrow damage is excluded when a marksman is outside known areas and has never fired before.
 
 * **Monsters, Companions, and Elves**  
   Unencountered monsters are displayed as `?`, companions as `!`, and unidentified elves as `&`. Contact reveals an entity's type.
