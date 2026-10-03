@@ -16,6 +16,7 @@ ARLQ（Another Rogue-Like Quest）は、人間とAIsが共同で作成した実�
 <a href="docs/images/screenshot2.png"><img src="docs/images/screenshot2.png" width="160" alt="スクリーンショット2" /></a>
 <a href="docs/images/screenshot3.png"><img src="docs/images/screenshot3.png" width="160" alt="スクリーンショット3" /></a>
 <a href="docs/images/screenshot4.png"><img src="docs/images/screenshot4.png" width="160" alt="スクリーンショット4" /></a>
+<a href="docs/images/screenshot5.png"><img src="docs/images/screenshot5.png" width="160" alt="スクリーンショット5" /></a>
 
 ## インストールと起動
 
