@@ -110,7 +110,7 @@ reproduce the same layout.
 
   - Unexplored cells remain hidden, and no route is shown.
   - The estimate avoids entities displayed on the map and stairs. It does not break walls or count LP recovery.
-  - Arrow damage is excluded when a marksman is outside known areas and has never fired before.
+  - Marksman damage is not included, so the estimate may differ from the actual reachable area.
 
 * **Monsters, Companions, and Elves**  
   Unencountered monsters are displayed as `?`, companions as `!`, and unidentified elves as `&`. Contact reveals an entity's type.
