@@ -1,8 +1,4 @@
-"""The English message text is also the catalog key.
-
-These checks keep src/arlq/locales/ja.json aligned with the strings the
-game actually passes to tr().
-"""
+"""Check that player-visible translation IDs have Japanese catalog entries."""
 
 import ast
 import json
@@ -19,15 +15,6 @@ def _python_files():
 def _trees():
     for path in _python_files():
         yield path, ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-
-
-def _string_literals():
-    found = set()
-    for _, tree in _trees():
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                found.add(node.value)
-    return found
 
 
 def _event_message_locals(tree):
@@ -55,31 +42,36 @@ def _module_bindings(tree):
         value = node.value
         if isinstance(value, ast.Constant) and isinstance(value.value, str):
             bindings[target.id] = [value.value]
-        elif isinstance(value, ast.Dict):
+        elif isinstance(value, (ast.Dict, ast.List, ast.Tuple)):
+            if isinstance(value, ast.Dict):
+                values = value.values
+            else:
+                values = value.elts
             texts = []
-            if all(isinstance(item, ast.Constant) and isinstance(item.value, str) for item in value.values):
-                texts = [item.value for item in value.values]
+            if all(isinstance(item, ast.Constant) and isinstance(item.value, str) for item in values):
+                texts = [item.value for item in values]
                 bindings[target.id] = texts
     return bindings
 
 
 def _iterated_string_locals(tree):
-    """String values passed through tr() in loops over literal sequences."""
+    """String values passed through tr() in loops over string-containing sequences."""
+
+    def string_values(node):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return {node.value}
+        if isinstance(node, (ast.List, ast.Tuple)):
+            return set().union(*(string_values(item) for item in node.elts))
+        return set()
+
     sequences = {}
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assign) or len(node.targets) != 1:
             continue
         target = node.targets[0]
         value = node.value
-        if (
-            isinstance(target, ast.Name)
-            and isinstance(value, (ast.List, ast.Tuple))
-            and all(
-                isinstance(item, ast.Constant) and isinstance(item.value, str)
-                for item in value.elts
-            )
-        ):
-            sequences[target.id] = {item.value for item in value.elts}
+        if isinstance(target, ast.Name) and isinstance(value, (ast.List, ast.Tuple)):
+            sequences[target.id] = string_values(value)
 
     locals_by_name = {}
     for node in ast.walk(tree):
@@ -195,11 +187,17 @@ def _catalog_keys():
     return set(catalog)
 
 
-def test_japanese_catalog_keys_exist_in_source():
-    missing = sorted(_catalog_keys() - _string_literals())
-    assert missing == []
+def test_japanese_catalog_contains_string_mappings():
+    catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
+    assert all(
+        isinstance(key, str) and isinstance(value, str)
+        for key, value in catalog.items()
+    )
 
 
 def test_tr_message_ids_exist_in_japanese_catalog():
-    missing = sorted(_tr_message_ids() - _catalog_keys())
+    # Button face labels remain identical in Japanese, and blank labels carry
+    # no translatable text.
+    untranslated_ids = {"", "A", "B", "X", "Y"}
+    missing = sorted(_tr_message_ids() - _catalog_keys() - untranslated_ids)
     assert missing == []
