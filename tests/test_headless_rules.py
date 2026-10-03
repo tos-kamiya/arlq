@@ -968,9 +968,10 @@ def test_stage4_chests_wait_for_fire_drake_defeat():
     ]
     assert treasure.unlocked
     assert player.boss_defeated
-    assert mimic in floors[0].entities
+    assert mimic not in floors[0].entities
     assert not mimic.active
     assert not mimic.revealed and mimic.met
+    assert checkpoint[0] == (mimic.x, mimic.y)
     assert "MF" in player.known_monsters
     assert d.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
     assert d.preview_entity_glyphs(mimic) == []
