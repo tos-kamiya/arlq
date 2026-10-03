@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 5.7.2 - 2026-10-03
+
+- Add overshoot assist, which restores position, LP, and turns when returning
+  to an eligible recent cell within five turns. Mark possible return cells
+  with a dark gray dot.
+- Remove defeated Mimics from the floor.
+- Exclude marksman damage from the reachable-area estimate and clarify that
+  the preview may differ from actual reachability.
+
 ## 5.7.1 - 2026-10-03
 
 - Preserve the restored LP when a Loop Companion rewind reaches the normal
