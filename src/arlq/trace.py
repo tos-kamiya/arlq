@@ -519,6 +519,7 @@ class ReplayUI:
         # consumed (for example, if a trace contains turns after a win).
         if self._final_state_only:
             self._draw_last_state()
-            return None
+            if not self._continue_play:
+                return None
         input_game_over = getattr(self._draw_ui, "input_game_over", None)
         return input_game_over() if input_game_over is not None else self.input_alphabet()

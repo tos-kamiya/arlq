@@ -383,6 +383,28 @@ def test_replay_ui_draw_stage_forwards_only_when_given_a_draw_target():
 # --- Legacy arlq.arlq compatibility API -----------------------------------
 
 
+def test_fast_forward_continue_waits_on_game_over_screen():
+    draws = []
+    game_over_inputs = []
+
+    class DrawTarget:
+        def draw_stage(self, **kwargs):
+            draws.append(kwargs)
+
+        def input_game_over(self):
+            game_over_inputs.append(True)
+            return None
+
+    ui = ReplayUI(
+        [], stage=4, draw_ui=DrawTarget(), continue_play=True, final_state_only=True
+    )
+    ui.draw_stage(turn=3, message="game over")
+
+    assert ui.input_game_over() is None
+    assert draws == [{"turn": 3, "message": "game over"}]
+    assert game_over_inputs == [True]
+
+
 def test_legacy_wall_blocked():
     player = d.Player(2, 2, 1, 90)
     field = blank_field()

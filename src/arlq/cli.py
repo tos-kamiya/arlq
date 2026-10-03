@@ -231,8 +231,6 @@ def _prepare_cli_session(terminal_only=False):
         params = trace_data["params"]
         args.seed = params["seed"]
         game.parse_seed_string(args, args.seed, enforce_version=False)
-        if args.lang == "auto":
-            set_language(params.get("lang", "auto"))
     else:
         if args.rematch and args.seed is not None:
             parser.error("--rematch cannot be combined with --seed")
