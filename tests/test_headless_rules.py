@@ -7,6 +7,7 @@ import pytest
 from arlq import arlq as arlq_module
 from arlq import defs as d
 from arlq import game_engine as game_engine_module
+from arlq import i18n
 from arlq import stage_replay as stage_replay_module
 from arlq import stage_world as stage_world_module
 from arlq.arlq import (
@@ -22,6 +23,15 @@ from arlq.arlq import (
 )
 from arlq.game_engine import Floor, _step
 from arlq.game_events import ContactEvent
+
+
+@pytest.fixture(autouse=True)
+def english_messages():
+    previous_language = i18n.get_language()
+    i18n.set_language("en")
+    yield
+    i18n.set_language(previous_language)
+
 
 KEYS = {
     "U": (0, -1),
@@ -1822,7 +1832,7 @@ def test_vortex_records_map_knowledge_before_disturbing_it(monkeypatch):
     floor.seen[4][5] = 8
     replay = game_engine_module.ReplayContext(4, 55, GameConfig())
 
-    def disturb_map(current, *_args):
+    def disturb_map(current, *_args, **_kwargs):
         current.seen[4][5] = 0
 
     monkeypatch.setattr(game_engine_module, "_vortex_rearrange", disturb_map)
@@ -2415,7 +2425,7 @@ def test_elf_stage_flags_keep_their_bit_values():
         d.ELF_STAGE_J_FLAG,
     ) == (1, 2, 4, 8, 32, 16, 64)
     assert d.MONSTERS_EXCLUDED_FROM_RESPAWN == {
-        "a", "A", "b", "c", "C", "F", "M", "W", "w"
+        "a", "A", "b", "c", "C", "F", "M", "O", "W", "w"
     }
 
 

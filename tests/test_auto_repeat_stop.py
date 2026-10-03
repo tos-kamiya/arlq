@@ -66,8 +66,9 @@ def test_repeat_does_not_inspect_unknown_terrain_ahead():
         d.Companion(4, 2, d.CHAR_TO_TRIBE["n"]),
     ],
 )
-def test_repeat_stops_when_approaching_displayed_entity_within_two_steps(entity):
+def test_repeat_stops_before_entering_displayed_entity_cell(entity):
     player = d.Player(2, 2, 100, 90)
+    entity.x = 3
     floor = floor_with([player, entity])
     floor.seen[entity.y][entity.x] = 1
 
@@ -102,7 +103,7 @@ def test_repeat_does_not_stop_for_unseen_entity():
 
 def test_inactive_mimic_is_ignored_until_its_glyph_is_revealed():
     player = d.Player(2, 2, 100, 90)
-    mimic = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
+    mimic = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
     mimic.active = False
     floor = floor_with([player, mimic])
     floor.seen[mimic.y][mimic.x] = 1
