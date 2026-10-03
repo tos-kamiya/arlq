@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 5.6.0 - 2026-10-03
+
+- Add configurable gamepad buttons for the controls help and range/floor
+  preview, with hold or toggle behavior. Allow loading the defaults from the
+  settings screen.
+- Support assigning supported controller buttons or leaving either mode
+  button unassigned, and reflect custom assignments in the help text.
+
 ## 5.5.4 - 2026-10-03
 
 - Add linked screenshot thumbnails to the English and Japanese READMEs.
