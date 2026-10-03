@@ -348,7 +348,8 @@ class PygletUI:
             return (0, 0)
         if abs(x) > abs(y):
             return (1 if x > 0 else -1, 0)
-        return (0, -1 if y > 0 else 1)
+        # Controller stick Y axes increase downward, matching screen coordinates.
+        return (0, 1 if y > 0 else -1)
 
     def _set_scaled_dimensions(self) -> None:
         self.cell_size_x = max(1, round(CELL_SIZE_X * self.scale))
