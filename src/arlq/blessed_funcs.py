@@ -110,10 +110,12 @@ class BlessedUI:
         floor_view: bool = False,
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
+        overshoot_markers: Optional[Set[d.Point]] = None,
     ) -> str:
         output = [self.term.home + self.term.clear]
         reveal_disguises = debug_show_entities or monochrome
         highlighted_cells = reachable_cells or set()
+        rewind_markers = overshoot_markers or set()
         render_monochrome = monochrome and not highlighted_cells
 
         def put(
@@ -198,6 +200,24 @@ class BlessedUI:
                     )
                     background = cell_background(x, y)
                     put(x, y, cell if discovered else " ", color, bg=background)
+
+        if not floor_view:
+            for x, y in rewind_markers:
+                if (
+                    0 <= y < len(field)
+                    and 0 <= x < len(field[y])
+                    and torched[y][x]
+                    and field[y][x] == d.CHAR_FLOOR
+                    and (x, y) != (px, py)
+                ):
+                    put(
+                        x,
+                        y,
+                        ".",
+                        "white",
+                        dim=True,
+                        bg=cell_background(x, y),
+                    )
 
         if (
             not floor_view
@@ -389,6 +409,7 @@ class BlessedUI:
         floor_view: bool = False,
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
+        overshoot_markers: Optional[Set[d.Point]] = None,
     ):
         self._wait_for_terminal_size()
         show_entities = show_entities or self.map_mode
@@ -396,6 +417,7 @@ class BlessedUI:
             entities, field, cur_torched, torched, known_types, show_entities,
             debug_show_entities, checkpoint, self.map_mode, dim_types,
             stage_num, stage_roster, floor_view, floor_label, reachable_cells,
+            overshoot_markers,
         )
         status_args = (
             player,

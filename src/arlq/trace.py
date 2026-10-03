@@ -14,7 +14,7 @@ import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Deque, Dict, List, Optional, Tuple
+from typing import Any, Deque, Dict, List, Optional, Set, Tuple
 
 from . import defs as d
 from .__about__ import __version__
@@ -190,6 +190,130 @@ class TraceRecorder:
             raise ValueError("retained_turns is outside the recorded trace")
         del self.turns[retained_turns:]
         self._turn_no = retained_turns
+
+    def find_overshoot_rewind_target(
+        self, max_turns: int = d.OVERSHOOT_REWIND_TURNS
+    ) -> Optional[Tuple[int, int, d.Point, int]]:
+        """Return a safe prior state if the player left and returned to it.
+
+        The tuple contains retained trace turns, floor index, position, and LP
+        after the target turn. Locked treasure contacts are harmless and are
+        the only contact events allowed in the candidate window.
+        """
+        if self._current is not None or self.start is None or not self.turns:
+            return None
+
+        current_player = self.turns[-1].get("player")
+        if not current_player:
+            return None
+        current_floor = current_player.get("floor")
+        current_position = current_player.get("position")
+        if current_floor is None or current_position is None:
+            return None
+
+        turn_count = len(self.turns)
+        first_target = max(0, turn_count - max_turns)
+        for retained_turns in range(turn_count - 1, first_target - 1, -1):
+            if retained_turns == 0:
+                target_floor = self.start.get("floor")
+                target_position = self.start.get("position")
+                target_lp = self.start.get("lp")
+            else:
+                target_player = self.turns[retained_turns - 1].get("player") or {}
+                target_floor = target_player.get("floor")
+                target_position = target_player.get("position")
+                target_lp = target_player.get("lp_after_turn")
+
+            if (
+                target_floor != current_floor
+                or target_position != current_position
+                or target_lp is None
+            ):
+                continue
+
+            # Require a genuine departure between the target and the return;
+            # repeated blocked inputs at one location do not count.
+            left_target = any(
+                (row.get("player") or {}).get("floor") != target_floor
+                or (row.get("player") or {}).get("position") != target_position
+                for row in self.turns[retained_turns:-1]
+            )
+            if not left_target:
+                continue
+
+            if any(
+                not self._turn_allows_overshoot_rewind(row, target_floor)
+                for row in self.turns[retained_turns:]
+            ):
+                continue
+
+            x, y = target_position
+            return retained_turns, target_floor, (x, y), target_lp
+        return None
+
+    def overshoot_rewind_markers(
+        self, floor: int, max_turns: int = d.OVERSHOOT_REWIND_TURNS
+    ) -> Set[d.Point]:
+        """Return recent cells that could currently serve as rewind targets.
+
+        A marker is shown only when returning on the next turn would still be
+        within the turn limit and the trace since leaving that cell is safe.
+        """
+        if self._current is not None or self.start is None or not self.turns:
+            return set()
+
+        current_player = self.turns[-1].get("player") or {}
+        current_position = current_player.get("position")
+        if current_player.get("floor") != floor or current_position is None:
+            return set()
+
+        turn_count = len(self.turns)
+        first_target = max(0, turn_count + 1 - max_turns)
+        markers: Set[d.Point] = set()
+        for retained_turns in range(turn_count - 1, first_target - 1, -1):
+            if retained_turns == 0:
+                target_floor = self.start.get("floor")
+                target_position = self.start.get("position")
+            else:
+                target_player = self.turns[retained_turns - 1].get("player") or {}
+                target_floor = target_player.get("floor")
+                target_position = target_player.get("position")
+
+            if target_floor != floor or target_position == current_position:
+                continue
+            if not any(
+                (row.get("player") or {}).get("position") != target_position
+                for row in self.turns[retained_turns:]
+            ):
+                continue
+            if any(
+                not self._turn_allows_overshoot_rewind(row, floor)
+                for row in self.turns[retained_turns:]
+            ):
+                continue
+            x, y = target_position
+            markers.add((x, y))
+        return markers
+
+    @staticmethod
+    def _turn_allows_overshoot_rewind(turn: Dict[str, Any], floor: int) -> bool:
+        player = turn.get("player") or {}
+        if player.get("floor") != floor:
+            return False
+        contact = turn.get("contact")
+        if contact is not None and not (
+            contact.get("type") == "treasure" and contact.get("collected") is False
+        ):
+            return False
+        return not (
+            turn.get("damage")
+            or turn.get("seen_added_count", 0)
+            or turn.get("known_monsters_added")
+            or turn.get("expired")
+            or turn.get("world")
+            or turn.get("checkpoint")
+            or (turn.get("wall") or {}).get("result") == "sword_break"
+        )
 
     def record_quit(self) -> None:
         self._turn_no += 1

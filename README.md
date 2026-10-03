@@ -120,6 +120,7 @@ reproduce the same layout.
 * **LP System**
   The player has LP (Life Points) that decrease with every move.
   If LP reaches zero, the game is lost due to starvation. Defeating monsters replenishes food, thereby restoring LP.
+  Overshoot assist automatically cancels an accidental move sequence when you return to the same position within five turns, provided the sequence caused no encounter, damage, floor change, or new map or monster knowledge. Potential return cells are marked with a dark gray `.` while the assist is available. Touching a locked treasure chest does not prevent the assist.
 
 * **Game End**  
   The game is cleared when you come into contact with the treasure chest (represented by `T`). Your objective is to obtain the treasure chest guarded by the dragon.
