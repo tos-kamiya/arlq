@@ -104,6 +104,81 @@ MIN_UI_SCALE = 0.5
 MAX_UI_SCALE = 4.0
 UI_SCALE_CHOICES = tuple(n / 100 for n in range(50, 401, 25))
 KEY_REPEAT_CHOICES = tuple(n / 10 for n in range(1, 11)) + (None,)
+GAMEPAD_BUTTON_NAMES = (
+    "A",
+    "B",
+    "X",
+    "Y",
+    "Left shoulder",
+    "Right shoulder",
+    "Back",
+    "Start",
+    "Guide",
+    "Left stick press",
+    "Right stick press",
+    "Left trigger",
+    "Right trigger",
+)
+GAMEPAD_CONTROLLER_ATTRIBUTES = (
+    "a",
+    "b",
+    "x",
+    "y",
+    "leftshoulder",
+    "rightshoulder",
+    "back",
+    "start",
+    "guide",
+    "leftstick",
+    "rightstick",
+    "lefttrigger",
+    "righttrigger",
+)
+GAMEPAD_BUTTONS = tuple(range(len(GAMEPAD_BUTTON_NAMES)))
+GAMEPAD_BUTTON_CHOICES = (None,) + GAMEPAD_BUTTONS
+GAMEPAD_TRIGGER_BUTTONS = (11, 12)
+GAMEPAD_TRIGGER_PRESS_THRESHOLD = 0.5
+GAMEPAD_PREVIEW_MODES = ("hold", "toggle")
+DEFAULT_GAMEPAD_HELP_BUTTON = 3
+DEFAULT_GAMEPAD_PREVIEW_BUTTON = 2
+DEFAULT_GAMEPAD_PREVIEW_MODE = "hold"
+
+
+def _gamepad_button_label(button: Optional[int]) -> str:
+    """Return a readable label for one of pyglet's standard controller inputs."""
+    if button is None:
+        return tr("Unassigned")
+    return tr("Button {n} ({name})").format(
+        n=button, name=tr(GAMEPAD_BUTTON_NAMES[button])
+    )
+
+
+def _next_gamepad_button(
+    current: Optional[int], step: int, occupied: Optional[int]
+) -> Optional[int]:
+    """Cycle bindings while skipping the other mode key's assigned button."""
+    index = GAMEPAD_BUTTON_CHOICES.index(current)
+    for offset in range(1, len(GAMEPAD_BUTTON_CHOICES) + 1):
+        candidate = GAMEPAD_BUTTON_CHOICES[
+            (index + step * offset) % len(GAMEPAD_BUTTON_CHOICES)
+        ]
+        if candidate is None or candidate != occupied:
+            return candidate
+    return None
+
+
+def _held_gamepad_buttons(controller) -> Set[int]:
+    """Return pressed standard buttons, treating analog triggers as digital."""
+    if controller is None:
+        return set()
+    held = set()
+    for index, attribute in enumerate(GAMEPAD_CONTROLLER_ATTRIBUTES):
+        value = getattr(controller, attribute, False)
+        if index in GAMEPAD_TRIGGER_BUTTONS:
+            value = float(value or 0.0) >= GAMEPAD_TRIGGER_PRESS_THRESHOLD
+        if value:
+            held.add(index)
+    return held
 
 
 def _settings_path() -> Path:
@@ -171,6 +246,57 @@ def save_auto_repeat_stop_enabled(enabled: bool) -> None:
     except OSError:
         pass
 
+
+def load_gamepad_bindings() -> Tuple[Optional[int], Optional[int], str]:
+    """Load configurable gamepad mode-button bindings safely."""
+    settings = _load_settings()
+    help_button = settings.get("gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
+    preview_button = settings.get("gamepad_preview_button", DEFAULT_GAMEPAD_PREVIEW_BUTTON)
+    preview_mode = settings.get("gamepad_preview_mode", DEFAULT_GAMEPAD_PREVIEW_MODE)
+    if help_button is not None and (
+        type(help_button) is not int or help_button not in GAMEPAD_BUTTONS
+    ):
+        help_button = DEFAULT_GAMEPAD_HELP_BUTTON
+    if preview_button is not None and (
+        type(preview_button) is not int or preview_button not in GAMEPAD_BUTTONS
+    ):
+        preview_button = DEFAULT_GAMEPAD_PREVIEW_BUTTON
+    if help_button is not None and help_button == preview_button:
+        preview_button = None
+    if preview_mode not in GAMEPAD_PREVIEW_MODES:
+        preview_mode = DEFAULT_GAMEPAD_PREVIEW_MODE
+    return help_button, preview_button, preview_mode
+
+
+def save_gamepad_bindings(
+    help_button: Optional[int], preview_button: Optional[int], preview_mode: str
+) -> None:
+    """Persist gamepad mode-button bindings without discarding other settings."""
+    if help_button is not None and (
+        type(help_button) is not int or help_button not in GAMEPAD_BUTTONS
+    ):
+        help_button = DEFAULT_GAMEPAD_HELP_BUTTON
+    if preview_button is not None and (
+        type(preview_button) is not int or preview_button not in GAMEPAD_BUTTONS
+    ):
+        preview_button = DEFAULT_GAMEPAD_PREVIEW_BUTTON
+    if help_button is not None and help_button == preview_button:
+        preview_button = None
+    if preview_mode not in GAMEPAD_PREVIEW_MODES:
+        preview_mode = DEFAULT_GAMEPAD_PREVIEW_MODE
+    path = _settings_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        settings = _load_settings()
+        settings.update(
+            gamepad_help_button=help_button,
+            gamepad_preview_button=preview_button,
+            gamepad_preview_mode=preview_mode,
+        )
+        path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
 # Keys that map to a movement direction, shared by input_direction().
 _DIRECTION_KEYS = {
     pgkey.UP: (0, -1),
@@ -219,6 +345,7 @@ class PygletUI:
         self._stage_input_active = False
         self._keyboard_farthest_preview = False
         self._gamepad_preview_held = False
+        self._gamepad_preview_toggled = False
         self._gamepad_preview_changed = False
         self.floor_view_reset_requested = False
         self._f_key_held = False
@@ -228,6 +355,11 @@ class PygletUI:
             if key_repeat_interval is None else key_repeat_interval
         )
         self.auto_repeat_stop_enabled = load_auto_repeat_stop_enabled()
+        (
+            self.gamepad_help_button,
+            self.gamepad_preview_button,
+            self.gamepad_preview_mode,
+        ) = load_gamepad_bindings()
         self._held_direction: Optional[Tuple[int, int]] = None
         self._held_direction_keys: Set[int] = set()
         self._next_repeat_at = 0.0
@@ -314,6 +446,33 @@ class PygletUI:
     def set_auto_repeat_stop_enabled(self, enabled: bool) -> None:
         self.auto_repeat_stop_enabled = bool(enabled)
         save_auto_repeat_stop_enabled(self.auto_repeat_stop_enabled)
+
+    def set_gamepad_bindings(
+        self,
+        help_button: Optional[int],
+        preview_button: Optional[int],
+        preview_mode: str,
+    ) -> None:
+        was_preview_active = self._gamepad_preview_held
+        self._gamepad_preview_changed = False
+        if help_button is not None and help_button == preview_button:
+            preview_button = None
+        self.gamepad_help_button = help_button
+        self.gamepad_preview_button = preview_button
+        self.gamepad_preview_mode = preview_mode
+        self._gamepad_preview_toggled = False
+        self._gamepad_preview_held = False
+        if was_preview_active:
+            self._gamepad_preview_changed = True
+            self.floor_view_reset_requested = True
+        save_gamepad_bindings(help_button, preview_button, preview_mode)
+
+    def _gamepad_is_connected(self) -> bool:
+        controller = getattr(self, "controller", None)
+        if controller is None:
+            return False
+        device = getattr(controller, "device", None)
+        return bool(getattr(device, "connected", True))
 
     @staticmethod
     def _controller_direction(controller) -> Tuple[int, int]:
@@ -870,18 +1029,28 @@ class PygletUI:
         # controllers) from the platform event loop. This UI has its own loop,
         # so perform a non-blocking step here to keep device state current.
         pyglet.app.platform_event_loop.step(0)
-        button_names = ("a", "b", "x", "y")
-        held_buttons = {
-            index
-            for index, name in enumerate(button_names)
-            if self.controller and bool(getattr(self.controller, name, False))
-        }
-        was_preview_held = 2 in self._gamepad_held_buttons
+        held_buttons = _held_gamepad_buttons(self.controller)
+        was_preview_held = self._gamepad_preview_held
         self._gamepad_pressed_buttons = held_buttons - self._gamepad_held_buttons
         self._gamepad_held_buttons = held_buttons
-        self._gamepad_preview_held = 2 in held_buttons
+        if not self._stage_input_active:
+            self._gamepad_preview_toggled = False
+        if self.gamepad_preview_mode == "toggle":
+            if (
+                self._stage_input_active
+                and self.gamepad_preview_button in self._gamepad_pressed_buttons
+            ):
+                self._gamepad_preview_toggled = not self._gamepad_preview_toggled
+            self._gamepad_preview_held = (
+                self._stage_input_active and self._gamepad_preview_toggled
+            )
+        else:
+            self._gamepad_preview_held = (
+                self._stage_input_active and self.gamepad_preview_button in held_buttons
+            )
         if self._gamepad_preview_held != was_preview_held:
-            self._gamepad_preview_changed = True
+            if self._stage_input_active:
+                self._gamepad_preview_changed = True
             if was_preview_held and not self._gamepad_preview_held:
                 self.floor_view_reset_requested = True
 
@@ -945,12 +1114,15 @@ class PygletUI:
             if self._closed:
                 return None
 
-            if self._gamepad_preview_changed:
-                self._gamepad_preview_changed = False
+            if (
+                getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
+                in self._gamepad_pressed_buttons
+            ):
+                self.controls_menu()
                 return (0, 0)
 
-            if 3 in self._gamepad_pressed_buttons:
-                self.controls_menu()
+            if self._gamepad_preview_changed:
+                self._gamepad_preview_changed = False
                 return (0, 0)
 
             while self._key_queue:
@@ -1048,7 +1220,10 @@ class PygletUI:
                     return "h"
                 key_name = pgkey.symbol_string(symbol)
                 return key_name.lower()
-            if 3 in self._gamepad_pressed_buttons:
+            if (
+                getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
+                in self._gamepad_pressed_buttons
+            ):
                 self.controls_menu()
                 return "h"
 
@@ -1061,7 +1236,10 @@ class PygletUI:
             if self._closed:
                 return None
 
-            if 3 in self._gamepad_pressed_buttons:
+            if (
+                getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
+                in self._gamepad_pressed_buttons
+            ):
                 self.controls_menu()
                 return (0, 0, False)
 
@@ -1090,25 +1268,61 @@ class PygletUI:
         """Show controls until the player dismisses the help screen."""
         self._clear_drawables()
         self._draw_text((8, 4), tr("Controls"), COLOR_MAP[CI_YELLOW], bold=True)
-        controls = (
-            "Arrow keys / WASD: move",
-            "Gamepad: D-pad / left stick move, button 0 confirm, hold button 2 to preview",
-            "Gamepad button 3: open / close this help",
-            "F: toggle reachable-area preview",
-            "M: enter map and entity display mode (cannot be undone)",
-            "Shift + Up/Down: view another floor (Stages 3 and 4)",
-            "Hold gamepad button 2 + Up/Down: view another floor (Stages 3 and 4)",
-            "S: show the seed",
-            "Q / Esc: quit the stage",
+        help_changed = self.gamepad_help_button != DEFAULT_GAMEPAD_HELP_BUTTON
+        preview_changed = (
+            self.gamepad_preview_button != DEFAULT_GAMEPAD_PREVIEW_BUTTON
+            or self.gamepad_preview_mode != DEFAULT_GAMEPAD_PREVIEW_MODE
         )
-        for index, line in enumerate(controls):
+        preview_mode = tr("Hold") if self.gamepad_preview_mode == "hold" else tr("Toggle")
+        help_line = (
+            tr("Gamepad help button: unassigned")
+            if self.gamepad_help_button is None
+            else tr("Gamepad {button}: open / close this help").format(
+                button=_gamepad_button_label(self.gamepad_help_button)
+            )
+        )
+        preview_line = (
+            tr("Gamepad range/floor button: unassigned")
+            if self.gamepad_preview_button is None
+            else tr("Gamepad {button}: {mode} reachable-area preview").format(
+                button=_gamepad_button_label(self.gamepad_preview_button),
+                mode=preview_mode,
+            )
+        )
+        floor_line = (
+            tr("Gamepad floor inspection: unavailable (button unassigned)")
+            if self.gamepad_preview_button is None
+            else tr(
+                "Hold {button} + Up/Down: view another floor (Stages 3 and 4)"
+                if self.gamepad_preview_mode == "hold"
+                else "Toggle {button}, then Up/Down: view another floor (Stages 3 and 4)"
+            ).format(button=_gamepad_button_label(self.gamepad_preview_button))
+        )
+        controls = (
+            ("Arrow keys / WASD / Gamepad D-pad / left stick: move; button 0 confirm", False),
+            (help_line, help_changed),
+            ("F: toggle reachable-area preview", False),
+            (preview_line, preview_changed),
+            ("M: enter map and entity display mode (cannot be undone)", False),
+            ("Shift + Up/Down: view another floor (Stages 3 and 4)", False),
+            (floor_line, preview_changed),
+            ("S: show the seed", False),
+            ("Q / Esc: quit the stage", False),
+        )
+        for index, (line, changed) in enumerate(controls):
             self._draw_text(
-                (8, 7 + MENU_ROW_SPACING * index), tr(line), COLOR_MAP["default"]
+                (8, 7 + MENU_ROW_SPACING * index),
+                tr(line),
+                COLOR_MAP[CI_YELLOW] if changed else COLOR_MAP["default"],
             )
         return_y = 7 + MENU_ROW_SPACING * (len(controls) - 1) + 2
         self._draw_text(
             (8, return_y),
-            tr("Press any key or gamepad button 3 to return"),
+            tr("Press any key to return")
+            if self.gamepad_help_button is None
+            else tr("Press any key or {button} to return").format(
+                button=_gamepad_button_label(self.gamepad_help_button)
+            ),
             (145, 150, 160),
         )
         self._flip()
@@ -1116,7 +1330,12 @@ class PygletUI:
             self._pump()
             if self._next_key_event() is not None:
                 return
-            if 3 in self._gamepad_pressed_buttons:
+            if (
+                getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
+                is not None
+                and getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
+                in self._gamepad_pressed_buttons
+            ):
                 return
             time.sleep(1 / 30)
 
@@ -1131,6 +1350,9 @@ class PygletUI:
         auto_repeat_stop_enabled = self.auto_repeat_stop_enabled
         row = 0
         while True:
+            controller_connected = self._gamepad_is_connected()
+            if not controller_connected and row == 3:
+                row = 2
             self._clear_drawables()
             self._draw_text(
                 (8, 5),
@@ -1192,14 +1414,35 @@ class PygletUI:
                     bold=row == 2,
                 ) + self.cell_size_x,
             )
+            gamepad_label = tr("Gamepad button settings")
+            gamepad_heading = f"{'>' if row == 3 else ' '} {gamepad_label}"
+            gamepad_setting_color = (
+                COLOR_MAP["default"] if controller_connected else (112, 116, 124)
+            )
+            self._draw_text(
+                (8, 14),
+                gamepad_heading,
+                gamepad_setting_color,
+                bold=row == 3 and controller_connected,
+            )
+            self._draw_text(
+                (8, 14),
+                "->",
+                gamepad_setting_color,
+                bold=row == 3 and controller_connected,
+                x_offset=self._text_width(
+                    gamepad_heading,
+                    bold=row == 3,
+                ) + self.cell_size_x,
+            )
             help_color = (145, 150, 160)
             self._draw_text(
-                (8, 15),
-                tr("Up/Down: item   Left/Right: value"),
+                (8, 17),
+                tr("Up/Down: item   Left/Right: value   Right: open submenu"),
                 help_color,
             )
             self._draw_text(
-                (8, 17),
+                (8, 19),
                 tr("Enter / Gamepad button 0: apply   Esc / Gamepad button 1: cancel"),
                 help_color,
             )
@@ -1213,17 +1456,17 @@ class PygletUI:
                 if event is not None:
                     symbol, _ = event
                     if symbol == pgkey.UP:
-                        row = (row - 1) % 3
+                        row = (row - 1) % (4 if controller_connected else 3)
                         break
                     if symbol == pgkey.DOWN:
-                        row = (row + 1) % 3
+                        row = (row + 1) % (4 if controller_connected else 3)
                         break
                     if symbol == pgkey.LEFT:
                         if row == 0:
                             current_index = max(0, current_index - 1)
                         elif row == 1:
                             repeat_index = max(0, repeat_index - 1)
-                        else:
+                        elif row == 2:
                             auto_repeat_stop_enabled = not auto_repeat_stop_enabled
                         break
                     if symbol == pgkey.RIGHT:
@@ -1231,8 +1474,10 @@ class PygletUI:
                             current_index = min(len(UI_SCALE_CHOICES) - 1, current_index + 1)
                         elif row == 1:
                             repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
-                        else:
+                        elif row == 2:
                             auto_repeat_stop_enabled = not auto_repeat_stop_enabled
+                        elif row == 3 and controller_connected:
+                            self.gamepad_button_settings_menu()
                         break
                     if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
                         self.set_scale(UI_SCALE_CHOICES[current_index])
@@ -1249,17 +1494,17 @@ class PygletUI:
                 if direction != getattr(self, "gamepad_previous_direction", None):
                     self.gamepad_previous_direction = direction
                     if direction == (0, -1):
-                        row = (row - 1) % 2
+                        row = (row - 1) % (4 if controller_connected else 3)
                         break
                     if direction == (0, 1):
-                        row = (row + 1) % 2
+                        row = (row + 1) % (4 if controller_connected else 3)
                         break
                     if direction == (-1, 0):
                         if row == 0:
                             current_index = max(0, current_index - 1)
                         elif row == 1:
                             repeat_index = max(0, repeat_index - 1)
-                        else:
+                        elif row == 2:
                             auto_repeat_stop_enabled = not auto_repeat_stop_enabled
                         break
                     if direction == (1, 0):
@@ -1267,8 +1512,10 @@ class PygletUI:
                             current_index = min(len(UI_SCALE_CHOICES) - 1, current_index + 1)
                         elif row == 1:
                             repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
-                        else:
+                        elif row == 2:
                             auto_repeat_stop_enabled = not auto_repeat_stop_enabled
+                        elif row == 3 and controller_connected:
+                            self.gamepad_button_settings_menu()
                         break
                 if 0 in getattr(self, "_gamepad_pressed_buttons", ()):
                     self.set_scale(UI_SCALE_CHOICES[current_index])
@@ -1276,6 +1523,153 @@ class PygletUI:
                     self.set_auto_repeat_stop_enabled(auto_repeat_stop_enabled)
                     return
                 if 1 in getattr(self, "_gamepad_pressed_buttons", ()):
+                    return
+
+    def gamepad_button_settings_menu(self) -> None:
+        """Configure gamepad mode buttons while keeping menu controls fixed."""
+        if not self._gamepad_is_connected():
+            return
+        help_button = self.gamepad_help_button
+        preview_button = self.gamepad_preview_button
+        preview_mode = self.gamepad_preview_mode
+        row = 0
+
+        while True:
+            self._clear_drawables()
+            self._draw_text(
+                (8, 5), tr("Gamepad button settings"), COLOR_MAP[CI_YELLOW], bold=True
+            )
+            rows = (
+                ("Help button", _gamepad_button_label(help_button)),
+                (
+                    "Range / floor preview button",
+                    _gamepad_button_label(preview_button),
+                ),
+                (
+                    "Range / floor preview behavior",
+                    tr("Hold") if preview_mode == "hold" else tr("Toggle"),
+                ),
+                (f"{tr('Load default settings')} ->", ""),
+            )
+            for index, (label, value) in enumerate(rows):
+                y = 8 + index * 2
+                heading = f"{'>' if row == index else ' '} {tr(label)}"
+                self._draw_text(
+                    (8, y), heading, COLOR_MAP["default"], bold=row == index
+                )
+                if value:
+                    self._draw_text(
+                        (8, y),
+                        value,
+                        COLOR_MAP["default"],
+                        bold=row == index,
+                        x_offset=self._text_width(heading, bold=row == index)
+                        + self.cell_size_x,
+                    )
+            help_color = (145, 150, 160)
+            self._draw_text(
+                (8, 18),
+                tr("Up/Down: item   Left/Right: change / load defaults with Right"),
+                help_color,
+            )
+            self._draw_text(
+                (8, 20),
+                tr("Buttons 2-12: assign   Enter / button 0: apply and exit   Esc / button 1: cancel"),
+                help_color,
+            )
+            self._flip()
+
+            while True:
+                self._pump()
+                if self._closed or not self._gamepad_is_connected():
+                    return
+
+                event = self._next_key_event()
+                if event is not None:
+                    symbol, _ = event
+                    if symbol == pgkey.UP:
+                        row = (row - 1) % len(rows)
+                        break
+                    if symbol == pgkey.DOWN:
+                        row = (row + 1) % len(rows)
+                        break
+                    if symbol in (pgkey.LEFT, pgkey.RIGHT):
+                        step = -1 if symbol == pgkey.LEFT else 1
+                        if row == 3 and symbol == pgkey.RIGHT:
+                            help_button = DEFAULT_GAMEPAD_HELP_BUTTON
+                            preview_button = DEFAULT_GAMEPAD_PREVIEW_BUTTON
+                            preview_mode = DEFAULT_GAMEPAD_PREVIEW_MODE
+                        elif row == 0:
+                            help_button = _next_gamepad_button(
+                                help_button, step, preview_button
+                            )
+                        elif row == 1:
+                            preview_button = _next_gamepad_button(
+                                preview_button, step, help_button
+                            )
+                        elif row == 2:
+                            preview_mode = (
+                                "toggle" if preview_mode == "hold" else "hold"
+                            )
+                        break
+                    if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
+                        self.set_gamepad_bindings(
+                            help_button, preview_button, preview_mode
+                        )
+                        return
+                    if symbol in (pgkey.ESCAPE, pgkey.Q):
+                        return
+
+                pressed_buttons = getattr(self, "_gamepad_pressed_buttons", ())
+                assign_button = next(
+                    (button for button in GAMEPAD_BUTTONS if button >= 2 and button in pressed_buttons),
+                    None,
+                )
+                if assign_button is not None and row in (0, 1):
+                    if row == 0:
+                        if assign_button != preview_button:
+                            help_button = assign_button
+                    else:
+                        if assign_button != help_button:
+                            preview_button = assign_button
+                    break
+
+                direction = self._controller_direction(
+                    getattr(self, "controller", None)
+                )
+                if direction != getattr(self, "gamepad_previous_direction", None):
+                    self.gamepad_previous_direction = direction
+                    if direction == (0, -1):
+                        row = (row - 1) % len(rows)
+                        break
+                    if direction == (0, 1):
+                        row = (row + 1) % len(rows)
+                        break
+                    if direction in ((-1, 0), (1, 0)):
+                        step = direction[0]
+                        if row == 3 and step > 0:
+                            help_button = DEFAULT_GAMEPAD_HELP_BUTTON
+                            preview_button = DEFAULT_GAMEPAD_PREVIEW_BUTTON
+                            preview_mode = DEFAULT_GAMEPAD_PREVIEW_MODE
+                        elif row == 0:
+                            help_button = _next_gamepad_button(
+                                help_button, step, preview_button
+                            )
+                        elif row == 1:
+                            preview_button = _next_gamepad_button(
+                                preview_button, step, help_button
+                            )
+                        elif row == 2:
+                            preview_mode = (
+                                "toggle" if preview_mode == "hold" else "hold"
+                            )
+                        break
+                if 0 in pressed_buttons:
+                    self.set_gamepad_bindings(
+                        help_button, preview_button, preview_mode
+                    )
+                    return
+                if 1 in pressed_buttons:
                     return
 
     def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
@@ -1319,7 +1713,14 @@ class PygletUI:
                 )
             self._draw_text(
                 (8, base_y + MENU_ROW_SPACING * (len(options) - 1) + 2),
-                tr("[h]elp / Gamepad button 3: controls"),
+                tr("[h]elp: controls (gamepad button unassigned)")
+                if getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
+                is None
+                else tr("[h]elp / {button}: controls").format(
+                    button=_gamepad_button_label(
+                        getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
+                    )
+                ),
                 (145, 150, 160),
             )
 
@@ -1338,7 +1739,10 @@ class PygletUI:
                         self._discard_queued_key(pgkey.ESCAPE)
                         break
                     return current_index
-                if 3 in getattr(self, "_gamepad_pressed_buttons", ()):
+                if (
+                    getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
+                    in getattr(self, "_gamepad_pressed_buttons", ())
+                ):
                     self.controls_menu()
                     break
 

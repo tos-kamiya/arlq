@@ -44,10 +44,17 @@ arlq-cli
 Running `arlq` without options opens the graphical interface. Running
 `arlq-cli` without options starts the terminal interface.
 In the GUI, use a connected gamepad's D-pad or left stick to move. Button 0
-confirms the selected stage on the stage selection screen. During play, hold
-button 2 to preview the reachable area; while holding it, press Up or Down to
-inspect another floor in Stages 3 and 4. Releasing button 2 returns to your
-floor and closes the preview.
+confirms the selected stage on the stage selection screen. In `Settings`, move
+to `Gamepad button settings ->` and press Right or move the gamepad right to
+choose the buttons for controls help and range/floor display,
+and whether preview uses a hold or toggle action. Change a button with Left or
+Right, or press a mode button (2–12) while its row is selected. Buttons 0 and 1 remain
+apply and cancel in this screen. The settings item is disabled when no gamepad
+is connected. Defaults are button 3 for help and holding button 2 for previews.
+Either mode can be unassigned, and the two modes cannot share a button.
+On the `Load default settings ->` row, press Right or move the gamepad right to
+load the defaults into the pending values and stay on the screen. Enter or
+gamepad button 0 applies the settings and exits; `Esc` cancels unsaved changes.
 
 The terminal interface requires a terminal at least 80 columns wide and 24
 lines high. If the terminal is resized below that size, the game pauses until
@@ -106,7 +113,7 @@ reproduce the same layout.
   When movement repeat is enabled, holding a direction repeats movement. Automatic repeat stopping is enabled by default and can be switched off in `Settings` or with `--no-auto-repeat-stop`. When enabled, it stops before known special terrain and nearby displayed entities, and after combat, marksman damage, wall interactions, Pegasus jumps, or floor transitions. Release and press the direction again to resume.
   The background behind `@` turns yellow at 40 LP or below and red at 20 LP or below.
   The game uses a fog system where only the areas you have walked on are visible. Combined with auto-mapping, areas once visited remain visible on the map.
-  Press `F` to toggle a highlight on every explored-map cell reachable with your remaining LP. With a gamepad, hold button 2 to show the same preview; releasing it closes the preview. Moving closes the keyboard preview. The estimate avoids entities shown on the map and stairs, does not break walls or count LP recovery, and includes known terrain damage and Stage 4 marksman shots when that individual is in a known area or has fired at least once. Unexplored cells remain hidden. It does not show a route.
+  Press `F` to toggle a highlight on every explored-map cell reachable with your remaining LP. With a gamepad, the preview button can show it while held or toggle it on and off. While preview is active, press Up or Down to inspect another floor in Stages 3 and 4. Moving closes the keyboard preview. The estimate avoids entities shown on the map and stairs, does not break walls or count LP recovery, and includes known terrain damage and Stage 4 marksman shots when that individual is in a known area or has fired at least once. Unexplored cells remain hidden. It does not show a route.
 
 * **Monsters, Companions, and Elves**  
   Unencountered monsters are displayed as `?`, companions as `!`, and unidentified elves as `&`. Contact reveals an entity's type.
@@ -179,7 +186,7 @@ uses random-floor respawns; Stage 2, where it appears, currently has one floor.
 Stage 3 has three connected floors. One of the two floor transitions randomly has an extra matching pair of stairs. The elves can help you defeat the Dread Wyrm and claim its treasure chest. The elves are `I`, `J`, `K`, and `H`.
 Stage 3 features empowered Bison, Chimeras, and Komodo Dragons (`b'`, `c'`, and `d'`).
 
-The bottom-right marker shows the displayed floor as a fraction (for example, `3/4`). Elf progress and discovered floors appear at the bottom-left of the field. Contacting `I` reveals the floors of all elves. The floors where `C` was identified by the Nomicon or defeated the player are appended to `C` (for example, `C23`). Hold Shift and press Up or Down in GUI mode, or Shift and W or S in `arlq-cli`, to inspect another floor. With a gamepad, hold button 2 and press Up or Down. Releasing button 2 returns the display to the player's floor. Unexplored areas remain hidden. A normal movement input returns the display to the player's floor and moves as usual.
+The bottom-right marker shows the displayed floor as a fraction (for example, `3/4`). Elf progress and discovered floors appear at the bottom-left of the field. Contacting `I` reveals the floors of all elves. The floors where `C` was identified by the Nomicon or defeated the player are appended to `C` (for example, `C23`). Hold Shift and press Up or Down in GUI mode, or Shift and W or S in `arlq-cli`, to inspect another floor. With a gamepad, hold the configured preview button or turn preview on, then press Up or Down. Unexplored areas remain hidden. A normal movement input returns the display to the player's floor and moves as usual.
 
 #### Monsters
 
