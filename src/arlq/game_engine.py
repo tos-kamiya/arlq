@@ -943,8 +943,11 @@ def _resolve_monster_contact(
             stage_num=stage_num,
         )
         if ch == "M":
+            # Keep the defeated Mimic occupied while choosing the escape
+            # destination, then remove it so it cannot be contacted again.
             current.entities.append(entity)
             player.x, player.y = _find_escape_place(current)
+            current.entities.remove(entity)
         if ch == "M":
             event_message = trp(
                 "-- You defeated the Mimic, but were sent somewhere else.", 5
