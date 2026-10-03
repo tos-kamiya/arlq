@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 5.7.1 - 2026-10-03
+
+- Preserve the restored LP when a Loop Companion rewind reaches the normal
+  turn-end processing.
+
 ## 5.7.0 - 2026-10-03
 
 - Automatic repeat stop: Improve movement feel by stopping only just before
