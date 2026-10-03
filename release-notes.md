@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 5.7.3 - 2026-10-03
+
+- Keep the game-over screen interactive when continuing a fast-forward trace
+  replay.
+- Use the current UI language during trace replay instead of overriding it
+  with the language saved in the trace.
+
 ## 5.7.2 - 2026-10-03
 
 - Add overshoot assist, which restores position, LP, and turns when returning
