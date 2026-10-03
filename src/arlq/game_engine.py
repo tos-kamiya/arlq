@@ -298,7 +298,10 @@ def _stop_movement_repeat(ui: Any) -> None:
 
 
 def _apply_terrain_hazards(
-    current: Floor, player: d.Player, previous: d.Point
+    current: Floor,
+    player: d.Player,
+    previous: d.Point,
+    trace: Optional[TraceRecorder] = None,
 ) -> Optional[str]:
     """Apply barrier/caltrop damage for the player's current cell.
 
@@ -309,13 +312,19 @@ def _apply_terrain_hazards(
     event_message = None
     if apply_barrier_damage(field, player, previous):
         event_message = trp("-- The barrier burns you.", 5)
+        if trace is not None:
+            trace.record_damage("barrier")
     if field[player.y][player.x] == d.CHAR_CALTROP:
         player.lp -= d.CALTROP_LP_DAMAGE
         field[player.y][player.x] = d.CHAR_FLOOR
+        if trace is not None:
+            trace.record_damage("caltrop")
     return event_message
 
 
-def _marksman_shoot(current: Floor, player: d.Player) -> bool:
+def _marksman_shoot(
+    current: Floor, player: d.Player, trace: Optional[TraceRecorder] = None
+) -> bool:
     """Resolve Stage 4 marksmen after a player move and retain their arrow marks."""
     was_hit = False
     for entity in current.entities:
@@ -364,6 +373,8 @@ def _marksman_shoot(current: Floor, player: d.Player) -> bool:
 
         player.lp -= d.MARKSMAN_LP_DAMAGE
         was_hit = True
+        if trace is not None:
+            trace.record_damage("marksman")
         entity.marksman_cooldown = d.MARKSMAN_COOLDOWN_TURNS
         player.known_monsters.add(d.monster_type_key(entity))
         mark = ((player.x - step_x, player.y - step_y), "-" if step_x else "|")
@@ -1356,11 +1367,13 @@ def _process_multi_floor_turn(
         ).format(n=floor[0] + 1, total=len(floors))
         current = floors[floor[0]]
         collapse_transition = True
-    hazard_message = _apply_terrain_hazards(current, player, previous)
+    hazard_message = _apply_terrain_hazards(
+        current, player, previous, trace=trace
+    )
     if hazard_message is not None:
         event_message = hazard_message
     if (player.x, player.y) != previous or collapse_transition:
-        marksman_hit = _marksman_shoot(current, player)
+        marksman_hit = _marksman_shoot(current, player, trace)
         if marksman_hit and repeat_stop_reasons is not None:
             repeat_stop_reasons.add("marksman_hit")
 
@@ -1509,6 +1522,14 @@ def run_game(
     floor = [0]
     checkpoint = [floors[0].up]
     player.current_floor = 0
+    if trace is not None:
+        trace.set_start_state(player, floor[0])
+    trace_seen_recorded = (
+        [deepcopy(floor_data.seen) for floor_data in floors]
+        if trace is not None
+        else []
+    )
+    trace_known_monsters_recorded = set(player.known_monsters)
     view_floor = 0
     queue: Counter[Tuple[int, str]] = Counter()
     history: Deque[HistoryEntry] = deque()
@@ -1706,11 +1727,30 @@ def run_game(
                 message = event_message
 
         if trace is not None:
-            trace.set_player(player, stage_num)
-            trace.commit_turn()
+            trace.set_player(player, stage_num, floor_index=floor[0])
+            seen_added_count = sum(
+                1
+                for floor_data, previous_seen in zip(
+                    floors, trace_seen_recorded, strict=True
+                )
+                for y, row in enumerate(floor_data.seen)
+                for x, is_seen in enumerate(row)
+                if is_seen and not previous_seen[y][x]
+            )
+            trace.record_state_changes(
+                seen_added_count,
+                list(player.known_monsters - trace_known_monsters_recorded),
+            )
+            trace_seen_recorded = [
+                deepcopy(floor_data.seen) for floor_data in floors
+            ]
+            trace_known_monsters_recorded = set(player.known_monsters)
 
         turn += 1
         player.lp -= 1
+        if trace is not None:
+            trace.set_turn_end_lp(player.lp)
+            trace.commit_turn()
         if player.stage_won:
             break
 

@@ -20,7 +20,7 @@ from . import defs as d
 from .__about__ import __version__
 from .game_events import TurnEvents, WallEvent
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 DIR_TO_KEY: Dict[Tuple[int, int], str] = {
     (0, -1): "U",
@@ -43,6 +43,7 @@ class TraceRecorder:
     def __init__(self, params: Dict[str, Any]) -> None:
         self.params = params
         self.turns: List[Dict[str, Any]] = []
+        self.start: Optional[Dict[str, Any]] = None
         self.outcome: Optional[str] = None
         self._current: Optional[Dict[str, Any]] = None
         self._turn_no = 0
@@ -51,14 +52,43 @@ class TraceRecorder:
         self._turn_no += 1
         self._current = {"turn": self._turn_no, "input": input_key}
 
-    def set_player(self, player: d.Player, stage_num: int) -> None:
+    def set_start_state(self, player: d.Player, floor_index: int) -> None:
+        self.start = {
+            "floor": floor_index,
+            "position": [player.x, player.y],
+            "lp": player.lp,
+        }
+
+    def set_player(
+        self, player: d.Player, stage_num: int, floor_index: int = 0
+    ) -> None:
         if self._current is None:
             return
         self._current["player"] = {
             "lp": player.lp,
             "level": player.level,
             "attack": d.current_player_attack(player, stage_num),
+            "floor": floor_index,
+            "position": [player.x, player.y],
         }
+
+    def set_turn_end_lp(self, lp: int) -> None:
+        if self._current is not None and "player" in self._current:
+            self._current["player"]["lp_after_turn"] = lp
+
+    def record_damage(self, source: str) -> None:
+        if self._current is not None:
+            self._current.setdefault("damage", []).append({"source": source})
+
+    def record_state_changes(
+        self,
+        seen_added_count: int,
+        known_monsters_added: List[str],
+    ) -> None:
+        if self._current is None:
+            return
+        self._current["seen_added_count"] = seen_added_count
+        self._current["known_monsters_added"] = sorted(known_monsters_added)
 
     def record_wall(self, wall: WallEvent) -> None:
         if self._current is not None:
@@ -146,8 +176,20 @@ class TraceRecorder:
         turn.setdefault("contact", None)
         turn.setdefault("expired", [])
         turn.setdefault("world", [])
+        turn.setdefault("damage", [])
+        turn.setdefault("seen_added_count", 0)
+        turn.setdefault("known_monsters_added", [])
         self.turns.append(turn)
         self._current = None
+
+    def truncate_after_turn(self, retained_turns: int) -> None:
+        """Drop turns after a rewind target and reset the turn counter."""
+        if self._current is not None:
+            raise RuntimeError("cannot truncate while a turn is in progress")
+        if not 0 <= retained_turns <= len(self.turns):
+            raise ValueError("retained_turns is outside the recorded trace")
+        del self.turns[retained_turns:]
+        self._turn_no = retained_turns
 
     def record_quit(self) -> None:
         self._turn_no += 1
@@ -157,14 +199,20 @@ class TraceRecorder:
         self.outcome = outcome
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        data = {
             "schema_version": SCHEMA_VERSION,
             "arlq_version": __version__,
             "recorded_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "params": self.params,
-            "turns": self.turns,
-            "final": {"outcome": self.outcome or "unfinished", "turns": self._turn_no},
         }
+        if self.start is not None:
+            data["start"] = self.start
+        data["turns"] = self.turns
+        data["final"] = {
+            "outcome": self.outcome or "unfinished",
+            "turns": self._turn_no,
+        }
+        return data
 
     def write(self, path: Path) -> None:
         data = self.to_dict()
@@ -187,10 +235,10 @@ def timestamped_trace_path(cache_dir: Path) -> Path:
 
 def load_trace(path: Path) -> Dict[str, Any]:
     data = json.loads(path.read_text(encoding="utf-8"))
-    if data.get("schema_version") != SCHEMA_VERSION:
+    if data.get("schema_version") not in (2, SCHEMA_VERSION):
         raise ValueError(
             f"unsupported trace schema_version {data.get('schema_version')!r} "
-            f"(expected {SCHEMA_VERSION})"
+            f"(expected 2 or {SCHEMA_VERSION})"
         )
     if "params" not in data or "turns" not in data:
         raise ValueError("trace file is missing required 'params' or 'turns' fields")
