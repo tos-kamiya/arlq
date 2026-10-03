@@ -266,6 +266,25 @@ def test_game_loop_draws_with_keyword_arguments_only():
     assert draws[0]["overshoot_markers"] == set()
 
 
+def test_reachable_cells_do_not_estimate_marksman_damage():
+    field = blank_field()
+    seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    visible = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    player = d.Player(2, 2, 1, 10)
+    marksman = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["k"])
+
+    reachable = game_engine_module.reachable_known_cells(
+        field,
+        seen,
+        visible,
+        [player, marksman],
+        player,
+        stage_num=4,
+    )
+
+    assert (6, 2) in reachable
+
+
 @pytest.mark.parametrize(
     ("level", "expected_message", "expected_position"),
     [

@@ -66,68 +66,6 @@ def _find_escape_place(current: Floor, far_from: Optional[d.Point] = None) -> d.
     )
 
 
-def _marksman_damage_at(
-    field: List[List[str]],
-    entities: List[d.Entity],
-    known: List[List[int]],
-    point: d.Point,
-) -> int:
-    """Return damage from marksmen whose presence is known to the player."""
-    damage = 0
-    x, y = point
-    blockers = [
-        entity
-        for entity in entities
-        if not isinstance(entity, d.Player)
-        and 0 <= entity.x < len(field[0])
-        and 0 <= entity.y < len(field)
-        and known[entity.y][entity.x]
-    ]
-    shooters = [
-        entity
-        for entity in entities
-        if isinstance(entity, d.Monster)
-        and entity.tribe.char == "k"
-        and entity.active
-        and 0 <= entity.x < len(field[0])
-        and 0 <= entity.y < len(field)
-        and (known[entity.y][entity.x] or bool(entity.arrow_marks))
-    ]
-    for shooter in shooters:
-        dx, dy = x - shooter.x, y - shooter.y
-        if (dx == 0) == (dy == 0):
-            continue
-        distance = abs(dx or dy)
-        if distance <= 1:
-            continue
-        step_x = 0 if dx == 0 else (1 if dx > 0 else -1)
-        step_y = 0 if dy == 0 else (1 if dy > 0 else -1)
-        blocked = False
-        for offset in range(1, distance):
-            bx, by = shooter.x + step_x * offset, shooter.y + step_y * offset
-            if field[by][bx] in (
-                d.CHAR_WALL,
-                *d.STAIR_CHARS,
-            ):
-                blocked = True
-                break
-            if any(
-                (other.x, other.y) == (bx, by)
-                and (
-                    isinstance(other, d.Companion)
-                    or isinstance(other, d.Treasure)
-                    or isinstance(other, d.Monster)
-                    and other.active
-                )
-                for other in blockers
-            ):
-                blocked = True
-                break
-        if not blocked:
-            damage += d.MARKSMAN_LP_DAMAGE
-    return damage
-
-
 def reachable_known_cells(
     field: List[List[str]],
     seen: List[List[int]],
@@ -184,8 +122,7 @@ def reachable_known_cells(
                 # walking cells for this estimate.
                 continue
 
-            ranged_damage = _marksman_damage_at(field, entities, known, (nx, ny))
-            next_cost = cost + terrain_cost + ranged_damage
+            next_cost = cost + terrain_cost
             if next_cost >= player.lp:
                 continue
             next_point = (nx, ny)
