@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 5.7.0 - 2026-10-03
+
+- Automatic repeat stop: Improve movement feel by stopping only just before
+  moving into a visible monster, companion, elf, or known `O` pit. It no longer
+  stops while an entity is still two Manhattan cells away.
+- Make Collapse a level-1 monster with no LP recovery. Entering its cell reveals
+  neighboring pits except at walls; entering a pit drops the player to the next
+  floor. Defeated Collapses disappear and do not respawn.
+- Allow Vortex to reposition Collapse only where the center is floor and its
+  neighbors are floor or wall on both the current and next floors.
+
 ## 5.6.0 - 2026-10-03
 
 - Add configurable gamepad buttons for the controls help and range/floor

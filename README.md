@@ -42,29 +42,13 @@ arlq-cli
 ```
 
 Running `arlq` without options opens the graphical interface. Running
-`arlq-cli` without options starts the terminal interface.
-In the GUI, use a connected gamepad's D-pad or left stick to move. Button 0
-confirms the selected stage on the stage selection screen. In `Settings`, move
-to `Gamepad button settings ->` and press Right or move the gamepad right to
-choose the buttons for controls help and range/floor display,
-and whether preview uses a hold or toggle action. Change a button with Left or
-Right, or press a mode button (2–12) while its row is selected. Buttons 0 and 1 remain
-apply and cancel in this screen. The settings item is disabled when no gamepad
-is connected. Defaults are button 3 for help and holding button 2 for previews.
-Either mode can be unassigned, and the two modes cannot share a button.
-On the `Load default settings ->` row, press Right or move the gamepad right to
-load the defaults into the pending values and stay on the screen. Enter or
-gamepad button 0 applies the settings and exits; `Esc` cancels unsaved changes.
+`arlq-cli` without options starts the terminal interface. In the GUI, use a
+connected gamepad's D-pad or left stick to move, and button 0 to select a
+stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
 
 The terminal interface requires a terminal at least 80 columns wide and 24
-lines high. If the terminal is resized below that size, the game pauses until
-it is enlarged again.
-
-Use `arlq-cli --dots` or `arlq --terminal --dots` to show unexplored areas
-with dots instead of background colors. `--dots` affects the terminal
-interface only; it has no effect when `arlq` starts the graphical interface.
-On light terminal themes, use `--dots` to keep unexplored areas distinct
-without applying a dark background to explored areas.
+lines high. The game pauses if the terminal becomes smaller and resumes when
+it is large enough again.
 
 ### Options shared by `arlq-cli` and `arlq`
 
