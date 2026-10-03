@@ -742,6 +742,7 @@ class PygletUI:
         floor_view: bool = False,
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
+        overshoot_markers: Optional[Set[d.Point]] = None,
     ):
         """
         Renders the game stage:
@@ -790,6 +791,17 @@ class PygletUI:
                     self._draw_field_text(
                         (x, y), d.CHAR_COLLAPSE, COLOR_MAP[CI_YELLOW]
                     )
+
+        if not floor_view:
+            for x, y in overshoot_markers or set():
+                if (
+                    0 <= y < len(field)
+                    and 0 <= x < len(field[y])
+                    and torched[y][x]
+                    and field[y][x] == d.CHAR_FLOOR
+                    and (x, y) != (px, py)
+                ):
+                    self._draw_field_text((x, y), ".", (112, 120, 130))
 
         for entity in entities:
             if not isinstance(entity, d.Monster) or entity.tribe.char != "k":

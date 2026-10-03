@@ -1606,6 +1606,11 @@ def run_game(
             message=message[1],
             checkpoint=checkpoint[0],
             reachable_cells=reachable_cells,
+            overshoot_markers=(
+                trace.overshoot_rewind_markers(floor[0])
+                if trace is not None and not floor_view
+                else set()
+            ),
             **stage_draw_options,
         )
 
@@ -1751,6 +1756,63 @@ def run_game(
         if trace is not None:
             trace.set_turn_end_lp(player.lp)
             trace.commit_turn()
+            overshoot_target = trace.find_overshoot_rewind_target()
+            if overshoot_target is not None and not player.stage_won:
+                retained_turns, target_floor, target_position, target_lp = (
+                    overshoot_target
+                )
+                _stop_movement_repeat(ui)
+                floor[0] = target_floor
+                player.x, player.y = target_position
+                player.current_floor = target_floor
+                player.lp = target_lp
+                view_floor = target_floor
+                history.clear()
+
+                if replay_context is not None:
+                    target_game_turn = max(
+                        (
+                            game_turn
+                            for game_turn, operation_count
+                            in replay_context.turn_to_operation.items()
+                            if operation_count == retained_turns
+                        ),
+                        default=retained_turns,
+                    )
+                    replay_context.operations[:] = replay_context.operations[
+                        :retained_turns
+                    ]
+                    for game_turn, operation_count in tuple(
+                        replay_context.turn_to_operation.items()
+                    ):
+                        if (
+                            game_turn > target_game_turn
+                            or operation_count > retained_turns
+                        ):
+                            del replay_context.turn_to_operation[game_turn]
+                    replay_context.turn_to_operation[target_game_turn] = (
+                        retained_turns
+                    )
+                    for operation_count in tuple(replay_context.rewind_targets):
+                        if operation_count > retained_turns:
+                            del replay_context.rewind_targets[operation_count]
+                    replay_context.vortex_maps[:] = [
+                        (operation_index, map_state)
+                        for operation_index, map_state in replay_context.vortex_maps
+                        if operation_index < retained_turns
+                    ]
+                    game_start_turn = target_game_turn
+                    history.extend(
+                        [None]
+                        * min(d.LOOP_TURNS, max(0, target_game_turn))
+                    )
+                else:
+                    history.extend(
+                        [None] * min(d.LOOP_TURNS, max(0, retained_turns))
+                    )
+
+                turn = retained_turns
+                trace.truncate_after_turn(retained_turns)
         if player.stage_won:
             break
 
