@@ -3,13 +3,20 @@
 import json
 from collections import Counter, deque
 from copy import deepcopy
-from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from arlq import defs as d
+from arlq import game_engine as game_engine_module
 from arlq.arlq import respawn_entity, update_entities
-from arlq.game_engine import Floor, _move_player, _process_respawn_queue, _step
+from arlq.game_engine import (
+    Floor,
+    _move_player,
+    _process_respawn_queue,
+    _step,
+    run_game,
+)
 from arlq.trace import (
     KEY_TO_DIR,
     ReplayUI,
@@ -57,8 +64,11 @@ def committed_turn(recorder, key, func, *args, **kwargs):
 
 def test_recorder_fills_in_defaults_and_tracks_turn_numbers():
     trace = TraceRecorder(params={"stage": 1})
+    player = d.Player(2, 2, 1, 90)
+    trace.set_start_state(player, floor_index=0)
     trace.begin_turn("R")
-    trace.set_player(d.Player(2, 2, 1, 90), stage_num=1)
+    trace.set_player(player, stage_num=1, floor_index=0)
+    trace.set_turn_end_lp(89)
     trace.commit_turn()
     trace.begin_turn("Q")  # a normal (non-quit) turn can still be turn-numbered
     trace.commit_turn()
@@ -68,6 +78,107 @@ def test_recorder_fills_in_defaults_and_tracks_turn_numbers():
     assert trace.turns[0]["contact"] is None
     assert trace.turns[0]["expired"] == []
     assert trace.turns[0]["world"] == []
+    assert trace.turns[0]["damage"] == []
+    assert trace.turns[0]["seen_added_count"] == 0
+    assert trace.turns[0]["known_monsters_added"] == []
+    assert trace.turns[0]["player"] == {
+        "lp": 90,
+        "level": 1,
+        "attack": d.current_player_attack(player, 1),
+        "floor": 0,
+        "position": [2, 2],
+        "lp_after_turn": 89,
+    }
+    assert trace.to_dict()["start"] == {"floor": 0, "position": [2, 2], "lp": 90}
+
+
+def test_recorder_tracks_rewind_relevant_changes_and_truncates_turns():
+    trace = TraceRecorder(params={})
+    player = d.Player(4, 5, 1, 90)
+    trace.set_start_state(player, floor_index=2)
+    trace.begin_turn("R")
+    trace.set_player(player, stage_num=1, floor_index=2)
+    trace.record_damage("barrier")
+    trace.record_state_changes(2, ["b", "k"])
+    trace.set_turn_end_lp(88)
+    trace.commit_turn()
+    trace.begin_turn("L")
+    trace.set_player(player, stage_num=1, floor_index=2)
+    trace.commit_turn()
+
+    trace.truncate_after_turn(1)
+
+    assert len(trace.turns) == 1
+    assert trace.to_dict()["final"]["turns"] == 1
+    assert trace.turns[0]["damage"] == [{"source": "barrier"}]
+    assert trace.turns[0]["seen_added_count"] == 2
+    assert trace.turns[0]["known_monsters_added"] == ["b", "k"]
+
+
+def test_engine_records_assist_disqualifying_damage_sources(monkeypatch):
+    player = d.Player(3, 3, 100, 90)
+    floor = one_floor([player])
+    trace = TraceRecorder(params={})
+
+    floor.field[player.y][player.x] = d.CHAR_CALTROP
+    trace.begin_turn("R")
+    game_engine_module._apply_terrain_hazards(
+        floor, player, (player.x - 1, player.y), trace=trace
+    )
+    trace.commit_turn()
+    assert trace.turns[-1]["damage"] == [{"source": "caltrop"}]
+
+    floor.field[player.y][player.x] = d.CHAR_FLOOR
+    monkeypatch.setattr(game_engine_module, "apply_barrier_damage", lambda *_: True)
+    trace.begin_turn("R")
+    game_engine_module._apply_terrain_hazards(
+        floor, player, (player.x - 1, player.y), trace=trace
+    )
+    trace.commit_turn()
+    assert trace.turns[-1]["damage"] == [{"source": "barrier"}]
+
+    marksman = d.Monster(7, 3, d.CHAR_TO_MONSTER_TRIBE["k"])
+    floor.entities.append(marksman)
+    trace.begin_turn("R")
+    assert game_engine_module._marksman_shoot(floor, player, trace=trace)
+    trace.commit_turn()
+    assert trace.turns[-1]["damage"] == [{"source": "marksman"}]
+
+
+def test_run_game_trace_records_start_position_and_end_of_turn_state(monkeypatch):
+    player = d.Player(2, 2, 1, 90)
+    floor = one_floor([], up=(2, 2), down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2))
+    floor.field = [
+        [
+            d.CHAR_WALL
+            if x in (0, d.FIELD_WIDTH - 1) or y in (0, d.FIELD_HEIGHT - 1)
+            else d.CHAR_FLOOR
+            for x in range(d.FIELD_WIDTH)
+        ]
+        for y in range(d.FIELD_HEIGHT)
+    ]
+    monkeypatch.setattr(
+        game_engine_module,
+        "build_single_floor",
+        lambda *_args: ([floor], player),
+    )
+    inputs = iter([(1, 0), None])
+    ui = SimpleNamespace(
+        draw_stage=lambda **_kwargs: None,
+        input_direction=inputs.__next__,
+        input_alphabet=lambda: None,
+        map_mode=False,
+    )
+    trace = TraceRecorder(params={"stage": 1})
+
+    run_game(ui, "seed", stage_num=1, trace=trace)
+
+    data = trace.to_dict()
+    assert data["start"] == {"floor": 0, "position": [2, 2], "lp": 90}
+    assert data["turns"][0]["player"]["floor"] == 0
+    assert data["turns"][0]["player"]["position"] == [3, 2]
+    assert data["turns"][0]["player"]["lp_after_turn"] == 89
+    assert data["turns"][0]["seen_added_count"] > 0
 
 
 def test_recorder_quit_turn_has_only_input_and_bumps_turn_count():
@@ -87,7 +198,7 @@ def test_recorder_to_dict_schema_and_write(tmp_path):
     trace.set_outcome("quit")
     data = trace.to_dict()
 
-    assert data["schema_version"] == 2
+    assert data["schema_version"] == 3
     assert "arlq_version" in data
     assert "recorded_at" in data
     assert data["params"] == {"stage": 1, "seed": "v1-x-1-1"}
@@ -104,6 +215,13 @@ def test_load_trace_rejects_wrong_schema_version(tmp_path):
     path.write_text(json.dumps({"schema_version": 999, "params": {}, "turns": []}))
     with pytest.raises(ValueError):
         load_trace(path)
+
+
+def test_load_trace_accepts_previous_schema_version(tmp_path):
+    path = tmp_path / "old.json"
+    path.write_text(json.dumps({"schema_version": 2, "params": {}, "turns": []}))
+
+    assert load_trace(path)["schema_version"] == 2
 
 
 def test_replay_ui_feeds_recorded_inputs_and_marks_ran_dry():

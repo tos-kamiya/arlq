@@ -39,7 +39,7 @@
 
 ```jsonc
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "arlq_version": "4.6.3",
   "recorded_at": "2026-09-22T12:34:56+09:00",
   "params": {
@@ -49,44 +49,69 @@
     "narrower_corridors": false,
     "lang": "ja"
   },
+  "start": { "floor": 0, "position": [2, 2], "lp": 90 },
   "turns": [
     {
       "turn": 1,
       "input": "R",
-      "player": { "lp": 90, "level": 1, "attack": 3 },
+      "player": {
+        "lp": 90, "level": 1, "attack": 3,
+        "floor": 0, "position": [3, 2], "lp_after_turn": 89
+      },
       "wall": null,
       "contact": null,
       "expired": [],
+      "damage": [],
+      "seen_added_count": 0,
+      "known_monsters_added": [],
       "world": []
     },
     {
       "turn": 2,
       "input": "U",
-      "player": { "lp": 90, "level": 1, "attack": 3 },
+      "player": {
+        "lp": 89, "level": 1, "attack": 3,
+        "floor": 0, "position": [3, 2], "lp_after_turn": 88
+      },
       "wall": { "result": "blocked" },
       "contact": null,
       "expired": [],
+      "damage": [],
+      "seen_added_count": 0,
+      "known_monsters_added": [],
       "world": []
     },
     {
       "turn": 3,
       "input": "L",
-      "player": { "lp": 90, "level": 2, "attack": 4 },
+      "player": {
+        "lp": 88, "level": 2, "attack": 4,
+        "floor": 0, "position": [7, 3], "lp_after_turn": 87
+      },
       "checkpoint": [
         { "reason": "monster_defeated", "at": [7, 3], "floor": 0 }
       ],
       "wall": null,
       "contact": { "type": "monster", "id": "b2", "outcome": "win" },
       "expired": [],
+      "damage": [],
+      "seen_added_count": 0,
+      "known_monsters_added": ["b2"],
       "world": []
     },
     {
       "turn": 40,
       "input": "R",
-      "player": { "lp": 70, "level": 3, "attack": 9 },
+      "player": {
+        "lp": 31, "level": 3, "attack": 9,
+        "floor": 0, "position": [12, 5], "lp_after_turn": 30
+      },
       "wall": null,
       "contact": null,
       "expired": [],
+      "damage": [],
+      "seen_added_count": 0,
+      "known_monsters_added": [],
       "world": [
         { "type": "respawn", "kind": "monster", "id": "a", "at": [12, 5] }
       ]
@@ -99,7 +124,9 @@
 
 通常プレイと `--trace` による再生後の出力は**同一スキーマ**にする（フィールドの有無で常にdiffが出るような差異を作らない。10章参照）。
 
-`"Q"` 入力のターンは、ゲーム状態の変化がないため `input` のみを記録する（`player`/`wall`/`contact`/`expired`/`world` は付与しない）。
+`"Q"` 入力のターンは、ゲーム状態の変化がないため `input` のみを記録する（`player`/`wall`/`contact`/`expired`/`damage`/`seen_added_count`/`known_monsters_added`/`world` は付与しない）。
+
+`start` は最初の入力前のフロア、座標、LPを記録する。これにより、1ターン目で開始位置へ戻った場合も比較対象を持てる。schema v2 の既存トレースも再生用に読み込めるが、新しい位置・状態差分フィールドは含まれない。
 
 ### `params`
 
@@ -110,6 +137,17 @@ CLI引数または選択画面で実際に確定した値（起動時に生成�
 - `lp`：`Player.lp`。
 - `level`：`Player.level`。
 - `attack`：実効攻撃力。`defs.current_player_attack(player, stage_num)`（`defs.py:407-428`）をそのまま用いる。`level`・`item`（剣/毒アイテム）・ステージ3固有フラグ（`STAGE3_K_FLAG`、Javelin エルフ同行ボーナス）を織り込んだ値。戦闘判定はこの値と `defs.monster_level()`（`defs.py:204-205`）の**決定的な整数比較**であり、乱数は使わない（`arlq.py:432-502` 等）。
+- `floor` と `position`：操作後の0始まりフロアと `[x, y]` 座標。
+- `lp_after_turn`：通常のターン消費LPを差し引いた後のLP。既存の `lp` はターン消費前の意味を維持する。
+
+### `turns[].damage`
+
+そのターンにプレイヤーが受けた対象ダメージの一覧。`source` は `marksman`、`barrier`、`caltrop` のいずれか。各ターンの既定値は空配列。
+
+### `turns[].seen_added_count` と `turns[].known_monsters_added`
+
+- `seen_added_count`：そのターンまでに新たに既知になったマスの数。全フロア分を合算する。ターン間の累積差分なので、描画時に明らかになったマスも次の操作ターンに加算する。
+- `known_monsters_added`：そのターンに nomicon へ新規登録されたモンスター種別キーの一覧。既定値は空配列。
 
 ### `turns[].checkpoint`
 
@@ -178,7 +216,7 @@ CLI引数または選択画面で実際に確定した値（起動時に生成�
 
 ## 6. バージョニング
 
-`arlq_version` をヘッダに記録する。再現時に現在バージョンと異なれば警告のみ表示し、エラーにはしない。バランス調整（数値定数の変更）由来の差分は、正常な差分として diff に現れる想定。`schema_version` は本仕様のフォーマット変更に備える。
+`arlq_version` をヘッダに記録する。再現時に現在バージョンと異なれば警告のみ表示し、エラーにはしない。バランス調整（数値定数の変更）由来の差分は、正常な差分として diff に現れる想定。schema v3 は位置・ターン終了後LP・探索差分・ダメージ源を追加する。読み込み側は既存の schema v2 も受け付ける。
 
 ## 7. アーキテクチャ方針
 
@@ -230,6 +268,11 @@ record/replay は、現行の `game_engine.run_game()` に入力ソースと描�
 - **トレース記録方式**：`game_engine.run_game()` がターン境界とプレイヤー状態を記録し、
   `_process_multi_floor_turn()` と下位関数が `TraceRecorder` のイベント記録メソッドを呼ぶ。
   旧 `arlq.arlq.update_entities()` は互換用であり、現在のプレイセッションには使わない。
+- **支援巻き戻し用の記録**：schema v3 ではセッション開始位置と、各ターンのフロア・座標・
+  ターン消費後LP、新規探索マス数、nomicon への新規登録、marksman／バリア／まきびらの
+  ダメージを記録する。`TraceRecorder.truncate_after_turn()` は指定ターンより後の記録と
+  トレース内ターン番号を切り詰める。v2 トレースは再生のために読み込み可能だが、
+  支援巻き戻し判定に必要な状態差分を持たない。
 - **`select_stage()` の再現**：実際にはキー入力の合成を行っていない。
   `--trace` は `params.stage` を直接 `run_game(..., stage_num=params.stage, ...)`
   に渡すため、`select_stage()` 自体が呼ばれない（`ReplayUI.select_stage()` は
