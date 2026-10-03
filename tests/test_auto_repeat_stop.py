@@ -213,6 +213,34 @@ def test_falling_from_collapse_marks_repeat_stop_reason():
     assert floor_index == [1]
 
 
+def test_falling_onto_same_position_collapse_drops_one_floor_per_turn():
+    player = d.Player(2, 2, 100, 90)
+    upper = floor_with()
+    upper.field[2][3] = d.CHAR_COLLAPSE
+    lower = floor_with()
+    lower.field[2][3] = d.CHAR_COLLAPSE
+    bottom = floor_with()
+    floors = [upper, lower, bottom]
+    floor_index = [0]
+    checkpoint = [(player.x, player.y)]
+    queue = Counter()
+    history = deque()
+
+    _process_multi_floor_turn(
+        (1, 0), floors, player, floor_index, checkpoint, queue, history, 1
+    )
+
+    assert floor_index == [1]
+    assert (player.x, player.y) == (3, 2)
+
+    _process_multi_floor_turn(
+        (1, 0), floors, player, floor_index, checkpoint, queue, history, 2
+    )
+
+    assert floor_index == [2]
+    assert (player.x, player.y) == (3, 2)
+
+
 def test_stair_transition_marks_repeat_stop_reason():
     player = d.Player(2, 2, 100, 90)
     upper = floor_with()
