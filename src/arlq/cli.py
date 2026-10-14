@@ -72,7 +72,8 @@ def _prepare_cli_session(terminal_only=False):
     if gui is not None:
         gui.add_argument(
             '--sprites', action='store_true',
-            help='Use the Pyglet character-sprite UI (unavailable characters stay text).',
+            help='Use the Pyglet sprite UI: 3D-rendered characters and marble column walls '
+                 '(characters without a sprite stay text).',
         )
         gui.add_argument(
             "--scale",
