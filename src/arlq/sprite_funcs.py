@@ -7,7 +7,7 @@ import pyglet
 
 from . import defs as d
 from . import display as ui_display
-from .pyglet_funcs import CI_GREEN, COLOR_MAP, FLOOR, VISIBLE_FLOOR, VISIBLE_WALL, WALL, PygletUI
+from .pyglet_funcs import CI_BLUE, CI_GREEN, CI_YELLOW, COLOR_MAP, FLOOR, VISIBLE_FLOOR, VISIBLE_WALL, WALL, PygletUI
 
 
 SPRITE_FILES = {
@@ -276,6 +276,14 @@ class SpriteUI(PygletUI):
         if text in d.CHAR_TO_COMPANION_TRIBE:
             green = COLOR_MAP[CI_GREEN]
             self._draw_pillar(cx, cy, 1.0, y, self._dim_color(green) if dimmed else green)
+        tribe = d.CHAR_TO_MONSTER_TRIBE.get(text)
+        if (upper_right_color is None and tribe is not None
+                and tribe.effect == d.EFFECT_UNLOCK_TREASURE
+                and color in (COLOR_MAP[CI_YELLOW], self._dim_color(COLOR_MAP[CI_YELLOW]))):
+            # A beatable boss: blue like any beatable monster, with the
+            # upper-right half yellow for the treasure it unlocks.
+            blue = COLOR_MAP[CI_BLUE]
+            color, upper_right_color = self._dim_color(blue) if dimmed else blue, color
         # Keep the original semantic color (strength, poison, etc.) readable
         # as a glowing disc on the ground the character stands on.
         self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self.cell_size_x, color,

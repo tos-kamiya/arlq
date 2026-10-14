@@ -53,7 +53,9 @@ monsters, treasure chest, and the Nomicon and Ocular companions) use transparent
 keep their text display. A disc on the ground under each sprite, fading out away from the character,
 keeps the original strength/status colors, including the player's yellow and
 red low-LP warnings. While the player is
-poisoned, the upper-right half of its disc turns purple. Companions stand inside
+poisoned, the upper-right half of its disc turns purple. Likewise, a boss you can
+defeat (one that unlocks a treasure chest) has a blue disc whose upper-right
+half is yellow. Companions stand inside
 a faint green pillar of light that sets them apart from monsters; the companion
 travelling with the player is shown small at the player's right shoulder. Walls are drawn as
 rows of marble columns, one per wall cell, linked by a beam and a step; they
