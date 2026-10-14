@@ -7,7 +7,7 @@ import pyglet
 
 from . import defs as d
 from . import display as ui_display
-from .pyglet_funcs import COLOR_MAP, PygletUI
+from .pyglet_funcs import COLOR_MAP, FLOOR, VISIBLE_FLOOR, VISIBLE_WALL, WALL, PygletUI
 
 
 SPRITE_FILES = {
@@ -36,6 +36,17 @@ GROUND_DISC_FLATTEN = math.sin(math.radians(60))
 GROUND_DISC_ALPHA = 1.0
 GROUND_DISC_FALLOFF = 0.8
 GROUND_DISC_TEXELS = 64
+# Walls are raised blocks seen from the same 60-degree view: the top face is
+# lifted this many cells north, so a wall overlaps (and may partly hide) the
+# lower part of the cell just north of it. Where the cell south of a wall is
+# not wall, its front face shows in that lifted band.
+WALL_OVERHANG = 0.25
+WALL_TOP_SHADE = 1.25
+WALL_FRONT_SHADE = 0.7
+# Marble column parts (near-white, tinted per visible/explored wall color);
+# each covers one cell plus the WALL_OVERHANG band north of it.
+WALL_PARTS = ('link-west', 'link-east', 'column')
+WALL_TINT = 2.4
 
 
 def ground_disc_image(half=None):
@@ -84,7 +95,77 @@ class SpriteUI(PygletUI):
         self._disc_image = ground_disc_image()
         self._disc_halves = (ground_disc_image('lower-left'), ground_disc_image('upper-right'))
         self._disc_group = pyglet.graphics.Group(order=1)
-        self._sprite_group = pyglet.graphics.Group(order=2)
+        wall_directory = Path(__file__).parent / 'assets' / 'walls'
+        paths = [wall_directory / ('wall-' + part + '.png') for part in WALL_PARTS]
+        self._wall_images = ({part: pyglet.image.load(str(path))
+                              for part, path in zip(WALL_PARTS, paths)}
+                             if all(path.is_file() for path in paths) else None)
+        # Rows are painted north to south: a row's walls, then its characters,
+        # so walls overlap characters to their north but not to their south.
+        self._row_groups = {}
+        self._overlay_group = pyglet.graphics.Group(order=10000)
+
+    def _row_group(self, y, layer):
+        order = 10 + 3 * y + ('wall', 'column', 'sprite').index(layer)
+        if order not in self._row_groups:
+            self._row_groups[order] = pyglet.graphics.Group(order=order)
+        return self._row_groups[order]
+
+    def _draw_tile(self, x, y, tile_color, field, discovered_at):
+        if field[y][x] != d.CHAR_WALL or tile_color not in (VISIBLE_WALL, WALL):
+            return super()._draw_tile(x, y, tile_color, field, discovered_at)
+        floor = VISIBLE_FLOOR if tile_color == VISIBLE_WALL else FLOOR
+        super()._draw_tile(x, y, floor, field, discovered_at)
+        left, width = self._field_col_x(x), self._field_col_width(x) + 1
+        top = (y - WALL_OVERHANG) * self.cell_size_y
+        height = self.cell_size_y + 1
+        group = self._row_group(y, 'wall')
+        def wall_at(wx, wy):
+            return (0 <= wy < len(field) and 0 <= wx < len(field[wy])
+                    and field[wy][wx] == d.CHAR_WALL and discovered_at(wx, wy))
+
+        if self._wall_images is not None:
+            tint = tuple(min(255, round(c * WALL_TINT)) for c in tile_color)
+            height = (1 + WALL_OVERHANG) * self.cell_size_y
+            for part, show in (('link-west', wall_at(x - 1, y)),
+                               ('link-east', wall_at(x + 1, y)), ('column', True)):
+                if show:
+                    image = self._wall_images[part]
+                    piece = pyglet.sprite.Sprite(
+                        image, x=left, y=self.window_height - (y + 1) * self.cell_size_y,
+                        batch=self.batch,
+                        group=self._row_group(y, 'column' if part == 'column' else 'wall'),
+                    )
+                    piece.scale_x = width / image.width
+                    piece.scale_y = height / image.height
+                    piece.color = self._display_color(tint)
+                    self._drawables.append(piece)
+            return
+        south_is_wall = wall_at(x, y + 1)
+        self._draw_wall_rect(left, top, width, height, tile_color, WALL_TOP_SHADE, group)
+        if not south_is_wall:
+            # Front face between the lifted top and the cell's south edge; a
+            # southern wall's lifted top covers this band instead.
+            front = WALL_OVERHANG * self.cell_size_y
+            self._draw_wall_rect(left, (y + 1) * self.cell_size_y - front, width, front + 1,
+                                 tile_color, WALL_FRONT_SHADE, group)
+
+    def _draw_wall_rect(self, x, y, width, height, color, shade, group):
+        color = tuple(min(255, round(c * shade)) for c in color)
+        rect = pyglet.shapes.Rectangle(
+            x, self.window_height - y - height, width, height,
+            color=self._display_color(color), batch=self.batch, group=group,
+        )
+        self._drawables.append(rect)
+
+    def _draw_line(self, x1, y1, x2, y2, color, thickness=1):
+        # Visibility boundaries and other lines stay above walls and sprites.
+        line = pyglet.shapes.Line(
+            x1, self.window_height - y1, x2, self.window_height - y2,
+            thickness=thickness, color=self._display_color(color),
+            batch=self.batch, group=self._overlay_group,
+        )
+        self._drawables.append(line)
 
     def _draw_player(self, pos, player):
         if '@' not in self._sprite_images:
@@ -113,7 +194,7 @@ class SpriteUI(PygletUI):
             y=self.window_height - (y + 0.5) * self.cell_size_y
             - (picture.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale,
             batch=self.batch,
-            group=self._sprite_group,
+            group=self._row_group(y, 'sprite'),
         )
         sprite.scale = scale
         if color in {self._dim_color(value) for value in COLOR_MAP.values()}:

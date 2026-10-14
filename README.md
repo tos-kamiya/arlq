@@ -53,7 +53,10 @@ monsters and treasure chest) use transparent images rendered from 3D models at
 keep their text display. A disc on the ground under each sprite, fading out away from the character,
 keeps the original strength/status colors, including the player's yellow and
 red low-LP warnings. While the player is
-poisoned, the upper-right half of its disc turns purple.
+poisoned, the upper-right half of its disc turns purple. Walls are drawn as
+rows of marble columns, one per wall cell, linked by a beam and a step; they
+rise slightly into the cell to their north and may partly hide a character
+standing there.
 Controls, rules, FOV and menus are shared with the original Pyglet GUI.
 The original cell size is retained. All sprites are drawn at one common scale,
 with each character's feet on its cell center, so their sizes follow the 3D models: most are about 1.8

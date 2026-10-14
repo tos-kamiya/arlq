@@ -684,6 +684,16 @@ class PygletUI:
     def _field_col_width(self, _col: int) -> int:
         return self.cell_size_x
 
+    def _draw_tile(self, x: int, y: int, tile_color: Tuple[int, int, int], field, discovered_at):
+        """Fill one field cell; `field` and `discovered_at` let subclasses look at neighbors."""
+        self._draw_rect(
+            self._field_col_x(x),
+            y * self.cell_size_y,
+            self._field_col_width(x) + 1,
+            self.cell_size_y + 1,
+            tile_color,
+        )
+
     def _draw_player(self, pos: d.Point, player: d.Player):
         """'@' in its foreground tone over a low/warning LP background cell."""
         foreground, background = ui_display.player_appearance(player)
@@ -769,9 +779,12 @@ class PygletUI:
         self._clear_drawables()
         px, py = player.x, player.y
 
+        def discovered_at(x: int, y: int) -> bool:
+            return bool(torched[y][x] or show_entities)
+
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
-                discovered = bool(torched[y][x] or show_entities)
+                discovered = discovered_at(x, y)
                 if cur_torched[y][x]:
                     tile_color = VISIBLE_WALL if cell == d.CHAR_WALL else VISIBLE_FLOOR
                 elif discovered:
@@ -788,13 +801,7 @@ class PygletUI:
                     tile_color = (67, 42, 45)
                 if reachable_cells and (x, y) in reachable_cells and not floor_view:
                     tile_color = REACHABLE_CELL_COLOR
-                self._draw_rect(
-                    self._field_col_x(x),
-                    y * self.cell_size_y,
-                    self._field_col_width(x) + 1,
-                    self.cell_size_y + 1,
-                    tile_color,
-                )
+                self._draw_tile(x, y, tile_color, field, discovered_at)
 
                 if discovered and cell in d.STAIR_CHARS:
                     self._draw_field_text((x, y), cell, COLOR_MAP[CI_YELLOW], bold=True)

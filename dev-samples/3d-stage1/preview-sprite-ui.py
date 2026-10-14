@@ -18,6 +18,13 @@ if before:
     ui._sprite_images = {char: pyglet.image.load(str(directory / filename))
                          for char, filename in SPRITE_FILES.items()}
 field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+# Walls north and south of the characters, a vertical wall, and a lone block
+# to show the raised walls overlapping the cell to their north.
+for x in range(4, 40):
+    field[6][x] = field[9][x] = d.CHAR_WALL
+for y in range(4, 13):
+    field[y][4] = field[y][39] = d.CHAR_WALL
+field[11][20] = d.CHAR_WALL
 seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
 current = [[int(5 <= x <= 38 and 5 <= y <= 12) for x in range(d.FIELD_WIDTH)]
            for y in range(d.FIELD_HEIGHT)]
