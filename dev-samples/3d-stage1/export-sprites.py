@@ -1,7 +1,11 @@
-"""Export accepted characters as cropped transparent 60-degree PNGs."""
+"""Export accepted characters as cropped transparent 60-degree PNGs.
+
+With `-- --heroic`, export the refined models built by build-heroic.py.
+"""
 from pathlib import Path
 import math
 import shutil
+import sys
 import bpy
 from mathutils import Vector
 
@@ -11,13 +15,20 @@ OUT.mkdir(parents=True, exist_ok=True)
 models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
           ('b', 'bison', (-2, -1.5)), ('d', 'comodo-dragon', (2, -1.5)),
           ('@', 'player', (0, 0))]
+HEROIC = '--heroic' in sys.argv
 for char, name, (x, y) in models:
     player = char == '@'
-    source = ROOT / ('player-arms/player-angle60.blend' if player else
+    source = ROOT / ('heroic/characters-angle60.blend' if HEROIC else
+                     'player-arms/player-angle60.blend' if player else
                      'attached-cones/stage1-characters-angle60.blend')
     bpy.ops.wm.open_mainfile(filepath=str(source))
     scene = bpy.context.scene
-    if player:
+    if HEROIC:
+        x, y = scene['sprite_centers'][char]
+        selected = {obj for obj in scene.objects if obj.get('sprite')}
+        selected = {obj for obj in selected if obj.users_collection[0].name.startswith(
+            'Character ' + char + ' ') and obj.name != 'Overlay @'}
+    elif player:
         selected = {obj for obj in scene.objects if obj.name.startswith('Player')}
     else:
         selected = set(next(c for c in bpy.data.collections
@@ -37,17 +48,30 @@ for char, name, (x, y) in models:
     # Add ink contours over the existing Cycles shading; leave materials intact.
     scene.render.use_freestyle = True
     settings = scene.view_layers[0].freestyle_settings
-    lines = settings.linesets[0]
+    lines = settings.linesets[0] if settings.linesets else settings.linesets.new('Outline')
     lines.select_silhouette = True
     lines.select_border = True
     lines.select_external_contour = True
     lines.select_crease = False
+    if lines.linestyle is None:
+        lines.linestyle = bpy.data.linestyles.new('Ink outline')
     lines.linestyle.color = (0.015, 0.02, 0.03)
     lines.linestyle.thickness = 4.0
+    if HEROIC:
+        # Bold outer contour; thinner, softer lines between overlapping parts.
+        lines.select_silhouette = lines.select_border = False
+        inner = settings.linesets.new('Inner parts')
+        inner.select_silhouette = inner.select_border = True
+        inner.select_external_contour = inner.select_crease = False
+        inner.linestyle = bpy.data.linestyles.new('Thin ink')
+        inner.linestyle.color = (0.04, 0.05, 0.07)
+        inner.linestyle.thickness = 1.5
+        inner.linestyle.alpha = 0.7
+        scene.cycles.samples = 256
     scene.render.image_settings.file_format = 'PNG'
     scene.render.image_settings.color_mode = 'RGBA'
     path = OUT / (name + '.png')
-    comparison = ROOT / 'sprites-before-outline'
+    comparison = ROOT / ('sprites-before-heroic' if HEROIC else 'sprites-before-outline')
     comparison.mkdir(exist_ok=True)
     before = comparison / path.name
     if path.exists() and not before.exists():

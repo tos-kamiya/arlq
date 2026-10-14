@@ -252,3 +252,24 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-player-clo
 ```
 
 モデルと見下ろし・真上のプレビューを `player-arms/` に出力する。
+
+## かっこよさを強めたリファイン案
+
+`heroic/` は、採用した5体の造形の特徴を維持したまま、見た目の迫力を強めた案。
+`build-heroic.py` が5体を1つのシーンに新しく作り、スプライト書き出しの中心座標も保存する。
+
+- 共通: 背後からの寒色・暖色のリムライトと、縁が淡く光る材質。色の彩度を上げ、Standard表示で発光色の白飛びを防ぐ。
+- アメーバ2種類: アメーバは空色、レアアメーバは橙色の樹脂にする（紫は毒の印象になるため変更）。膜に軽い揺らぎを付け、内部に縦長の瞳を持つ光る核と小さな気泡を追加。周囲の鈍角の円錐6つは維持する。レアアメーバの上部3つの突起は、金色に光る六角の結晶にする。
+- バイソン: 肩の大きなこぶを暗い毛の塊で覆い、頭を下げた突進の姿勢にする。太い角は外へ張り出して上へ反り、目は赤く光る。黒い鼻先と蹄、短い尾を追加。
+- コモドドラゴン: 吻から尾まで1本の角ばった胴体にし、尾をS字に曲げる。脚は関節で曲げて横へ張り出し、光る金色の目、眉の突起、背の低い淡色の稜線を追加。爪は付けない。
+- プレイヤー: 2等身・円筒形の胴体・短い腕・足なし・画面下向きの構成を維持する。結晶の兜に光るバイザーと金の飾り、肩当て、金のベルトを付け、マントを深紅で裾に金の縁取りにする。右手に光る短剣を低く構える。
+
+```bash
+blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
+blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --heroic
+PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-sprite-ui.py
+```
+
+1番目は `heroic/characters-angle60.blend` と比較画像 `heroic/preview-angle60.png` を出力する。
+2番目はゲーム用の5枚を書き出す。外側の輪郭は従来どおり4ピクセル、部位の境目は1.5ピクセルの薄い線にして、細部が多くても線がうるさくならないようにする。サンプル数は256。
+変更前の5枚は `sprites-before-heroic/` に保存している。`--heroic` を付けなければ従来の採用モデルから書き出す。
