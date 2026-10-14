@@ -47,12 +47,15 @@ Running `arlq` without options opens the graphical interface. Running
 connected gamepad's D-pad or left stick to move, and button 0 to select a
 stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
 
-Use `arlq --sprites` for the character-sprite GUI. Five characters use transparent
-images rendered from 3D models at 60 degrees; other and unidentified characters
+Use `arlq --sprites` for the character-sprite GUI. The Stage 1 characters (player,
+monsters and treasure chest) use transparent images rendered from 3D models at
+60 degrees; other and unidentified characters
 keep their text display. Cell outlines retain the original strength/status colors.
 Controls, rules, FOV and menus are shared with the original Pyglet GUI.
-The original cell size is retained; sprites are enlarged to 1.8 times their fitted
-size around each cell's center and may extend beyond it. `--scale 2` enlarges the GUI.
+The original cell size is retained. All sprites are drawn at one common scale,
+centered on their cell, so their sizes follow the 3D models: most are about 1.8
+cells wide and may extend beyond their cell, while the boss dragon is modeled
+larger and its wings spread well past its cell. `--scale 2` enlarges the GUI.
 Blender is only needed to regenerate the bundled images.
 
 The terminal interface requires a terminal at least 80 columns wide and 24

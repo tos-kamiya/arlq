@@ -16,6 +16,8 @@ models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
           ('b', 'bison', (-2, -1.5)), ('d', 'comodo-dragon', (2, -1.5)),
           ('@', 'player', (0, 0))]
 HEROIC = '--heroic' in sys.argv
+if HEROIC:
+    models += [('T', 'treasure', (0, 0)), ('D', 'dragon', (0, 0))]
 for char, name, (x, y) in models:
     player = char == '@'
     source = ROOT / ('heroic/characters-angle60.blend' if HEROIC else
@@ -41,9 +43,12 @@ for char, name, (x, y) in models:
     target = Vector((x, y, 0.35))
     camera.location = target + Vector((0, -7.5, 15 * math.sin(math.radians(60))))
     camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
-    camera.data.ortho_scale = 2.6
+    # Same 256 px per 2.6 units for every sprite, on a canvas large enough for
+    # the biggest model; the model's size alone decides the trimmed image size.
+    camera.data.ortho_scale = 4.6 if HEROIC else 2.6
     scene.render.film_transparent = True
-    scene.render.resolution_x = scene.render.resolution_y = 256
+    scene.render.resolution_x = scene.render.resolution_y = round(
+        256 * camera.data.ortho_scale / 2.6)
     scene.cycles.samples = 64
     # Add ink contours over the existing Cycles shading; leave materials intact.
     scene.render.use_freestyle = True
@@ -74,7 +79,8 @@ for char, name, (x, y) in models:
     comparison = ROOT / ('sprites-before-heroic' if HEROIC else 'sprites-before-outline')
     comparison.mkdir(exist_ok=True)
     before = comparison / path.name
-    if path.exists() and not before.exists():
+    # Comparison copies are only for the five characters that had earlier sprites.
+    if path.exists() and not before.exists() and char in '@aAbd':
         shutil.copy2(path, before)
     scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
