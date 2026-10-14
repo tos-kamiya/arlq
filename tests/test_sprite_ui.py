@@ -18,7 +18,8 @@ def sprite_ui(monkeypatch):
     ui.scale = 1
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui.window_height = 500
-    ui.batch = ui._sprite_group = None
+    ui.batch = None
+    ui._row_groups = {}
     ui._drawables = []
     ui.text_calls = []
     ui.outlines = []
@@ -168,3 +169,59 @@ def test_disc_halves_split_on_the_diagonal(monkeypatch):
     ui._draw_ground_disc(50, 100, 10, (230, 230, 230), (200, 80, 200))
     assert [(disc.image, disc.color) for disc in ui._drawables] == [
         (lower, (230, 230, 230)), (upper, (200, 80, 200))]
+
+
+def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._wall_images = None  # plain-shape fallback when the parts are missing
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.window_height = 500
+    ui.batch = None
+    ui._row_groups = {}
+    ui._drawables = []
+    ui._display_color = lambda color: color
+    floors = []
+    monkeypatch.setattr(PygletUI, '_draw_tile',
+                        lambda self, x, y, color, *args: floors.append((x, y, color)))
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+                        lambda *args, **kwargs: SimpleNamespace(args=args, **kwargs))
+    field = [[d.CHAR_FLOOR] * 3 for _ in range(3)]
+    field[1][1] = d.CHAR_WALL
+    ui._draw_tile(1, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: True)
+    assert floors == [(1, 1, sprite_funcs.VISIBLE_FLOOR)]
+    top, front = ui._drawables
+    # The top face starts above the wall's own cell, inside the cell to its north.
+    overhang = sprite_funcs.WALL_OVERHANG * ui.cell_size_y
+    assert top.args[1] + top.args[3] == pytest.approx(500 - (20 - overhang))
+    # The front face reaches down to the wall cell's south edge.
+    assert front.args[1] == pytest.approx(500 - 40 - 1)
+    assert front.args[1] + front.args[3] == pytest.approx(500 - (40 - overhang))
+    order = lambda y, layer: ui._row_group(y, layer).order
+    assert order(0, 'sprite') < top.group.order < order(1, 'sprite')
+
+
+
+def test_column_wall_links_only_toward_discovered_wall_neighbors(monkeypatch):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.window_height = 500
+    ui.batch = None
+    ui._row_groups = {}
+    ui._drawables = []
+    ui._display_color = lambda color: color
+    ui._wall_images = {part: SimpleNamespace(width=26, height=50, part=part)
+                       for part in sprite_funcs.WALL_PARTS}
+    monkeypatch.setattr(PygletUI, '_draw_tile', lambda *args: None)
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    field = [[d.CHAR_FLOOR] * 3, [d.CHAR_WALL] * 3, [d.CHAR_FLOOR] * 3]
+    # The east neighbour is unexplored, so no link reaches toward it.
+    ui._draw_tile(1, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: x != 2)
+    parts = [piece.image.part for piece in ui._drawables]
+    assert parts == ['link-west', 'column']
+    column = ui._drawables[-1]
+    assert column.image.width * column.scale_x == 14
+    assert column.image.height * column.scale_y == pytest.approx(
+        (1 + sprite_funcs.WALL_OVERHANG) * 20)
+    assert column.y == 500 - 40
+    assert ui._drawables[0].group.order < column.group.order < ui._row_group(1, 'sprite').order
