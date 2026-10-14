@@ -50,10 +50,13 @@ stage. Change gamepad button assignments in `Settings -> Gamepad button settings
 Use `arlq --sprites` for the character-sprite GUI. The Stage 1 characters (player,
 monsters and treasure chest) use transparent images rendered from 3D models at
 60 degrees; other and unidentified characters
-keep their text display. Cell outlines retain the original strength/status colors.
+keep their text display. A disc on the ground under each sprite, fading out away from the character,
+keeps the original strength/status colors, including the player's yellow and
+red low-LP warnings. While the player is
+poisoned, the upper-right half of its disc turns purple.
 Controls, rules, FOV and menus are shared with the original Pyglet GUI.
 The original cell size is retained. All sprites are drawn at one common scale,
-centered on their cell, so their sizes follow the 3D models: most are about 1.8
+with each character's feet on its cell center, so their sizes follow the 3D models: most are about 1.8
 cells wide and may extend beyond their cell, while the boss dragon is modeled
 larger and its wings spread well past its cell. `--scale 2` enlarges the GUI.
 Blender is only needed to regenerate the bundled images.

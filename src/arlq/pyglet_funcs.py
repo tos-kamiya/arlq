@@ -684,6 +684,19 @@ class PygletUI:
     def _field_col_width(self, _col: int) -> int:
         return self.cell_size_x
 
+    def _draw_player(self, pos: d.Point, player: d.Player):
+        """'@' in its foreground tone over a low/warning LP background cell."""
+        foreground, background = ui_display.player_appearance(player)
+        if background is not None:
+            self._draw_rect(
+                self._field_col_x(pos[0]),
+                pos[1] * self.cell_size_y,
+                self.cell_size_x + 1,
+                self.cell_size_y + 1,
+                COLOR_MAP[_TONE_INDEX[background]],
+            )
+        self._draw_field_text(pos, "@", self._tone_color(foreground), bold=True)
+
     def _draw_field_text(self, pos: d.Point, text: str, color: Tuple[int, int, int], bold: bool = False):
         """Draws text at a field grid cell (never an edge column), applying
         the same grid alignment as the other field columns."""
@@ -816,17 +829,8 @@ class PygletUI:
         if not floor_view and checkpoint is not None and checkpoint != (px, py):
             self._draw_field_text(checkpoint, "+", COLOR_MAP[CI_YELLOW], bold=True)
 
-        foreground, background = ui_display.player_appearance(player)
-        if not floor_view and background is not None:
-            self._draw_rect(
-                self._field_col_x(px),
-                py * self.cell_size_y,
-                self.cell_size_x + 1,
-                self.cell_size_y + 1,
-                COLOR_MAP[_TONE_INDEX[background]],
-            )
         if not floor_view:
-            self._draw_field_text((px, py), "@", self._tone_color(foreground), bold=True)
+            self._draw_player((px, py), player)
 
         if not floor_view and player.companion is not None and px + 1 < d.FIELD_WIDTH:
             self._draw_field_text((px + 1, py), player.companion.tribe.char, COLOR_MAP[CI_GREEN], bold=True)

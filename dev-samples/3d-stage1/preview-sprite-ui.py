@@ -9,13 +9,11 @@ pyglet.options['headless'] = True
 pyglet.input = SimpleNamespace(get_controllers=lambda: [])
 
 from arlq import defs as d
-from arlq.sprite_funcs import SpriteUI
+from arlq.sprite_funcs import SPRITE_FILES, SpriteUI
 
 ui = SpriteUI(scale=3)
 before = '--before' in sys.argv
 if before:
-    from arlq.sprite_funcs import SPRITE_FILES
-
     directory = Path(__file__).resolve().parent / 'sprites-before-outline'
     ui._sprite_images = {char: pyglet.image.load(str(directory / filename))
                          for char, filename in SPRITE_FILES.items()}
@@ -38,5 +36,5 @@ ui.batch.draw()
 pyglet.image.get_buffer_manager().get_color_buffer().save(
     str(Path(__file__).resolve().parent /
         ('preview-sprite-ui-before-outline.png' if before else 'preview-sprite-ui.png')))
-assert set(ui._sprite_images) == {'@', 'a', 'A', 'b', 'c', 'd', 'D', 'T'}
+assert set(ui._sprite_images) == set(SPRITE_FILES)
 ui.quit()
