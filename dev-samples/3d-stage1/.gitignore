@@ -1,0 +1,2 @@
+# Blender automatic backup files; keep editable .blend sources.
+*.blend[0-9]*
