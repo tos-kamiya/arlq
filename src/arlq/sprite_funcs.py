@@ -13,7 +13,12 @@ SPRITE_FILES = {
     'A': 'rare-amoeba.png',
     'b': 'bison.png',
     'd': 'comodo-dragon.png',
+    'D': 'dragon.png',
+    'T': 'treasure.png',
 }
+# Every sprite uses one scale: this many source pixels (an amoeba's width)
+# span 1.8 cell widths. Larger models therefore give larger sprites.
+SPRITE_REFERENCE_PIXELS = 186
 
 
 class SpriteUI(PygletUI):
@@ -50,8 +55,7 @@ class SpriteUI(PygletUI):
         x, y = pos
         padding = max(1, round(self.scale))
         width = max(1, self.cell_size_x - 2 * padding)
-        height = max(1, self.cell_size_y - 2 * padding)
-        scale = 1.8 * min(width / picture.width, height / picture.height)
+        scale = 1.8 * width / SPRITE_REFERENCE_PIXELS
         sprite = pyglet.sprite.Sprite(
             picture,
             x=self._field_col_x(x) + (self.cell_size_x - picture.width * scale) / 2,
