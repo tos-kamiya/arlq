@@ -46,11 +46,12 @@ WALL_FRONT_SHADE = 0.7
 # Marble column parts (near-white, tinted per visible/explored wall color);
 # each covers one cell plus the WALL_OVERHANG band north of it.
 WALL_PARTS = ('link-west', 'link-east', 'column')
-WALL_TINT = 2.4
+# Explored walls and floor outside the current view are kept clearly darker.
+WALL_TINT = {VISIBLE_WALL: 2.4, WALL: 1.75}
 # Flagstone floor: two near-white stones laid as a checkerboard, tinted a warm
 # dark grey per visible/explored floor, alternate cells slightly darker.
 FLOOR_PARTS = ('a', 'b')
-FLOOR_TINTS = {VISIBLE_FLOOR: (78, 72, 66), FLOOR: (54, 50, 46)}
+FLOOR_TINTS = {VISIBLE_FLOOR: (78, 72, 66), FLOOR: (42, 39, 36)}
 FLOOR_CHECKER_SHADE = 0.88
 
 
@@ -137,7 +138,7 @@ class SpriteUI(PygletUI):
                     and field[wy][wx] == d.CHAR_WALL and discovered_at(wx, wy))
 
         if self._wall_images is not None:
-            tint = tuple(min(255, round(c * WALL_TINT)) for c in tile_color)
+            tint = tuple(min(255, round(c * WALL_TINT[tile_color])) for c in tile_color)
             height = (1 + WALL_OVERHANG) * self.cell_size_y
             for part, show in (('link-west', wall_at(x - 1, y)),
                                ('link-east', wall_at(x + 1, y)), ('column', True)):
