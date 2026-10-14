@@ -42,7 +42,7 @@ def test_known_sprite_enlarges_around_cell_center_and_retains_color(sprite_ui):
     assert not ui.text_calls
 
 
-@pytest.mark.parametrize('char', ('?', '&', '$', 'c'))
+@pytest.mark.parametrize('char', ('?', '&', '$', 'C'))
 def test_unavailable_glyph_uses_original_text(sprite_ui, char):
     sprite_ui._draw_field_text((4, 5), char, (220, 82, 82), True)
     assert sprite_ui.text_calls[0][1] == char
@@ -68,7 +68,7 @@ def test_map_uses_gray_texture_and_dim_sprite_remains_dim(sprite_ui):
 
 def test_bundled_sprites_cover_stage1_characters():
     directory = Path(d.__file__).parent / 'assets' / 'characters'
-    assert {'@', 'a', 'A', 'b', 'd', 'D', d.CHAR_TREASURE} <= set(SPRITE_FILES)
+    assert {'@', 'a', 'A', 'b', 'c', 'd', 'D', d.CHAR_TREASURE} <= set(SPRITE_FILES)
     for filename in SPRITE_FILES.values():
         assert (directory / filename).is_file()
 

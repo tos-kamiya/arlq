@@ -25,7 +25,7 @@ scene.cycles.sample_clamp_indirect = 2.0
 scene.cycles.blur_glossy = 1.0
 scene.cycles.caustics_reflective = False
 scene.cycles.caustics_refractive = False
-scene.render.resolution_x = 2100
+scene.render.resolution_x = 2400
 scene.render.resolution_y = 700
 scene.view_settings.view_transform = 'Standard'
 scene.view_settings.look = 'Medium High Contrast'
@@ -34,15 +34,17 @@ world.use_nodes = True
 world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.012, 0.018, 0.03, 1)
 scene.world = world
 
-ROW = [('@', 'PLAYER', -7.0), ('a', 'AMOEBA', -5.0), ('A', 'RARE AMOEBA', -3.0),
-       ('b', 'BISON', -1.0), ('d', 'COMODO DRAGON', 1.0), ('T', 'TREASURE CHEST', 3.0),
-       ('D', 'DRAGON', 5.7)]
+ROW = [('@', 'PLAYER', -8.0), ('a', 'AMOEBA', -6.0), ('A', 'RARE AMOEBA', -4.0),
+       ('b', 'BISON', -2.0), ('c', 'CHIMERA', 0.0), ('d', 'COMODO DRAGON', 2.0),
+       ('T', 'TREASURE CHEST', 4.0), ('D', 'DRAGON', 6.7)]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, 0.0) for char, _, x in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
 # and drawn at one common scale, so these decide how large each character
 # appears; the boss dragon is built large, its wings spreading past its cell.
-SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'd': 1.16, 'T': 1.66, 'D': 1.44}
+SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44}
+# Monsters turn slightly toward screen left; the player and chest face front.
+MONSTER_YAW = math.radians(-30)
 
 
 def material(name, color, transmission=0.0, roughness=0.35, emission=None,
@@ -412,6 +414,81 @@ def player(x, y):
     mark.data.materials.append(obsidian)
 
 
+def chimera(x, y):
+    hide = material('Chimera golden lion resin', (0.95, 0.66, 0.18), 0.5, 0.22,
+                    rim=(1.0, 0.85, 0.45), rim_strength=1.2, coat=0.6)
+    mane = material('Chimera crimson mane', (0.62, 0.05, 0.04), 0.15, 0.4,
+                    rim=(1.0, 0.25, 0.1), rim_strength=1.5)
+    goat = material('Chimera ivory goat', (0.90, 0.88, 0.80), 0.35, 0.25,
+                    rim=(1.0, 1.0, 0.9), rim_strength=0.8, coat=0.5)
+    horn = material('Chimera dark goat horns', (0.12, 0.10, 0.10), roughness=0.25, coat=1.0)
+    snake = material('Chimera serpent tail', (0.10, 0.62, 0.48), 0.45, 0.18,
+                     rim=(0.5, 1.0, 0.8), rim_strength=1.2, coat=0.8)
+    eye = material('Chimera ember eyes', (1.0, 0.3, 0.05), emission=(1.0, 0.3, 0.05),
+                   strength=6.0)
+    steel = material('Chimera sword steel', (0.85, 0.92, 1.0), 0.3, 0.08,
+                     emission=(0.7, 0.85, 1.0), strength=0.8, metallic=0.5,
+                     rim=(0.9, 0.95, 1.0), rim_strength=1.5)
+    hilt = material('Chimera sword hilt', (1.0, 0.68, 0.18), roughness=0.25, metallic=1.0)
+    # Lion: lean body, maned head, sword carried crosswise in the jaws.
+    soften(loft('Chimera lion torso', x, y,
+                [(-0.38, 0.34, 0.48, 0.22), (-0.10, 0.37, 0.50, 0.25),
+                 (0.30, 0.30, 0.46, 0.21), (0.56, 0.22, 0.42, 0.16)], hide), 0.07)
+    soften(loft('Chimera lion head', x, y,
+                [(-0.92, 0.14, 0.50, 0.09), (-0.80, 0.22, 0.56, 0.14),
+                 (-0.56, 0.25, 0.62, 0.18)], hide), 0.04)
+    sphere('Chimera nose', (x, y - 0.93, 0.55), (0.06, 0.04, 0.04), obsidian, 12)
+    # Full mane: two rings of clumps framing the face.
+    for ring, (dy, radius, size) in enumerate(((-0.52, 0.34, 0.15), (-0.40, 0.30, 0.17))):
+        for i in range(12):
+            a = math.pi * (-0.15 + 1.3 * i / 11)
+            bpy.ops.mesh.primitive_ico_sphere_add(
+                subdivisions=1, radius=size,
+                location=(x + radius * math.cos(a), y + dy, 0.60 + radius * math.sin(a)),
+                rotation=(i * 0.9, i * 0.5 + ring, 0))
+            finish(bpy.context.object, mane, False, 'Chimera mane clump')
+    # Flat blade so its broad face shows from above.
+    tube('Chimera sword blade', [(x - 0.20, y - 0.88, 0.50), (x - 0.64, y - 0.88, 0.50),
+                                 (x - 0.76, y - 0.88, 0.50)],
+         [(0.07, 0.014), (0.06, 0.012), 0], steel, sides=4)
+    tube('Chimera sword guard', [(x - 0.18, y - 0.88, 0.40), (x - 0.18, y - 0.88, 0.62)],
+         [0.03, 0.03], hilt, sides=6)
+    tube('Chimera sword grip', [(x - 0.17, y - 0.88, 0.50), (x + 0.20, y - 0.88, 0.50)],
+         [0.025, 0.025], hilt, sides=6)
+    sphere('Chimera sword pommel', (x + 0.23, y - 0.88, 0.50), (0.045, 0.045, 0.045), hilt, 12)
+    for side in (-1, 1):
+        sphere('Chimera lion eye', (x + side * 0.11, y - 0.82, 0.66), (0.04, 0.03, 0.03), eye, 12)
+        for dy in (-0.30, 0.42):
+            foot = (x + side * 0.30, y + dy - 0.06, 0.07)
+            tube('Chimera leg', [(x + side * 0.24, y + dy, 0.42), foot], [0.11, 0.08], hide, sides=6)
+            sphere('Chimera paw', foot, (0.09, 0.11, 0.05), hide, 12, False)
+    # Goat head rising from the back, horns sweeping backward.
+    tube('Chimera goat neck', [(x + 0.08, y + 0.10, 0.62), (x + 0.16, y + 0.0, 0.94)],
+         [0.09, 0.07], goat, sides=6)
+    soften(loft('Chimera goat head', x + 0.17, y,
+                [(-0.30, 0.06, 0.96, 0.05), (-0.18, 0.09, 1.00, 0.08),
+                 (-0.02, 0.10, 1.03, 0.09)], goat), 0.02)
+    for side in (-1, 1):
+        sphere('Chimera goat eye', (x + 0.17 + side * 0.07, y - 0.16, 1.06),
+               (0.02, 0.02, 0.02), eye, 8)
+        tube('Chimera goat horn', [(x + 0.17 + side * 0.05, y - 0.06, 1.10),
+                                   (x + 0.17 + side * 0.10, y + 0.08, 1.24),
+                                   (x + 0.17 + side * 0.13, y + 0.24, 1.20),
+                                   (x + 0.17 + side * 0.11, y + 0.30, 1.08)],
+             [0.035, 0.028, 0.018, 0], horn, sides=6, smooth=True)
+    # Serpent tail curling up, ending in a snake head.
+    tube('Chimera serpent tail', [(x, y + 0.58, 0.45), (x - 0.10, y + 0.80, 0.42),
+                                  (x - 0.30, y + 0.88, 0.55), (x - 0.38, y + 0.78, 0.74),
+                                  (x - 0.34, y + 0.62, 0.84)],
+         [0.07, 0.065, 0.06, 0.055, 0.05], snake, sides=6)
+    tube('Chimera snake head', [(x - 0.34, y + 0.66, 0.84), (x - 0.31, y + 0.55, 0.86),
+                                (x - 0.29, y + 0.46, 0.84)],
+         [(0.07, 0.04), (0.06, 0.035), 0], snake, sides=6)
+    for side in (-1, 1):
+        sphere('Chimera snake eye', (x - 0.31 + side * 0.045, y + 0.56, 0.885),
+               (0.018, 0.018, 0.015), eye, 8)
+
+
 def treasure(x, y):
     wood = material('Chest mahogany resin', (0.40, 0.09, 0.03), 0.12, 0.28,
                     rim=(1.0, 0.55, 0.25), rim_strength=0.8, coat=0.8)
@@ -539,23 +616,25 @@ def label(value, pos, size):
 
 builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'd': dragon,
-            'T': treasure, 'D': great_dragon}
+            'c': chimera, 'T': treasure, 'D': great_dragon}
 for char, name, x in ROW:
     start = set(bpy.data.objects)
     builders[char](x, 0.0)
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, 0, 0))
-    resize = pivot @ Matrix.Scale(SIZES[char], 4) @ pivot.inverted()
+    yaw = MONSTER_YAW if char in 'aAbcdD' else 0
+    resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
+              @ pivot.inverted())
     for obj in character:
         obj.matrix_world = resize @ obj.matrix_world
-    # Apply the size to the mesh data so the model itself is built at that size.
+    # Apply the size and turn to the mesh data so the model itself is built that way.
     bpy.ops.object.select_all(action='DESELECT')
     meshes = [obj for obj in character if obj.type == 'MESH']
     for obj in meshes:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
     block(name + ' tile', (x, 0, -0.05), (3.1 if char == 'D' else 1.85, 2.6, 0.1), tile, 0.04)
     label(name, (x, -1.55, 0.0), 0.16)
     collection = bpy.data.collections.new('Character ' + char + ' ' + name)
@@ -568,13 +647,13 @@ for char, name, x in ROW:
 
 bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, -0.1))
 finish(bpy.context.object, dark, True, 'Backdrop')
-label('ARLQ / STAGE 1 / HEROIC RESIN', (-0.7, 1.75, 0.0), 0.2)
+label('ARLQ / STAGE 1 / HEROIC RESIN', (-0.5, 1.85, 0.0), 0.2)
 # Warm key, cool fill, strong back rim lights for glossy edges.
 for name, pos, power, size, color in [
         ('Key', (-4, -6, 8), 1000, 5, (1.0, 0.93, 0.85)),
         ('Fill', (6, -3, 4), 250, 6, (0.6, 0.75, 1.0)),
-        ('Rim left', (-6, 6, 4), 1300, 3, (0.55, 0.8, 1.0)),
-        ('Rim right', (6, 6, 4), 1300, 3, (1.0, 0.7, 0.9))]:
+        ('Rim left', (-7, 6, 4), 1300, 3, (0.55, 0.8, 1.0)),
+        ('Rim right', (7, 6, 4), 1300, 3, (1.0, 0.7, 0.9))]:
     bpy.ops.object.light_add(type='AREA', location=pos)
     light = bpy.context.object
     light.name = name
@@ -586,10 +665,10 @@ for name, pos, power, size, color in [
 bpy.ops.object.camera_add()
 camera = bpy.context.object
 angle = math.radians(60)
-camera.location = (-0.7, -15 * math.cos(angle), 15 * math.sin(angle))
-camera.rotation_euler = (Vector((-0.7, 0, 0)) - camera.location).to_track_quat('-Z', 'Y').to_euler()
+camera.location = (-0.5, -15 * math.cos(angle), 15 * math.sin(angle))
+camera.rotation_euler = (Vector((-0.5, 0, 0)) - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = 16
+camera.data.ortho_scale = 18.4
 scene.camera = camera
 scene['sprite_centers'] = {char: list(pos) for char, pos in CENTERS.items()}
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT / 'characters-angle60.blend'))
