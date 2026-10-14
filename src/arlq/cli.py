@@ -71,6 +71,10 @@ def _prepare_cli_session(terminal_only=False):
     )
     if gui is not None:
         gui.add_argument(
+            '--sprites', action='store_true',
+            help='Use the Pyglet character-sprite UI (unavailable characters stay text).',
+        )
+        gui.add_argument(
             "--scale",
             type=float,
             metavar="FACTOR",
@@ -141,6 +145,8 @@ def _prepare_cli_session(terminal_only=False):
     )
 
     args = parser.parse_args()
+    if getattr(args, 'sprites', False) and args.terminal:
+        parser.error('--sprites cannot be combined with --terminal')
 
     if args.rewind_index is not None:
         if args.checkpoint_index is not None:
@@ -334,7 +340,12 @@ def main(terminal_only=False):
     else:
         from .pyglet_funcs import PygletUI
 
-        ui = PygletUI(args.scale)
+        if args.sprites:
+            from .sprite_funcs import SpriteUI
+
+            ui = SpriteUI(args.scale)
+        else:
+            ui = PygletUI(args.scale)
         if args.scale is not None:
             from .pyglet_funcs import save_ui_scale
 

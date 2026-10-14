@@ -47,6 +47,14 @@ Running `arlq` without options opens the graphical interface. Running
 connected gamepad's D-pad or left stick to move, and button 0 to select a
 stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
 
+Use `arlq --sprites` for the character-sprite GUI. Five characters use transparent
+images rendered from 3D models at 60 degrees; other and unidentified characters
+keep their text display. Cell outlines retain the original strength/status colors.
+Controls, rules, FOV and menus are shared with the original Pyglet GUI.
+The original cell size is retained; sprites are enlarged to 1.8 times their fitted
+size around each cell's center and may extend beyond it. `--scale 2` enlarges the GUI.
+Blender is only needed to regenerate the bundled images.
+
 The terminal interface requires a terminal at least 80 columns wide and 24
 lines high. The game pauses if the terminal becomes smaller and resumes when
 it is large enough again.

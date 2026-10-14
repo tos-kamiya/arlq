@@ -8,6 +8,16 @@ from arlq import __about__, cli, i18n
 from arlq.cli import _prepare_cli_session
 
 
+def test_sprite_gui_option_and_terminal_conflict(monkeypatch):
+    monkeypatch.setattr(sys, 'argv', ['arlq', '--sprites', '--seed', '123'])
+    args, *_ = _prepare_cli_session()
+    assert args.sprites
+    monkeypatch.setattr(sys, 'argv', ['arlq', '--sprites', '--terminal'])
+    with pytest.raises(SystemExit) as error:
+        _prepare_cli_session()
+    assert error.value.code == 2
+
+
 @pytest.mark.parametrize(
     ("option", "expected"),
     [("--auto-repeat-stop", True), ("--no-auto-repeat-stop", False)],

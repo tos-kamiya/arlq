@@ -1,7 +1,39 @@
 # ステージ1の3Dキャラクター試作
 
 透明感のある樹脂・水晶風の立体駒を、Blender 4.0.2で作成した検討用素材。
-ゲームには組み込んでおらず、ゲームルールや既存GUIは変更していない。
+採用モデルから透過画像を書き出し、`arlq --sprites` の別GUIで利用する。
+ゲームルールは変更せず、元のPyglet GUIも引き続き利用できる。
+
+## スプライト版GUI
+
+```bash
+uv run -p .venv/bin/python arlq --sprites
+```
+
+現在のマス内に収めるサイズから縦横1.8倍に拡大し、中央を保って配置する。
+マスからのはみ出しを許容し、未作成のキャラクターは文字表示へフォールバックする。
+識別・擬態・FOVは元のGUIの判断をそのまま利用する。
+強弱・状態の色は画像の周囲の枠で示し、薄表示とマップの白黒表示にも対応する。
+画像は `src/arlq/assets/characters/` に同梱する。プレイヤーの `@` は画像へ焼き込まず、ステータスや強さの列は従来の文字表示を維持する。
+
+```bash
+blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py
+PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-sprite-ui.py
+```
+
+最初のコマンドは採用した60度カメラ付きモデルから5枚を書き出し、透明な余白を切り詰める。
+2番目はコントローラーを使わないヘッドレス描画確認で、`preview-sprite-ui.png` を出力する。
+
+### 輪郭線のみのトゥーン表現
+
+色・材質・透明度・照明・Cyclesの陰影は維持し、Blender Freestyleで輪郭線を合成する。
+輪郭と可視の部位の境目を暗い線で描き、稜線の一律描画は無効にする。
+256ピクセルのレンダリング時に線幅4ピクセルとし、ゲームサイズに縮小した際にも輪郭を残す。
+GUI側の1.8倍表示と強弱・状態の色枠は維持する。
+
+参考: [Shade3Dの輪郭線レンダリングの記事](https://knowledge.shade3d.jp/knowledgebase/%E8%BC%AA%E9%83%AD%E7%B7%9A%E3%82%92%E3%83%AC%E3%83%B3%E3%83%80%E3%83%AA%E3%83%B3%E3%82%B0%E3%81%99%E3%82%8B%EF%BC%88%E3%83%88%E3%82%A5%E3%83%BC%E3%83%B3%E3%83%AC%E3%83%B3%E3%83%80%E3%83%A9-%EF%BC%89) の「フォトリアル（エッジ付）」に相当する方向性。Shade3Dそのものは使用せず、Blenderで実現する。
+
+変更前の5枚は `sprites-before-outline/` に保存している。
 
 ## 採用モデル
 
