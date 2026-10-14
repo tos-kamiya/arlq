@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from arlq import defs as d, display
+from arlq import defs as d, display, sprite_funcs
 from arlq.pyglet_funcs import PygletUI
 from arlq.sprite_funcs import SPRITE_FILES, SPRITE_REFERENCE_PIXELS, SpriteUI
 
@@ -24,7 +24,7 @@ def sprite_ui(monkeypatch):
     ui.outlines = []
     monkeypatch.setattr(PygletUI, '_draw_field_text',
                         lambda self, *args: self.text_calls.append(args))
-    monkeypatch.setattr(ui, '_draw_rect_outline', lambda *args: ui.outlines.append(args))
+    monkeypatch.setattr(ui, '_draw_ground_disc', lambda *args: ui.outlines.append(args))
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     return ui
@@ -37,8 +37,10 @@ def test_known_sprite_enlarges_around_cell_center_and_retains_color(sprite_ui):
     sprite = ui._drawables[0]
     assert sprite.scale == pytest.approx(1.8 * 11 / SPRITE_REFERENCE_PIXELS)
     assert sprite.x + sprite.image.width * sprite.scale / 2 == pytest.approx(58.5)
-    assert sprite.y + sprite.image.height * sprite.scale / 2 == pytest.approx(390)
-    assert ui.outlines[0][-1] == color
+    # The feet, a fixed offset below the image centre, rest on the cell centre.
+    feet = sprite.y + (sprite.image.height / 2 - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * sprite.scale
+    assert feet == pytest.approx(390)
+    assert ui.outlines[0][3:] == (color, None)
     assert not ui.text_calls
 
 
@@ -93,4 +95,76 @@ def test_larger_sprite_image_is_drawn_larger_at_the_same_scale(sprite_ui):
     assert amoeba.image.width * amoeba.scale == pytest.approx(19.8)
     assert dragon.image.width * dragon.scale > 1.5 * 19.8
     assert dragon.x + dragon.image.width * dragon.scale / 2 == pytest.approx(58.5)
-    assert dragon.y + dragon.image.height * dragon.scale / 2 == pytest.approx(390)
+    feet = dragon.y + (dragon.image.height / 2 - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * dragon.scale
+    assert feet == pytest.approx(390)
+
+
+
+def test_ground_disc_is_tinted_ellipse_fading_outward(monkeypatch):
+    image = sprite_funcs.ground_disc_image()
+    data = image.get_data('RGBA', image.width * 4)
+    alpha = lambda col, row: data[(row * image.width + col) * 4 + 3]
+    mid = image.width // 2
+    assert alpha(mid, mid) > alpha(mid + mid // 2, mid) > alpha(image.width - 1, mid)
+    assert alpha(0, 0) == 0
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.window_height = 500
+    ui.batch = None
+    ui._disc_image, ui._disc_group = image, 'disc'
+    ui._drawables = []
+    ui._display_color = lambda color: color
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    ui._draw_ground_disc(50, 100, 10, (82, 140, 220))
+    disc = ui._drawables[0]
+    assert disc.group == 'disc' and disc.color == (82, 140, 220)
+    assert disc.image.width * disc.scale_x == pytest.approx(20)
+    assert disc.image.height * disc.scale_y == pytest.approx(20 * sprite_funcs.GROUND_DISC_FLATTEN)
+    assert disc.x == 40
+
+
+
+@pytest.mark.parametrize('lp, tone', [(d.LP_WARNING_THRESHOLD, 'yellow'),
+                                      (d.LP_LOW_THRESHOLD, 'red')])
+def test_low_lp_colors_player_disc_instead_of_cell(sprite_ui, monkeypatch, lp, tone):
+    ui = sprite_ui
+    rects = []
+    monkeypatch.setattr(ui, '_draw_rect', lambda *args: rects.append(args))
+    player = d.Player(4, 5, level=8, lp=lp)
+    ui._draw_player((4, 5), player)
+    assert not rects
+    assert ui._drawables[0].image is ui._sprite_images['@']
+    assert ui.outlines[0][3:] == (ui._tone_color(tone), None)
+
+
+
+@pytest.mark.parametrize('lp, tone', [(d.LP_INIT, 'default'), (d.LP_LOW_THRESHOLD, 'red')])
+def test_poison_turns_upper_right_of_player_disc_purple(sprite_ui, lp, tone):
+    ui = sprite_ui
+    player = d.Player(4, 5, level=8, lp=lp)
+    player.item = d.ITEM_POISONED
+    ui._draw_player((4, 5), player)
+    assert ui._drawables[0].image is ui._sprite_images['@']
+    assert ui.outlines[0][3:] == (ui._tone_color(tone), ui._tone_color('magenta'))
+
+
+def test_disc_halves_split_on_the_diagonal(monkeypatch):
+    lower, upper = (sprite_funcs.ground_disc_image(half)
+                    for half in ('lower-left', 'upper-right'))
+    size = lower.width
+    alpha = lambda image, col, row: image.get_data('RGBA', size * 4)[(row * size + col) * 4 + 3]
+    q = size // 4
+    # Image rows run bottom to top: (3q, 3q) is upper right, (q, q) lower left.
+    assert alpha(upper, 3 * q, 3 * q) > 0 and alpha(lower, 3 * q, 3 * q) == 0
+    assert alpha(lower, q, q) > 0 and alpha(upper, q, q) == 0
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.window_height = 500
+    ui.batch = None
+    ui._disc_halves, ui._disc_group = (lower, upper), 'disc'
+    ui._drawables = []
+    ui._display_color = lambda color: color
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    ui._draw_ground_disc(50, 100, 10, (230, 230, 230), (200, 80, 200))
+    assert [(disc.image, disc.color) for disc in ui._drawables] == [
+        (lower, (230, 230, 230)), (upper, (200, 80, 200))]

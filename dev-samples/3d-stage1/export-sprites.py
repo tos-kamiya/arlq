@@ -95,6 +95,13 @@ for char, name, (x, y) in models:
     right = min(width, max(p[0] for p in occupied) + 3)
     bottom = max(0, min(p[1] for p in occupied) - 2)
     top = min(height, max(p[1] for p in occupied) + 3)
+    # Keep the crop symmetric about the render centre, so the camera target
+    # (0.35 above the model's ground origin) stays at the image centre and the
+    # GUI can find each character's feet at one fixed offset.
+    left = min(left, width - right)
+    right = width - left
+    bottom = min(bottom, height - top)
+    top = height - bottom
     trimmed = bpy.data.images.new(name, right - left, top - bottom, alpha=True)
     trimmed.pixels = [value for row in range(bottom, top)
                       for value in pixels[(row * width + left) * 4:(row * width + right) * 4]]
