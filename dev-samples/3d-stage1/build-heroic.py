@@ -1,4 +1,4 @@
-"""Refined, more dramatic versions of the Stage 1 characters.
+"""Refined, more dramatic versions of the Stage 1 characters and companions.
 
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
 
@@ -25,7 +25,7 @@ scene.cycles.sample_clamp_indirect = 2.0
 scene.cycles.blur_glossy = 1.0
 scene.cycles.caustics_reflective = False
 scene.cycles.caustics_refractive = False
-scene.render.resolution_x = 2400
+scene.render.resolution_x = 2900
 scene.render.resolution_y = 700
 scene.view_settings.view_transform = 'Standard'
 scene.view_settings.look = 'Medium High Contrast'
@@ -36,14 +36,16 @@ scene.world = world
 
 ROW = [('@', 'PLAYER', -8.0), ('a', 'AMOEBA', -6.0), ('A', 'RARE AMOEBA', -4.0),
        ('b', 'BISON', -2.0), ('c', 'CHIMERA', 0.0), ('d', 'COMODO DRAGON', 2.0),
-       ('T', 'TREASURE CHEST', 4.0), ('D', 'DRAGON', 6.7)]
+       ('T', 'TREASURE CHEST', 4.0), ('D', 'DRAGON', 6.7), ('n', 'NOMICON', 9.2),
+       ('o', 'OCULAR', 11.2)]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, 0.0) for char, _, x in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
 # and drawn at one common scale, so these decide how large each character
 # appears; the boss dragon is built large, its wings spreading past its cell.
-SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44}
-# Monsters turn slightly toward screen left; the player and chest face front.
+SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
+         'n': 1.15, 'o': 1.25}
+# Monsters turn slightly toward screen left; the player, chest and companions face front.
 MONSTER_YAW = math.radians(-30)
 
 
@@ -594,6 +596,75 @@ def great_dragon(x, y):
         cone('Dragon dorsal spike', base, base + Vector((0, 0.07, h)), 0.05, 0, gold, 4, False)
 
 
+def transform_new(start, matrix):
+    """Apply `matrix` to every object created since the `start` object set."""
+    bpy.context.view_layer.update()
+    for obj in set(bpy.data.objects) - start:
+        obj.matrix_world = matrix @ obj.matrix_world
+
+
+def nomicon(x, y):
+    leather = material('Nomicon indigo leather', (0.10, 0.06, 0.32), 0.15, 0.35,
+                       rim=(0.55, 0.45, 1.0), rim_strength=1.2, coat=0.6)
+    gold = material('Nomicon gold corners', (1.0, 0.70, 0.22), roughness=0.22, metallic=1.0)
+    page = material('Nomicon parchment pages', (0.86, 0.72, 0.46), 0.1, 0.5,
+                    emission=(1.0, 0.75, 0.4), strength=0.15)
+    rune = material('Nomicon cyan runes', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
+                    strength=3.0)
+    ribbon = material('Nomicon crimson ribbon', (0.75, 0.04, 0.08), 0.1, 0.4)
+    start = set(bpy.data.objects)
+    # An open tome built lying flat (spine along Y), then tilted toward the
+    # camera and lifted so it floats above its cell.
+    for side in (-1, 1):
+        half = Matrix.Translation((x, y, 0)) @ Matrix.Rotation(side * -0.20, 4, 'Y')
+        parts = [block('Nomicon cover', (side * 0.36, 0, 0.0), (0.70, 0.98, 0.05), leather, 0.02),
+                 block('Nomicon page stack', (side * 0.33, 0, 0.055), (0.60, 0.88, 0.07),
+                       page, 0.015)]
+        for corner in (-1, 1):
+            parts.append(block('Nomicon gold corner', (side * 0.66, corner * 0.44, 0.0),
+                               (0.12, 0.12, 0.07), gold, 0.02))
+        # Rune lines written across each page.
+        for i, length in enumerate((0.42, 0.34, 0.46, 0.28, 0.40)):
+            dx = side * (0.10 + length / 2)
+            parts.append(block('Nomicon rune line', (dx, 0.30 - i * 0.15, 0.095),
+                               (length, 0.06, 0.02), rune, 0.008))
+        bpy.context.view_layer.update()
+        for obj in parts:
+            obj.matrix_world = half @ obj.matrix_world
+    tube('Nomicon spine', [(x, y - 0.49, -0.01), (x, y + 0.49, -0.01)], [0.06, 0.06], leather,
+         sides=8, smooth=True)
+    tube('Nomicon ribbon', [(x, y + 0.40, 0.11), (x + 0.03, y + 0.58, 0.02),
+                            (x + 0.06, y + 0.66, -0.20)], [(0.035, 0.008)] * 3, ribbon, sides=4)
+    tilt = Matrix.Translation((x, y, 0.62)) @ Matrix.Rotation(math.radians(12), 4, 'X') \
+        @ Matrix.Translation((-x, -y, 0))
+    transform_new(start, tilt)
+
+
+def ocular(x, y):
+    sclera = material('Ocular pearl sclera', (0.95, 0.96, 1.0), 0.35, 0.12,
+                      rim=(0.7, 0.9, 1.0), rim_strength=1.0, coat=1.0)
+    iris = material('Ocular amber iris', (1.0, 0.45, 0.03), 0.3, 0.1,
+                    emission=(1.0, 0.4, 0.03), strength=1.0, coat=1.0)
+    gold = material('Ocular gold rings', (1.0, 0.70, 0.22), roughness=0.22, metallic=1.0)
+    lens = material('Ocular crystal cornea', (0.9, 0.97, 1.0), 0.95, 0.03, coat=1.0)
+    center = Vector((x, y, 0.62))
+    # The eye looks straight at the camera, i.e. at the player.
+    look = Vector((0, -math.cos(math.radians(60)), math.sin(math.radians(60))))
+    sphere('Ocular eyeball', tuple(center), (0.36, 0.36, 0.36), sclera, 48)
+    cone('Ocular iris', center + look * 0.30, center + look * 0.355, 0.20, 0.17, iris, 40)
+    cone('Ocular pupil', center + look * 0.35, center + look * 0.37, 0.085, 0.07, obsidian, 32)
+    sphere('Ocular cornea', tuple(center + look * 0.20), (0.20, 0.20, 0.20), lens, 32)
+    # A gyroscope-like gold frame: a ring around the eye and one tilted across it.
+    for name, rotation in (('Ocular equator ring', (0.0, 0.0, 0.0)),
+                           ('Ocular orbit ring', (math.radians(60), math.radians(25), 0.0))):
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.46, minor_radius=0.03,
+                                         location=tuple(center), rotation=rotation)
+        finish(bpy.context.object, gold, True, name)
+    for side in (-1, 1):
+        cone('Ocular ring fin', center + Vector((side * 0.46, 0, 0)),
+             center + Vector((side * 0.62, 0, 0.10)), 0.06, 0, gold, 4, False)
+
+
 def label(value, pos, size):
     bpy.ops.object.text_add(location=pos)
     obj = bpy.context.object
@@ -607,7 +678,7 @@ def label(value, pos, size):
 
 builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'd': dragon,
-            'c': chimera, 'T': treasure, 'D': great_dragon}
+            'c': chimera, 'T': treasure, 'D': great_dragon, 'n': nomicon, 'o': ocular}
 for char, name, x in ROW:
     start = set(bpy.data.objects)
     builders[char](x, 0.0)
@@ -638,7 +709,7 @@ for char, name, x in ROW:
 
 bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, -0.1))
 finish(bpy.context.object, dark, True, 'Backdrop')
-label('ARLQ / STAGE 1 / HEROIC RESIN', (-0.5, 1.85, 0.0), 0.2)
+label('ARLQ / STAGE 1 / HEROIC RESIN', (1.6, 1.85, 0.0), 0.2)
 # Warm key, cool fill, strong back rim lights for glossy edges.
 for name, pos, power, size, color in [
         ('Key', (-4, -6, 8), 1000, 5, (1.0, 0.93, 0.85)),
@@ -656,10 +727,10 @@ for name, pos, power, size, color in [
 bpy.ops.object.camera_add()
 camera = bpy.context.object
 angle = math.radians(60)
-camera.location = (-0.5, -15 * math.cos(angle), 15 * math.sin(angle))
-camera.rotation_euler = (Vector((-0.5, 0, 0)) - camera.location).to_track_quat('-Z', 'Y').to_euler()
+camera.location = (1.6, -15 * math.cos(angle), 15 * math.sin(angle))
+camera.rotation_euler = (Vector((1.6, 0, 0)) - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = 18.4
+camera.data.ortho_scale = 22.6
 scene.camera = camera
 scene['sprite_centers'] = {char: list(pos) for char, pos in CENTERS.items()}
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT / 'characters-angle60.blend'))

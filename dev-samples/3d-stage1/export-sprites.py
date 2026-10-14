@@ -1,6 +1,7 @@
 """Export accepted characters as cropped transparent 60-degree PNGs.
 
 With `-- --heroic`, export the refined models built by build-heroic.py.
+`-- --heroic --only n o` re-exports just the listed characters.
 """
 from pathlib import Path
 import math
@@ -18,7 +19,10 @@ models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
 HEROIC = '--heroic' in sys.argv
 if HEROIC:
     models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)),
-               ('D', 'dragon', (0, 0))]
+               ('D', 'dragon', (0, 0)), ('n', 'nomicon', (0, 0)), ('o', 'ocular', (0, 0))]
+if '--only' in sys.argv:
+    only = sys.argv[sys.argv.index('--only') + 1:]
+    models = [model for model in models if model[0] in only]
 for char, name, (x, y) in models:
     player = char == '@'
     source = ROOT / ('heroic/characters-angle60.blend' if HEROIC else

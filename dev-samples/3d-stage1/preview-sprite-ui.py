@@ -34,6 +34,12 @@ entities = [d.Monster(13 + i * 3, 8, d.CHAR_TO_MONSTER_TRIBE[char])
 chest = d.Treasure(36, 8, 'D')
 chest.unlocked = True
 entities.append(chest)
+# Companions in the room below, and Ocular travelling with the player.
+for i, char in enumerate(('n', 'o')):
+    companion = d.Companion(14 + i * 4, 11, d.CHAR_TO_COMPANION_TRIBE[char])
+    companion.revealed = True
+    entities.append(companion)
+player.companion = d.Companion(0, 0, d.CHAR_TO_COMPANION_TRIBE['o'])
 ui.draw_stage(turn=0, player=player, entities=entities, field=field,
               cur_torched=current, torched=seen, known_types={'a', 'A', 'b', 'c', 'd', 'D', 'C'},
               show_entities=False, stage_num=1, message='Sprites + text fallback (c)')
