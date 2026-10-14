@@ -30,6 +30,17 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-walls.py -
 ```
 
 `--save` を付けると `heroic/walls.blend` も保存する。
+
+床は暗い敷石を1マス1枚で敷き、模様が少し違う2種類を市松模様に並べる（(x + y) の偶奇）。
+奇数のマスは色もわずかに暗くする（`FLOOR_CHECKER_SHADE`）。
+見えている・探索済みの床は、暖かみのある暗い灰色で着色する（`FLOOR_TINTS`）。
+移動できる範囲の表示、まきびし、柵、未探索の霧は従来の色のまま。
+
+```bash
+blender --background --threads 4 --python dev-samples/3d-stage1/build-floor.py
+```
+
+`src/arlq/assets/floor/floor-a.png` と `floor-b.png` を出力する。
 画像は `src/arlq/assets/characters/` に同梱する。プレイヤーの `@` は画像へ焼き込まず、ステータスや強さの列は従来の文字表示を維持する。
 
 ```bash
