@@ -17,7 +17,8 @@ models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
           ('@', 'player', (0, 0))]
 HEROIC = '--heroic' in sys.argv
 if HEROIC:
-    models += [('T', 'treasure', (0, 0)), ('D', 'dragon', (0, 0))]
+    models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)),
+               ('D', 'dragon', (0, 0))]
 for char, name, (x, y) in models:
     player = char == '@'
     source = ROOT / ('heroic/characters-angle60.blend' if HEROIC else

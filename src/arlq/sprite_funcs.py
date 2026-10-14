@@ -12,6 +12,7 @@ SPRITE_FILES = {
     'a': 'amoeba.png',
     'A': 'rare-amoeba.png',
     'b': 'bison.png',
+    'c': 'chimera.png',
     'd': 'comodo-dragon.png',
     'D': 'dragon.png',
     'T': 'treasure.png',
