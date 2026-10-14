@@ -419,21 +419,23 @@ def chimera(x, y):
                     rim=(1.0, 0.85, 0.45), rim_strength=1.2, coat=0.6)
     mane = material('Chimera crimson mane', (0.62, 0.05, 0.04), 0.15, 0.4,
                     rim=(1.0, 0.25, 0.1), rim_strength=1.5)
-    goat = material('Chimera ivory goat', (0.90, 0.88, 0.80), 0.35, 0.25,
-                    rim=(1.0, 1.0, 0.9), rim_strength=0.8, coat=0.5)
-    horn = material('Chimera dark goat horns', (0.12, 0.10, 0.10), roughness=0.25, coat=1.0)
-    snake = material('Chimera serpent tail', (0.10, 0.62, 0.48), 0.45, 0.18,
-                     rim=(0.5, 1.0, 0.8), rim_strength=1.2, coat=0.8)
+    snake = material('Chimera serpent tail', (0.04, 0.80, 0.40), 0.4, 0.16,
+                     emission=(0.05, 0.6, 0.3), strength=0.3,
+                     rim=(0.6, 1.0, 0.6), rim_strength=1.8, coat=0.8)
+    tongue = material('Chimera snake tongue', (1.0, 0.1, 0.15), emission=(1.0, 0.1, 0.15),
+                      strength=2.0)
+    snake_eye = material('Chimera snake eyes', (1.0, 0.9, 0.1), emission=(1.0, 0.85, 0.1),
+                         strength=6.0)
     eye = material('Chimera ember eyes', (1.0, 0.3, 0.05), emission=(1.0, 0.3, 0.05),
                    strength=6.0)
     steel = material('Chimera sword steel', (0.85, 0.92, 1.0), 0.3, 0.08,
                      emission=(0.7, 0.85, 1.0), strength=0.8, metallic=0.5,
                      rim=(0.9, 0.95, 1.0), rim_strength=1.5)
     hilt = material('Chimera sword hilt', (1.0, 0.68, 0.18), roughness=0.25, metallic=1.0)
-    # Lion: lean body, maned head, sword carried crosswise in the jaws.
+    # Lion: small body, maned head, sword carried crosswise in the jaws.
     soften(loft('Chimera lion torso', x, y,
-                [(-0.38, 0.34, 0.48, 0.22), (-0.10, 0.37, 0.50, 0.25),
-                 (0.30, 0.30, 0.46, 0.21), (0.56, 0.22, 0.42, 0.16)], hide), 0.07)
+                [(-0.40, 0.26, 0.42, 0.17), (-0.16, 0.28, 0.43, 0.18),
+                 (0.14, 0.23, 0.40, 0.15), (0.32, 0.17, 0.37, 0.12)], hide), 0.05)
     soften(loft('Chimera lion head', x, y,
                 [(-0.92, 0.14, 0.50, 0.09), (-0.80, 0.22, 0.56, 0.14),
                  (-0.56, 0.25, 0.62, 0.18)], hide), 0.04)
@@ -458,35 +460,24 @@ def chimera(x, y):
     sphere('Chimera sword pommel', (x + 0.23, y - 0.88, 0.50), (0.045, 0.045, 0.045), hilt, 12)
     for side in (-1, 1):
         sphere('Chimera lion eye', (x + side * 0.11, y - 0.82, 0.66), (0.04, 0.03, 0.03), eye, 12)
-        for dy in (-0.30, 0.42):
-            foot = (x + side * 0.30, y + dy - 0.06, 0.07)
-            tube('Chimera leg', [(x + side * 0.24, y + dy, 0.42), foot], [0.11, 0.08], hide, sides=6)
-            sphere('Chimera paw', foot, (0.09, 0.11, 0.05), hide, 12, False)
-    # Goat head rising from the back, horns sweeping backward.
-    tube('Chimera goat neck', [(x + 0.08, y + 0.10, 0.62), (x + 0.16, y + 0.0, 0.94)],
-         [0.09, 0.07], goat, sides=6)
-    soften(loft('Chimera goat head', x + 0.17, y,
-                [(-0.30, 0.06, 0.96, 0.05), (-0.18, 0.09, 1.00, 0.08),
-                 (-0.02, 0.10, 1.03, 0.09)], goat), 0.02)
+        for dy in (-0.28, 0.22):
+            foot = (x + side * 0.23, y + dy - 0.05, 0.06)
+            tube('Chimera leg', [(x + side * 0.18, y + dy, 0.36), foot], [0.09, 0.07], hide, sides=6)
+            sphere('Chimera paw', foot, (0.08, 0.09, 0.045), hide, 12, False)
+    # Thick serpent tail rearing over the back, hooded head facing forward.
+    tube('Chimera serpent tail', [(x, y + 0.30, 0.40), (x + 0.06, y + 0.56, 0.40),
+                                  (x - 0.06, y + 0.80, 0.52), (x - 0.28, y + 0.84, 0.76),
+                                  (x - 0.38, y + 0.66, 0.98), (x - 0.32, y + 0.46, 1.08)],
+         [0.09, 0.10, 0.11, 0.11, 0.10, 0.10], snake, sides=8, smooth=True)
+    sphere('Chimera snake hood', (x - 0.32, y + 0.46, 1.08), (0.22, 0.06, 0.17), snake, 24)
+    tube('Chimera snake head', [(x - 0.32, y + 0.42, 1.10), (x - 0.29, y + 0.24, 1.10),
+                                (x - 0.27, y + 0.10, 1.06)],
+         [(0.15, 0.08), (0.12, 0.07), 0], snake, sides=8)
+    tube('Chimera snake tongue', [(x - 0.27, y + 0.12, 1.05), (x - 0.26, y - 0.02, 1.02)],
+         [0.014, 0.01], tongue, sides=4)
     for side in (-1, 1):
-        sphere('Chimera goat eye', (x + 0.17 + side * 0.07, y - 0.16, 1.06),
-               (0.02, 0.02, 0.02), eye, 8)
-        tube('Chimera goat horn', [(x + 0.17 + side * 0.05, y - 0.06, 1.10),
-                                   (x + 0.17 + side * 0.10, y + 0.08, 1.24),
-                                   (x + 0.17 + side * 0.13, y + 0.24, 1.20),
-                                   (x + 0.17 + side * 0.11, y + 0.30, 1.08)],
-             [0.035, 0.028, 0.018, 0], horn, sides=6, smooth=True)
-    # Serpent tail curling up, ending in a snake head.
-    tube('Chimera serpent tail', [(x, y + 0.58, 0.45), (x - 0.10, y + 0.80, 0.42),
-                                  (x - 0.30, y + 0.88, 0.55), (x - 0.38, y + 0.78, 0.74),
-                                  (x - 0.34, y + 0.62, 0.84)],
-         [0.07, 0.065, 0.06, 0.055, 0.05], snake, sides=6)
-    tube('Chimera snake head', [(x - 0.34, y + 0.66, 0.84), (x - 0.31, y + 0.55, 0.86),
-                                (x - 0.29, y + 0.46, 0.84)],
-         [(0.07, 0.04), (0.06, 0.035), 0], snake, sides=6)
-    for side in (-1, 1):
-        sphere('Chimera snake eye', (x - 0.31 + side * 0.045, y + 0.56, 0.885),
-               (0.018, 0.018, 0.015), eye, 8)
+        sphere('Chimera snake eye', (x - 0.29 + side * 0.08, y + 0.26, 1.16),
+               (0.035, 0.035, 0.03), snake_eye, 12)
 
 
 def treasure(x, y):
