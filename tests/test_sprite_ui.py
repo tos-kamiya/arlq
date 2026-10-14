@@ -174,6 +174,7 @@ def test_disc_halves_split_on_the_diagonal(monkeypatch):
 def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
     ui._wall_images = None  # plain-shape fallback when the parts are missing
+    ui._floor_images = None
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui.window_height = 500
     ui.batch = None
@@ -211,6 +212,7 @@ def test_column_wall_links_only_toward_discovered_wall_neighbors(monkeypatch):
     ui._display_color = lambda color: color
     ui._wall_images = {part: SimpleNamespace(width=26, height=50, part=part)
                        for part in sprite_funcs.WALL_PARTS}
+    ui._floor_images = None
     monkeypatch.setattr(PygletUI, '_draw_tile', lambda *args: None)
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
@@ -225,3 +227,29 @@ def test_column_wall_links_only_toward_discovered_wall_neighbors(monkeypatch):
         (1 + sprite_funcs.WALL_OVERHANG) * 20)
     assert column.y == 500 - 40
     assert ui._drawables[0].group.order < column.group.order < ui._row_group(1, 'sprite').order
+
+
+
+def test_floor_is_a_checkerboard_of_two_tinted_stones(monkeypatch):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.window_height = 500
+    ui.batch = None
+    ui._floor_group = 'floor'
+    ui._drawables = []
+    ui._display_color = lambda color: color
+    ui._floor_images = [SimpleNamespace(width=130, height=200, part=part)
+                        for part in sprite_funcs.FLOOR_PARTS]
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    field = [[d.CHAR_FLOOR] * 2 for _ in range(2)]
+    for x, y in ((0, 0), (1, 0), (1, 1)):
+        ui._draw_tile(x, y, sprite_funcs.VISIBLE_FLOOR, field, lambda *_: True)
+    even, odd, even_again = ui._drawables
+    assert (even.image.part, odd.image.part, even_again.image.part) == ('a', 'b', 'a')
+    assert even.color == even_again.color == sprite_funcs.FLOOR_TINTS[sprite_funcs.VISIBLE_FLOOR]
+    assert sum(odd.color) < sum(even.color)
+    assert even.image.width * even.scale_x == 14 and even.image.height * even.scale_y == 21
+    # Explored-but-not-visible floor stays darker than visible floor.
+    ui._draw_tile(0, 1, sprite_funcs.FLOOR, field, lambda *_: True)
+    assert sum(ui._drawables[-1].color) < sum(odd.color)

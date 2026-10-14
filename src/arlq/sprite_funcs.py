@@ -47,6 +47,11 @@ WALL_FRONT_SHADE = 0.7
 # each covers one cell plus the WALL_OVERHANG band north of it.
 WALL_PARTS = ('link-west', 'link-east', 'column')
 WALL_TINT = 2.4
+# Flagstone floor: two near-white stones laid as a checkerboard, tinted a warm
+# dark grey per visible/explored floor, alternate cells slightly darker.
+FLOOR_PARTS = ('a', 'b')
+FLOOR_TINTS = {VISIBLE_FLOOR: (78, 72, 66), FLOOR: (54, 50, 46)}
+FLOOR_CHECKER_SHADE = 0.88
 
 
 def ground_disc_image(half=None):
@@ -100,6 +105,11 @@ class SpriteUI(PygletUI):
         self._wall_images = ({part: pyglet.image.load(str(path))
                               for part, path in zip(WALL_PARTS, paths)}
                              if all(path.is_file() for path in paths) else None)
+        floor_paths = [Path(__file__).parent / 'assets' / 'floor' / ('floor-' + part + '.png')
+                       for part in FLOOR_PARTS]
+        self._floor_images = ([pyglet.image.load(str(path)) for path in floor_paths]
+                              if all(path.is_file() for path in floor_paths) else None)
+        self._floor_group = pyglet.graphics.Group(order=-1)
         # Rows are painted north to south: a row's walls, then its characters,
         # so walls overlap characters to their north but not to their south.
         self._row_groups = {}
@@ -112,10 +122,12 @@ class SpriteUI(PygletUI):
         return self._row_groups[order]
 
     def _draw_tile(self, x, y, tile_color, field, discovered_at):
+        if tile_color in FLOOR_TINTS:
+            return self._draw_floor(x, y, tile_color, field, discovered_at)
         if field[y][x] != d.CHAR_WALL or tile_color not in (VISIBLE_WALL, WALL):
             return super()._draw_tile(x, y, tile_color, field, discovered_at)
         floor = VISIBLE_FLOOR if tile_color == VISIBLE_WALL else FLOOR
-        super()._draw_tile(x, y, floor, field, discovered_at)
+        self._draw_floor(x, y, floor, field, discovered_at)
         left, width = self._field_col_x(x), self._field_col_width(x) + 1
         top = (y - WALL_OVERHANG) * self.cell_size_y
         height = self.cell_size_y + 1
@@ -149,6 +161,22 @@ class SpriteUI(PygletUI):
             front = WALL_OVERHANG * self.cell_size_y
             self._draw_wall_rect(left, (y + 1) * self.cell_size_y - front, width, front + 1,
                                  tile_color, WALL_FRONT_SHADE, group)
+
+    def _draw_floor(self, x, y, tile_color, field, discovered_at):
+        if self._floor_images is None:
+            return super()._draw_tile(x, y, tile_color, field, discovered_at)
+        odd = (x + y) % 2
+        image = self._floor_images[odd]
+        shade = FLOOR_CHECKER_SHADE if odd else 1
+        tint = tuple(round(c * shade) for c in FLOOR_TINTS[tile_color])
+        stone = pyglet.sprite.Sprite(
+            image, x=self._field_col_x(x), y=self.window_height - (y + 1) * self.cell_size_y,
+            batch=self.batch, group=self._floor_group,
+        )
+        stone.scale_x = (self._field_col_width(x) + 1) / image.width
+        stone.scale_y = (self.cell_size_y + 1) / image.height
+        stone.color = self._display_color(tint)
+        self._drawables.append(stone)
 
     def _draw_wall_rect(self, x, y, width, height, color, shade, group):
         color = tuple(min(255, round(c * shade)) for c in color)
