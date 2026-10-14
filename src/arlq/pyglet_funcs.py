@@ -707,6 +707,10 @@ class PygletUI:
             )
         self._draw_field_text(pos, "@", self._tone_color(foreground), bold=True)
 
+    def _draw_companion_slot(self, pos: d.Point, char: str):
+        """Draws the companion travelling with the player, in the cell to its right."""
+        self._draw_field_text(pos, char, COLOR_MAP[CI_GREEN], bold=True)
+
     def _draw_field_text(self, pos: d.Point, text: str, color: Tuple[int, int, int], bold: bool = False):
         """Draws text at a field grid cell (never an edge column), applying
         the same grid alignment as the other field columns."""
@@ -840,7 +844,7 @@ class PygletUI:
             self._draw_player((px, py), player)
 
         if not floor_view and player.companion is not None and px + 1 < d.FIELD_WIDTH:
-            self._draw_field_text((px + 1, py), player.companion.tribe.char, COLOR_MAP[CI_GREEN], bold=True)
+            self._draw_companion_slot((px + 1, py), player.companion.tribe.char)
 
         # Draw entities (monster and treasures)
         player_attack = d.current_player_attack(player, stage_num)

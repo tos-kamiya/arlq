@@ -7,7 +7,7 @@ import pyglet
 
 from . import defs as d
 from . import display as ui_display
-from .pyglet_funcs import COLOR_MAP, FLOOR, VISIBLE_FLOOR, VISIBLE_WALL, WALL, PygletUI
+from .pyglet_funcs import CI_GREEN, COLOR_MAP, FLOOR, VISIBLE_FLOOR, VISIBLE_WALL, WALL, PygletUI
 
 
 SPRITE_FILES = {
@@ -19,6 +19,8 @@ SPRITE_FILES = {
     'd': 'comodo-dragon.png',
     'D': 'dragon.png',
     'T': 'treasure.png',
+    'n': 'nomicon.png',
+    'o': 'ocular.png',
 }
 # Every sprite uses one scale: this many source pixels (an amoeba's width)
 # span 1.8 cell widths. Larger models therefore give larger sprites.
@@ -36,6 +38,21 @@ GROUND_DISC_FLATTEN = math.sin(math.radians(60))
 GROUND_DISC_ALPHA = 1.0
 GROUND_DISC_FALLOFF = 0.8
 GROUND_DISC_TEXELS = 64
+# Companions stand inside a faint green pillar of light: an open cylinder on
+# the ground disc's ellipse, seen at the same 60-degree view. Radius and side
+# height in cell widths; peak opacity of the far wall (behind the sprite) and
+# the near wall (over it); the sides glow brighter, and both fade upward.
+PILLAR_RADIUS = 0.8
+PILLAR_HEIGHT = 2.0
+PILLAR_BACK_ALPHA = 0.9
+PILLAR_FRONT_ALPHA = 0.4
+PILLAR_EDGE = 0.45
+PILLAR_FADE = 1.1
+# The companion travelling with the player floats small at its right shoulder:
+# size relative to a normal sprite, and its ground point from the player's
+# cell centre (cell widths east, cell heights north).
+FAMILIAR_SIZE = 0.6
+FAMILIAR_OFFSET = (0.7, 0.15)
 # Walls are raised blocks seen from the same 60-degree view: the top face is
 # lifted this many cells north, so a wall overlaps (and may partly hide) the
 # lower part of the cell just north of it. Where the cell south of a wall is
@@ -53,6 +70,33 @@ WALL_TINT = {VISIBLE_WALL: 2.4, WALL: 1.75}
 FLOOR_PARTS = ('a', 'b')
 FLOOR_TINTS = {VISIBLE_FLOOR: (78, 72, 66), FLOOR: (42, 39, 36)}
 FLOOR_CHECKER_SHADE = 0.88
+
+
+def pillar_image(side):
+    """One wall ('back' or 'front') of an open light cylinder, white with alpha.
+
+    The image spans the cylinder's width and, from the bottom of its ground
+    ellipse, the side height plus that ellipse; the tint is applied when drawn.
+    """
+    flatten, height = GROUND_DISC_FLATTEN, PILLAR_HEIGHT / PILLAR_RADIUS
+    width = GROUND_DISC_TEXELS
+    rows = round(width * (height + 2 * flatten) / 2)
+    peak = PILLAR_BACK_ALPHA if side == 'back' else PILLAR_FRONT_ALPHA
+    rgba = bytearray()
+    for row in range(rows):
+        v = (row + 0.5) / rows * (height + 2 * flatten) - flatten
+        for col in range(width):
+            u = (col + 0.5) / width * 2 - 1
+            depth = math.sqrt(max(0.0, 1 - u * u))
+            # The far wall rises from the ellipse's upper (northern) arc.
+            t = (v - (depth if side == 'back' else -depth) * flatten) / height
+            alpha = 0.0
+            if 0 <= t <= 1:
+                rim = min(1.0, (1 - abs(u)) / 0.06)
+                alpha = (peak * rim * min(1.0, PILLAR_EDGE / math.sqrt(1 - u * u + 0.02))
+                         * (1 - t) ** PILLAR_FADE)
+            rgba += bytes((255, 255, 255, round(255 * alpha)))
+    return pyglet.image.ImageData(width, rows, 'RGBA', bytes(rgba), pitch=width * 4)
 
 
 def ground_disc_image(half=None):
@@ -101,6 +145,7 @@ class SpriteUI(PygletUI):
         self._disc_image = ground_disc_image()
         self._disc_halves = (ground_disc_image('lower-left'), ground_disc_image('upper-right'))
         self._disc_group = pyglet.graphics.Group(order=1)
+        self._pillar_images = {side: pillar_image(side) for side in ('back', 'front')}
         wall_directory = Path(__file__).parent / 'assets' / 'walls'
         paths = [wall_directory / ('wall-' + part + '.png') for part in WALL_PARTS]
         self._wall_images = ({part: pyglet.image.load(str(path))
@@ -116,8 +161,11 @@ class SpriteUI(PygletUI):
         self._row_groups = {}
         self._overlay_group = pyglet.graphics.Group(order=10000)
 
+    ROW_LAYERS = ('wall', 'column', 'pillar-back', 'sprite', 'pillar-front', 'familiar',
+                  'familiar-front')
+
     def _row_group(self, y, layer):
-        order = 10 + 3 * y + ('wall', 'column', 'sprite').index(layer)
+        order = 10 + len(self.ROW_LAYERS) * y + self.ROW_LAYERS.index(layer)
         if order not in self._row_groups:
             self._row_groups[order] = pyglet.graphics.Group(order=order)
         return self._row_groups[order]
@@ -210,32 +258,66 @@ class SpriteUI(PygletUI):
             return super()._draw_field_text(pos, text, color, bold)
         self._draw_sprite(pos, text, color)
 
-    def _draw_sprite(self, pos, text, color, upper_right_color=None):
-        images = self._gray_images if self.map_mode else self._sprite_images
-        picture = images[text]
+    def _draw_companion_slot(self, pos, char):
+        if char not in self._sprite_images:
+            return super()._draw_companion_slot(pos, char)
         x, y = pos
-        padding = max(1, round(self.scale))
-        width = max(1, self.cell_size_x - 2 * padding)
-        scale = 1.8 * width / SPRITE_REFERENCE_PIXELS
-        sprite = pyglet.sprite.Sprite(
-            picture,
-            x=self._field_col_x(x) + (self.cell_size_x - picture.width * scale) / 2,
-            y=self.window_height - (y + 0.5) * self.cell_size_y
-            - (picture.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale,
-            batch=self.batch,
-            group=self._row_group(y, 'sprite'),
-        )
-        sprite.scale = scale
-        if color in {self._dim_color(value) for value in COLOR_MAP.values()}:
-            sprite.color = (128, 128, 128)
-        self._drawables.append(sprite)
+        dx, dy = FAMILIAR_OFFSET
+        cx = self._field_col_x(x - 1) + (0.5 + dx) * self.cell_size_x
+        cy = (y + 0.5 - dy) * self.cell_size_y
+        self._place_sprite(char, cx, cy, FAMILIAR_SIZE, y, 'familiar', dimmed=False)
+        self._draw_pillar(cx, cy, FAMILIAR_SIZE, y, COLOR_MAP[CI_GREEN], familiar=True)
+
+    def _draw_sprite(self, pos, text, color, upper_right_color=None):
+        x, y = pos
+        cx, cy = self._field_col_x(x) + self.cell_size_x / 2, (y + 0.5) * self.cell_size_y
+        dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
+        self._place_sprite(text, cx, cy, 1.0, y, 'sprite', dimmed)
+        if text in d.CHAR_TO_COMPANION_TRIBE:
+            green = COLOR_MAP[CI_GREEN]
+            self._draw_pillar(cx, cy, 1.0, y, self._dim_color(green) if dimmed else green)
         # Keep the original semantic color (strength, poison, etc.) readable
         # as a glowing disc on the ground the character stands on.
-        self._draw_ground_disc(
-            self._field_col_x(x) + self.cell_size_x / 2,
-            (y + 0.5) * self.cell_size_y,
-            GROUND_DISC_RADIUS * self.cell_size_x, color, upper_right_color,
+        self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self.cell_size_x, color,
+                               upper_right_color)
+
+    def _place_sprite(self, text, cx, cy, size, row, layer, dimmed):
+        """Draw a character image with its feet at field pixel (cx, cy)."""
+        images = self._gray_images if self.map_mode else self._sprite_images
+        picture = images[text]
+        padding = max(1, round(self.scale))
+        width = max(1, self.cell_size_x - 2 * padding)
+        scale = size * 1.8 * width / SPRITE_REFERENCE_PIXELS
+        sprite = pyglet.sprite.Sprite(
+            picture,
+            x=cx - picture.width * scale / 2,
+            y=self.window_height - cy - (picture.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale,
+            batch=self.batch,
+            group=self._row_group(row, layer),
         )
+        sprite.scale = scale
+        if dimmed:
+            sprite.color = (128, 128, 128)
+        self._drawables.append(sprite)
+
+    def _draw_pillar(self, cx, cy, size, row, color, familiar=False):
+        """Additive light cylinder around a companion: far wall behind, near wall over it."""
+        radius = size * PILLAR_RADIUS * self.cell_size_x
+        for side, layer in (('back', 'pillar-back'), ('front', 'pillar-front')):
+            image = self._pillar_images[side]
+            pillar = pyglet.sprite.Sprite(
+                image, x=cx - radius,
+                y=self.window_height - cy - radius * GROUND_DISC_FLATTEN,
+                blend_src=pyglet.gl.GL_SRC_ALPHA, blend_dest=pyglet.gl.GL_ONE,
+                batch=self.batch,
+                group=self._row_group(row, 'familiar-front' if familiar and side == 'front'
+                                      else layer),
+            )
+            pillar.scale_x = 2 * radius / image.width
+            pillar.scale_y = (PILLAR_HEIGHT * size * self.cell_size_x
+                              + 2 * radius * GROUND_DISC_FLATTEN) / image.height
+            pillar.color = self._display_color(color)
+            self._drawables.append(pillar)
 
     def _draw_ground_disc(self, cx, cy, radius, color, upper_right_color=None):
         """A disc seen at the sprites' 60-degree view, fading outward, below the sprite.
