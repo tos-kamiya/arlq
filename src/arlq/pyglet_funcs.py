@@ -707,6 +707,10 @@ class PygletUI:
             )
         self._draw_field_text(pos, "@", self._tone_color(foreground), bold=True)
 
+    def _draw_follower(self, pos: d.Point, char: str):
+        """Draws a Stage 3 follower (such as the Javelin Elf) walking with the player."""
+        self._draw_field_text(pos, char, COLOR_MAP["default"])
+
     def _draw_companion_slot(self, pos: d.Point, char: str):
         """Draws the companion travelling with the player, in the cell to its right."""
         self._draw_field_text(pos, char, COLOR_MAP[CI_GREEN], bold=True)
@@ -881,7 +885,7 @@ class PygletUI:
         # independently of the temporary companion slot.
         for fx, fy, ffloor, fchar in getattr(player, "persistent_followers", []):
             if not floor_view and ffloor == player.current_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
-                self._draw_field_text((fx, fy), fchar, COLOR_MAP["default"])
+                self._draw_follower((fx, fy), fchar)
 
         # Draw the right-edge strength column: the stage's monster tribes and
         # the player, ranked strongest-first. A tinted background (full

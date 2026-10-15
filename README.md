@@ -61,7 +61,10 @@ half is yellow. An empowered monster's rank mark (`'` or `"`) becomes raised
 apostrophes in its strength color, floating at the sprite's upper right. Companions stand inside
 a faint green pillar of light that sets them apart from monsters; the companion
 travelling with the player is shown small at the player's right shoulder. An elf
-you have already met is drawn darker, together with its disc. Walls are drawn as
+you have already met is drawn darker, together with its disc. A character in
+one of the four cells next to the player is drawn 1.3 times larger, so the one
+you are about to meet is easy to read even in a small window; followers walking
+with you keep their size. Walls are drawn as
 rows of marble columns, one per wall cell, linked by a beam and a step; they
 rise slightly into the cell to their north and may partly hide a character
 standing there. Walls raised by a defeated Golem are drawn as its rubble
