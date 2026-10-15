@@ -30,6 +30,7 @@ SPRITE_FILES = {
     'p': 'pegasus.png',
     'H': 'high-elf.png',
     'I': 'isolated-elf.png',
+    'J': 'javelin-elf.png',
 }
 # An elf the player has met (drawn without bold as text) is shown with its
 # sprite and ground disc darkened to this fraction.

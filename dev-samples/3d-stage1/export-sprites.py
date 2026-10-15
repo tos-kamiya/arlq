@@ -24,7 +24,8 @@ if HEROIC:
                ("'", 'mark-rank2', (0, 0)), ('"', 'mark-rank3', (0, 0)),
                ('g', 'golem', (0, 0)), ('e', 'erebus', (0, 0)), ('E', 'rare-erebus', (0, 0)),
                ('X', 'caltrop-plant', (0, 0)), ('p', 'pegasus', (0, 0)),
-               ('H', 'high-elf', (0, 0)), ('I', 'isolated-elf', (0, 0))]
+               ('H', 'high-elf', (0, 0)), ('I', 'isolated-elf', (0, 0)),
+               ('J', 'javelin-elf', (0, 0))]
 if '--only' in sys.argv:
     only = sys.argv[sys.argv.index('--only') + 1:]
     models = [model for model in models if model[0] in only]
