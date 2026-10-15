@@ -48,8 +48,8 @@ connected gamepad's D-pad or left stick to move, and button 0 to select a
 stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
 
 Use `arlq --sprites` for the character-sprite GUI. The Stage 1 characters (player,
-monsters, treasure chest, and the Nomicon and Ocular companions) and the Stage 2 rare chimera and
-fire drake use transparent images rendered from 3D models at
+monsters, treasure chest, and the Nomicon and Ocular companions) and the Stage 2 rare chimera,
+fire drake and golem use transparent images rendered from 3D models at
 60 degrees; other and unidentified characters
 keep their text display. A disc on the ground under each sprite, fading out away from the character,
 keeps the original strength/status colors, including the player's yellow and
