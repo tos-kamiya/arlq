@@ -44,6 +44,7 @@ ROW = [('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
        ('n', 'NOMICON', -7.4, ROW_Y[1]), ('o', 'OCULAR', -5.4, ROW_Y[1]),
        ('p', 'PEGASUS', -3.4, ROW_Y[1]), ('H', 'HIGH ELF', -1.4, ROW_Y[1]),
        ('I', 'ISOLATED ELF', 0.6, ROW_Y[1]), ('J', 'JAVELIN ELF', 2.6, ROW_Y[1]),
+       ('K', 'COLLECTOR ELF', 4.6, ROW_Y[1]),
        ('C', 'RARE CHIMERA', -7.1, ROW_Y[2]), ('F', 'FIRE DRAKE', -4.4, ROW_Y[2]),
        ('g', 'GOLEM', -1.7, ROW_Y[2]), ('e', 'EREBUS', 0.25, ROW_Y[2]),
        ('E', 'RARE EREBUS', 2.3, ROW_Y[2]), ('X', 'CALTROP PLANT', 4.35, ROW_Y[2]),
@@ -55,7 +56,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6}
+         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
@@ -811,21 +812,24 @@ def erebus(x, y, rare):
 ELF_STRETCH = 1.3
 
 
-def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.14), torso=None):
+def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.14), torso=None,
+               skirt_z=(0.02, 0.30, 0.58), girth=1.0):
     """Shared elf build: about three heads tall, slimmer and taller than the
     player, in a long robe, with pointed ears; `body(x, y)` and `head(x, y)`
     add each elf's own parts, and `torso` can dress the upper body apart
-    from the robe.
+    from the robe. `skirt_z` raises the robe's hem (for a seated elf) and
+    `girth` widens the upper body.
 
     Heights shrink to half in the 60-degree view, so the body is stretched
     upward and the head tilted back for the face to look at the camera.
     """
     body_start = set(bpy.data.objects)
     # Long robe flaring to the floor and the slim body above it.
-    tube(prefix + ' robe skirt', [(x, y, 0.02), (x, y, 0.30), (x, y, 0.58)], list(skirt),
+    tube(prefix + ' robe skirt', [(x, y, z) for z in skirt_z], list(skirt),
          robe, sides=32, smooth=True)
     tube(prefix + ' robe body', [(x, y, 0.56), (x, y, 0.72), (x, y, 0.86), (x, y, 0.90)],
-         [(0.16, 0.13), (0.19, 0.15), (0.17, 0.13), (0.08, 0.07)], torso or robe, sides=32,
+         [(rx * girth, ry * girth) for rx, ry in
+          ((0.16, 0.13), (0.19, 0.15), (0.17, 0.13), (0.08, 0.07))], torso or robe, sides=32,
          smooth=True)
     body(x, y)
     head_start = set(bpy.data.objects)
@@ -1053,6 +1057,103 @@ def javelin_elf(x, y):
                       rim=(1.0, 0.75, 0.5), rim_strength=0.8)
     elf_figure(x, y, 'Javelin elf', robe, skin, eye, body, head, skirt=(0.21, 0.17, 0.14),
                torso=jerkin)
+
+
+def collector_elf(x, y):
+    """Collector Elf: a stout connoisseur who never leaves a light folding
+    camp chair, in a deep teal robe, balding with side hair and a gold
+    monocle, peering through a magnifying glass held in both hands (the
+    rustless blade it gives is magic, not held), with a vase and a bundle of
+    blades beside the chair.
+    """
+    robe = material('Collector elf teal robe', (0.02, 0.30, 0.30), 0.1, 0.45,
+                    rim=(0.5, 1.0, 0.9), rim_strength=1.0, coat=0.3)
+    gold = material('Collector elf gold', (1.0, 0.72, 0.22), roughness=0.25, metallic=0.8,
+                    emission=(1.0, 0.62, 0.15), strength=0.4)
+    wood = material('Collector elf pale chair wood', (0.70, 0.52, 0.30), 0.0, 0.5,
+                    rim=(1.0, 0.85, 0.6), rim_strength=0.6)
+    canvas = material('Collector elf canvas', (0.85, 0.80, 0.66), 0.05, 0.8,
+                      rim=(1.0, 0.95, 0.85), rim_strength=0.5)
+    lens = material('Collector elf lens', (0.85, 0.95, 1.0), 0.9, 0.05, coat=1.0,
+                    rim=(0.8, 0.95, 1.0), rim_strength=1.5)
+    skin = material('Collector elf skin', (0.96, 0.78, 0.64), 0.2, 0.4,
+                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    hair = material('Collector elf brown hair', (0.30, 0.20, 0.12), 0.1, 0.5)
+    shoe = material('Collector elf shoes', (0.12, 0.06, 0.03), roughness=0.3, coat=0.8)
+    steel = material('Collector elf stored blades', (0.80, 0.85, 0.92), roughness=0.2, metallic=0.6,
+                     emission=(0.7, 0.85, 1.0), strength=0.4)
+    vase = material('Collector elf vase', (0.15, 0.30, 0.65), 0.1, 0.2, coat=1.0,
+                    rim=(0.7, 0.85, 1.0), rim_strength=0.8)
+    eye = material('Collector elf eyes', (0.10, 0.08, 0.05), roughness=0.3, coat=1.0)
+
+    def body(x, y):
+        # Light folding camp chair: crossed thin legs, a canvas seat and back.
+        for side in (-1, 1):
+            sx = x + side * 0.30
+            for a, b in (((sx, y - 0.24, 0.0), (sx, y + 0.22, 0.32)),
+                         ((sx, y + 0.22, 0.0), (sx, y - 0.24, 0.32))):
+                tube('Collector elf chair leg', [a, b], [0.022, 0.022], wood, sides=8, smooth=True)
+            tube('Collector elf back post', [(sx, y + 0.22, 0.32), (sx, y + 0.30, 0.95)],
+                 [0.022, 0.02], wood, sides=8, smooth=True)
+            tube('Collector elf armrest', [(sx + side * 0.04, y + 0.24, 0.50),
+                                           (sx + side * 0.04, y - 0.22, 0.48)], [0.02, 0.02], wood,
+                 sides=8, smooth=True)
+            tube('Collector elf armrest post', [(sx + side * 0.04, y - 0.22, 0.48),
+                                                (sx, y - 0.22, 0.30)], [0.018, 0.018], wood, sides=8,
+                 smooth=True)
+        for dy in (-0.22, 0.22):
+            tube('Collector elf seat rail', [(x - 0.30, y + dy, 0.32), (x + 0.30, y + dy, 0.32)],
+                 [0.022, 0.022], wood, sides=8, smooth=True)
+        block('Collector elf canvas seat', (x, y, 0.31), (0.58, 0.46, 0.025), canvas, 0.01)
+        block('Collector elf canvas back', (x, y + 0.27, 0.72), (0.58, 0.025, 0.36), canvas, 0.01,
+              (-0.12, 0, 0))
+        for side in (-1, 1):
+            # Robed thighs forward over the seat, shins down, shoes in front.
+            tube('Collector elf thigh', [(x + side * 0.12, y, 0.42), (x + side * 0.13, y - 0.26, 0.42)],
+                 [0.11, 0.10], robe, sides=16, smooth=True)
+            tube('Collector elf shin', [(x + side * 0.13, y - 0.28, 0.40), (x + side * 0.13, y - 0.30, 0.08)],
+                 [0.08, 0.06], robe, sides=16, smooth=True)
+            sphere('Collector elf shoe', (x + side * 0.13, y - 0.35, 0.05), (0.06, 0.09, 0.05), shoe, 16)
+            # Arms resting on the belly, both hands on the magnifier's handle.
+            tube('Collector elf sleeve', [(x + side * 0.24, y, 0.84), (x + side * 0.30, y - 0.10, 0.70),
+                                          (x + side * 0.10, y - 0.27, 0.64)], [0.08, 0.08, 0.08], robe,
+                 sides=12, smooth=True)
+            sphere('Collector elf hand', (x + side * 0.04, y - 0.30, 0.64), (0.055, 0.05, 0.05), skin, 16)
+        sphere('Collector elf belly', (x, y - 0.08, 0.66), (0.24, 0.20, 0.20), robe, 32)
+        # Magnifying glass raised before the chest, its lens facing the camera.
+        tube('Collector elf magnifier handle', [(x, y - 0.31, 0.60), (x, y - 0.33, 0.74)],
+             [0.022, 0.025], wood, sides=8, smooth=True)
+        face_camera = (math.radians(30), 0, 0)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.08, minor_radius=0.016,
+                                         location=(x, y - 0.35, 0.83), rotation=face_camera)
+        finish(bpy.context.object, gold, True, 'Collector elf magnifier rim')
+        bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.075, depth=0.012,
+                                            location=(x, y - 0.35, 0.83), rotation=face_camera)
+        finish(bpy.context.object, lens, True, 'Collector elf magnifier lens')
+        # Collected pieces beside the chair: a vase and a bundle of blades.
+        tube('Collector elf vase', [(x + 0.52, y - 0.05, 0.0), (x + 0.52, y - 0.05, 0.12),
+                                    (x + 0.52, y - 0.05, 0.26), (x + 0.52, y - 0.05, 0.34)],
+             [0.07, 0.11, 0.05, 0.06], vase, sides=20, smooth=True)
+        for k, dx in enumerate((-0.04, 0.0, 0.04)):
+            tube('Collector elf stored blade', [(x - 0.50 + dx, y - 0.10 + k * 0.03, 0.0),
+                                                (x - 0.46 + dx * 2, y - 0.08 + k * 0.03, 0.46)],
+                 [(0.025, 0.008), 0], steel, sides=4)
+
+    def head(x, y):
+        # Balding top with hair left at the sides and back, and a gold monocle.
+        for side in (-1, 1):
+            sphere('Collector elf side hair', (x + side * 0.11, y + 0.04, 1.00), (0.06, 0.09, 0.07), hair, 16)
+        sphere('Collector elf back hair', (x, y + 0.11, 1.00), (0.12, 0.05, 0.07), hair, 16)
+        sphere('Collector elf double chin', (x, y - 0.06, 0.92), (0.11, 0.09, 0.05), skin, 16)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.04, minor_radius=0.008,
+                                         location=(x + 0.05, y - 0.15, 1.04),
+                                         rotation=(math.pi / 2, 0, 0))
+        finish(bpy.context.object, gold, True, 'Collector elf monocle')
+        tube('Collector elf monocle chain', [(x + 0.09, y - 0.15, 1.02), (x + 0.12, y - 0.12, 0.92),
+                                             (x + 0.13, y - 0.10, 0.86)], [0.006] * 3, gold, sides=4)
+
+    elf_figure(x, y, 'Collector elf', robe, skin, eye, body, head, skirt=(0.27, 0.30, 0.24),
+               skirt_z=(0.34, 0.45, 0.60), girth=1.35)
 
 
 def pegasus(x, y):
@@ -1299,7 +1400,7 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
             'g': golem, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
-            'H': high_elf, 'I': isolated_elf, 'J': javelin_elf}
+            'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)
