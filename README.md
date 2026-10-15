@@ -49,7 +49,7 @@ stage. Change gamepad button assignments in `Settings -> Gamepad button settings
 
 Use `arlq --sprites` for the character-sprite GUI. The Stage 1 characters (player,
 monsters, treasure chest, and the Nomicon and Ocular companions), the Stage 2 Pegasus companion, rare chimera,
-fire drake, golem, Erebus, caltrop plant and High Elf, the Stage 3 Isolated and Javelin Elves, and the Stage 4 rare Erebus use transparent images rendered from 3D models at
+fire drake, golem, Erebus, caltrop plant and High Elf, the Stage 3 Isolated, Javelin and Collector Elves, and the Stage 4 rare Erebus use transparent images rendered from 3D models at
 60 degrees; other and unidentified characters
 keep their text display. A disc on the ground under each sprite, fading out away from the character,
 keeps the original strength/status colors, including the player's yellow and
