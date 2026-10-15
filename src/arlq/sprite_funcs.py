@@ -49,6 +49,9 @@ MET_ELF_SHADE = 0.6
 # step would meet, is drawn this much larger (its ground disc keeps its size).
 # Followers walking with the player keep their usual size.
 NEIGHBOR_SCALE = 1.3
+# Field text kept as text (such as "?" and "!") is raised by this fraction of
+# a cell, so it stays within its cell above the flagstone joint.
+FIELD_TEXT_RAISE = 0.1
 # The strength column on the right is this many cells wider than in the
 # original GUI: each entry keeps its label, smaller, on the left and, once the
 # player has identified that type (as on the field), shows the character's
@@ -487,7 +490,7 @@ class SpriteUI(PygletUI):
         if text in self._mark_images and (x - 1, y) in self._sprite_cells:
             return self._draw_rank_mark((x - 1, y), text, color)
         if text not in self._sprite_images:
-            return super()._draw_field_text(pos, text, color, bold)
+            return super()._draw_field_text((x, y - FIELD_TEXT_RAISE), text, color, bold)
         tribe = d.CHAR_TO_MONSTER_TRIBE.get(text)
         met_elf = tribe is not None and tribe.is_elf and not bold
         self._draw_sprite(pos, text, color, shade=MET_ELF_SHADE if met_elf else 1.0)
