@@ -257,6 +257,41 @@ def test_rank_mark_grows_with_an_enlarged_neighbor(sprite_ui):
     assert badge.scale == pytest.approx(sprite.scale)
 
 
+def _strength_column_ui(monkeypatch, known_types):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._sprite_images = {char: SimpleNamespace(width=100, height=120) for char in SPRITE_FILES}
+    ui._mark_images = {mark: SimpleNamespace(width=30, height=40) for mark in ("'", '"')}
+    ui._known_types = known_types
+    ui.map_mode = False
+    ui.scale = 1
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.field_pixel_width, ui.strength_column_width, ui.strength_column_padding = 500, 60, 4
+    ui.window_height = 500
+    ui.batch = None
+    ui._overlay_group = 'overlay'
+    ui._drawables = []
+    ui._display_color = lambda color: color
+    texts = []
+    monkeypatch.setattr(ui, '_draw_text', lambda pos, text, *args, **kwargs: texts.append(text))
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    return ui, texts
+
+
+@pytest.mark.parametrize('label, known, images', [
+    ('b', {'b'}, ['b']), ('b', set(), []), ("b'", {'b2'}, ['b', "'"]), ("b'", {'b'}, []),
+    ('@', set(), ['@']), ('M', {'M'}, [])])
+def test_strength_column_shows_sprites_of_identified_types_only(monkeypatch, label, known, images):
+    ui, texts = _strength_column_ui(monkeypatch, known)
+    ui._draw_strength_entry(3, label, label == '@')
+    assert texts == [label]
+    expected = [ui._sprite_images.get(name) or ui._mark_images[name] for name in images]
+    assert [piece.image for piece in ui._drawables] == expected
+    # Sprites keep the field's common scale, so their sizes match the field.
+    for piece in ui._drawables:
+        assert piece.scale == pytest.approx(1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+
+
 def test_disc_halves_split_on_the_diagonal(monkeypatch):
     lower, upper = (sprite_funcs.ground_disc_image(half)
                     for half in ('lower-left', 'upper-right'))

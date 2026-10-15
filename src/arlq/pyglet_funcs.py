@@ -707,6 +707,19 @@ class PygletUI:
             )
         self._draw_field_text(pos, "@", self._tone_color(foreground), bold=True)
 
+    def _draw_strength_entry(self, row: int, label: str, is_player: bool):
+        """Draws one strength-column entry, right-aligned in the column."""
+        text_width = self._text_width(label, bold=is_player)
+        self._draw_text(
+            (0, row), label, COLOR_MAP["default"], bold=is_player,
+            x_offset=(
+                self.field_pixel_width
+                + self.strength_column_width
+                - self.strength_column_padding
+                - text_width
+            ),
+        )
+
     def _draw_follower(self, pos: d.Point, char: str):
         """Draws a Stage 3 follower (such as the Javelin Elf) walking with the player."""
         self._draw_field_text(pos, char, COLOR_MAP["default"])
@@ -905,16 +918,7 @@ class PygletUI:
         for y, (strength_char, is_player) in enumerate(ui_display.build_strength_column(tribes, ranking_attack, self.field_height)):
             if strength_char is None:
                 continue
-            text_width = self._text_width(strength_char, bold=is_player)
-            self._draw_text(
-                (0, y), strength_char, COLOR_MAP["default"], bold=is_player,
-                x_offset=(
-                    self.field_pixel_width
-                    + self.strength_column_width
-                    - self.strength_column_padding
-                    - text_width
-                ),
-            )
+            self._draw_strength_entry(y, strength_char, is_player)
 
         if stage_num in d.ELF_STAGES:
             progress_x = 0

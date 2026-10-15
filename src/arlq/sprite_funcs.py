@@ -47,6 +47,13 @@ MET_ELF_SHADE = 0.6
 # step would meet, is drawn this much larger (its ground disc keeps its size).
 # Followers walking with the player keep their usual size.
 NEIGHBOR_SCALE = 1.3
+# The strength column on the right is this many cells wider than in the
+# original GUI: each entry keeps its label, smaller, on the left and, once the
+# player has identified that type (as on the field), shows the character's
+# sprite to its right, at the same size as on the field (larger ones may
+# overflow their row).
+STRENGTH_SPRITE_CELLS = 2
+STRENGTH_TEXT_SCALE = 0.7
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
 # tinted with the monster's color. They float at the upper right of the
 # sprite instead of in the next cell: centre offset from the ground point in
@@ -158,6 +165,8 @@ class SpriteUI(PygletUI):
     # whether characters next to it are enlarged (off while drawing followers).
     _player_cell = None
     _enlarge_neighbors = True
+    # Monster types the player has identified, for the strength column.
+    _known_types = frozenset()
 
     def __init__(self, scale=None, key_repeat_interval=None):
         super().__init__(scale, key_repeat_interval)
@@ -216,6 +225,7 @@ class SpriteUI(PygletUI):
 
     def draw_stage(self, *, rock_cells=None, **kwargs):
         self._rock_cells = rock_cells or set()
+        self._known_types = kwargs.get('known_types') or set()
         return super().draw_stage(rock_cells=rock_cells, **kwargs)
 
     def _draw_tile(self, x, y, tile_color, field, discovered_at):
@@ -308,6 +318,52 @@ class SpriteUI(PygletUI):
         _, background = ui_display.player_appearance(player)
         poison = self._tone_color('magenta') if player.item == d.ITEM_POISONED else None
         self._draw_sprite(pos, '@', self._tone_color(background or 'default'), poison)
+
+    def _set_scaled_dimensions(self):
+        super()._set_scaled_dimensions()
+        self.strength_column_width += STRENGTH_SPRITE_CELLS * self.cell_size_x
+        self.window_width = self.field_pixel_width + self.strength_column_width
+
+    def _draw_strength_entry(self, row, label, is_player):
+        """A small label on the left, and the character's sprite to its right.
+
+        Labels such as "b'" show the base character with its rank mark. A
+        monster type shows its sprite only once identified, as on the field.
+        """
+        left = self.field_pixel_width + self.strength_column_padding
+        self._draw_text((0, row), label, COLOR_MAP["default"], bold=is_player,
+                        x_offset=left, size_scale=STRENGTH_TEXT_SCALE)
+        base, mark = label[0], label[1:]
+        type_key = base + {"'": '2', '"': '3'}.get(mark, '')
+        if base not in self._sprite_images or not (is_player or type_key in self._known_types):
+            return
+        images = self._gray_images if self.map_mode else self._sprite_images
+        picture = images[base]
+        box_width = STRENGTH_SPRITE_CELLS * self.cell_size_x
+        padding = max(1, round(self.scale))
+        scale = 1.8 * max(1, self.cell_size_x - 2 * padding) / SPRITE_REFERENCE_PIXELS
+        cx = (self.field_pixel_width + self.strength_column_width
+              - self.strength_column_padding - box_width / 2)
+        cy = self.window_height - (row + 0.5) * self.cell_size_y
+        sprite = pyglet.sprite.Sprite(
+            picture, x=cx - picture.width * scale / 2, y=cy - picture.height * scale / 2,
+            batch=self.batch, group=self._overlay_group,
+        )
+        sprite.scale = scale
+        self._drawables.append(sprite)
+        if mark in self._mark_images:
+            # The rank mark at the sprite's right, at the field's scale, kept
+            # within the entry's own row.
+            image = self._mark_images[mark]
+            badge_scale = scale
+            badge = pyglet.sprite.Sprite(
+                image, x=cx + min(box_width, picture.width * scale) / 2 - image.width * badge_scale / 2,
+                y=cy - image.height * badge_scale / 2,
+                batch=self.batch, group=self._overlay_group,
+            )
+            badge.scale = badge_scale
+            badge.color = self._display_color(COLOR_MAP['default'])
+            self._drawables.append(badge)
 
     def _clear_drawables(self):
         super()._clear_drawables()
