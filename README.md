@@ -70,7 +70,9 @@ type (as on the field), shows its sprite next to it. Walls are drawn as
 rows of marble columns, one per wall cell, linked by a beam and a step; they
 rise slightly into the cell to their north and may partly hide a character
 standing there. Walls raised by a defeated Golem are drawn as its rubble
-instead of columns (they remain ordinary walls). Floors are flagstones laid as a subtle
+instead of columns (they remain ordinary walls). Barriers (`=`) are drawn as small
+red fires burning from several spots on the floor; while the protective amulet makes them harmless,
+those right around the player show only faint grey smoke. Floors are flagstones laid as a subtle
 checkerboard.
 Controls, rules, FOV and menus are shared with the original Pyglet GUI.
 The original cell size is retained. All sprites are drawn at one common scale,

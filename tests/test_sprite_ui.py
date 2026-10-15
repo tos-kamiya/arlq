@@ -2,6 +2,7 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+import pyglet
 import pytest
 
 from arlq import defs as d, display, sprite_funcs
@@ -374,6 +375,62 @@ def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
     ui._drawables.clear()
     ui._draw_tile(0, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: True)
     assert [piece.image for piece in ui._drawables] == [ui._wall_images['column']]
+
+
+def _barrier_ui(monkeypatch, cooling_center):
+    ui = SpriteUI.__new__(SpriteUI)
+    image = lambda name: SimpleNamespace(name=name, width=48, height=96)
+    ui._floor_images = [image('floor-a'), image('floor-b')]
+    ui._flame_images = [image('flame-a'), image('flame-b')]
+    ui._smoke_images = [image('smoke-a'), image('smoke-b')]
+    ui._cooling_center = cooling_center
+    ui._cur_torched = [[1] * 5 for _ in range(5)]
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.window_height = 500
+    ui.batch = None
+    ui._floor_group = 'floor'
+    ui._row_groups = {}
+    ui._drawables = []
+    ui._display_color = lambda color: color
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    ui._field_col_x = lambda x: x * ui.cell_size_x
+    ui._field_col_width = lambda x: ui.cell_size_x
+    field = [[d.CHAR_BARRIER] * 5 for _ in range(5)]
+    return ui, field
+
+
+@pytest.mark.parametrize('center, pos, cooled', [
+    (None, (2, 2), False), ((2, 2), (2, 2), True), ((2, 2), (3, 3), True), ((2, 2), (4, 2), False)])
+def test_barrier_burns_on_the_floor_and_only_smokes_near_a_protected_player(
+        monkeypatch, center, pos, cooled):
+    ui, field = _barrier_ui(monkeypatch, center)
+    ui._draw_tile(*pos, sprite_funcs.VISIBLE_FLOOR, field, lambda x, y: True)
+    stone, flame = ui._drawables
+    assert stone.image.name.startswith('floor')
+    assert flame.image.name.startswith('smoke' if cooled else 'flame')
+    if cooled:
+        assert flame.color == sprite_funcs.SMOKE_TINT
+        assert flame.blend_dest != pyglet.gl.GL_ONE
+    else:
+        assert flame.blend_dest == pyglet.gl.GL_ONE  # additive glow
+    # Flames rise above the cell into the one to its north.
+    assert flame.scale_y * 96 > ui.cell_size_y
+
+
+def test_flame_image_is_bright_at_the_root_and_clear_at_the_top():
+    image = sprite_funcs.flame_image(0)
+    width, height = sprite_funcs.FLAME_TEXELS
+    data = image.get_data('RGBA', width * 4)
+    alpha = lambda col, row: data[(row * width + col) * 4 + 3]
+    assert alpha(width // 2, height // 8) > 150
+    assert alpha(width // 2, height - 1) == 0 and alpha(0, 2) < 20
+
+
+def test_barrier_glyph_is_left_to_the_flames(sprite_ui):
+    sprite_ui._floor_images = ['floor-a', 'floor-b']
+    sprite_ui._draw_field_text((4, 5), d.CHAR_BARRIER, (220, 82, 82), True)
+    assert not sprite_ui.text_calls and not sprite_ui._drawables
 
 
 def test_column_wall_links_only_toward_discovered_wall_neighbors(monkeypatch):
