@@ -21,15 +21,15 @@ field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
 # Walls north and south of the characters, a vertical wall, and a lone block
 # to show the raised walls overlapping the cell to their north.
 for x in range(4, 40):
-    field[6][x] = field[9][x] = d.CHAR_WALL
-for y in range(4, 13):
+    field[6][x] = field[9][x] = field[13][x] = d.CHAR_WALL
+for y in range(4, 17):
     field[y][4] = field[y][39] = d.CHAR_WALL
 field[11][20] = d.CHAR_WALL
 # Scattered caltrops beside the caltrop plant, to compare their colors.
 for cx, cy in ((7, 10), (5, 12), (8, 12)):
     field[cy][cx] = d.CHAR_CALTROP
 seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
-current = [[int(5 <= x <= 38 and 5 <= y <= 12) for x in range(d.FIELD_WIDTH)]
+current = [[int(5 <= x <= 38 and 5 <= y <= 16) for x in range(d.FIELD_WIDTH)]
            for y in range(d.FIELD_HEIGHT)]
 player = d.Player(10, 8, level=8, lp=d.LP_INIT)
 entities = [d.Monster(13 + i * 3, 8, d.CHAR_TO_MONSTER_TRIBE[char])
@@ -48,6 +48,11 @@ entities += [d.Monster(25, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=2),
              d.Monster(29, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=3),
              d.Monster(33, 11, d.CHAR_TO_MONSTER_TRIBE['F']),
              d.Monster(37, 11, d.CHAR_TO_MONSTER_TRIBE['g'])]
+# Elves in the bottom room: one not met yet, and one met (drawn darker).
+for ex, met in ((8, False), (12, True)):
+    elf = d.Monster(ex, 15, d.CHAR_TO_MONSTER_TRIBE['H'])
+    elf.revealed, elf.met = True, met
+    entities.append(elf)
 # The rare Erebus belongs to Stage 4; shown here beside the Erebus.
 entities += [d.Monster(8, 11, d.CHAR_TO_MONSTER_TRIBE['e']),
              d.Monster(11, 11, d.CHAR_TO_MONSTER_TRIBE['E']),

@@ -49,7 +49,7 @@ stage. Change gamepad button assignments in `Settings -> Gamepad button settings
 
 Use `arlq --sprites` for the character-sprite GUI. The Stage 1 characters (player,
 monsters, treasure chest, and the Nomicon and Ocular companions), the Stage 2 Pegasus companion, rare chimera,
-fire drake, golem, Erebus and caltrop plant, and the Stage 4 rare Erebus use transparent images rendered from 3D models at
+fire drake, golem, Erebus, caltrop plant and High Elf, and the Stage 4 rare Erebus use transparent images rendered from 3D models at
 60 degrees; other and unidentified characters
 keep their text display. A disc on the ground under each sprite, fading out away from the character,
 keeps the original strength/status colors, including the player's yellow and
@@ -59,7 +59,8 @@ defeat (one that unlocks a treasure chest) has a blue disc whose upper-right
 half is yellow. An empowered monster's rank mark (`'` or `"`) becomes raised
 apostrophes in its strength color, floating at the sprite's upper right. Companions stand inside
 a faint green pillar of light that sets them apart from monsters; the companion
-travelling with the player is shown small at the player's right shoulder. Walls are drawn as
+travelling with the player is shown small at the player's right shoulder. An elf
+you have already met is drawn darker, together with its disc. Walls are drawn as
 rows of marble columns, one per wall cell, linked by a beam and a step; they
 rise slightly into the cell to their north and may partly hide a character
 standing there. Floors are flagstones laid as a subtle
