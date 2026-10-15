@@ -42,7 +42,8 @@ ROW = [('@', 'PLAYER', -8.0, 0.0), ('a', 'AMOEBA', -6.0, 0.0), ('A', 'RARE AMOEB
        ('o', 'OCULAR', 11.2, 0.0),
        ('C', 'RARE CHIMERA', -6.0, STAGE2_ROW_Y), ('F', 'FIRE DRAKE', -3.2, STAGE2_ROW_Y),
        ("'", 'RANK 2 MARK', -0.6, STAGE2_ROW_Y), ('"', 'RANK 3 MARK', 1.2, STAGE2_ROW_Y),
-       ('g', 'GOLEM', 3.4, STAGE2_ROW_Y)]
+       ('g', 'GOLEM', 3.4, STAGE2_ROW_Y), ('e', 'EREBUS', 5.5, STAGE2_ROW_Y),
+       ('E', 'RARE EREBUS', 7.7, STAGE2_ROW_Y)]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
@@ -50,7 +51,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'g': 1.3}
+         'g': 1.3, 'e': 1.9, 'E': 2.2}
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
 MONSTER_YAW = math.radians(-30)
 
@@ -306,10 +307,13 @@ def bison(x, y):
                 [(-0.98, 0.20, 0.30, 0.10), (-0.86, 0.25, 0.32, 0.13)], obsidian), 0.03)
     for side in (-1, 1):
         # Horns sweep outward, then hook up and forward.
-        tube('Bison horn', [(x + side * 0.30, y - 0.66, 0.66), (x + side * 0.56, y - 0.66, 0.68),
-                            (x + side * 0.74, y - 0.70, 0.82), (x + side * 0.76, y - 0.80, 1.00),
-                            (x + side * 0.66, y - 0.92, 1.12)],
-             [0.13, 0.11, 0.08, 0.05, 0], horn, sides=10, smooth=True)
+        # Half-size horns, so they are not mistaken for the chimeras' swords.
+        root = Vector((x + side * 0.30, y - 0.66, 0.66))
+        horn_path = [(0.30, -0.66, 0.66), (0.56, -0.66, 0.68), (0.74, -0.70, 0.82),
+                     (0.76, -0.80, 1.00), (0.66, -0.92, 1.12)]
+        tube('Bison horn', [root + (Vector((x + side * px, y + py, pz)) - root) * 0.5
+                            for px, py, pz in horn_path],
+             [0.065, 0.055, 0.04, 0.025, 0], horn, sides=10, smooth=True)
         sphere('Bison eye', (x + side * 0.20, y - 0.86, 0.50), (0.055, 0.04, 0.035), eye, 16)
         for dy in (-0.32, 0.50):
             block('Bison hoof', (x + side * 0.40, y + dy, 0.13), (0.22, 0.28, 0.24),
@@ -357,11 +361,12 @@ def player(x, y):
                     rim=(0.7, 0.95, 1.0), rim_strength=1.2, coat=1.0)
     cape = material('Player crimson cloak', (0.65, 0.04, 0.08), 0.15, 0.4,
                     rim=(1.0, 0.2, 0.1), rim_strength=0.6)
-    gold = material('Player gold trim', (0.85, 0.55, 0.18), roughness=0.3, metallic=1.0)
+    # Trim and sword are plain dark iron rather than precious metal.
+    iron = material('Player dark iron trim', (0.16, 0.16, 0.18), roughness=0.35, metallic=1.0)
     visor = material('Player visor glow', (0.3, 0.9, 1.0), emission=(0.1, 0.75, 1.0),
                      strength=2.5)
-    blade = material('Player rune blade', (0.75, 0.95, 1.0), 0.3, 0.05,
-                     emission=(0.15, 0.7, 1.0), strength=1.2, metallic=0.4)
+    blade = material('Player iron blade', (0.62, 0.63, 0.66), roughness=0.4, metallic=0.55,
+                     rim=(0.85, 0.9, 1.0), rim_strength=0.8)
     bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=0.27, depth=0.40,
                                         location=(x, y, 0.30))
     torso = finish(bpy.context.object, tunic, True, 'Player cylinder torso')
@@ -373,24 +378,24 @@ def player(x, y):
     bevel.segments = 5
     bpy.ops.mesh.primitive_torus_add(major_radius=0.275, minor_radius=0.03,
                                      location=(x, y, 0.24))
-    finish(bpy.context.object, gold, True, 'Player belt')
-    block('Player buckle', (x, y - 0.29, 0.24), (0.09, 0.03, 0.07), gold, 0.012)
+    finish(bpy.context.object, iron, True, 'Player belt')
+    block('Player buckle', (x, y - 0.29, 0.24), (0.09, 0.03, 0.07), iron, 0.012)
     block('Player head', (x, y - 0.07, 0.67), (0.38, 0.36, 0.36), helm, 0.11)
     block('Player visor', (x, y - 0.25, 0.63), (0.30, 0.05, 0.08), visor, 0.015)
     for side in (-1, 1):
         cone('Player helm fin', (x + side * 0.17, y - 0.02, 0.74),
-             (x + side * 0.30, y + 0.10, 0.92), 0.06, 0, gold, 4, False)
+             (x + side * 0.30, y + 0.10, 0.92), 0.06, 0, iron, 4, False)
         arm = block('Player short arm', (x + side * 0.285, y - 0.075, 0.32),
                     (0.16, 0.18, 0.28), tunic, 0.065)
         arm.rotation_euler.y = -side * 0.12
-        sphere('Player pauldron', (x + side * 0.27, y - 0.06, 0.46), (0.09, 0.10, 0.045), gold, 24)
+        sphere('Player pauldron', (x + side * 0.27, y - 0.06, 0.46), (0.09, 0.10, 0.045), iron, 24)
     # Short sword in the right hand (screen left), held low and outward.
     hand = Vector((x - 0.33, y - 0.16, 0.20))
-    tip = hand + Vector((-0.34, -0.30, -0.10))
+    tip = hand + Vector((-0.34, -0.30, -0.10)) * 0.8
     tube('Player sword blade', [hand + (tip - hand) * 0.12, tip * 0.94 + hand * 0.06, tip],
          [(0.075, 0.016), (0.06, 0.014), 0], blade, sides=4)
     tube('Player sword guard', [hand + Vector((0.07, -0.08, 0)), hand + Vector((-0.08, 0.06, 0))],
-         [0.025, 0.025], gold, sides=6)
+         [0.025, 0.025], iron, sides=6)
     # Cloak: hugs the shoulders, drifts back and sideways toward the hem.
     columns, rows = 25, 8
     vertices = []
@@ -411,15 +416,7 @@ def player(x, y):
     solid.thickness = 0.03
     solid.offset = 0
     hem = [vertices[(rows - 1) * columns + c] for c in range(columns)]
-    tube('Player cloak hem trim', hem, [0.018] * columns, gold, sides=6, smooth=True)
-    bpy.ops.object.text_add(location=(x, y - 0.07, 0.855))
-    mark = bpy.context.object
-    mark.name = 'Overlay @'
-    mark.data.body = '@'
-    mark.data.align_x = mark.data.align_y = 'CENTER'
-    mark.data.size = 0.23
-    mark.data.extrude = 0.002
-    mark.data.materials.append(obsidian)
+    tube('Player cloak hem trim', hem, [0.018] * columns, iron, sides=6, smooth=True)
 
 
 def chimera(x, y, cursed=False):
@@ -707,6 +704,105 @@ def ocular(x, y):
              center + Vector((side * 0.62, 0, 0.10)), 0.06, 0, gold, 4, False)
 
 
+def metaball_mesh(name, elements, mat, resolution=0.01):
+    """Melt (position, radius) metaballs into one smooth mesh object.
+
+    The surface lies at roughly 0.6 of each element's radius.
+    """
+    meta = bpy.data.metaballs.new(name)
+    meta.resolution = meta.render_resolution = resolution
+    for co, radius in elements:
+        element = meta.elements.new()
+        element.co = co
+        element.radius = radius
+    obj = bpy.data.objects.new(name, meta)
+    bpy.context.collection.objects.link(obj)
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.convert(target='MESH')
+    return finish(bpy.context.object, mat, True, name)
+
+
+def erebus(x, y, rare):
+    """Erebus: a hooded body of dark smoke whose slanted eyes are pure light.
+
+    The rare Erebus (E) is larger and darker, crowned with obsidian horns,
+    with longer, larger red eyes that spill past the hood, long clawed arms
+    and a cracked gold halo it drains; the Erebus (e) is small and round,
+    with short arms. The face looks up at the 60-degree camera.
+    """
+    if rare:
+        smoke = material('Rare Erebus black smoke', (0.015, 0.015, 0.03), 0.25, 0.4,
+                         rim=(0.6, 0.8, 1.0), rim_strength=2.2)
+        light, strength = (1.0, 0.12, 0.05), 14.0
+    else:
+        smoke = material('Erebus indigo smoke', (0.04, 0.05, 0.14), 0.5, 0.4,
+                         rim=(0.6, 0.8, 1.0), rim_strength=2.0)
+        light, strength = (0.2, 0.85, 1.0), 4.0
+    shade = material('Erebus hood shadow', (0.0, 0.0, 0.005), roughness=0.9)
+    glow = material('Erebus eye light', light, emission=light, strength=strength)
+    # Hood and body, flowing back into a smoke tail along the floor.
+    body = [((0, 0, 0.62), 0.46), ((0, 0.03, 0.42), 0.50), ((0, 0.07, 0.24), 0.42),
+            ((0.04, 0.20, 0.12), 0.28), ((0.10, 0.33, 0.07), 0.18), ((0.18, 0.42, 0.05), 0.11)]
+    if rare:
+        # Tall pointed hood and a ragged hem with extra tails.
+        body += [((0, 0.06, 0.84), 0.28), ((0, 0.10, 0.98), 0.16), ((0, 0.13, 1.07), 0.08),
+                 ((-0.20, 0.22, 0.08), 0.20), ((-0.30, 0.34, 0.05), 0.11),
+                 ((0.24, 0.14, 0.08), 0.18), ((0.36, 0.20, 0.05), 0.10)]
+        arm = [(0.22, -0.10, 0.44, 0.17), (0.28, -0.24, 0.42, 0.13), (0.24, -0.38, 0.40, 0.10)]
+    else:
+        body += [((0, 0.12, 0.78), 0.26)]
+        arm = [(0.22, -0.12, 0.40, 0.15), (0.17, -0.25, 0.38, 0.11)]
+    for side in (-1, 1):
+        body += [((side * ax, ay, az), r) for ax, ay, az, r in arm]
+    shape = metaball_mesh('Erebus E body' if rare else 'Erebus e body',
+                          [((x + px, y + py, pz), r) for (px, py, pz), r in body], smoke, 0.015)
+    wobble = shape.modifiers.new('Smoke wobble', 'DISPLACE')
+    texture = bpy.data.textures.new('Smoke wobble', 'CLOUDS')
+    texture.noise_scale = 0.18
+    wobble.texture = texture
+    wobble.strength = 0.06
+    # Dark opening of the hood on its upper front, facing the camera, with
+    # the eyes of light set in it; the rare one's eyes spill past the hood.
+    facing = Vector((0, -math.cos(math.radians(60)), math.sin(math.radians(60))))
+    upward = Vector((0, math.sin(math.radians(60)), math.cos(math.radians(60))))
+    face = Vector((x, y, 0.62)) + facing * 0.25
+    opening = sphere('Erebus hood opening', tuple(face), (0.19, 0.16, 0.05), shade, 32)
+    opening.rotation_euler = (math.radians(30), 0, 0)
+    reach, rise, thick = (0.343, 0.10, 0.06) if rare else (0.25, 0.08, 0.05)
+    for side in (-1, 1):
+        inner = face + facing * 0.035 + Vector((side * 0.035, 0, 0)) - upward * 0.02
+        outer = face + facing * 0.035 + Vector((side * reach, 0, 0)) + upward * rise
+        mid = inner + (outer - inner) * 0.4
+        tube('Erebus slanted eye', [inner, mid, outer], [(0.01, 0.01), (thick, thick * 0.55), 0],
+             glow, sides=10, smooth=True)
+    if rare:
+        horn = material('Rare Erebus obsidian horns', (0.01, 0.01, 0.015), roughness=0.15,
+                        coat=1.0, rim=(0.7, 0.85, 1.0), rim_strength=1.5)
+        for dx, tilt in ((-0.16, -0.12), (0.0, 0.0), (0.16, 0.12)):
+            base = Vector((x + dx, y + 0.06, 0.92 if dx else 1.02))
+            cone('Rare Erebus crown horn', base, base + Vector((tilt, 0.04, 0.24 if dx else 0.18)),
+                 0.05, 0, horn, 5, False)
+        for side in (-1, 1):
+            hand = Vector((x + side * 0.24, y - 0.44, 0.40))
+            for spread in (-0.05, 0.05):
+                cone('Rare Erebus claw', hand, hand + Vector((-side * 0.08, -0.07, spread)),
+                     0.025, 0, horn, 4, False)
+        # A cracked gold halo held between the hands, with drifting shards.
+        gold = material('Stolen halo gold', (1.0, 0.72, 0.22), roughness=0.2, metallic=1.0,
+                        emission=(1.0, 0.6, 0.15), strength=0.6)
+        center = Vector((x, y - 0.50, 0.42))
+        for a0, a1 in ((20, 160), (195, 330)):
+            arc = [center + Vector((0.15 * math.cos(math.radians(a)), 0.15 * 0.5 * math.sin(math.radians(a)),
+                                    0.15 * 0.85 * math.sin(math.radians(a))))
+                   for a in range(a0, a1 + 1, 10)]
+            tube('Stolen halo arc', arc, [0.022] * len(arc), gold, sides=8, smooth=True)
+        for dx, dz in ((-0.22, 0.62), (0.20, 0.66), (0.05, 0.74)):
+            base = Vector((x + dx, y - 0.46, dz))
+            cone('Halo shard', base, base + Vector((0.02, 0, 0.06)), 0.03, 0, gold, 4, False)
+
+
 def golem(x, y):
     """Stage 2 golem: chunky dark basalt blocks with glowing amber rune seams.
 
@@ -770,21 +866,11 @@ def rank_mark(x, y, count):
         dx = (i - (count - 1) / 2) * 0.30
         # A plump serif apostrophe: metaballs melt a ball and a thick tail,
         # curling down to the left to a round tip, into one smooth body.
-        meta = bpy.data.metaballs.new('Rank mark %d' % i)
-        meta.resolution = meta.render_resolution = 0.01
-        for (px, pz), radius in [((0.0, 0.48), 0.20), ((0.05, 0.42), 0.15), ((0.07, 0.36), 0.13),
-                                 ((0.06, 0.30), 0.11), ((0.03, 0.25), 0.095),
-                                 ((-0.01, 0.215), 0.08), ((-0.05, 0.195), 0.07)]:
-            element = meta.elements.new()
-            element.co = (x + dx + px, y, pz)
-            element.radius = radius
-        obj = bpy.data.objects.new('Rank mark %d' % i, meta)
-        bpy.context.collection.objects.link(obj)
-        bpy.ops.object.select_all(action='DESELECT')
-        obj.select_set(True)
-        bpy.context.view_layer.objects.active = obj
-        bpy.ops.object.convert(target='MESH')
-        finish(bpy.context.object, resin, True, 'Rank mark %d' % i)
+        metaball_mesh('Rank mark %d' % i,
+                      [((x + dx + px, y, pz), radius) for (px, pz), radius in
+                       [((0.0, 0.48), 0.20), ((0.05, 0.42), 0.15), ((0.07, 0.36), 0.13),
+                        ((0.06, 0.30), 0.11), ((0.03, 0.25), 0.095),
+                        ((-0.01, 0.215), 0.08), ((-0.05, 0.195), 0.07)]], resin)
     # Lean back so the face of the mark looks at the 60-degree camera.
     transform_new(start, Matrix.Translation((x, y, 0.35)) @ Matrix.Rotation(math.radians(-40), 4, 'X')
                   @ Matrix.Translation((-x, -y, -0.35)))
@@ -806,14 +892,15 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'c': chimera, 'T': treasure, 'D': great_dragon, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
-            'g': golem}
+            'g': golem, 'e': lambda x, y: erebus(x, y, False),
+            'E': lambda x, y: erebus(x, y, True)}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = MONSTER_YAW if char in 'aAbcdDCFg' else 0
+    yaw = MONSTER_YAW if char in 'aAbcdDCFgeE' else 0
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
     for obj in character:

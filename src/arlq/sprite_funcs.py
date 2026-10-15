@@ -24,6 +24,8 @@ SPRITE_FILES = {
     'C': 'rare-chimera.png',
     'F': 'fire-drake.png',
     'g': 'golem.png',
+    'e': 'erebus.png',
+    'E': 'rare-erebus.png',
 }
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
 # tinted with the monster's color. They float at the upper right of the
