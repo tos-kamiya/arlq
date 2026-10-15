@@ -28,7 +28,11 @@ SPRITE_FILES = {
     'E': 'rare-erebus.png',
     'X': 'caltrop-plant.png',
     'p': 'pegasus.png',
+    'H': 'high-elf.png',
 }
+# An elf the player has met (drawn without bold as text) is shown with its
+# sprite and ground disc darkened to this fraction.
+MET_ELF_SHADE = 0.6
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
 # tinted with the monster's color. They float at the upper right of the
 # sprite instead of in the next cell: centre offset from the ground point in
@@ -282,7 +286,9 @@ class SpriteUI(PygletUI):
             return self._draw_rank_mark((x - 1, y), text, color)
         if text not in self._sprite_images:
             return super()._draw_field_text(pos, text, color, bold)
-        self._draw_sprite(pos, text, color)
+        tribe = d.CHAR_TO_MONSTER_TRIBE.get(text)
+        met_elf = tribe is not None and tribe.is_elf and not bold
+        self._draw_sprite(pos, text, color, shade=MET_ELF_SHADE if met_elf else 1.0)
 
     def _draw_rank_mark(self, pos, mark, color):
         """Tinted 3D apostrophe(s) at the upper right of the sprite in `pos`."""
@@ -311,11 +317,11 @@ class SpriteUI(PygletUI):
         self._place_sprite(char, cx, cy, FAMILIAR_SIZE, y, 'familiar', dimmed=False)
         self._draw_pillar(cx, cy, FAMILIAR_SIZE, y, COLOR_MAP[CI_GREEN], familiar=True)
 
-    def _draw_sprite(self, pos, text, color, upper_right_color=None):
+    def _draw_sprite(self, pos, text, color, upper_right_color=None, shade=1.0):
         x, y = pos
         cx, cy = self._field_col_x(x) + self.cell_size_x / 2, (y + 0.5) * self.cell_size_y
         dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
-        self._place_sprite(text, cx, cy, 1.0, y, 'sprite', dimmed)
+        self._place_sprite(text, cx, cy, 1.0, y, 'sprite', dimmed, shade)
         self._sprite_cells.add(pos)
         if text in d.CHAR_TO_COMPANION_TRIBE:
             green = COLOR_MAP[CI_GREEN]
@@ -330,10 +336,11 @@ class SpriteUI(PygletUI):
             color, upper_right_color = self._dim_color(blue) if dimmed else blue, color
         # Keep the original semantic color (strength, poison, etc.) readable
         # as a glowing disc on the ground the character stands on.
+        color = tuple(round(c * shade) for c in color)
         self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self.cell_size_x, color,
                                upper_right_color)
 
-    def _place_sprite(self, text, cx, cy, size, row, layer, dimmed):
+    def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0):
         """Draw a character image with its feet at field pixel (cx, cy)."""
         images = self._gray_images if self.map_mode else self._sprite_images
         picture = images[text]
@@ -350,6 +357,8 @@ class SpriteUI(PygletUI):
         sprite.scale = scale
         if dimmed:
             sprite.color = (128, 128, 128)
+        elif shade < 1:
+            sprite.color = (round(255 * shade),) * 3
         self._drawables.append(sprite)
 
     def _draw_pillar(self, cx, cy, size, row, color, familiar=False):

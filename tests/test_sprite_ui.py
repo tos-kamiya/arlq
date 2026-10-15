@@ -212,6 +212,21 @@ def test_companion_stands_in_green_light_pillar(sprite_ui):
     assert len(ui._drawables) == 1
 
 
+@pytest.mark.parametrize('met', (False, True))
+def test_met_elf_sprite_and_disc_are_darker(sprite_ui, met):
+    ui = sprite_ui
+    elf = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['H'])
+    elf.revealed, elf.met = True, met
+    for glyph in display.revealed_entity_glyphs(elf, {'H'}, False, 8, None, stage_num=3):
+        ui._draw_field_text((glyph.x, glyph.y), glyph.char, ui._tone_color(glyph.tone), glyph.bold)
+    sprite = ui._drawables[0]
+    white = ui._tone_color('default')
+    shade = sprite_funcs.MET_ELF_SHADE if met else 1.0
+    assert sprite.image is ui._sprite_images['H']
+    assert getattr(sprite, 'color', (255, 255, 255)) == ((round(255 * shade),) * 3)
+    assert ui.outlines[0][3] == tuple(round(c * shade) for c in white)
+
+
 def test_disc_halves_split_on_the_diagonal(monkeypatch):
     lower, upper = (sprite_funcs.ground_disc_image(half)
                     for half in ('lower-left', 'upper-right'))
