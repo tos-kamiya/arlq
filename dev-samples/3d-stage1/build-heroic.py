@@ -46,6 +46,7 @@ ROW = [('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
        ('I', 'ISOLATED ELF', 0.6, ROW_Y[1]), ('J', 'JAVELIN ELF', 2.6, ROW_Y[1]),
        ('K', 'COLLECTOR ELF', 4.6, ROW_Y[1]),
        ('L', 'LIFEBRINGER ELF', 6.6, ROW_Y[1]),
+       ('S', 'SYLVAN ELF', 8.6, ROW_Y[1]),
        ('C', 'RARE CHIMERA', -7.1, ROW_Y[2]), ('F', 'FIRE DRAKE', -4.4, ROW_Y[2]),
        ('g', 'GOLEM', -1.7, ROW_Y[2]), ('e', 'EREBUS', 0.25, ROW_Y[2]),
        ('E', 'RARE EREBUS', 2.3, ROW_Y[2]), ('X', 'CALTROP PLANT', 4.35, ROW_Y[2]),
@@ -57,7 +58,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7}
+         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
@@ -1211,6 +1212,96 @@ def lifebringer_elf(x, y):
                skirt_z=(0.18, 0.38, 0.58), ears=False)
 
 
+def sylvan_elf(x, y):
+    """Sylvan Elf: a farmer one step on the way to a harvest god, still an
+    elf. A straw hat with a flower band, a spring green dress and a cream
+    apron, sprouts at the feet; for the spirit, friend of the fairy
+    companions: small translucent butterfly wings, a softly glowing veil over
+    the hem, and a glowing pot of fairy nectar offered in both hands.
+    """
+    robe = material('Sylvan elf spring green dress', (0.20, 0.55, 0.12), 0.15, 0.45,
+                    rim=(0.8, 1.0, 0.6), rim_strength=1.0, coat=0.3)
+    apron = material('Sylvan elf cream apron', (0.88, 0.84, 0.70), 0.05, 0.7,
+                     rim=(1.0, 1.0, 0.9), rim_strength=0.5)
+    veil = material('Sylvan elf glowing veil', (0.75, 1.0, 0.70), 0.7, 0.2,
+                    emission=(0.6, 1.0, 0.5), strength=0.5,
+                    rim=(0.9, 1.0, 0.8), rim_strength=1.5)
+    straw = material('Sylvan elf straw hat', (0.88, 0.70, 0.30), 0.0, 0.7,
+                     rim=(1.0, 0.9, 0.6), rim_strength=0.6)
+    flower = material('Sylvan elf flowers', (1.0, 0.55, 0.65), 0.1, 0.4)
+    wing = material('Sylvan elf butterfly wings', (1.0, 0.70, 0.88), 0.0, 0.25,
+                    emission=(1.0, 0.75, 0.9), strength=0.35,
+                    rim=(1.0, 0.95, 1.0), rim_strength=1.6)
+    nectar = material('Sylvan elf fairy nectar', (1.0, 0.65, 0.1), 0.3, 0.2,
+                      emission=(1.0, 0.6, 0.1), strength=2.0)
+    pot = material('Sylvan elf clay pot', (0.55, 0.30, 0.15), 0.0, 0.5, coat=0.5)
+    leaf = material('Sylvan elf sprouts', (0.25, 0.70, 0.15), 0.2, 0.4)
+    skin = material('Sylvan elf skin', (0.95, 0.78, 0.62), 0.2, 0.4,
+                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    hair = material('Sylvan elf honey hair', (0.70, 0.45, 0.15), 0.15, 0.4,
+                    rim=(1.0, 0.85, 0.5), rim_strength=0.8)
+    eye = material('Sylvan elf eyes', (0.10, 0.25, 0.08), roughness=0.2, coat=1.0)
+
+    def body(x, y):
+        # A softly glowing veil over the hem of the dress.
+        tube('Sylvan elf veil', [(x, y, 0.01), (x, y, 0.16), (x, y, 0.32)], [0.28, 0.24, 0.20],
+             veil, sides=32, smooth=True)
+        block('Sylvan elf apron', (x, y - 0.17, 0.42), (0.26, 0.04, 0.40), apron, 0.03,
+              (-0.12, 0, 0))
+        tube('Sylvan elf apron string', [(x - 0.15, y - 0.10, 0.62), (x, y - 0.17, 0.62),
+                                         (x + 0.15, y - 0.10, 0.62)], [0.018] * 3, apron, sides=6,
+             smooth=True)
+        # Hands offering a clay pot of glowing fairy nectar.
+        for side in (-1, 1):
+            tube('Sylvan elf sleeve', [(x + side * 0.18, y, 0.84), (x + side * 0.25, y - 0.08, 0.70),
+                                       (x + side * 0.11, y - 0.24, 0.66)], [0.06, 0.06, 0.06], robe,
+                 sides=12, smooth=True)
+            sphere('Sylvan elf hand', (x + side * 0.08, y - 0.27, 0.66), (0.05, 0.045, 0.045), skin, 16)
+        tube('Sylvan elf nectar pot', [(x, y - 0.31, 0.60), (x, y - 0.31, 0.66), (x, y - 0.31, 0.73)],
+             [0.07, 0.085, 0.065], pot, sides=20, smooth=True)
+        sphere('Sylvan elf nectar', (x, y - 0.31, 0.74), (0.06, 0.06, 0.035), nectar, 20)
+        # Small translucent butterfly wings on the back, upper and lower pairs.
+        for side in (-1, 1):
+            for lower, (length, width, angle) in enumerate(((0.52, 0.30, 55), (0.36, 0.22, 15))):
+                a = math.radians(angle)
+                root = Vector((x + side * 0.05, y + 0.14, 0.78 - lower * 0.08))
+                # The wing's face turns toward the 60-degree camera.
+                along = Vector((side * math.cos(a), 0.15, math.sin(a))).normalized()
+                across = Vector((0, -0.5, 0.866)).cross(along).normalized()
+                n, verts = 20, []
+                for t in range(n):
+                    u = 2 * math.pi * t / n
+                    verts.append(tuple(root + along * (length * (0.5 - 0.5 * math.cos(u)))
+                                       + across * (width * 0.5 * math.sin(u))))
+                faces = [tuple(range(n))]
+                vane = mesh_object('Sylvan elf butterfly wing', verts, faces, wing, True)
+                vane.modifiers.new('Wing thickness', 'SOLIDIFY').thickness = 0.01
+        # Sprouts at the feet.
+        for k in range(6):
+            a = 2 * math.pi * k / 6 + 0.3
+            base = Vector((x + 0.30 * math.cos(a), y + 0.30 * math.sin(a), 0.0))
+            cone('Sylvan elf sprout', base, base + Vector((0.03 * math.cos(a), 0.03 * math.sin(a), 0.10)),
+                 0.035, 0, leaf, 5, False)
+
+    def head(x, y):
+        # Honey hair in a braid down the back, under a wide straw hat with
+        # a band of small flowers.
+        sphere('Sylvan elf hair cap', (x, y + 0.06, 1.07), (0.15, 0.13, 0.13), hair, 32)
+        tube('Sylvan elf braid', [(x, y + 0.12, 1.02), (x + 0.02, y + 0.18, 0.86), (x, y + 0.19, 0.70)],
+             [0.045, 0.04, 0], hair, sides=8, smooth=True)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=0.24, depth=0.02,
+                                            location=(x, y + 0.02, 1.17))
+        finish(bpy.context.object, straw, True, 'Sylvan elf hat brim')
+        tube('Sylvan elf hat crown', [(x, y + 0.02, 1.17), (x, y + 0.02, 1.25), (x, y + 0.02, 1.28)],
+             [0.14, 0.13, 0.11], straw, sides=24, smooth=True)
+        for k in range(5):
+            a = math.radians(-150 + k * 30)
+            sphere('Sylvan elf hat flower', (x + 0.145 * math.cos(a), y + 0.02 + 0.145 * math.sin(a), 1.20),
+                   (0.035, 0.035, 0.03), flower, 12)
+
+    elf_figure(x, y, 'Sylvan elf', robe, skin, eye, body, head)
+
+
 def pegasus(x, y):
     """Pegasus companion: a small, slender fairy horse of glowing pearl,
     hovering with legs tucked under, on wide feathered wings large for its
@@ -1456,7 +1547,7 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'g': golem, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
-            'L': lifebringer_elf}
+            'L': lifebringer_elf, 'S': sylvan_elf}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)
