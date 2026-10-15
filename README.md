@@ -48,14 +48,16 @@ connected gamepad's D-pad or left stick to move, and button 0 to select a
 stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
 
 Use `arlq --sprites` for the character-sprite GUI. The Stage 1 characters (player,
-monsters, treasure chest, and the Nomicon and Ocular companions) use transparent images rendered from 3D models at
+monsters, treasure chest, and the Nomicon and Ocular companions) and the Stage 2 rare chimera and
+fire drake use transparent images rendered from 3D models at
 60 degrees; other and unidentified characters
 keep their text display. A disc on the ground under each sprite, fading out away from the character,
 keeps the original strength/status colors, including the player's yellow and
 red low-LP warnings. While the player is
 poisoned, the upper-right half of its disc turns purple. Likewise, a boss you can
 defeat (one that unlocks a treasure chest) has a blue disc whose upper-right
-half is yellow. Companions stand inside
+half is yellow. An empowered monster's rank mark (`'` or `"`) becomes raised
+apostrophes in its strength color, floating at the sprite's upper right. Companions stand inside
 a faint green pillar of light that sets them apart from monsters; the companion
 travelling with the player is shown small at the player's right shoulder. Walls are drawn as
 rows of marble columns, one per wall cell, linked by a beam and a step; they
