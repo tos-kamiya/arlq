@@ -41,14 +41,16 @@ ROW = [('@', 'PLAYER', -8.0, 0.0), ('a', 'AMOEBA', -6.0, 0.0), ('A', 'RARE AMOEB
        ('T', 'TREASURE CHEST', 4.0, 0.0), ('D', 'DRAGON', 6.7, 0.0), ('n', 'NOMICON', 9.2, 0.0),
        ('o', 'OCULAR', 11.2, 0.0),
        ('C', 'RARE CHIMERA', -6.0, STAGE2_ROW_Y), ('F', 'FIRE DRAKE', -3.2, STAGE2_ROW_Y),
-       ("'", 'RANK 2 MARK', -0.6, STAGE2_ROW_Y), ('"', 'RANK 3 MARK', 1.2, STAGE2_ROW_Y)]
+       ("'", 'RANK 2 MARK', -0.6, STAGE2_ROW_Y), ('"', 'RANK 3 MARK', 1.2, STAGE2_ROW_Y),
+       ('g', 'GOLEM', 3.4, STAGE2_ROW_Y)]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
 # and drawn at one common scale, so these decide how large each character
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
-         'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7}
+         'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
+         'g': 1.3}
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
 MONSTER_YAW = math.radians(-30)
 
@@ -705,6 +707,57 @@ def ocular(x, y):
              center + Vector((side * 0.62, 0, 0.10)), 0.06, 0, gold, 4, False)
 
 
+def golem(x, y):
+    """Stage 2 golem: chunky dark basalt blocks with glowing amber rune seams.
+
+    Kept dark and rough so it never reads as the white marble walls. Tall,
+    with the upper body leaning back so the chest and face turn up toward
+    the 60-degree camera.
+    """
+    basalt = material('Golem basalt', (0.10, 0.10, 0.12), 0.1, 0.55,
+                      rim=(0.55, 0.65, 0.85), rim_strength=1.0, coat=0.2)
+    slate = material('Golem slate plates', (0.22, 0.21, 0.24), 0.1, 0.5,
+                     rim=(0.65, 0.70, 0.90), rim_strength=0.8)
+    rune = material('Golem amber runes', (1.0, 0.6, 0.1), emission=(1.0, 0.55, 0.08),
+                    strength=6.0)
+    for side in (-1, 1):
+        block('Golem leg', (x + side * 0.20, y + 0.06, 0.17), (0.24, 0.26, 0.34), basalt, 0.03,
+              (0, 0, side * 0.08))
+        block('Golem foot', (x + side * 0.21, y - 0.02, 0.05), (0.28, 0.34, 0.10), slate, 0.02)
+    block('Golem pelvis', (x, y + 0.04, 0.40), (0.50, 0.30, 0.16), slate, 0.03)
+    upper = set(bpy.data.objects)
+    # Upper body, built upright and then leaned back about the waist.
+    block('Golem torso', (x, y, 0.75), (0.80, 0.34, 0.60), basalt, 0.05)
+    block('Golem chest plate', (x, y - 0.18, 0.78), (0.50, 0.04, 0.40), slate, 0.02)
+    for dx, dz, w, h in ((0, 0.90, 0.32, 0.035), (0, 0.66, 0.32, 0.035), (-0.15, 0.78, 0.035, 0.24),
+                         (0.15, 0.78, 0.035, 0.24), (0, 0.78, 0.09, 0.09)):
+        block('Golem rune', (x + dx, y - 0.205, dz), (w, 0.02, h), rune, 0.006)
+    block('Golem head', (x, y - 0.06, 1.16), (0.30, 0.26, 0.24), slate, 0.04)
+    block('Golem brow', (x, y - 0.19, 1.22), (0.32, 0.06, 0.06), basalt, 0.015)
+    block('Golem eye slit', (x, y - 0.195, 1.15), (0.20, 0.02, 0.05), rune, 0.008)
+    for side in (-1, 1):
+        for i, (dx, dy, z, r) in enumerate(((0.48, 0.0, 1.02, 0.19), (0.36, 0.08, 1.10, 0.12))):
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r,
+                                                  location=(x + side * dx, y + dy, z),
+                                                  rotation=(i * 0.7 + side, 0.4, i * 0.3))
+            finish(bpy.context.object, basalt, False, 'Golem shoulder boulder')
+        block('Golem upper arm', (x + side * 0.58, y, 0.80), (0.20, 0.22, 0.34), slate, 0.03,
+              (0, side * 0.15, 0))
+        block('Golem forearm', (x + side * 0.64, y - 0.04, 0.52), (0.22, 0.24, 0.30), basalt, 0.03,
+              (0, side * 0.05, 0))
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.19,
+                                              location=(x + side * 0.66, y - 0.08, 0.28),
+                                              rotation=(0.5, side * 0.3, 0.2))
+        finish(bpy.context.object, basalt, False, 'Golem fist')
+        block('Golem knuckle rune', (x + side * 0.66, y - 0.265, 0.30), (0.12, 0.02, 0.03), rune,
+              0.005, (0.3, 0, 0))
+    bpy.context.view_layer.update()
+    lean = (Matrix.Translation((x, y, 0.42)) @ Matrix.Rotation(-0.45, 4, 'X')
+            @ Matrix.Translation((-x, -y, -0.42)))
+    for obj in set(bpy.data.objects) - upper:
+        obj.matrix_world = lean @ obj.matrix_world
+
+
 def rank_mark(x, y, count):
     """Empowered-rank mark: `count` raised serif apostrophes in near-white resin.
 
@@ -752,14 +805,15 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'd': dragon,
             'c': chimera, 'T': treasure, 'D': great_dragon, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
-            "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2)}
+            "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
+            'g': golem}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = MONSTER_YAW if char in 'aAbcdDCF' else 0
+    yaw = MONSTER_YAW if char in 'aAbcdDCFg' else 0
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
     for obj in character:

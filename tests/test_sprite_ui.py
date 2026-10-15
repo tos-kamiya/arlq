@@ -48,7 +48,7 @@ def test_known_sprite_enlarges_around_cell_center_and_retains_color(sprite_ui):
     assert not ui.text_calls
 
 
-@pytest.mark.parametrize('char', ('?', '&', '$', 'g'))
+@pytest.mark.parametrize('char', ('?', '&', '$', '%'))
 def test_unavailable_glyph_uses_original_text(sprite_ui, char):
     sprite_ui._draw_field_text((4, 5), char, (220, 82, 82), True)
     assert sprite_ui.text_calls[0][1] == char
@@ -191,6 +191,7 @@ def test_rank_mark_floats_tinted_at_sprite_upper_right(sprite_ui, empowered, mar
 
 
 def test_rank_mark_without_sprite_stays_text(sprite_ui):
+    sprite_ui._sprite_images.pop('g')
     sprite_ui._draw_field_text((4, 5), 'g', (220, 82, 82), True)
     sprite_ui._draw_field_text((5, 5), "'", (220, 82, 82), True)
     assert [call[1] for call in sprite_ui.text_calls] == ['g', "'"]
