@@ -45,8 +45,11 @@ entities += [d.Monster(23, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=2),
              d.Monster(27, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=3),
              d.Monster(33, 11, d.CHAR_TO_MONSTER_TRIBE['F']),
              d.Monster(37, 11, d.CHAR_TO_MONSTER_TRIBE['g'])]
+# The rare Erebus belongs to Stage 4; shown here beside the Erebus.
+entities += [d.Monster(8, 11, d.CHAR_TO_MONSTER_TRIBE['e']),
+             d.Monster(11, 11, d.CHAR_TO_MONSTER_TRIBE['E'])]
 ui.draw_stage(turn=0, player=player, entities=entities, field=field,
-              cur_torched=current, torched=seen, known_types={'a', 'A', 'b', 'b2', 'b3', 'c', 'd', 'D', 'C', 'F', 'g'},
+              cur_torched=current, torched=seen, known_types={'a', 'A', 'b', 'b2', 'b3', 'c', 'd', 'D', 'C', 'F', 'g', 'e', 'E'},
               show_entities=False, stage_num=1, message='Sprites + text fallback (c)')
 ui.window.switch_to()
 ui.window.clear()
