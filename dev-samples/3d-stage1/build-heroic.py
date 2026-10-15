@@ -300,11 +300,10 @@ def bison(x, y):
                 [(-0.42, 0.50, 0.50, 0.32), (-0.18, 0.60, 0.62, 0.42),
                  (0.10, 0.55, 0.58, 0.36), (0.45, 0.42, 0.47, 0.27),
                  (0.70, 0.30, 0.42, 0.20)], hide), 0.09)
-    # Shaggy hump: overlapping low-poly clumps over the shoulders and brow.
-    clumps = [(0, -0.30, 0.98, 0.34), (-0.26, -0.22, 0.92, 0.28), (0.26, -0.22, 0.92, 0.28),
-              (0, -0.02, 0.96, 0.30), (-0.30, 0.04, 0.84, 0.24), (0.30, 0.04, 0.84, 0.24),
-              (0, -0.55, 0.80, 0.28), (-0.24, -0.50, 0.76, 0.22), (0.24, -0.50, 0.76, 0.22),
-              (-0.42, -0.34, 0.70, 0.20), (0.42, -0.34, 0.70, 0.20), (0, 0.20, 0.86, 0.22)]
+    # A modest shaggy hump: a few low-poly clumps over the shoulders and brow,
+    # kept small so the bison does not look too strong.
+    clumps = [(0, -0.28, 0.90, 0.25), (-0.22, -0.22, 0.84, 0.19), (0.22, -0.22, 0.84, 0.19),
+              (0, -0.04, 0.86, 0.21), (0, -0.52, 0.76, 0.19)]
     for i, (dx, dy, z, r) in enumerate(clumps):
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r,
                                               location=(x + dx, y + dy, z),
@@ -1409,12 +1408,12 @@ def caltrop_plant(x, y):
     Red throughout, close to the brick red the GUI fills scattered caltrop
     (x) cells with; the head and its spikes share one color.
     """
-    leaf = material('Caltrop plant maroon leaves', (0.22, 0.03, 0.03), 0.3, 0.3,
-                    rim=(1.0, 0.45, 0.35), rim_strength=1.0, coat=0.4)
-    stem = material('Caltrop plant maroon stem', (0.28, 0.04, 0.035), 0.25, 0.3,
-                    rim=(1.0, 0.5, 0.4), rim_strength=0.8)
-    head = material('Caltrop plant brick red', (0.45, 0.09, 0.07), 0.1, 0.35,
-                    rim=(1.0, 0.6, 0.5), rim_strength=1.2, coat=0.5)
+    leaf = material('Caltrop plant red leaves', (0.45, 0.08, 0.06), 0.3, 0.3,
+                    rim=(1.0, 0.55, 0.45), rim_strength=1.0, coat=0.4)
+    stem = material('Caltrop plant red stem', (0.52, 0.10, 0.07), 0.25, 0.3,
+                    rim=(1.0, 0.6, 0.5), rim_strength=0.8)
+    head = material('Caltrop plant bright brick red', (0.75, 0.18, 0.13), 0.1, 0.35,
+                    rim=(1.0, 0.7, 0.6), rim_strength=1.2, coat=0.5)
     iron = head
     # A rosette of serrated dandelion leaves lying on the floor.
     for k in range(7):
