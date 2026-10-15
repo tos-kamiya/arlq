@@ -25,6 +25,9 @@ for x in range(4, 40):
 for y in range(4, 13):
     field[y][4] = field[y][39] = d.CHAR_WALL
 field[11][20] = d.CHAR_WALL
+# Scattered caltrops beside the caltrop plant, to compare their colors.
+for cx, cy in ((7, 10), (5, 12), (8, 12)):
+    field[cy][cx] = d.CHAR_CALTROP
 seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
 current = [[int(5 <= x <= 38 and 5 <= y <= 12) for x in range(d.FIELD_WIDTH)]
            for y in range(d.FIELD_HEIGHT)]

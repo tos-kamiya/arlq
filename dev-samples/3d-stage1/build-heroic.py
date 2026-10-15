@@ -898,16 +898,18 @@ def pegasus(x, y):
 
 def caltrop_plant(x, y):
     """Caltrop plant: a dandelion-like rosette and stem carrying a large
-    round head, with iron caltrop spikes jutting from it here and there.
+    round head, with spikes jutting from it here and there.
+
+    Red throughout, close to the brick red the GUI fills scattered caltrop
+    (x) cells with; the head and its spikes share one color.
     """
-    leaf = material('Caltrop plant leaves', (0.10, 0.55, 0.12), 0.35, 0.3,
-                    rim=(0.6, 1.0, 0.5), rim_strength=1.0, coat=0.4)
-    stem = material('Caltrop plant stem', (0.20, 0.62, 0.16), 0.3, 0.3,
-                    rim=(0.7, 1.0, 0.6), rim_strength=0.8)
-    head = material('Caltrop plant lemon head', (1.0, 0.85, 0.22), 0.1, 0.3,
-                    rim=(1.0, 0.95, 0.7), rim_strength=1.2, coat=0.5)
-    iron = material('Caltrop iron spikes', (0.55, 0.56, 0.60), roughness=0.35, metallic=0.6,
-                    rim=(0.85, 0.9, 1.0), rim_strength=1.2)
+    leaf = material('Caltrop plant maroon leaves', (0.22, 0.03, 0.03), 0.3, 0.3,
+                    rim=(1.0, 0.45, 0.35), rim_strength=1.0, coat=0.4)
+    stem = material('Caltrop plant maroon stem', (0.28, 0.04, 0.035), 0.25, 0.3,
+                    rim=(1.0, 0.5, 0.4), rim_strength=0.8)
+    head = material('Caltrop plant brick red', (0.45, 0.09, 0.07), 0.1, 0.35,
+                    rim=(1.0, 0.6, 0.5), rim_strength=1.2, coat=0.5)
+    iron = head
     # A rosette of serrated dandelion leaves lying on the floor.
     for k in range(7):
         a = 2 * math.pi * k / 7 + 0.2
