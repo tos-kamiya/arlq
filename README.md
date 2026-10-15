@@ -64,7 +64,9 @@ travelling with the player is shown small at the player's right shoulder. An elf
 you have already met is drawn darker, together with its disc. A character in
 one of the four cells next to the player is drawn 1.3 times larger, so the one
 you are about to meet is easy to read even in a small window; followers walking
-with you keep their size. Walls are drawn as
+with you keep their size. The strength column on the right is two cells wider:
+each entry keeps a smaller label and, once you have identified that monster
+type (as on the field), shows its sprite next to it. Walls are drawn as
 rows of marble columns, one per wall cell, linked by a beam and a step; they
 rise slightly into the cell to their north and may partly hide a character
 standing there. Walls raised by a defeated Golem are drawn as its rubble
