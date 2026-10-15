@@ -53,6 +53,8 @@ def test_known_sprite_enlarges_around_cell_center_and_retains_color(sprite_ui):
 def test_unavailable_glyph_uses_original_text(sprite_ui, char):
     sprite_ui._draw_field_text((4, 5), char, (220, 82, 82), True)
     assert sprite_ui.text_calls[0][1] == char
+    # Raised a little so it stays inside its cell.
+    assert sprite_ui.text_calls[0][0] == (4, pytest.approx(5 - sprite_funcs.FIELD_TEXT_RAISE))
     assert not sprite_ui._drawables
 
 
