@@ -26,7 +26,7 @@ scene.cycles.blur_glossy = 1.0
 scene.cycles.caustics_reflective = False
 scene.cycles.caustics_refractive = False
 scene.render.resolution_x = 1600
-scene.render.resolution_y = 920
+scene.render.resolution_y = 990
 scene.view_settings.view_transform = 'Standard'
 scene.view_settings.look = 'Medium High Contrast'
 world = bpy.data.worlds.new('Night studio')
@@ -35,19 +35,19 @@ world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.012, 0.01
 scene.world = world
 
 # Three rows, back to front: the player, Stage 1 monsters and chest; the
-# companions and rank marks; the monsters added from Stage 2 on.
-ROW_Y = (0.0, -3.4, -6.8)
+# companions and elves; the monsters added from Stage 2 on and the rank marks.
+ROW_Y = (0.0, -3.8, -7.6)
 ROW = [('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
        ('A', 'RARE AMOEBA', -3.0, ROW_Y[0]), ('b', 'BISON', -1.0, ROW_Y[0]),
        ('c', 'CHIMERA', 1.0, ROW_Y[0]), ('d', 'COMODO DRAGON', 3.0, ROW_Y[0]),
        ('T', 'TREASURE CHEST', 5.0, ROW_Y[0]), ('D', 'DRAGON', 7.7, ROW_Y[0]),
-       ('n', 'NOMICON', -4.0, ROW_Y[1]), ('o', 'OCULAR', -2.0, ROW_Y[1]),
-       ('p', 'PEGASUS', 0.0, ROW_Y[1]), ("'", 'RANK 2 MARK', 2.0, ROW_Y[1]),
-       ('"', 'RANK 3 MARK', 3.85, ROW_Y[1]), ('H', 'HIGH ELF', 5.9, ROW_Y[1]),
-       ('I', 'ISOLATED ELF', 7.8, ROW_Y[1]),
-       ('C', 'RARE CHIMERA', -5.0, ROW_Y[2]), ('F', 'FIRE DRAKE', -2.2, ROW_Y[2]),
-       ('g', 'GOLEM', 0.6, ROW_Y[2]), ('e', 'EREBUS', 2.6, ROW_Y[2]),
-       ('E', 'RARE EREBUS', 4.8, ROW_Y[2]), ('X', 'CALTROP PLANT', 7.0, ROW_Y[2])]
+       ('n', 'NOMICON', -7.4, ROW_Y[1]), ('o', 'OCULAR', -5.4, ROW_Y[1]),
+       ('p', 'PEGASUS', -3.4, ROW_Y[1]), ('H', 'HIGH ELF', -1.4, ROW_Y[1]),
+       ('I', 'ISOLATED ELF', 0.6, ROW_Y[1]), ('J', 'JAVELIN ELF', 2.6, ROW_Y[1]),
+       ('C', 'RARE CHIMERA', -7.1, ROW_Y[2]), ('F', 'FIRE DRAKE', -4.4, ROW_Y[2]),
+       ('g', 'GOLEM', -1.7, ROW_Y[2]), ('e', 'EREBUS', 0.25, ROW_Y[2]),
+       ('E', 'RARE EREBUS', 2.3, ROW_Y[2]), ('X', 'CALTROP PLANT', 4.35, ROW_Y[2]),
+       ("'", 'RANK 2 MARK', 6.3, ROW_Y[2]), ('"', 'RANK 3 MARK', 8.15, ROW_Y[2])]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
@@ -55,7 +55,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6}
+         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
@@ -811,10 +811,11 @@ def erebus(x, y, rare):
 ELF_STRETCH = 1.3
 
 
-def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.14)):
+def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.14), torso=None):
     """Shared elf build: about three heads tall, slimmer and taller than the
     player, in a long robe, with pointed ears; `body(x, y)` and `head(x, y)`
-    add each elf's own parts.
+    add each elf's own parts, and `torso` can dress the upper body apart
+    from the robe.
 
     Heights shrink to half in the 60-degree view, so the body is stretched
     upward and the head tilted back for the face to look at the camera.
@@ -824,7 +825,8 @@ def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.1
     tube(prefix + ' robe skirt', [(x, y, 0.02), (x, y, 0.30), (x, y, 0.58)], list(skirt),
          robe, sides=32, smooth=True)
     tube(prefix + ' robe body', [(x, y, 0.56), (x, y, 0.72), (x, y, 0.86), (x, y, 0.90)],
-         [(0.16, 0.13), (0.19, 0.15), (0.17, 0.13), (0.08, 0.07)], robe, sides=32, smooth=True)
+         [(0.16, 0.13), (0.19, 0.15), (0.17, 0.13), (0.08, 0.07)], torso or robe, sides=32,
+         smooth=True)
     body(x, y)
     head_start = set(bpy.data.objects)
     for side in (-1, 1):
@@ -982,6 +984,75 @@ def isolated_elf(x, y):
              white, sides=12, smooth=True)
 
     elf_figure(x, y, 'Isolated elf', robe, skin, eye, body, head)
+
+
+def javelin_elf(x, y):
+    """Javelin Elf: a youth eager to become a warrior, lightly clad: a
+    sleeveless leather jerkin with bare arms and leather bracers over a long
+    mustard tunic, with a leather belt, a strap across the chest and a pouch,
+    short chestnut hair tied back, one hand on the hip and the other holding
+    a slightly oversized javelin upright, its leaf-shaped iron head well above.
+    """
+    robe = material('Javelin elf mustard tunic', (0.60, 0.38, 0.07), 0.05, 0.6,
+                    rim=(1.0, 0.85, 0.5), rim_strength=0.8)
+    leather = material('Javelin elf leather', (0.22, 0.11, 0.05), 0.0, 0.5,
+                       rim=(0.9, 0.6, 0.4), rim_strength=0.6)
+    wood = material('Javelin elf ash shaft', (0.60, 0.44, 0.26), 0.0, 0.5,
+                    rim=(1.0, 0.85, 0.6), rim_strength=0.6)
+    iron = material('Javelin elf iron head', (0.62, 0.63, 0.66), roughness=0.35, metallic=0.55,
+                    rim=(0.85, 0.9, 1.0), rim_strength=1.0)
+    skin = material('Javelin elf skin', (0.96, 0.80, 0.66), 0.2, 0.4,
+                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    hair = material('Javelin elf chestnut hair', (0.35, 0.14, 0.05), 0.15, 0.4,
+                    rim=(1.0, 0.7, 0.5), rim_strength=0.8, coat=0.3)
+    eye = material('Javelin elf eyes', (0.05, 0.15, 0.10), roughness=0.2, coat=1.0)
+
+    def body(x, y):
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.155, minor_radius=0.025, location=(x, y, 0.58))
+        finish(bpy.context.object, leather, True, 'Javelin elf belt')
+        block('Javelin elf pouch', (x + 0.12, y - 0.13, 0.52), (0.09, 0.05, 0.09), leather, 0.02)
+        # A strap across the chest from the left shoulder to the right hip.
+        tube('Javelin elf chest strap', [(x + 0.15, y - 0.06, 0.86), (x + 0.02, y - 0.17, 0.74),
+                                         (x - 0.13, y - 0.13, 0.60)], [0.022] * 3, leather,
+             sides=6, smooth=True)
+        # Right hand (screen left) holding the javelin upright.
+        shaft = (x - 0.30, y - 0.12)
+        tube('Javelin elf shaft', [(shaft[0], shaft[1], 0.0), (shaft[0], shaft[1], 0.70),
+                                   (shaft[0], shaft[1], 1.36)], [0.022, 0.022, 0.02], wood,
+             sides=8, smooth=True)
+        tube('Javelin elf head', [(shaft[0], shaft[1], 1.34), (shaft[0], shaft[1], 1.44),
+                                  (shaft[0], shaft[1], 1.58)], [(0.06, 0.015), (0.055, 0.014), 0],
+             iron, sides=4)
+        # Bare arms with leather bracers on the forearms.
+        tube('Javelin elf right arm', [(x - 0.17, y, 0.84), (x - 0.25, y - 0.06, 0.74),
+                                       (x - 0.29, y - 0.11, 0.70)], [0.045, 0.04, 0.04], skin,
+             sides=12, smooth=True)
+        tube('Javelin elf right bracer', [(x - 0.25, y - 0.06, 0.745), (x - 0.285, y - 0.105, 0.705)],
+             [0.05, 0.05], leather, sides=12, smooth=True)
+        sphere('Javelin elf shoulder guard', (x - 0.17, y, 0.85), (0.07, 0.07, 0.04), leather, 16)
+        sphere('Javelin elf right hand', (x - 0.30, y - 0.12, 0.70), (0.05, 0.05, 0.05), skin, 16)
+        # Left hand on the hip, elbow out.
+        tube('Javelin elf left arm', [(x + 0.17, y, 0.84), (x + 0.28, y + 0.02, 0.70),
+                                      (x + 0.18, y - 0.06, 0.60)], [0.045, 0.04, 0.04], skin,
+             sides=12, smooth=True)
+        tube('Javelin elf left bracer', [(x + 0.265, y + 0.01, 0.68), (x + 0.20, y - 0.05, 0.61)],
+             [0.05, 0.05], leather, sides=12, smooth=True)
+        sphere('Javelin elf left hand', (x + 0.16, y - 0.07, 0.59), (0.05, 0.045, 0.045), skin, 16)
+
+    def head(x, y):
+        # Short hair with a few spiky tufts, tied back in a small tail.
+        sphere('Javelin elf hair cap', (x, y + 0.05, 1.09), (0.15, 0.13, 0.13), hair, 32)
+        for dx, dy in ((-0.08, -0.04), (0.0, -0.07), (0.08, -0.04), (-0.04, 0.04), (0.05, 0.05)):
+            base = Vector((x + dx, y + dy, 1.16))
+            cone('Javelin elf hair tuft', base, base + Vector((dx * 0.6, dy * 0.6 - 0.02, 0.08)),
+                 0.05, 0, hair, 6, False)
+        tube('Javelin elf ponytail', [(x, y + 0.14, 1.08), (x, y + 0.22, 1.00), (x, y + 0.25, 0.90)],
+             [0.035, 0.045, 0], hair, sides=8, smooth=True)
+
+    jerkin = material('Javelin elf leather jerkin', (0.36, 0.20, 0.09), 0.0, 0.55,
+                      rim=(1.0, 0.75, 0.5), rim_strength=0.8)
+    elf_figure(x, y, 'Javelin elf', robe, skin, eye, body, head, skirt=(0.21, 0.17, 0.14),
+               torso=jerkin)
 
 
 def pegasus(x, y):
@@ -1228,7 +1299,7 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
             'g': golem, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
-            'H': high_elf, 'I': isolated_elf}
+            'H': high_elf, 'I': isolated_elf, 'J': javelin_elf}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)
@@ -1281,7 +1352,7 @@ target = Vector((0.5, (1.85 + ROW_Y[2] - 1.55) / 2, 0))
 camera.location = target + Vector((0, -15 * math.cos(angle), 15 * math.sin(angle)))
 camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = 18.6
+camera.data.ortho_scale = 18.8
 scene.camera = camera
 scene['sprite_centers'] = {char: list(pos) for char, pos in CENTERS.items()}
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT / 'characters-angle60.blend'))
