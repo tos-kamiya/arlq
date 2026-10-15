@@ -706,21 +706,32 @@ def ocular(x, y):
 
 
 def rank_mark(x, y, count):
-    """Empowered-rank mark: `count` raised straight apostrophes in near-white resin.
+    """Empowered-rank mark: `count` raised serif apostrophes in near-white resin.
 
     The GUI tints it with the monster's strength color, like the text mark.
     """
-    resin = material('Rank mark white resin', (0.92, 0.92, 0.92), 0.0, 0.18, coat=1.0,
+    resin = material('Rank mark white resin', (0.92, 0.92, 0.92), 0.0, 0.32, coat=0.3,
                      rim=(1.0, 1.0, 1.0), rim_strength=0.6)
     start = set(bpy.data.objects)
     for i in range(count):
         dx = (i - (count - 1) / 2) * 0.30
-        # A straight wedge, thick and rounded at the top and tapering down,
-        # like the game's text apostrophe, standing upright.
-        sphere('Rank mark cap', (x + dx, y, 0.55), (0.085, 0.085, 0.085), resin, 32)
-        tube('Rank mark stroke', [(x + dx, y, 0.55), (x + dx, y, 0.35), (x + dx, y, 0.18)],
-             [0.085, 0.06, 0.035], resin, sides=24, smooth=True)
-        sphere('Rank mark tip', (x + dx, y, 0.18), (0.035, 0.035, 0.035), resin, 16)
+        # A plump serif apostrophe: metaballs melt a ball and a thick tail,
+        # curling down to the left to a round tip, into one smooth body.
+        meta = bpy.data.metaballs.new('Rank mark %d' % i)
+        meta.resolution = meta.render_resolution = 0.01
+        for (px, pz), radius in [((0.0, 0.48), 0.20), ((0.05, 0.42), 0.15), ((0.07, 0.36), 0.13),
+                                 ((0.06, 0.30), 0.11), ((0.03, 0.25), 0.095),
+                                 ((-0.01, 0.215), 0.08), ((-0.05, 0.195), 0.07)]:
+            element = meta.elements.new()
+            element.co = (x + dx + px, y, pz)
+            element.radius = radius
+        obj = bpy.data.objects.new('Rank mark %d' % i, meta)
+        bpy.context.collection.objects.link(obj)
+        bpy.ops.object.select_all(action='DESELECT')
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.convert(target='MESH')
+        finish(bpy.context.object, resin, True, 'Rank mark %d' % i)
     # Lean back so the face of the mark looks at the 60-degree camera.
     transform_new(start, Matrix.Translation((x, y, 0.35)) @ Matrix.Rotation(math.radians(-40), 4, 'X')
                   @ Matrix.Translation((-x, -y, -0.35)))
