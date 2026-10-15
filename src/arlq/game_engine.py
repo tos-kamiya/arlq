@@ -590,6 +590,7 @@ def _defeat_monster(
                 x
             ] == d.CHAR_FLOOR:
                 current.field[y][x] = d.CHAR_WALL
+                current.rock_cells.add((x, y))
     elif entity.tribe.effect == d.EFFECT_VORTEX:
         if (
             replay_context is not None
@@ -1542,6 +1543,7 @@ def run_game(
             stage_num=stage_num,
             message=message[1],
             checkpoint=checkpoint[0],
+            rock_cells=display_floor.rock_cells,
             reachable_cells=reachable_cells,
             overshoot_markers=(
                 trace.overshoot_rewind_markers(floor[0])
@@ -1791,6 +1793,7 @@ def run_game(
             message=message[1],
             extra_keys=True,
             checkpoint=checkpoint[0],
+            rock_cells=display_floor.rock_cells,
             floor_view=floor_view,
             **stage_draw_options,
         )

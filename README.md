@@ -64,7 +64,8 @@ travelling with the player is shown small at the player's right shoulder. An elf
 you have already met is drawn darker, together with its disc. Walls are drawn as
 rows of marble columns, one per wall cell, linked by a beam and a step; they
 rise slightly into the cell to their north and may partly hide a character
-standing there. Floors are flagstones laid as a subtle
+standing there. Walls raised by a defeated Golem are drawn as its rubble
+instead of columns (they remain ordinary walls). Floors are flagstones laid as a subtle
 checkerboard.
 Controls, rules, FOV and menus are shared with the original Pyglet GUI.
 The original cell size is retained. All sprites are drawn at one common scale,

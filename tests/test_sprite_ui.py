@@ -280,6 +280,37 @@ def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
 
 
 
+def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._wall_images = {part: SimpleNamespace(width=26, height=50) for part in sprite_funcs.WALL_PARTS}
+    ui._floor_images = None
+    ui._sprite_images = {sprite_funcs.ROCK_SPRITE: SimpleNamespace(width=95, height=103)}
+    ui.map_mode = False
+    ui.scale = 1
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.window_height = 500
+    ui.batch = None
+    ui._row_groups = {}
+    ui._drawables = []
+    ui._display_color = lambda color: color
+    monkeypatch.setattr(PygletUI, '_draw_tile', lambda *args: None)
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    field = [[d.CHAR_FLOOR] * 3 for _ in range(3)]
+    field[1][0] = field[1][1] = d.CHAR_WALL
+    ui._rock_cells = {(1, 1)}
+    ui._draw_tile(1, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: True)
+    assert [piece.image for piece in ui._drawables] == [ui._sprite_images[sprite_funcs.ROCK_SPRITE]]
+    ui._drawables.clear()
+    ui._draw_tile(1, 1, sprite_funcs.WALL, field, lambda x, y: True)
+    shade = round(255 * sprite_funcs.ROCK_EXPLORED_SHADE)
+    assert ui._drawables[0].color == (shade, shade, shade)
+    # The ordinary wall beside the rubble does not link toward it.
+    ui._drawables.clear()
+    ui._draw_tile(0, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: True)
+    assert [piece.image for piece in ui._drawables] == [ui._wall_images['column']]
+
+
 def test_column_wall_links_only_toward_discovered_wall_neighbors(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
     ui.cell_size_x, ui.cell_size_y = 13, 20

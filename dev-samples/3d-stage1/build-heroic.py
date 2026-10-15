@@ -47,10 +47,11 @@ ROW = [('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
        ('K', 'COLLECTOR ELF', 4.6, ROW_Y[1]),
        ('L', 'LIFEBRINGER ELF', 6.6, ROW_Y[1]),
        ('S', 'SYLVAN ELF', 8.6, ROW_Y[1]),
-       ('C', 'RARE CHIMERA', -7.1, ROW_Y[2]), ('F', 'FIRE DRAKE', -4.4, ROW_Y[2]),
-       ('g', 'GOLEM', -1.7, ROW_Y[2]), ('e', 'EREBUS', 0.25, ROW_Y[2]),
-       ('E', 'RARE EREBUS', 2.3, ROW_Y[2]), ('X', 'CALTROP PLANT', 4.35, ROW_Y[2]),
-       ("'", 'RANK 2 MARK', 6.3, ROW_Y[2]), ('"', 'RANK 3 MARK', 8.15, ROW_Y[2])]
+       ('C', 'RARE CHIMERA', -7.4, ROW_Y[2]), ('F', 'FIRE DRAKE', -4.775, ROW_Y[2]),
+       ('g', 'GOLEM', -2.15, ROW_Y[2]), ('rock', 'GOLEM ROCK', -0.15, ROW_Y[2]),
+       ('e', 'EREBUS', 1.85, ROW_Y[2]), ('E', 'RARE EREBUS', 3.85, ROW_Y[2]),
+       ('X', 'CALTROP PLANT', 5.85, ROW_Y[2]), ("'", 'RANK 2', 7.525, ROW_Y[2]),
+       ('"', 'RANK 3', 8.875, ROW_Y[2])]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
@@ -58,7 +59,8 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6}
+         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
+         'rock': 2.5}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
@@ -1515,6 +1517,30 @@ def golem(x, y):
         obj.matrix_world = lean @ obj.matrix_world
 
 
+def golem_rock(x, y):
+    """Rubble a defeated Golem leaves on a floor cell, which becomes a wall:
+    a low heap of the Golem's dark basalt and slate pieces, with a rune seam
+    whose amber light is fading. About one cell wide.
+    """
+    basalt = material('Golem rock basalt', (0.10, 0.10, 0.12), 0.1, 0.55,
+                      rim=(0.55, 0.65, 0.85), rim_strength=1.0, coat=0.2)
+    slate = material('Golem rock slate', (0.22, 0.21, 0.24), 0.1, 0.5,
+                     rim=(0.65, 0.70, 0.90), rim_strength=0.8)
+    rune = material('Golem rock fading rune', (0.6, 0.35, 0.08), emission=(1.0, 0.55, 0.08),
+                    strength=1.2)
+    for i, (dx, dy, z, r) in enumerate(((0.0, 0.04, 0.17, 0.19), (-0.17, -0.04, 0.11, 0.13),
+                                        (0.17, -0.06, 0.10, 0.12), (0.06, -0.17, 0.09, 0.11),
+                                        (-0.10, 0.16, 0.10, 0.11), (0.03, 0.06, 0.34, 0.11))):
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r, location=(x + dx, y + dy, z),
+                                              rotation=(i * 0.9, i * 0.6 + 0.3, i * 1.3))
+        chunk = finish(bpy.context.object, basalt, False, 'Golem rock chunk')
+        chunk.scale = (1.1, 1.0, 0.8)
+    block('Golem rock slate piece', (x - 0.07, y - 0.12, 0.20), (0.22, 0.05, 0.16), slate, 0.02,
+          (0.5, 0.2, 0.4))
+    block('Golem rock rune seam', (x - 0.07, y - 0.15, 0.20), (0.12, 0.02, 0.025), rune, 0.005,
+          (0.5, 0.2, 0.4))
+
+
 def rank_mark(x, y, count):
     """Empowered-rank mark: `count` raised serif apostrophes in near-white resin.
 
@@ -1556,7 +1582,7 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'g': golem, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
-            'L': lifebringer_elf, 'S': sylvan_elf}
+            'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)
@@ -1575,7 +1601,8 @@ for char, name, x, y in ROW:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-    block(name + ' tile', (x, y, -0.05), (3.1 if char in 'DF' else 1.85, 2.6, 0.1), tile, 0.04)
+    width = 3.1 if char in ('D', 'F') else 1.2 if char in ("'", '"') else 1.85
+    block(name + ' tile', (x, y, -0.05), (width, 2.6, 0.1), tile, 0.04)
     label(name, (x, y - 1.55, 0.0), 0.16)
     collection = bpy.data.collections.new('Character ' + char + ' ' + name)
     scene.collection.children.link(collection)

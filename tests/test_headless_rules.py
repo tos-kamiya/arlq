@@ -73,6 +73,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "collapse_landings",
         "persistent_barriers",
         "room_components",
+        "rock_cells",
     }
 
 
@@ -257,6 +258,7 @@ def test_game_loop_draws_with_keyword_arguments_only():
         "stage_num",
         "message",
         "checkpoint",
+        "rock_cells",
         "reachable_cells",
         "overshoot_markers",
     }
@@ -1874,6 +1876,34 @@ def test_vortex_records_map_knowledge_before_disturbing_it(monkeypatch):
     assert replay.vortex_maps[0][0] == 2
     assert replay.vortex_maps[0][1][0][4][5] == 8
     assert floor.seen[4][5] == 0
+
+
+def test_golem_rocks_are_walls_recorded_as_rock_cells():
+    """Rocks a defeated Golem scatters are ordinary walls; the floor also
+    records them so the sprite GUI can draw rubble instead of columns."""
+    player = d.Player(10, 10, 100, d.LP_INIT)
+    golem = d.Monster(11, 10, d.CHAR_TO_MONSTER_TRIBE["g"])
+    floor = Floor(
+        field=blank_field(),
+        entities=[golem],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        up=(1, 1),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+    )
+    floor.field[8][9] = d.CHAR_WALL  # an existing wall stays out of the record
+    before = deepcopy(floor.field)
+    game_engine_module._defeat_monster(
+        golem, floor, player, [0], [(10, 10)], Counter(), floors=[floor], stage_num=2
+    )
+    raised = {
+        (x, y)
+        for y, row in enumerate(floor.field)
+        for x, cell in enumerate(row)
+        if cell == d.CHAR_WALL and before[y][x] != d.CHAR_WALL
+    }
+    assert raised
+    assert floor.rock_cells == raised
 
 
 def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():

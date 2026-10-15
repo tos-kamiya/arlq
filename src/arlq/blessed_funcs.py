@@ -410,7 +410,9 @@ class BlessedUI:
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
         overshoot_markers: Optional[Set[d.Point]] = None,
+        rock_cells: Optional[Set[d.Point]] = None,
     ):
+        # `rock_cells` (walls raised by a Golem) stay plain `#` in the terminal.
         self._wait_for_terminal_size()
         show_entities = show_entities or self.map_mode
         stage_args = (
