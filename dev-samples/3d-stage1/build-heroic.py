@@ -45,6 +45,7 @@ ROW = [('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
        ('p', 'PEGASUS', -3.4, ROW_Y[1]), ('H', 'HIGH ELF', -1.4, ROW_Y[1]),
        ('I', 'ISOLATED ELF', 0.6, ROW_Y[1]), ('J', 'JAVELIN ELF', 2.6, ROW_Y[1]),
        ('K', 'COLLECTOR ELF', 4.6, ROW_Y[1]),
+       ('L', 'LIFEBRINGER ELF', 6.6, ROW_Y[1]),
        ('C', 'RARE CHIMERA', -7.1, ROW_Y[2]), ('F', 'FIRE DRAKE', -4.4, ROW_Y[2]),
        ('g', 'GOLEM', -1.7, ROW_Y[2]), ('e', 'EREBUS', 0.25, ROW_Y[2]),
        ('E', 'RARE EREBUS', 2.3, ROW_Y[2]), ('X', 'CALTROP PLANT', 4.35, ROW_Y[2]),
@@ -56,7 +57,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6}
+         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
@@ -813,12 +814,12 @@ ELF_STRETCH = 1.3
 
 
 def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.14), torso=None,
-               skirt_z=(0.02, 0.30, 0.58), girth=1.0):
+               skirt_z=(0.02, 0.30, 0.58), girth=1.0, ears=True):
     """Shared elf build: about three heads tall, slimmer and taller than the
     player, in a long robe, with pointed ears; `body(x, y)` and `head(x, y)`
     add each elf's own parts, and `torso` can dress the upper body apart
-    from the robe. `skirt_z` raises the robe's hem (for a seated elf) and
-    `girth` widens the upper body.
+    from the robe. `skirt_z` raises the robe's hem (for a seated elf),
+    `girth` widens the upper body, and `ears=False` leaves out the pointed ears.
 
     Heights shrink to half in the 60-degree view, so the body is stretched
     upward and the head tilted back for the face to look at the camera.
@@ -834,8 +835,9 @@ def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.1
     body(x, y)
     head_start = set(bpy.data.objects)
     for side in (-1, 1):
-        cone(prefix + ' ear', (x + side * 0.12, y + 0.01, 1.04), (x + side * 0.27, y + 0.05, 1.13),
-             0.04, 0, skin, 10, True)
+        if ears:
+            cone(prefix + ' ear', (x + side * 0.12, y + 0.01, 1.04), (x + side * 0.27, y + 0.05, 1.13),
+                 0.04, 0, skin, 10, True)
         sphere(prefix + ' eye', (x + side * 0.05, y - 0.135, 1.04), (0.022, 0.012, 0.028), eye, 12)
     sphere(prefix + ' head', (x, y, 1.03), (0.14, 0.14, 0.155), skin, 32)
     head(x, y)
@@ -1156,6 +1158,59 @@ def collector_elf(x, y):
                skirt_z=(0.34, 0.45, 0.60), girth=1.35)
 
 
+def lifebringer_elf(x, y):
+    """Lifebringer Elf: drawn as a spirit or god rather than an elf. It floats
+    on a white cloud that its robe melts into, in softly glowing translucent
+    ivory, with long white-gold hair (no beard and no pointed ears), a gold
+    halo behind the head, offering in both hands an orb of soft green light.
+    """
+    robe = material('Lifebringer champagne robe', (0.85, 0.70, 0.40), 0.3, 0.3,
+                    emission=(1.0, 0.85, 0.5), strength=0.04,
+                    rim=(1.0, 0.9, 0.6), rim_strength=1.2, coat=0.5)
+    cloud = material('Lifebringer cloud', (0.70, 0.76, 0.90), 0.2, 0.6,
+                     rim=(1.0, 1.0, 1.0), rim_strength=1.0)
+    gold = material('Lifebringer halo gold', (1.0, 0.75, 0.25), roughness=0.25, metallic=0.6,
+                    emission=(1.0, 0.7, 0.2), strength=1.5)
+    skin = material('Lifebringer skin', (0.96, 0.84, 0.72), 0.2, 0.4,
+                    rim=(1.0, 0.95, 0.85), rim_strength=0.6)
+    hair = material('Lifebringer white-gold hair', (0.95, 0.88, 0.62), 0.2, 0.3,
+                    emission=(1.0, 0.9, 0.6), strength=0.03,
+                    rim=(1.0, 0.95, 0.7), rim_strength=1.0)
+    life = material('Lifebringer life light', (0.25, 0.9, 0.2), 0.3, 0.2,
+                    emission=(0.3, 1.0, 0.25), strength=1.0)
+    eye = material('Lifebringer eyes', (0.10, 0.20, 0.15), roughness=0.3, coat=1.0)
+
+    def body(x, y):
+        # A cloud the robe melts into, carrying the figure above the floor.
+        metaball_mesh('Lifebringer cloud', [((x + px, y + py, pz), r) for px, py, pz, r in (
+            (0.0, 0.0, 0.20, 0.42), (-0.28, 0.04, 0.14, 0.30), (0.28, 0.02, 0.14, 0.30),
+            (-0.14, -0.22, 0.12, 0.26), (0.16, -0.22, 0.12, 0.26), (0.0, 0.24, 0.14, 0.28),
+            (-0.40, -0.06, 0.08, 0.20), (0.40, -0.08, 0.08, 0.20))], cloud, 0.015)
+        # Wide sleeves meeting before the chest, hands offering the orb.
+        for side in (-1, 1):
+            tube('Lifebringer sleeve', [(x + side * 0.18, y, 0.84), (x + side * 0.27, y - 0.10, 0.72),
+                                        (x + side * 0.12, y - 0.24, 0.70)], [0.06, 0.08, 0.10], robe,
+                 sides=14, smooth=True)
+            sphere('Lifebringer hand', (x + side * 0.07, y - 0.27, 0.70), (0.05, 0.045, 0.04), skin, 16)
+        sphere('Lifebringer life orb', (x, y - 0.34, 0.79), (0.095, 0.095, 0.095), life, 24)
+
+    def head(x, y):
+        # Long hair over the back of the head and down the back.
+        sphere('Lifebringer hair cap', (x, y + 0.06, 1.08), (0.15, 0.13, 0.14), hair, 32)
+        for dx in (-0.10, -0.035, 0.035, 0.10):
+            tube('Lifebringer hair lock', [(x + dx, y + 0.08, 1.04), (x + dx * 1.4, y + 0.17, 0.84),
+                                           (x + dx * 1.6, y + 0.20, 0.62)], [0.05, 0.05, 0], hair,
+                 sides=8, smooth=True)
+        # A halo standing behind the head.
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.22, minor_radius=0.018,
+                                         location=(x, y + 0.14, 1.10))
+        halo = finish(bpy.context.object, gold, True, 'Lifebringer halo')
+        halo.rotation_euler = (math.pi / 2, 0, 0)
+
+    elf_figure(x, y, 'Lifebringer', robe, skin, eye, body, head, skirt=(0.24, 0.20, 0.15),
+               skirt_z=(0.18, 0.38, 0.58), ears=False)
+
+
 def pegasus(x, y):
     """Pegasus companion: a small, slender fairy horse of glowing pearl,
     hovering with legs tucked under, on wide feathered wings large for its
@@ -1400,7 +1455,8 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
             'g': golem, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
-            'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf}
+            'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
+            'L': lifebringer_elf}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)

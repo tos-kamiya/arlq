@@ -50,7 +50,7 @@ entities += [d.Monster(25, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=2),
              d.Monster(37, 11, d.CHAR_TO_MONSTER_TRIBE['g'])]
 # Elves in the bottom room: one not met yet, and one met (drawn darker).
 for ex, char, met in ((8, 'H', False), (12, 'H', True), (16, 'I', False), (20, 'J', False),
-                         (24, 'K', False)):
+                         (24, 'K', False), (28, 'L', False)):
     elf = d.Monster(ex, 15, d.CHAR_TO_MONSTER_TRIBE[char])
     elf.revealed, elf.met = True, met
     entities.append(elf)
