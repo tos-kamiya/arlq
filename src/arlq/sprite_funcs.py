@@ -27,6 +27,7 @@ SPRITE_FILES = {
     'e': 'erebus.png',
     'E': 'rare-erebus.png',
     'X': 'caltrop-plant.png',
+    'p': 'pegasus.png',
 }
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
 # tinted with the monster's color. They float at the upper right of the

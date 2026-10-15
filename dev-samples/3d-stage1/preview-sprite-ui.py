@@ -34,15 +34,15 @@ entities = [d.Monster(13 + i * 3, 8, d.CHAR_TO_MONSTER_TRIBE[char])
 chest = d.Treasure(36, 8, 'D')
 chest.unlocked = True
 entities.append(chest)
-# Companions in the room below, and Ocular travelling with the player.
-for i, char in enumerate(('n', 'o')):
+# Companions in the room below, and Pegasus travelling with the player.
+for i, char in enumerate(('n', 'o', 'p')):
     companion = d.Companion(14 + i * 4, 11, d.CHAR_TO_COMPANION_TRIBE[char])
     companion.revealed = True
     entities.append(companion)
-player.companion = d.Companion(0, 0, d.CHAR_TO_COMPANION_TRIBE['o'])
+player.companion = d.Companion(0, 0, d.CHAR_TO_COMPANION_TRIBE['p'])
 # Stage 2 additions: rank 2 and rank 3 bison, and the fire drake.
-entities += [d.Monster(23, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=2),
-             d.Monster(27, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=3),
+entities += [d.Monster(25, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=2),
+             d.Monster(29, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=3),
              d.Monster(33, 11, d.CHAR_TO_MONSTER_TRIBE['F']),
              d.Monster(37, 11, d.CHAR_TO_MONSTER_TRIBE['g'])]
 # The rare Erebus belongs to Stage 4; shown here beside the Erebus.

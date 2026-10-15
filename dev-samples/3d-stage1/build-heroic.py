@@ -25,8 +25,8 @@ scene.cycles.sample_clamp_indirect = 2.0
 scene.cycles.blur_glossy = 1.0
 scene.cycles.caustics_reflective = False
 scene.cycles.caustics_refractive = False
-scene.render.resolution_x = 2900
-scene.render.resolution_y = 1250
+scene.render.resolution_x = 1600
+scene.render.resolution_y = 920
 scene.view_settings.view_transform = 'Standard'
 scene.view_settings.look = 'Medium High Contrast'
 world = bpy.data.worlds.new('Night studio')
@@ -34,16 +34,19 @@ world.use_nodes = True
 world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.012, 0.018, 0.03, 1)
 scene.world = world
 
-# Stage 1 characters and companions in the back row, Stage 2 additions in front.
-STAGE2_ROW_Y = -4.4
-ROW = [('@', 'PLAYER', -8.0, 0.0), ('a', 'AMOEBA', -6.0, 0.0), ('A', 'RARE AMOEBA', -4.0, 0.0),
-       ('b', 'BISON', -2.0, 0.0), ('c', 'CHIMERA', 0.0, 0.0), ('d', 'COMODO DRAGON', 2.0, 0.0),
-       ('T', 'TREASURE CHEST', 4.0, 0.0), ('D', 'DRAGON', 6.7, 0.0), ('n', 'NOMICON', 9.2, 0.0),
-       ('o', 'OCULAR', 11.2, 0.0),
-       ('C', 'RARE CHIMERA', -6.0, STAGE2_ROW_Y), ('F', 'FIRE DRAKE', -3.2, STAGE2_ROW_Y),
-       ("'", 'RANK 2 MARK', -0.6, STAGE2_ROW_Y), ('"', 'RANK 3 MARK', 1.2, STAGE2_ROW_Y),
-       ('g', 'GOLEM', 3.4, STAGE2_ROW_Y), ('e', 'EREBUS', 5.5, STAGE2_ROW_Y),
-       ('E', 'RARE EREBUS', 7.7, STAGE2_ROW_Y), ('X', 'CALTROP PLANT', 9.9, STAGE2_ROW_Y)]
+# Three rows, back to front: the player, Stage 1 monsters and chest; the
+# companions and rank marks; the monsters added from Stage 2 on.
+ROW_Y = (0.0, -3.4, -6.8)
+ROW = [('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
+       ('A', 'RARE AMOEBA', -3.0, ROW_Y[0]), ('b', 'BISON', -1.0, ROW_Y[0]),
+       ('c', 'CHIMERA', 1.0, ROW_Y[0]), ('d', 'COMODO DRAGON', 3.0, ROW_Y[0]),
+       ('T', 'TREASURE CHEST', 5.0, ROW_Y[0]), ('D', 'DRAGON', 7.7, ROW_Y[0]),
+       ('n', 'NOMICON', -4.0, ROW_Y[1]), ('o', 'OCULAR', -2.0, ROW_Y[1]),
+       ('p', 'PEGASUS', 0.0, ROW_Y[1]), ("'", 'RANK 2 MARK', 2.0, ROW_Y[1]),
+       ('"', 'RANK 3 MARK', 3.85, ROW_Y[1]),
+       ('C', 'RARE CHIMERA', -5.0, ROW_Y[2]), ('F', 'FIRE DRAKE', -2.2, ROW_Y[2]),
+       ('g', 'GOLEM', 0.6, ROW_Y[2]), ('e', 'EREBUS', 2.6, ROW_Y[2]),
+       ('E', 'RARE EREBUS', 4.8, ROW_Y[2]), ('X', 'CALTROP PLANT', 7.0, ROW_Y[2])]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
@@ -51,7 +54,9 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35}
+         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3}
+# The pegasus companion turns further left, so its horse profile shows.
+PEGASUS_YAW = math.radians(-45)
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
 MONSTER_YAW = math.radians(-30)
 
@@ -802,6 +807,95 @@ def erebus(x, y, rare):
             cone('Halo shard', base, base + Vector((0.02, 0, 0.06)), 0.03, 0, gold, 4, False)
 
 
+def pegasus(x, y):
+    """Pegasus companion: a small, slender fairy horse of glowing pearl,
+    hovering with legs tucked under, on wide feathered wings large for its
+    body, with a full mane and gold hooves.
+    """
+    pearl = material('Pegasus fairy pearl', (0.78, 0.84, 0.95), 0.3, 0.22,
+                     emission=(0.75, 0.9, 1.0), strength=0.04,
+                     rim=(0.6, 0.95, 1.0), rim_strength=1.4, coat=0.8)
+    wisp = material('Pegasus glowing mane', (0.15, 0.65, 1.0), 0.5, 0.2,
+                    emission=(0.15, 0.6, 1.0), strength=0.7,
+                    rim=(0.7, 0.95, 1.0), rim_strength=1.2)
+    feather = material('Pegasus feathers', (0.58, 0.82, 1.0), 0.5, 0.25,
+                       emission=(0.5, 0.8, 1.0), strength=0.1,
+                       rim=(0.8, 0.97, 1.0), rim_strength=1.4)
+    eye = material('Pegasus eyes', (0.02, 0.03, 0.06), roughness=0.2, coat=1.0)
+    gold = material('Pegasus gold hooves', (1.0, 0.70, 0.22), roughness=0.3, metallic=0.7,
+                    emission=(1.0, 0.62, 0.15), strength=0.8)
+    # Slender body, neck and head melted into one shape; head toward -Y with
+    # a short muzzle.
+    body = [((0, -0.12, 0.58), 0.25), ((0, 0.02, 0.56), 0.26), ((0, 0.16, 0.55), 0.25),
+            ((0, 0.30, 0.56), 0.23), ((0, -0.22, 0.70), 0.17), ((0, -0.28, 0.84), 0.16),
+            ((0, -0.35, 0.95), 0.21), ((0, -0.47, 0.92), 0.15)]
+    hooves = []
+    for side in (-1, 1):
+        # Slim legs stretched fore and aft as if galloping through the air, so
+        # the gold hooves show past the body from above.
+        for hip, knee, foot in (((0.07, -0.13, 0.50), (0.08, -0.25, 0.37), (0.08, -0.34, 0.25)),
+                                ((0.09, 0.30, 0.45), (0.09, 0.44, 0.37), (0.09, 0.56, 0.31))):
+            # The hip sits inside the chest and a joint fills each bend, so the
+            # leg flows out of the body without a gap.
+            mid = tuple((a + b) / 2 for a, b in zip(hip, knee))
+            body += [((side * hip[0], hip[1], hip[2]), 0.15), ((side * mid[0], mid[1], mid[2]), 0.13),
+                     ((side * knee[0], knee[1], knee[2]), 0.12), ((side * foot[0], foot[1], foot[2]), 0.10)]
+            hooves.append((side * foot[0], foot[1] + (-0.03 if foot[1] < 0 else 0.03), foot[2] - 0.03))
+    metaball_mesh('Pegasus body', [((x + px, y + py, pz), r) for (px, py, pz), r in body],
+                  pearl, 0.012)
+    for hx, hy, hz in hooves:
+        bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.055, depth=0.06,
+                                            location=(x + hx, y + hy, hz),
+                                            rotation=(0.8 if hy < 0 else -0.8, 0, 0))
+        finish(bpy.context.object, gold, True, 'Pegasus gold hoof')
+    for side in (-1, 1):
+        sphere('Pegasus eye', (x + side * 0.08, y - 0.40, 0.98), (0.03, 0.03, 0.035), eye, 12)
+        cone('Pegasus ear', (x + side * 0.055, y - 0.31, 1.04), (x + side * 0.075, y - 0.27, 1.15),
+             0.035, 0, pearl, 6, False)
+    # A full mane of glowing wisps from the forelock down the neck, lifted as
+    # it flows back, and a long tail.
+    for k, dx in enumerate((-0.06, -0.03, 0.0, 0.03, 0.06)):
+        tube('Pegasus mane', [(x + dx * 0.5, y - 0.36, 1.10), (x + dx, y - 0.24, 1.06 - abs(dx)),
+                              (x + dx * 1.5, y - 0.10, 0.92 - abs(dx)), (x + dx * 2, y + 0.04, 0.80)],
+             [0.05, 0.075, 0.06, 0], wisp, sides=8, smooth=True)
+    tube('Pegasus forelock', [(x, y - 0.36, 1.10), (x, y - 0.45, 1.06), (x, y - 0.50, 0.99)],
+         [0.05, 0.04, 0], wisp, sides=8, smooth=True)
+    tube('Pegasus tail', [(x, y + 0.42, 0.60), (x + 0.04, y + 0.58, 0.56), (x + 0.02, y + 0.72, 0.44),
+                          (x - 0.04, y + 0.82, 0.28)], [0.07, 0.09, 0.07, 0], wisp, sides=10,
+         smooth=True)
+    # Feathered wings, large for the body, raised up and swept back: a fan of
+    # long flight feathers with a shorter layer of coverts over their roots.
+    for side in (-1, 1):
+        shoulder = Vector((x + side * 0.14, y + 0.04, 0.76))
+        out, up = Vector((side, 0, 0)), Vector((0, 0.6, 0.8)).normalized()
+        normal = out.cross(up)
+        layers = [(range(6), lambda k: 20 + k * 16, lambda k: 0.62 + 0.06 * min(k, 5 - k) + 0.04 * k,
+                   0.10, 0.0),
+                  (range(5), lambda k: 28 + k * 17, lambda k: 0.34, 0.09, 0.012)]
+        for keys, angle, length, width, lift in layers:
+            for k in keys:
+                a = math.radians(angle(k))
+                along = out * math.cos(a) + up * math.sin(a)
+                across = -out * math.sin(a) + up * math.cos(a)
+                root = shoulder + normal * (lift + 0.003 * k)
+                # Vane widening from the root, then closing in a round tip.
+                def vane_width(f, cap=0.72):
+                    if f <= cap:
+                        return math.sin(math.pi / 2 * f / cap) ** 0.6
+                    return math.sqrt(max(0.0, 1 - ((f - cap) / (1 - cap)) ** 2))
+                n, verts = 18, [tuple(root)]
+                for t in range(1, n + 1):
+                    f = t / n
+                    verts.append(tuple(root + along * (length(k) * f) + across * (width * vane_width(f))))
+                for t in range(n - 1, 0, -1):
+                    f = t / n
+                    verts.append(tuple(root + along * (length(k) * f)
+                                       - across * (width * 0.5 * vane_width(f))))
+                faces = [(0, i, i + 1) for i in range(1, len(verts) - 1)]
+                vane = mesh_object('Pegasus feather', verts, faces, feather, True)
+                vane.modifiers.new('Feather thickness', 'SOLIDIFY').thickness = 0.012
+
+
 def caltrop_plant(x, y):
     """Caltrop plant: a dandelion-like rosette and stem carrying a large
     round head, with iron caltrop spikes jutting from it here and there.
@@ -954,14 +1048,14 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
             'g': golem, 'e': lambda x, y: erebus(x, y, False),
-            'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant}
+            'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = MONSTER_YAW if char in 'aAbcdDCFgeEX' else 0
+    yaw = MONSTER_YAW if char in 'aAbcdDCFgeEX' else PEGASUS_YAW if char == 'p' else 0
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
     for obj in character:
@@ -985,7 +1079,7 @@ for char, name, x, y in ROW:
 
 bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, -0.1))
 finish(bpy.context.object, dark, True, 'Backdrop')
-label('ARLQ / STAGE 1-2 / HEROIC RESIN', (1.6, 1.85, 0.0), 0.2)
+label('ARLQ / STAGE 1-2 / HEROIC RESIN', (0.5, 1.85, 0.0), 0.2)
 # Warm key, cool fill, strong back rim lights for glossy edges.
 for name, pos, power, size, color in [
         ('Key', (-4, -6, 8), 1000, 5, (1.0, 0.93, 0.85)),
@@ -1003,14 +1097,20 @@ for name, pos, power, size, color in [
 bpy.ops.object.camera_add()
 camera = bpy.context.object
 angle = math.radians(60)
-target = Vector((1.6, STAGE2_ROW_Y / 2, 0))
+target = Vector((0.5, (1.85 + ROW_Y[2] - 1.55) / 2, 0))
 camera.location = target + Vector((0, -15 * math.cos(angle), 15 * math.sin(angle)))
 camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = 22.6
+camera.data.ortho_scale = 18.6
 scene.camera = camera
 scene['sprite_centers'] = {char: list(pos) for char, pos in CENTERS.items()}
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT / 'characters-angle60.blend'))
 if '--save-only' not in sys.argv:
+    # The preview's time goes mostly to Cycles treating every triangle of the
+    # softly glowing meshes as a light; glows still show without that, so turn
+    # it off for this group shot only (the saved scene, used for the sprites,
+    # keeps it). This about halves the render time.
+    for mat in bpy.data.materials:
+        mat.cycles.emission_sampling = 'NONE'
     scene.render.filepath = str(OUT / 'preview-angle60.png')
     bpy.ops.render.render(write_still=True)
