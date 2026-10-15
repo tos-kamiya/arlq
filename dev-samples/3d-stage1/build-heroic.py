@@ -43,7 +43,7 @@ ROW = [('@', 'PLAYER', -8.0, 0.0), ('a', 'AMOEBA', -6.0, 0.0), ('A', 'RARE AMOEB
        ('C', 'RARE CHIMERA', -6.0, STAGE2_ROW_Y), ('F', 'FIRE DRAKE', -3.2, STAGE2_ROW_Y),
        ("'", 'RANK 2 MARK', -0.6, STAGE2_ROW_Y), ('"', 'RANK 3 MARK', 1.2, STAGE2_ROW_Y),
        ('g', 'GOLEM', 3.4, STAGE2_ROW_Y), ('e', 'EREBUS', 5.5, STAGE2_ROW_Y),
-       ('E', 'RARE EREBUS', 7.7, STAGE2_ROW_Y)]
+       ('E', 'RARE EREBUS', 7.7, STAGE2_ROW_Y), ('X', 'CALTROP PLANT', 9.9, STAGE2_ROW_Y)]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
@@ -51,7 +51,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'g': 1.3, 'e': 1.9, 'E': 2.2}
+         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35}
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
 MONSTER_YAW = math.radians(-30)
 
@@ -646,8 +646,8 @@ def nomicon(x, y):
     leather = material('Nomicon indigo leather', (0.10, 0.06, 0.32), 0.15, 0.35,
                        rim=(0.55, 0.45, 1.0), rim_strength=1.2, coat=0.6)
     gold = material('Nomicon gold corners', (1.0, 0.70, 0.22), roughness=0.22, metallic=1.0)
-    page = material('Nomicon parchment pages', (0.86, 0.72, 0.46), 0.1, 0.5,
-                    emission=(1.0, 0.75, 0.4), strength=0.15)
+    page = material('Nomicon parchment pages', (0.58, 0.43, 0.22), 0.1, 0.55,
+                    emission=(1.0, 0.7, 0.35), strength=0.05)
     rune = material('Nomicon cyan runes', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
                     strength=3.0)
     ribbon = material('Nomicon crimson ribbon', (0.75, 0.04, 0.08), 0.1, 0.4)
@@ -682,17 +682,16 @@ def nomicon(x, y):
 def ocular(x, y):
     sclera = material('Ocular pearl sclera', (0.95, 0.96, 1.0), 0.35, 0.12,
                       rim=(0.7, 0.9, 1.0), rim_strength=1.0, coat=1.0)
-    iris = material('Ocular amber iris', (1.0, 0.45, 0.03), 0.3, 0.1,
-                    emission=(1.0, 0.4, 0.03), strength=1.0, coat=1.0)
+    iris = material('Ocular amber iris', (0.95, 0.32, 0.02), 0.2, 0.15,
+                    emission=(1.0, 0.35, 0.02), strength=0.35, coat=0.6)
     gold = material('Ocular gold rings', (1.0, 0.70, 0.22), roughness=0.22, metallic=1.0)
-    lens = material('Ocular crystal cornea', (0.9, 0.97, 1.0), 0.95, 0.03, coat=1.0)
+    pupil = material('Ocular matte pupil', (0.0, 0.0, 0.0), roughness=0.9)
     center = Vector((x, y, 0.62))
     # The eye looks straight at the camera, i.e. at the player.
     look = Vector((0, -math.cos(math.radians(60)), math.sin(math.radians(60))))
     sphere('Ocular eyeball', tuple(center), (0.36, 0.36, 0.36), sclera, 48)
     cone('Ocular iris', center + look * 0.30, center + look * 0.355, 0.20, 0.17, iris, 40)
-    cone('Ocular pupil', center + look * 0.35, center + look * 0.37, 0.085, 0.07, obsidian, 32)
-    sphere('Ocular cornea', tuple(center + look * 0.20), (0.20, 0.20, 0.20), lens, 32)
+    cone('Ocular pupil', center + look * 0.35, center + look * 0.37, 0.085, 0.07, pupil, 32)
     # A gyroscope-like gold frame: a ring around the eye and one tilted across it.
     for name, rotation in (('Ocular equator ring', (0.0, 0.0, 0.0)),
                            ('Ocular orbit ring', (math.radians(60), math.radians(25), 0.0))):
@@ -803,6 +802,68 @@ def erebus(x, y, rare):
             cone('Halo shard', base, base + Vector((0.02, 0, 0.06)), 0.03, 0, gold, 4, False)
 
 
+def caltrop_plant(x, y):
+    """Caltrop plant: a dandelion-like rosette and stem carrying a large
+    round head, with iron caltrop spikes jutting from it here and there.
+    """
+    leaf = material('Caltrop plant leaves', (0.10, 0.55, 0.12), 0.35, 0.3,
+                    rim=(0.6, 1.0, 0.5), rim_strength=1.0, coat=0.4)
+    stem = material('Caltrop plant stem', (0.20, 0.62, 0.16), 0.3, 0.3,
+                    rim=(0.7, 1.0, 0.6), rim_strength=0.8)
+    head = material('Caltrop plant lemon head', (1.0, 0.85, 0.22), 0.1, 0.3,
+                    rim=(1.0, 0.95, 0.7), rim_strength=1.2, coat=0.5)
+    iron = material('Caltrop iron spikes', (0.55, 0.56, 0.60), roughness=0.35, metallic=0.6,
+                    rim=(0.85, 0.9, 1.0), rim_strength=1.2)
+    # A rosette of serrated dandelion leaves lying on the floor.
+    for k in range(7):
+        a = 2 * math.pi * k / 7 + 0.2
+        along, side = Vector((math.cos(a), math.sin(a), 0)), Vector((-math.sin(a), math.cos(a), 0))
+        length = 0.62 if k % 2 else 0.52
+        outline = [Vector((x, y, 0.03))]
+        teeth = 4
+        for t in range(1, 2 * teeth + 1):
+            f = t / (2 * teeth)
+            width = 0.09 * math.sin(math.pi * f) * (1.6 if t % 2 else 0.8)
+            outline.append(Vector((x, y, 0.03)) + along * (length * f) + side * width
+                           + Vector((0, 0, 0.08 * f * f)))
+        outline.append(Vector((x, y, 0.03)) + along * (length * 1.05) + Vector((0, 0, 0.09)))
+        for t in range(2 * teeth, 0, -1):
+            f = t / (2 * teeth)
+            width = 0.09 * math.sin(math.pi * f) * (1.6 if t % 2 else 0.8)
+            outline.append(Vector((x, y, 0.03)) + along * (length * f) - side * width
+                           + Vector((0, 0, 0.08 * f * f)))
+        verts = [tuple(v) for v in outline]
+        faces = [(0, i, i + 1) for i in range(1, len(verts) - 1)]
+        blade = mesh_object('Caltrop plant leaf', verts, faces, leaf, True)
+        solid = blade.modifiers.new('Leaf thickness', 'SOLIDIFY')
+        solid.thickness = 0.025
+    # A slightly bowed stem up to the head.
+    centre = Vector((x - 0.04, y + 0.02, 0.80))
+    tube('Caltrop plant stem', [(x, y, 0.02), (x + 0.03, y, 0.30), (x - 0.01, y + 0.01, 0.52),
+                                tuple(centre)], [0.05, 0.04, 0.04, 0.05], stem, sides=10,
+         smooth=True)
+    for k in range(6):
+        a = 2 * math.pi * k / 6
+        base = centre + Vector((0.10 * math.cos(a), 0.10 * math.sin(a), -0.26))
+        cone('Caltrop plant sepal', base - Vector((0.06 * math.cos(a), 0.06 * math.sin(a), 0.06)),
+             base + Vector((0.04 * math.cos(a), 0.04 * math.sin(a), 0.06)), 0.05, 0, leaf, 5, False)
+    radius = 0.32
+    sphere('Caltrop plant head', tuple(centre), (radius, radius, radius), head, 48)
+    # Iron spikes here and there: spread evenly, then every other one kept
+    # with varied lengths so the head looks irregular rather than a mace.
+    count = 22
+    for k in range(count):
+        z = 1 - 2 * (k + 0.5) / count
+        r = math.sqrt(1 - z * z)
+        a = k * math.pi * (3 - math.sqrt(5))
+        out = Vector((r * math.cos(a), r * math.sin(a), z))
+        if k % 2 or out.z < -0.6:
+            continue
+        length = (0.20, 0.28, 0.24)[k % 3]
+        cone('Caltrop spike', centre + out * (radius - 0.03), centre + out * (radius + length),
+             0.065, 0, iron, 6, False)
+
+
 def golem(x, y):
     """Stage 2 golem: chunky dark basalt blocks with glowing amber rune seams.
 
@@ -893,14 +954,14 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
             'g': golem, 'e': lambda x, y: erebus(x, y, False),
-            'E': lambda x, y: erebus(x, y, True)}
+            'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = MONSTER_YAW if char in 'aAbcdDCFgeE' else 0
+    yaw = MONSTER_YAW if char in 'aAbcdDCFgeEX' else 0
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
     for obj in character:

@@ -22,7 +22,8 @@ if HEROIC:
                ('D', 'dragon', (0, 0)), ('n', 'nomicon', (0, 0)), ('o', 'ocular', (0, 0)),
                ('C', 'rare-chimera', (0, 0)), ('F', 'fire-drake', (0, 0)),
                ("'", 'mark-rank2', (0, 0)), ('"', 'mark-rank3', (0, 0)),
-               ('g', 'golem', (0, 0)), ('e', 'erebus', (0, 0)), ('E', 'rare-erebus', (0, 0))]
+               ('g', 'golem', (0, 0)), ('e', 'erebus', (0, 0)), ('E', 'rare-erebus', (0, 0)),
+               ('X', 'caltrop-plant', (0, 0))]
 if '--only' in sys.argv:
     only = sys.argv[sys.argv.index('--only') + 1:]
     models = [model for model in models if model[0] in only]
@@ -48,6 +49,11 @@ for char, name, (x, y) in models:
     for obj in scene.objects:
         obj.hide_render = obj not in selected and obj.type not in ('LIGHT', 'CAMERA')
     camera = scene.camera
+    if HEROIC:
+        # The lights are aimed at the scene origin; move them with the
+        # character so every sprite is lit the same way wherever it stands.
+        for light in (obj for obj in scene.objects if obj.type == 'LIGHT'):
+            light.location += Vector((x, y, 0))
     target = Vector((x, y, 0.35))
     camera.location = target + Vector((0, -7.5, 15 * math.sin(math.radians(60))))
     camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
