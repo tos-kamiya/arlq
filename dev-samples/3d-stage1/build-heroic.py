@@ -1161,7 +1161,7 @@ def collector_elf(x, y):
 
 def lifebringer_elf(x, y):
     """Lifebringer Elf: drawn as a spirit or god rather than an elf. It floats
-    on a white cloud that its robe melts into, in softly glowing translucent
+    on a bumpy white cloud that its slim robe sinks into, in softly glowing translucent
     ivory, with long white-gold hair (no beard and no pointed ears), a gold
     halo behind the head, offering in both hands an orb of soft green light.
     """
@@ -1182,11 +1182,20 @@ def lifebringer_elf(x, y):
     eye = material('Lifebringer eyes', (0.10, 0.20, 0.15), roughness=0.3, coat=1.0)
 
     def body(x, y):
-        # A cloud the robe melts into, carrying the figure above the floor.
-        metaball_mesh('Lifebringer cloud', [((x + px, y + py, pz), r) for px, py, pz, r in (
-            (0.0, 0.0, 0.20, 0.42), (-0.28, 0.04, 0.14, 0.30), (0.28, 0.02, 0.14, 0.30),
-            (-0.14, -0.22, 0.12, 0.26), (0.16, -0.22, 0.12, 0.26), (0.0, 0.24, 0.14, 0.28),
-            (-0.40, -0.06, 0.08, 0.20), (0.40, -0.08, 0.08, 0.20))], cloud, 0.015)
+        # A bumpy cumulus of separate puffs, so it reads as a cloud rather
+        # than a flared skirt, with small wisps drifting beside it.
+        for k, (px, py, pz, r) in enumerate((
+                (0.0, 0.02, 0.22, 0.20), (-0.22, 0.06, 0.18, 0.16), (0.23, 0.04, 0.17, 0.17),
+                (-0.12, -0.18, 0.15, 0.15), (0.13, -0.19, 0.16, 0.14), (0.0, 0.22, 0.17, 0.15),
+                (-0.36, -0.04, 0.11, 0.11), (0.37, -0.06, 0.10, 0.12), (-0.02, -0.26, 0.10, 0.11),
+                (0.30, 0.20, 0.11, 0.10), (-0.30, 0.20, 0.10, 0.10))):
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=r,
+                                                  location=(x + px, y + py, pz))
+            puff = finish(bpy.context.object, cloud, True, 'Lifebringer cloud puff')
+            puff.scale = (1.0, 1.0, 0.8)
+        for px, py, pz, r in ((-0.52, 0.06, 0.30, 0.06), (0.50, -0.10, 0.36, 0.05),
+                              (0.46, 0.12, 0.20, 0.045)):
+            sphere('Lifebringer cloud wisp', (x + px, y + py, pz), (r * 1.4, r, r * 0.8), cloud, 16)
         # Wide sleeves meeting before the chest, hands offering the orb.
         for side in (-1, 1):
             tube('Lifebringer sleeve', [(x + side * 0.18, y, 0.84), (x + side * 0.27, y - 0.10, 0.72),
@@ -1208,8 +1217,8 @@ def lifebringer_elf(x, y):
         halo = finish(bpy.context.object, gold, True, 'Lifebringer halo')
         halo.rotation_euler = (math.pi / 2, 0, 0)
 
-    elf_figure(x, y, 'Lifebringer', robe, skin, eye, body, head, skirt=(0.24, 0.20, 0.15),
-               skirt_z=(0.18, 0.38, 0.58), ears=False)
+    elf_figure(x, y, 'Lifebringer', robe, skin, eye, body, head, skirt=(0.14, 0.16, 0.15),
+               skirt_z=(0.26, 0.42, 0.58), ears=False)
 
 
 def sylvan_elf(x, y):
@@ -1223,9 +1232,9 @@ def sylvan_elf(x, y):
                     rim=(0.8, 1.0, 0.6), rim_strength=1.0, coat=0.3)
     apron = material('Sylvan elf cream apron', (0.88, 0.84, 0.70), 0.05, 0.7,
                      rim=(1.0, 1.0, 0.9), rim_strength=0.5)
-    veil = material('Sylvan elf glowing veil', (0.75, 1.0, 0.70), 0.7, 0.2,
-                    emission=(0.6, 1.0, 0.5), strength=0.5,
-                    rim=(0.9, 1.0, 0.8), rim_strength=1.5)
+    veil = material('Sylvan elf glowing veil', (0.55, 0.85, 0.50), 0.5, 0.25,
+                    emission=(0.6, 1.0, 0.5), strength=0.12,
+                    rim=(0.9, 1.0, 0.8), rim_strength=0.8)
     straw = material('Sylvan elf straw hat', (0.88, 0.70, 0.30), 0.0, 0.7,
                      rim=(1.0, 0.9, 0.6), rim_strength=0.6)
     flower = material('Sylvan elf flowers', (1.0, 0.55, 0.65), 0.1, 0.4)
@@ -1244,7 +1253,7 @@ def sylvan_elf(x, y):
 
     def body(x, y):
         # A softly glowing veil over the hem of the dress.
-        tube('Sylvan elf veil', [(x, y, 0.01), (x, y, 0.16), (x, y, 0.32)], [0.28, 0.24, 0.20],
+        tube('Sylvan elf veil', [(x, y, 0.01), (x, y, 0.10), (x, y, 0.20)], [0.27, 0.25, 0.22],
              veil, sides=32, smooth=True)
         block('Sylvan elf apron', (x, y - 0.17, 0.42), (0.26, 0.04, 0.40), apron, 0.03,
               (-0.12, 0, 0))
