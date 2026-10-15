@@ -44,6 +44,7 @@ ROW = [('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
        ('n', 'NOMICON', -4.0, ROW_Y[1]), ('o', 'OCULAR', -2.0, ROW_Y[1]),
        ('p', 'PEGASUS', 0.0, ROW_Y[1]), ("'", 'RANK 2 MARK', 2.0, ROW_Y[1]),
        ('"', 'RANK 3 MARK', 3.85, ROW_Y[1]), ('H', 'HIGH ELF', 5.9, ROW_Y[1]),
+       ('I', 'ISOLATED ELF', 7.8, ROW_Y[1]),
        ('C', 'RARE CHIMERA', -5.0, ROW_Y[2]), ('F', 'FIRE DRAKE', -2.2, ROW_Y[2]),
        ('g', 'GOLEM', 0.6, ROW_Y[2]), ('e', 'EREBUS', 2.6, ROW_Y[2]),
        ('E', 'RARE EREBUS', 4.8, ROW_Y[2]), ('X', 'CALTROP PLANT', 7.0, ROW_Y[2])]
@@ -54,7 +55,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8}
+         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
@@ -807,14 +808,46 @@ def erebus(x, y, rare):
             cone('Halo shard', base, base + Vector((0.02, 0, 0.06)), 0.03, 0, gold, 4, False)
 
 
-def high_elf(x, y):
-    """High Elf: a noble, about three heads tall and slimmer and taller than
-    the player, in a long royal blue robe with a gold belt, a white mantle
-    trailing behind, a gold crown over long platinum hair, pointed ears, and
-    the glowing protective amulet on the chest above clasped hands.
+ELF_STRETCH = 1.3
+
+
+def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.14)):
+    """Shared elf build: about three heads tall, slimmer and taller than the
+    player, in a long robe, with pointed ears; `body(x, y)` and `head(x, y)`
+    add each elf's own parts.
 
     Heights shrink to half in the 60-degree view, so the body is stretched
     upward and the head tilted back for the face to look at the camera.
+    """
+    body_start = set(bpy.data.objects)
+    # Long robe flaring to the floor and the slim body above it.
+    tube(prefix + ' robe skirt', [(x, y, 0.02), (x, y, 0.30), (x, y, 0.58)], list(skirt),
+         robe, sides=32, smooth=True)
+    tube(prefix + ' robe body', [(x, y, 0.56), (x, y, 0.72), (x, y, 0.86), (x, y, 0.90)],
+         [(0.16, 0.13), (0.19, 0.15), (0.17, 0.13), (0.08, 0.07)], robe, sides=32, smooth=True)
+    body(x, y)
+    head_start = set(bpy.data.objects)
+    for side in (-1, 1):
+        cone(prefix + ' ear', (x + side * 0.12, y + 0.01, 1.04), (x + side * 0.27, y + 0.05, 1.13),
+             0.04, 0, skin, 10, True)
+        sphere(prefix + ' eye', (x + side * 0.05, y - 0.135, 1.04), (0.022, 0.012, 0.028), eye, 12)
+    sphere(prefix + ' head', (x, y, 1.03), (0.14, 0.14, 0.155), skin, 32)
+    head(x, y)
+    bpy.context.view_layer.update()
+    neck = Vector((x, y, 0.90))
+    for obj in head_start - body_start:
+        obj.matrix_world = (Matrix.Translation((x, y, 0)) @ Matrix.Diagonal((1, 1, ELF_STRETCH, 1))
+                            @ Matrix.Translation((-x, -y, 0)) @ obj.matrix_world)
+    lift = Matrix.Translation((0, 0, neck.z * (ELF_STRETCH - 1)))
+    tilt = Matrix.Translation(neck) @ Matrix.Rotation(-0.6, 4, 'X') @ Matrix.Translation(-neck)
+    for obj in set(bpy.data.objects) - head_start:
+        obj.matrix_world = lift @ tilt @ obj.matrix_world
+
+
+def high_elf(x, y):
+    """High Elf: a noble in a long royal blue robe with a gold belt, a white
+    mantle trailing behind, a gold crown over long platinum hair, and the
+    glowing protective amulet on the chest above clasped hands.
     """
     robe = material('High elf royal blue robe', (0.05, 0.12, 0.55), 0.2, 0.3,
                     rim=(0.5, 0.7, 1.0), rim_strength=1.2, coat=0.5)
@@ -829,81 +862,126 @@ def high_elf(x, y):
     gem = material('High elf amulet light', (0.35, 0.8, 1.0), emission=(0.3, 0.75, 1.0),
                    strength=6.0)
     eye = material('High elf eyes', (0.05, 0.12, 0.25), roughness=0.2, coat=1.0)
-    body_start = set(bpy.data.objects)
-    # Long robe flaring to the floor, slim body above a gold belt.
-    tube('High elf robe skirt', [(x, y, 0.02), (x, y, 0.30), (x, y, 0.58)], [0.25, 0.19, 0.14],
-         robe, sides=32, smooth=True)
-    tube('High elf robe body', [(x, y, 0.56), (x, y, 0.72), (x, y, 0.86), (x, y, 0.90)],
-         [(0.16, 0.13), (0.19, 0.15), (0.17, 0.13), (0.08, 0.07)], robe, sides=32, smooth=True)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.155, minor_radius=0.025, location=(x, y, 0.58))
-    finish(bpy.context.object, gold, True, 'High elf belt')
-    # Mantle hanging from the shoulders and trailing back along the floor.
-    columns, rows = 21, 8
-    vertices = []
-    for row in range(rows):
-        t = row / (rows - 1)
-        for col in range(columns):
-            u = col / (columns - 1) * 2 - 1
-            angle = u * math.radians(105)
-            radius = 0.20 + 0.22 * t
-            vertices.append((x + radius * math.sin(angle),
-                             y + radius * math.cos(angle) + 0.22 * t * t,
-                             0.88 - 0.85 * t))
-    faces = [(r * columns + c, r * columns + c + 1, (r + 1) * columns + c + 1, (r + 1) * columns + c)
-             for r in range(rows - 1) for c in range(columns - 1)]
-    cloak = mesh_object('High elf mantle', vertices, faces, mantle, True)
-    cloak.modifiers.new('Smooth drape', 'SUBSURF').levels = 2
-    solid = cloak.modifiers.new('Fabric thickness', 'SOLIDIFY')
-    solid.thickness = 0.03
-    solid.offset = 0
-    hem = [vertices[(rows - 1) * columns + c] for c in range(columns)]
-    tube('High elf mantle hem', hem, [0.018] * columns, gold, sides=6, smooth=True)
-    for side in (-1, 1):
-        sphere('High elf mantle clasp', (x + side * 0.15, y - 0.10, 0.86), (0.04, 0.03, 0.04), gold, 16)
-        # Sleeves from the shoulders to hands clasped in front of the waist.
-        tube('High elf sleeve', [(x + side * 0.19, y, 0.84), (x + side * 0.22, y - 0.06, 0.70),
-                                 (x + side * 0.10, y - 0.18, 0.64)], [0.06, 0.06, 0.07], robe,
+
+    def body(x, y):
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.155, minor_radius=0.025, location=(x, y, 0.58))
+        finish(bpy.context.object, gold, True, 'High elf belt')
+        # Mantle hanging from the shoulders and trailing back along the floor.
+        columns, rows = 21, 8
+        vertices = []
+        for row in range(rows):
+            t = row / (rows - 1)
+            for col in range(columns):
+                u = col / (columns - 1) * 2 - 1
+                angle = u * math.radians(105)
+                radius = 0.20 + 0.22 * t
+                vertices.append((x + radius * math.sin(angle),
+                                 y + radius * math.cos(angle) + 0.22 * t * t,
+                                 0.88 - 0.85 * t))
+        faces = [(r * columns + c, r * columns + c + 1, (r + 1) * columns + c + 1, (r + 1) * columns + c)
+                 for r in range(rows - 1) for c in range(columns - 1)]
+        cloak = mesh_object('High elf mantle', vertices, faces, mantle, True)
+        cloak.modifiers.new('Smooth drape', 'SUBSURF').levels = 2
+        solid = cloak.modifiers.new('Fabric thickness', 'SOLIDIFY')
+        solid.thickness = 0.03
+        solid.offset = 0
+        hem = [vertices[(rows - 1) * columns + c] for c in range(columns)]
+        tube('High elf mantle hem', hem, [0.018] * columns, gold, sides=6, smooth=True)
+        for side in (-1, 1):
+            sphere('High elf mantle clasp', (x + side * 0.15, y - 0.10, 0.86), (0.04, 0.03, 0.04), gold, 16)
+            # Sleeves from the shoulders to hands clasped in front of the waist.
+            tube('High elf sleeve', [(x + side * 0.19, y, 0.84), (x + side * 0.22, y - 0.06, 0.70),
+                                     (x + side * 0.10, y - 0.18, 0.64)], [0.06, 0.06, 0.07], robe,
+                 sides=12, smooth=True)
+            sphere('High elf hand', (x + side * 0.05, y - 0.21, 0.64), (0.05, 0.045, 0.045), skin, 16)
+        # The protective amulet, glowing on the chest.
+        sphere('High elf amulet', (x, y - 0.185, 0.76), (0.05, 0.03, 0.06), gem, 16)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.055, minor_radius=0.012, location=(x, y - 0.19, 0.76),
+                                         rotation=(math.pi / 2, 0, 0))
+        finish(bpy.context.object, gold, True, 'High elf amulet frame')
+
+    def head(x, y):
+        # Long hair: a cap over the back of the head, leaving the face clear, and
+        # locks down the back.
+        sphere('High elf hair cap', (x, y + 0.06, 1.08), (0.15, 0.13, 0.14), hair, 32)
+        for dx in (-0.09, -0.03, 0.03, 0.09):
+            tube('High elf hair lock', [(x + dx, y + 0.08, 1.04), (x + dx * 1.3, y + 0.16, 0.86),
+                                        (x + dx * 1.4, y + 0.19, 0.66)], [0.05, 0.045, 0], hair,
+                 sides=8, smooth=True)
+        # Crown: a gold band with five points, the middle one tallest with a gem.
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.14, minor_radius=0.022, location=(x, y + 0.01, 1.16))
+        finish(bpy.context.object, gold, True, 'High elf crown band')
+        for angle in (-60, -30, 0, 30, 60):
+            a = math.radians(angle - 90)
+            base = Vector((x + 0.14 * math.cos(a), y + 0.01 + 0.14 * math.sin(a), 1.16))
+            cone('High elf crown point', base, base + Vector((0, 0, 0.16 if angle == 0 else 0.10)),
+                 0.03, 0, gold, 6, False)
+        sphere('High elf crown gem', (x, y - 0.13, 1.20), (0.03, 0.02, 0.035), gem, 12)
+
+    elf_figure(x, y, 'High elf', robe, skin, eye, body, head)
+
+
+def isolated_elf(x, y):
+    """Isolated Elf: an old hermit, stooped with a rounded back, in a moss
+    robe tied with a rope, with long white hair, the only beard among the
+    elves, bushy brows, a gnarled staff and an old scroll of elf history.
+    """
+    robe = material('Isolated elf moss robe', (0.17, 0.24, 0.12), 0.2, 0.45,
+                    rim=(0.7, 0.85, 0.6), rim_strength=1.0, coat=0.3)
+    rope = material('Isolated elf rope', (0.45, 0.32, 0.16), 0.0, 0.7)
+    wood = material('Isolated elf staff wood', (0.28, 0.16, 0.07), 0.0, 0.6,
+                    rim=(0.9, 0.7, 0.5), rim_strength=0.6)
+    parchment = material('Isolated elf scroll', (0.85, 0.74, 0.50), 0.1, 0.5,
+                         rim=(1.0, 0.9, 0.7), rim_strength=0.6)
+    skin = material('Isolated elf aged skin', (0.88, 0.74, 0.62), 0.2, 0.45,
+                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    white = material('Isolated elf white hair', (0.93, 0.93, 0.92), 0.25, 0.4,
+                     rim=(1.0, 1.0, 1.0), rim_strength=1.0, coat=0.3)
+    eye = material('Isolated elf eyes', (0.10, 0.08, 0.05), roughness=0.3, coat=1.0)
+
+    def body(x, y):
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.155, minor_radius=0.02, location=(x, y, 0.58))
+        finish(bpy.context.object, rope, True, 'Isolated elf rope belt')
+        tube('Isolated elf rope end', [(x + 0.06, y - 0.15, 0.58), (x + 0.08, y - 0.17, 0.46),
+                                       (x + 0.07, y - 0.18, 0.38)], [0.018, 0.016, 0.014], rope,
+             sides=6, smooth=True)
+        # A rounded, stooped back.
+        sphere('Isolated elf hunched back', (x, y + 0.10, 0.84), (0.19, 0.15, 0.13), robe, 32)
+        # Right hand (screen left) on a gnarled staff taller than the elf.
+        tube('Isolated elf staff', [(x - 0.30, y - 0.10, 0.0), (x - 0.31, y - 0.11, 0.45),
+                                    (x - 0.29, y - 0.12, 0.85), (x - 0.31, y - 0.12, 1.05)],
+             [0.028, 0.026, 0.024, 0.03], wood, sides=8, smooth=True)
+        sphere('Isolated elf staff knot', (x - 0.32, y - 0.12, 1.08), (0.055, 0.055, 0.05), wood, 12,
+               False)
+        tube('Isolated elf right sleeve', [(x - 0.17, y, 0.84), (x - 0.24, y - 0.06, 0.74),
+                                           (x - 0.29, y - 0.11, 0.70)], [0.06, 0.06, 0.07], robe,
              sides=12, smooth=True)
-        sphere('High elf hand', (x + side * 0.05, y - 0.21, 0.64), (0.05, 0.045, 0.045), skin, 16)
-    # The protective amulet, glowing on the chest.
-    sphere('High elf amulet', (x, y - 0.185, 0.76), (0.05, 0.03, 0.06), gem, 16)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.055, minor_radius=0.012, location=(x, y - 0.19, 0.76),
-                                     rotation=(math.pi / 2, 0, 0))
-    finish(bpy.context.object, gold, True, 'High elf amulet frame')
-    head_start = set(bpy.data.objects)
-    for side in (-1, 1):
-        cone('High elf ear', (x + side * 0.12, y + 0.01, 1.04), (x + side * 0.27, y + 0.05, 1.13),
-             0.04, 0, skin, 10, True)
-        sphere('High elf eye', (x + side * 0.05, y - 0.135, 1.04), (0.022, 0.012, 0.028), eye, 12)
-    sphere('High elf head', (x, y, 1.03), (0.14, 0.14, 0.155), skin, 32)
-    # Long hair: a cap over the back of the head, leaving the face clear, and
-    # locks down the back.
-    sphere('High elf hair cap', (x, y + 0.06, 1.08), (0.15, 0.13, 0.14), hair, 32)
-    for dx in (-0.09, -0.03, 0.03, 0.09):
-        tube('High elf hair lock', [(x + dx, y + 0.08, 1.04), (x + dx * 1.3, y + 0.16, 0.86),
-                                    (x + dx * 1.4, y + 0.19, 0.66)], [0.05, 0.045, 0], hair,
-             sides=8, smooth=True)
-    # Crown: a gold band with five points, the middle one tallest with a gem.
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.14, minor_radius=0.022, location=(x, y + 0.01, 1.16))
-    finish(bpy.context.object, gold, True, 'High elf crown band')
-    for angle in (-60, -30, 0, 30, 60):
-        a = math.radians(angle - 90)
-        base = Vector((x + 0.14 * math.cos(a), y + 0.01 + 0.14 * math.sin(a), 1.16))
-        cone('High elf crown point', base, base + Vector((0, 0, 0.16 if angle == 0 else 0.10)),
-             0.03, 0, gold, 6, False)
-    sphere('High elf crown gem', (x, y - 0.13, 1.20), (0.03, 0.02, 0.035), gem, 12)
-    bpy.context.view_layer.update()
-    stretch = 1.3
-    neck = Vector((x, y, 0.90))
-    body = head_start - body_start
-    head = set(bpy.data.objects) - head_start
-    for obj in body:
-        obj.matrix_world = (Matrix.Translation((x, y, 0)) @ Matrix.Diagonal((1, 1, stretch, 1))
-                            @ Matrix.Translation((-x, -y, 0)) @ obj.matrix_world)
-    lift = Matrix.Translation((0, 0, neck.z * (stretch - 1)))
-    tilt = Matrix.Translation(neck) @ Matrix.Rotation(-0.6, 4, 'X') @ Matrix.Translation(-neck)
-    for obj in head:
-        obj.matrix_world = lift @ tilt @ obj.matrix_world
+        sphere('Isolated elf right hand', (x - 0.30, y - 0.12, 0.70), (0.05, 0.05, 0.05), skin, 16)
+        # Left hand (screen right) holding an old scroll before the body.
+        tube('Isolated elf left sleeve', [(x + 0.17, y, 0.84), (x + 0.22, y - 0.08, 0.70),
+                                          (x + 0.14, y - 0.20, 0.62)], [0.06, 0.06, 0.07], robe,
+             sides=12, smooth=True)
+        sphere('Isolated elf left hand', (x + 0.12, y - 0.22, 0.62), (0.05, 0.045, 0.045), skin, 16)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=0.045, depth=0.26,
+                                            location=(x + 0.10, y - 0.25, 0.64),
+                                            rotation=(0, math.pi / 2, 0.3))
+        finish(bpy.context.object, parchment, True, 'Isolated elf scroll')
+
+    def head(x, y):
+        # Long white hair down the back, bushy brows and a long beard.
+        sphere('Isolated elf hair cap', (x, y + 0.06, 1.08), (0.15, 0.13, 0.14), white, 32)
+        for dx in (-0.09, -0.03, 0.03, 0.09):
+            tube('Isolated elf hair lock', [(x + dx, y + 0.08, 1.04), (x + dx * 1.3, y + 0.15, 0.88),
+                                            (x + dx * 1.4, y + 0.17, 0.74)], [0.05, 0.045, 0],
+                 white, sides=8, smooth=True)
+        for side in (-1, 1):
+            sphere('Isolated elf brow', (x + side * 0.055, y - 0.13, 1.085), (0.05, 0.025, 0.022),
+                   white, 12)
+        tube('Isolated elf beard', [(x, y - 0.11, 0.98), (x, y - 0.17, 0.90), (x, y - 0.19, 0.78),
+                                    (x, y - 0.18, 0.66)], [(0.11, 0.06), (0.10, 0.06), (0.07, 0.04), 0],
+             white, sides=12, smooth=True)
+
+    elf_figure(x, y, 'Isolated elf', robe, skin, eye, body, head)
 
 
 def pegasus(x, y):
@@ -1150,7 +1228,7 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
             'g': golem, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
-            'H': high_elf}
+            'H': high_elf, 'I': isolated_elf}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)
