@@ -7,7 +7,9 @@ import pyglet
 
 from . import defs as d
 from . import display as ui_display
-from .pyglet_funcs import CI_BLUE, CI_GREEN, CI_YELLOW, COLOR_MAP, FLOOR, VISIBLE_FLOOR, VISIBLE_WALL, WALL, PygletUI
+from .arlq import barrier_lp_damage
+from .pyglet_funcs import (CI_BLUE, CI_GREEN, CI_YELLOW, COLOR_MAP, FLOOR, REACHABLE_CELL_COLOR,
+                           VISIBLE_FLOOR, VISIBLE_WALL, WALL, PygletUI)
 
 
 SPRITE_FILES = {
@@ -108,6 +110,20 @@ WALL_TINT = {VISIBLE_WALL: 2.4, WALL: 1.75}
 FLOOR_PARTS = ('a', 'b')
 FLOOR_TINTS = {VISIBLE_FLOOR: (78, 72, 66), FLOOR: (42, 39, 36)}
 FLOOR_CHECKER_SHADE = 0.88
+# Barrier cells show red flames burning on the ordinary floor, in place of
+# the red "=": small fires rising from several spots in the lower half of the
+# cell (two variants, laid out as a checkerboard), glowing at their roots and
+# added onto the floor, the tallest reaching a little into the cell above. While the protective amulet makes barriers harmless,
+# the cells within one cell of the player (its own and the eight around it)
+# show only faint grey smoke of the same shape. Flames outside the current
+# view are darkened like the floor. Sizes are in cell widths/heights.
+FLAME_TEXELS = (48, 96)
+FLAME_HEIGHT = 1.3
+FLAME_BASE = 0.0
+FLAME_ALPHA = 1.0
+FLAME_EXPLORED_SHADE = 0.5
+SMOKE_TINT = (150, 150, 156)
+SMOKE_OPACITY = 140
 
 
 def pillar_image(side):
@@ -135,6 +151,58 @@ def pillar_image(side):
                          * (1 - t) ** PILLAR_FADE)
             rgba += bytes((255, 255, 255, round(255 * alpha)))
     return pyglet.image.ImageData(width, rows, 'RGBA', bytes(rgba), pitch=width * 4)
+
+
+def smoke_image(flame):
+    """A white copy of `flame` with the same shape, for the cooled smoke."""
+    width, height = flame.width, flame.height
+    rgba = bytearray(flame.get_data('RGBA', width * 4))
+    for offset in range(0, len(rgba), 4):
+        rgba[offset:offset + 3] = b'\xff\xff\xff'
+    return pyglet.image.ImageData(width, height, 'RGBA', bytes(rgba), pitch=width * 4)
+
+
+def flame_image(variant):
+    """Small fires rising from several spots in the lower half of a cell.
+
+    Each fire is a teardrop tongue, round and bright orange at its root,
+    narrowing to a deep red tip, with a soft glow around the root. The image
+    is drawn additively from the cell's bottom; `variant` (0 or 1) places the
+    fires differently so neighbouring cells do not repeat.
+    """
+    width, height = FLAME_TEXELS
+    lower_half = 0.5 / FLAME_HEIGHT  # the cell's middle, in image fractions
+    # (centre, root height as a fraction of the lower half, half width, height).
+    fires = (((0.20, 0.15, 0.13, 0.42), (0.50, 0.05, 0.16, 0.55), (0.80, 0.20, 0.12, 0.40),
+              (0.35, 0.80, 0.11, 0.34), (0.68, 0.90, 0.10, 0.30)),
+             ((0.28, 0.08, 0.15, 0.50), (0.62, 0.25, 0.14, 0.46), (0.88, 0.05, 0.10, 0.32),
+              (0.14, 0.85, 0.10, 0.30), (0.48, 0.95, 0.11, 0.36)))[variant]
+    root, tip = (255, 160, 60), (230, 35, 15)
+    rgba = bytearray()
+    for row in range(height):
+        v = (row + 0.5) / height
+        for col in range(width):
+            u = (col + 0.5) / width
+            strength, along = 0.0, 1.0
+            for centre, base, half, tall in fires:
+                base *= lower_half
+                t = (v - base) / tall
+                # A soft glow around the root, slightly flattened.
+                glow = 0.45 * max(0.0, 1 - math.hypot((u - centre) / (half * 1.6),
+                                                      (v - base) / (half * 0.9)))
+                value = glow
+                if 0 <= t < 1:
+                    # Teardrop: widest a little above the root, pointed at the tip.
+                    w = half * min(1.0, 0.55 + t * 3) * (1 - t) ** 0.7
+                    across = abs(u - centre) / w if w > 0 else 1
+                    if across < 1:
+                        value = max(value, (1 - across ** 2) * (1 - t) ** 0.5)
+                if value > strength:
+                    strength, along = value, max(t, 0.0)
+            mix = min(1.0, along / 0.7)
+            color = [round(a + (b - a) * mix) for a, b in zip(root, tip)]
+            rgba += bytes((*color, round(255 * min(1.0, FLAME_ALPHA * strength))))
+    return pyglet.image.ImageData(width, height, 'RGBA', bytes(rgba), pitch=width * 4)
 
 
 def ground_disc_image(half=None):
@@ -167,6 +235,10 @@ class SpriteUI(PygletUI):
     _enlarge_neighbors = True
     # Monster types the player has identified, for the strength column.
     _known_types = frozenset()
+    # Current view and, while barriers are harmless, the player's cell that
+    # cools the barrier stones around it.
+    _cur_torched = None
+    _cooling_center = None
 
     def __init__(self, scale=None, key_repeat_interval=None):
         super().__init__(scale, key_repeat_interval)
@@ -208,6 +280,8 @@ class SpriteUI(PygletUI):
                        for part in FLOOR_PARTS]
         self._floor_images = ([pyglet.image.load(str(path)) for path in floor_paths]
                               if all(path.is_file() for path in floor_paths) else None)
+        self._flame_images = [flame_image(variant) for variant in (0, 1)]
+        self._smoke_images = [smoke_image(flame) for flame in self._flame_images]
         self._floor_group = pyglet.graphics.Group(order=-1)
         # Rows are painted north to south: a row's walls, then its characters,
         # so walls overlap characters to their north but not to their south.
@@ -226,9 +300,45 @@ class SpriteUI(PygletUI):
     def draw_stage(self, *, rock_cells=None, **kwargs):
         self._rock_cells = rock_cells or set()
         self._known_types = kwargs.get('known_types') or set()
+        self._cur_torched = kwargs.get('cur_torched')
+        player = kwargs.get('player')
+        self._cooling_center = (
+            (player.x, player.y)
+            if player is not None and not kwargs.get('floor_view') and barrier_lp_damage(player) == 0
+            else None
+        )
         return super().draw_stage(rock_cells=rock_cells, **kwargs)
 
+    def _draw_barrier(self, x, y, field, discovered_at):
+        """Thin red flames on the floor, or faint smoke near the player while harmless."""
+        visible = self._cur_torched is not None and self._cur_torched[y][x]
+        self._draw_floor(x, y, VISIBLE_FLOOR if visible else FLOOR, field, discovered_at)
+        cooled = False
+        if self._cooling_center is not None:
+            cx, cy = self._cooling_center
+            cooled = max(abs(x - cx), abs(y - cy)) <= 1
+        image = (self._smoke_images if cooled else self._flame_images)[(x + y) % 2]
+        bottom = self.window_height - (y + 1 - FLAME_BASE) * self.cell_size_y
+        flame = pyglet.sprite.Sprite(
+            image, x=self._field_col_x(x), y=bottom,
+            blend_src=pyglet.gl.GL_SRC_ALPHA,
+            blend_dest=pyglet.gl.GL_ONE_MINUS_SRC_ALPHA if cooled else pyglet.gl.GL_ONE,
+            batch=self.batch, group=self._row_group(y, 'pillar-back'),
+        )
+        flame.scale_x = (self._field_col_width(x) + 1) / image.width
+        flame.scale_y = FLAME_HEIGHT * self.cell_size_y / image.height
+        if cooled:
+            flame.color = self._display_color(SMOKE_TINT)
+            flame.opacity = SMOKE_OPACITY
+        else:
+            shade = round(255 * (1 if visible else FLAME_EXPLORED_SHADE))
+            flame.color = self._display_color((shade, shade, shade))
+        self._drawables.append(flame)
+
     def _draw_tile(self, x, y, tile_color, field, discovered_at):
+        if (field[y][x] == d.CHAR_BARRIER and discovered_at(x, y)
+                and tile_color != REACHABLE_CELL_COLOR and self._floor_images is not None):
+            return self._draw_barrier(x, y, field, discovered_at)
         if tile_color in FLOOR_TINTS:
             return self._draw_floor(x, y, tile_color, field, discovered_at)
         if field[y][x] != d.CHAR_WALL or tile_color not in (VISIBLE_WALL, WALL):
@@ -372,6 +482,8 @@ class SpriteUI(PygletUI):
 
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
+        if text == d.CHAR_BARRIER and self._floor_images is not None:
+            return  # shown by the flames themselves
         if text in self._mark_images and (x - 1, y) in self._sprite_cells:
             return self._draw_rank_mark((x - 1, y), text, color)
         if text not in self._sprite_images:
