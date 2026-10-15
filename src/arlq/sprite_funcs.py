@@ -34,7 +34,12 @@ SPRITE_FILES = {
     'K': 'collector-elf.png',
     'L': 'lifebringer-elf.png',
     'S': 'sylvan-elf.png',
+    # Not a glyph: the rubble drawn on walls a defeated Golem raised.
+    'golem rock': 'golem-rock.png',
 }
+ROCK_SPRITE = 'golem rock'
+# Golem rubble outside the current view is darkened like explored walls.
+ROCK_EXPLORED_SHADE = 0.6
 # An elf the player has met (drawn without bold as text) is shown with its
 # sprite and ground disc darkened to this fraction.
 MET_ELF_SHADE = 0.6
@@ -143,6 +148,9 @@ def ground_disc_image(half=None):
 class SpriteUI(PygletUI):
     """Reuse input, menus, visibility and glyph selection without duplicating rules."""
 
+    # Walls a defeated Golem raised on the floor being drawn (see draw_stage).
+    _rock_cells = frozenset()
+
     def __init__(self, scale=None, key_repeat_interval=None):
         super().__init__(scale, key_repeat_interval)
         self.window.set_caption(self.window.caption.replace('Pyglet mix', 'Sprite mix'))
@@ -198,6 +206,10 @@ class SpriteUI(PygletUI):
             self._row_groups[order] = pyglet.graphics.Group(order=order)
         return self._row_groups[order]
 
+    def draw_stage(self, *, rock_cells=None, **kwargs):
+        self._rock_cells = rock_cells or set()
+        return super().draw_stage(rock_cells=rock_cells, **kwargs)
+
     def _draw_tile(self, x, y, tile_color, field, discovered_at):
         if tile_color in FLOOR_TINTS:
             return self._draw_floor(x, y, tile_color, field, discovered_at)
@@ -205,13 +217,20 @@ class SpriteUI(PygletUI):
             return super()._draw_tile(x, y, tile_color, field, discovered_at)
         floor = VISIBLE_FLOOR if tile_color == VISIBLE_WALL else FLOOR
         self._draw_floor(x, y, floor, field, discovered_at)
+        if (x, y) in self._rock_cells and ROCK_SPRITE in self._sprite_images:
+            # A wall raised by a Golem is drawn as its rubble, not a column.
+            self._place_sprite(ROCK_SPRITE, self._field_col_x(x) + self.cell_size_x / 2,
+                               (y + 0.5) * self.cell_size_y, 1.0, y, 'column', False,
+                               1.0 if tile_color == VISIBLE_WALL else ROCK_EXPLORED_SHADE)
+            return
         left, width = self._field_col_x(x), self._field_col_width(x) + 1
         top = (y - WALL_OVERHANG) * self.cell_size_y
         height = self.cell_size_y + 1
         group = self._row_group(y, 'wall')
         def wall_at(wx, wy):
             return (0 <= wy < len(field) and 0 <= wx < len(field[wy])
-                    and field[wy][wx] == d.CHAR_WALL and discovered_at(wx, wy))
+                    and field[wy][wx] == d.CHAR_WALL and discovered_at(wx, wy)
+                    and (wx, wy) not in self._rock_cells)
 
         if self._wall_images is not None:
             tint = tuple(min(255, round(c * WALL_TINT[tile_color])) for c in tile_color)

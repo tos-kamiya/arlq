@@ -28,6 +28,9 @@ class Floor:
     collapse_landings: set[d.Point] = dataclass_field(default_factory=set)
     room_components: Tuple[set[d.Point], ...] = ()
     persistent_barriers: set[d.Point] = dataclass_field(default_factory=set)
+    # Wall cells raised by a defeated Golem. They are ordinary walls in every
+    # rule; the sprite GUI only draws them as rubble instead of columns.
+    rock_cells: set[d.Point] = dataclass_field(default_factory=set)
 
 
 HistoryEntry = Optional[

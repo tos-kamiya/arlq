@@ -25,6 +25,10 @@ for x in range(4, 40):
 for y in range(4, 17):
     field[y][4] = field[y][39] = d.CHAR_WALL
 field[11][20] = d.CHAR_WALL
+# Rocks a defeated Golem raised beside the golem: walls drawn as rubble.
+rock_cells = {(35, 10), (38, 10), (35, 12)}
+for rx, ry in rock_cells:
+    field[ry][rx] = d.CHAR_WALL
 # Scattered caltrops beside the caltrop plant, to compare their colors.
 for cx, cy in ((7, 10), (5, 12), (8, 12)):
     field[cy][cx] = d.CHAR_CALTROP
@@ -61,7 +65,8 @@ entities += [d.Monster(8, 11, d.CHAR_TO_MONSTER_TRIBE['e']),
              d.Monster(6, 11, d.CHAR_TO_MONSTER_TRIBE['X'])]
 ui.draw_stage(turn=0, player=player, entities=entities, field=field,
               cur_torched=current, torched=seen, known_types={'a', 'A', 'b', 'b2', 'b3', 'c', 'd', 'D', 'C', 'F', 'g', 'e', 'E', 'X'},
-              show_entities=False, stage_num=1, message='Sprites + text fallback (c)')
+              show_entities=False, stage_num=1, message='Sprites + text fallback (c)',
+              rock_cells=rock_cells)
 ui.window.switch_to()
 ui.window.clear()
 ui.batch.draw()
