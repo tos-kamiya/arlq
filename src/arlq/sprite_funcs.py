@@ -21,7 +21,15 @@ SPRITE_FILES = {
     'T': 'treasure.png',
     'n': 'nomicon.png',
     'o': 'ocular.png',
+    'C': 'rare-chimera.png',
+    'F': 'fire-drake.png',
 }
+# Empowered-rank marks, rendered as raised apostrophes in near-white resin and
+# tinted with the monster's color. They float at the upper right of the
+# sprite instead of in the next cell: centre offset from the ground point in
+# cell widths east and cell heights north.
+MARK_FILES = {"'": 'mark-rank2.png', '"': 'mark-rank3.png'}
+MARK_OFFSET = (0.6, 0.65)
 # Every sprite uses one scale: this many source pixels (an amoeba's width)
 # span 1.8 cell widths. Larger models therefore give larger sprites.
 SPRITE_REFERENCE_PIXELS = 186
@@ -142,6 +150,12 @@ class SpriteUI(PygletUI):
             self._gray_images[char] = pyglet.image.ImageData(
                 data.width, data.height, 'RGBA', bytes(rgba), pitch=data.width * 4
             )
+        self._mark_images = {mark: pyglet.image.load(str(directory / filename))
+                             for mark, filename in MARK_FILES.items()
+                             if (directory / filename).is_file()}
+        # Cells where a character sprite was drawn this frame; a rank mark in
+        # the next cell belongs to that sprite.
+        self._sprite_cells = set()
         self._disc_image = ground_disc_image()
         self._disc_halves = (ground_disc_image('lower-left'), ground_disc_image('upper-right'))
         self._disc_group = pyglet.graphics.Group(order=1)
@@ -162,7 +176,7 @@ class SpriteUI(PygletUI):
         self._overlay_group = pyglet.graphics.Group(order=10000)
 
     ROW_LAYERS = ('wall', 'column', 'pillar-back', 'sprite', 'pillar-front', 'familiar',
-                  'familiar-front')
+                  'familiar-front', 'mark')
 
     def _row_group(self, y, layer):
         order = 10 + len(self.ROW_LAYERS) * y + self.ROW_LAYERS.index(layer)
@@ -253,10 +267,34 @@ class SpriteUI(PygletUI):
         poison = self._tone_color('magenta') if player.item == d.ITEM_POISONED else None
         self._draw_sprite(pos, '@', self._tone_color(background or 'default'), poison)
 
+    def _clear_drawables(self):
+        super()._clear_drawables()
+        self._sprite_cells.clear()
+
     def _draw_field_text(self, pos, text, color, bold=False):
+        x, y = pos
+        if text in self._mark_images and (x - 1, y) in self._sprite_cells:
+            return self._draw_rank_mark((x - 1, y), text, color)
         if text not in self._sprite_images:
             return super()._draw_field_text(pos, text, color, bold)
         self._draw_sprite(pos, text, color)
+
+    def _draw_rank_mark(self, pos, mark, color):
+        """Tinted 3D apostrophe(s) at the upper right of the sprite in `pos`."""
+        x, y = pos
+        image = self._mark_images[mark]
+        padding = max(1, round(self.scale))
+        scale = 1.8 * max(1, self.cell_size_x - 2 * padding) / SPRITE_REFERENCE_PIXELS
+        dx, dy = MARK_OFFSET
+        sprite = pyglet.sprite.Sprite(
+            image,
+            x=self._field_col_x(x) + (0.5 + dx) * self.cell_size_x - image.width * scale / 2,
+            y=self.window_height - (y + 0.5 - dy) * self.cell_size_y - image.height * scale / 2,
+            batch=self.batch, group=self._row_group(y, 'mark'),
+        )
+        sprite.scale = scale
+        sprite.color = self._display_color(color)
+        self._drawables.append(sprite)
 
     def _draw_companion_slot(self, pos, char):
         if char not in self._sprite_images:
@@ -273,6 +311,7 @@ class SpriteUI(PygletUI):
         cx, cy = self._field_col_x(x) + self.cell_size_x / 2, (y + 0.5) * self.cell_size_y
         dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
         self._place_sprite(text, cx, cy, 1.0, y, 'sprite', dimmed)
+        self._sprite_cells.add(pos)
         if text in d.CHAR_TO_COMPANION_TRIBE:
             green = COLOR_MAP[CI_GREEN]
             self._draw_pillar(cx, cy, 1.0, y, self._dim_color(green) if dimmed else green)

@@ -40,8 +40,12 @@ for i, char in enumerate(('n', 'o')):
     companion.revealed = True
     entities.append(companion)
 player.companion = d.Companion(0, 0, d.CHAR_TO_COMPANION_TRIBE['o'])
+# Stage 2 additions: rank 2 and rank 3 bison, and the fire drake.
+entities += [d.Monster(23, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=2),
+             d.Monster(27, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=3),
+             d.Monster(33, 11, d.CHAR_TO_MONSTER_TRIBE['F'])]
 ui.draw_stage(turn=0, player=player, entities=entities, field=field,
-              cur_torched=current, torched=seen, known_types={'a', 'A', 'b', 'c', 'd', 'D', 'C'},
+              cur_torched=current, torched=seen, known_types={'a', 'A', 'b', 'b2', 'b3', 'c', 'd', 'D', 'C', 'F'},
               show_entities=False, stage_num=1, message='Sprites + text fallback (c)')
 ui.window.switch_to()
 ui.window.clear()

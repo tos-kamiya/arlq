@@ -14,6 +14,9 @@ def sprite_ui(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
     ui._sprite_images = {char: SimpleNamespace(width=100, height=120) for char in SPRITE_FILES}
     ui._gray_images = dict.fromkeys(ui._sprite_images, SimpleNamespace(width=100, height=120))
+    ui._mark_images = {mark: SimpleNamespace(width=30, height=40) for mark in ("'", '"')}
+    ui._sprite_cells = set()
+    ui._pillar_images = {side: SimpleNamespace(width=64, height=96) for side in ('back', 'front')}
     ui.map_mode = False
     ui.scale = 1
     ui.cell_size_x, ui.cell_size_y = 13, 20
@@ -45,7 +48,7 @@ def test_known_sprite_enlarges_around_cell_center_and_retains_color(sprite_ui):
     assert not ui.text_calls
 
 
-@pytest.mark.parametrize('char', ('?', '&', '$', 'C'))
+@pytest.mark.parametrize('char', ('?', '&', '$', 'g'))
 def test_unavailable_glyph_uses_original_text(sprite_ui, char):
     sprite_ui._draw_field_text((4, 5), char, (220, 82, 82), True)
     assert sprite_ui.text_calls[0][1] == char
@@ -147,6 +150,65 @@ def test_poison_turns_upper_right_of_player_disc_purple(sprite_ui, lp, tone):
     ui._draw_player((4, 5), player)
     assert ui._drawables[0].image is ui._sprite_images['@']
     assert ui.outlines[0][3:] == (ui._tone_color(tone), ui._tone_color('magenta'))
+
+
+@pytest.mark.parametrize('level, outline', [(8, ('red', None)), (40, ('blue', 'yellow'))])
+def test_beatable_boss_disc_is_blue_with_yellow_upper_right(sprite_ui, level, outline):
+    ui = sprite_ui
+    boss = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['D'])
+    for glyph in display.revealed_entity_glyphs(boss, {'D'}, False, level, None):
+        ui._draw_field_text((glyph.x, glyph.y), glyph.char, ui._tone_color(glyph.tone))
+    base, upper = outline
+    assert ui.outlines[0][3:] == (ui._tone_color(base),
+                                  upper and ui._tone_color(upper))
+
+
+def test_treasure_disc_stays_yellow(sprite_ui):
+    ui = sprite_ui
+    ui._draw_field_text((4, 5), d.CHAR_TREASURE, ui._tone_color('yellow'))
+    assert ui.outlines[0][3:] == (ui._tone_color('yellow'), None)
+
+
+@pytest.mark.parametrize('empowered, mark', [(2, "'"), (3, '"')])
+def test_rank_mark_floats_tinted_at_sprite_upper_right(sprite_ui, empowered, mark):
+    ui = sprite_ui
+    ui._display_color = lambda color: color
+    bison = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=empowered)
+    key = d.monster_type_key(bison)
+    for glyph in display.revealed_entity_glyphs(bison, {key}, False, 8, None):
+        ui._draw_field_text((glyph.x, glyph.y), glyph.char, ui._tone_color(glyph.tone))
+    sprite, badge = ui._drawables
+    assert sprite.image is ui._sprite_images['b']
+    assert badge.image is ui._mark_images[mark]
+    assert badge.color == ui._tone_color('red')
+    # Up and to the right of the bison's ground point, not in the next cell.
+    feet_x, feet_y = 58.5, 500 - 110
+    centre_x = badge.x + badge.image.width * badge.scale / 2
+    centre_y = badge.y + badge.image.height * badge.scale / 2
+    assert feet_x < centre_x < feet_x + ui.cell_size_x
+    assert centre_y > feet_y
+    assert not ui.text_calls
+
+
+def test_rank_mark_without_sprite_stays_text(sprite_ui):
+    sprite_ui._draw_field_text((4, 5), 'g', (220, 82, 82), True)
+    sprite_ui._draw_field_text((5, 5), "'", (220, 82, 82), True)
+    assert [call[1] for call in sprite_ui.text_calls] == ['g', "'"]
+    assert not sprite_ui._drawables
+
+
+def test_companion_stands_in_green_light_pillar(sprite_ui):
+    ui = sprite_ui
+    ui._display_color = lambda color: color
+    ui._draw_field_text((4, 5), 'n', ui._tone_color('companion'), True)
+    sprite, back, front = ui._drawables
+    assert sprite.image is ui._sprite_images['n']
+    assert (back.image, front.image) == (ui._pillar_images['back'], ui._pillar_images['front'])
+    assert back.color == front.color == ui._tone_color('companion')
+    assert back.group.order < sprite.group.order < front.group.order
+    ui._drawables.clear()
+    ui._draw_field_text((4, 5), 'b', ui._tone_color('blue'), True)
+    assert len(ui._drawables) == 1
 
 
 def test_disc_halves_split_on_the_diagonal(monkeypatch):

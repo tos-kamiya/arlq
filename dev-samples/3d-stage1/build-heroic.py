@@ -1,4 +1,4 @@
-"""Refined, more dramatic versions of the Stage 1 characters and companions.
+"""Refined, more dramatic versions of the Stage 1-2 characters, companions and marks.
 
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
 
@@ -26,7 +26,7 @@ scene.cycles.blur_glossy = 1.0
 scene.cycles.caustics_reflective = False
 scene.cycles.caustics_refractive = False
 scene.render.resolution_x = 2900
-scene.render.resolution_y = 700
+scene.render.resolution_y = 1250
 scene.view_settings.view_transform = 'Standard'
 scene.view_settings.look = 'Medium High Contrast'
 world = bpy.data.worlds.new('Night studio')
@@ -34,17 +34,21 @@ world.use_nodes = True
 world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.012, 0.018, 0.03, 1)
 scene.world = world
 
-ROW = [('@', 'PLAYER', -8.0), ('a', 'AMOEBA', -6.0), ('A', 'RARE AMOEBA', -4.0),
-       ('b', 'BISON', -2.0), ('c', 'CHIMERA', 0.0), ('d', 'COMODO DRAGON', 2.0),
-       ('T', 'TREASURE CHEST', 4.0), ('D', 'DRAGON', 6.7), ('n', 'NOMICON', 9.2),
-       ('o', 'OCULAR', 11.2)]
+# Stage 1 characters and companions in the back row, Stage 2 additions in front.
+STAGE2_ROW_Y = -4.4
+ROW = [('@', 'PLAYER', -8.0, 0.0), ('a', 'AMOEBA', -6.0, 0.0), ('A', 'RARE AMOEBA', -4.0, 0.0),
+       ('b', 'BISON', -2.0, 0.0), ('c', 'CHIMERA', 0.0, 0.0), ('d', 'COMODO DRAGON', 2.0, 0.0),
+       ('T', 'TREASURE CHEST', 4.0, 0.0), ('D', 'DRAGON', 6.7, 0.0), ('n', 'NOMICON', 9.2, 0.0),
+       ('o', 'OCULAR', 11.2, 0.0),
+       ('C', 'RARE CHIMERA', -6.0, STAGE2_ROW_Y), ('F', 'FIRE DRAKE', -3.2, STAGE2_ROW_Y),
+       ("'", 'RANK 2 MARK', -0.6, STAGE2_ROW_Y), ('"', 'RANK 3 MARK', 1.2, STAGE2_ROW_Y)]
 # Sprite export reads the character centres from here.
-CENTERS = {char: (x, 0.0) for char, _, x in ROW}
+CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
 # and drawn at one common scale, so these decide how large each character
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
-         'n': 1.15, 'o': 1.25}
+         'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7}
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
 MONSTER_YAW = math.radians(-30)
 
@@ -416,24 +420,41 @@ def player(x, y):
     mark.data.materials.append(obsidian)
 
 
-def chimera(x, y):
-    hide = material('Chimera golden lion resin', (0.95, 0.66, 0.18), 0.5, 0.22,
-                    rim=(1.0, 0.85, 0.45), rim_strength=1.2, coat=0.6)
-    mane = material('Chimera crimson mane', (0.62, 0.05, 0.04), 0.15, 0.4,
-                    rim=(1.0, 0.25, 0.1), rim_strength=1.5)
-    snake = material('Chimera serpent tail', (0.04, 0.80, 0.40), 0.4, 0.16,
-                     emission=(0.05, 0.6, 0.3), strength=0.3,
-                     rim=(0.6, 1.0, 0.6), rim_strength=1.8, coat=0.8)
+def chimera(x, y, cursed=False):
+    if cursed:
+        # Rare chimera with the cursed sword: ash-grey lion, black mane with
+        # ember edges, bone-white serpent, and a black blade glowing red.
+        hide = material('Rare chimera ash resin', (0.30, 0.32, 0.38), 0.45, 0.24,
+                        rim=(0.75, 0.80, 0.95), rim_strength=1.2, coat=0.6)
+        mane = material('Rare chimera black mane', (0.03, 0.02, 0.03), 0.1, 0.4,
+                        rim=(1.0, 0.18, 0.05), rim_strength=2.2)
+        snake = material('Rare chimera bone serpent', (0.92, 0.88, 0.78), 0.35, 0.2,
+                         rim=(1.0, 0.95, 0.85), rim_strength=1.2, coat=0.8)
+        snake_eye = material('Rare chimera snake eyes', (1.0, 0.1, 0.05),
+                             emission=(1.0, 0.1, 0.05), strength=8.0)
+        steel = material('Cursed sword black steel', (0.04, 0.03, 0.04), 0.0, 0.15,
+                         emission=(0.9, 0.05, 0.02), strength=0.6, metallic=0.6,
+                         rim=(1.0, 0.15, 0.05), rim_strength=4.0)
+        hilt = material('Cursed sword iron hilt', (0.25, 0.22, 0.24), roughness=0.3,
+                        metallic=1.0)
+    else:
+        hide = material('Chimera golden lion resin', (0.95, 0.66, 0.18), 0.5, 0.22,
+                        rim=(1.0, 0.85, 0.45), rim_strength=1.2, coat=0.6)
+        mane = material('Chimera crimson mane', (0.62, 0.05, 0.04), 0.15, 0.4,
+                        rim=(1.0, 0.25, 0.1), rim_strength=1.5)
+        snake = material('Chimera serpent tail', (0.04, 0.80, 0.40), 0.4, 0.16,
+                         emission=(0.05, 0.6, 0.3), strength=0.3,
+                         rim=(0.6, 1.0, 0.6), rim_strength=1.8, coat=0.8)
+        snake_eye = material('Chimera snake eyes', (1.0, 0.9, 0.1), emission=(1.0, 0.85, 0.1),
+                             strength=6.0)
+        steel = material('Chimera sword steel', (0.85, 0.92, 1.0), 0.3, 0.08,
+                         emission=(0.7, 0.85, 1.0), strength=0.8, metallic=0.5,
+                         rim=(0.9, 0.95, 1.0), rim_strength=1.5)
+        hilt = material('Chimera sword hilt', (1.0, 0.68, 0.18), roughness=0.25, metallic=1.0)
     tongue = material('Chimera snake tongue', (1.0, 0.1, 0.15), emission=(1.0, 0.1, 0.15),
                       strength=2.0)
-    snake_eye = material('Chimera snake eyes', (1.0, 0.9, 0.1), emission=(1.0, 0.85, 0.1),
-                         strength=6.0)
     eye = material('Chimera ember eyes', (1.0, 0.3, 0.05), emission=(1.0, 0.3, 0.05),
                    strength=6.0)
-    steel = material('Chimera sword steel', (0.85, 0.92, 1.0), 0.3, 0.08,
-                     emission=(0.7, 0.85, 1.0), strength=0.8, metallic=0.5,
-                     rim=(0.9, 0.95, 1.0), rim_strength=1.5)
-    hilt = material('Chimera sword hilt', (1.0, 0.68, 0.18), roughness=0.25, metallic=1.0)
     # Lion: small body, maned head, sword carried crosswise in the jaws.
     soften(loft('Chimera lion torso', x, y,
                 [(-0.40, 0.26, 0.42, 0.17), (-0.16, 0.28, 0.43, 0.18),
@@ -528,17 +549,36 @@ def treasure(x, y):
             block('Chest corner cap', (x + dx, y + dy, 0.27), (0.08, 0.08, 0.48), gold, 0.02)
 
 
-def great_dragon(x, y):
-    scales = material('Dragon emerald scales', (0.03, 0.62, 0.30), 0.5, 0.18,
-                      rim=(0.5, 1.0, 0.6), rim_strength=1.5, coat=0.8)
-    belly = material('Dragon jade belly', (0.55, 0.95, 0.55), 0.4, 0.2,
-                     rim=(0.8, 1.0, 0.7), rim_strength=0.8)
-    wing = material('Dragon wing membrane', (0.10, 0.85, 0.45), 0.75, 0.2,
-                    emission=(0.1, 0.6, 0.3), strength=0.4,
-                    rim=(0.7, 1.0, 0.6), rim_strength=1.2)
-    gold = material('Dragon gold horns', (1.0, 0.72, 0.22), roughness=0.2, metallic=1.0)
-    eye = material('Dragon fire eyes', (1.0, 0.35, 0.05), emission=(1.0, 0.35, 0.05),
-                   strength=6.0)
+def great_dragon(x, y, fire=False):
+    if fire:
+        # Fire drake: crimson scales, molten belly, glowing orange wings,
+        # obsidian horns and talons, and embers in the open jaw.
+        scales = material('Drake crimson scales', (0.80, 0.08, 0.03), 0.45, 0.2,
+                          rim=(1.0, 0.55, 0.2), rim_strength=1.6, coat=0.8)
+        belly = material('Drake molten belly', (1.0, 0.55, 0.08), 0.3, 0.2,
+                         emission=(1.0, 0.4, 0.05), strength=0.4,
+                         rim=(1.0, 0.8, 0.4), rim_strength=0.8)
+        wing = material('Drake wing membrane', (0.95, 0.22, 0.03), 0.7, 0.2,
+                        emission=(1.0, 0.25, 0.02), strength=0.3,
+                        rim=(1.0, 0.75, 0.3), rim_strength=1.2)
+        gold = material('Drake obsidian horns', (0.02, 0.02, 0.025), roughness=0.15,
+                        coat=1.0, rim=(1.0, 0.45, 0.1), rim_strength=1.5)
+        eye = material('Drake yellow eyes', (1.0, 0.9, 0.2), emission=(1.0, 0.85, 0.2),
+                       strength=6.0)
+        ember = material('Drake jaw embers', (1.0, 0.6, 0.1), emission=(1.0, 0.5, 0.05),
+                         strength=4.0)
+        sphere('Drake jaw ember', (x, y - 0.86, 0.73), (0.04, 0.06, 0.025), ember, 16)
+    else:
+        scales = material('Dragon emerald scales', (0.03, 0.62, 0.30), 0.5, 0.18,
+                          rim=(0.5, 1.0, 0.6), rim_strength=1.5, coat=0.8)
+        belly = material('Dragon jade belly', (0.55, 0.95, 0.55), 0.4, 0.2,
+                         rim=(0.8, 1.0, 0.7), rim_strength=0.8)
+        wing = material('Dragon wing membrane', (0.10, 0.85, 0.45), 0.75, 0.2,
+                        emission=(0.1, 0.6, 0.3), strength=0.4,
+                        rim=(0.7, 1.0, 0.6), rim_strength=1.2)
+        gold = material('Dragon gold horns', (1.0, 0.72, 0.22), roughness=0.2, metallic=1.0)
+        eye = material('Dragon fire eyes', (1.0, 0.35, 0.05), emission=(1.0, 0.35, 0.05),
+                       strength=6.0)
     # Raised neck and head, heavy chest, tail curling behind.
     spine = [(0.00, -0.98, 0.78), (0.00, -0.86, 0.84), (0.00, -0.70, 0.86), (0.00, -0.55, 0.74),
              (0.00, -0.38, 0.58), (0.00, -0.15, 0.52), (0.00, 0.12, 0.50), (0.04, 0.36, 0.42),
@@ -665,6 +705,27 @@ def ocular(x, y):
              center + Vector((side * 0.62, 0, 0.10)), 0.06, 0, gold, 4, False)
 
 
+def rank_mark(x, y, count):
+    """Empowered-rank mark: `count` raised straight apostrophes in near-white resin.
+
+    The GUI tints it with the monster's strength color, like the text mark.
+    """
+    resin = material('Rank mark white resin', (0.92, 0.92, 0.92), 0.0, 0.18, coat=1.0,
+                     rim=(1.0, 1.0, 1.0), rim_strength=0.6)
+    start = set(bpy.data.objects)
+    for i in range(count):
+        dx = (i - (count - 1) / 2) * 0.30
+        # A straight wedge, thick and rounded at the top and tapering down,
+        # like the game's text apostrophe, standing upright.
+        sphere('Rank mark cap', (x + dx, y, 0.55), (0.085, 0.085, 0.085), resin, 32)
+        tube('Rank mark stroke', [(x + dx, y, 0.55), (x + dx, y, 0.35), (x + dx, y, 0.18)],
+             [0.085, 0.06, 0.035], resin, sides=24, smooth=True)
+        sphere('Rank mark tip', (x + dx, y, 0.18), (0.035, 0.035, 0.035), resin, 16)
+    # Lean back so the face of the mark looks at the 60-degree camera.
+    transform_new(start, Matrix.Translation((x, y, 0.35)) @ Matrix.Rotation(math.radians(-40), 4, 'X')
+                  @ Matrix.Translation((-x, -y, -0.35)))
+
+
 def label(value, pos, size):
     bpy.ops.object.text_add(location=pos)
     obj = bpy.context.object
@@ -678,14 +739,16 @@ def label(value, pos, size):
 
 builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'd': dragon,
-            'c': chimera, 'T': treasure, 'D': great_dragon, 'n': nomicon, 'o': ocular}
-for char, name, x in ROW:
+            'c': chimera, 'T': treasure, 'D': great_dragon, 'n': nomicon, 'o': ocular,
+            'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
+            "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2)}
+for char, name, x, y in ROW:
     start = set(bpy.data.objects)
-    builders[char](x, 0.0)
+    builders[char](x, y)
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
-    pivot = Matrix.Translation((x, 0, 0))
-    yaw = MONSTER_YAW if char in 'aAbcdD' else 0
+    pivot = Matrix.Translation((x, y, 0))
+    yaw = MONSTER_YAW if char in 'aAbcdDCF' else 0
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
     for obj in character:
@@ -697,8 +760,8 @@ for char, name, x in ROW:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-    block(name + ' tile', (x, 0, -0.05), (3.1 if char == 'D' else 1.85, 2.6, 0.1), tile, 0.04)
-    label(name, (x, -1.55, 0.0), 0.16)
+    block(name + ' tile', (x, y, -0.05), (3.1 if char in 'DF' else 1.85, 2.6, 0.1), tile, 0.04)
+    label(name, (x, y - 1.55, 0.0), 0.16)
     collection = bpy.data.collections.new('Character ' + char + ' ' + name)
     scene.collection.children.link(collection)
     for obj in set(bpy.data.objects) - start:
@@ -709,7 +772,7 @@ for char, name, x in ROW:
 
 bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, -0.1))
 finish(bpy.context.object, dark, True, 'Backdrop')
-label('ARLQ / STAGE 1 / HEROIC RESIN', (1.6, 1.85, 0.0), 0.2)
+label('ARLQ / STAGE 1-2 / HEROIC RESIN', (1.6, 1.85, 0.0), 0.2)
 # Warm key, cool fill, strong back rim lights for glossy edges.
 for name, pos, power, size, color in [
         ('Key', (-4, -6, 8), 1000, 5, (1.0, 0.93, 0.85)),
@@ -727,8 +790,9 @@ for name, pos, power, size, color in [
 bpy.ops.object.camera_add()
 camera = bpy.context.object
 angle = math.radians(60)
-camera.location = (1.6, -15 * math.cos(angle), 15 * math.sin(angle))
-camera.rotation_euler = (Vector((1.6, 0, 0)) - camera.location).to_track_quat('-Z', 'Y').to_euler()
+target = Vector((1.6, STAGE2_ROW_Y / 2, 0))
+camera.location = target + Vector((0, -15 * math.cos(angle), 15 * math.sin(angle)))
+camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
 camera.data.ortho_scale = 22.6
 scene.camera = camera
