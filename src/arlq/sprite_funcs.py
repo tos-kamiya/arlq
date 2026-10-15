@@ -43,6 +43,10 @@ ROCK_EXPLORED_SHADE = 0.6
 # An elf the player has met (drawn without bold as text) is shown with its
 # sprite and ground disc darkened to this fraction.
 MET_ELF_SHADE = 0.6
+# A character in one of the four cells next to the player, the one the next
+# step would meet, is drawn this much larger (its ground disc keeps its size).
+# Followers walking with the player keep their usual size.
+NEIGHBOR_SCALE = 1.3
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
 # tinted with the monster's color. They float at the upper right of the
 # sprite instead of in the next cell: centre offset from the ground point in
@@ -150,6 +154,10 @@ class SpriteUI(PygletUI):
 
     # Walls a defeated Golem raised on the floor being drawn (see draw_stage).
     _rock_cells = frozenset()
+    # The player's cell this frame (None while viewing another floor), and
+    # whether characters next to it are enlarged (off while drawing followers).
+    _player_cell = None
+    _enlarge_neighbors = True
 
     def __init__(self, scale=None, key_repeat_interval=None):
         super().__init__(scale, key_repeat_interval)
@@ -177,7 +185,7 @@ class SpriteUI(PygletUI):
                              if (directory / filename).is_file()}
         # Cells where a character sprite was drawn this frame; a rank mark in
         # the next cell belongs to that sprite.
-        self._sprite_cells = set()
+        self._sprite_cells = {}
         self._disc_image = ground_disc_image()
         self._disc_halves = (ground_disc_image('lower-left'), ground_disc_image('upper-right'))
         self._disc_group = pyglet.graphics.Group(order=1)
@@ -296,6 +304,7 @@ class SpriteUI(PygletUI):
             return super()._draw_player(pos, player)
         # Low/warning LP colors the ground disc instead of filling the cell;
         # poison turns the disc's upper-right half purple.
+        self._player_cell = pos
         _, background = ui_display.player_appearance(player)
         poison = self._tone_color('magenta') if player.item == d.ITEM_POISONED else None
         self._draw_sprite(pos, '@', self._tone_color(background or 'default'), poison)
@@ -303,6 +312,7 @@ class SpriteUI(PygletUI):
     def _clear_drawables(self):
         super()._clear_drawables()
         self._sprite_cells.clear()
+        self._player_cell = None
 
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
@@ -318,9 +328,10 @@ class SpriteUI(PygletUI):
         """Tinted 3D apostrophe(s) at the upper right of the sprite in `pos`."""
         x, y = pos
         image = self._mark_images[mark]
+        size = self._sprite_cells[pos]
         padding = max(1, round(self.scale))
-        scale = 1.8 * max(1, self.cell_size_x - 2 * padding) / SPRITE_REFERENCE_PIXELS
-        dx, dy = MARK_OFFSET
+        scale = size * 1.8 * max(1, self.cell_size_x - 2 * padding) / SPRITE_REFERENCE_PIXELS
+        dx, dy = (size * offset for offset in MARK_OFFSET)
         sprite = pyglet.sprite.Sprite(
             image,
             x=self._field_col_x(x) + (0.5 + dx) * self.cell_size_x - image.width * scale / 2,
@@ -330,6 +341,13 @@ class SpriteUI(PygletUI):
         sprite.scale = scale
         sprite.color = self._display_color(color)
         self._drawables.append(sprite)
+
+    def _draw_follower(self, pos, char):
+        self._enlarge_neighbors = False
+        try:
+            super()._draw_follower(pos, char)
+        finally:
+            self._enlarge_neighbors = True
 
     def _draw_companion_slot(self, pos, char):
         if char not in self._sprite_images:
@@ -341,15 +359,22 @@ class SpriteUI(PygletUI):
         self._place_sprite(char, cx, cy, FAMILIAR_SIZE, y, 'familiar', dimmed=False)
         self._draw_pillar(cx, cy, FAMILIAR_SIZE, y, COLOR_MAP[CI_GREEN], familiar=True)
 
+    def _neighbor_of_player(self, pos):
+        if not self._enlarge_neighbors or self._player_cell is None:
+            return False
+        px, py = self._player_cell
+        return abs(pos[0] - px) + abs(pos[1] - py) == 1
+
     def _draw_sprite(self, pos, text, color, upper_right_color=None, shade=1.0):
         x, y = pos
         cx, cy = self._field_col_x(x) + self.cell_size_x / 2, (y + 0.5) * self.cell_size_y
         dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
-        self._place_sprite(text, cx, cy, 1.0, y, 'sprite', dimmed, shade)
-        self._sprite_cells.add(pos)
+        size = NEIGHBOR_SCALE if self._neighbor_of_player(pos) else 1.0
+        self._place_sprite(text, cx, cy, size, y, 'sprite', dimmed, shade)
+        self._sprite_cells[pos] = size
         if text in d.CHAR_TO_COMPANION_TRIBE:
             green = COLOR_MAP[CI_GREEN]
-            self._draw_pillar(cx, cy, 1.0, y, self._dim_color(green) if dimmed else green)
+            self._draw_pillar(cx, cy, size, y, self._dim_color(green) if dimmed else green)
         tribe = d.CHAR_TO_MONSTER_TRIBE.get(text)
         if (upper_right_color is None and tribe is not None
                 and tribe.effect == d.EFFECT_UNLOCK_TREASURE

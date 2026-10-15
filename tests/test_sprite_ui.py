@@ -15,7 +15,7 @@ def sprite_ui(monkeypatch):
     ui._sprite_images = {char: SimpleNamespace(width=100, height=120) for char in SPRITE_FILES}
     ui._gray_images = dict.fromkeys(ui._sprite_images, SimpleNamespace(width=100, height=120))
     ui._mark_images = {mark: SimpleNamespace(width=30, height=40) for mark in ("'", '"')}
-    ui._sprite_cells = set()
+    ui._sprite_cells = {}
     ui._pillar_images = {side: SimpleNamespace(width=64, height=96) for side in ('back', 'front')}
     ui.map_mode = False
     ui.scale = 1
@@ -225,6 +225,36 @@ def test_met_elf_sprite_and_disc_are_darker(sprite_ui, met):
     assert sprite.image is ui._sprite_images['H']
     assert getattr(sprite, 'color', (255, 255, 255)) == ((round(255 * shade),) * 3)
     assert ui.outlines[0][3] == tuple(round(c * shade) for c in white)
+
+
+@pytest.mark.parametrize('pos, size', [((4, 5), sprite_funcs.NEIGHBOR_SCALE), ((3, 6), sprite_funcs.NEIGHBOR_SCALE),
+                                       ((5, 5), 1.0), ((4, 4), 1.0)])
+def test_character_next_to_player_is_enlarged_with_disc_unchanged(sprite_ui, pos, size):
+    ui = sprite_ui
+    ui._player_cell = (4, 6)
+    ui._draw_field_text(pos, 'b', ui._tone_color('blue'), True)
+    sprite = ui._drawables[0]
+    assert sprite.scale == pytest.approx(size * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+    assert ui.outlines[0][2] == pytest.approx(sprite_funcs.GROUND_DISC_RADIUS * ui.cell_size_x)
+
+
+def test_follower_next_to_player_keeps_its_size(sprite_ui):
+    ui = sprite_ui
+    ui._player_cell = (4, 6)
+    ui._draw_follower((4, 5), 'J')
+    assert ui._drawables[0].image is ui._sprite_images['J']
+    assert ui._drawables[0].scale == pytest.approx(1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+
+
+def test_rank_mark_grows_with_an_enlarged_neighbor(sprite_ui):
+    ui = sprite_ui
+    ui._display_color = lambda color: color
+    ui._player_cell = (4, 6)
+    bison = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=2)
+    for glyph in display.revealed_entity_glyphs(bison, {'b2'}, False, 8, None):
+        ui._draw_field_text((glyph.x, glyph.y), glyph.char, ui._tone_color(glyph.tone))
+    sprite, badge = ui._drawables
+    assert badge.scale == pytest.approx(sprite.scale)
 
 
 def test_disc_halves_split_on_the_diagonal(monkeypatch):
