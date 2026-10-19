@@ -47,7 +47,7 @@ ROW = [('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
        ('K', 'COLLECTOR ELF', 4.6, ROW_Y[1]),
        ('L', 'LIFEBRINGER ELF', 6.6, ROW_Y[1]),
        ('S', 'SYLVAN ELF', 8.6, ROW_Y[1]),
-       ('C', 'RARE CHIMERA', -7.4, ROW_Y[2]), ('F', 'FIRE DRAKE', -4.775, ROW_Y[2]),
+       ('m', 'SPORE', -9.5, ROW_Y[2]), ('C', 'RARE CHIMERA', -7.4, ROW_Y[2]), ('F', 'FIRE DRAKE', -4.775, ROW_Y[2]),
        ('g', 'GOLEM', -2.15, ROW_Y[2]), ('rock', 'GOLEM ROCK', -0.15, ROW_Y[2]),
        ('e', 'EREBUS', 1.85, ROW_Y[2]), ('E', 'RARE EREBUS', 3.85, ROW_Y[2]),
        ('X', 'CALTROP PLANT', 5.85, ROW_Y[2]), ("'", 'RANK 2', 7.525, ROW_Y[2]),
@@ -59,7 +59,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
+         'm': 1.35, 'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
@@ -1568,6 +1568,88 @@ def caltrop_plant(x, y):
              0.065, 0, iron, 6, False)
 
 
+
+def spore(x, y):
+    """Stage 4 spore monster (m): a stout mushroom with a dusky violet cap
+    dotted with softly glowing spots, glowing spores drifting around it, and
+    eyes on its stem glaring up at the player.
+
+    Violet keeps it apart from the red caltrop plant and the green used for
+    companions.
+    """
+    cap = material('Spore dusky violet cap', (0.30, 0.12, 0.40), 0.3, 0.35,
+                   rim=(0.85, 0.6, 1.0), rim_strength=1.2, coat=0.5)
+    gills = material('Spore mauve gills', (0.45, 0.30, 0.42), 0.2, 0.55)
+    stem = material('Spore pale stem', (0.78, 0.72, 0.82), 0.35, 0.4,
+                    rim=(0.9, 0.85, 1.0), rim_strength=0.6)
+    glow = material('Spore pale glow', (0.95, 0.85, 1.0), emission=(0.9, 0.8, 1.0),
+                    strength=3.0)
+    sclera = material('Spore glaring eyes', (1.0, 0.92, 0.55), emission=(1.0, 0.85, 0.4),
+                      strength=0.8)
+    pupil = material('Spore matte pupils', (0.0, 0.0, 0.0), roughness=0.9)
+
+    def lathe(name, profile, mat, base, segments=48):
+        verts, rings = [], []
+        for r, z in profile:
+            if r == 0:
+                rings.append([len(verts)])
+                verts.append((base.x, base.y, base.z + z))
+                continue
+            rings.append(list(range(len(verts), len(verts) + segments)))
+            verts += [(base.x + r * math.cos(2 * math.pi * k / segments),
+                       base.y + r * math.sin(2 * math.pi * k / segments), base.z + z)
+                      for k in range(segments)]
+        faces = []
+        for a, b in zip(rings, rings[1:]):
+            if len(a) == 1:
+                faces += [(a[0], b[k], b[(k + 1) % segments]) for k in range(segments)]
+            elif len(b) == 1:
+                faces += [(a[(k + 1) % segments], a[k], b[0]) for k in range(segments)]
+            else:
+                faces += [(a[k], b[k], b[(k + 1) % segments], a[(k + 1) % segments])
+                          for k in range(segments)]
+        return mesh_object(name, verts, faces, mat, True)
+
+    # A stout stem swelling at the foot, tall enough to show below the cap
+    # from the 60-degree camera.
+    tube('Spore stem', [(x, y, 0.0), (x, y, 0.15), (x + 0.03, y, 0.50), (x, y + 0.02, 0.97)],
+         [0.20, 0.18, 0.14, 0.11], stem, sides=24, smooth=True)
+    sphere('Spore stem foot', (x, y, 0.04), (0.22, 0.22, 0.07), stem, 32)
+    # Glaring eyes on the stem below the cap. The model is later turned by
+    # MONSTER_YAW, so aim at the camera from the unturned frame; the pupils
+    # sit high, looking up at the player.
+    look = Matrix.Rotation(-MONSTER_YAW, 3, 'Z') @ Vector((0, -0.5, 0.866))
+    pupil_dir = (look + Vector((0, 0, 0.45))).normalized()
+    for side in (-1, 1):
+        eye = Vector((x + side * 0.09, y - 0.145, 0.32))
+        sphere('Spore glaring eye', tuple(eye), (0.075, 0.06, 0.075), sclera, 24)
+        sphere('Spore pupil', tuple(eye + pupil_dir * 0.064), (0.034, 0.034, 0.034), pupil, 16)
+    start = set(bpy.data.objects)
+    base = Vector((x, y, 0.95))
+    top = [(0, 0.22), (0.13, 0.21), (0.24, 0.17), (0.32, 0.11), (0.38, 0.04), (0.40, -0.01),
+           (0.37, -0.05)]
+    lathe('Spore cap', top, cap, base)
+    lathe('Spore gills', [(0.37, -0.05), (0.24, -0.03), (0.10, 0.0), (0, 0.01)], gills, base)
+    # Glowing spots scattered over the cap (profile position, angle in degrees).
+    for t, a, size in ((0.4, 250, 0.05), (2.3, 215, 0.055), (2.6, 300, 0.045), (3.5, 255, 0.04),
+                       (1.6, 160, 0.045), (1.8, 20, 0.045), (3.2, 120, 0.04), (1.2, 340, 0.04)):
+        i = int(t)
+        (r0, z0), (r1, z1) = top[i], top[i + 1]
+        r, z = r0 + (r1 - r0) * (t - i), z0 + (z1 - z0) * (t - i)
+        a = math.radians(a)
+        sphere('Spore cap spot', (x + r * math.cos(a), y + r * math.sin(a), base.z + z - 0.01),
+               (size, size, size * 0.6), glow, 16)
+    # Tip the cap back so its front rim lifts and the gills face the camera,
+    # with a slight lean to one side.
+    tip = (Matrix.Translation(base) @ Matrix.Rotation(math.radians(-22), 4, 'X')
+           @ Matrix.Rotation(math.radians(8), 4, 'Y') @ Matrix.Translation(-base))
+    transform_new(start, tip)
+    # A few spores drifting around the cap.
+    for dx, dy, z, size in ((-0.55, -0.15, 1.05, 0.05), (0.52, -0.10, 1.20, 0.045),
+                            (-0.25, -0.35, 1.32, 0.04), (0.50, 0.10, 0.60, 0.04),
+                            (-0.50, 0.05, 0.50, 0.035)):
+        sphere('Drifting spore', (x + dx, y + dy, z), (size, size, size), glow, 16)
+
 def golem(x, y):
     """Stage 2 golem: chunky dark basalt blocks with glowing amber rune seams.
 
@@ -1681,7 +1763,7 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'c': chimera, 'T': treasure, 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
-            'g': golem, 'e': lambda x, y: erebus(x, y, False),
+            'g': golem, 'm': spore, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock}
@@ -1691,7 +1773,7 @@ for char, name, x, y in ROW:
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = MONSTER_YAW if char in 'aAbcdDCFgeEX' else PEGASUS_YAW if char == 'p' else 0
+    yaw = MONSTER_YAW if char in 'aAbcdDCFgmeEX' else PEGASUS_YAW if char == 'p' else 0
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
     for obj in character:
