@@ -21,6 +21,7 @@ SPRITE_FILES = {
     'd': 'comodo-dragon.png',
     'D': 'dragon.png',
     'T': 'treasure.png',
+    'l': 'loop-watch.png',
     'n': 'nomicon.png',
     'o': 'ocular.png',
     'C': 'rare-chimera.png',

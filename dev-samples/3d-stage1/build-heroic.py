@@ -41,7 +41,7 @@ ROW = [('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
        ('A', 'RARE AMOEBA', -3.0, ROW_Y[0]), ('b', 'BISON', -1.0, ROW_Y[0]),
        ('c', 'CHIMERA', 1.0, ROW_Y[0]), ('d', 'COMODO DRAGON', 3.0, ROW_Y[0]),
        ('T', 'TREASURE CHEST', 5.0, ROW_Y[0]), ('D', 'DRAGON', 7.7, ROW_Y[0]),
-       ('n', 'NOMICON', -7.4, ROW_Y[1]), ('o', 'OCULAR', -5.4, ROW_Y[1]),
+       ('l', 'LOOP', -9.4, ROW_Y[1]), ('n', 'NOMICON', -7.4, ROW_Y[1]), ('o', 'OCULAR', -5.4, ROW_Y[1]),
        ('p', 'PEGASUS', -3.4, ROW_Y[1]), ('H', 'HIGH ELF', -1.4, ROW_Y[1]),
        ('I', 'ISOLATED ELF', 0.6, ROW_Y[1]), ('J', 'JAVELIN ELF', 2.6, ROW_Y[1]),
        ('K', 'COLLECTOR ELF', 4.6, ROW_Y[1]),
@@ -58,7 +58,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # and drawn at one common scale, so these decide how large each character
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
-         'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
+         'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5}
 # The pegasus companion turns further left, so its horse profile shows.
@@ -713,6 +713,82 @@ def ocular(x, y):
         cone('Ocular ring fin', center + Vector((side * 0.46, 0, 0)),
              center + Vector((side * 0.62, 0, 0.10)), 0.06, 0, gold, 4, False)
 
+
+
+def loop_watch(x, y):
+    """Loop companion: a floating gold pocket watch whose glowing ring and
+    arrow on the dial suggest turning time back."""
+    gold = material('Loop gold case', (1.0, 0.70, 0.22), roughness=0.22, metallic=1.0)
+    dial = material('Loop ivory dial', (0.92, 0.88, 0.76), 0.1, 0.3, coat=0.8)
+    ink = material('Loop blued steel hands', (0.04, 0.06, 0.16), roughness=0.3, metallic=0.6)
+    glow = material('Loop cyan time ring', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
+                    strength=3.0)
+    start = set(bpy.data.objects)
+    # Built with the dial facing +Z and 12 o'clock toward +Y, then turned to
+    # face the camera and lifted so it floats above its cell.
+    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=0.40, depth=0.12, location=(0, 0, 0))
+    case = finish(bpy.context.object, gold, True, 'Loop watch case')
+    bevel = case.modifiers.new('Rounded back', 'BEVEL')
+    bevel.width = 0.04
+    bevel.segments = 4
+    case.data.use_auto_smooth = True
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.38, minor_radius=0.04, location=(0, 0, 0.06))
+    finish(bpy.context.object, gold, True, 'Loop watch bezel')
+    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=0.35, depth=0.02, location=(0, 0, 0.06))
+    finish(bpy.context.object, dial, True, 'Loop watch dial')
+    for hour in range(12):
+        a = math.pi / 2 - hour * math.pi / 6
+        long = hour % 3 == 0
+        block('Loop hour mark', (0.29 * math.cos(a), 0.29 * math.sin(a), 0.075),
+              (0.03, 0.08 if long else 0.05, 0.02), gold if long else ink, 0.006,
+              (0, 0, a - math.pi / 2))
+    # The time-loop ring inside the hour marks, with an arrowhead running
+    # counterclockwise, i.e. backward.
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.20, minor_radius=0.022,
+                                     location=(0, 0, 0.075))
+    finish(bpy.context.object, glow, True, 'Loop time ring')
+    a = math.radians(200)
+    tip = Vector((0.20 * math.cos(a), 0.20 * math.sin(a), 0.08))
+    heading = Vector((-math.sin(a), math.cos(a), 0))
+    side = Vector((heading.y, -heading.x, 0))
+    arrow = mesh_object('Loop rewind arrow', [tuple(tip + heading * 0.10),
+                                              tuple(tip + side * 0.075), tuple(tip - side * 0.075)],
+                        [(0, 1, 2)], glow, False)
+    arrow.modifiers.new('Arrow thickness', 'SOLIDIFY').thickness = 0.02
+    # Warped hands, as if time itself were bending. The hour hand points
+    # left: it rises, curls over to point down, then turns up again. The
+    # minute hand is its mirror image, a little larger, so the two read as
+    # an upturned moustache.
+    def hand(name, length, width, headings, steps):
+        points, pos = [], Vector((0, 0, 0.11))
+        for i in range(steps + 1):
+            points.append(pos.copy())
+            heading = headings(i / steps)
+            pos += Vector((math.cos(heading), math.sin(heading), 0.006)) * (length / steps)
+        tube(name, points, [(width * (1 - i / steps) ** 0.6 + 0.005, 0.008)
+                            for i in range(steps)] + [0], ink, sides=8, smooth=True)
+
+    def smoothstep(t):
+        t = min(1.0, max(0.0, t))
+        return t * t * (3 - 2 * t)
+
+    def hour_heading(t):
+        return math.radians(145 + 125 * smoothstep((t - 0.2) / 0.3)
+                            - 165 * smoothstep((t - 0.55) / 0.35))
+
+    hand('Loop moustache hour hand', 0.42, 0.024, hour_heading, 40)
+    hand('Loop moustache minute hand', 0.42 * 1.15, 0.024 * 1.15,
+         lambda t: math.pi - hour_heading(t), 40)
+    sphere('Loop centre cap', (0, 0, 0.12), (0.035, 0.035, 0.02), gold, 24)
+    # Crown and bow at 12 o'clock.
+    tube('Loop watch stem', [(0, 0.40, 0), (0, 0.47, 0)], [0.035, 0.035], gold, sides=12,
+         smooth=True)
+    tube('Loop watch crown', [(0, 0.46, 0), (0, 0.53, 0)], [0.06, 0.06], gold, sides=16)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.09, minor_radius=0.022,
+                                     location=(0, 0.62, 0))
+    finish(bpy.context.object, gold, True, 'Loop watch bow')
+    face = Matrix.Translation((x, y, 0.62)) @ Matrix.Rotation(math.radians(30), 4, 'X')
+    transform_new(start, face)
 
 def metaball_mesh(name, elements, mat, resolution=0.01):
     """Melt (position, radius) metaballs into one smooth mesh object.
@@ -1580,7 +1656,7 @@ def label(value, pos, size):
 
 builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'd': dragon,
-            'c': chimera, 'T': treasure, 'D': great_dragon, 'n': nomicon, 'o': ocular,
+            'c': chimera, 'T': treasure, 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
             'g': golem, 'e': lambda x, y: erebus(x, y, False),
@@ -1636,11 +1712,11 @@ for name, pos, power, size, color in [
 bpy.ops.object.camera_add()
 camera = bpy.context.object
 angle = math.radians(60)
-target = Vector((0.5, (1.85 + ROW_Y[2] - 1.55) / 2, 0))
+target = Vector((-0.5, (1.85 + ROW_Y[2] - 1.55) / 2, 0))
 camera.location = target + Vector((0, -15 * math.cos(angle), 15 * math.sin(angle)))
 camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = 18.8
+camera.data.ortho_scale = 20.8
 scene.camera = camera
 scene['sprite_centers'] = {char: list(pos) for char, pos in CENTERS.items()}
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT / 'characters-angle60.blend'))
