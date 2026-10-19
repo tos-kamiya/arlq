@@ -369,8 +369,9 @@ def player(x, y):
                      rim=(0.6, 0.9, 1.0), rim_strength=1.0, coat=0.6)
     helm = material('Player crystal helm', (0.88, 0.95, 1.0), 0.35, 0.12,
                     rim=(0.7, 0.95, 1.0), rim_strength=1.2, coat=1.0)
-    cape = material('Player crimson cloak', (0.65, 0.04, 0.08), 0.15, 0.4,
-                    rim=(1.0, 0.2, 0.1), rim_strength=0.6)
+    # Midnight blue so the yellow and red low-LP ground discs stand out.
+    cape = material('Player midnight cloak', (0.025, 0.05, 0.16), 0.15, 0.4,
+                    rim=(0.25, 0.45, 1.0), rim_strength=0.6)
     # Trim and sword are plain dark iron rather than precious metal.
     iron = material('Player dark iron trim', (0.16, 0.16, 0.18), roughness=0.35, metallic=1.0)
     visor = material('Player visor glow', (0.3, 0.9, 1.0), emission=(0.1, 0.75, 1.0),
@@ -414,9 +415,9 @@ def player(x, y):
         for col in range(columns):
             u = col / (columns - 1) * 2 - 1
             angle = u * math.radians(95)
-            radius = 0.29 + 0.16 * t
-            vertices.append((x + radius * math.sin(angle) + 0.07 * t * t,
-                             y + radius * math.cos(angle) + 0.30 * t * t,
+            radius = 0.29 + 0.10 * t
+            vertices.append((x + radius * math.sin(angle) + 0.05 * t * t,
+                             y + radius * math.cos(angle) + 0.21 * t * t,
                              0.50 - 0.36 * t + 0.045 * t * math.cos(u * math.pi * 3)))
     faces = [(r * columns + c, r * columns + c + 1, (r + 1) * columns + c + 1, (r + 1) * columns + c)
              for r in range(rows - 1) for c in range(columns - 1)]
