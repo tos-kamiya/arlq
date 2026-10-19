@@ -53,6 +53,10 @@ ROCK_EXPLORED_SHADE = 0.6
 # An elf the player has met (drawn without bold as text) is shown with its
 # sprite and ground disc darkened to this fraction.
 MET_ELF_SHADE = 0.6
+# A dark translucent backing keeps the elf and treasure progress marks legible
+# when the tall field sprites extend behind the bottom status row.
+TEXT_PANEL_ALPHA = 176
+TEXT_PANEL_PADDING = 4
 # A character in one of the four cells next to the player, the one the next
 # step would meet, is drawn this much larger (its ground disc keeps its size).
 # Followers walking with the player keep their usual size.
@@ -303,6 +307,8 @@ class SpriteUI(PygletUI):
         # so walls overlap characters to their north but not to their south.
         self._row_groups = {}
         self._overlay_group = pyglet.graphics.Group(order=10000)
+        self._text_panel_group = pyglet.graphics.Group(order=9999)
+        self._text_overlay_group = pyglet.graphics.Group(order=10001)
 
     ROW_LAYERS = ('wall', 'column', 'pillar-back', 'sprite', 'pillar-front', 'familiar',
                   'familiar-front', 'mark')
@@ -576,6 +582,43 @@ class SpriteUI(PygletUI):
     def _set_drawable_attribute(self, drawable, name, value):
         if id(drawable) not in self._reused_drawable_ids:
             setattr(drawable, name, value)
+
+    def _progress_mark_group(self):
+        return self._text_overlay_group
+
+    def _progress_mark_x_offset(self):
+        return TEXT_PANEL_PADDING
+
+    def _draw_progress_panel(self, marks):
+        if not marks:
+            return
+        cells = sum(len(label) + 1 for label, _ in marks) - 1
+        self._draw_text_panel('progress', 0, cells * self.cell_size_x)
+
+    def _floor_label_group(self):
+        return self._text_overlay_group
+
+    def _draw_floor_label_panel(self, label, x, width):
+        self._draw_text_panel('floor', x, width)
+
+    def _draw_text_panel(self, kind, x, width):
+        padding = TEXT_PANEL_PADDING
+        left = max(0, x - padding)
+        row = self.field_height - 1
+        top = self.window_height - row * self.cell_size_y
+        bottom = top - self.font_size - padding
+        panel_width = width + 2 * padding
+        height = self.font_size + 2 * padding
+        color = (0, 0, 0, TEXT_PANEL_ALPHA)
+        signature = ('text-panel', kind, left, bottom, panel_width, height, color,
+                     id(self._text_panel_group))
+        self._draw_object(
+            signature,
+            lambda: pyglet.shapes.Rectangle(
+                left, bottom, panel_width, height, color=color, batch=self.batch,
+                group=self._text_panel_group,
+            ),
+        )
 
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
