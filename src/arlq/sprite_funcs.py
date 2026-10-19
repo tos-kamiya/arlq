@@ -71,8 +71,9 @@ STRENGTH_TEXT_SCALE = 0.7
 # cell widths east and cell heights north.
 MARK_FILES = {"'": 'mark-rank2.png', '"': 'mark-rank3.png'}
 MARK_OFFSET = (0.6, 0.65)
-# Every sprite uses one scale: this many source pixels (an amoeba's width)
-# span 1.8 cell widths. Larger models therefore give larger sprites.
+# Every sprite uses one scale: this many source pixels (an amoeba's width
+# before the amoebas were shrunk to 0.9) span 1.8 cell widths. Larger models
+# therefore give larger sprites.
 SPRITE_REFERENCE_PIXELS = 186
 # The export camera looks 60 degrees down at a point 0.35 units above each
 # model's ground origin, at 256 px per 2.6 units, with crops symmetric about
