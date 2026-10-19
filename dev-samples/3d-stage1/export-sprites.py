@@ -22,7 +22,7 @@ if HEROIC:
                ('D', 'dragon', (0, 0)), ('l', 'loop-watch', (0, 0)), ('n', 'nomicon', (0, 0)), ('o', 'ocular', (0, 0)),
                ('C', 'rare-chimera', (0, 0)), ('F', 'fire-drake', (0, 0)),
                ("'", 'mark-rank2', (0, 0)), ('"', 'mark-rank3', (0, 0)),
-               ('g', 'golem', (0, 0)), ('e', 'erebus', (0, 0)), ('E', 'rare-erebus', (0, 0)),
+               ('g', 'golem', (0, 0)), ('m', 'spore', (0, 0)), ('e', 'erebus', (0, 0)), ('E', 'rare-erebus', (0, 0)),
                ('X', 'caltrop-plant', (0, 0)), ('p', 'pegasus', (0, 0)),
                ('H', 'high-elf', (0, 0)), ('I', 'isolated-elf', (0, 0)),
                ('J', 'javelin-elf', (0, 0)), ('K', 'collector-elf', (0, 0)),
