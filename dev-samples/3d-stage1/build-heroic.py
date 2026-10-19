@@ -387,10 +387,12 @@ def dragon(x, y):
 
 
 def player(x, y):
-    tunic = material('Player frost tunic', (0.72, 0.88, 0.98), 0.45, 0.2,
-                     rim=(0.6, 0.9, 1.0), rim_strength=1.0, coat=0.6)
-    helm = material('Player crystal helm', (0.88, 0.95, 1.0), 0.35, 0.12,
-                    rim=(0.7, 0.95, 1.0), rim_strength=1.2, coat=1.0)
+    # Plate armour in bluish steel rather than the first frosted crystal,
+    # which looked more like a spacesuit.
+    tunic = material('Player steel plate', (0.55, 0.63, 0.74), roughness=0.32, metallic=0.8,
+                     rim=(0.6, 0.85, 1.0), rim_strength=0.8)
+    helm = material('Player steel helm', (0.62, 0.70, 0.80), roughness=0.28, metallic=0.85,
+                    rim=(0.7, 0.9, 1.0), rim_strength=0.9)
     # Midnight blue so the yellow and red low-LP ground discs stand out.
     cape = material('Player midnight cloak', (0.025, 0.05, 0.16), 0.15, 0.4,
                     rim=(0.25, 0.45, 1.0), rim_strength=0.6)
@@ -400,30 +402,46 @@ def player(x, y):
                      strength=2.5)
     blade = material('Player iron blade', (0.62, 0.63, 0.66), roughness=0.4, metallic=0.55,
                      rim=(0.85, 0.9, 1.0), rim_strength=0.8)
-    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=0.27, depth=0.40,
-                                        location=(x, y, 0.30))
+    # About three heads tall: a 0.34-tall head, a cylinder body about as
+    # tall, and two legs below it ending in small boots.
+    legs = material('Player steel greaves', (0.45, 0.52, 0.62), roughness=0.35, metallic=0.8,
+                    rim=(0.6, 0.8, 1.0), rim_strength=0.6)
+    for side in (-1, 1):
+        tube('Player leg', [(x + side * 0.10, y, 0.36), (x + side * 0.10, y - 0.01, 0.18),
+                            (x + side * 0.10, y - 0.01, 0.06)], [0.085, 0.075, 0.065], legs,
+             sides=16, smooth=True)
+        sphere('Player boot', (x + side * 0.10, y - 0.03, 0.04), (0.075, 0.09, 0.045), iron, 20)
+    # The body is an oval, wider than deep (`flat`), so it does not look like
+    # a drum from above; the belt and seams follow it.
+    flat = 0.72
+    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=0.24, depth=0.36,
+                                        location=(x, y, 0.48))
     torso = finish(bpy.context.object, tunic, True, 'Player cylinder torso')
+    torso.scale.y = flat
     for face in torso.data.polygons:
         face.use_smooth = len(face.vertices) == 4
     torso.data.use_auto_smooth = True
     bevel = torso.modifiers.new('Rounded rims', 'BEVEL')
-    bevel.width = 0.065
+    bevel.width = 0.06
     bevel.segments = 5
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.275, minor_radius=0.03,
-                                     location=(x, y, 0.24))
-    finish(bpy.context.object, iron, True, 'Player belt')
-    block('Player buckle', (x, y - 0.29, 0.24), (0.09, 0.03, 0.07), iron, 0.012)
-    block('Player head', (x, y - 0.07, 0.67), (0.38, 0.36, 0.36), helm, 0.11)
-    block('Player visor', (x, y - 0.25, 0.63), (0.30, 0.05, 0.08), visor, 0.015)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.245, minor_radius=0.03,
+                                     location=(x, y, 0.36))
+    finish(bpy.context.object, iron, True, 'Player belt').scale.y = flat
+    block('Player buckle', (x, y - 0.245 * flat - 0.02, 0.36), (0.09, 0.03, 0.07), iron, 0.012)
+    # Seams between the breastplate's lames.
+    for z in (0.48, 0.57):
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.243, minor_radius=0.011,
+                                         location=(x, y, z))
+        finish(bpy.context.object, iron, True, 'Player plate seam').scale.y = flat
     for side in (-1, 1):
-        cone('Player helm fin', (x + side * 0.17, y - 0.02, 0.74),
-             (x + side * 0.30, y + 0.10, 0.92), 0.06, 0, iron, 4, False)
-        arm = block('Player short arm', (x + side * 0.285, y - 0.075, 0.32),
-                    (0.16, 0.18, 0.28), tunic, 0.065)
-        arm.rotation_euler.y = -side * 0.12
-        sphere('Player pauldron', (x + side * 0.27, y - 0.06, 0.46), (0.09, 0.10, 0.045), iron, 24)
+        arm = block('Player arm', (x + side * 0.255, y - 0.06, 0.48),
+                    (0.14, 0.16, 0.30), tunic, 0.06)
+        arm.rotation_euler.y = -side * 0.10
+        # Broad pauldrons over the shoulders, and couters on the elbows.
+        sphere('Player pauldron', (x + side * 0.27, y - 0.05, 0.63), (0.14, 0.14, 0.07), iron, 24)
+        sphere('Player couter', (x + side * 0.275, y - 0.10, 0.46), (0.075, 0.07, 0.06), iron, 20)
     # Short sword in the right hand (screen left), held low and outward.
-    hand = Vector((x - 0.33, y - 0.16, 0.20))
+    hand = Vector((x - 0.30, y - 0.13, 0.34))
     tip = hand + Vector((-0.34, -0.30, -0.10)) * 0.8
     tube('Player sword blade', [hand + (tip - hand) * 0.12, tip * 0.94 + hand * 0.06, tip],
          [(0.075, 0.016), (0.06, 0.014), 0], blade, sides=4)
@@ -437,10 +455,11 @@ def player(x, y):
         for col in range(columns):
             u = col / (columns - 1) * 2 - 1
             angle = u * math.radians(95)
-            radius = 0.29 + 0.10 * t
+            radius = 0.26 + 0.10 * t
+            depth = flat + (1 - flat) * t
             vertices.append((x + radius * math.sin(angle) + 0.05 * t * t,
-                             y + radius * math.cos(angle) + 0.21 * t * t,
-                             0.50 - 0.36 * t + 0.045 * t * math.cos(u * math.pi * 3)))
+                             y + radius * depth * math.cos(angle) + 0.21 * t * t,
+                             0.64 - 0.50 * t + 0.045 * t * math.cos(u * math.pi * 3)))
     faces = [(r * columns + c, r * columns + c + 1, (r + 1) * columns + c + 1, (r + 1) * columns + c)
              for r in range(rows - 1) for c in range(columns - 1)]
     cloak = mesh_object('Player cloak', vertices, faces, cape, True)
@@ -450,7 +469,21 @@ def player(x, y):
     solid.offset = 0
     hem = [vertices[(rows - 1) * columns + c] for c in range(columns)]
     tube('Player cloak hem trim', hem, [0.018] * columns, iron, sides=6, smooth=True)
-
+    # Helmeted head, tilted back at the neck like the elves' so the visor
+    # faces up toward the 60-degree camera.
+    start = set(bpy.data.objects)
+    block('Player head', (x, y - 0.04, 0.83), (0.34, 0.32, 0.34), helm, 0.10)
+    # A dark iron faceplate with a narrow glowing eye slit, and a crest
+    # running front to back over the top.
+    block('Player faceplate', (x, y - 0.195, 0.80), (0.26, 0.04, 0.12), iron, 0.015)
+    block('Player eye slit', (x, y - 0.218, 0.81), (0.20, 0.012, 0.022), visor, 0.004)
+    block('Player helm crest', (x, y - 0.02, 1.005), (0.05, 0.30, 0.05), iron, 0.015)
+    for side in (-1, 1):
+        cone('Player helm fin', (x + side * 0.15, y, 0.90),
+             (x + side * 0.27, y + 0.11, 1.06), 0.055, 0, iron, 4, False)
+    neck = Vector((x, y, 0.66))
+    transform_new(start, Matrix.Translation(neck) @ Matrix.Rotation(-0.35, 4, 'X')
+                  @ Matrix.Translation(-neck))
 
 def chimera(x, y, cursed=False):
     if cursed:
