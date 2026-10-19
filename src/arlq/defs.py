@@ -503,7 +503,6 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         event_message="-- Unlocked the Fire Drake's treasure chest!",
         event_message_importance=7,
     ),  # Fire Drake
-    _MT("f", 50, MIN_FOOD),  # Fire Lizard
     _MT("g", 30, 0, effect=EFFECT_ROCK_SPREAD),  # Golem
     _MT(
         "X",

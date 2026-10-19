@@ -324,14 +324,6 @@ def test_stage3_wyrm_combat_updates_message_position_and_state(
         assert not queue
 
 
-def test_stage3_excludes_fire_lizard():
-    assert (
-        d.CHAR_TO_MONSTER_TRIBE["f"].level
-        < d.CHAR_TO_MONSTER_TRIBE[d.CHAR_FIRE_DRAKE].level
-    )
-    assert all(ch != "f" for floor in d.STAGE3_ROSTER for ch, _, _ in floor)
-
-
 def test_stage4_has_independent_per_floor_roster():
     assert len(d.STAGE4_ROSTER) == d.STAGE4_FLOORS == 5
     assert [filled_rooms for _, filled_rooms in d.STAGE4_FLOOR_LAYOUT] == [1] * 5
