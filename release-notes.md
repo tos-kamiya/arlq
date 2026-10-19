@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 5.8.1 - 2026-10-20
+
+- Fix sprite GUI rendering when its drawable cache is not initialized, and
+  preserve dim sprite shading in map mode.
+
 ## 5.8.0 - 2026-10-20
 
 - Add the `arlq --sprites` GUI, which draws characters as transparent images
