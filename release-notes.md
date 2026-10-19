@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 5.8.0 - 2026-10-20
+
+- Add the `arlq --sprites` GUI, which draws characters as transparent images
+  rendered from 3D models seen 60 degrees from above. Characters without a
+  sprite, and unidentified ones, keep their text display. Controls, rules,
+  FOV and menus are shared with the original Pyglet GUI.
+- Show strength and status colors (including low-LP warnings, poison and
+  beatable bosses) as fading discs on the ground under each sprite, and
+  empowered ranks as raised apostrophes at the sprite's upper right.
+- Surround companions with a faint green light pillar, show the travelling
+  companion small at the player's shoulder, darken elves already met, and
+  enlarge characters next to the player.
+- Draw walls as marble colonnades, walls a Golem raised as its rubble, floors
+  as checkerboard flagstones, barriers as fires on the floor (smoke near a
+  protected player), stairs as marble flights, and Collapse pits as holes
+  broken through the floor. Explored areas outside the view are darker.
+- Show identified characters' sprites in the strength column.
+
 ## 5.7.3 - 2026-10-03
 
 - Keep the game-over screen interactive when continuing a fast-forward trace
