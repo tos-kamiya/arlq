@@ -314,18 +314,21 @@ def bison(x, y):
                     rim=(1.0, 0.95, 0.8), rim_strength=1.5)
     eye = material('Bison ember eyes', (1.0, 0.2, 0.05), emission=(1.0, 0.25, 0.05),
                    strength=25.0)
-    # Massive shoulder hump, tapering rump; head lowered for a charge.
+    # Massive shoulder hump, tapering rump; head lowered for a charge. The
+    # body is built 0.9 as wide as at first (`slim`), so it is not too fat.
+    slim = 0.9
     soften(loft('Bison torso', x, y,
-                [(-0.42, 0.50, 0.50, 0.32), (-0.18, 0.60, 0.62, 0.42),
-                 (0.10, 0.55, 0.58, 0.36), (0.45, 0.42, 0.47, 0.27),
-                 (0.70, 0.30, 0.42, 0.20)], hide), 0.09)
+                [(along, w * slim, z, h) for along, w, z, h in
+                 [(-0.42, 0.50, 0.50, 0.32), (-0.18, 0.60, 0.62, 0.42),
+                  (0.10, 0.55, 0.58, 0.36), (0.45, 0.42, 0.47, 0.27),
+                  (0.70, 0.30, 0.42, 0.20)]], hide), 0.09)
     # A modest shaggy hump: a few low-poly clumps over the shoulders and brow,
     # kept small so the bison does not look too strong.
     clumps = [(0, -0.28, 0.90, 0.25), (-0.22, -0.22, 0.84, 0.19), (0.22, -0.22, 0.84, 0.19),
               (0, -0.04, 0.86, 0.21), (0, -0.52, 0.76, 0.19)]
     for i, (dx, dy, z, r) in enumerate(clumps):
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r,
-                                              location=(x + dx, y + dy, z),
+                                              location=(x + dx * slim, y + dy, z),
                                               rotation=(i * 0.7, i * 1.3, i * 0.4))
         clump = finish(bpy.context.object, mane, False, 'Bison mane clump')
         clump.scale = (1.0, 1.1, 0.8)
@@ -345,7 +348,7 @@ def bison(x, y):
              [0.065, 0.055, 0.04, 0.025, 0], horn, sides=10, smooth=True)
         sphere('Bison eye', (x + side * 0.20, y - 0.86, 0.50), (0.055, 0.04, 0.035), eye, 16)
         for dy in (-0.32, 0.50):
-            block('Bison hoof', (x + side * 0.40, y + dy, 0.13), (0.22, 0.28, 0.24),
+            block('Bison hoof', (x + side * 0.40 * slim, y + dy, 0.13), (0.22, 0.28, 0.24),
                   obsidian, 0.04)
     tube('Bison tail', [(x, y + 0.66, 0.55), (x + 0.06, y + 0.80, 0.48), (x + 0.10, y + 0.86, 0.30)],
          [0.05, 0.04, 0.07], mane, sides=6)
