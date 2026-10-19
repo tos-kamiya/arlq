@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.8.2 - 2026-10-20
+
+- Draw a faint yellow ground disc around stairs in the `--sprites` GUI so they stand out.
+
 ## 5.8.1 - 2026-10-20
 
 - Fix sprite GUI rendering when its drawable cache is not initialized, and
