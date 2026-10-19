@@ -606,6 +606,18 @@ class PygletUI:
             obj.delete()
         self._drawables = []
 
+    def _draw_object(self, signature, factory):
+        """Create and track a drawable; sprite mode can retain matching objects."""
+        drawable = factory()
+        self._drawables.append(drawable)
+        return drawable
+
+    def _set_drawable_attribute(self, drawable, name, value):
+        setattr(drawable, name, value)
+
+    def _finish_drawables(self):
+        """Hook for renderers that keep drawables between frames."""
+
     def _draw_text(
         self,
         pos: Tuple[float, float],
@@ -628,19 +640,26 @@ class PygletUI:
                 non_ascii_font_name,
                 self.font_size * non_ascii_size_scale * size_scale,
             )
-        label = pyglet.text.Label(
-            text,
-            font_name=font_name,
-            font_size=font_size,
-            weight="bold" if bold else "normal",
-            x=pos[0] * self.cell_size_x + x_offset,
-            y=self.window_height - pos[1] * self.cell_size_y,
-            anchor_x="left",
-            anchor_y="top",
-            color=(*self._display_color(color), 255),
-            batch=self.batch,
+        x = pos[0] * self.cell_size_x + x_offset
+        y = self.window_height - pos[1] * self.cell_size_y
+        label_color = (*self._display_color(color), 255)
+        signature = ("label", text, font_name, font_size, "bold" if bold else "normal",
+                     x, y, label_color)
+        self._draw_object(
+            signature,
+            lambda: pyglet.text.Label(
+                text,
+                font_name=font_name,
+                font_size=font_size,
+                weight="bold" if bold else "normal",
+                x=x,
+                y=y,
+                anchor_x="left",
+                anchor_y="top",
+                color=label_color,
+                batch=self.batch,
+            ),
         )
-        self._drawables.append(label)
 
     def _non_ascii_font(self) -> Tuple[str, float]:
         """Resolve the font (and a matching font-size scale) for non-ASCII
@@ -734,15 +753,15 @@ class PygletUI:
         self._draw_text(pos, text, color, bold=bold)
 
     def _draw_rect(self, x: int, y: int, width: int, height: int, color: Tuple[int, int, int]):
-        rect = pyglet.shapes.Rectangle(
-            x,
-            self.window_height - y - height,
-            width,
-            height,
-            color=self._display_color(color),
-            batch=self.batch,
+        y_bottom = self.window_height - y - height
+        draw_color = self._display_color(color)
+        signature = ("rectangle", x, y_bottom, width, height, draw_color)
+        self._draw_object(
+            signature,
+            lambda: pyglet.shapes.Rectangle(
+                x, y_bottom, width, height, color=draw_color, batch=self.batch
+            ),
         )
-        self._drawables.append(rect)
 
     def _draw_line(
         self,
@@ -753,16 +772,17 @@ class PygletUI:
         color: Tuple[int, int, int],
         thickness: int = 1,
     ):
-        line = pyglet.shapes.Line(
-            x1,
-            self.window_height - y1,
-            x2,
-            self.window_height - y2,
-            thickness=thickness,
-            color=self._display_color(color),
-            batch=self.batch,
+        draw_y1 = self.window_height - y1
+        draw_y2 = self.window_height - y2
+        draw_color = self._display_color(color)
+        signature = ("line", x1, draw_y1, x2, draw_y2, thickness, draw_color)
+        self._draw_object(
+            signature,
+            lambda: pyglet.shapes.Line(
+                x1, draw_y1, x2, draw_y2, thickness=thickness,
+                color=draw_color, batch=self.batch,
+            ),
         )
-        self._drawables.append(line)
 
     def draw_stage(
         self,
@@ -1057,6 +1077,7 @@ class PygletUI:
     def _flip(self):
         self.window.switch_to()
         self.window.clear()
+        self._finish_drawables()
         self.batch.draw()
         self.window.flip()
 
