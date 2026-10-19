@@ -1095,12 +1095,14 @@ ELF_STRETCH = 1.3
 
 
 def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.14), torso=None,
-               skirt_z=(0.02, 0.30, 0.58), girth=1.0, ears=True):
+               skirt_z=(0.02, 0.30, 0.58), girth=1.0, ears=True, body_radii=None):
     """Shared elf build: about three heads tall, slimmer and taller than the
     player, in a long robe, with pointed ears; `body(x, y)` and `head(x, y)`
     add each elf's own parts, and `torso` can dress the upper body apart
     from the robe. `skirt_z` raises the robe's hem (for a seated elf),
-    `girth` widens the upper body, and `ears=False` leaves out the pointed ears.
+    `girth` widens the upper body, `body_radii` replaces its four (x, y)
+    radii from the waist to the neck, and `ears=False` leaves out the pointed
+    ears.
 
     Heights shrink to half in the 60-degree view, so the body is stretched
     upward and the head tilted back for the face to look at the camera.
@@ -1110,8 +1112,9 @@ def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.1
     tube(prefix + ' robe skirt', [(x, y, z) for z in skirt_z], list(skirt),
          robe, sides=32, smooth=True)
     tube(prefix + ' robe body', [(x, y, 0.56), (x, y, 0.72), (x, y, 0.86), (x, y, 0.90)],
-         [(rx * girth, ry * girth) for rx, ry in
-          ((0.16, 0.13), (0.19, 0.15), (0.17, 0.13), (0.08, 0.07))], torso or robe, sides=32,
+         body_radii or [(rx * girth, ry * girth) for rx, ry in
+                        ((0.16, 0.13), (0.19, 0.15), (0.17, 0.13), (0.08, 0.07))],
+         torso or robe, sides=32,
          smooth=True)
     body(x, y)
     head_start = set(bpy.data.objects)
@@ -1343,16 +1346,16 @@ def javelin_elf(x, y):
 
 
 def collector_elf(x, y):
-    """Collector Elf: a stout connoisseur who never leaves a light folding
-    camp chair, in a deep teal robe, balding with side hair and a gold
-    monocle, peering through a magnifying glass held in both hands (the
-    rustless blade it gives is magic, not held), with a vase and a bundle of
-    blades beside the chair.
+    """Collector Elf: a plump, round-shouldered connoisseur who never leaves
+    a light folding camp chair, in a deep teal robe, balding with side hair,
+    with a watchmaker's loupe of stacked black-rimmed lenses over the left
+    eye and hands folded on the belly (the rustless blade it gives is magic,
+    not held), with a vase and a bundle of blades beside the chair.
     """
     robe = material('Collector elf teal robe', (0.02, 0.30, 0.30), 0.1, 0.45,
                     rim=(0.5, 1.0, 0.9), rim_strength=1.0, coat=0.3)
-    gold = material('Collector elf gold', (1.0, 0.72, 0.22), roughness=0.25, metallic=0.8,
-                    emission=(1.0, 0.62, 0.15), strength=0.4)
+    dark = material('Collector elf blackened loupe', (0.03, 0.03, 0.035), roughness=0.3,
+                    metallic=0.6, rim=(0.7, 0.8, 0.9), rim_strength=0.6)
     wood = material('Collector elf pale chair wood', (0.70, 0.52, 0.30), 0.0, 0.5,
                     rim=(1.0, 0.85, 0.6), rim_strength=0.6)
     canvas = material('Collector elf canvas', (0.85, 0.80, 0.66), 0.05, 0.8,
@@ -1368,6 +1371,7 @@ def collector_elf(x, y):
     vase = material('Collector elf vase', (0.15, 0.30, 0.65), 0.1, 0.2, coat=1.0,
                     rim=(0.7, 0.85, 1.0), rim_strength=0.8)
     eye = material('Collector elf eyes', (0.10, 0.08, 0.05), roughness=0.3, coat=1.0)
+    strap = material('Collector elf leather headband', (0.22, 0.12, 0.06), 0.0, 0.5)
 
     def body(x, y):
         # Light folding camp chair: crossed thin legs, a canvas seat and back.
@@ -1397,22 +1401,14 @@ def collector_elf(x, y):
             tube('Collector elf shin', [(x + side * 0.13, y - 0.28, 0.40), (x + side * 0.13, y - 0.30, 0.08)],
                  [0.08, 0.06], robe, sides=16, smooth=True)
             sphere('Collector elf shoe', (x + side * 0.13, y - 0.35, 0.05), (0.06, 0.09, 0.05), shoe, 16)
-            # Arms resting on the belly, both hands on the magnifier's handle.
-            tube('Collector elf sleeve', [(x + side * 0.24, y, 0.84), (x + side * 0.30, y - 0.10, 0.70),
-                                          (x + side * 0.10, y - 0.27, 0.64)], [0.08, 0.08, 0.08], robe,
+            # Arms from low, sloping shoulders round the belly, the hands
+            # folded on top of it.
+            tube('Collector elf sleeve', [(x + side * 0.14, y, 0.82), (x + side * 0.27, y - 0.10, 0.68),
+                                          (x + side * 0.09, y - 0.28, 0.62)], [0.075, 0.08, 0.08], robe,
                  sides=12, smooth=True)
-            sphere('Collector elf hand', (x + side * 0.04, y - 0.30, 0.64), (0.055, 0.05, 0.05), skin, 16)
-        sphere('Collector elf belly', (x, y - 0.08, 0.66), (0.24, 0.20, 0.20), robe, 32)
-        # Magnifying glass raised before the chest, its lens facing the camera.
-        tube('Collector elf magnifier handle', [(x, y - 0.31, 0.60), (x, y - 0.33, 0.74)],
-             [0.022, 0.025], wood, sides=8, smooth=True)
-        face_camera = (math.radians(30), 0, 0)
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.08, minor_radius=0.016,
-                                         location=(x, y - 0.35, 0.83), rotation=face_camera)
-        finish(bpy.context.object, gold, True, 'Collector elf magnifier rim')
-        bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.075, depth=0.012,
-                                            location=(x, y - 0.35, 0.83), rotation=face_camera)
-        finish(bpy.context.object, lens, True, 'Collector elf magnifier lens')
+            sphere('Collector elf hand', (x + side * 0.04, y - 0.31, 0.62), (0.055, 0.05, 0.05), skin, 16)
+        # A paunch sitting low and pushing forward.
+        sphere('Collector elf belly', (x, y - 0.10, 0.60), (0.24, 0.20, 0.19), robe, 32)
         # Collected pieces beside the chair: a vase and a bundle of blades.
         tube('Collector elf vase', [(x + 0.52, y - 0.05, 0.0), (x + 0.52, y - 0.05, 0.12),
                                     (x + 0.52, y - 0.05, 0.26), (x + 0.52, y - 0.05, 0.34)],
@@ -1423,20 +1419,43 @@ def collector_elf(x, y):
                  [(0.025, 0.008), 0], steel, sides=4)
 
     def head(x, y):
-        # Balding top with hair left at the sides and back, and a gold monocle.
+        # Balding top with hair left at the sides and back.
         for side in (-1, 1):
             sphere('Collector elf side hair', (x + side * 0.11, y + 0.04, 1.00), (0.06, 0.09, 0.07), hair, 16)
         sphere('Collector elf back hair', (x, y + 0.11, 1.00), (0.12, 0.05, 0.07), hair, 16)
         sphere('Collector elf double chin', (x, y - 0.06, 0.92), (0.11, 0.09, 0.05), skin, 16)
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.04, minor_radius=0.008,
-                                         location=(x + 0.05, y - 0.15, 1.04),
-                                         rotation=(math.pi / 2, 0, 0))
-        finish(bpy.context.object, gold, True, 'Collector elf monocle')
-        tube('Collector elf monocle chain', [(x + 0.09, y - 0.15, 1.02), (x + 0.12, y - 0.12, 0.92),
-                                             (x + 0.13, y - 0.10, 0.86)], [0.006] * 3, gold, sides=4)
+        # A watchmaker's loupe over the left eye (screen right): a leather
+        # headband, three black-rimmed lenses stacked into a short barrel
+        # jutting forward, and a spare lens flipped up at the temple.
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.145, minor_radius=0.014,
+                                         location=(x, y, 1.08), rotation=(0.15, 0, 0))
+        finish(bpy.context.object, strap, True, 'Collector elf loupe headband')
+        facing = (math.pi / 2, 0, 0)
+        for k, r in enumerate((0.042, 0.036, 0.030)):
+            centre = (x + 0.05, y - 0.15 - 0.045 * k, 1.04)
+            bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=0.009,
+                                             location=centre, rotation=facing)
+            finish(bpy.context.object, dark, True, 'Collector elf loupe rim')
+            bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=r, depth=0.008,
+                                                location=centre, rotation=facing)
+            finish(bpy.context.object, lens, True, 'Collector elf loupe lens')
+        tube('Collector elf loupe barrel', [(x + 0.05, y - 0.15, 1.04), (x + 0.05, y - 0.24, 1.04)],
+             [0.040, 0.029], dark, sides=16, smooth=True)
+        tube('Collector elf loupe arm', [(x + 0.14, y - 0.04, 1.08), (x + 0.12, y - 0.13, 1.14)],
+             [0.007, 0.007], dark, sides=6)
+        spare = (x + 0.12, y - 0.15, 1.15)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.026, minor_radius=0.007,
+                                         location=spare, rotation=(0.4, 0, 0))
+        finish(bpy.context.object, dark, True, 'Collector elf spare loupe rim')
+        bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.026, depth=0.006,
+                                            location=spare, rotation=(0.4, 0, 0))
+        finish(bpy.context.object, lens, True, 'Collector elf spare loupe lens')
 
-    elf_figure(x, y, 'Collector elf', robe, skin, eye, body, head, skirt=(0.27, 0.30, 0.24),
-               skirt_z=(0.34, 0.45, 0.60), girth=1.35)
+    # Fat but round-shouldered: the body widens steadily from narrow, sloping
+    # shoulders to a heavy waist and hips, rather than bulging like a barrel.
+    elf_figure(x, y, 'Collector elf', robe, skin, eye, body, head, skirt=(0.27, 0.29, 0.28),
+               skirt_z=(0.34, 0.45, 0.60),
+               body_radii=[(0.27, 0.22), (0.22, 0.18), (0.15, 0.12), (0.08, 0.07)])
 
 
 def lifebringer_elf(x, y):
