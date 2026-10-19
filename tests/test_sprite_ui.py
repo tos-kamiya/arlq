@@ -504,11 +504,19 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     ui._terrain_images = {char: SimpleNamespace(width=260, height=500, char=char)
                           for char in sprite_funcs.TERRAIN_FILES}
     ui._cur_torched = [[1, 0]]
+    ui._disc_image = SimpleNamespace(width=64, height=64, char='disc')
+    ui._disc_group = object()
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     ui._draw_stairs((0, 0), char)
     ui._draw_stairs((1, 0), char)
-    visible, explored = ui._drawables
+    visible_disc, visible, explored_disc, explored = ui._drawables
+    # A ground disc in the respawn point's yellow sits under the flight.
+    assert visible_disc.image is ui._disc_image and visible_disc.group is ui._disc_group
+    assert visible_disc.color == sprite_funcs.COLOR_MAP[sprite_funcs.CI_YELLOW]
+    assert visible_disc.opacity == sprite_funcs.STAIR_DISC_OPACITY
+    assert visible_disc.scale_x * 64 == pytest.approx(2 * sprite_funcs.GROUND_DISC_RADIUS * 13)
+    assert sum(explored_disc.color) < sum(visible_disc.color)
     assert visible.image.char == char
     assert visible.color == sprite_funcs.TERRAIN_TINT
     assert sum(explored.color) < sum(visible.color)
