@@ -1887,8 +1887,10 @@ def marksman(x, y):
     tuft = material('Marksman white tufts', (0.90, 0.90, 0.92), 0.1, 0.5,
                     rim=(0.9, 0.95, 1.0), rim_strength=0.8)
     eye = material('Marksman eyes', (0.02, 0.02, 0.03), roughness=0.2, coat=1.0)
-    wood = material('Marksman yew bow', (0.62, 0.36, 0.14), 0.0, 0.4,
+    wood = material('Marksman arrow shafts', (0.62, 0.36, 0.14), 0.0, 0.4,
                     rim=(1.0, 0.8, 0.5), rim_strength=0.8, coat=0.4)
+    bow = material('Marksman bone-white bow', (0.88, 0.85, 0.76), 0.1, 0.35,
+                   rim=(1.0, 0.97, 0.9), rim_strength=0.8, coat=0.5)
     string = material('Marksman bowstring', (0.85, 0.82, 0.70), roughness=0.6)
     feather = material('Marksman pale fletching', (0.92, 0.90, 0.84), 0.1, 0.5)
     boot = material('Marksman dark boots', (0.08, 0.06, 0.05), roughness=0.5)
@@ -1907,22 +1909,30 @@ def marksman(x, y):
              [0.012, 0.012], wood, sides=6)
         cone('Marksman fletching', (x + dx + 0.02, y + dy, 0.68), (x + dx + 0.03, y + dy, 0.80),
              0.04, 0.012, feather, 4, False)
-    # A longbow taller than he is, held upright at his side (screen left).
-    grip = Vector((x - 0.36, y - 0.12, 0.62))
+    # A huge bone-white longbow at his side (screen left), gripped at its
+    # leather-wrapped middle at hand height; its upper tip towers far above
+    # his head and its lower tip sinks below the floor.
+    length = 2.2
+    foot = Vector((x - 0.30, y - 0.10, 0.58 - length / 2))
     limb = []
     for i in range(13):
         t = i / 12
-        limb.append(grip + Vector((-0.17 * math.sin(math.pi * t) + 0.12,
-                                   -0.06 * math.sin(math.pi * t) + 0.04, (t - 0.5) * 1.75)))
-    tube('Marksman longbow', limb, [0.018, 0.024, 0.028, 0.032, 0.035, 0.038, 0.042, 0.038,
-                                    0.035, 0.032, 0.028, 0.024, 0.018], wood, sides=8,
+        limb.append(foot + Vector((-0.22 * math.sin(math.pi * t),
+                                   -0.07 * math.sin(math.pi * t) + 0.06 * t, t * length)))
+    tube('Marksman longbow', limb, [0.02, 0.027, 0.032, 0.036, 0.04, 0.043, 0.047, 0.043,
+                                    0.04, 0.036, 0.032, 0.027, 0.02], bow, sides=8,
          smooth=True)
-    tube('Marksman bowstring', [limb[0], limb[-1]], [0.006, 0.006], string, sides=4)
-    tube('Marksman bow grip', [limb[5], limb[7]], [0.048, 0.048], boot, sides=10, smooth=True)
-    # Right arm (screen left) out to the grip; left hand resting on the belt.
-    tube('Marksman right arm', [(x - 0.18, y, 0.44), (x - 0.27, y - 0.06, 0.46), limb[6]],
+    # A thick string, so it still shows at sprite size.
+    tube('Marksman bowstring', [limb[0], limb[-1]], [0.015, 0.015], string, sides=8)
+    tube('Marksman bow grip', [limb[5], limb[7]], [0.052, 0.052], boot, sides=10, smooth=True)
+    # Right arm (screen left) out to the grip; left hand on the belt.
+    hold = limb[6]
+    # The elbow sits outward past the string, a little back and below the
+    # shoulder, so the upper arm passes just behind the string instead of
+    # through it and the forearm rises to the grip.
+    tube('Marksman right arm', [(x - 0.18, y, 0.44), (x - 0.40, y + 0.06, 0.34), hold],
          [0.06, 0.055, 0.05], tunic, sides=12, smooth=True)
-    sphere('Marksman right hand', tuple(limb[6]), (0.055, 0.055, 0.055), skin, 16)
+    sphere('Marksman right hand', tuple(hold), (0.055, 0.055, 0.055), skin, 16)
     tube('Marksman left arm', [(x + 0.18, y, 0.44), (x + 0.26, y - 0.06, 0.32),
                                (x + 0.15, y - 0.18, 0.26)], [0.06, 0.055, 0.05], tunic,
          sides=12, smooth=True)
