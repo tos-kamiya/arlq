@@ -600,7 +600,7 @@ class SpriteUI(PygletUI):
 
     def _draw_object(self, signature, factory):
         """Reuse a drawable when its complete render description is unchanged."""
-        if self._frame_drawable_cache is None:
+        if getattr(self, '_frame_drawable_cache', None) is None:
             return super()._draw_object(signature, factory)
         index = self._drawable_use_counts.get(signature, 0)
         self._drawable_use_counts[signature] = index + 1
@@ -627,7 +627,7 @@ class SpriteUI(PygletUI):
         self._reused_drawable_ids = set()
 
     def _set_drawable_attribute(self, drawable, name, value):
-        if id(drawable) not in self._reused_drawable_ids:
+        if id(drawable) not in getattr(self, '_reused_drawable_ids', ()):
             setattr(drawable, name, value)
 
     def _progress_mark_group(self):
@@ -728,6 +728,10 @@ class SpriteUI(PygletUI):
         x, y = pos
         cx, cy = self._field_col_x(x) + self.cell_size_x / 2, (y + 0.5) * self.cell_size_y
         dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
+        if self.map_mode and max(color) <= 128 and max(color) - min(color) <= 16:
+            # Map sprites use a grey texture. Preserve the half-bright marker
+            # for dim neutral colors supplied by callers outside COLOR_MAP.
+            dimmed = True
         size = NEIGHBOR_SCALE if self._neighbor_of_player(pos) else 1.0
         self._place_sprite(text, cx, cy, size, y, 'sprite', dimmed, shade)
         self._sprite_cells[pos] = size

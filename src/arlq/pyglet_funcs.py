@@ -579,7 +579,7 @@ class PygletUI:
     def _display_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
         if not self.map_mode:
             return color
-        value = int(color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114)
+        value = round(color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114)
         return (value, value, value)
 
     def _dim_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
