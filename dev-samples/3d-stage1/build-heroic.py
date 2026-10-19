@@ -674,10 +674,32 @@ def nomicon(x, y):
             parts.append(block('Nomicon gold corner', (side * 0.66, corner * 0.44, 0.0),
                                (0.12, 0.12, 0.07), gold, 0.02))
         # Rune lines written across each page.
-        for i, length in enumerate((0.42, 0.34, 0.46, 0.28, 0.40)):
+        # The lines next to the middle one stand a little apart to clear its eyes.
+        for dy, length in zip((0.30, 0.17, 0.0, -0.17, -0.30), (0.42, 0.42, 0.38, 0.42, 0.42)):
             dx = side * (0.10 + length / 2)
-            parts.append(block('Nomicon rune line', (dx, 0.30 - i * 0.15, 0.095),
+            parts.append(block('Nomicon rune line', (dx, dy, 0.095),
                                (length, 0.06, 0.02), rune, 0.008))
+        # The third line swells near the spine on both pages: a pair of eyes.
+        # Each eye is a puffed, slightly narrow diamond: a domed outline whose
+        # corners point up, down and sideways, the outer corner tilted up.
+        cx, ring, verts = side * 0.25, 32, []
+        tilt = side * math.radians(8)
+        for level in range(6):
+            shrink = 1 - level / 6
+            z = 0.09 + 0.035 * math.sqrt(1 - shrink * shrink)
+            for k in range(ring):
+                a = 2 * math.pi * k / ring
+                c, s_ = math.cos(a), math.sin(a)
+                ex = 0.16 * shrink * math.copysign(abs(c) ** 1.35, c)
+                ey = 0.10 * shrink * math.copysign(abs(s_) ** 1.35, s_)
+                verts.append((cx + ex * math.cos(tilt) - ey * math.sin(tilt),
+                              ex * math.sin(tilt) + ey * math.cos(tilt), z))
+        verts.append((cx, 0, 0.125))
+        faces = [tuple(reversed(range(ring)))]
+        faces += [(l * ring + k, l * ring + (k + 1) % ring, (l + 1) * ring + (k + 1) % ring,
+                   (l + 1) * ring + k) for l in range(5) for k in range(ring)]
+        faces += [(5 * ring + k, 5 * ring + (k + 1) % ring, 6 * ring) for k in range(ring)]
+        parts.append(mesh_object('Nomicon rune eye', verts, faces, rune, True))
         bpy.context.view_layer.update()
         for obj in parts:
             obj.matrix_world = half @ obj.matrix_world
