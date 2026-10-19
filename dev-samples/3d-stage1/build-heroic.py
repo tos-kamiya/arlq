@@ -36,7 +36,7 @@ scene.world = world
 
 # Three rows, back to front: the player, Stage 1 monsters and chest; the
 # companions and elves; the monsters added from Stage 2 on and the rank marks.
-ROW_Y = (0.0, -3.8, -7.6)
+ROW_Y = (0.0, -3.8, -7.6, -11.4)
 ROW = [('k', 'MARKSMAN', -9.2, ROW_Y[0]), ('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
        ('A', 'RARE AMOEBA', -3.0, ROW_Y[0]), ('b', 'BISON', -1.0, ROW_Y[0]),
        ('c', 'CHIMERA', 1.0, ROW_Y[0]), ('d', 'COMODO DRAGON', 3.0, ROW_Y[0]),
@@ -52,7 +52,8 @@ ROW = [('k', 'MARKSMAN', -9.2, ROW_Y[0]), ('@', 'PLAYER', -7.0, ROW_Y[0]), ('a',
        ('g', 'GOLEM', -2.15, ROW_Y[2]), ('rock', 'GOLEM ROCK', -0.15, ROW_Y[2]),
        ('e', 'EREBUS', 1.85, ROW_Y[2]), ('E', 'RARE EREBUS', 3.85, ROW_Y[2]),
        ('X', 'CALTROP PLANT', 5.85, ROW_Y[2]), ("'", 'RANK 2', 7.525, ROW_Y[2]),
-       ('"', 'RANK 3', 8.875, ROW_Y[2])]
+       ('"', 'RANK 3', 8.875, ROW_Y[2]),
+       ('w', 'WYRM', -2.0, ROW_Y[3]), ('W', 'DREAD WYRM', 2.0, ROW_Y[3])]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
@@ -60,12 +61,14 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
+         'w': 1.3, 'W': 1.6, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters turn slightly toward screen left; the player, chest and companions face front.
 MONSTER_YAW = math.radians(-30)
+# Wyrms turn less, so both of their tall folded wings show.
+WYRM_YAW = math.radians(-12)
 
 
 def material(name, color, transmission=0.0, roughness=0.35, emission=None,
@@ -645,6 +648,132 @@ def great_dragon(x, y, fire=False):
         h = 0.16 if 4 <= i <= 7 else 0.10
         base = Vector((x + px, y + py, pz + rz * 0.8))
         cone('Dragon dorsal spike', base, base + Vector((0, 0.07, h)), 0.05, 0, gold, 4, False)
+
+
+
+def wyrm(x, y, dread=False):
+    """Wyrm (w) and Dread Wyrm (W): lean two-legged reptiles whose forelimbs
+    are huge wings, folded at rest into an M seen from the front: the wrists
+    peak high above the shoulders and four finger bones each fall outward
+    and down, with see-through membranes.
+
+    The wyrm has sapphire scales, pale blue wings and silver horns, apart
+    from the dragon's green and the fire drake's red; the Dread Wyrm, the
+    Stage 3 boss, is built larger with black scales, dark red wings and
+    glowing eyes.
+    """
+    if dread:
+        scales = material('Dread wyrm black scales', (0.02, 0.02, 0.03), 0.2, 0.2,
+                          rim=(1.0, 0.3, 0.2), rim_strength=1.6, coat=0.8)
+        belly = material('Dread wyrm ash belly', (0.20, 0.17, 0.17), 0.2, 0.3,
+                         rim=(1.0, 0.5, 0.4), rim_strength=0.6)
+        wing = material('Dread wyrm blood membrane', (0.45, 0.03, 0.04), 0.7, 0.25,
+                        emission=(0.6, 0.04, 0.03), strength=0.3,
+                        rim=(1.0, 0.35, 0.25), rim_strength=1.2)
+        horn = material('Dread wyrm bone horns', (0.80, 0.76, 0.66), roughness=0.3,
+                        rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+        eye = material('Dread wyrm burning eyes', (1.0, 0.75, 0.15), emission=(1.0, 0.7, 0.1),
+                       strength=8.0)
+    else:
+        scales = material('Wyrm sapphire scales', (0.02, 0.07, 0.35), 0.35, 0.2,
+                          rim=(0.5, 0.75, 1.0), rim_strength=1.5, coat=0.8)
+        belly = material('Wyrm pale belly', (0.55, 0.70, 0.90), 0.3, 0.25,
+                         rim=(0.8, 0.9, 1.0), rim_strength=0.6)
+        wing = material('Wyrm wing membrane', (0.35, 0.60, 0.95), 0.75, 0.2,
+                        emission=(0.2, 0.4, 0.9), strength=0.3,
+                        rim=(0.7, 0.9, 1.0), rim_strength=1.2)
+        horn = material('Wyrm silver horns', (0.80, 0.82, 0.88), roughness=0.25, metallic=0.9)
+        eye = material('Wyrm amber eyes', (1.0, 0.6, 0.1), emission=(1.0, 0.55, 0.08),
+                       strength=6.0)
+    start, LEG = set(bpy.data.objects), 0.8
+    # Long raised neck, lean upright body on two legs, tail curling behind;
+    # unlike the dragon, no spikes along the back.
+    spine = [(0.00, -0.92, 0.92), (0.00, -0.80, 0.98), (0.00, -0.64, 0.98), (0.00, -0.50, 0.86),
+             (0.00, -0.36, 0.70), (0.00, -0.18, 0.58), (0.00, 0.06, 0.52), (0.04, 0.30, 0.42),
+             (0.16, 0.52, 0.30), (0.30, 0.70, 0.20), (0.26, 0.90, 0.14), (0.06, 1.00, 0.11),
+             (-0.14, 0.96, 0.09)]
+    radii = [(0.06, 0.045), (0.13, 0.09), (0.14, 0.11), (0.10, 0.10), (0.13, 0.12), (0.24, 0.19),
+             (0.22, 0.18), (0.16, 0.13), (0.11, 0.09), (0.08, 0.06), (0.05, 0.04), (0.03, 0.025), 0]
+
+    def rotate_x(v, pivot, degrees):
+        a = math.radians(degrees)
+        dy, dz = v.y - pivot.y, v.z - pivot.z
+        return Vector((v.x, pivot.y + dy * math.cos(a) - dz * math.sin(a),
+                       pivot.z + dy * math.sin(a) + dz * math.cos(a)))
+
+    # Stand upright like an old picture of a T. rex: everything in front of
+    # the hips swings up by 55 degrees while the tail stays on the floor,
+    # and the head tips back down at the neck to look ahead.
+    hips, lean, nod = Vector((x, y + 0.06, 0.52)), -55, 45
+    neck = rotate_x(Vector((x, y - 0.50, 0.86)), hips, lean)
+
+    def raised(px, py, pz, head=False):
+        v = Vector((x + px, y + py, pz))
+        if py >= 0.06:
+            return v
+        v = rotate_x(v, hips, lean)
+        return rotate_x(v, neck, nod) if head else v
+
+    tube('Wyrm body', [raised(*p, head=i < 3) for i, p in enumerate(spine)], radii, scales,
+         sides=8, twist=math.pi / 8)
+    tube('Wyrm jaw', [raised(0, -0.62, 0.88, True), raised(0, -0.78, 0.85, True),
+                      raised(0, -0.91, 0.82, True)],
+         [(0.11, 0.04), (0.09, 0.035), 0], belly, sides=6)
+    for side in (-1, 1):
+        sphere('Wyrm eye', tuple(raised(side * 0.10, -0.78, 1.04, True)), (0.04, 0.035, 0.028),
+               eye, 16)
+        # Nearly straight horns, angled back and up.
+        tube('Wyrm horn', [raised(side * 0.08, -0.68, 1.06, True),
+                           raised(side * 0.12, -0.56, 1.16, True),
+                           raised(side * 0.15, -0.45, 1.25, True)], [0.04, 0.025, 0], horn,
+             sides=6, smooth=True)
+        # Huge folded wing, an M from the front: the arm bone climbs from the
+        # shoulder to the wrist, a peak high above the shoulder, and four
+        # finger bones fold from it outward and down like a resting bat's,
+        # with the membrane scalloped deeply between them.
+        shoulder = raised(side * 0.18, -0.16, 0.66)
+        # Folded but still large: a tall peak and long fingers reaching down
+        # to the floor, rather than a wide span.
+        # The arm bone, from the shoulder to the claw at the wrist, is kept
+        # at 0.8 of its first length; the finger tips stay where they were.
+        wrist = shoulder + (Vector((x + side * 0.44, y - 0.02, 1.90)) - shoulder) * 0.8
+        tips = [Vector((x + side * 0.78, y + 0.06, 0.62)),
+                Vector((x + side * 0.76, y + 0.26, 0.24)),
+                Vector((x + side * 0.62, y + 0.44, 0.08)),
+                Vector((x + side * 0.42, y + 0.54, 0.08))]
+        root = Vector((x + side * 0.12, y + 0.36, 0.46))
+        tube('Wyrm wing arm', [shoulder, (shoulder + wrist) / 2 + Vector((0, 0, 0.06)), wrist],
+             [0.06, 0.05, 0.04], scales, sides=6, smooth=True)
+        for tip in tips:
+            tube('Wyrm wing finger', [wrist, tip], [0.04, 0.012], scales, sides=6)
+        cone('Wyrm wing claw', wrist, wrist + Vector((side * 0.04, -0.12, 0.12)),
+             0.035, 0, horn, 5, False)
+        outline = [shoulder, wrist, tips[0]]
+        for a, b in zip(tips, tips[1:] + [root]):
+            sag = wrist + ((a + b) / 2 - wrist) * 0.72
+            outline += [sag, b]
+        verts = [tuple(v) for v in outline]
+        faces = [(1, i, i + 1) for i in range(2, len(verts) - 1)] + [(0, 1, len(verts) - 1)]
+        membrane = mesh_object('Wyrm wing membrane', verts, faces, wing, True)
+        solid = membrane.modifiers.new('Membrane thickness', 'SOLIDIFY')
+        solid.thickness = 0.02
+        solid.offset = 0
+        # Two hind legs only; the wings are the forelimbs.
+        # Legs at 0.8 of their first length; the whole wyrm is lowered at
+        # the end to put the talons back on the floor.
+        hip = Vector((x + side * 0.15, y + 0.04, 0.46))
+        knee = hip + (Vector((x + side * 0.22, y - 0.08, 0.30)) - hip) * LEG
+        foot = hip + (Vector((x + side * 0.18, y - 0.04, 0.07)) - hip) * LEG
+        tube('Wyrm leg', [hip, knee, foot], [0.11, 0.08, 0.06], scales, sides=6)
+        for spread in (-0.05, 0, 0.05):
+            cone('Wyrm talon', (foot.x + spread, foot.y - 0.04, foot.z - 0.02),
+                 (foot.x + spread * 1.6, foot.y - 0.15, foot.z - 0.05), 0.022, 0, horn, 4,
+                 False)
+    # A barbed tip on the tail.
+    tail = Vector((x - 0.14, y + 0.96, 0.09))
+    cone('Wyrm tail barb', tail + Vector((0.04, 0.02, 0)), tail + Vector((-0.12, -0.04, 0.02)),
+         0.06, 0, horn, 4, False)
+    transform_new(start, Matrix.Translation((0, 0, -0.39 * (1 - LEG))))
 
 
 def transform_new(start, matrix):
@@ -1909,7 +2038,7 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'c': chimera, 'T': treasure, 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
-            'g': golem, 'V': vortex, 'k': marksman, 'm': spore, 'e': lambda x, y: erebus(x, y, False),
+            'g': golem, 'w': wyrm, 'W': lambda x, y: wyrm(x, y, True), 'V': vortex, 'k': marksman, 'm': spore, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock}
@@ -1919,7 +2048,8 @@ for char, name, x, y in ROW:
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = MONSTER_YAW if char in 'aAbcdDCFgkmeEX' else PEGASUS_YAW if char == 'p' else 0
+    yaw = (MONSTER_YAW if char in 'aAbcdDCFgkmeEX' else WYRM_YAW if char in 'wW'
+           else PEGASUS_YAW if char == 'p' else 0)
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
     for obj in character:
@@ -1931,7 +2061,7 @@ for char, name, x, y in ROW:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-    width = 3.1 if char in ('D', 'F') else 1.2 if char in ("'", '"') else 1.85
+    width = 3.1 if char in ('D', 'F') else 3.8 if char in ('w', 'W') else 1.2 if char in ("'", '"') else 1.85
     block(name + ' tile', (x, y, -0.05), (width, 2.6, 0.1), tile, 0.04)
     label(name, (x, y - 1.55, 0.0), 0.16)
     collection = bpy.data.collections.new('Character ' + char + ' ' + name)
@@ -1962,11 +2092,11 @@ for name, pos, power, size, color in [
 bpy.ops.object.camera_add()
 camera = bpy.context.object
 angle = math.radians(60)
-target = Vector((0.5, (1.85 + ROW_Y[2] - 1.55) / 2, 0))
+target = Vector((0.5, (1.85 + ROW_Y[-1] - 1.55) / 2, 0))
 camera.location = target + Vector((0, -15 * math.cos(angle), 15 * math.sin(angle)))
 camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = 22.6
+camera.data.ortho_scale = 26.0
 scene.camera = camera
 scene['sprite_centers'] = {char: list(pos) for char, pos in CENTERS.items()}
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT / 'characters-angle60.blend'))

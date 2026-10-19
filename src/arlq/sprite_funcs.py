@@ -29,6 +29,8 @@ SPRITE_FILES = {
     'g': 'golem.png',
     'k': 'marksman.png',
     'V': 'vortex.png',
+    'w': 'wyrm.png',
+    'W': 'dread-wyrm.png',
     'm': 'spore.png',
     'e': 'erebus.png',
     'E': 'rare-erebus.png',
