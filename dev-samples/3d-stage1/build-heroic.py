@@ -53,7 +53,7 @@ ROW = [('k', 'MARKSMAN', -9.2, ROW_Y[0]), ('@', 'PLAYER', -7.0, ROW_Y[0]), ('a',
        ('e', 'EREBUS', 1.85, ROW_Y[2]), ('E', 'RARE EREBUS', 3.85, ROW_Y[2]),
        ('X', 'CALTROP PLANT', 5.85, ROW_Y[2]), ("'", 'RANK 2', 7.525, ROW_Y[2]),
        ('"', 'RANK 3', 8.875, ROW_Y[2]),
-       ('w', 'WYRM', -2.0, ROW_Y[3]), ('W', 'DREAD WYRM', 2.0, ROW_Y[3])]
+       ('w', 'WYRM', -0.9, ROW_Y[3]), ('W', 'DREAD WYRM', 1.9, ROW_Y[3])]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
@@ -2061,7 +2061,7 @@ for char, name, x, y in ROW:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-    width = 3.1 if char in ('D', 'F') else 3.8 if char in ('w', 'W') else 1.2 if char in ("'", '"') else 1.85
+    width = 3.1 if char in ('D', 'F') else 2.6 if char in ('w', 'W') else 1.2 if char in ("'", '"') else 1.85
     block(name + ' tile', (x, y, -0.05), (width, 2.6, 0.1), tile, 0.04)
     label(name, (x, y - 1.55, 0.0), 0.16)
     collection = bpy.data.collections.new('Character ' + char + ' ' + name)
@@ -2107,5 +2107,17 @@ if '--save-only' not in sys.argv:
     # keeps it). This about halves the render time.
     for mat in bpy.data.materials:
         mat.cycles.emission_sampling = 'NONE'
+    # The area lights sit near the origin and fall off toward the ends of
+    # this wide group shot; for the preview only, swap each for a sun from
+    # the same direction so every character is lit alike. The sun strength
+    # matches the area light's irradiance at the origin (power / (pi d^2)),
+    # and its angle matches the area light's apparent size.
+    for light in [obj for obj in scene.objects if obj.type == 'LIGHT']:
+        distance = light.location.length
+        sun = bpy.data.lights.new(light.name + ' sun', 'SUN')
+        sun.energy = light.data.energy / (math.pi * distance * distance)
+        sun.angle = 2 * math.atan(light.data.size / 2 / distance)
+        sun.color = light.data.color
+        light.data = sun
     scene.render.filepath = str(OUT / 'preview-angle60.png')
     bpy.ops.render.render(write_still=True)
