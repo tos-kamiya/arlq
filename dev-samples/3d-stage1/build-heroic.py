@@ -47,7 +47,7 @@ GRID_COLS, GRID_ROWS = 14, 5
 # Back to front: the player, Stage 1 monsters and chest; the companions and
 # elves; the monsters added from Stage 2 on, the golem rock and rank marks.
 ORDER = [('@', 'PLAYER'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
-         ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('D', 'DRAGON'),
+         ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
          ('l', 'LOOP'), ('n', 'NOMICON'), ('o', 'OCULAR'), ('p', 'PEGASUS'),
          ('H', 'HIGH ELF'), ('I', 'ISOLATED ELF'), ('J', 'JAVELIN ELF'), ('K', 'COLLECTOR ELF'),
          ('L', 'LIFEBRINGER ELF'), ('S', 'SYLVAN ELF'),
@@ -74,13 +74,13 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # large each character appears; the boss dragon is built large, its wings
 # spreading past its cell. The amoebas, comodo dragon and Erebuses were
 # later shrunk to 0.9 of their first sizes.
-SIZES = {'@': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'D': 1.44,
+SIZES = {'@': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.9, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
-# Monsters turn slightly toward screen left; the player, chest and companions face front.
+# Monsters and the chest turn slightly toward screen left; the player and companions face front.
 MONSTER_YAW = math.radians(-30)
 # Wyrms turn less, so both of their tall folded wings show.
 WYRM_YAW = math.radians(-12)
@@ -535,43 +535,93 @@ def chimera(x, y, cursed=False):
                (0.035, 0.035, 0.03), snake_eye, 12)
 
 
-def treasure(x, y):
-    wood = material('Chest mahogany resin', (0.40, 0.09, 0.03), 0.12, 0.28,
-                    rim=(1.0, 0.55, 0.25), rim_strength=0.8, coat=0.8)
-    gold = material('Chest gold bands', (1.0, 0.68, 0.18), roughness=0.22, metallic=1.0)
-    light = material('Chest treasure glow', (1.0, 0.8, 0.3), emission=(1.0, 0.72, 0.2),
-                     strength=3.0)
-    gem = material('Chest ruby', (1.0, 0.08, 0.12), 0.8, 0.02,
-                   emission=(1.0, 0.1, 0.1), strength=1.5, coat=1.0)
+def treasure(x, y, mimic=False):
+    """Treasure chest (T), or with `mimic` the revealed Mimic (M), a kind of
+    golem: the chest's own shape in the golem's dark basalt and slate, its
+    lid only slightly open on a black inside where two round amber lights
+    glow, and an amber rune for the lock.
+    """
+    if mimic:
+        # Rougher and with a weaker rim than the golem's own stone, as the
+        # chest's broad smooth faces would otherwise shine pale grey.
+        wood = material('Mimic basalt', (0.08, 0.08, 0.10), 0.05, 0.75,
+                        rim=(0.55, 0.65, 0.85), rim_strength=0.5)
+        gold = material('Mimic slate bands', (0.20, 0.19, 0.22), 0.05, 0.65,
+                        rim=(0.65, 0.70, 0.90), rim_strength=0.5)
+        gem = material('Mimic amber rune', (1.0, 0.6, 0.1), emission=(1.0, 0.55, 0.08),
+                       strength=6.0)
+        dark = material('Mimic black inside', (0.0, 0.0, 0.005), roughness=0.9)
+        block('Mimic black inside', (x, y, 0.47), (0.86, 0.54, 0.06), dark, 0.02)
+        # Two round amber lights peering out from the dark, set toward the
+        # front so they show under the lid's raised edge.
+        for side in (-1, 1):
+            sphere('Mimic glowing eye', (x + side * 0.15, y - 0.16, 0.53), (0.05, 0.035, 0.035),
+                   gem, 16)
+    else:
+        wood = material('Chest mahogany resin', (0.40, 0.09, 0.03), 0.12, 0.28,
+                        rim=(1.0, 0.55, 0.25), rim_strength=0.8, coat=0.8)
+        gold = material('Chest gold bands', (1.0, 0.68, 0.18), roughness=0.22, metallic=1.0)
+        light = material('Chest treasure glow', (1.0, 0.8, 0.3), emission=(1.0, 0.72, 0.2),
+                         strength=3.0)
+        gem = material('Chest ruby', (1.0, 0.08, 0.12), 0.8, 0.02,
+                       emission=(1.0, 0.1, 0.1), strength=1.5, coat=1.0)
+        # Gold glow inside the unlocked chest, with a few coins on the pile.
+        block('Chest treasure glow', (x, y, 0.47), (0.86, 0.54, 0.06), light, 0.02)
+        for i, (dx, dy) in enumerate(((-0.22, -0.08), (0.05, 0.10), (0.24, -0.04),
+                                      (-0.04, -0.14))):
+            bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=0.07, depth=0.02,
+                                                location=(x + dx, y + dy, 0.515),
+                                                rotation=(0.3 * (i - 1.5), 0.2 * i, 0))
+            finish(bpy.context.object, gold, True, 'Chest gold coin')
     block('Chest box', (x, y, 0.27), (1.0, 0.66, 0.46), wood, 0.05)
-    # Gold glow inside the unlocked chest, with a few coins on the pile.
-    block('Chest treasure glow', (x, y, 0.47), (0.86, 0.54, 0.06), light, 0.02)
-    for i, (dx, dy) in enumerate(((-0.22, -0.08), (0.05, 0.10), (0.24, -0.04), (-0.04, -0.14))):
-        bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=0.07, depth=0.02,
-                                            location=(x + dx, y + dy, 0.515),
-                                            rotation=(0.3 * (i - 1.5), 0.2 * i, 0))
-        finish(bpy.context.object, gold, True, 'Chest gold coin')
-    # Rounded lid: a cylinder whose lower half sinks into the box, tilted open.
-    lid_parts = []
-    bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=0.33, depth=0.98,
-                                        location=(x, y, 0.50), rotation=(0, math.pi / 2, 0))
-    lid = finish(bpy.context.object, wood, True, 'Chest rounded lid')
-    lid.scale = (1, 1.0, 0.75)
+    # Rounded lid: a half cylinder along the box, flat underneath, so it
+    # stays a half circle seen from the side when tilted open.
+    def half_cylinder(name, dx, radius, length, mat):
+        segments, verts = 24, []
+        for end in (-0.5, 0.5):
+            for k in range(segments + 1):
+                a = math.pi * k / segments
+                verts.append((x + dx + end * length, y + radius * math.cos(a),
+                              0.50 + 0.75 * radius * math.sin(a)))
+        n = segments + 1
+        faces = [(k, k + 1, n + k + 1, n + k) for k in range(segments)]
+        faces += [tuple(reversed(range(n))), tuple(range(n, 2 * n)), (0, n, 2 * n - 1, n - 1)]
+        return mesh_object(name, verts, faces, mat, True)
+
+    lid = half_cylinder('Chest rounded lid', 0, 0.33, 0.98, wood)
     bevel = lid.modifiers.new('Soft lid rims', 'BEVEL')
     bevel.width = 0.03
     bevel.segments = 3
-    lid_parts.append(lid)
+    # Bands wrap only the outside: a hollow half ring over the lid, and a
+    # plate on the box's front and back, so none crosses the opening.
+    def band_arc(name, dx, inner, outer, width, mat):
+        segments, verts = 24, []
+        for k in range(segments + 1):
+            a = math.pi * k / segments
+            for r in (outer, inner):
+                for end in (-0.5, 0.5):
+                    verts.append((x + dx + end * width, y + r * math.cos(a),
+                                  0.50 + 0.75 * r * math.sin(a)))
+        faces = []
+        for k in range(segments):
+            o0, i0, o1, i1 = 4 * k, 4 * k + 2, 4 * k + 4, 4 * k + 6
+            faces += [(o0, o0 + 1, o1 + 1, o1), (i0, i1, i1 + 1, i0 + 1),
+                      (o0, o1, i1, i0), (o0 + 1, i0 + 1, i1 + 1, o1 + 1)]
+        last = 4 * segments
+        faces += [(0, 2, 3, 1), (last, last + 1, last + 3, last + 2)]
+        return mesh_object(name, verts, faces, mat, True)
+
+    lid_parts = [lid]
     for dx in (-0.36, 0.36):
-        bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=0.345, depth=0.09,
-                                            location=(x + dx, y, 0.50),
-                                            rotation=(0, math.pi / 2, 0))
-        band = finish(bpy.context.object, gold, True, 'Chest lid band')
-        band.scale = (1, 1.0, 0.75)
-        lid_parts.append(band)
-        block('Chest box band', (x + dx, y, 0.27), (0.09, 0.68, 0.47), gold, 0.015)
+        lid_parts.append(band_arc('Chest lid band', dx, 0.325, 0.35, 0.09, gold))
+        for side in (-1, 1):
+            block('Chest box band', (x + dx, y + side * 0.335, 0.27), (0.09, 0.03, 0.47), gold,
+                  0.012)
     bpy.context.view_layer.update()
     hinge = Matrix.Translation((x, y + 0.33, 0.50))
-    opening = hinge @ Matrix.Rotation(-1.15, 4, 'X') @ hinge.inverted()
+    # Both lids are open only a little, on the treasure's glow or the
+    # mimic's black inside.
+    opening = hinge @ Matrix.Rotation(-0.50, 4, 'X') @ hinge.inverted()
     for part in lid_parts:
         part.matrix_world = opening @ part.matrix_world
     block('Chest lock plate', (x, y - 0.34, 0.42), (0.20, 0.03, 0.24), gold, 0.03)
@@ -2082,7 +2132,7 @@ def label(value, pos, size):
 
 builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'd': dragon,
-            'c': chimera, 'T': treasure, 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
+            'c': chimera, 'T': treasure, 'M': lambda x, y: treasure(x, y, True), 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
             'g': golem, 'w': wyrm, 'W': lambda x, y: wyrm(x, y, True), 'V': vortex, 'k': marksman, 'm': spore, 'e': lambda x, y: erebus(x, y, False),
@@ -2095,7 +2145,7 @@ for char, name, x, y in ROW:
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = (MONSTER_YAW if char in 'aAbcdDCFgkmeEX' else WYRM_YAW if char in 'wW'
+    yaw = (MONSTER_YAW if char in 'aAbcdDCFgkmeEXTM' else WYRM_YAW if char in 'wW'
            else PEGASUS_YAW if char == 'p' else 0)
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())

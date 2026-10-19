@@ -281,9 +281,10 @@ def _strength_column_ui(monkeypatch, known_types):
     return ui, texts
 
 
+# 'Z' stands for an identified type that has no sprite.
 @pytest.mark.parametrize('label, known, images', [
     ('b', {'b'}, ['b']), ('b', set(), []), ("b'", {'b2'}, ['b', "'"]), ("b'", {'b'}, []),
-    ('@', set(), ['@']), ('M', {'M'}, [])])
+    ('@', set(), ['@']), ('M', {'M'}, ['M']), ('Z', {'Z'}, [])])
 def test_strength_column_shows_sprites_of_identified_types_only(monkeypatch, label, known, images):
     ui, texts = _strength_column_ui(monkeypatch, known)
     ui._draw_strength_entry(3, label, label == '@')
