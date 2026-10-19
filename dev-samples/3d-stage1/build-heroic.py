@@ -34,26 +34,39 @@ world.use_nodes = True
 world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.012, 0.018, 0.03, 1)
 scene.world = world
 
-# Three rows, back to front: the player, Stage 1 monsters and chest; the
-# companions and elves; the monsters added from Stage 2 on and the rank marks.
-ROW_Y = (0.0, -3.8, -7.6, -11.4)
-ROW = [('k', 'MARKSMAN', -9.2, ROW_Y[0]), ('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
-       ('A', 'RARE AMOEBA', -3.0, ROW_Y[0]), ('b', 'BISON', -1.0, ROW_Y[0]),
-       ('c', 'CHIMERA', 1.0, ROW_Y[0]), ('d', 'COMODO DRAGON', 3.0, ROW_Y[0]),
-       ('T', 'TREASURE CHEST', 5.0, ROW_Y[0]), ('D', 'DRAGON', 7.7, ROW_Y[0]),
-       ('V', 'VORTEX', 10.4, ROW_Y[0]),
-       ('l', 'LOOP', -9.4, ROW_Y[1]), ('n', 'NOMICON', -7.4, ROW_Y[1]), ('o', 'OCULAR', -5.4, ROW_Y[1]),
-       ('p', 'PEGASUS', -3.4, ROW_Y[1]), ('H', 'HIGH ELF', -1.4, ROW_Y[1]),
-       ('I', 'ISOLATED ELF', 0.6, ROW_Y[1]), ('J', 'JAVELIN ELF', 2.6, ROW_Y[1]),
-       ('K', 'COLLECTOR ELF', 4.6, ROW_Y[1]),
-       ('L', 'LIFEBRINGER ELF', 6.6, ROW_Y[1]),
-       ('S', 'SYLVAN ELF', 8.6, ROW_Y[1]),
-       ('m', 'SPORE', -9.5, ROW_Y[2]), ('C', 'RARE CHIMERA', -7.4, ROW_Y[2]), ('F', 'FIRE DRAKE', -4.775, ROW_Y[2]),
-       ('g', 'GOLEM', -2.15, ROW_Y[2]), ('rock', 'GOLEM ROCK', -0.15, ROW_Y[2]),
-       ('e', 'EREBUS', 1.85, ROW_Y[2]), ('E', 'RARE EREBUS', 3.85, ROW_Y[2]),
-       ('X', 'CALTROP PLANT', 5.85, ROW_Y[2]), ("'", 'RANK 2', 7.525, ROW_Y[2]),
-       ('"', 'RANK 3', 8.875, ROW_Y[2]),
-       ('w', 'WYRM', -0.9, ROW_Y[3]), ('W', 'DREAD WYRM', 1.9, ROW_Y[3])]
+# The group shot lays the characters out on the game's own grid. Sprites are
+# exported at 256 px per 2.6 units and drawn so that 186 px span 1.8 times
+# the cell width less its padding (13 px cells with 1 px each side), so one
+# cell is 186 / 1.8 * 13 / 11 * 2.6 / 256 = 1.24 units wide. Cells are 20:13
+# tall on screen, and the 60-degree view shortens floor depth by sin 60, so a
+# cell is 1.24 * 20 / 13 / sin 60 = 2.20 units deep. The models are built at
+# their in-game size, so on these cells they look as large as in the game.
+CELL_W = 186 / 1.8 * 13 / 11 * 2.6 / 256
+CELL_D = CELL_W * 20 / 13 / math.sin(math.radians(60))
+GRID_COLS, GRID_ROWS = 14, 5
+# Back to front: the player, Stage 1 monsters and chest; the companions and
+# elves; the monsters added from Stage 2 on, the golem rock and rank marks.
+ORDER = [('@', 'PLAYER'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
+         ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('D', 'DRAGON'),
+         ('l', 'LOOP'), ('n', 'NOMICON'), ('o', 'OCULAR'), ('p', 'PEGASUS'),
+         ('H', 'HIGH ELF'), ('I', 'ISOLATED ELF'), ('J', 'JAVELIN ELF'), ('K', 'COLLECTOR ELF'),
+         ('L', 'LIFEBRINGER ELF'), ('S', 'SYLVAN ELF'),
+         ('C', 'RARE CHIMERA'), ('F', 'FIRE DRAKE'), ('X', 'CALTROP PLANT'), ('g', 'GOLEM'),
+         ('rock', 'GOLEM ROCK'), ('w', 'WYRM'), ('W', 'DREAD WYRM'), ('e', 'EREBUS'),
+         ('E', 'RARE EREBUS'), ('m', 'SPORE'), ('k', 'MARKSMAN'), ('V', 'VORTEX'),
+         ("'", 'RANK 2'), ('"', 'RANK 3')]
+# Characters stand on every other cell, like the light squares of a
+# chessboard, so neighbours in a row are two cells apart.
+SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
+         if (col + row) % 2 == 0]
+assert len(ORDER) <= len(SLOTS)
+
+
+def cell_centre(col, row):
+    return ((col - (GRID_COLS - 1) / 2) * CELL_W, -row * CELL_D)
+
+
+ROW = [(char, name, *cell_centre(*slot)) for (char, name), slot in zip(ORDER, SLOTS)]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
@@ -2080,9 +2093,7 @@ for char, name, x, y in ROW:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-    width = 3.1 if char in ('D', 'F') else 2.6 if char in ('w', 'W') else 1.2 if char in ("'", '"') else 1.85
-    block(name + ' tile', (x, y, -0.05), (width, 2.6, 0.1), tile, 0.04)
-    label(name, (x, y - 1.55, 0.0), 0.16)
+    label(name, (x, y - CELL_D / 2 + 0.12, 0.005), 0.12)
     collection = bpy.data.collections.new('Character ' + char + ' ' + name)
     scene.collection.children.link(collection)
     for obj in set(bpy.data.objects) - start:
@@ -2093,7 +2104,16 @@ for char, name, x, y in ROW:
 
 bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, -0.1))
 finish(bpy.context.object, dark, True, 'Backdrop')
-label('ARLQ / STAGE 1-2 / HEROIC RESIN', (0.5, 1.85, 0.0), 0.2)
+# Floor tiles, one per game cell, in two shades like the game's checkered
+# flagstones.
+tile_dark = material('Darker floor tile', (0.035, 0.045, 0.06), 0.3, 0.4,
+                     rim=(0.25, 0.55, 0.9), rim_strength=0.4)
+for row in range(GRID_ROWS):
+    for col in range(GRID_COLS):
+        cx, cy = cell_centre(col, row)
+        block('Floor tile', (cx, cy, -0.05), (CELL_W - 0.04, CELL_D - 0.04, 0.1),
+              tile if (col + row) % 2 == 0 else tile_dark, 0.02)
+label('ARLQ / STAGE 1-4 / HEROIC RESIN', (0, CELL_D / 2 + 0.5, 0.0), 0.2)
 # Warm key, cool fill, strong back rim lights for glossy edges.
 for name, pos, power, size, color in [
         ('Key', (-4, -6, 8), 1000, 5, (1.0, 0.93, 0.85)),
@@ -2111,11 +2131,17 @@ for name, pos, power, size, color in [
 bpy.ops.object.camera_add()
 camera = bpy.context.object
 angle = math.radians(60)
-target = Vector((0.5, (1.85 + ROW_Y[-1] - 1.55) / 2, 0))
+# Frame the whole grid, with room above the back row for tall characters
+# and the title.
+grid_width = GRID_COLS * CELL_W + 0.6
+grid_height = (GRID_ROWS * CELL_D) * math.sin(angle) + 1.9
+target = Vector((0, -(GRID_ROWS - 1) * CELL_D / 2 + 0.6, 0))
 camera.location = target + Vector((0, -15 * math.cos(angle), 15 * math.sin(angle)))
 camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = 26.0
+camera.data.ortho_scale = grid_width
+scene.render.resolution_x = 1600
+scene.render.resolution_y = round(1600 * grid_height / grid_width)
 scene.camera = camera
 scene['sprite_centers'] = {char: list(pos) for char, pos in CENTERS.items()}
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT / 'characters-angle60.blend'))
