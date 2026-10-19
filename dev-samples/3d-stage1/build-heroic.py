@@ -473,10 +473,11 @@ def player(x, y):
     # faces up toward the 60-degree camera.
     start = set(bpy.data.objects)
     block('Player head', (x, y - 0.04, 0.83), (0.34, 0.32, 0.34), helm, 0.10)
-    # A dark iron faceplate with a narrow glowing eye slit, and a crest
-    # running front to back over the top.
-    block('Player faceplate', (x, y - 0.195, 0.80), (0.26, 0.04, 0.12), iron, 0.015)
-    block('Player eye slit', (x, y - 0.218, 0.81), (0.20, 0.012, 0.022), visor, 0.004)
+    # A dark iron faceplate with a glowing eye window, wider than a real
+    # helm's slit so the face reads at sprite size, and a crest running front
+    # to back over the top.
+    block('Player faceplate', (x, y - 0.195, 0.80), (0.28, 0.04, 0.14), iron, 0.015)
+    block('Player eye window', (x, y - 0.218, 0.81), (0.22, 0.012, 0.05), visor, 0.008)
     block('Player helm crest', (x, y - 0.02, 1.005), (0.05, 0.30, 0.05), iron, 0.015)
     for side in (-1, 1):
         cone('Player helm fin', (x + side * 0.15, y, 0.90),
