@@ -19,7 +19,7 @@ models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
 HEROIC = '--heroic' in sys.argv
 if HEROIC:
     models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)),
-               ('D', 'dragon', (0, 0)), ('n', 'nomicon', (0, 0)), ('o', 'ocular', (0, 0)),
+               ('D', 'dragon', (0, 0)), ('l', 'loop-watch', (0, 0)), ('n', 'nomicon', (0, 0)), ('o', 'ocular', (0, 0)),
                ('C', 'rare-chimera', (0, 0)), ('F', 'fire-drake', (0, 0)),
                ("'", 'mark-rank2', (0, 0)), ('"', 'mark-rank3', (0, 0)),
                ('g', 'golem', (0, 0)), ('e', 'erebus', (0, 0)), ('E', 'rare-erebus', (0, 0)),
