@@ -626,6 +626,7 @@ class PygletUI:
         bold: bool = False,
         x_offset: int = 0,
         size_scale: float = 1.0,
+        group=None,
     ):
         """
         Draws text at the grid cell defined by pos, optionally nudged by
@@ -644,7 +645,7 @@ class PygletUI:
         y = self.window_height - pos[1] * self.cell_size_y
         label_color = (*self._display_color(color), 255)
         signature = ("label", text, font_name, font_size, "bold" if bold else "normal",
-                     x, y, label_color)
+                     x, y, label_color, id(group) if group is not None else None)
         self._draw_object(
             signature,
             lambda: pyglet.text.Label(
@@ -658,8 +659,25 @@ class PygletUI:
                 anchor_y="top",
                 color=label_color,
                 batch=self.batch,
+                group=group,
             ),
         )
+
+    def _progress_mark_group(self):
+        """Return the draw order group for stage progress marks."""
+        return None
+
+    def _progress_mark_x_offset(self):
+        return 0
+
+    def _draw_progress_panel(self, marks):
+        """Draw an optional background beneath the stage progress marks."""
+
+    def _floor_label_group(self):
+        return None
+
+    def _draw_floor_label_panel(self, label, x, width):
+        """Draw an optional background beneath the floor label."""
 
     def _non_ascii_font(self) -> Tuple[str, float]:
         """Resolve the font (and a matching font-size scale) for non-ASCII
@@ -941,11 +959,15 @@ class PygletUI:
             self._draw_strength_entry(y, strength_char, is_player)
 
         if stage_num in d.ELF_STAGES:
+            progress_marks = ui_display.elf_stage_progress_marks(player, stage_num)
+            self._draw_progress_panel(progress_marks)
             progress_x = 0
-            for label, achieved in ui_display.elf_stage_progress_marks(player, stage_num):
+            for label, achieved in progress_marks:
                 color = COLOR_MAP["default"] if achieved else (100, 106, 118)
                 self._draw_text(
-                    (progress_x, self.field_height - 1), label, color, bold=True
+                    (progress_x, self.field_height - 1), label, color, bold=True,
+                    x_offset=self._progress_mark_x_offset(),
+                    group=self._progress_mark_group(),
                 )
                 progress_x += len(label) + 1
 
@@ -954,8 +976,10 @@ class PygletUI:
             label_x = max(
                 0, self.field_pixel_width - label_width - 2 * self.cell_size_x
             )
+            self._draw_floor_label_panel(floor_label, label_x, label_width)
             self._draw_text(
-                (0, self.field_height - 1), floor_label, COLOR_MAP["default"], x_offset=label_x
+                (0, self.field_height - 1), floor_label, COLOR_MAP["default"],
+                x_offset=label_x, group=self._floor_label_group(),
             )
 
         # Draw the status bar
