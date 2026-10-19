@@ -69,12 +69,14 @@ def cell_centre(col, row):
 ROW = [(char, name, *cell_centre(*slot)) for (char, name), slot in zip(ORDER, SLOTS)]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
-# Model sizes relative to the amoeba, baked into the meshes. Sprites are exported
-# and drawn at one common scale, so these decide how large each character
-# appears; the boss dragon is built large, its wings spreading past its cell.
-SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
+# Model sizes relative to the amoeba's first size, baked into the meshes.
+# Sprites are exported and drawn at one common scale, so these decide how
+# large each character appears; the boss dragon is built large, its wings
+# spreading past its cell. The amoebas, comodo dragon and Erebuses were
+# later shrunk to 0.9 of their first sizes.
+SIZES = {'@': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'w': 1.9, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
+         'w': 1.9, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
