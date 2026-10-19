@@ -501,8 +501,8 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     ui._frame_drawable_cache = None
     ui._reused_drawable_ids = set()
     ui._display_color = lambda color: color
-    ui._stair_images = {stair: SimpleNamespace(width=260, height=500, char=stair)
-                        for stair in d.STAIR_CHARS}
+    ui._terrain_images = {char: SimpleNamespace(width=260, height=500, char=char)
+                          for char in sprite_funcs.TERRAIN_FILES}
     ui._cur_torched = [[1, 0]]
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
@@ -510,7 +510,7 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     ui._draw_stairs((1, 0), char)
     visible, explored = ui._drawables
     assert visible.image.char == char
-    assert visible.color == sprite_funcs.STAIR_TINT
+    assert visible.color == sprite_funcs.TERRAIN_TINT
     assert sum(explored.color) < sum(visible.color)
     # Placed like a wall part: one cell plus the band it rises into.
     assert visible.y == 480 and visible.image.height * visible.scale_y == pytest.approx(25)
@@ -518,7 +518,37 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
 
 
 def test_stairs_without_images_stay_yellow_text(sprite_ui):
-    sprite_ui._stair_images = {}
+    sprite_ui._terrain_images = {}
     sprite_ui._draw_stairs((4, 5), d.CHAR_STAIRS_DOWN)
     assert sprite_ui.text_calls[0][1] == d.CHAR_STAIRS_DOWN
+    assert not sprite_ui._drawables
+
+
+def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.window_height = 500
+    ui.batch = None
+    ui.map_mode = False
+    ui._row_groups = {}
+    ui._drawables = []
+    ui._frame_drawable_cache = None
+    ui._reused_drawable_ids = set()
+    ui._display_color = lambda color: color
+    ui._terrain_images = {char: SimpleNamespace(width=260, height=500, char=char)
+                          for char in sprite_funcs.TERRAIN_FILES}
+    ui._cur_torched = [[1]]
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    ui._draw_pit((0, 0))
+    pit, = ui._drawables
+    assert pit.image.char == d.CHAR_COLLAPSE
+    assert pit.color == sprite_funcs.TERRAIN_TINT
+    assert pit.group is ui._row_group(0, 'wall')
+
+
+def test_collapse_pit_without_image_stays_yellow_text(sprite_ui):
+    sprite_ui._terrain_images = {}
+    sprite_ui._draw_pit((4, 5))
+    assert sprite_ui.text_calls[0][1] == d.CHAR_COLLAPSE
     assert not sprite_ui._drawables

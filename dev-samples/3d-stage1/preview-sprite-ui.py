@@ -36,6 +36,9 @@ for cx, cy in ((7, 10), (5, 12), (8, 12)):
 for sx, sy, char in ((6, 7, d.CHAR_STAIRS_UP), (8, 7, d.CHAR_STAIRS_DOWN),
                      (1, 8, d.CHAR_STAIRS_UP), (2, 10, d.CHAR_STAIRS_DOWN)):
     field[sy][sx] = char
+# A triggered Collapse: pits around its "?", and a pit explored outside the view.
+for px, py in ((35, 14), (34, 15), (36, 15), (35, 16), (1, 12)):
+    field[py][px] = d.CHAR_COLLAPSE
 seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
 current = [[int(5 <= x <= 38 and 5 <= y <= 16) for x in range(d.FIELD_WIDTH)]
            for y in range(d.FIELD_HEIGHT)]
@@ -67,6 +70,7 @@ for ex, char, met in ((8, 'H', False), (12, 'H', True), (16, 'I', False), (20, '
 entities += [d.Monster(8, 11, d.CHAR_TO_MONSTER_TRIBE['e']),
              d.Monster(11, 11, d.CHAR_TO_MONSTER_TRIBE['E']),
              d.Monster(6, 11, d.CHAR_TO_MONSTER_TRIBE['X'])]
+entities.append(d.Collapse(35, 15))
 ui.draw_stage(turn=0, player=player, entities=entities, field=field,
               cur_torched=current, torched=seen, known_types={'a', 'A', 'b', 'b2', 'b3', 'c', 'd', 'D', 'C', 'F', 'g', 'e', 'E', 'X'},
               show_entities=False, stage_num=1, message='Sprites + text fallback (c)',

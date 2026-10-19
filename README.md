@@ -74,7 +74,8 @@ instead of columns (they remain ordinary walls). Barriers (`=`) are drawn as sma
 red fires burning from several spots on the floor; while the protective amulet makes them harmless,
 those right around the player show only faint grey smoke. Floors are flagstones laid as a subtle
 checkerboard. Stairs are gold-tinted marble steps: up stairs (`^`) rise toward the north,
-and down stairs (`v`) descend into a dark opening.
+and down stairs (`v`) descend into a dark opening. Collapse pits (`O`) are jagged holes
+broken through the flagstones.
 Controls, rules, FOV and menus are shared with the original Pyglet GUI.
 The original cell size is retained. All sprites are drawn at one common scale,
 with each character's feet on its cell center, so their sizes follow the 3D models: most are about 1.8
