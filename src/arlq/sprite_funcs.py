@@ -150,6 +150,8 @@ TERRAIN_FILES = {d.CHAR_STAIRS_UP: 'stairs/stairs-up.png',
                  d.CHAR_COLLAPSE: 'pit/pit.png'}
 TERRAIN_TINT = (255, 222, 150)
 TERRAIN_EXPLORED_SHADE = 0.55
+# Opacity of the yellow ground disc that marks each stair.
+STAIR_DISC_OPACITY = 90
 
 
 def pillar_image(side):
@@ -381,6 +383,16 @@ class SpriteUI(PygletUI):
     def _draw_stairs(self, pos, char):
         if char not in self._terrain_images:
             return super()._draw_stairs(pos, char)
+        x, y = pos
+        visible = self._cur_torched is not None and self._cur_torched[y][x]
+        shade = 1 if visible else TERRAIN_EXPLORED_SHADE
+        # A ground disc like the characters', in the respawn point's yellow,
+        # so stairs stand out.
+        self._draw_ground_disc(self._field_col_x(x) + self.cell_size_x / 2,
+                               (y + 0.5) * self.cell_size_y,
+                               GROUND_DISC_RADIUS * self.cell_size_x,
+                               tuple(round(c * shade) for c in COLOR_MAP[CI_YELLOW]),
+                               opacity=STAIR_DISC_OPACITY)
         # The up flight rises into the cell to the north, like a column.
         self._draw_terrain(pos, char, 'column' if char == d.CHAR_STAIRS_UP else 'wall')
 
@@ -802,7 +814,7 @@ class SpriteUI(PygletUI):
             self._set_drawable_attribute(pillar, 'scale_y', scale_y)
             self._set_drawable_attribute(pillar, 'color', tint)
 
-    def _draw_ground_disc(self, cx, cy, radius, color, upper_right_color=None):
+    def _draw_ground_disc(self, cx, cy, radius, color, upper_right_color=None, opacity=255):
         """A disc seen at the sprites' 60-degree view, fading outward, below the sprite.
 
         With `upper_right_color`, that half of the disc takes the second color.
@@ -818,7 +830,7 @@ class SpriteUI(PygletUI):
             scale_y = 2 * ry / image.height
             draw_tint = self._display_color(tint)
             signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
-                         id(self._disc_group), draw_tint)
+                         id(self._disc_group), draw_tint, opacity)
             disc = self._draw_object(
                 signature,
                 partial(
@@ -829,3 +841,4 @@ class SpriteUI(PygletUI):
             self._set_drawable_attribute(disc, 'scale_x', scale_x)
             self._set_drawable_attribute(disc, 'scale_y', scale_y)
             self._set_drawable_attribute(disc, 'color', draw_tint)
+            self._set_drawable_attribute(disc, 'opacity', opacity)
