@@ -41,6 +41,7 @@ ROW = [('k', 'MARKSMAN', -9.2, ROW_Y[0]), ('@', 'PLAYER', -7.0, ROW_Y[0]), ('a',
        ('A', 'RARE AMOEBA', -3.0, ROW_Y[0]), ('b', 'BISON', -1.0, ROW_Y[0]),
        ('c', 'CHIMERA', 1.0, ROW_Y[0]), ('d', 'COMODO DRAGON', 3.0, ROW_Y[0]),
        ('T', 'TREASURE CHEST', 5.0, ROW_Y[0]), ('D', 'DRAGON', 7.7, ROW_Y[0]),
+       ('V', 'VORTEX', 10.4, ROW_Y[0]),
        ('l', 'LOOP', -9.4, ROW_Y[1]), ('n', 'NOMICON', -7.4, ROW_Y[1]), ('o', 'OCULAR', -5.4, ROW_Y[1]),
        ('p', 'PEGASUS', -3.4, ROW_Y[1]), ('H', 'HIGH ELF', -1.4, ROW_Y[1]),
        ('I', 'ISOLATED ELF', 0.6, ROW_Y[1]), ('J', 'JAVELIN ELF', 2.6, ROW_Y[1]),
@@ -59,7 +60,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
+         'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
@@ -910,6 +911,56 @@ def erebus(x, y, rare):
             base = Vector((x + dx, y - 0.46, dz))
             cone('Halo shard', base, base + Vector((0.02, 0, 0.06)), 0.03, 0, gold, 4, False)
 
+
+
+def vortex(x, y):
+    """Vortex (V): a whirlwind seen like a typhoon from above. Two strands of
+    smoke in slightly different greys spiral up and out into a widening
+    funnel, each thin at its foot, swelling midway and tapering to its tip,
+    with pebbles caught in it and lightning crackling out from the centre.
+
+    The smoky rim-lit look follows the Erebus; grey rather than its indigo,
+    so the two read apart.
+    """
+    smokes = [material('Vortex grey smoke', (0.07, 0.08, 0.11), 0.5, 0.4,
+                       rim=(0.7, 0.9, 1.0), rim_strength=1.5),
+              material('Vortex blue-grey smoke', (0.28, 0.34, 0.45), 0.5, 0.4,
+                       rim=(0.75, 0.92, 1.0), rim_strength=1.5)]
+    stone = material('Vortex caught pebbles', (0.16, 0.15, 0.14), 0.0, 0.6,
+                     rim=(0.7, 0.8, 1.0), rim_strength=0.6)
+    glow = material('Vortex lightning', (1.0, 0.75, 0.25), emission=(1.0, 0.62, 0.12),
+                    strength=4.0)
+    steps = 80
+    for strand, smoke in zip((0, math.pi), smokes):
+        points, radii = [], []
+        for i in range(steps + 1):
+            t = i / steps
+            r, a = 0.06 + 0.40 * t ** 1.3, strand + 2 * 2 * math.pi * t
+            points.append((x + r * math.cos(a), y + r * math.sin(a), 0.06 + 1.0 * t))
+            radii.append(0.012 + 0.08 * math.sin(math.pi * t) ** 0.8)
+        radii[-1] = 0
+        strand_obj = tube('Vortex smoke strand', points, radii, smoke, sides=16, smooth=True)
+        wobble = strand_obj.modifiers.new('Smoke wobble', 'DISPLACE')
+        texture = bpy.data.textures.new('Vortex smoke wobble', 'CLOUDS')
+        texture.noise_scale = 0.12
+        wobble.texture = texture
+        wobble.strength = 0.025
+    # Jagged lightning crackling out from the eye of the storm, laid nearly
+    # flat so its zigzag shows from above.
+    for start_angle, length in ((0.5, 0.30), (2.6, 0.26), (4.4, 0.33)):
+        along = Vector((math.cos(start_angle), math.sin(start_angle), 0))
+        side = Vector((-along.y, along.x, 0))
+        bolt = [Vector((x, y, 0.90))]
+        for k, swing in enumerate((0.05, -0.06, 0.05, -0.04)):
+            f = (k + 1) / 4
+            bolt.append(Vector((x, y, 0.90 - 0.10 * f)) + along * (length * f) + side * swing)
+        tube('Vortex lightning', bolt, [0.022, 0.02, 0.017, 0.012, 0], glow, sides=6)
+    # Pebbles whirled round the funnel.
+    for a, r, z, size in ((0.4, 0.42, 0.35, 0.05), (2.1, 0.50, 0.62, 0.045),
+                          (3.6, 0.38, 0.22, 0.04), (4.9, 0.58, 0.85, 0.05),
+                          (5.8, 0.52, 0.50, 0.035)):
+        block('Vortex pebble', (x + r * math.cos(a), y + r * math.sin(a), z),
+              (size * 1.4, size, size), stone, size * 0.4, (a, a * 0.7, a * 1.3))
 
 ELF_STRETCH = 1.3
 
@@ -1858,7 +1909,7 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'c': chimera, 'T': treasure, 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
-            'g': golem, 'k': marksman, 'm': spore, 'e': lambda x, y: erebus(x, y, False),
+            'g': golem, 'V': vortex, 'k': marksman, 'm': spore, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock}
@@ -1911,11 +1962,11 @@ for name, pos, power, size, color in [
 bpy.ops.object.camera_add()
 camera = bpy.context.object
 angle = math.radians(60)
-target = Vector((-0.5, (1.85 + ROW_Y[2] - 1.55) / 2, 0))
+target = Vector((0.5, (1.85 + ROW_Y[2] - 1.55) / 2, 0))
 camera.location = target + Vector((0, -15 * math.cos(angle), 15 * math.sin(angle)))
 camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = 20.8
+camera.data.ortho_scale = 22.6
 scene.camera = camera
 scene['sprite_centers'] = {char: list(pos) for char, pos in CENTERS.items()}
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT / 'characters-angle60.blend'))
