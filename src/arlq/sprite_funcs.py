@@ -1,6 +1,7 @@
 """Pyglet frontend with character sprites and the original text fallback."""
 
 import math
+from functools import partial
 from pathlib import Path
 
 import pyglet
@@ -278,6 +279,10 @@ class SpriteUI(PygletUI):
         # Cells where a character sprite was drawn this frame; a rank mark in
         # the next cell belongs to that sprite.
         self._sprite_cells = {}
+        self._drawable_cache = {}
+        self._frame_drawable_cache = None
+        self._drawable_use_counts = None
+        self._reused_drawable_ids = set()
         self._disc_image = ground_disc_image()
         self._disc_halves = (ground_disc_image('lower-left'), ground_disc_image('upper-right'))
         self._disc_group = pyglet.graphics.Group(order=1)
@@ -330,21 +335,28 @@ class SpriteUI(PygletUI):
             cooled = max(abs(x - cx), abs(y - cy)) <= 1
         image = (self._smoke_images if cooled else self._flame_images)[(x + y) % 2]
         bottom = self.window_height - (y + 1 - FLAME_BASE) * self.cell_size_y
-        flame = pyglet.sprite.Sprite(
-            image, x=self._field_col_x(x), y=bottom,
-            blend_src=pyglet.gl.GL_SRC_ALPHA,
-            blend_dest=pyglet.gl.GL_ONE_MINUS_SRC_ALPHA if cooled else pyglet.gl.GL_ONE,
-            batch=self.batch, group=self._row_group(y, 'pillar-back'),
+        group = self._row_group(y, 'pillar-back')
+        blend_dest = pyglet.gl.GL_ONE_MINUS_SRC_ALPHA if cooled else pyglet.gl.GL_ONE
+        scale_x = (self._field_col_width(x) + 1) / image.width
+        scale_y = FLAME_HEIGHT * self.cell_size_y / image.height
+        tint = (self._display_color(SMOKE_TINT) if cooled else self._display_color(
+            (round(255 * (1 if visible else FLAME_EXPLORED_SHADE)),) * 3
+        ))
+        opacity = SMOKE_OPACITY if cooled else 255
+        signature = ('sprite', id(image), self._field_col_x(x), bottom, scale_x, scale_y,
+                     id(group), pyglet.gl.GL_SRC_ALPHA, blend_dest, tint, opacity)
+        flame = self._draw_object(
+            signature,
+            lambda: pyglet.sprite.Sprite(
+                image, x=self._field_col_x(x), y=bottom,
+                blend_src=pyglet.gl.GL_SRC_ALPHA, blend_dest=blend_dest,
+                batch=self.batch, group=group,
+            ),
         )
-        flame.scale_x = (self._field_col_width(x) + 1) / image.width
-        flame.scale_y = FLAME_HEIGHT * self.cell_size_y / image.height
-        if cooled:
-            flame.color = self._display_color(SMOKE_TINT)
-            flame.opacity = SMOKE_OPACITY
-        else:
-            shade = round(255 * (1 if visible else FLAME_EXPLORED_SHADE))
-            flame.color = self._display_color((shade, shade, shade))
-        self._drawables.append(flame)
+        self._set_drawable_attribute(flame, 'scale_x', scale_x)
+        self._set_drawable_attribute(flame, 'scale_y', scale_y)
+        self._set_drawable_attribute(flame, 'color', tint)
+        self._set_drawable_attribute(flame, 'opacity', opacity)
 
     def _draw_tile(self, x, y, tile_color, field, discovered_at):
         if (field[y][x] == d.CHAR_BARRIER and discovered_at(x, y)
@@ -378,15 +390,23 @@ class SpriteUI(PygletUI):
                                ('link-east', wall_at(x + 1, y)), ('column', True)):
                 if show:
                     image = self._wall_images[part]
-                    piece = pyglet.sprite.Sprite(
-                        image, x=left, y=self.window_height - (y + 1) * self.cell_size_y,
-                        batch=self.batch,
-                        group=self._row_group(y, 'column' if part == 'column' else 'wall'),
+                    group = self._row_group(y, 'column' if part == 'column' else 'wall')
+                    bottom = self.window_height - (y + 1) * self.cell_size_y
+                    scale_x = width / image.width
+                    scale_y = height / image.height
+                    draw_tint = self._display_color(tint)
+                    signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
+                                 id(group), draw_tint)
+                    piece = self._draw_object(
+                        signature,
+                        partial(
+                            pyglet.sprite.Sprite, image, x=left, y=bottom,
+                            batch=self.batch, group=group,
+                        ),
                     )
-                    piece.scale_x = width / image.width
-                    piece.scale_y = height / image.height
-                    piece.color = self._display_color(tint)
-                    self._drawables.append(piece)
+                    self._set_drawable_attribute(piece, 'scale_x', scale_x)
+                    self._set_drawable_attribute(piece, 'scale_y', scale_y)
+                    self._set_drawable_attribute(piece, 'color', draw_tint)
             return
         south_is_wall = wall_at(x, y + 1)
         self._draw_wall_rect(left, top, width, height, tile_color, WALL_TOP_SHADE, group)
@@ -404,31 +424,48 @@ class SpriteUI(PygletUI):
         image = self._floor_images[odd]
         shade = FLOOR_CHECKER_SHADE if odd else 1
         tint = tuple(round(c * shade) for c in FLOOR_TINTS[tile_color])
-        stone = pyglet.sprite.Sprite(
-            image, x=self._field_col_x(x), y=self.window_height - (y + 1) * self.cell_size_y,
-            batch=self.batch, group=self._floor_group,
+        left = self._field_col_x(x)
+        bottom = self.window_height - (y + 1) * self.cell_size_y
+        scale_x = (self._field_col_width(x) + 1) / image.width
+        scale_y = (self.cell_size_y + 1) / image.height
+        draw_tint = self._display_color(tint)
+        signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
+                     id(self._floor_group), draw_tint)
+        stone = self._draw_object(
+            signature,
+            lambda: pyglet.sprite.Sprite(
+                image, x=left, y=bottom, batch=self.batch, group=self._floor_group,
+            ),
         )
-        stone.scale_x = (self._field_col_width(x) + 1) / image.width
-        stone.scale_y = (self.cell_size_y + 1) / image.height
-        stone.color = self._display_color(tint)
-        self._drawables.append(stone)
+        self._set_drawable_attribute(stone, 'scale_x', scale_x)
+        self._set_drawable_attribute(stone, 'scale_y', scale_y)
+        self._set_drawable_attribute(stone, 'color', draw_tint)
 
     def _draw_wall_rect(self, x, y, width, height, color, shade, group):
         color = tuple(min(255, round(c * shade)) for c in color)
-        rect = pyglet.shapes.Rectangle(
-            x, self.window_height - y - height, width, height,
-            color=self._display_color(color), batch=self.batch, group=group,
+        bottom = self.window_height - y - height
+        draw_color = self._display_color(color)
+        signature = ('rectangle', x, bottom, width, height, draw_color, id(group))
+        self._draw_object(
+            signature,
+            lambda: pyglet.shapes.Rectangle(
+                x, bottom, width, height, color=draw_color, batch=self.batch, group=group,
+            ),
         )
-        self._drawables.append(rect)
 
     def _draw_line(self, x1, y1, x2, y2, color, thickness=1):
         # Visibility boundaries and other lines stay above walls and sprites.
-        line = pyglet.shapes.Line(
-            x1, self.window_height - y1, x2, self.window_height - y2,
-            thickness=thickness, color=self._display_color(color),
-            batch=self.batch, group=self._overlay_group,
+        y1, y2 = self.window_height - y1, self.window_height - y2
+        draw_color = self._display_color(color)
+        signature = ('line', x1, y1, x2, y2, thickness, draw_color,
+                     id(self._overlay_group))
+        self._draw_object(
+            signature,
+            lambda: pyglet.shapes.Line(
+                x1, y1, x2, y2, thickness=thickness, color=draw_color,
+                batch=self.batch, group=self._overlay_group,
+            ),
         )
-        self._drawables.append(line)
 
     def _draw_player(self, pos, player):
         if '@' not in self._sprite_images:
@@ -466,30 +503,79 @@ class SpriteUI(PygletUI):
         cx = (self.field_pixel_width + self.strength_column_width
               - self.strength_column_padding - box_width / 2)
         cy = self.window_height - (row + 0.5) * self.cell_size_y
-        sprite = pyglet.sprite.Sprite(
-            picture, x=cx - picture.width * scale / 2, y=cy - picture.height * scale / 2,
-            batch=self.batch, group=self._overlay_group,
+        left, bottom = cx - picture.width * scale / 2, cy - picture.height * scale / 2
+        tint = self._display_color((255, 255, 255))
+        signature = ('sprite', id(picture), left, bottom, scale, scale,
+                     id(self._overlay_group), tint)
+        sprite = self._draw_object(
+            signature,
+            lambda: pyglet.sprite.Sprite(
+                picture, x=left, y=bottom, batch=self.batch, group=self._overlay_group,
+            ),
         )
-        sprite.scale = scale
-        self._drawables.append(sprite)
+        self._set_drawable_attribute(sprite, 'scale', scale)
+        self._set_drawable_attribute(sprite, 'color', tint)
         if mark in self._mark_images:
             # The rank mark at the sprite's right, at the field's scale, kept
             # within the entry's own row.
             image = self._mark_images[mark]
             badge_scale = scale
-            badge = pyglet.sprite.Sprite(
-                image, x=cx + min(box_width, picture.width * scale) / 2 - image.width * badge_scale / 2,
-                y=cy - image.height * badge_scale / 2,
-                batch=self.batch, group=self._overlay_group,
+            badge_x = cx + min(box_width, picture.width * scale) / 2 - image.width * badge_scale / 2
+            badge_y = cy - image.height * badge_scale / 2
+            badge_color = self._display_color(COLOR_MAP['default'])
+            signature = ('sprite', id(image), badge_x, badge_y, badge_scale, badge_scale,
+                         id(self._overlay_group), badge_color)
+            badge = self._draw_object(
+                signature,
+                lambda: pyglet.sprite.Sprite(
+                    image, x=badge_x, y=badge_y,
+                    batch=self.batch, group=self._overlay_group,
+                ),
             )
-            badge.scale = badge_scale
-            badge.color = self._display_color(COLOR_MAP['default'])
-            self._drawables.append(badge)
+            self._set_drawable_attribute(badge, 'scale', badge_scale)
+            self._set_drawable_attribute(badge, 'color', badge_color)
 
     def _clear_drawables(self):
-        super()._clear_drawables()
+        # Keep last frame's objects available for exact matches. They remain
+        # attached to the batch until _finish_drawables removes stale ones.
+        self._frame_drawable_cache = {}
+        self._drawable_use_counts = {}
+        self._reused_drawable_ids = set()
+        self._drawables = []
         self._sprite_cells.clear()
         self._player_cell = None
+
+    def _draw_object(self, signature, factory):
+        """Reuse a drawable when its complete render description is unchanged."""
+        if self._frame_drawable_cache is None:
+            return super()._draw_object(signature, factory)
+        index = self._drawable_use_counts.get(signature, 0)
+        self._drawable_use_counts[signature] = index + 1
+        old_objects = self._drawable_cache.get(signature, ())
+        if index < len(old_objects):
+            drawable = old_objects[index]
+            self._reused_drawable_ids.add(id(drawable))
+        else:
+            drawable = factory()
+        self._frame_drawable_cache.setdefault(signature, []).append(drawable)
+        self._drawables.append(drawable)
+        return drawable
+
+    def _finish_drawables(self):
+        if self._frame_drawable_cache is None:
+            return
+        for signature, old_objects in self._drawable_cache.items():
+            retained = len(self._frame_drawable_cache.get(signature, ()))
+            for drawable in old_objects[retained:]:
+                drawable.delete()
+        self._drawable_cache = self._frame_drawable_cache
+        self._frame_drawable_cache = None
+        self._drawable_use_counts = None
+        self._reused_drawable_ids = set()
+
+    def _set_drawable_attribute(self, drawable, name, value):
+        if id(drawable) not in self._reused_drawable_ids:
+            setattr(drawable, name, value)
 
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
@@ -511,15 +597,19 @@ class SpriteUI(PygletUI):
         padding = max(1, round(self.scale))
         scale = size * 1.8 * max(1, self.cell_size_x - 2 * padding) / SPRITE_REFERENCE_PIXELS
         dx, dy = (size * offset for offset in MARK_OFFSET)
-        sprite = pyglet.sprite.Sprite(
-            image,
-            x=self._field_col_x(x) + (0.5 + dx) * self.cell_size_x - image.width * scale / 2,
-            y=self.window_height - (y + 0.5 - dy) * self.cell_size_y - image.height * scale / 2,
-            batch=self.batch, group=self._row_group(y, 'mark'),
+        left = self._field_col_x(x) + (0.5 + dx) * self.cell_size_x - image.width * scale / 2
+        bottom = self.window_height - (y + 0.5 - dy) * self.cell_size_y - image.height * scale / 2
+        group = self._row_group(y, 'mark')
+        tint = self._display_color(color)
+        signature = ('sprite', id(image), left, bottom, scale, scale, id(group), tint)
+        sprite = self._draw_object(
+            signature,
+            lambda: pyglet.sprite.Sprite(
+                image, x=left, y=bottom, batch=self.batch, group=group,
+            ),
         )
-        sprite.scale = scale
-        sprite.color = self._display_color(color)
-        self._drawables.append(sprite)
+        self._set_drawable_attribute(sprite, 'scale', scale)
+        self._set_drawable_attribute(sprite, 'color', tint)
 
     def _draw_follower(self, pos, char):
         self._enlarge_neighbors = False
@@ -575,38 +665,48 @@ class SpriteUI(PygletUI):
         padding = max(1, round(self.scale))
         width = max(1, self.cell_size_x - 2 * padding)
         scale = size * 1.8 * width / SPRITE_REFERENCE_PIXELS
-        sprite = pyglet.sprite.Sprite(
-            picture,
-            x=cx - picture.width * scale / 2,
-            y=self.window_height - cy - (picture.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale,
-            batch=self.batch,
-            group=self._row_group(row, layer),
+        left = cx - picture.width * scale / 2
+        bottom = self.window_height - cy - (picture.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale
+        group = self._row_group(row, layer)
+        tint = ((128, 128, 128) if dimmed else
+                (round(255 * shade),) * 3 if shade < 1 else (255, 255, 255))
+        tint = self._display_color(tint)
+        signature = ('sprite', id(picture), left, bottom, scale, scale, id(group), tint)
+        sprite = self._draw_object(
+            signature,
+            lambda: pyglet.sprite.Sprite(
+                picture, x=left, y=bottom, batch=self.batch, group=group,
+            ),
         )
-        sprite.scale = scale
-        if dimmed:
-            sprite.color = (128, 128, 128)
-        elif shade < 1:
-            sprite.color = (round(255 * shade),) * 3
-        self._drawables.append(sprite)
+        self._set_drawable_attribute(sprite, 'scale', scale)
+        self._set_drawable_attribute(sprite, 'color', tint)
 
     def _draw_pillar(self, cx, cy, size, row, color, familiar=False):
         """Additive light cylinder around a companion: far wall behind, near wall over it."""
         radius = size * PILLAR_RADIUS * self.cell_size_x
         for side, layer in (('back', 'pillar-back'), ('front', 'pillar-front')):
             image = self._pillar_images[side]
-            pillar = pyglet.sprite.Sprite(
-                image, x=cx - radius,
-                y=self.window_height - cy - radius * GROUND_DISC_FLATTEN,
-                blend_src=pyglet.gl.GL_SRC_ALPHA, blend_dest=pyglet.gl.GL_ONE,
-                batch=self.batch,
-                group=self._row_group(row, 'familiar-front' if familiar and side == 'front'
-                                      else layer),
+            left = cx - radius
+            bottom = self.window_height - cy - radius * GROUND_DISC_FLATTEN
+            scale_x = 2 * radius / image.width
+            scale_y = (PILLAR_HEIGHT * size * self.cell_size_x
+                       + 2 * radius * GROUND_DISC_FLATTEN) / image.height
+            group = self._row_group(row, 'familiar-front' if familiar and side == 'front'
+                                    else layer)
+            tint = self._display_color(color)
+            signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
+                         id(group), pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE, tint)
+            pillar = self._draw_object(
+                signature,
+                partial(
+                    pyglet.sprite.Sprite, image, x=left, y=bottom,
+                    blend_src=pyglet.gl.GL_SRC_ALPHA, blend_dest=pyglet.gl.GL_ONE,
+                    batch=self.batch, group=group,
+                ),
             )
-            pillar.scale_x = 2 * radius / image.width
-            pillar.scale_y = (PILLAR_HEIGHT * size * self.cell_size_x
-                              + 2 * radius * GROUND_DISC_FLATTEN) / image.height
-            pillar.color = self._display_color(color)
-            self._drawables.append(pillar)
+            self._set_drawable_attribute(pillar, 'scale_x', scale_x)
+            self._set_drawable_attribute(pillar, 'scale_y', scale_y)
+            self._set_drawable_attribute(pillar, 'color', tint)
 
     def _draw_ground_disc(self, cx, cy, radius, color, upper_right_color=None):
         """A disc seen at the sprites' 60-degree view, fading outward, below the sprite.
@@ -619,11 +719,19 @@ class SpriteUI(PygletUI):
             parts = list(zip(self._disc_halves, (color, upper_right_color)))
         ry = radius * GROUND_DISC_FLATTEN
         for image, tint in parts:
-            disc = pyglet.sprite.Sprite(
-                image, x=cx - radius, y=self.window_height - cy - ry,
-                batch=self.batch, group=self._disc_group,
+            left, bottom = cx - radius, self.window_height - cy - ry
+            scale_x = 2 * radius / image.width
+            scale_y = 2 * ry / image.height
+            draw_tint = self._display_color(tint)
+            signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
+                         id(self._disc_group), draw_tint)
+            disc = self._draw_object(
+                signature,
+                partial(
+                    pyglet.sprite.Sprite, image, x=left, y=bottom,
+                    batch=self.batch, group=self._disc_group,
+                ),
             )
-            disc.scale_x = 2 * radius / image.width
-            disc.scale_y = 2 * ry / image.height
-            disc.color = self._display_color(tint)
-            self._drawables.append(disc)
+            self._set_drawable_attribute(disc, 'scale_x', scale_x)
+            self._set_drawable_attribute(disc, 'scale_y', scale_y)
+            self._set_drawable_attribute(disc, 'color', draw_tint)
