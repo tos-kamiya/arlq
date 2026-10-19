@@ -37,7 +37,7 @@ scene.world = world
 # Three rows, back to front: the player, Stage 1 monsters and chest; the
 # companions and elves; the monsters added from Stage 2 on and the rank marks.
 ROW_Y = (0.0, -3.8, -7.6)
-ROW = [('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
+ROW = [('k', 'MARKSMAN', -9.2, ROW_Y[0]), ('@', 'PLAYER', -7.0, ROW_Y[0]), ('a', 'AMOEBA', -5.0, ROW_Y[0]),
        ('A', 'RARE AMOEBA', -3.0, ROW_Y[0]), ('b', 'BISON', -1.0, ROW_Y[0]),
        ('c', 'CHIMERA', 1.0, ROW_Y[0]), ('d', 'COMODO DRAGON', 3.0, ROW_Y[0]),
        ('T', 'TREASURE CHEST', 5.0, ROW_Y[0]), ('D', 'DRAGON', 7.7, ROW_Y[0]),
@@ -59,7 +59,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # appears; the boss dragon is built large, its wings spreading past its cell.
 SIZES = {'@': 1.42, 'a': 1.0, 'A': 1.0, 'b': 1.09, 'c': 1.2, 'd': 1.16, 'T': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'm': 1.35, 'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
+         'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.9, 'E': 2.2, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
@@ -1650,6 +1650,101 @@ def spore(x, y):
                             (-0.50, 0.05, 0.50, 0.035)):
         sphere('Drifting spore', (x + dx, y + dy, z), (size, size, size), glow, 16)
 
+
+def marksman(x, y):
+    """Stage 4 marksman (k): a stout little gnome in an iron helmet with
+    bushy white brows, gripping a longbow taller than himself at his side,
+    with a quiver of fletched arrows on his back.
+
+    Heights shrink to half in the 60-degree view, so the head is tilted back
+    for the face to look up at the camera.
+    """
+    tunic = material('Marksman leather tunic', (0.30, 0.16, 0.07), 0.0, 0.55,
+                     rim=(1.0, 0.75, 0.5), rim_strength=0.8)
+    iron = material('Marksman iron helmet', (0.30, 0.31, 0.34), roughness=0.35, metallic=0.8,
+                    rim=(0.8, 0.85, 1.0), rim_strength=0.8)
+    bronze = material('Marksman bronze trim', (0.55, 0.30, 0.12), roughness=0.3, metallic=0.9)
+    # Ashen blue skin marks him as a monster rather than a person.
+    skin = material('Marksman ashen blue skin', (0.36, 0.47, 0.62), 0.2, 0.4,
+                    rim=(0.75, 0.85, 1.0), rim_strength=0.6)
+    tuft = material('Marksman white tufts', (0.90, 0.90, 0.92), 0.1, 0.5,
+                    rim=(0.9, 0.95, 1.0), rim_strength=0.8)
+    eye = material('Marksman eyes', (0.02, 0.02, 0.03), roughness=0.2, coat=1.0)
+    wood = material('Marksman yew bow', (0.62, 0.36, 0.14), 0.0, 0.4,
+                    rim=(1.0, 0.8, 0.5), rim_strength=0.8, coat=0.4)
+    string = material('Marksman bowstring', (0.85, 0.82, 0.70), roughness=0.6)
+    feather = material('Marksman pale fletching', (0.92, 0.90, 0.84), 0.1, 0.5)
+    boot = material('Marksman dark boots', (0.08, 0.06, 0.05), roughness=0.5)
+    # Squat body in a belted tunic, boots peeking out in front.
+    tube('Marksman tunic', [(x, y, 0.02), (x, y, 0.20), (x, y, 0.40), (x, y, 0.50)],
+         [0.25, 0.23, 0.20, 0.12], tunic, sides=32, smooth=True)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.225, minor_radius=0.025, location=(x, y, 0.24))
+    finish(bpy.context.object, boot, True, 'Marksman belt')
+    for side in (-1, 1):
+        sphere('Marksman boot', (x + side * 0.10, y - 0.20, 0.05), (0.08, 0.11, 0.06), boot, 16)
+    # Quiver on the back, its fletchings above the left shoulder.
+    tube('Marksman quiver', [(x + 0.10, y + 0.20, 0.18), (x + 0.16, y + 0.22, 0.58)],
+         [0.07, 0.08], tunic, sides=12, smooth=True)
+    for dx, dy in ((0.13, 0.20), (0.18, 0.24), (0.19, 0.18)):
+        tube('Marksman arrow', [(x + dx, y + dy, 0.55), (x + dx + 0.02, y + dy, 0.72)],
+             [0.012, 0.012], wood, sides=6)
+        cone('Marksman fletching', (x + dx + 0.02, y + dy, 0.68), (x + dx + 0.03, y + dy, 0.80),
+             0.04, 0.012, feather, 4, False)
+    # A longbow taller than he is, held upright at his side (screen left).
+    grip = Vector((x - 0.36, y - 0.12, 0.62))
+    limb = []
+    for i in range(13):
+        t = i / 12
+        limb.append(grip + Vector((-0.17 * math.sin(math.pi * t) + 0.12,
+                                   -0.06 * math.sin(math.pi * t) + 0.04, (t - 0.5) * 1.75)))
+    tube('Marksman longbow', limb, [0.018, 0.024, 0.028, 0.032, 0.035, 0.038, 0.042, 0.038,
+                                    0.035, 0.032, 0.028, 0.024, 0.018], wood, sides=8,
+         smooth=True)
+    tube('Marksman bowstring', [limb[0], limb[-1]], [0.006, 0.006], string, sides=4)
+    tube('Marksman bow grip', [limb[5], limb[7]], [0.048, 0.048], boot, sides=10, smooth=True)
+    # Right arm (screen left) out to the grip; left hand resting on the belt.
+    tube('Marksman right arm', [(x - 0.18, y, 0.44), (x - 0.27, y - 0.06, 0.46), limb[6]],
+         [0.06, 0.055, 0.05], tunic, sides=12, smooth=True)
+    sphere('Marksman right hand', tuple(limb[6]), (0.055, 0.055, 0.055), skin, 16)
+    tube('Marksman left arm', [(x + 0.18, y, 0.44), (x + 0.26, y - 0.06, 0.32),
+                               (x + 0.15, y - 0.18, 0.26)], [0.06, 0.055, 0.05], tunic,
+         sides=12, smooth=True)
+    sphere('Marksman left hand', (x + 0.14, y - 0.19, 0.26), (0.055, 0.05, 0.05), skin, 16)
+    # Head with a big nose, bushy white brows and an iron helmet, tilted back.
+    start = set(bpy.data.objects)
+    head = Vector((x, y, 0.66))
+    sphere('Marksman head', tuple(head), (0.17, 0.16, 0.17), skin, 32)
+    sphere('Marksman nose', (x, y - 0.17, 0.64), (0.05, 0.05, 0.045), skin, 16)
+    for side in (-1, 1):
+        sphere('Marksman eye', (x + side * 0.065, y - 0.145, 0.70), (0.024, 0.014, 0.03), eye, 12)
+        sphere('Marksman bushy brow', (x + side * 0.07, y - 0.15, 0.745), (0.045, 0.02, 0.018),
+               tuft, 12)
+    # An iron helmet: a domed bowl sitting above the brows, a bronze band
+    # round its rim and a short spike on top.
+    rim_z, ring, verts = 0.77, 40, []
+    for level in range(9):
+        phi = math.pi / 2 * level / 9
+        for k in range(ring):
+            a = 2 * math.pi * k / ring
+            verts.append((x + 0.195 * math.cos(phi) * math.cos(a),
+                          y + 0.01 + 0.19 * math.cos(phi) * math.sin(a),
+                          rim_z + 0.16 * math.sin(phi)))
+    verts.append((x, y + 0.01, rim_z + 0.16))
+    faces = [(l * ring + k, l * ring + (k + 1) % ring, (l + 1) * ring + (k + 1) % ring,
+              (l + 1) * ring + k) for l in range(8) for k in range(ring)]
+    faces += [(8 * ring + k, 8 * ring + (k + 1) % ring, 9 * ring) for k in range(ring)]
+    helmet = mesh_object('Marksman iron helmet', verts, faces, iron, True)
+    helmet.modifiers.new('Helmet thickness', 'SOLIDIFY').thickness = 0.015
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.195, minor_radius=0.026,
+                                     location=(x, y + 0.01, rim_z))
+    bpy.context.object.scale.y = 0.19 / 0.195
+    finish(bpy.context.object, bronze, True, 'Marksman helmet band')
+    cone('Marksman helmet spike', (x, y + 0.01, rim_z + 0.15), (x, y + 0.01, rim_z + 0.27),
+         0.04, 0, bronze, 12, True)
+    neck = Vector((x, y, 0.50))
+    transform_new(start, Matrix.Translation(neck) @ Matrix.Rotation(-0.45, 4, 'X')
+                  @ Matrix.Translation(-neck))
+
 def golem(x, y):
     """Stage 2 golem: chunky dark basalt blocks with glowing amber rune seams.
 
@@ -1763,7 +1858,7 @@ builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
             'c': chimera, 'T': treasure, 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
-            'g': golem, 'm': spore, 'e': lambda x, y: erebus(x, y, False),
+            'g': golem, 'k': marksman, 'm': spore, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock}
@@ -1773,7 +1868,7 @@ for char, name, x, y in ROW:
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = MONSTER_YAW if char in 'aAbcdDCFgmeEX' else PEGASUS_YAW if char == 'p' else 0
+    yaw = MONSTER_YAW if char in 'aAbcdDCFgkmeEX' else PEGASUS_YAW if char == 'p' else 0
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
     for obj in character:

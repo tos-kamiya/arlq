@@ -27,6 +27,7 @@ SPRITE_FILES = {
     'C': 'rare-chimera.png',
     'F': 'fire-drake.png',
     'g': 'golem.png',
+    'k': 'marksman.png',
     'm': 'spore.png',
     'e': 'erebus.png',
     'E': 'rare-erebus.png',
