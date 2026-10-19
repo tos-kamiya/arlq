@@ -487,3 +487,38 @@ def test_floor_is_a_checkerboard_of_two_tinted_stones(monkeypatch):
     # Explored-but-not-visible floor stays darker than visible floor.
     ui._draw_tile(0, 1, sprite_funcs.FLOOR, field, lambda *_: True)
     assert sum(ui._drawables[-1].color) < sum(odd.color)
+
+
+@pytest.mark.parametrize('char, layer', ((d.CHAR_STAIRS_UP, 'column'), (d.CHAR_STAIRS_DOWN, 'wall')))
+def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, char, layer):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.window_height = 500
+    ui.batch = None
+    ui.map_mode = False
+    ui._row_groups = {}
+    ui._drawables = []
+    ui._frame_drawable_cache = None
+    ui._reused_drawable_ids = set()
+    ui._display_color = lambda color: color
+    ui._stair_images = {stair: SimpleNamespace(width=260, height=500, char=stair)
+                        for stair in d.STAIR_CHARS}
+    ui._cur_torched = [[1, 0]]
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    ui._draw_stairs((0, 0), char)
+    ui._draw_stairs((1, 0), char)
+    visible, explored = ui._drawables
+    assert visible.image.char == char
+    assert visible.color == sprite_funcs.STAIR_TINT
+    assert sum(explored.color) < sum(visible.color)
+    # Placed like a wall part: one cell plus the band it rises into.
+    assert visible.y == 480 and visible.image.height * visible.scale_y == pytest.approx(25)
+    assert visible.group is ui._row_group(0, layer)
+
+
+def test_stairs_without_images_stay_yellow_text(sprite_ui):
+    sprite_ui._stair_images = {}
+    sprite_ui._draw_stairs((4, 5), d.CHAR_STAIRS_DOWN)
+    assert sprite_ui.text_calls[0][1] == d.CHAR_STAIRS_DOWN
+    assert not sprite_ui._drawables

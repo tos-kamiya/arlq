@@ -32,6 +32,10 @@ for rx, ry in rock_cells:
 # Scattered caltrops beside the caltrop plant, to compare their colors.
 for cx, cy in ((7, 10), (5, 12), (8, 12)):
     field[cy][cx] = d.CHAR_CALTROP
+# Up and down stairs in view, and a pair explored outside the view.
+for sx, sy, char in ((6, 7, d.CHAR_STAIRS_UP), (8, 7, d.CHAR_STAIRS_DOWN),
+                     (1, 8, d.CHAR_STAIRS_UP), (2, 10, d.CHAR_STAIRS_DOWN)):
+    field[sy][sx] = char
 seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
 current = [[int(5 <= x <= 38 and 5 <= y <= 16) for x in range(d.FIELD_WIDTH)]
            for y in range(d.FIELD_HEIGHT)]

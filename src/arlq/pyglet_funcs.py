@@ -765,6 +765,10 @@ class PygletUI:
         """Draws the companion travelling with the player, in the cell to its right."""
         self._draw_field_text(pos, char, COLOR_MAP[CI_GREEN], bold=True)
 
+    def _draw_stairs(self, pos: d.Point, char: str):
+        """Draws a discovered up (`^`) or down (`v`) stair cell."""
+        self._draw_field_text(pos, char, COLOR_MAP[CI_YELLOW], bold=True)
+
     def _draw_field_text(self, pos: d.Point, text: str, color: Tuple[int, int, int], bold: bool = False):
         """Draws text at a field grid cell (never an edge column), applying
         the same grid alignment as the other field columns."""
@@ -865,7 +869,7 @@ class PygletUI:
                 self._draw_tile(x, y, tile_color, field, discovered_at)
 
                 if discovered and cell in d.STAIR_CHARS:
-                    self._draw_field_text((x, y), cell, COLOR_MAP[CI_YELLOW], bold=True)
+                    self._draw_stairs((x, y), cell)
                 elif discovered and cell == d.CHAR_BARRIER:
                     self._draw_field_text((x, y), d.CHAR_BARRIER, COLOR_MAP[CI_RED], bold=True)
                 elif discovered and cell == d.CHAR_COLLAPSE:

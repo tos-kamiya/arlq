@@ -140,6 +140,13 @@ FLAME_ALPHA = 1.0
 FLAME_EXPLORED_SHADE = 0.5
 SMOKE_TINT = (150, 150, 156)
 SMOKE_OPACITY = 140
+# Stairs are near-white marble flights (up: rising north; down: descending
+# north into a dark opening) placed like a wall part, on the walls' canvas.
+# They are tinted gold, as the yellow stair glyphs were, and darkened like
+# the floor outside the current view.
+STAIR_FILES = {d.CHAR_STAIRS_UP: 'stairs-up.png', d.CHAR_STAIRS_DOWN: 'stairs-down.png'}
+STAIR_TINT = (255, 222, 150)
+STAIR_EXPLORED_SHADE = 0.55
 
 
 def pillar_image(side):
@@ -300,6 +307,10 @@ class SpriteUI(PygletUI):
                        for part in FLOOR_PARTS]
         self._floor_images = ([pyglet.image.load(str(path)) for path in floor_paths]
                               if all(path.is_file() for path in floor_paths) else None)
+        stair_directory = Path(__file__).parent / 'assets' / 'stairs'
+        self._stair_images = {char: pyglet.image.load(str(stair_directory / filename))
+                              for char, filename in STAIR_FILES.items()
+                              if (stair_directory / filename).is_file()}
         self._flame_images = [flame_image(variant) for variant in (0, 1)]
         self._smoke_images = [smoke_image(flame) for flame in self._flame_images]
         self._floor_group = pyglet.graphics.Group(order=-1)
@@ -363,6 +374,31 @@ class SpriteUI(PygletUI):
         self._set_drawable_attribute(flame, 'scale_y', scale_y)
         self._set_drawable_attribute(flame, 'color', tint)
         self._set_drawable_attribute(flame, 'opacity', opacity)
+
+    def _draw_stairs(self, pos, char):
+        if char not in self._stair_images:
+            return super()._draw_stairs(pos, char)
+        x, y = pos
+        image = self._stair_images[char]
+        visible = self._cur_torched is not None and self._cur_torched[y][x]
+        shade = 1 if visible else STAIR_EXPLORED_SHADE
+        base = (220, 220, 220) if self.map_mode else STAIR_TINT
+        draw_tint = self._display_color(tuple(round(c * shade) for c in base))
+        left = self._field_col_x(x)
+        bottom = self.window_height - (y + 1) * self.cell_size_y
+        scale_x = (self._field_col_width(x) + 1) / image.width
+        scale_y = (1 + WALL_OVERHANG) * self.cell_size_y / image.height
+        # The up flight rises into the cell to the north, like a column.
+        group = self._row_group(y, 'column' if char == d.CHAR_STAIRS_UP else 'wall')
+        signature = ('sprite', id(image), left, bottom, scale_x, scale_y, id(group), draw_tint)
+        stairs = self._draw_object(
+            signature,
+            partial(pyglet.sprite.Sprite, image, x=left, y=bottom,
+                    batch=self.batch, group=group),
+        )
+        self._set_drawable_attribute(stairs, 'scale_x', scale_x)
+        self._set_drawable_attribute(stairs, 'scale_y', scale_y)
+        self._set_drawable_attribute(stairs, 'color', draw_tint)
 
     def _draw_tile(self, x, y, tile_color, field, discovered_at):
         if (field[y][x] == d.CHAR_BARRIER and discovered_at(x, y)
