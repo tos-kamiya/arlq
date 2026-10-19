@@ -1406,34 +1406,38 @@ def caltrop_plant(x, y):
     """Caltrop plant: a dandelion-like rosette and stem carrying a large
     round head, with spikes jutting from it here and there.
 
-    Red throughout, close to the brick red the GUI fills scattered caltrop
-    (x) cells with; the head and its spikes share one color.
+    The head and its spikes are close to the brick red the GUI fills
+    scattered caltrop (x) cells with; the leaves and stem are a reddish olive.
     """
-    leaf = material('Caltrop plant red leaves', (0.45, 0.08, 0.06), 0.3, 0.3,
-                    rim=(1.0, 0.55, 0.45), rim_strength=1.0, coat=0.4)
-    stem = material('Caltrop plant red stem', (0.52, 0.10, 0.07), 0.25, 0.3,
-                    rim=(1.0, 0.6, 0.5), rim_strength=0.8)
+    leaf = material('Caltrop plant olive-red leaves', (0.21, 0.22, 0.05), 0.3, 0.3,
+                    rim=(0.75, 0.9, 0.4), rim_strength=1.0, coat=0.4)
+    stem = material('Caltrop plant olive-red stem', (0.25, 0.23, 0.06), 0.25, 0.3,
+                    rim=(0.8, 0.9, 0.45), rim_strength=0.8)
     head = material('Caltrop plant bright brick red', (0.75, 0.18, 0.13), 0.1, 0.35,
                     rim=(1.0, 0.7, 0.6), rim_strength=1.2, coat=0.5)
     iron = head
-    # A rosette of serrated dandelion leaves lying on the floor.
-    for k in range(7):
-        a = 2 * math.pi * k / 7 + 0.2
+    # A rosette of serrated dandelion leaves on the floor. Uneven angles,
+    # lengths, lift and roll keep it from reading as a symmetric badge.
+    angles = (0.2, 1.02, 1.98, 2.82, 3.62, 4.58, 5.40)
+    lengths = (0.60, 0.50, 0.64, 0.46, 0.58, 0.52, 0.62)
+    lifts = (0.05, 0.20, 0.10, 0.26, 0.04, 0.16, 0.12)
+    rolls = (0.06, -0.08, 0.10, -0.04, 0.10, -0.07, -0.06)
+    for a, length, lift, roll in zip(angles, lengths, lifts, rolls):
         along, side = Vector((math.cos(a), math.sin(a), 0)), Vector((-math.sin(a), math.cos(a), 0))
-        length = 0.62 if k % 2 else 0.52
         outline = [Vector((x, y, 0.03))]
         teeth = 4
         for t in range(1, 2 * teeth + 1):
             f = t / (2 * teeth)
             width = 0.09 * math.sin(math.pi * f) * (1.6 if t % 2 else 0.8)
             outline.append(Vector((x, y, 0.03)) + along * (length * f) + side * width
-                           + Vector((0, 0, 0.08 * f * f)))
-        outline.append(Vector((x, y, 0.03)) + along * (length * 1.05) + Vector((0, 0, 0.09)))
+                           + Vector((0, 0, lift * f * f + roll * f)))
+        outline.append(Vector((x, y, 0.03)) + along * (length * 1.05)
+                       + Vector((0, 0, lift * 1.1 + 0.01)))
         for t in range(2 * teeth, 0, -1):
             f = t / (2 * teeth)
             width = 0.09 * math.sin(math.pi * f) * (1.6 if t % 2 else 0.8)
             outline.append(Vector((x, y, 0.03)) + along * (length * f) - side * width
-                           + Vector((0, 0, 0.08 * f * f)))
+                           + Vector((0, 0, lift * f * f - roll * f)))
         verts = [tuple(v) for v in outline]
         faces = [(0, i, i + 1) for i in range(1, len(verts) - 1)]
         blade = mesh_object('Caltrop plant leaf', verts, faces, leaf, True)
