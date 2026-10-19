@@ -769,6 +769,10 @@ class PygletUI:
         """Draws a discovered up (`^`) or down (`v`) stair cell."""
         self._draw_field_text(pos, char, COLOR_MAP[CI_YELLOW], bold=True)
 
+    def _draw_pit(self, pos: d.Point):
+        """Draws a revealed Collapse pit (`O`)."""
+        self._draw_field_text(pos, d.CHAR_COLLAPSE, COLOR_MAP[CI_YELLOW])
+
     def _draw_field_text(self, pos: d.Point, text: str, color: Tuple[int, int, int], bold: bool = False):
         """Draws text at a field grid cell (never an edge column), applying
         the same grid alignment as the other field columns."""
@@ -873,9 +877,7 @@ class PygletUI:
                 elif discovered and cell == d.CHAR_BARRIER:
                     self._draw_field_text((x, y), d.CHAR_BARRIER, COLOR_MAP[CI_RED], bold=True)
                 elif discovered and cell == d.CHAR_COLLAPSE:
-                    self._draw_field_text(
-                        (x, y), d.CHAR_COLLAPSE, COLOR_MAP[CI_YELLOW]
-                    )
+                    self._draw_pit((x, y))
 
         if not floor_view:
             for x, y in overshoot_markers or set():
