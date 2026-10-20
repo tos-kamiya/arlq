@@ -124,6 +124,15 @@ def material(name, color, transmission=0.0, roughness=0.35, emission=None,
         links.new(mix.outputs[0], out.inputs['Surface'])
     return mat
 
+def companion_green(name, strength=0.3, trim=False):
+    """Translucent, softly glowing green resin that every companion (n, o, l,
+    p) is made of; `trim` is a deeper green for details set on that body."""
+    if trim:
+        return material(name, (0.01, 0.25, 0.08), 0.3, 0.15, emission=(0.02, 0.35, 0.1),
+                        strength=strength, rim=(0.3, 1.0, 0.5), rim_strength=0.8, coat=0.8)
+    return material(name, (0.22, 0.85, 0.42), 0.6, 0.15, emission=(0.2, 0.9, 0.4),
+                    strength=strength, rim=(0.6, 1.0, 0.7), rim_strength=1.2, coat=0.8)
+
 
 def finish(obj, mat, smooth=True, name=None):
     if name:
@@ -886,11 +895,10 @@ def transform_new(start, matrix):
 
 
 def nomicon(x, y):
-    leather = material('Nomicon indigo leather', (0.10, 0.06, 0.32), 0.15, 0.35,
-                       rim=(0.55, 0.45, 1.0), rim_strength=1.2, coat=0.6)
-    gold = material('Nomicon gold corners', (1.0, 0.70, 0.22), roughness=0.22, metallic=1.0)
-    page = material('Nomicon parchment pages', (0.58, 0.43, 0.22), 0.1, 0.55,
-                    emission=(1.0, 0.7, 0.35), strength=0.05)
+    leather = companion_green('Nomicon green resin cover')
+    green = companion_green('Nomicon deep green corners', 0.5, trim=True)
+    page = material('Nomicon paper pages', (0.78, 0.78, 0.74), 0.1, 0.55,
+                    emission=(1.0, 1.0, 0.95), strength=0.03)
     rune = material('Nomicon cyan runes', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
                     strength=3.0)
     ribbon = material('Nomicon crimson ribbon', (0.75, 0.04, 0.08), 0.1, 0.4)
@@ -903,8 +911,8 @@ def nomicon(x, y):
                  block('Nomicon page stack', (side * 0.33, 0, 0.055), (0.60, 0.88, 0.07),
                        page, 0.015)]
         for corner in (-1, 1):
-            parts.append(block('Nomicon gold corner', (side * 0.66, corner * 0.44, 0.0),
-                               (0.12, 0.12, 0.07), gold, 0.02))
+            parts.append(block('Nomicon green corner', (side * 0.66, corner * 0.44, 0.0),
+                               (0.12, 0.12, 0.07), green, 0.02))
         # Rune lines written across each page.
         # The lines next to the middle one stand a little apart to clear its eyes.
         for dy, length in zip((0.30, 0.17, 0.0, -0.17, -0.30), (0.42, 0.42, 0.38, 0.42, 0.42)):
@@ -949,30 +957,36 @@ def ocular(x, y):
                       rim=(0.7, 0.9, 1.0), rim_strength=1.0, coat=1.0)
     iris = material('Ocular amber iris', (0.95, 0.32, 0.02), 0.2, 0.15,
                     emission=(1.0, 0.35, 0.02), strength=0.35, coat=0.6)
-    gold = material('Ocular gold rings', (1.0, 0.70, 0.22), roughness=0.22, metallic=1.0)
+    green = companion_green('Ocular deep green rings', 0.5, trim=True)
     pupil = material('Ocular matte pupil', (0.0, 0.0, 0.0), roughness=0.9)
+    glint = material('Ocular cyan pupil light', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
+                     strength=3.0)
     center = Vector((x, y, 0.62))
     # The eye looks straight at the camera, i.e. at the player.
     look = Vector((0, -math.cos(math.radians(60)), math.sin(math.radians(60))))
     sphere('Ocular eyeball', tuple(center), (0.36, 0.36, 0.36), sclera, 48)
     cone('Ocular iris', center + look * 0.30, center + look * 0.355, 0.20, 0.17, iris, 40)
     cone('Ocular pupil', center + look * 0.35, center + look * 0.37, 0.085, 0.07, pupil, 32)
-    # A gyroscope-like gold frame: a ring around the eye and one tilted across it.
+    # The same cyan glow as the Nomicon's eyes and the Loop's ring, deep in the pupil.
+    cone('Ocular pupil light', center + look * 0.365, center + look * 0.38, 0.035, 0.028,
+         glint, 24)
+    # A gyroscope-like green frame: a ring around the eye and one tilted across it.
     for name, rotation in (('Ocular equator ring', (0.0, 0.0, 0.0)),
                            ('Ocular orbit ring', (math.radians(60), math.radians(25), 0.0))):
         bpy.ops.mesh.primitive_torus_add(major_radius=0.46, minor_radius=0.03,
                                          location=tuple(center), rotation=rotation)
-        finish(bpy.context.object, gold, True, name)
+        finish(bpy.context.object, green, True, name)
     for side in (-1, 1):
         cone('Ocular ring fin', center + Vector((side * 0.46, 0, 0)),
-             center + Vector((side * 0.62, 0, 0.10)), 0.06, 0, gold, 4, False)
+             center + Vector((side * 0.62, 0, 0.10)), 0.06, 0, green, 4, False)
 
 
 
 def loop_watch(x, y):
-    """Loop companion: a floating gold pocket watch whose glowing ring and
+    """Loop companion: a floating green resin pocket watch whose glowing ring and
     arrow on the dial suggest turning time back."""
-    gold = material('Loop gold case', (1.0, 0.70, 0.22), roughness=0.22, metallic=1.0)
+    green = companion_green('Loop green resin case')
+    trim = companion_green('Loop deep green bezel', 0.5, trim=True)
     dial = material('Loop ivory dial', (0.92, 0.88, 0.76), 0.1, 0.3, coat=0.8)
     ink = material('Loop blued steel hands', (0.04, 0.06, 0.16), roughness=0.3, metallic=0.6)
     glow = material('Loop cyan time ring', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
@@ -981,20 +995,20 @@ def loop_watch(x, y):
     # Built with the dial facing +Z and 12 o'clock toward +Y, then turned to
     # face the camera and lifted so it floats above its cell.
     bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=0.40, depth=0.12, location=(0, 0, 0))
-    case = finish(bpy.context.object, gold, True, 'Loop watch case')
+    case = finish(bpy.context.object, green, True, 'Loop watch case')
     bevel = case.modifiers.new('Rounded back', 'BEVEL')
     bevel.width = 0.04
     bevel.segments = 4
     case.data.use_auto_smooth = True
     bpy.ops.mesh.primitive_torus_add(major_radius=0.38, minor_radius=0.04, location=(0, 0, 0.06))
-    finish(bpy.context.object, gold, True, 'Loop watch bezel')
+    finish(bpy.context.object, trim, True, 'Loop watch bezel')
     bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=0.35, depth=0.02, location=(0, 0, 0.06))
     finish(bpy.context.object, dial, True, 'Loop watch dial')
     for hour in range(12):
         a = math.pi / 2 - hour * math.pi / 6
         long = hour % 3 == 0
         block('Loop hour mark', (0.29 * math.cos(a), 0.29 * math.sin(a), 0.075),
-              (0.03, 0.08 if long else 0.05, 0.02), gold if long else ink, 0.006,
+              (0.03, 0.08 if long else 0.05, 0.02), trim if long else ink, 0.006,
               (0, 0, a - math.pi / 2))
     # The time-loop ring inside the hour marks, with an arrowhead running
     # counterclockwise, i.e. backward.
@@ -1033,14 +1047,14 @@ def loop_watch(x, y):
     hand('Loop moustache hour hand', 0.42, 0.024, hour_heading, 40)
     hand('Loop moustache minute hand', 0.42 * 1.15, 0.024 * 1.15,
          lambda t: math.pi - hour_heading(t), 40)
-    sphere('Loop centre cap', (0, 0, 0.12), (0.035, 0.035, 0.02), gold, 24)
+    sphere('Loop centre cap', (0, 0, 0.12), (0.035, 0.035, 0.02), green, 24)
     # Crown and bow at 12 o'clock.
-    tube('Loop watch stem', [(0, 0.40, 0), (0, 0.47, 0)], [0.035, 0.035], gold, sides=12,
+    tube('Loop watch stem', [(0, 0.40, 0), (0, 0.47, 0)], [0.035, 0.035], green, sides=12,
          smooth=True)
-    tube('Loop watch crown', [(0, 0.46, 0), (0, 0.53, 0)], [0.06, 0.06], gold, sides=16)
+    tube('Loop watch crown', [(0, 0.46, 0), (0, 0.53, 0)], [0.06, 0.06], trim, sides=16)
     bpy.ops.mesh.primitive_torus_add(major_radius=0.09, minor_radius=0.022,
                                      location=(0, 0.62, 0))
-    finish(bpy.context.object, gold, True, 'Loop watch bow')
+    finish(bpy.context.object, trim, True, 'Loop watch bow')
     face = Matrix.Translation((x, y, 0.62)) @ Matrix.Rotation(math.radians(30), 4, 'X')
     transform_new(start, face)
 
@@ -1715,20 +1729,17 @@ def sylvan_elf(x, y):
 def pegasus(x, y):
     """Pegasus companion: a small, slender fairy horse of glowing pearl,
     hovering with legs tucked under, on wide feathered wings large for its
-    body, with a full mane and gold hooves.
+    body, with a full mane and green resin hooves.
     """
     pearl = material('Pegasus fairy pearl', (0.78, 0.84, 0.95), 0.3, 0.22,
                      emission=(0.75, 0.9, 1.0), strength=0.04,
                      rim=(0.6, 0.95, 1.0), rim_strength=1.4, coat=0.8)
-    wisp = material('Pegasus glowing mane', (0.15, 0.65, 1.0), 0.5, 0.2,
-                    emission=(0.15, 0.6, 1.0), strength=0.7,
-                    rim=(0.7, 0.95, 1.0), rim_strength=1.2)
-    feather = material('Pegasus feathers', (0.58, 0.82, 1.0), 0.5, 0.25,
-                       emission=(0.5, 0.8, 1.0), strength=0.1,
-                       rim=(0.8, 0.97, 1.0), rim_strength=1.4)
+    wisp = companion_green('Pegasus deep green mane', 0.5, trim=True)
+    feather = material('Pegasus feathers', (0.62, 0.95, 0.72), 0.5, 0.25,
+                       emission=(0.5, 1.0, 0.65), strength=0.1,
+                       rim=(0.8, 1.0, 0.85), rim_strength=1.4)
     eye = material('Pegasus eyes', (0.02, 0.03, 0.06), roughness=0.2, coat=1.0)
-    gold = material('Pegasus gold hooves', (1.0, 0.70, 0.22), roughness=0.3, metallic=0.7,
-                    emission=(1.0, 0.62, 0.15), strength=0.8)
+    green = companion_green('Pegasus deep green hooves', 0.5, trim=True)
     # Slender body, neck and head melted into one shape; head toward -Y with
     # a short muzzle.
     body = [((0, -0.12, 0.58), 0.25), ((0, 0.02, 0.56), 0.26), ((0, 0.16, 0.55), 0.25),
@@ -1737,7 +1748,7 @@ def pegasus(x, y):
     hooves = []
     for side in (-1, 1):
         # Slim legs stretched fore and aft as if galloping through the air, so
-        # the gold hooves show past the body from above.
+        # the green hooves show past the body from above.
         for hip, knee, foot in (((0.07, -0.13, 0.50), (0.08, -0.25, 0.37), (0.08, -0.34, 0.25)),
                                 ((0.09, 0.30, 0.45), (0.09, 0.44, 0.37), (0.09, 0.56, 0.31))):
             # The hip sits inside the chest and a joint fills each bend, so the
@@ -1752,7 +1763,7 @@ def pegasus(x, y):
         bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.055, depth=0.06,
                                             location=(x + hx, y + hy, hz),
                                             rotation=(0.8 if hy < 0 else -0.8, 0, 0))
-        finish(bpy.context.object, gold, True, 'Pegasus gold hoof')
+        finish(bpy.context.object, green, True, 'Pegasus green hoof')
     for side in (-1, 1):
         sphere('Pegasus eye', (x + side * 0.08, y - 0.40, 0.98), (0.03, 0.03, 0.035), eye, 12)
         cone('Pegasus ear', (x + side * 0.055, y - 0.31, 1.04), (x + side * 0.075, y - 0.27, 1.15),
