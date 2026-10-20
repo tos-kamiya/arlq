@@ -775,6 +775,13 @@ class PygletUI:
     def _progress_mark_x_offset(self):
         return 0
 
+    def _field_overlay_font_scale(self) -> float:
+        """Font scale used by labels placed along the field's lower edge."""
+        return 1.0
+
+    def _field_overlay_cell_width(self) -> int:
+        return self.cell_size_x
+
     def _draw_progress_panel(self, marks):
         """Draw an optional background beneath the stage progress marks."""
 
@@ -1094,25 +1101,36 @@ class PygletUI:
         if stage_num in d.ELF_STAGES:
             progress_marks = ui_display.elf_stage_progress_marks(player, stage_num)
             self._draw_progress_panel(progress_marks)
+            overlay_font_scale = self._field_overlay_font_scale()
+            overlay_cell_width = self._field_overlay_cell_width()
             progress_x = 0
             for label, achieved in progress_marks:
                 color = COLOR_MAP["default"] if achieved else (100, 106, 118)
                 self._draw_text(
-                    (progress_x, self.field_height - 1), label, color, bold=True,
-                    x_offset=self._progress_mark_x_offset(),
+                    (0, self.field_height - 1), label, color, bold=True,
+                    x_offset=(
+                        progress_x * overlay_cell_width
+                        + self._progress_mark_x_offset()
+                    ),
+                    size_scale=overlay_font_scale,
                     group=self._progress_mark_group(),
                 )
                 progress_x += len(label) + 1
 
         if floor_label:
-            label_width = self._text_width(floor_label)
+            overlay_font_scale = self._field_overlay_font_scale()
+            overlay_cell_width = self._field_overlay_cell_width()
+            label_width = self._text_width(
+                floor_label, size_scale=overlay_font_scale
+            )
             label_x = max(
-                0, self.field_pixel_width - label_width - 2 * self.cell_size_x
+                0, self.field_pixel_width - label_width - 2 * overlay_cell_width
             )
             self._draw_floor_label_panel(floor_label, label_x, label_width)
             self._draw_text(
                 (0, self.field_height - 1), floor_label, COLOR_MAP["default"],
-                x_offset=label_x, group=self._floor_label_group(),
+                x_offset=label_x, size_scale=overlay_font_scale,
+                group=self._floor_label_group(),
             )
 
         # Draw the status bar
