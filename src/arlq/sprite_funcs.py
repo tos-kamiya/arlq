@@ -483,8 +483,11 @@ class SpriteUI(PygletUI):
         self._render_target_size = target_size
         self._failed_render_target_size = None
         self._composite_batch = pyglet.graphics.Batch()
+        # Copy the target as is: its alpha was already blended into the colors,
+        # and blending it again would darken translucent parts.
         self._composite_sprite = pyglet.sprite.Sprite(
             texture, x=0, y=0, batch=self._composite_batch,
+            blend_src=pyglet.gl.GL_ONE, blend_dest=pyglet.gl.GL_ZERO,
         )
         self._update_composite_scale()
 
