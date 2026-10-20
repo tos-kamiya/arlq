@@ -702,9 +702,10 @@ class SpriteUI(PygletUI):
             self._horizontal_scroll_px = 0
             self._camera_follow_player = True
         else:
+            min_scroll, max_scroll = self._horizontal_scroll_bounds()
             self._horizontal_scroll_px = min(
-                self._horizontal_scroll_px,
-                self._map_pixel_width - self.field_pixel_width,
+                max_scroll,
+                max(min_scroll, self._horizontal_scroll_px),
             )
         if self._camera_follow_player and self._last_camera_player_pos is not None:
             self._center_camera_on_player(self._last_camera_player_pos[0])
@@ -741,22 +742,31 @@ class SpriteUI(PygletUI):
     def _field_text_x_offset(self):
         return -getattr(self, '_horizontal_scroll_px', 0)
 
+    def _horizontal_scroll_bounds(self):
+        if self.field_pixel_width >= self._map_pixel_width:
+            return (0, 0)
+        margin = self.cell_size_x
+        return (
+            -margin,
+            self._map_pixel_width - self.field_pixel_width + margin,
+        )
+
     def _center_camera_on_player(self, player_x):
-        max_scroll = max(0, self._map_pixel_width - self.field_pixel_width)
+        min_scroll, max_scroll = self._horizontal_scroll_bounds()
         player_center = (player_x + 0.5) * self.cell_size_x
         self._horizontal_scroll_px = min(
             max_scroll,
-            max(0, round(player_center - self.field_pixel_width / 2)),
+            max(min_scroll, round(player_center - self.field_pixel_width / 2)),
         )
 
     def _handle_horizontal_view_key(self, symbol):
         if self.field_pixel_width >= self._map_pixel_width:
             return (0, 0)
+        min_scroll, max_scroll = self._horizontal_scroll_bounds()
         direction = -1 if symbol == pyglet.window.key.LEFT else 1
-        max_scroll = self._map_pixel_width - self.field_pixel_width
         self._horizontal_scroll_px = min(
             max_scroll,
-            max(0, self._horizontal_scroll_px + direction * self.cell_size_x),
+            max(min_scroll, self._horizontal_scroll_px + direction * self.cell_size_x),
         )
         self._camera_follow_player = False
         return (direction, 0)
