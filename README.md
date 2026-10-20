@@ -53,7 +53,8 @@ through `arlq --sprites`. Its window can be resized in both dimensions.
 Changing its height zooms the field; changing its width scales the two bottom
 LP and message rows and adjusts the window height to fit them. When the field is
 wider than the view, the camera follows the player; Shift+Left/Right scrolls the
-view without moving the player. Those keys do nothing when the whole field fits.
+view without moving the player. The scroll range includes a one-cell margin at
+each field edge. Those keys do nothing when the whole field fits.
 The Stage 1 characters (player,
 monsters, treasure chest, and the Nomicon and Ocular companions), the Stage 2 Pegasus companion, rare chimera,
 fire drake, golem, Erebus, caltrop plant and High Elf, the Stage 3 Isolated, Javelin and Collector Elves, and the Stage 4 rare Erebus,
