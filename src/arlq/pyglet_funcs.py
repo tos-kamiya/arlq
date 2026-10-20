@@ -315,7 +315,12 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 
 
 class PygletUI:
-    def __init__(self, scale: Optional[float] = None, key_repeat_interval: Optional[float] = None) -> None:
+    def __init__(
+        self,
+        scale: Optional[float] = None,
+        key_repeat_interval: Optional[float] = None,
+        resizable: bool = False,
+    ) -> None:
         # Field dimensions from defs
         self.field_width = d.FIELD_WIDTH
         self.field_height = d.FIELD_HEIGHT
@@ -328,6 +333,7 @@ class PygletUI:
             width=self.window_width,
             height=self.window_height,
             caption=f"Arlq (Pyglet mix) v{__version__}",
+            resizable=resizable,
         )
         self.window.set_mouse_visible(False)
 
@@ -362,6 +368,7 @@ class PygletUI:
         ) = load_gamepad_bindings()
         self._held_direction: Optional[Tuple[int, int]] = None
         self._held_direction_keys: Set[int] = set()
+        self._held_shift_direction_keys: Set[int] = set()
         self._next_repeat_at = 0.0
         self.input_was_repeat = False
 
@@ -370,6 +377,10 @@ class PygletUI:
         @window.event
         def on_close():
             self._closed = True
+
+        @window.event
+        def on_resize(width, height):
+            self._on_window_resize(width, height)
 
         @window.event
         def on_key_press(symbol, modifiers):
@@ -381,6 +392,8 @@ class PygletUI:
                 if symbol in self._held_direction_keys:
                     return
                 self._held_direction_keys.add(symbol)
+                if modifiers & pgkey.MOD_SHIFT:
+                    self._held_shift_direction_keys.add(symbol)
             if self._stage_input_active and symbol == pgkey.F:
                 if self._f_key_held:
                     return
@@ -397,6 +410,7 @@ class PygletUI:
                 self._f_key_held = False
             was_held = symbol in self._held_direction_keys
             self._held_direction_keys.discard(symbol)
+            self._held_shift_direction_keys.discard(symbol)
             if was_held and symbol in _DIRECTION_KEYS and not any(
                 _DIRECTION_KEYS[key] == self._held_direction for key in self._held_direction_keys
             ):
@@ -426,6 +440,19 @@ class PygletUI:
         if not math.isfinite(scale):
             return 1.0
         return min(MAX_UI_SCALE, max(MIN_UI_SCALE, scale))
+
+    def _on_window_resize(self, width: int, height: int) -> None:
+        """Track the drawable size; resizable frontends can refine this."""
+        self.window_width = width
+        self.window_height = height
+
+    def _handle_horizontal_view_key(self, symbol: int):
+        """Handle Shift+Left/Right when a frontend supports horizontal viewing.
+
+        Return a direction tuple to consume the key, or None to keep the
+        default shifted-direction behavior.
+        """
+        return None
 
     @staticmethod
     def _valid_repeat_interval(interval: Optional[float]) -> Optional[float]:
@@ -567,14 +594,22 @@ class PygletUI:
         """Resize the GUI and its grid cells without changing gameplay."""
         self.scale = self._valid_scale(scale)
         self._set_scaled_dimensions()
+        self._prepare_window_resize()
         self._non_ascii_font_result = None
         self._select_font_size()
         self.window.set_size(self.window_width, self.window_height)
+        self._update_minimum_window_size()
         # Process the resize immediately.  Otherwise the stage-selection
         # screen can be drawn with the old viewport until the next key event.
         self.window.dispatch_events()
         if save:
             save_ui_scale(self.scale)
+
+    def _update_minimum_window_size(self) -> None:
+        """Hook for frontends that need to update resize constraints on scale changes."""
+
+    def _prepare_window_resize(self) -> None:
+        """Hook for frontends that need to clear constraints before a scale change."""
 
     def _display_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
         if not self.map_mode:
@@ -718,6 +753,10 @@ class PygletUI:
         """Pixel x-start of field column `col`."""
         return col * self.cell_size_x
 
+    def _field_text_x_offset(self) -> int:
+        """Horizontal camera offset for text drawn inside the field."""
+        return 0
+
     def _field_col_width(self, _col: int) -> int:
         return self.cell_size_x
 
@@ -776,7 +815,8 @@ class PygletUI:
     def _draw_field_text(self, pos: d.Point, text: str, color: Tuple[int, int, int], bold: bool = False):
         """Draws text at a field grid cell (never an edge column), applying
         the same grid alignment as the other field columns."""
-        self._draw_text(pos, text, color, bold=bold)
+        self._draw_text(pos, text, color, bold=bold,
+                        x_offset=self._field_text_x_offset())
 
     def _draw_rect(self, x: int, y: int, width: int, height: int, color: Tuple[int, int, int]):
         y_bottom = self.window_height - y - height
@@ -1239,6 +1279,10 @@ class PygletUI:
                             time.monotonic() + self.key_repeat_interval
                             if self.key_repeat_interval is not None else float("inf")
                         )
+                    if self.shift_direction and symbol in (pgkey.LEFT, pgkey.RIGHT):
+                        result = self._handle_horizontal_view_key(symbol)
+                        if result is not None:
+                            return result
                     return _DIRECTION_KEYS[symbol]
 
             repeat_interval = self.key_repeat_interval
@@ -1249,6 +1293,16 @@ class PygletUI:
             ):
                 self._next_repeat_at = time.monotonic() + repeat_interval
                 self.input_was_repeat = True
+                shifted_keys = [
+                    key for key in self._held_shift_direction_keys
+                    if key in self._held_direction_keys
+                    and _DIRECTION_KEYS[key] == self._held_direction
+                ]
+                self.shift_direction = bool(shifted_keys)
+                if self.shift_direction and shifted_keys[0] in (pgkey.LEFT, pgkey.RIGHT):
+                    result = self._handle_horizontal_view_key(shifted_keys[0])
+                    if result is not None:
+                        return result
                 return self._held_direction
 
             controller = getattr(self, "controller", None)
@@ -1397,6 +1451,10 @@ class PygletUI:
             ("S: show the seed", False),
             ("Q / Esc: quit the stage", False),
         )
+        if getattr(self, "supports_horizontal_view", False):
+            controls = controls[:1] + (
+                ("When the field does not fit: Shift + Left/Right to scroll without moving", False),
+            ) + controls[1:]
         for index, (line, changed) in enumerate(controls):
             self._draw_text(
                 (8, 7 + MENU_ROW_SPACING * index),

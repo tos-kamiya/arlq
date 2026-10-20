@@ -172,6 +172,121 @@ def test_treasure_disc_stays_yellow(sprite_ui):
     assert ui.outlines[0][3:] == (ui._tone_color('yellow'), None)
 
 
+def test_shift_horizontal_view_scrolls_only_when_field_overflows():
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.field_pixel_width = 50
+    ui._map_pixel_width = 100
+    ui._horizontal_scroll_px = 20
+    ui.cell_size_x = 10
+    ui._camera_follow_player = True
+
+    assert ui._handle_horizontal_view_key(pyglet.window.key.RIGHT) == (1, 0)
+    assert ui._horizontal_scroll_px == 30
+    assert not ui._camera_follow_player
+
+    ui._horizontal_scroll_px = 50
+    ui._handle_horizontal_view_key(pyglet.window.key.RIGHT)
+    assert ui._horizontal_scroll_px == 50
+
+    ui.field_pixel_width = 100
+    ui._horizontal_scroll_px = 0
+    assert ui._handle_horizontal_view_key(pyglet.window.key.LEFT) == (0, 0)
+    assert ui._horizontal_scroll_px == 0
+
+
+def test_sprite_camera_centers_player_and_clamps_at_field_edges():
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.field_pixel_width = 40
+    ui._map_pixel_width = 100
+    ui.cell_size_x = 10
+
+    ui._center_camera_on_player(5)
+    assert ui._horizontal_scroll_px == 35
+    ui._center_camera_on_player(0)
+    assert ui._horizontal_scroll_px == 0
+    ui._center_camera_on_player(9)
+    assert ui._horizontal_scroll_px == 60
+
+
+def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.field_width = 10
+    ui.field_height = 2
+    ui.window_width = 200
+    ui.window_height = 80
+    ui.scale = 1
+    ui.cell_size_x = 13
+    ui.cell_size_y = 20
+    ui.font_size = 17
+    ui.strength_column_padding = 4
+    ui.strength_column_width = 60
+    ui._map_pixel_width = 130
+    ui._horizontal_scroll_px = 13
+    ui._camera_follow_player = False
+    ui._last_camera_player_pos = None
+    ui._non_ascii_font_result = None
+    ui._select_font_size = lambda: None
+
+    ui._on_window_resize(200, 120)
+
+    assert (ui.window_width, ui.window_height) == (200, 120)
+    assert ui.scale == pytest.approx(1.5)
+    assert ui.cell_size_x == pytest.approx(19.5)
+    assert ui.cell_size_y == pytest.approx(30)
+    assert ui.field_pixel_width == pytest.approx(110)
+    assert ui._horizontal_scroll_px == pytest.approx(19.5)
+
+
+def test_sprite_resize_constraints_allow_zoom_range():
+    ui = SpriteUI.__new__(SpriteUI)
+    size_constraints = []
+    ui.window = SimpleNamespace(
+        set_minimum_size=lambda width, height: size_constraints.append(
+            ('minimum', width, height)
+        ),
+        set_maximum_size=lambda width, height: size_constraints.append(
+            ('maximum', width, height)
+        ),
+    )
+    ui.field_height = 21
+
+    ui._update_minimum_window_size()
+
+    assert size_constraints[0][0:2] == ('minimum', 292)
+    assert size_constraints[0][2] == 230
+    assert size_constraints[1] == ('maximum', sprite_funcs.MAX_WINDOW_WIDTH, 1840)
+
+
+@pytest.mark.parametrize(
+    'view_width, expected_move',
+    [(50, (1, 0)), (100, (0, 0))],
+)
+def test_shift_right_input_is_consumed_as_view_only(view_width, expected_move, monkeypatch):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.field_pixel_width = view_width
+    ui._map_pixel_width = 100
+    ui._horizontal_scroll_px = 0
+    ui.cell_size_x = 10
+    ui._camera_follow_player = True
+    ui._closed = False
+    ui._key_queue = [(pyglet.window.key.RIGHT, pyglet.window.key.MOD_SHIFT)]
+    ui._gamepad_help_button = None
+    ui._gamepad_pressed_buttons = set()
+    ui._gamepad_preview_changed = False
+    ui._held_direction_keys = set()
+    ui._held_shift_direction_keys = set()
+    ui._held_direction = None
+    ui._next_repeat_at = 0
+    ui.key_repeat_interval = None
+    ui.controller = None
+    monkeypatch.setattr(ui, '_pump', lambda: None)
+
+    move = ui.input_direction()
+
+    assert move == expected_move
+    assert ui.shift_direction
+
+
 @pytest.mark.parametrize('empowered, mark', [(2, "'"), (3, '"')])
 def test_rank_mark_floats_white_at_sprite_upper_right(sprite_ui, empowered, mark):
     ui = sprite_ui

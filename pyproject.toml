@@ -58,6 +58,7 @@ ignore_missing_imports = true
 
 [project.gui-scripts]
 arlq = "arlq:main"
+arlq-sprites = "arlq:main_sprites"
 
 [project.scripts]
 arlq-cli = "arlq:main_cli"

@@ -21,7 +21,7 @@ from .trace import (
 )
 
 
-def _prepare_cli_session(terminal_only=False):
+def _prepare_cli_session(terminal_only=False, sprites_only=False):
     parser = argparse.ArgumentParser(
         description="A Rogue-Like game.",
     )
@@ -31,6 +31,8 @@ def _prepare_cli_session(terminal_only=False):
     dev = parser.add_argument_group("Development options")
     if terminal_only:
         parser.set_defaults(terminal=True)
+    if sprites_only:
+        parser.set_defaults(sprites=True, terminal=False)
 
     general.add_argument(
         "--rematch",
@@ -47,7 +49,7 @@ def _prepare_cli_session(terminal_only=False):
     general.add_argument(
         "-n", "--narrower-corridors", action="store_true", help="Narrower corridors."
     )
-    if not terminal_only:
+    if not terminal_only and not sprites_only:
         terminal.add_argument(
             "--terminal",
             "--curses",
@@ -55,11 +57,12 @@ def _prepare_cli_session(terminal_only=False):
             action="store_true",
             help="Use the Blessed terminal UI (--curses is a deprecated alias).",
         )
-    terminal.add_argument(
-        "--dots",
-        action="store_true",
-        help="Use dots instead of background colors for unexplored areas in the terminal UI.",
-    )
+    if not sprites_only:
+        terminal.add_argument(
+            "--dots",
+            action="store_true",
+            help="Use dots instead of background colors for unexplored areas in the terminal UI.",
+        )
     general.add_argument(
         "--lang",
         choices=["auto", "en", "ja"],
@@ -70,11 +73,12 @@ def _prepare_cli_session(terminal_only=False):
         "--version", action="version", version="%(prog)s " + __version__
     )
     if gui is not None:
-        gui.add_argument(
-            '--sprites', action='store_true',
-            help='Use the Pyglet sprite UI: 3D-rendered characters and marble column walls '
-                 '(characters without a sprite stay text).',
-        )
+        if not sprites_only:
+            gui.add_argument(
+                '--sprites', action='store_true',
+                help='Use the Pyglet sprite UI: 3D-rendered characters and marble column walls '
+                     '(characters without a sprite stay text).',
+            )
         gui.add_argument(
             "--scale",
             type=float,
@@ -295,9 +299,9 @@ def _prepare_cli_session(terminal_only=False):
     return args, trace_data, seed_str, game_config, trace_recorder
 
 
-def main(terminal_only=False):
+def main(terminal_only=False, sprites_only=False):
     args, trace_data, seed_str, game_config, trace_recorder = _prepare_cli_session(
-        terminal_only=terminal_only
+        terminal_only=terminal_only, sprites_only=sprites_only
     )
 
     def play(ui) -> None:

@@ -35,10 +35,11 @@ pipx install git+https://github.com/tos-kamiya/arlq
 ```
 
 The required Pyglet and Blessed dependencies are installed automatically.
-Once installed, the `arlq` and `arlq-cli` commands become available.
+Once installed, the `arlq`, `arlq-sprites`, and `arlq-cli` commands become available.
 
 ```bash
 arlq
+arlq-sprites
 arlq-cli
 ```
 
@@ -47,7 +48,12 @@ Running `arlq` without options opens the graphical interface. Running
 connected gamepad's D-pad or left stick to move, and button 0 to select a
 stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
 
-Use `arlq --sprites` for the character-sprite GUI. The Stage 1 characters (player,
+Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
+through `arlq --sprites`. Its window can be resized in both dimensions;
+changing its height zooms the field and HUD in or out. When the field is wider
+than the view, the camera follows the player; Shift+Left/Right scrolls the view
+without moving the player. Those keys do nothing when the whole field fits.
+The Stage 1 characters (player,
 monsters, treasure chest, and the Nomicon and Ocular companions), the Stage 2 Pegasus companion, rare chimera,
 fire drake, golem, Erebus, caltrop plant and High Elf, the Stage 3 Isolated, Javelin and Collector Elves, and the Stage 4 rare Erebus,
 Lifebringer Elf and Sylvan Elf use transparent images rendered from 3D models at
