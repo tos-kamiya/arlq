@@ -450,7 +450,11 @@ class SpriteUI(PygletUI):
         x = pos[0] * self.cell_size_x + x_offset
         y = self.window_height - pos[1] * self.cell_size_y + y_offset
         hud_bottom = 2 * self._hud_row_height
-        if x < self.field_pixel_width and y > hud_bottom:
+        if (
+            x < self.field_pixel_width
+            and y > hud_bottom
+            and group is not self._text_overlay_group
+        ):
             return super()._draw_text(
                 pos, text, color, bold, x_offset, size_scale, group, y_offset,
             )
@@ -1097,13 +1101,19 @@ class SpriteUI(PygletUI):
         return self._text_overlay_group
 
     def _progress_mark_x_offset(self):
-        return TEXT_PANEL_PADDING
+        return max(1, round(TEXT_PANEL_PADDING * self._menu_scale))
+
+    def _field_overlay_font_scale(self):
+        return self._status_font_scale()
+
+    def _field_overlay_cell_width(self):
+        return self._menu_cell_size_x
 
     def _draw_progress_panel(self, marks):
         if not marks:
             return
         cells = sum(len(label) + 1 for label, _ in marks) - 1
-        self._draw_text_panel('progress', 0, cells * self.cell_size_x)
+        self._draw_text_panel('progress', 0, cells * self._menu_cell_size_x)
 
     def _floor_label_group(self):
         return self._text_overlay_group
@@ -1112,20 +1122,21 @@ class SpriteUI(PygletUI):
         self._draw_text_panel('floor', x, width)
 
     def _draw_text_panel(self, kind, x, width):
-        padding = TEXT_PANEL_PADDING
+        padding = max(1, round(TEXT_PANEL_PADDING * self._menu_scale))
         left = max(0, x - padding)
         row = self.field_height - 1
         top = self.window_height - row * self.cell_size_y
-        bottom = top - self.font_size - padding
+        bottom = top - self._menu_font_size - padding
         panel_width = width + 2 * padding
-        height = self.font_size + 2 * padding
+        height = self._menu_font_size + 2 * padding
         color = (0, 0, 0, TEXT_PANEL_ALPHA)
         signature = ('text-panel', kind, left, bottom, panel_width, height, color,
                      id(self._text_panel_group))
+        batch = self._text_batch if self._low_res_enabled else self.batch
         self._draw_object(
             signature,
             lambda: pyglet.shapes.Rectangle(
-                left, bottom, panel_width, height, color=color, batch=self.batch,
+                left, bottom, panel_width, height, color=color, batch=batch,
                 group=self._text_panel_group,
             ),
         )
