@@ -87,7 +87,7 @@ FIELD_TEXT_RAISE = 0.1
 STRENGTH_SPRITE_CELLS = 2
 MAX_WINDOW_WIDTH = 32767
 STRENGTH_TEXT_SCALE = 0.7
-# Low-resolution rendering keeps twice the 100% pixel density for readability.
+# Keep an integer 26x40 pixel grid per field cell at every window size.
 LOW_RESOLUTION_DETAIL_SCALE = 2.0
 MIPMAP_LOD_BIAS = -1.0
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
@@ -404,6 +404,91 @@ class SpriteUI(PygletUI):
         self._text_overlay_group = pyglet.graphics.Group(order=10001)
         self._sidebar_bg_group = pyglet.graphics.Group(order=9998)
         self._sidebar_group = pyglet.graphics.Group(order=9999)
+        self._floor_tiles = None
+        self._floor_cell_tiles = {}
+        self._floor_cells = {}
+        self._create_floor_tiles()
+
+    def _create_floor_tiles(self):
+        """Bake colored 2x2 floors into one nearest-filtered texture atlas."""
+        if self._floor_images is None:
+            return
+        gl = pyglet.gl
+        cell_width = round(CELL_SIZE_X * LOW_RESOLUTION_DETAIL_SCALE)
+        cell_height = round(CELL_SIZE_Y * LOW_RESOLUTION_DETAIL_SCALE)
+        width, height = 2 * cell_width, 2 * cell_height
+        texture = pyglet.image.Texture.create(
+            2 * width, 2 * height, min_filter=gl.GL_NEAREST, mag_filter=gl.GL_NEAREST,
+        )
+        framebuffer = pyglet.image.Framebuffer()
+        viewport = (gl.GLint * 4)()
+        binding = gl.GLint()
+        clear_color = (gl.GLfloat * 4)()
+        color_mask = (gl.GLboolean * 4)()
+        gl.glGetIntegerv(gl.GL_VIEWPORT, viewport)
+        gl.glGetIntegerv(gl.GL_FRAMEBUFFER_BINDING, binding)
+        gl.glGetFloatv(gl.GL_COLOR_CLEAR_VALUE, clear_color)
+        gl.glGetBooleanv(gl.GL_COLOR_WRITEMASK, color_mask)
+        framebuffer.attach_texture(texture)
+        projection = self.window.projection
+        batch = pyglet.graphics.Batch()
+        sprites = []
+        tiles, cells = {}, {}
+        complete = False
+        try:
+            framebuffer.bind()
+            complete = framebuffer.is_complete
+            if not complete:
+                return
+            gl.glViewport(0, 0, texture.width, texture.height)
+            self.window.projection = pyglet.math.Mat4.orthogonal_projection(
+                0, texture.width, 0, texture.height, -255, 255,
+            )
+            gl.glColorMask(True, True, True, True)
+            gl.glClearColor(0, 0, 0, 1)
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+            # Resolve the source transparency against black once; copied floor
+            # cells are opaque, while missing cells are never copied.
+            gl.glColorMask(True, True, True, False)
+            for row, map_mode in enumerate((False, True)):
+                for col, (tile_color, tint) in enumerate(FLOOR_TINTS.items()):
+                    left, bottom = col * width, row * height
+                    for y in range(2):
+                        for x in range(2):
+                            odd = (x + y) % 2
+                            image = self._floor_images[odd]
+                            shade = FLOOR_CHECKER_SHADE if odd else 1
+                            color = tuple(round(c * shade) for c in tint)
+                            if map_mode:
+                                value = round(color[0] * .299 + color[1] * .587 + color[2] * .114)
+                                color = (value,) * 3
+                            sprite = pyglet.sprite.Sprite(
+                                image, x=left + x * cell_width,
+                                y=bottom + (1 - y) * cell_height, batch=batch,
+                            )
+                            sprite.scale_x = cell_width / image.width
+                            sprite.scale_y = cell_height / image.height
+                            sprite.color = color
+                            sprites.append(sprite)
+                    key = tile_color, map_mode
+                    tiles[key] = texture.get_region(left, bottom, width, height)
+                    cells[key] = tuple(texture.get_region(
+                        left + parity * cell_width, bottom + cell_height,
+                        cell_width, cell_height,
+                    ) for parity in (0, 1))
+            batch.draw()
+            self._floor_tiles, self._floor_cell_tiles = tiles, cells
+        finally:
+            for sprite in sprites:
+                sprite.delete()
+            self.window.projection = projection
+            gl.glColorMask(*color_mask)
+            gl.glClearColor(*clear_color)
+            gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, binding.value)
+            gl.glViewport(*viewport)
+            framebuffer.delete()
+            if not complete:
+                texture.delete()
 
     ROW_LAYERS = ('wall', 'column', 'pillar-back', 'sprite', 'pillar-front', 'familiar',
                   'familiar-front', 'mark')
@@ -485,14 +570,10 @@ class SpriteUI(PygletUI):
         return self.window.width, self.window.height
 
     def _render_target_dimensions(self):
-        framebuffer_width, framebuffer_height = self._framebuffer_size()
-        # HiDPI windows have more framebuffer pixels per window unit; count
-        # them so the detail stays the same on every display.
-        pixel_ratio = framebuffer_width / max(1, self.window.width)
-        divisor = max(1.0, self.scale * pixel_ratio / LOW_RESOLUTION_DETAIL_SCALE)
+        density = LOW_RESOLUTION_DETAIL_SCALE / self.scale
         return (
-            max(1, round(framebuffer_width / divisor)),
-            max(1, round(framebuffer_height / divisor)),
+            max(1, math.ceil(self.window.width * density)),
+            max(1, math.ceil(self.window.height * density)),
         )
 
     def _ensure_render_target(self):
@@ -545,8 +626,9 @@ class SpriteUI(PygletUI):
     def _update_composite_scale(self):
         if self._composite_sprite is None:
             return
-        self._composite_sprite.scale_x = self.window.width / self._render_texture.width
-        self._composite_sprite.scale_y = self.window.height / self._render_texture.height
+        unit = self.scale / LOW_RESOLUTION_DETAIL_SCALE
+        self._composite_sprite.scale = unit
+        self._composite_sprite.y = self.window.height - self._render_texture.height * unit
 
     def _draw_and_flip(self):
         self.window.switch_to()
@@ -554,15 +636,26 @@ class SpriteUI(PygletUI):
             self._ensure_render_target()
         self._update_composite_scale()
         use_render_target = self._render_framebuffer is not None and not self._menu_active
+        projection = self.window.projection
         if use_render_target:
             self._render_framebuffer.bind()
             pyglet.gl.glViewport(0, 0, *self._render_target_size)
-        self.window.clear()
-        self._finish_drawables()
-        self.batch.draw()
+            unit = self.scale / LOW_RESOLUTION_DETAIL_SCALE
+            width, height = self._render_target_size
+            self.window.projection = pyglet.math.Mat4.orthogonal_projection(
+                0, width * unit, self.window_height - height * unit,
+                self.window_height, -255, 255,
+            )
+        try:
+            self.window.clear()
+            self._finish_drawables()
+            self.batch.draw()
+        finally:
+            if use_render_target:
+                self._render_framebuffer.unbind()
+                self.window.projection = projection
+                pyglet.gl.glViewport(0, 0, *self._framebuffer_size())
         if use_render_target:
-            self._render_framebuffer.unbind()
-            pyglet.gl.glViewport(0, 0, *self._framebuffer_size())
             self.window.clear()
             self._composite_batch.draw()
         self._text_batch.draw()
@@ -713,6 +806,9 @@ class SpriteUI(PygletUI):
                                  tile_color, WALL_FRONT_SHADE, group)
 
     def _draw_floor(self, x, y, tile_color, field, discovered_at):
+        if getattr(self, '_floor_tiles', None) is not None:
+            self._floor_cells[x, y] = tile_color
+            return
         if self._floor_images is None:
             return super()._draw_tile(x, y, tile_color, field, discovered_at)
         odd = (x + y) % 2
@@ -735,6 +831,38 @@ class SpriteUI(PygletUI):
         self._set_drawable_attribute(stone, 'scale_x', scale_x)
         self._set_drawable_attribute(stone, 'scale_y', scale_y)
         self._set_drawable_attribute(stone, 'color', draw_tint)
+
+    def _draw_floor_tiles(self):
+        cells = self._floor_cells
+        self._floor_cells = {}
+        blocks = {(x // 2 * 2, y // 2 * 2) for x, y in cells}
+        for x, y in sorted(blocks, key=lambda pos: (pos[1], pos[0])):
+            positions = ((x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1))
+            colors = [cells.get(pos) for pos in positions]
+            if colors[0] is not None and all(color == colors[0] for color in colors):
+                image = self._floor_tiles[colors[0], self.map_mode]
+                self._copy_floor_tile(x, y, 2, image)
+            else:
+                # Visibility boundaries, odd field edges and special terrain
+                # retain their individual cells without covering neighboring fog.
+                for (cx, cy), color in zip(positions, colors):
+                    if color is not None:
+                        image = self._floor_cell_tiles[color, self.map_mode][(cx + cy) % 2]
+                        self._copy_floor_tile(cx, cy, 1, image)
+
+    def _copy_floor_tile(self, x, y, rows, image):
+        left = self._field_col_x(x)
+        bottom = self.window_height - (y + rows) * self.cell_size_y
+        scale = self.scale / LOW_RESOLUTION_DETAIL_SCALE
+        signature = ('floor-copy', id(image), left, bottom, scale, id(self._floor_group))
+        sprite = self._draw_object(
+            signature,
+            lambda: pyglet.sprite.Sprite(
+                image, x=left, y=bottom, batch=self.batch, group=self._floor_group,
+                blend_src=pyglet.gl.GL_ONE, blend_dest=pyglet.gl.GL_ZERO,
+            ),
+        )
+        self._set_drawable_attribute(sprite, 'scale', scale)
 
     def _draw_wall_rect(self, x, y, width, height, color, shade, group):
         color = tuple(min(255, round(c * shade)) for c in color)
@@ -1063,6 +1191,7 @@ class SpriteUI(PygletUI):
         self._drawables = []
         self._sprite_cells.clear()
         self._player_cell = None
+        self._floor_cells = {}
 
     def _draw_object(self, signature, factory):
         """Reuse a drawable when its complete render description is unchanged."""
@@ -1083,6 +1212,8 @@ class SpriteUI(PygletUI):
     def _finish_drawables(self):
         if self._frame_drawable_cache is None:
             return
+        if self._floor_cells:
+            self._draw_floor_tiles()
         for signature, old_objects in self._drawable_cache.items():
             retained = len(self._frame_drawable_cache.get(signature, ()))
             for drawable in old_objects[retained:]:

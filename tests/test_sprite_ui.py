@@ -5,7 +5,8 @@ from types import SimpleNamespace
 import pyglet
 import pytest
 
-from arlq import defs as d, display, sprite_funcs
+from arlq import defs as d
+from arlq import display, sprite_funcs
 from arlq.pyglet_funcs import PygletUI
 from arlq.sprite_funcs import SPRITE_FILES, SPRITE_REFERENCE_PIXELS, SpriteUI
 
@@ -320,7 +321,7 @@ def test_dimmed_rank_mark_is_half_bright_white(sprite_ui):
     ui._display_color = lambda color: color
     ui._draw_field_text((4, 5), 'b', ui._tone_color('red', True))
     ui._draw_field_text((5, 5), "'", ui._tone_color('red', True))
-    sprite, badge = ui._drawables
+    _sprite, badge = ui._drawables
     assert badge.color == ui._tone_color('default', True)
 
 
@@ -697,12 +698,14 @@ def test_collapse_pit_without_image_stays_yellow_text(sprite_ui):
 
 
 @pytest.mark.parametrize('scale, pixel_ratio, expected', [
-    (1, 1, (800, 600)),
+    (1, 1, (1600, 1200)),
     (2, 1, (800, 600)),
     (4, 1, (400, 300)),
     (1, 2, (1600, 1200)),
     (2, 2, (800, 600)),
     (4, 2, (400, 300)),
+    (3.37, 1, (475, 357)),
+    (3.37, 2, (475, 357)),
 ])
 def test_render_target_detail_is_independent_of_pixel_ratio(scale, pixel_ratio, expected):
     ui = SpriteUI.__new__(SpriteUI)
@@ -712,3 +715,63 @@ def test_render_target_detail_is_independent_of_pixel_ratio(scale, pixel_ratio, 
         get_framebuffer_size=lambda: (800 * pixel_ratio, 600 * pixel_ratio),
     )
     assert ui._render_target_dimensions() == expected
+
+
+@pytest.fixture
+def cached_floor_ui(sprite_ui):
+    ui = sprite_ui
+    ui.scale = 2
+    ui.cell_size_x, ui.cell_size_y = 26, 40
+    ui._horizontal_scroll_px = 0
+    ui._floor_group = 'floor'
+    ui._floor_cells = {}
+    ui._floor_tiles, ui._floor_cell_tiles = {}, {}
+    for color in sprite_funcs.FLOOR_TINTS:
+        for map_mode in (False, True):
+            key = color, map_mode
+            ui._floor_tiles[key] = SimpleNamespace(color=color, map_mode=map_mode)
+            ui._floor_cell_tiles[key] = tuple(
+                SimpleNamespace(color=color, map_mode=map_mode, parity=parity)
+                for parity in (0, 1)
+            )
+    return ui
+
+
+def test_matching_floor_cells_are_copied_as_one_checkerboard(cached_floor_ui):
+    ui = cached_floor_ui
+    for y in range(2):
+        for x in range(2):
+            ui._draw_floor(x, y, sprite_funcs.VISIBLE_FLOOR, None, None)
+    ui._draw_floor_tiles()
+    assert len(ui._drawables) == 1
+    sprite = ui._drawables[0]
+    assert sprite.image is ui._floor_tiles[sprite_funcs.VISIBLE_FLOOR, False]
+    assert (sprite.x, sprite.y, sprite.scale) == (0, 420, 1)
+    assert sprite.blend_src == pyglet.gl.GL_ONE
+    assert sprite.blend_dest == pyglet.gl.GL_ZERO
+
+
+def test_floor_visibility_boundary_preserves_each_cells_shade_and_parity(cached_floor_ui):
+    ui = cached_floor_ui
+    ui.map_mode = True
+    for y in range(2):
+        for x in range(2):
+            color = sprite_funcs.VISIBLE_FLOOR if x == 0 else sprite_funcs.FLOOR
+            ui._draw_floor(x, y, color, None, None)
+    ui._draw_floor_tiles()
+    assert len(ui._drawables) == 4
+    for sprite, (x, y) in zip(ui._drawables, ((0, 0), (1, 0), (0, 1), (1, 1))):
+        color = sprite_funcs.VISIBLE_FLOOR if x == 0 else sprite_funcs.FLOOR
+        assert sprite.image is ui._floor_cell_tiles[color, True][(x + y) % 2]
+
+
+def test_floor_copies_do_not_cover_fog_special_cells_or_the_odd_field_edge(cached_floor_ui):
+    ui = cached_floor_ui
+    last_x = d.FIELD_WIDTH - 1
+    for x, y in ((0, 0), (1, 1), (last_x, 0), (last_x, 1)):
+        ui._draw_floor(x, y, sprite_funcs.VISIBLE_FLOOR, None, None)
+    ui._draw_floor_tiles()
+    assert len(ui._drawables) == 4
+    assert {(sprite.x, sprite.y) for sprite in ui._drawables} == {
+        (0, 460), (26, 420), (last_x * 26, 460), (last_x * 26, 420),
+    }
