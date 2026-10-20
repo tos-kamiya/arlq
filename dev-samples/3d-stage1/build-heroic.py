@@ -694,13 +694,14 @@ def great_dragon(x, y, fire=False):
                          strength=4.0)
         sphere('Drake jaw ember', (x, y - 0.86, 0.73), (0.04, 0.06, 0.025), ember, 16)
     else:
-        scales = material('Dragon emerald scales', (0.03, 0.62, 0.30), 0.5, 0.18,
-                          rim=(0.5, 1.0, 0.6), rim_strength=1.5, coat=0.8)
-        belly = material('Dragon jade belly', (0.55, 0.95, 0.55), 0.4, 0.2,
-                         rim=(0.8, 1.0, 0.7), rim_strength=0.8)
-        wing = material('Dragon wing membrane', (0.10, 0.85, 0.45), 0.75, 0.2,
-                        emission=(0.1, 0.6, 0.3), strength=0.4,
-                        rim=(0.7, 1.0, 0.6), rim_strength=1.2)
+        # Komodo-dragon olive-bronze hide, apart from the companions' green.
+        scales = material('Dragon olive-bronze scales', (0.15, 0.14, 0.07), 0.25, 0.3,
+                          rim=(0.65, 0.60, 0.40), rim_strength=1.0, coat=0.8)
+        belly = material('Dragon dusky ochre belly', (0.46, 0.38, 0.22), 0.25, 0.3,
+                         rim=(0.85, 0.75, 0.5), rim_strength=0.6)
+        wing = material('Dragon wing membrane', (0.30, 0.22, 0.09), 0.6, 0.3,
+                        emission=(0.35, 0.18, 0.04), strength=0.15,
+                        rim=(0.80, 0.65, 0.35), rim_strength=0.9)
         gold = material('Dragon gold horns', (1.0, 0.72, 0.22), roughness=0.2, metallic=1.0)
         eye = material('Dragon fire eyes', (1.0, 0.35, 0.05), emission=(1.0, 0.35, 0.05),
                        strength=6.0)
