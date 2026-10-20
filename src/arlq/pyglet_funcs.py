@@ -661,10 +661,12 @@ class PygletUI:
     def _prepare_window_resize(self) -> None:
         """Hook for frontends that need to clear constraints before a scale change."""
 
-    def _display_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
+    def _display_color(self, color: Tuple[int, ...]) -> Tuple[int, ...]:
         if not self.map_mode:
             return color
         value = round(color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114)
+        if len(color) == 4:
+            return (value, value, value, color[3])
         return (value, value, value)
 
     def _dim_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
@@ -1277,8 +1279,8 @@ class PygletUI:
             return
         height = len(visibility)
         width = len(visibility[0])
-        boundary_color = (125, 180, 235)
-        line_width = 2
+        boundary_color = (125, 180, 235, 150)
+        line_width = self._visibility_boundary_line_width()
         for y in range(height):
             for x in range(width):
                 if not visibility[y][x]:
@@ -1295,6 +1297,10 @@ class PygletUI:
                     self._draw_line(left, top, left, bottom, boundary_color, thickness=line_width)
                 if x + 1 == width or not visibility[y][x + 1]:
                     self._draw_line(right, top, right, bottom, boundary_color, thickness=line_width)
+
+    def _visibility_boundary_line_width(self) -> int:
+        """Keep the visibility outline at a fixed surface-pixel width."""
+        return 4
 
     def _flip(self):
         self.window.switch_to()
