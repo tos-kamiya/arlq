@@ -1,9 +1,6 @@
 """Pyglet frontend with character sprites and the original text fallback."""
 
 import math
-import os
-import sys
-import time
 from functools import partial
 from pathlib import Path
 
@@ -294,9 +291,6 @@ class SpriteUI(PygletUI):
     def __init__(self, scale=None, key_repeat_interval=None):
         self._last_stage_draw = None
         self._resize_redraw_pending = False
-        self._profile_enabled = os.environ.get('ARLQ_SPRITES_PROFILE') == '1'
-        self._low_res_enabled = os.environ.get('ARLQ_SPRITES_LOW_RES') == '1'
-        self._profile_flip_times = None
         self._render_framebuffer = None
         self._render_texture = None
         self._composite_batch = None
@@ -375,7 +369,6 @@ class SpriteUI(PygletUI):
         return self._row_groups[order]
 
     def draw_stage(self, *, rock_cells=None, **kwargs):
-        started = time.perf_counter() if self._profile_enabled else None
         self._last_stage_draw = (rock_cells, kwargs.copy())
         self._rock_cells = rock_cells or set()
         self._known_types = kwargs.get('known_types') or set()
@@ -397,34 +390,6 @@ class SpriteUI(PygletUI):
             else None
         )
         result = super().draw_stage(rock_cells=rock_cells, **kwargs)
-        if started is not None:
-            total = time.perf_counter() - started
-            cache, batch, present, flip, setup = self._profile_flip_times or (0, 0, 0, 0, 0)
-            build = max(0, total - cache - batch - present - flip - setup)
-            player = kwargs.get('player')
-            render_size = (
-                f'{self._render_target_size[0]}x{self._render_target_size[1]}'
-                if self._render_target_size else 'window'
-            )
-            print(
-                '[arlq-sprites-profile] '
-                f"turn={kwargs.get('turn', '?')} "
-                f"size={self.window_width}x{self.window_height} "
-                f"render_size={render_size} "
-                f"scale={self.scale:.2f} "
-                f"floor_view={bool(kwargs.get('floor_view'))} "
-                f"drawables={len(self._drawables)} "
-                f"build_ms={build * 1000:.2f} "
-                f"cache_ms={cache * 1000:.2f} "
-                f"batch_ms={batch * 1000:.2f} "
-                f"present_ms={present * 1000:.2f} "
-                f"flip_ms={flip * 1000:.2f} "
-                f"setup_ms={setup * 1000:.2f} "
-                f"total_ms={total * 1000:.2f} "
-                f"player=({getattr(player, 'x', '?')},{getattr(player, 'y', '?')})",
-                file=sys.stderr,
-                flush=True,
-            )
         return result
 
     def _draw_text(
@@ -442,11 +407,6 @@ class SpriteUI(PygletUI):
             return super()._draw_text(
                 pos, text, color, bold, x_offset, size_scale, group, y_offset,
             )
-        if not self._low_res_enabled:
-            return super()._draw_text(
-                pos, text, color, bold, x_offset, size_scale, group, y_offset,
-            )
-
         x = pos[0] * self.cell_size_x + x_offset
         y = self.window_height - pos[1] * self.cell_size_y + y_offset
         hud_bottom = 2 * self._hud_row_height
@@ -469,40 +429,7 @@ class SpriteUI(PygletUI):
             self.batch = scene_batch
 
     def _flip(self):
-        if not self._profile_enabled:
-            return self._draw_and_flip()
-        setup_start = time.perf_counter()
-        self.window.switch_to()
-        if self._low_res_enabled and not self._menu_active:
-            self._ensure_render_target()
-        self._update_composite_scale()
-        cache_start = time.perf_counter()
-        use_render_target = self._render_framebuffer is not None and not self._menu_active
-        if use_render_target:
-            self._render_framebuffer.bind()
-            pyglet.gl.glViewport(0, 0, *self._render_target_size)
-        self.window.clear()
-        self._finish_drawables()
-        batch_start = time.perf_counter()
-        self.batch.draw()
-        present_start = time.perf_counter()
-        if use_render_target:
-            self._render_framebuffer.unbind()
-            framebuffer_size = self._framebuffer_size()
-            pyglet.gl.glViewport(0, 0, *framebuffer_size)
-            self.window.clear()
-            self._composite_batch.draw()
-        self._text_batch.draw()
-        flip_start = time.perf_counter()
-        self.window.flip()
-        finished = time.perf_counter()
-        self._profile_flip_times = (
-            batch_start - cache_start,
-            present_start - batch_start,
-            flip_start - present_start,
-            finished - flip_start,
-            cache_start - setup_start,
-        )
+        self._draw_and_flip()
 
     def _framebuffer_size(self):
         get_size = getattr(self.window, 'get_framebuffer_size', None)
@@ -567,7 +494,7 @@ class SpriteUI(PygletUI):
 
     def _draw_and_flip(self):
         self.window.switch_to()
-        if self._low_res_enabled and not self._menu_active:
+        if not self._menu_active:
             self._ensure_render_target()
         self._update_composite_scale()
         use_render_target = self._render_framebuffer is not None and not self._menu_active
@@ -862,7 +789,7 @@ class SpriteUI(PygletUI):
         self.window.set_maximum_size(MAX_WINDOW_WIDTH, maximum_height)
 
     def _draw_rect(self, x, y, width, height, color):
-        if not (self._low_res_enabled and self._drawing_hud):
+        if not self._drawing_hud:
             return super()._draw_rect(x, y, width, height, color)
         scene_batch = self.batch
         self.batch = self._text_batch
@@ -872,7 +799,7 @@ class SpriteUI(PygletUI):
             self.batch = scene_batch
 
     def _draw_line(self, x1, y1, x2, y2, color, thickness=1):
-        if not (self._low_res_enabled and self._drawing_hud):
+        if not self._drawing_hud:
             return super()._draw_line(x1, y1, x2, y2, color, thickness)
         scene_batch = self.batch
         self.batch = self._text_batch
@@ -1132,7 +1059,7 @@ class SpriteUI(PygletUI):
         color = (0, 0, 0, TEXT_PANEL_ALPHA)
         signature = ('text-panel', kind, left, bottom, panel_width, height, color,
                      id(self._text_panel_group))
-        batch = self._text_batch if self._low_res_enabled else self.batch
+        batch = self._text_batch
         self._draw_object(
             signature,
             lambda: pyglet.shapes.Rectangle(
