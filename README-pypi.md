@@ -12,7 +12,7 @@ experiment in developing code and manuals with humans and AIs.
   </a>
 </p>
 
-![](https://github.com/tos-kamiya/arlq/blob/main/screenshot.png?raw=True)
+![](https://github.com/tos-kamiya/arlq/blob/main/screenshot-arlq-sprites.png?raw=True)
 
 Explore a procedurally generated dungeon, manage your LP (Life Points), learn
 the identities of monsters, and find the treasure guarded by the dragon. The
