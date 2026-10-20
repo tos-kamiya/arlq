@@ -12,6 +12,10 @@ from arlq.pyglet_funcs import PygletUI
 def _menu_ui(monkeypatch, events):
     ui = PygletUI.__new__(PygletUI)
     ui._closed = False
+    ui._menu_active = False
+    ui._menu_font_resize_pending = False
+    ui._menu_scale = 1.0
+    ui._menu_cell_size_x = 13
     ui._key_queue = []
     ui._escape_key_held = False
     ui.joystick = None

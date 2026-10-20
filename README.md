@@ -50,8 +50,9 @@ stage. Change gamepad button assignments in `Settings -> Gamepad button settings
 
 Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
 through `arlq --sprites`. Its window can be resized in both dimensions.
-Changing its height zooms the field; changing its width scales the two bottom
-LP and message rows and adjusts the window height to fit them. When the field is
+Changing its height zooms the field while the two bottom LP and message rows
+keep the configured interface size. Changing its width adjusts the window
+height to fit the field and those rows. When the field is
 wider than the view, the camera follows the player; Shift+Left/Right scrolls the
 view without moving the player. The scroll range includes a one-cell margin at
 each field edge. Those keys do nothing when the whole field fits.
