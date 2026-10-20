@@ -551,7 +551,9 @@ def test_flame_image_is_bright_at_the_root_and_clear_at_the_top():
     width, height = sprite_funcs.FLAME_TEXELS
     data = image.get_data('RGBA', width * 4)
     alpha = lambda col, row: data[(row * width + col) * 4 + 3]
-    assert alpha(width // 2, height // 8) > 150
+    assert max(alpha(col, height // 8) for col in range(width)) > 120
+    # The body is translucent above the root.
+    assert max(alpha(col, height // 3) for col in range(width)) < 200
     assert alpha(width // 2, height - 1) == 0 and alpha(0, 2) < 20
 
 

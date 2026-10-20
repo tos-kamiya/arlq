@@ -145,17 +145,26 @@ FLOOR_PARTS = ('a', 'b')
 FLOOR_TINTS = {VISIBLE_FLOOR: (78, 72, 66), FLOOR: (42, 39, 36)}
 FLOOR_CHECKER_SHADE = 0.88
 # Barrier cells show red flames burning on the ordinary floor, in place of
-# the red "=": small fires rising from several spots in the lower half of the
-# cell (two variants, laid out as a checkerboard), glowing at their roots and
-# added onto the floor, the tallest reaching a little into the cell above. While the protective amulet makes barriers harmless,
-# the cells within one cell of the player (its own and the eight around it)
-# show only faint grey smoke of the same shape. Flames outside the current
+# the red "=": a few translucent cone-shaped fires with wide roots rising from
+# spots in the lower half of the cell (two variants, laid out as a
+# checkerboard), glowing at their roots and added onto the floor, the tallest
+# reaching a little into the cell above. While the protective amulet makes
+# barriers harmless, the cells within one cell of the player (its own and the
+# eight around it) show only faint grey smoke of the same shape. Flames outside the current
 # view are darkened like the floor. Sizes are in cell widths/heights.
 FLAME_TEXELS = (48, 96)
 FLAME_HEIGHT = 1.3
 FLAME_BASE = 0.0
-FLAME_ALPHA = 1.0
+FLAME_ALPHA = 0.9
+# Opacity of a flame's middle relative to its edges.
+FLAME_CORE_ALPHA = 0.55
 FLAME_EXPLORED_SHADE = 0.5
+# Fires of the second variant: (centre, root centre height as a fraction of
+# the lower half, half width, height, brightness); the fires further back are
+# dimmer. The first variant is its mirror image.
+_FLAME_FIRES = ((0.335, 0.377, 0.28, 0.48, 1.0), (0.716, 0.505, 0.26, 0.40, 1.0),
+                (0.269, 0.932, 0.23, 0.40, 0.6), (0.601, 1.313, 0.15, 0.27, 0.6))
+FLAME_FIRES = (tuple((1 - centre, *rest) for centre, *rest in _FLAME_FIRES), _FLAME_FIRES)
 SMOKE_TINT = (150, 150, 156)
 SMOKE_OPACITY = 140
 # Stairs and Collapse pits are drawn on the walls' canvas and placed like a
@@ -209,43 +218,61 @@ def smoke_image(flame):
 
 
 def flame_image(variant):
-    """Small fires rising from several spots in the lower half of a cell.
+    """A few fires rising from spots in the lower half of a cell.
 
-    Each fire is a teardrop tongue, round and bright orange at its root,
-    narrowing to a deep red tip, with a soft glow around the root. The image
-    is drawn additively from the cell's bottom; `variant` (0 or 1) places the
+    Each fire is a cone seen at the sprites' 60-degree view: its round root
+    shows as an ellipse, widest and bright orange, and it narrows to a deep
+    red tip, with a soft glow around the root. Its body is translucent,
+    thinner inside than along its edges, so the floor shows through, and
+    overlapping fires add up so the one behind shows through. The image is
+    drawn additively from the cell's bottom; `variant` (0 or 1) places the
     fires differently so neighbouring cells do not repeat.
     """
     width, height = FLAME_TEXELS
     lower_half = 0.5 / FLAME_HEIGHT  # the cell's middle, in image fractions
-    # (centre, root height as a fraction of the lower half, half width, height).
-    fires = (((0.20, 0.15, 0.13, 0.42), (0.50, 0.05, 0.16, 0.55), (0.80, 0.20, 0.12, 0.40),
-              (0.35, 0.80, 0.11, 0.34), (0.68, 0.90, 0.10, 0.30)),
-             ((0.28, 0.08, 0.15, 0.50), (0.62, 0.25, 0.14, 0.46), (0.88, 0.05, 0.10, 0.32),
-              (0.14, 0.85, 0.10, 0.30), (0.48, 0.95, 0.11, 0.36)))[variant]
+    # Image heights per image width for a circle on the floor.
+    flatten = GROUND_DISC_FLATTEN * CELL_SIZE_X / (FLAME_HEIGHT * CELL_SIZE_Y)
+    fires = FLAME_FIRES[variant]
     root, tip = (255, 160, 60), (230, 35, 15)
     rgba = bytearray()
     for row in range(height):
         v = (row + 0.5) / height
         for col in range(width):
             u = (col + 0.5) / width
-            strength, along = 0.0, 1.0
-            for centre, base, half, tall in fires:
+            # Fires combine like light: each lets the others show through.
+            clear, weight, along = 1.0, 0.0, 0.0
+            for centre, base, half, tall, bright in fires:
                 base *= lower_half
                 t = (v - base) / tall
-                # A soft glow around the root, slightly flattened.
-                glow = 0.45 * max(0.0, 1 - math.hypot((u - centre) / (half * 1.6),
-                                                      (v - base) / (half * 0.9)))
+                ry = half * flatten
+                # A soft glow on the floor around the root.
+                glow = 0.35 * max(0.0, 1 - math.hypot((u - centre) / (half * 1.4),
+                                                      (v - base) / (ry * 1.4)))
                 value = glow
-                if 0 <= t < 1:
-                    # Teardrop: widest a little above the root, pointed at the tip.
-                    w = half * min(1.0, 0.55 + t * 3) * (1 - t) ** 0.7
-                    across = abs(u - centre) / w if w > 0 else 1
+                depth = 1.0
+                if t < 0 and v - base > -ry:
+                    # The near half of the root ellipse, thinner toward its rim.
+                    depth = math.sqrt(1 - ((v - base) / ry) ** 2)
+                    w = half * depth
+                    t = 0.0
+                elif 0 <= t < 1:
+                    # Above the root's centre, narrowing to the tip.
+                    w = half * (1 - t) ** 0.9
+                else:
+                    w = 0.0
+                if w > 0:
+                    across = abs(u - centre) / w
                     if across < 1:
-                        value = max(value, (1 - across ** 2) * (1 - t) ** 0.5)
-                if value > strength:
-                    strength, along = value, max(t, 0.0)
-            mix = min(1.0, along / 0.7)
+                        # Hotter near the root, fading softly toward the edges.
+                        core = FLAME_CORE_ALPHA + (1 - FLAME_CORE_ALPHA) * 0.5 * max(0.0, 1 - t / 0.25)
+                        body = depth * (core + (1 - core) * across ** 2)
+                        value = max(value, body * (1 - across ** 2) ** 0.8 * (1 - t) ** 0.6)
+                value *= bright
+                clear *= 1 - min(1.0, value)
+                weight += value
+                along += value * max(t, 0.0)
+            strength = 1 - clear
+            mix = min(1.0, along / weight / 0.7) if weight > 0 else 1.0
             color = [round(a + (b - a) * mix) for a, b in zip(root, tip)]
             rgba += bytes((*color, round(255 * min(1.0, FLAME_ALPHA * strength))))
     return pyglet.image.ImageData(width, height, 'RGBA', bytes(rgba), pitch=width * 4)
