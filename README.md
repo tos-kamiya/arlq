@@ -49,10 +49,11 @@ connected gamepad's D-pad or left stick to move, and button 0 to select a
 stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
 
 Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
-through `arlq --sprites`. Its window can be resized in both dimensions;
-changing its height zooms the field and HUD in or out. When the field is wider
-than the view, the camera follows the player; Shift+Left/Right scrolls the view
-without moving the player. Those keys do nothing when the whole field fits.
+through `arlq --sprites`. Its window can be resized in both dimensions.
+Changing its height zooms the field; changing its width scales the two bottom
+LP and message rows and adjusts the window height to fit them. When the field is
+wider than the view, the camera follows the player; Shift+Left/Right scrolls the
+view without moving the player. Those keys do nothing when the whole field fits.
 The Stage 1 characters (player,
 monsters, treasure chest, and the Nomicon and Ocular companions), the Stage 2 Pegasus companion, rare chimera,
 fire drake, golem, Erebus, caltrop plant and High Elf, the Stage 3 Isolated, Javelin and Collector Elves, and the Stage 4 rare Erebus,
