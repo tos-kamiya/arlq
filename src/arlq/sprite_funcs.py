@@ -72,9 +72,9 @@ FIELD_TEXT_RAISE = 0.1
 STRENGTH_SPRITE_CELLS = 2
 STRENGTH_TEXT_SCALE = 0.7
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
-# tinted with the monster's color. They float at the upper right of the
-# sprite instead of in the next cell: centre offset from the ground point in
-# cell widths east and cell heights north.
+# drawn white whatever the monster's strength color. They float at the upper
+# right of the sprite instead of in the next cell: centre offset from the
+# ground point in cell widths east and cell heights north.
 MARK_FILES = {"'": 'mark-rank2.png', '"': 'mark-rank3.png'}
 MARK_OFFSET = (0.6, 0.65)
 # Every sprite uses one scale: this many source pixels (an amoeba's width
@@ -702,7 +702,11 @@ class SpriteUI(PygletUI):
         left = self._field_col_x(x) + (0.5 + dx) * self.cell_size_x - image.width * scale / 2
         bottom = self.window_height - (y + 0.5 - dy) * self.cell_size_y - image.height * scale / 2
         group = self._row_group(y, 'mark')
-        tint = self._display_color(color)
+        # White like the strength column, not the strength color; only the
+        # half-bright dimming of the glyph is kept.
+        white = COLOR_MAP['default']
+        dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
+        tint = self._display_color(self._dim_color(white) if dimmed else white)
         signature = ('sprite', id(image), left, bottom, scale, scale, id(group), tint)
         sprite = self._draw_object(
             signature,
