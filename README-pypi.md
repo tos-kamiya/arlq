@@ -52,6 +52,8 @@ The terminal version is available through `arlq-cli`:
 arlq-cli
 ```
 
+The character-sprite GUI is available through `arlq-sprites` (or `arlq --sprites`).
+
 You can also select the Blessed terminal interface explicitly:
 
 ```bash

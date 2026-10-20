@@ -1046,6 +1046,13 @@ def main():
     cli_main()
 
 
+def main_sprites():
+    """Run the game with the sprite GUI from command-line arguments."""
+    from .cli import main as cli_main
+
+    cli_main(sprites_only=True)
+
+
 def main_cli():
     from .cli import main as cli_main
 

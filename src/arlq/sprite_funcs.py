@@ -9,8 +9,24 @@ import pyglet
 from . import defs as d
 from . import display as ui_display
 from .arlq import barrier_lp_damage
-from .pyglet_funcs import (CI_BLUE, CI_GREEN, CI_YELLOW, COLOR_MAP, FLOOR, REACHABLE_CELL_COLOR,
-                           VISIBLE_FLOOR, VISIBLE_WALL, WALL, PygletUI)
+from .pyglet_funcs import (
+    CELL_SIZE_X,
+    CELL_SIZE_Y,
+    CI_BLUE,
+    CI_GREEN,
+    CI_YELLOW,
+    COLOR_MAP,
+    FLOOR,
+    FONT_HEIGHT_RATIO,
+    MAX_UI_SCALE,
+    MIN_UI_SCALE,
+    REACHABLE_CELL_COLOR,
+    STRENGTH_COLUMN_PADDING,
+    VISIBLE_FLOOR,
+    VISIBLE_WALL,
+    WALL,
+    PygletUI,
+)
 
 
 SPRITE_FILES = {
@@ -70,6 +86,7 @@ FIELD_TEXT_RAISE = 0.1
 # sprite to its right, at the same size as on the field (larger ones may
 # overflow their row).
 STRENGTH_SPRITE_CELLS = 2
+MAX_WINDOW_WIDTH = 32767
 STRENGTH_TEXT_SCALE = 0.7
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
 # drawn white whatever the monster's strength color. They float at the upper
@@ -255,6 +272,8 @@ def ground_disc_image(half=None):
 class SpriteUI(PygletUI):
     """Reuse input, menus, visibility and glyph selection without duplicating rules."""
 
+    supports_horizontal_view = True
+
     # Walls a defeated Golem raised on the floor being drawn (see draw_stage).
     _rock_cells = frozenset()
     # The player's cell this frame (None while viewing another floor), and
@@ -269,8 +288,9 @@ class SpriteUI(PygletUI):
     _cooling_center = None
 
     def __init__(self, scale=None, key_repeat_interval=None):
-        super().__init__(scale, key_repeat_interval)
+        super().__init__(scale, key_repeat_interval, resizable=True)
         self.window.set_caption(self.window.caption.replace('Pyglet mix', 'Sprite mix'))
+        self._update_minimum_window_size()
         directory = Path(__file__).parent / 'assets' / 'characters'
         self._sprite_images = {}
         self._gray_images = {}
@@ -325,6 +345,7 @@ class SpriteUI(PygletUI):
         self._overlay_group = pyglet.graphics.Group(order=10000)
         self._text_panel_group = pyglet.graphics.Group(order=9999)
         self._text_overlay_group = pyglet.graphics.Group(order=10001)
+        self._sidebar_group = pyglet.graphics.Group(order=9999)
 
     ROW_LAYERS = ('wall', 'column', 'pillar-back', 'sprite', 'pillar-front', 'familiar',
                   'familiar-front', 'mark')
@@ -340,6 +361,16 @@ class SpriteUI(PygletUI):
         self._known_types = kwargs.get('known_types') or set()
         self._cur_torched = kwargs.get('cur_torched')
         player = kwargs.get('player')
+        if player is not None and not kwargs.get('floor_view'):
+            player_pos = (player.x, player.y, player.current_floor)
+            if (
+                self._last_camera_player_pos is not None
+                and player_pos != self._last_camera_player_pos
+            ):
+                self._camera_follow_player = True
+            self._last_camera_player_pos = player_pos
+            if self._camera_follow_player:
+                self._center_camera_on_player(player.x)
         self._cooling_center = (
             (player.x, player.y)
             if player is not None and not kwargs.get('floor_view') and barrier_lp_damage(player) == 0
@@ -518,6 +549,27 @@ class SpriteUI(PygletUI):
             ),
         )
 
+    def _draw_rect(self, x, y, width, height, color):
+        if (
+            x == self.field_pixel_width
+            and y == 0
+            and width == self.strength_column_width
+            and height == self.field_height * self.cell_size_y
+        ):
+            y_bottom = self.window_height - y - height
+            draw_color = self._display_color(color)
+            signature = ('rectangle', x, y_bottom, width, height,
+                         draw_color, id(self._sidebar_group))
+            self._draw_object(
+                signature,
+                lambda: pyglet.shapes.Rectangle(
+                    x, y_bottom, width, height, color=draw_color,
+                    batch=self.batch, group=self._sidebar_group,
+                ),
+            )
+            return
+        return super()._draw_rect(x, y, width, height, color)
+
     def _draw_line(self, x1, y1, x2, y2, color, thickness=1):
         # Visibility boundaries and other lines stay above walls and sprites.
         y1, y2 = self.window_height - y1, self.window_height - y2
@@ -545,7 +597,99 @@ class SpriteUI(PygletUI):
     def _set_scaled_dimensions(self):
         super()._set_scaled_dimensions()
         self.strength_column_width += STRENGTH_SPRITE_CELLS * self.cell_size_x
-        self.window_width = self.field_pixel_width + self.strength_column_width
+        self._map_pixel_width = self.field_pixel_width
+        self.field_pixel_width = self._map_pixel_width
+        self.window_width = self._map_pixel_width + self.strength_column_width
+        self._horizontal_scroll_px = 0
+        self._camera_follow_player = True
+        self._last_camera_player_pos = None
+
+    def _update_minimum_window_size(self):
+        max_cell_width = CELL_SIZE_X * MAX_UI_SCALE
+        max_padding = max(1, round(STRENGTH_COLUMN_PADDING * MAX_UI_SCALE))
+        max_strength_width = (
+            (2 + STRENGTH_SPRITE_CELLS) * max_cell_width + 2 * max_padding
+        )
+        minimum_width = math.ceil(max_strength_width + max_cell_width)
+        rows = self.field_height + 2
+        minimum_height = math.ceil(rows * CELL_SIZE_Y * MIN_UI_SCALE)
+        maximum_height = math.floor(rows * CELL_SIZE_Y * MAX_UI_SCALE)
+        self.window.set_minimum_size(
+            minimum_width,
+            minimum_height,
+        )
+        self.window.set_maximum_size(MAX_WINDOW_WIDTH, maximum_height)
+
+    def _on_window_resize(self, width, height):
+        old_cell_width = self.cell_size_x
+        old_scroll_cells = self._horizontal_scroll_px / old_cell_width
+        follow_player = self._camera_follow_player
+        last_player_pos = self._last_camera_player_pos
+        if height != self.window_height:
+            self._set_resized_dimensions(width, height)
+            self._non_ascii_font_result = None
+            self._select_font_size()
+            self._camera_follow_player = follow_player
+            self._last_camera_player_pos = last_player_pos
+            self._horizontal_scroll_px = old_scroll_cells * self.cell_size_x
+        else:
+            self.window_width = width
+        self.field_pixel_width = max(
+            self.cell_size_x, width - self.strength_column_width
+        )
+        if self.field_pixel_width >= self._map_pixel_width:
+            self._horizontal_scroll_px = 0
+            self._camera_follow_player = True
+        else:
+            self._horizontal_scroll_px = min(
+                self._horizontal_scroll_px,
+                self._map_pixel_width - self.field_pixel_width,
+            )
+        if self._camera_follow_player and self._last_camera_player_pos is not None:
+            self._center_camera_on_player(self._last_camera_player_pos[0])
+
+    def _set_resized_dimensions(self, width, height):
+        rows = self.field_height + 2
+        self.scale = self._valid_scale(height / (rows * CELL_SIZE_Y))
+        self.cell_size_x = CELL_SIZE_X * self.scale
+        self.cell_size_y = height / rows
+        self.font_size = max(1, round(self.cell_size_y * FONT_HEIGHT_RATIO))
+        self.strength_column_padding = max(
+            1, round(STRENGTH_COLUMN_PADDING * self.scale)
+        )
+        self.strength_column_width = (
+            (2 + STRENGTH_SPRITE_CELLS) * self.cell_size_x
+            + 2 * self.strength_column_padding
+        )
+        self._map_pixel_width = self.field_width * self.cell_size_x
+        self.window_width = width
+        self.window_height = height
+
+    def _field_col_x(self, col):
+        return col * self.cell_size_x - getattr(self, '_horizontal_scroll_px', 0)
+
+    def _field_text_x_offset(self):
+        return -getattr(self, '_horizontal_scroll_px', 0)
+
+    def _center_camera_on_player(self, player_x):
+        max_scroll = max(0, self._map_pixel_width - self.field_pixel_width)
+        player_center = (player_x + 0.5) * self.cell_size_x
+        self._horizontal_scroll_px = min(
+            max_scroll,
+            max(0, round(player_center - self.field_pixel_width / 2)),
+        )
+
+    def _handle_horizontal_view_key(self, symbol):
+        if self.field_pixel_width >= self._map_pixel_width:
+            return (0, 0)
+        direction = -1 if symbol == pyglet.window.key.LEFT else 1
+        max_scroll = self._map_pixel_width - self.field_pixel_width
+        self._horizontal_scroll_px = min(
+            max_scroll,
+            max(0, self._horizontal_scroll_px + direction * self.cell_size_x),
+        )
+        self._camera_follow_player = False
+        return (direction, 0)
 
     def _draw_strength_entry(self, row, label, is_player):
         """A small label on the left, and the character's sprite to its right.
@@ -555,7 +699,8 @@ class SpriteUI(PygletUI):
         """
         left = self.field_pixel_width + self.strength_column_padding
         self._draw_text((0, row), label, COLOR_MAP["default"], bold=is_player,
-                        x_offset=left, size_scale=STRENGTH_TEXT_SCALE)
+                        x_offset=left, size_scale=STRENGTH_TEXT_SCALE,
+                        group=self._overlay_group)
         base, mark = label[0], label[1:]
         type_key = base + {"'": '2', '"': '3'}.get(mark, '')
         if base not in self._sprite_images or not (is_player or type_key in self._known_types):

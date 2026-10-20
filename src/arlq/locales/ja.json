@@ -96,6 +96,7 @@
     "F: toggle reachable-area preview": "F: LPで到達できる範囲の表示切替",
     "M: enter map and entity display mode (cannot be undone)": "M: マップとエンティティを表示するモードに移行（元に戻せません）",
     "Shift + Up/Down: view another floor (Stages 3 and 4)": "Shift + 上/下: 別フロアを表示（ステージ3・4）",
+    "When the field does not fit: Shift + Left/Right to scroll without moving": "フィールドが横幅に収まらないとき: Shift + 左/右で移動せずに表示範囲を移動",
     "Hold {button} + Up/Down: view another floor (Stages 3 and 4)": "{button}を長押し＋上/下で別フロアを表示（ステージ3・4）",
     "Toggle {button}, then Up/Down: view another floor (Stages 3 and 4)": "{button}をトグルしてから上/下で別フロアを表示（ステージ3・4）",
     "Press any key or {button} to return": "いずれかのキー、または{button}で戻る",
