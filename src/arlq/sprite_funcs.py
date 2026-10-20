@@ -291,6 +291,9 @@ class SpriteUI(PygletUI):
         self._last_stage_draw = None
         self._resize_redraw_pending = False
         super().__init__(scale, key_repeat_interval, resizable=True)
+        self._hud_reference_width = self.window_width
+        self._hud_reference_row_height = self.cell_size_y
+        self._hud_row_height = self.cell_size_y
         self.window.set_caption(self.window.caption.replace('Pyglet mix', 'Sprite mix'))
         self._update_minimum_window_size()
         directory = Path(__file__).parent / 'assets' / 'characters'
@@ -612,9 +615,34 @@ class SpriteUI(PygletUI):
         self._map_pixel_width = self.field_pixel_width
         self.field_pixel_width = self._map_pixel_width
         self.window_width = self._map_pixel_width + self.strength_column_width
+        if hasattr(self, '_hud_reference_width'):
+            self._hud_row_height = self._row_height_for_width(self.window_width)
+            self.window_height = round(
+                self.field_height * self.cell_size_y + 2 * self._hud_row_height
+            )
         self._horizontal_scroll_px = 0
         self._camera_follow_player = True
         self._last_camera_player_pos = None
+
+    def _row_height_for_width(self, width):
+        reference_width = getattr(self, '_hud_reference_width', self.window_width)
+        reference_height = getattr(
+            self, '_hud_reference_row_height', self.cell_size_y
+        )
+        width_scale = self._valid_scale(width / reference_width)
+        return max(1, round(reference_height * width_scale))
+
+    def _status_font_scale(self):
+        return self._hud_row_height / self.cell_size_y
+
+    def _status_uses_window_width(self):
+        return True
+
+    def _status_row_height(self):
+        return self._hud_row_height
+
+    def _status_row_y_offset(self, row):
+        return -row * self._hud_row_height
 
     def _update_minimum_window_size(self):
         max_cell_width = CELL_SIZE_X * MAX_UI_SCALE
@@ -623,9 +651,14 @@ class SpriteUI(PygletUI):
             (2 + STRENGTH_SPRITE_CELLS) * max_cell_width + 2 * max_padding
         )
         minimum_width = math.ceil(max_strength_width + max_cell_width)
-        rows = self.field_height + 2
-        minimum_height = math.ceil(rows * CELL_SIZE_Y * MIN_UI_SCALE)
-        maximum_height = math.floor(rows * CELL_SIZE_Y * MAX_UI_SCALE)
+        minimum_height = math.ceil(
+            self.field_height * CELL_SIZE_Y * MIN_UI_SCALE
+            + 2 * getattr(self, '_hud_reference_row_height', CELL_SIZE_Y) * MIN_UI_SCALE
+        )
+        maximum_height = math.floor(
+            self.field_height * CELL_SIZE_Y * MAX_UI_SCALE
+            + 2 * getattr(self, '_hud_reference_row_height', CELL_SIZE_Y) * MAX_UI_SCALE
+        )
         self.window.set_minimum_size(
             minimum_width,
             minimum_height,
@@ -637,15 +670,31 @@ class SpriteUI(PygletUI):
         old_scroll_cells = self._horizontal_scroll_px / old_cell_width
         follow_player = self._camera_follow_player
         last_player_pos = self._last_camera_player_pos
-        if height != self.window_height:
-            self._set_resized_dimensions(width, height)
+        width_changed = width != self.window_width
+        height_changed = height != self.window_height
+        hud_row_height = self._row_height_for_width(width)
+        if height_changed:
+            self._set_resized_dimensions(width, height, hud_row_height)
             self._non_ascii_font_result = None
             self._select_font_size()
             self._camera_follow_player = follow_player
             self._last_camera_player_pos = last_player_pos
             self._horizontal_scroll_px = old_scroll_cells * self.cell_size_x
+            if self.window_height != height:
+                self.window.set_size(width, self.window_height)
+        elif width_changed:
+            self._hud_row_height = hud_row_height
+            resized_height = round(
+                self.field_height * self.cell_size_y + 2 * self._hud_row_height
+            )
+            self._set_resized_dimensions(
+                width, resized_height, hud_row_height, field_scale=self.scale
+            )
+            if resized_height != height:
+                self.window.set_size(width, resized_height)
         else:
             self.window_width = width
+            self.window_height = height
         self.field_pixel_width = max(
             self.cell_size_x, width - self.strength_column_width
         )
@@ -661,11 +710,16 @@ class SpriteUI(PygletUI):
             self._center_camera_on_player(self._last_camera_player_pos[0])
         self._resize_redraw_pending = True
 
-    def _set_resized_dimensions(self, width, height):
-        rows = self.field_height + 2
-        self.scale = self._valid_scale(height / (rows * CELL_SIZE_Y))
+    def _set_resized_dimensions(self, width, height, hud_row_height, field_scale=None):
+        field_pixel_height = height - 2 * hud_row_height
+        if field_scale is not None:
+            self.scale = self._valid_scale(field_scale)
+        else:
+            self.scale = self._valid_scale(
+                field_pixel_height / (self.field_height * CELL_SIZE_Y)
+            )
         self.cell_size_x = CELL_SIZE_X * self.scale
-        self.cell_size_y = height / rows
+        self.cell_size_y = self.scale * CELL_SIZE_Y
         self.font_size = max(1, round(self.cell_size_y * FONT_HEIGHT_RATIO))
         self.strength_column_padding = max(
             1, round(STRENGTH_COLUMN_PADDING * self.scale)
@@ -676,7 +730,10 @@ class SpriteUI(PygletUI):
         )
         self._map_pixel_width = self.field_width * self.cell_size_x
         self.window_width = width
-        self.window_height = height
+        self._hud_row_height = hud_row_height
+        self.window_height = round(
+            self.field_height * self.cell_size_y + 2 * self._hud_row_height
+        )
 
     def _field_col_x(self, col):
         return col * self.cell_size_x - getattr(self, '_horizontal_scroll_px', 0)

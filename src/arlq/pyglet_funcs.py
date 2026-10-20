@@ -662,10 +662,11 @@ class PygletUI:
         x_offset: int = 0,
         size_scale: float = 1.0,
         group=None,
+        y_offset: int = 0,
     ):
         """
         Draws text at the grid cell defined by pos, optionally nudged by
-        `x_offset` pixels (used to inset text within a cell).
+        pixel offsets (used for inset text and non-grid HUD rows).
         """
         font_size: float
         if text.isascii():
@@ -677,7 +678,7 @@ class PygletUI:
                 self.font_size * non_ascii_size_scale * size_scale,
             )
         x = pos[0] * self.cell_size_x + x_offset
-        y = self.window_height - pos[1] * self.cell_size_y
+        y = self.window_height - pos[1] * self.cell_size_y + y_offset
         label_color = (*self._display_color(color), 255)
         signature = ("label", text, font_name, font_size, "bold" if bold else "normal",
                      x, y, label_color, id(group) if group is not None else None)
@@ -1053,20 +1054,41 @@ class PygletUI:
             ui_display.status_prefix(player, stage_num, turn, game_start_turn) + "LP: "
         )
 
-        self._draw_text((0, self.field_height), status_line, COLOR_MAP["default"])
-        text_width = self._text_width(status_line)
-        x_offset = text_width + 10
+        hud_scale = self._status_font_scale()
+        row_height = self._status_row_height()
+        top_row_y_offset = self._status_row_y_offset(0)
+        bottom_row_y_offset = self._status_row_y_offset(1)
+        self._draw_text(
+            (0, self.field_height), status_line, COLOR_MAP["default"],
+            size_scale=hud_scale, y_offset=top_row_y_offset,
+        )
+        text_width = self._text_width(status_line, size_scale=hud_scale)
+        x_offset = text_width + round(10 * hud_scale)
 
         lp_str = "%d " % player.lp
-        lp_x_cell = x_offset // self.cell_size_x
-        self._draw_text((lp_x_cell, self.field_height), lp_str, COLOR_MAP["default"])
-        lp_width = self._text_width(lp_str)
-        x_offset += lp_width
+        flexible_hud = self._status_uses_window_width()
+        lp_text_x_offset = (
+            x_offset if flexible_hud else x_offset // self.cell_size_x * self.cell_size_x
+        )
+        self._draw_text(
+            (0, self.field_height), lp_str, COLOR_MAP["default"],
+            x_offset=lp_text_x_offset, size_scale=hud_scale,
+            y_offset=top_row_y_offset,
+        )
+        lp_width = self._text_width(lp_str, size_scale=hud_scale)
+        x_offset = lp_text_x_offset + lp_width
 
-        bar_cells = 8
-        bar_width = bar_cells * self.cell_size_x
-        bar_height = self.cell_size_y // 2
-        y_offset = self.field_height * self.cell_size_y + (self.cell_size_y - bar_height) // 2
+        extra = "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
+        if flexible_hud:
+            item_width = self._text_width(extra, size_scale=hud_scale)
+            item_gap = round(10 * hud_scale)
+            item_x_offset = max(x_offset + item_gap, self.window_width - item_width)
+            bar_width = max(1, item_x_offset - item_gap - x_offset)
+        else:
+            bar_width = 8 * self.cell_size_x
+            item_x_offset = x_offset + bar_width + 10
+        bar_height = max(1, round(self.cell_size_y * hud_scale / 2))
+        y_offset = self.field_height * self.cell_size_y + (row_height - bar_height) // 2
         lp_max = d.player_lp_max(player)
         progress_ratio = min(player.lp, lp_max) / lp_max
         fill_width = int(bar_width * progress_ratio)
@@ -1082,27 +1104,46 @@ class PygletUI:
         if fill_width > 0:
             self._draw_rect(x_offset, y_offset, fill_width, bar_height, lp_color)
 
-        extra = "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
-        item_status = extra
-        item_x_offset = x_offset + bar_width + 10
-        self._draw_text((item_x_offset // self.cell_size_x, self.field_height), item_status, COLOR_MAP["default"])
+        self._draw_text(
+            (0, self.field_height), extra, COLOR_MAP["default"],
+            x_offset=(
+                item_x_offset if flexible_hud
+                else item_x_offset // self.cell_size_x * self.cell_size_x
+            ),
+            size_scale=hud_scale,
+            y_offset=top_row_y_offset,
+        )
 
         if message:
             self._draw_text(
-                (0, self.field_height + 1),
+                (0, self.field_height),
                 message,
                 COLOR_MAP[CI_YELLOW],
-                size_scale=MESSAGE_FONT_SIZE_SCALE,
+                size_scale=hud_scale * MESSAGE_FONT_SIZE_SCALE,
+                y_offset=bottom_row_y_offset,
             )
 
-    def _text_width(self, text: str, bold: bool = False) -> int:
+    def _status_font_scale(self) -> float:
+        return 1.0
+
+    def _status_uses_window_width(self) -> bool:
+        return False
+
+    def _status_row_height(self) -> int:
+        return self.cell_size_y
+
+    def _status_row_y_offset(self, row: int) -> int:
+        return -row * self.cell_size_y
+
+    def _text_width(self, text: str, bold: bool = False, size_scale: float = 1.0) -> int:
         font_name: str
         font_size: float
         if text.isascii():
-            font_name, font_size = self.font_name, self.font_size
+            font_name, font_size = self.font_name, self.font_size * size_scale
         else:
-            non_ascii_font_name, size_scale = self._non_ascii_font()
-            font_name, font_size = non_ascii_font_name, self.font_size * size_scale
+            non_ascii_font_name, non_ascii_size_scale = self._non_ascii_font()
+            font_name = non_ascii_font_name
+            font_size = self.font_size * non_ascii_size_scale * size_scale
         label = pyglet.text.Label(
             text,
             font_name=font_name,
