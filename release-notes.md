@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 5.8.4 - 2026-10-20
+
+- Clarify sprite GUI resizing: field zoom follows window height while the HUD
+  keeps the configured interface size.
+
 ## 5.8.3 - 2026-10-20
 
 - Make the sprite GUI resizable, with field scrolling, visible edge margins, and
