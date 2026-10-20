@@ -70,7 +70,7 @@ ROCK_EXPLORED_SHADE = 0.6
 MET_ELF_SHADE = 0.6
 # A dark translucent backing keeps the elf and treasure progress marks legible
 # when the tall field sprites extend behind the bottom status row.
-TEXT_PANEL_ALPHA = 176
+TEXT_PANEL_ALPHA = 112
 TEXT_PANEL_PADDING = 4
 # A character in one of the four cells next to the player, the one the next
 # step would meet, is drawn this much larger (its ground disc keeps its size).
@@ -357,6 +357,7 @@ class SpriteUI(PygletUI):
         self._overlay_group = pyglet.graphics.Group(order=10000)
         self._text_panel_group = pyglet.graphics.Group(order=9999)
         self._text_overlay_group = pyglet.graphics.Group(order=10001)
+        self._sidebar_bg_group = pyglet.graphics.Group(order=9998)
         self._sidebar_group = pyglet.graphics.Group(order=9999)
 
     ROW_LAYERS = ('wall', 'column', 'pillar-back', 'sprite', 'pillar-front', 'familiar',
@@ -411,7 +412,8 @@ class SpriteUI(PygletUI):
         y = self.window_height - pos[1] * self.cell_size_y + y_offset
         hud_bottom = 2 * self._hud_row_height
         if (
-            x < self.field_pixel_width
+            not self._drawing_hud
+            and x < self.field_pixel_width
             and y > hud_bottom
             and group is not self._text_overlay_group
         ):
@@ -692,41 +694,6 @@ class SpriteUI(PygletUI):
             ),
         )
 
-    def _draw_rect(self, x, y, width, height, color):
-        if (
-            x == self.field_pixel_width
-            and y == 0
-            and width == self.strength_column_width
-            and height == self.field_height * self.cell_size_y
-        ):
-            y_bottom = self.window_height - y - height
-            draw_color = self._display_color(color)
-            signature = ('rectangle', x, y_bottom, width, height,
-                         draw_color, id(self._sidebar_group))
-            self._draw_object(
-                signature,
-                lambda: pyglet.shapes.Rectangle(
-                    x, y_bottom, width, height, color=draw_color,
-                    batch=self.batch, group=self._sidebar_group,
-                ),
-            )
-            return
-        return super()._draw_rect(x, y, width, height, color)
-
-    def _draw_line(self, x1, y1, x2, y2, color, thickness=1):
-        # Visibility boundaries and other lines stay above walls and sprites.
-        y1, y2 = self.window_height - y1, self.window_height - y2
-        draw_color = self._display_color(color)
-        signature = ('line', x1, y1, x2, y2, thickness, draw_color,
-                     id(self._overlay_group))
-        self._draw_object(
-            signature,
-            lambda: pyglet.shapes.Line(
-                x1, y1, x2, y2, thickness=thickness, color=draw_color,
-                batch=self.batch, group=self._overlay_group,
-            ),
-        )
-
     def _draw_player(self, pos, player):
         if '@' not in self._sprite_images:
             return super()._draw_player(pos, player)
@@ -790,6 +757,36 @@ class SpriteUI(PygletUI):
 
     def _draw_rect(self, x, y, width, height, color):
         if not self._drawing_hud:
+            if (
+                x == self.field_pixel_width
+                and y == 0
+                and width == self.strength_column_width
+                and height == self.field_height * self.cell_size_y
+            ):
+                y_bottom = self.window_height - y - height
+                if self.field_pixel_width >= self._map_pixel_width:
+                    background = self._display_color((0, 0, 0))
+                    signature = ('rectangle', x, y_bottom, width, height,
+                                 background, id(self._sidebar_bg_group))
+                    self._draw_object(
+                        signature,
+                        lambda: pyglet.shapes.Rectangle(
+                            x, y_bottom, width, height, color=background,
+                            batch=self._text_batch, group=self._sidebar_bg_group,
+                        ),
+                    )
+
+                panel_color = self._display_color((0, 0, 0, TEXT_PANEL_ALPHA))
+                signature = ('rectangle', x, y_bottom, width, height,
+                             panel_color, id(self._sidebar_group))
+                self._draw_object(
+                    signature,
+                    lambda: pyglet.shapes.Rectangle(
+                        x, y_bottom, width, height, color=panel_color,
+                        batch=self._text_batch, group=self._sidebar_group,
+                    ),
+                )
+                return
             return super()._draw_rect(x, y, width, height, color)
         scene_batch = self.batch
         self.batch = self._text_batch
@@ -799,14 +796,26 @@ class SpriteUI(PygletUI):
             self.batch = scene_batch
 
     def _draw_line(self, x1, y1, x2, y2, color, thickness=1):
-        if not self._drawing_hud:
-            return super()._draw_line(x1, y1, x2, y2, color, thickness)
-        scene_batch = self.batch
-        self.batch = self._text_batch
-        try:
-            return super()._draw_line(x1, y1, x2, y2, color, thickness)
-        finally:
-            self.batch = scene_batch
+        if self._drawing_hud:
+            scene_batch = self.batch
+            self.batch = self._text_batch
+            try:
+                return super()._draw_line(x1, y1, x2, y2, color, thickness)
+            finally:
+                self.batch = scene_batch
+
+        # Visibility boundaries and other field lines stay above sprites.
+        y1, y2 = self.window_height - y1, self.window_height - y2
+        draw_color = self._display_color(color)
+        signature = ('line', x1, y1, x2, y2, thickness, draw_color,
+                     id(self._overlay_group))
+        return self._draw_object(
+            signature,
+            lambda: pyglet.shapes.Line(
+                x1, y1, x2, y2, thickness=thickness, color=draw_color,
+                batch=self.batch, group=self._overlay_group,
+            ),
+        )
 
     def draw_status_bar(self, *args, **kwargs):
         self._drawing_hud = True
@@ -927,6 +936,15 @@ class SpriteUI(PygletUI):
         return (direction, 0)
 
     def _draw_strength_entry(self, row, label, is_player):
+        # Keep the sidebar at native resolution on top of the composited field.
+        scene_batch = self.batch
+        self.batch = self._text_batch
+        try:
+            return self._draw_strength_entry_content(row, label, is_player)
+        finally:
+            self.batch = scene_batch
+
+    def _draw_strength_entry_content(self, row, label, is_player):
         """A small label on the left, and the character's sprite to its right.
 
         Labels such as "b'" show the base character with its rank mark. A
