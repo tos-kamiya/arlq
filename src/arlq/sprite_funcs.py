@@ -288,6 +288,8 @@ class SpriteUI(PygletUI):
     _cooling_center = None
 
     def __init__(self, scale=None, key_repeat_interval=None):
+        self._last_stage_draw = None
+        self._resize_redraw_pending = False
         super().__init__(scale, key_repeat_interval, resizable=True)
         self.window.set_caption(self.window.caption.replace('Pyglet mix', 'Sprite mix'))
         self._update_minimum_window_size()
@@ -357,6 +359,7 @@ class SpriteUI(PygletUI):
         return self._row_groups[order]
 
     def draw_stage(self, *, rock_cells=None, **kwargs):
+        self._last_stage_draw = (rock_cells, kwargs.copy())
         self._rock_cells = rock_cells or set()
         self._known_types = kwargs.get('known_types') or set()
         self._cur_torched = kwargs.get('cur_torched')
@@ -377,6 +380,15 @@ class SpriteUI(PygletUI):
             else None
         )
         return super().draw_stage(rock_cells=rock_cells, **kwargs)
+
+    def _pump(self):
+        super()._pump()
+        if not self._resize_redraw_pending or not self._stage_input_active:
+            return
+        self._resize_redraw_pending = False
+        if self._last_stage_draw is not None:
+            rock_cells, kwargs = self._last_stage_draw
+            self.draw_stage(rock_cells=rock_cells, **kwargs)
 
     def _draw_barrier(self, x, y, field, discovered_at):
         """Thin red flames on the floor, or faint smoke near the player while harmless."""
@@ -647,6 +659,7 @@ class SpriteUI(PygletUI):
             )
         if self._camera_follow_player and self._last_camera_player_pos is not None:
             self._center_camera_on_player(self._last_camera_player_pos[0])
+        self._resize_redraw_pending = True
 
     def _set_resized_dimensions(self, width, height):
         rows = self.field_height + 2
