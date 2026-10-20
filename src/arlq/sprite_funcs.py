@@ -26,6 +26,7 @@ from .pyglet_funcs import (
     VISIBLE_WALL,
     WALL,
     PygletUI,
+    _font_glyph_metrics,
 )
 
 SPRITE_FILES = {
@@ -79,8 +80,8 @@ NEIGHBOR_SCALE = 1.3
 # Field text kept as text (such as "?" and "!") is raised by this fraction of
 # a cell, so it stays within its cell above the flagstone joint.
 FIELD_TEXT_RAISE = 0.1
-# The strength column on the right is this many cells wider than in the
-# original GUI: each entry keeps its label, smaller, on the left and, once the
+# Width of the strength column's sprite area in field cells. Each entry keeps
+# its smaller label on the left and, once the
 # player has identified that type (as on the field), shows the character's
 # sprite to its right, at the same size as on the field (larger ones may
 # overflow their row).
@@ -500,6 +501,10 @@ class SpriteUI(PygletUI):
         return self._row_groups[order]
 
     def draw_stage(self, *, rock_cells=None, **kwargs):
+        self._update_strength_column_width()
+        self.field_pixel_width = max(
+            self.cell_size_x, self.window_width - self.strength_column_width,
+        )
         self._last_stage_draw = (rock_cells, kwargs.copy())
         self._rock_cells = rock_cells or set()
         self._known_types = kwargs.get('known_types') or set()
@@ -888,7 +893,8 @@ class SpriteUI(PygletUI):
 
     def _set_scaled_dimensions(self):
         super()._set_scaled_dimensions()
-        self.strength_column_width += STRENGTH_SPRITE_CELLS * self.cell_size_x
+        self._select_font_size()
+        self._update_strength_column_width()
         self._map_pixel_width = self.field_pixel_width
         self.field_pixel_width = self._map_pixel_width
         self.window_width = self._map_pixel_width + self.strength_column_width
@@ -907,6 +913,24 @@ class SpriteUI(PygletUI):
     def _status_font_scale(self):
         return self._menu_font_size / self.font_size
 
+    def _strength_text_scale(self):
+        hud_font_size = getattr(self, '_menu_font_size', self.font_size)
+        return min(STRENGTH_TEXT_SCALE, hud_font_size / self.font_size)
+
+    def _update_strength_column_width(self):
+        try:
+            font_size = self.font_size * self._strength_text_scale()
+            text_width = 2 * max(
+                _font_glyph_metrics(self.font_name, font_size, weight)[0]
+                for weight in ('normal', 'bold')
+            )
+        except (AttributeError, OSError, RuntimeError, ValueError):
+            text_width = 2 * self.cell_size_x * self._strength_text_scale()
+        self.strength_column_width = math.ceil(
+            text_width + STRENGTH_SPRITE_CELLS * self.cell_size_x
+            + 2 * self.strength_column_padding
+        )
+
     def _status_uses_window_width(self):
         return True
 
@@ -920,7 +944,8 @@ class SpriteUI(PygletUI):
         max_cell_width = CELL_SIZE_X * MAX_UI_SCALE
         max_padding = max(1, round(STRENGTH_COLUMN_PADDING * MAX_UI_SCALE))
         max_strength_width = (
-            (2 + STRENGTH_SPRITE_CELLS) * max_cell_width + 2 * max_padding
+            (2 * STRENGTH_TEXT_SCALE + STRENGTH_SPRITE_CELLS) * max_cell_width
+            + 2 * max_padding
         )
         minimum_width = math.ceil(max_strength_width + max_cell_width)
         minimum_height = math.ceil(
@@ -1039,6 +1064,7 @@ class SpriteUI(PygletUI):
         else:
             self.window_width = width
             self.window_height = height
+        self._update_strength_column_width()
         self.field_pixel_width = max(
             self.cell_size_x, width - self.strength_column_width
         )
@@ -1071,10 +1097,7 @@ class SpriteUI(PygletUI):
         self.strength_column_padding = max(
             1, round(STRENGTH_COLUMN_PADDING * self.scale)
         )
-        self.strength_column_width = (
-            (2 + STRENGTH_SPRITE_CELLS) * self.cell_size_x
-            + 2 * self.strength_column_padding
-        )
+        self._update_strength_column_width()
         self._map_pixel_width = self.field_width * self.cell_size_x
         self.window_width = width
         self._hud_row_height = hud_row_height
@@ -1134,7 +1157,7 @@ class SpriteUI(PygletUI):
         """
         left = self.field_pixel_width + self.strength_column_padding
         self._draw_text((0, row), label, COLOR_MAP["default"], bold=is_player,
-                        x_offset=left, size_scale=STRENGTH_TEXT_SCALE,
+                        x_offset=left, size_scale=self._strength_text_scale(),
                         group=self._overlay_group)
         base, mark = label[0], label[1:]
         type_key = base + {"'": '2', '"': '3'}.get(mark, '')

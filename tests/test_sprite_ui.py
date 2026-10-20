@@ -223,6 +223,7 @@ def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
     ui.cell_size_y = 20
     ui._menu_cell_size_y = 20
     ui._menu_active = False
+    ui._menu_font_size = 17
     ui.font_size = 17
     ui.strength_column_padding = 4
     ui.strength_column_width = 60
@@ -239,7 +240,7 @@ def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
     assert ui.scale == pytest.approx(2)
     assert ui.cell_size_x == pytest.approx(26)
     assert ui.cell_size_y == pytest.approx(40)
-    assert ui.field_pixel_width == pytest.approx(80)
+    assert ui.field_pixel_width == pytest.approx(106)
     assert ui._horizontal_scroll_px == pytest.approx(26)
 
 
@@ -259,7 +260,7 @@ def test_sprite_resize_constraints_allow_zoom_range():
 
     ui._update_minimum_window_size()
 
-    assert size_constraints[0][0:2] == ('minimum', 292)
+    assert size_constraints[0][0:2] == ('minimum', 261)
     assert size_constraints[0][2] == 250
     assert size_constraints[1] == ('maximum', sprite_funcs.MAX_WINDOW_WIDTH, 1720)
 
@@ -399,6 +400,7 @@ def _strength_column_ui(monkeypatch, known_types):
     ui._known_types = known_types
     ui.map_mode = False
     ui.scale = 1
+    ui.font_size = ui._menu_font_size = 17
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui._text_batch = None
     ui.field_pixel_width, ui.strength_column_width, ui.strength_column_padding = 500, 60, 4
