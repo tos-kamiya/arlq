@@ -1,11 +1,9 @@
-"""Export accepted characters as cropped transparent 60-degree PNGs.
+"""Export the heroic character models as cropped transparent 60-degree PNGs.
 
-With `-- --heroic`, export the refined models built by build-heroic.py.
-`-- --heroic --only n o` re-exports just the listed characters.
+`-- --only n o` re-exports just the listed characters.
 """
 from pathlib import Path
 import math
-import shutil
 import sys
 import bpy
 from mathutils import Vector
@@ -16,54 +14,39 @@ OUT.mkdir(parents=True, exist_ok=True)
 models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
           ('b', 'bison', (-2, -1.5)), ('d', 'comodo-dragon', (2, -1.5)),
           ('@', 'player', (0, 0))]
-HEROIC = '--heroic' in sys.argv
-if HEROIC:
-    models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('M', 'mimic', (0, 0)),
-               ('D', 'dragon', (0, 0)), ('l', 'loop-watch', (0, 0)), ('n', 'nomicon', (0, 0)), ('o', 'ocular', (0, 0)),
-               ('C', 'rare-chimera', (0, 0)), ('F', 'fire-drake', (0, 0)),
-               ("'", 'mark-rank2', (0, 0)), ('"', 'mark-rank3', (0, 0)),
-               ('g', 'golem', (0, 0)), ('m', 'spore', (0, 0)), ('k', 'marksman', (0, 0)), ('V', 'vortex', (0, 0)), ('w', 'wyrm', (0, 0)), ('W', 'dread-wyrm', (0, 0)), ('e', 'erebus', (0, 0)), ('E', 'rare-erebus', (0, 0)),
-               ('X', 'caltrop-plant', (0, 0)), ('p', 'pegasus', (0, 0)),
-               ('H', 'high-elf', (0, 0)), ('I', 'isolated-elf', (0, 0)),
-               ('J', 'javelin-elf', (0, 0)), ('K', 'collector-elf', (0, 0)),
-               ('L', 'lifebringer-elf', (0, 0)), ('S', 'sylvan-elf', (0, 0)),
-               ('rock', 'golem-rock', (0, 0))]
+models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('M', 'mimic', (0, 0)),
+           ('D', 'dragon', (0, 0)), ('l', 'loop-watch', (0, 0)), ('n', 'nomicon', (0, 0)), ('o', 'ocular', (0, 0)),
+           ('C', 'rare-chimera', (0, 0)), ('F', 'fire-drake', (0, 0)),
+           ("'", 'mark-rank2', (0, 0)), ('"', 'mark-rank3', (0, 0)),
+           ('g', 'golem', (0, 0)), ('m', 'spore', (0, 0)), ('k', 'marksman', (0, 0)), ('V', 'vortex', (0, 0)), ('w', 'wyrm', (0, 0)), ('W', 'dread-wyrm', (0, 0)), ('e', 'erebus', (0, 0)), ('E', 'rare-erebus', (0, 0)),
+           ('X', 'caltrop-plant', (0, 0)), ('p', 'pegasus', (0, 0)),
+           ('H', 'high-elf', (0, 0)), ('I', 'isolated-elf', (0, 0)),
+           ('J', 'javelin-elf', (0, 0)), ('K', 'collector-elf', (0, 0)),
+           ('L', 'lifebringer-elf', (0, 0)), ('S', 'sylvan-elf', (0, 0)),
+           ('rock', 'golem-rock', (0, 0))]
 if '--only' in sys.argv:
     only = sys.argv[sys.argv.index('--only') + 1:]
     models = [model for model in models if model[0] in only]
 for char, name, (x, y) in models:
-    player = char == '@'
-    source = ROOT / ('heroic/characters-angle60.blend' if HEROIC else
-                     'player-arms/player-angle60.blend' if player else
-                     'attached-cones/stage1-characters-angle60.blend')
-    bpy.ops.wm.open_mainfile(filepath=str(source))
+    bpy.ops.wm.open_mainfile(filepath=str(ROOT / 'heroic' / 'characters-angle60.blend'))
     scene = bpy.context.scene
-    if HEROIC:
-        x, y = scene['sprite_centers'][char]
-        selected = {obj for obj in scene.objects if obj.get('sprite')}
-        selected = {obj for obj in selected if obj.users_collection[0].name.startswith(
-            'Character ' + char + ' ')}
-    elif player:
-        selected = {obj for obj in scene.objects if obj.name.startswith('Player')}
-    else:
-        selected = set(next(c for c in bpy.data.collections
-                            if c.name.startswith('Prototype ' + char + ' ')).objects)
-        selected = {obj for obj in selected if 'tile' not in obj.name and
-                    not obj.name.startswith('Label ')}
+    x, y = scene['sprite_centers'][char]
+    selected = {obj for obj in scene.objects if obj.get('sprite')}
+    selected = {obj for obj in selected if obj.users_collection[0].name.startswith(
+        'Character ' + char + ' ')}
     for obj in scene.objects:
         obj.hide_render = obj not in selected and obj.type not in ('LIGHT', 'CAMERA')
     camera = scene.camera
-    if HEROIC:
-        # The lights are aimed at the scene origin; move them with the
-        # character so every sprite is lit the same way wherever it stands.
-        for light in (obj for obj in scene.objects if obj.type == 'LIGHT'):
-            light.location += Vector((x, y, 0))
+    # The lights are aimed at the scene origin; move them with the
+    # character so every sprite is lit the same way wherever it stands.
+    for light in (obj for obj in scene.objects if obj.type == 'LIGHT'):
+        light.location += Vector((x, y, 0))
     target = Vector((x, y, 0.35))
     camera.location = target + Vector((0, -7.5, 15 * math.sin(math.radians(60))))
     camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
     # Same 256 px per 2.6 units for every sprite, on a canvas large enough for
     # the biggest model; the model's size alone decides the trimmed image size.
-    camera.data.ortho_scale = 4.6 if HEROIC else 2.6
+    camera.data.ortho_scale = 4.6
     scene.render.film_transparent = True
     scene.render.resolution_x = scene.render.resolution_y = round(
         256 * camera.data.ortho_scale / 2.6)
@@ -80,26 +63,19 @@ for char, name, (x, y) in models:
         lines.linestyle = bpy.data.linestyles.new('Ink outline')
     lines.linestyle.color = (0.015, 0.02, 0.03)
     lines.linestyle.thickness = 4.0
-    if HEROIC:
-        # Bold outer contour; thinner, softer lines between overlapping parts.
-        lines.select_silhouette = lines.select_border = False
-        inner = settings.linesets.new('Inner parts')
-        inner.select_silhouette = inner.select_border = True
-        inner.select_external_contour = inner.select_crease = False
-        inner.linestyle = bpy.data.linestyles.new('Thin ink')
-        inner.linestyle.color = (0.04, 0.05, 0.07)
-        inner.linestyle.thickness = 1.5
-        inner.linestyle.alpha = 0.7
-        scene.cycles.samples = 256
+    # Bold outer contour; thinner, softer lines between overlapping parts.
+    lines.select_silhouette = lines.select_border = False
+    inner = settings.linesets.new('Inner parts')
+    inner.select_silhouette = inner.select_border = True
+    inner.select_external_contour = inner.select_crease = False
+    inner.linestyle = bpy.data.linestyles.new('Thin ink')
+    inner.linestyle.color = (0.04, 0.05, 0.07)
+    inner.linestyle.thickness = 1.5
+    inner.linestyle.alpha = 0.7
+    scene.cycles.samples = 256
     scene.render.image_settings.file_format = 'PNG'
     scene.render.image_settings.color_mode = 'RGBA'
     path = OUT / (name + '.png')
-    comparison = ROOT / ('sprites-before-heroic' if HEROIC else 'sprites-before-outline')
-    comparison.mkdir(exist_ok=True)
-    before = comparison / path.name
-    # Comparison copies are only for the five characters that had earlier sprites.
-    if path.exists() and not before.exists() and char in '@aAbd':
-        shutil.copy2(path, before)
     scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
     # Trim empty space using Blender itself; no extra imaging dependency.

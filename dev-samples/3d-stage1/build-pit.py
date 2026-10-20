@@ -12,7 +12,6 @@ yellow) turns close to the floor's warm grey.
 from pathlib import Path
 import math
 import random
-import sys
 
 import bmesh
 import bpy
@@ -187,5 +186,3 @@ scene.render.image_settings.file_format = 'PNG'
 scene.render.image_settings.color_mode = 'RGBA'
 scene.render.filepath = str(OUT / 'pit.png')
 bpy.ops.render.render(write_still=True)
-if '--save' in sys.argv:
-    bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / 'heroic' / 'pit.blend'))

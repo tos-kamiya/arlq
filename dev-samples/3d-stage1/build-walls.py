@@ -12,7 +12,6 @@ The parts are near-white; the GUI tints them for visible/explored walls.
 """
 from pathlib import Path
 import math
-import sys
 
 import bpy
 from mathutils import Vector
@@ -172,5 +171,3 @@ for name, objects in parts.items():
     scene.render.use_freestyle = name == 'column'
     scene.render.filepath = str(OUT / ('wall-' + name + '.png'))
     bpy.ops.render.render(write_still=True)
-if '--save' in sys.argv:
-    bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / 'heroic' / 'walls.blend'))

@@ -11,7 +11,6 @@ The stone is near-white; the GUI tints it gold, darker outside the view.
 """
 from pathlib import Path
 import math
-import sys
 
 import bpy
 from mathutils import Vector
@@ -188,5 +187,3 @@ for name, objects in parts.items():
         obj.hide_render = obj.type == 'MESH' and obj not in objects
     scene.render.filepath = str(OUT / ('stairs-' + name + '.png'))
     bpy.ops.render.render(write_still=True)
-if '--save' in sys.argv:
-    bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / 'heroic' / 'stairs.blend'))
