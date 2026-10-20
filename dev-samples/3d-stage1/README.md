@@ -73,6 +73,12 @@ PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-sprite-ui.py
 最初のコマンドは `heroic/characters-angle60.blend` からゲーム用のキャラクター画像を書き出し、透明な余白を切り詰める。
 2番目はコントローラーを使わないヘッドレス描画確認で、`preview-sprite-ui.png` を出力する。
 
+GUIは画像をmipmapで縮小して描く（縮小時のちらつきを抑えるため）。Blenderは完全に透明な画素をほぼ黒で書き出すため、そのままでは縮小した輪郭に黒いフチが出る。キャラクター・壁・床・階段・穴の画像を書き出したら、次のコマンドで透明な画素に輪郭の色を広げておく（不透明な画素は変えない）。
+
+```bash
+.venv/bin/python dev-samples/3d-stage1/bleed-alpha.py
+```
+
 ### 輪郭線のみのトゥーン表現
 
 色・材質・透明度・照明・Cyclesの陰影は維持し、Blender Freestyleで輪郭線を合成する。
