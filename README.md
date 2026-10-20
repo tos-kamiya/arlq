@@ -13,7 +13,7 @@ the Python implementation with Pyglet and Blessed terminal frontends.
   </a>
 </p>
 
-![](screenshot.png)
+![](screenshot-arlq-sprites.png)
 
 <a href="docs/images/screenshot2.png"><img src="docs/images/screenshot2.png" width="160" alt="Screenshot 2" /></a>
 <a href="docs/images/screenshot3.png"><img src="docs/images/screenshot3.png" width="160" alt="Screenshot 3" /></a>
@@ -50,48 +50,20 @@ stage. Change gamepad button assignments in `Settings -> Gamepad button settings
 
 Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
 through `arlq --sprites`. Its window can be resized in both dimensions.
-Changing its height zooms the field while the two bottom LP and message rows
-keep the configured interface size. Changing its width adjusts the window
-height to fit the field and those rows. When the field is
-wider than the view, the camera follows the player; Shift+Left/Right scrolls the
-view without moving the player. The scroll range includes a one-cell margin at
-each field edge. Those keys do nothing when the whole field fits.
-The Stage 1 characters (player,
-monsters, treasure chest, and the Nomicon and Ocular companions), the Stage 2 Pegasus companion, rare chimera,
-fire drake, golem, Erebus, caltrop plant and High Elf, the Stage 3 Isolated, Javelin and Collector Elves, and the Stage 4 rare Erebus,
-Lifebringer Elf and Sylvan Elf use transparent images rendered from 3D models at
-60 degrees; other and unidentified characters
-keep their text display. A disc on the ground under each sprite, fading out away from the character,
-keeps the original strength/status colors, including the player's yellow and
-red low-LP warnings. While the player is
-poisoned, the upper-right half of its disc turns purple. Likewise, a boss you can
-defeat (one that unlocks a treasure chest) has a blue disc whose upper-right
-half is yellow. An empowered monster's rank mark (`'` or `"`) becomes raised
-white apostrophes (half-bright where the monster is dimmed), floating at the sprite's upper right. Companions stand inside
-a faint green pillar of light that sets them apart from monsters; the companion
-travelling with the player is shown small at the player's right shoulder. An elf
-you have already met is drawn darker, together with its disc. A character in
-one of the four cells next to the player is drawn 1.3 times larger, so the one
-you are about to meet is easy to read even in a small window; followers walking
-with you keep their size. The strength column on the right is two cells wider:
-each entry keeps a smaller label and, once you have identified that monster
-type (as on the field), shows its sprite next to it. Walls are drawn as
-rows of marble columns, one per wall cell, linked by a beam and a step; they
-rise slightly into the cell to their north and may partly hide a character
-standing there. Walls raised by a defeated Golem are drawn as its rubble
-instead of columns (they remain ordinary walls). Barriers (`=`) are drawn as small
-red fires burning from several spots on the floor; while the protective amulet makes them harmless,
-those right around the player show only faint grey smoke. Floors are flagstones laid as a subtle
-checkerboard. Stairs are gold-tinted marble steps: up stairs (`^`) rise toward the north,
-and down stairs (`v`) descend into a dark opening; a faint yellow ground disc, the size of the
-characters' and in the respawn point's `+` color, glows around each stair so it stands out. Collapse pits (`O`) are jagged holes
-broken through the flagstones.
-Controls, rules, FOV and menus are shared with the original Pyglet GUI.
-The original cell size is retained. All sprites are drawn at one common scale,
-with each character's feet on its cell center, so their sizes follow the 3D models: most are about 1.8
-cells wide and may extend beyond their cell, while the boss dragon is modeled
-larger and its wings spread well past its cell. `--scale 2` enlarges the GUI.
-Blender is only needed to regenerate the bundled images.
+Changing the window height zooms the field while the HUD keeps the configured
+interface size. Changing the width adjusts the window height to fit the field
+and HUD. If the field is wider than the view, the camera follows the player;
+Shift+Left/Right scrolls the view without moving. The scroll range includes a
+one-cell margin at each edge.
+
+Characters with bundled sprites use transparent images once identified;
+unknown characters keep their text symbols. Ground markers preserve strength
+and status colors, and faint light pillars distinguish companions. Terrain has
+a separate illustrated style, including marble walls and stairs, floor tiles,
+fires, and Collapse pits.
+Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
+`--scale` to enlarge the GUI. Blender is only needed to regenerate the bundled
+images.
 
 The terminal interface requires a terminal at least 80 columns wide and 24
 lines high. The game pauses if the terminal becomes smaller and resumes when
@@ -134,20 +106,16 @@ reproduce the same layout.
 ## Game Description
 
 * **Objective**  
-  The goal of the game is to explore a dungeon with procedurally generated corridors and find the treasure chest hidden by the dragon. In Stage 1, find the dragon's chest; in Stage 2, find the fire drake's chest.
-  In Stage 3, defeat the `W` Dread Wyrm and claim its treasure chest. In Stage 4, defeat the empowered Fire Drake (`F'`) and claim its treasure chest. Both objectives are required to clear either stage. The elves' help is useful for accomplishing them.
-
-  Stage 3 consists of multiple floors. Move between floors using the stairs down `v` and stairs up `^`. Discovering a stair also marks its matching cell on the adjacent floor as explored. Four elves, `I`, `J`, `K`, and `H`, appear.
+  Explore the dungeon and claim its treasure. In Stages 1 and 2, find the chest; in Stages 3 and 4, defeat the stage boss and claim the chest it unlocks. Elves can help in the later stages.
 
 * **Player and Fog**  
   You control the character represented by `@` using the arrow keys or WASD.
 
-  When movement repeat is enabled, holding a direction repeats movement. Automatic repeat stopping is enabled by default and can be switched off in `Settings` or with `--no-auto-repeat-stop`. When enabled, it stops before known special terrain and nearby displayed entities, and after combat, marksman damage, wall interactions, Pegasus jumps, or floor transitions. Release and press the direction again to resume.
+  Each move uses LP; reaching zero ends the game. Defeating monsters restores LP. The background behind `@` turns yellow at 40 LP or below and red at 20 LP or below. Your vision is centered on your location, and explored areas remain visible on the automap.
 
-  The background behind `@` turns yellow at 40 LP or below and red at 20 LP or below.
-  Your vision is centered on your current location, and explored areas remain visible on the automap.
+  Holding a direction repeats movement when repeat is enabled. Automatic repeat stopping is on by default and can be changed in `Settings` or with `--no-auto-repeat-stop`. It pauses near known hazards and after encounters or special movement; release and press the direction again to resume.
 
-  Overshoot assist automatically cancels an accidental move sequence when you return to the same position within five turns, provided the sequence caused no contact, damage, floor change, or new map or monster knowledge. Potential return cells are marked with a dark gray `.` while the assist is available.
+  Overshoot assist cancels an accidental movement sequence if you return to the same position within five turns without gaining new map or monster information, encountering an entity, taking damage, or changing floors. Possible return cells are marked with a dark gray `.`.
 
   Press `F` to toggle a highlight on every explored-map cell reachable with your remaining LP. With a gamepad, the preview button can show it while held or toggle it on and off.
 
@@ -164,26 +132,16 @@ reproduce the same layout.
 
   Monster identification persists across floors. Companion identification is tracked separately on each floor in every stage, so an unencountered companion is shown again as `!` on a new floor.
 
-  Contacting a monster starts combat. Defeating an enemy at or below your attack power levels you up and lets you obtain its belongings and food. Losing to a stronger monster sends you back to the checkpoint. However, if you lose to the very same monster twice in a row without contacting any other monster in between, you instead escape to a random location on the map (this prevents the game from becoming unwinnable when an unbeatable monster blocks a corridor).
+  Contact starts combat. Defeating a monster at or below your attack power levels you up and restores LP. Losing to a stronger monster returns you to the checkpoint; losing twice in a row to the same monster sends you to a random location instead.
 
   Some monsters, such as `d`, respawn. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked `T` clears the stage.
 
-  Companions provide their unique benefit for a limited time. Defeating a monster consumes one unit of this duration, and each Pegasus phase jump consumes one unit as well. For example, the Nomicon identifies monsters and elves in its field of vision.
+  Companions provide a temporary benefit. Defeating a monster consumes one unit of its duration, as does each Pegasus jump. For example, the Nomicon identifies nearby monsters and elves.
 
   Most elves appear from Stage 3 onward and provide support, such as increased attack power, when you meet certain conditions.
 
 * **Rare Monster Types and Empowered Monsters**  
-  Some monsters have rare variants with features that differ from normal monsters. For example, `A` (Rare Amoeba) significantly boosts your level when defeated, and `C` (Rare Chimera) grants a cursed sword that greatly increases combat power at the cost of LP. Both have special effects that benefit the player.
-
-  Empowered variants also appear from Stage 2 onward. Unlike rare variants, they are stronger enemies, not a benefit to the player. Rank 2 has strength equal to the normal level × 3 + 10; rank 3 is three times as strong as rank 2. Rank 2 monsters are displayed with one apostrophe (`b'`) and rank 3 with a double quote (`b"`). Each rank is identified as a separate monster type.
-
-* **LP System**
-  The player has LP (Life Points) that decrease with every move.
-  If LP reaches zero, the game is lost due to starvation. Defeating monsters replenishes food, thereby restoring LP.
-  Overshoot assist automatically cancels an accidental move sequence when you return to the same position within five turns, provided the sequence caused no encounter, damage, floor change, or new map or monster knowledge. Potential return cells are marked with a dark gray `.` while the assist is available. Touching a locked treasure chest does not prevent the assist.
-
-* **Game End**  
-  The game is cleared when you come into contact with the treasure chest (represented by `T`). Your objective is to obtain the treasure chest guarded by the dragon.
+  Rare variants such as `A` (Rare Amoeba) and `C` (Rare Chimera) can grant special rewards. Empowered monsters appear from Stage 2 onward; their rank marks (`b'` and `b"`) identify them as stronger, separate monster types.
 
 ## Companion List
 
@@ -228,10 +186,13 @@ uses random-floor respawns; Stage 2, where it appears, currently has one floor.
 
 ### Stage 3
 
-Stage 3 has three connected floors. One of the two floor transitions randomly has an extra matching pair of stairs. The elves can help you defeat the Dread Wyrm and claim its treasure chest. The elves are `I`, `J`, `K`, and `H`.
-Stage 3 features empowered Bison, Chimeras, and Komodo Dragons (`b'`, `c'`, and `d'`).
+Stage 3 has three connected floors and four elves: `I`, `J`, `K`, and `H`.
+Empowered Bison, Chimeras, and Komodo Dragons (`b'`, `c'`, and `d'`) also
+appear.
 
-The bottom-right marker shows the displayed floor as a fraction (for example, `3/4`). Elf progress and discovered floors appear at the bottom-left of the field. Contacting `I` reveals the floors of all elves. The floors where `C` was identified by the Nomicon or defeated the player are appended to `C` (for example, `C23`). Hold Shift and press Up or Down in GUI mode, or Shift and W or S in `arlq-cli`, to inspect another floor. With a gamepad, hold the configured preview button or turn preview on, then press Up or Down. Unexplored areas remain hidden. A normal movement input returns the display to the player's floor and moves as usual.
+The HUD shows the current floor and elf progress. Use Shift+Up/Down in the GUI
+or Shift+W/S in `arlq-cli` to inspect another floor. Unexplored areas remain
+hidden; moving returns the display to the player's floor.
 
 #### Monsters
 
