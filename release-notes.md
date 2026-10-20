@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 5.8.3 - 2026-10-20
+
+- Make the sprite GUI resizable, with field scrolling, visible edge margins, and
+  HUD rows that size themselves from the window width.
+- Scale status, progress, and floor displays with the configured font, and keep
+  the LP gauge compact.
+- Improve large-window rendering performance with a reduced-resolution game
+  frame while keeping menus and HUD overlays at native resolution.
+- Show the stage beneath a translucent strength panel while scrolling, and
+  improve visibility of the FOV boundary.
+- Refine sprite rendering with white rank marks, a recolored Komodo dragon, and
+  consistent translucent green companion effects.
+
 ## 5.8.2 - 2026-10-20
 
 - Draw a faint yellow ground disc around stairs in the `--sprites` GUI so they stand out.
