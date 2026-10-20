@@ -89,6 +89,7 @@ MAX_WINDOW_WIDTH = 32767
 STRENGTH_TEXT_SCALE = 0.7
 # Low-resolution rendering keeps twice the 100% pixel density for readability.
 LOW_RESOLUTION_DETAIL_SCALE = 2.0
+MIPMAP_LOD_BIAS = -1.0
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
 # drawn white whatever the monster's strength color. They float at the upper
 # right of the sprite instead of in the next cell: centre offset from the
@@ -297,6 +298,24 @@ def ground_disc_image(half=None):
     return pyglet.image.ImageData(size, size, 'RGBA', bytes(rgba), pitch=size * 4)
 
 
+def mipmapped(image):
+    """Texture shrunk through mipmaps, so fine details do not flicker away.
+
+    The PNGs carry their edge colors into transparent pixels (see
+    dev-samples/3d-stage1/bleed-alpha.py), so the smaller levels get no dark
+    fringe. Pyglet's get_mipmapped_texture() builds the levels before
+    uploading the image, so they are generated here instead.
+    """
+    texture = image.get_texture()
+    gl = pyglet.gl
+    gl.glBindTexture(texture.target, texture.id)
+    gl.glTexParameteri(texture.target, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR_MIPMAP_LINEAR)
+    # Sample one level finer than the default; the outlines blur away otherwise.
+    gl.glTexParameterf(texture.target, gl.GL_TEXTURE_LOD_BIAS, MIPMAP_LOD_BIAS)
+    gl.glGenerateMipmap(texture.target)
+    return texture
+
+
 class SpriteUI(PygletUI):
     """Reuse input, menus, visibility and glyph selection without duplicating rules."""
 
@@ -337,18 +356,17 @@ class SpriteUI(PygletUI):
             path = directory / filename
             if not path.is_file():
                 continue
-            picture = pyglet.image.load(str(path))
-            self._sprite_images[char] = picture
-            data = picture.get_image_data()
+            data = pyglet.image.load(str(path)).get_image_data()
+            self._sprite_images[char] = mipmapped(data)
             rgba = bytearray(data.get_data('RGBA', data.width * 4))
             for offset in range(0, len(rgba), 4):
                 r, g, b = rgba[offset:offset + 3]
                 gray = (299 * r + 587 * g + 114 * b) // 1000
                 rgba[offset:offset + 3] = bytes((gray, gray, gray))
-            self._gray_images[char] = pyglet.image.ImageData(
+            self._gray_images[char] = mipmapped(pyglet.image.ImageData(
                 data.width, data.height, 'RGBA', bytes(rgba), pitch=data.width * 4
-            )
-        self._mark_images = {mark: pyglet.image.load(str(directory / filename))
+            ))
+        self._mark_images = {mark: mipmapped(pyglet.image.load(str(directory / filename)))
                              for mark, filename in MARK_FILES.items()
                              if (directory / filename).is_file()}
         # Cells where a character sprite was drawn this frame; a rank mark in
@@ -364,15 +382,15 @@ class SpriteUI(PygletUI):
         self._pillar_images = {side: pillar_image(side) for side in ('back', 'front')}
         wall_directory = Path(__file__).parent / 'assets' / 'walls'
         paths = [wall_directory / ('wall-' + part + '.png') for part in WALL_PARTS]
-        self._wall_images = ({part: pyglet.image.load(str(path))
+        self._wall_images = ({part: mipmapped(pyglet.image.load(str(path)))
                               for part, path in zip(WALL_PARTS, paths)}
                              if all(path.is_file() for path in paths) else None)
         floor_paths = [Path(__file__).parent / 'assets' / 'floor' / ('floor-' + part + '.png')
                        for part in FLOOR_PARTS]
-        self._floor_images = ([pyglet.image.load(str(path)) for path in floor_paths]
+        self._floor_images = ([mipmapped(pyglet.image.load(str(path))) for path in floor_paths]
                               if all(path.is_file() for path in floor_paths) else None)
         assets = Path(__file__).parent / 'assets'
-        self._terrain_images = {char: pyglet.image.load(str(assets / filename))
+        self._terrain_images = {char: mipmapped(pyglet.image.load(str(assets / filename)))
                                 for char, filename in TERRAIN_FILES.items()
                                 if (assets / filename).is_file()}
         self._flame_images = [flame_image(variant) for variant in (0, 1)]
