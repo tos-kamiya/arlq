@@ -305,9 +305,8 @@ class SpriteUI(PygletUI):
         self._failed_render_target_size = None
         super().__init__(scale, key_repeat_interval, resizable=True)
         self._text_batch = pyglet.graphics.Batch()
-        self._hud_reference_width = self.window_width
-        self._hud_reference_row_height = self.cell_size_y
-        self._hud_row_height = self.cell_size_y
+        self._hud_row_height = self._menu_cell_size_y
+        self._drawing_hud = False
         self.window.set_caption(self.window.caption.replace('Pyglet mix', 'Sprite mix'))
         self._update_minimum_window_size()
         directory = Path(__file__).parent / 'assets' / 'characters'
@@ -813,7 +812,7 @@ class SpriteUI(PygletUI):
         self._map_pixel_width = self.field_pixel_width
         self.field_pixel_width = self._map_pixel_width
         self.window_width = self._map_pixel_width + self.strength_column_width
-        if hasattr(self, '_hud_reference_width'):
+        if hasattr(self, '_hud_row_height'):
             self._hud_row_height = self._row_height_for_width(self.window_width)
             self.window_height = round(
                 self.field_height * self.cell_size_y + 2 * self._hud_row_height
@@ -823,15 +822,10 @@ class SpriteUI(PygletUI):
         self._last_camera_player_pos = None
 
     def _row_height_for_width(self, width):
-        reference_width = getattr(self, '_hud_reference_width', self.window_width)
-        reference_height = getattr(
-            self, '_hud_reference_row_height', self.cell_size_y
-        )
-        width_scale = self._valid_scale(width / reference_width)
-        return max(1, round(reference_height * width_scale))
+        return self._menu_cell_size_y
 
     def _status_font_scale(self):
-        return self._hud_row_height / self.cell_size_y
+        return self._menu_font_size / self.font_size
 
     def _status_uses_window_width(self):
         return True
@@ -851,17 +845,44 @@ class SpriteUI(PygletUI):
         minimum_width = math.ceil(max_strength_width + max_cell_width)
         minimum_height = math.ceil(
             self.field_height * CELL_SIZE_Y * MIN_UI_SCALE
-            + 2 * getattr(self, '_hud_reference_row_height', CELL_SIZE_Y) * MIN_UI_SCALE
+            + 2 * self._menu_cell_size_y
         )
         maximum_height = math.floor(
             self.field_height * CELL_SIZE_Y * MAX_UI_SCALE
-            + 2 * getattr(self, '_hud_reference_row_height', CELL_SIZE_Y) * MAX_UI_SCALE
+            + 2 * self._menu_cell_size_y
         )
         self.window.set_minimum_size(
             minimum_width,
             minimum_height,
         )
         self.window.set_maximum_size(MAX_WINDOW_WIDTH, maximum_height)
+
+    def _draw_rect(self, x, y, width, height, color):
+        if not (self._low_res_enabled and self._drawing_hud):
+            return super()._draw_rect(x, y, width, height, color)
+        scene_batch = self.batch
+        self.batch = self._text_batch
+        try:
+            return super()._draw_rect(x, y, width, height, color)
+        finally:
+            self.batch = scene_batch
+
+    def _draw_line(self, x1, y1, x2, y2, color, thickness=1):
+        if not (self._low_res_enabled and self._drawing_hud):
+            return super()._draw_line(x1, y1, x2, y2, color, thickness)
+        scene_batch = self.batch
+        self.batch = self._text_batch
+        try:
+            return super()._draw_line(x1, y1, x2, y2, color, thickness)
+        finally:
+            self.batch = scene_batch
+
+    def draw_status_bar(self, *args, **kwargs):
+        self._drawing_hud = True
+        try:
+            return super().draw_status_bar(*args, **kwargs)
+        finally:
+            self._drawing_hud = False
 
     def _on_window_resize(self, width, height):
         old_cell_width = self.cell_size_x

@@ -640,12 +640,12 @@ class PygletUI:
     def set_scale(self, scale: float, save: bool = True) -> None:
         """Resize the GUI and its grid cells without changing gameplay."""
         self.scale = self._valid_scale(scale)
+        self._menu_scale = self.scale
+        self._update_menu_metrics()
         self._set_scaled_dimensions()
         self._prepare_window_resize()
         self._non_ascii_font_result = None
         self._select_font_size()
-        self._menu_scale = self.scale
-        self._update_menu_metrics()
         self.window.set_size(self.window_width, self.window_height)
         self._update_minimum_window_size()
         # Process the resize immediately.  Otherwise the stage-selection
@@ -1169,7 +1169,9 @@ class PygletUI:
             item_width = self._text_width(extra, size_scale=hud_scale)
             item_gap = round(10 * hud_scale)
             available_bar_width = self.window_width - item_width - item_gap - x_offset
-            max_bar_width = max(1, round(8 * self.cell_size_x * hud_scale))
+            max_bar_width = 8 * getattr(
+                self, "_menu_cell_size_x", self.cell_size_x
+            )
             bar_width = max(1, min(max_bar_width, available_bar_width))
             item_x_offset = x_offset + bar_width + item_gap
         else:
