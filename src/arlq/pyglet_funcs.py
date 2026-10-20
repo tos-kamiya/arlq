@@ -1082,8 +1082,10 @@ class PygletUI:
         if flexible_hud:
             item_width = self._text_width(extra, size_scale=hud_scale)
             item_gap = round(10 * hud_scale)
-            item_x_offset = max(x_offset + item_gap, self.window_width - item_width)
-            bar_width = max(1, item_x_offset - item_gap - x_offset)
+            available_bar_width = self.window_width - item_width - item_gap - x_offset
+            max_bar_width = max(1, round(8 * self.cell_size_x * hud_scale))
+            bar_width = max(1, min(max_bar_width, available_bar_width))
+            item_x_offset = x_offset + bar_width + item_gap
         else:
             bar_width = 8 * self.cell_size_x
             item_x_offset = x_offset + bar_width + 10
