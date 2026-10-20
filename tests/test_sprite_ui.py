@@ -173,7 +173,7 @@ def test_treasure_disc_stays_yellow(sprite_ui):
 
 
 @pytest.mark.parametrize('empowered, mark', [(2, "'"), (3, '"')])
-def test_rank_mark_floats_tinted_at_sprite_upper_right(sprite_ui, empowered, mark):
+def test_rank_mark_floats_white_at_sprite_upper_right(sprite_ui, empowered, mark):
     ui = sprite_ui
     ui._display_color = lambda color: color
     bison = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=empowered)
@@ -183,7 +183,8 @@ def test_rank_mark_floats_tinted_at_sprite_upper_right(sprite_ui, empowered, mar
     sprite, badge = ui._drawables
     assert sprite.image is ui._sprite_images['b']
     assert badge.image is ui._mark_images[mark]
-    assert badge.color == ui._tone_color('red')
+    # White, not the bison's red strength color.
+    assert badge.color == ui._tone_color('default')
     # Up and to the right of the bison's ground point, not in the next cell.
     feet_x, feet_y = 58.5, 500 - 110
     centre_x = badge.x + badge.image.width * badge.scale / 2
@@ -191,6 +192,15 @@ def test_rank_mark_floats_tinted_at_sprite_upper_right(sprite_ui, empowered, mar
     assert feet_x < centre_x < feet_x + ui.cell_size_x
     assert centre_y > feet_y
     assert not ui.text_calls
+
+
+def test_dimmed_rank_mark_is_half_bright_white(sprite_ui):
+    ui = sprite_ui
+    ui._display_color = lambda color: color
+    ui._draw_field_text((4, 5), 'b', ui._tone_color('red', True))
+    ui._draw_field_text((5, 5), "'", ui._tone_color('red', True))
+    sprite, badge = ui._drawables
+    assert badge.color == ui._tone_color('default', True)
 
 
 def test_rank_mark_without_sprite_stays_text(sprite_ui):

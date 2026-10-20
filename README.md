@@ -58,7 +58,7 @@ red low-LP warnings. While the player is
 poisoned, the upper-right half of its disc turns purple. Likewise, a boss you can
 defeat (one that unlocks a treasure chest) has a blue disc whose upper-right
 half is yellow. An empowered monster's rank mark (`'` or `"`) becomes raised
-apostrophes in its strength color, floating at the sprite's upper right. Companions stand inside
+white apostrophes (half-bright where the monster is dimmed), floating at the sprite's upper right. Companions stand inside
 a faint green pillar of light that sets them apart from monsters; the companion
 travelling with the player is shown small at the player's right shoulder. An elf
 you have already met is drawn darker, together with its disc. A character in
