@@ -685,3 +685,21 @@ def test_collapse_pit_without_image_stays_yellow_text(sprite_ui):
     sprite_ui._draw_pit((4, 5))
     assert sprite_ui.text_calls[0][1] == d.CHAR_COLLAPSE
     assert not sprite_ui._drawables
+
+
+@pytest.mark.parametrize('scale, pixel_ratio, expected', [
+    (1, 1, (800, 600)),
+    (2, 1, (800, 600)),
+    (4, 1, (400, 300)),
+    (1, 2, (1600, 1200)),
+    (2, 2, (800, 600)),
+    (4, 2, (400, 300)),
+])
+def test_render_target_detail_is_independent_of_pixel_ratio(scale, pixel_ratio, expected):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.scale = scale
+    ui.window = SimpleNamespace(
+        width=800, height=600,
+        get_framebuffer_size=lambda: (800 * pixel_ratio, 600 * pixel_ratio),
+    )
+    assert ui._render_target_dimensions() == expected

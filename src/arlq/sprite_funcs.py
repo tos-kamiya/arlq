@@ -439,13 +439,19 @@ class SpriteUI(PygletUI):
             return get_size()
         return self.window.width, self.window.height
 
-    def _ensure_render_target(self):
+    def _render_target_dimensions(self):
         framebuffer_width, framebuffer_height = self._framebuffer_size()
-        divisor = max(1.0, self.scale / LOW_RESOLUTION_DETAIL_SCALE)
-        target_size = (
+        # HiDPI windows have more framebuffer pixels per window unit; count
+        # them so the detail stays the same on every display.
+        pixel_ratio = framebuffer_width / max(1, self.window.width)
+        divisor = max(1.0, self.scale * pixel_ratio / LOW_RESOLUTION_DETAIL_SCALE)
+        return (
             max(1, round(framebuffer_width / divisor)),
             max(1, round(framebuffer_height / divisor)),
         )
+
+    def _ensure_render_target(self):
+        target_size = self._render_target_dimensions()
         if (target_size == self._render_target_size
                 or target_size == self._failed_render_target_size):
             return
