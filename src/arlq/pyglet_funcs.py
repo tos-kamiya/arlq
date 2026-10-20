@@ -3,6 +3,7 @@ import json
 import math
 import sys
 import time
+from functools import wraps
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
@@ -45,6 +46,43 @@ from . import defs as d
 from . import display as ui_display
 from .arlq import barrier_lp_damage
 from .i18n import t as tr
+
+_FONT_GLYPH_METRICS = {}
+_FONT_METRIC_SAMPLE = "".join(chr(codepoint) for codepoint in range(32, 127))
+
+
+def _font_glyph_metrics(font_name: str, size: int, weight: str) -> Tuple[int, int]:
+    """Return cached maximum glyph dimensions for resize-time font fitting."""
+    key = (font_name, size, weight)
+    metrics = _FONT_GLYPH_METRICS.get(key)
+    if metrics is None:
+        font = pyglet.font.load(font_name, size=size, weight=weight)
+        glyphs, _ = font.get_glyphs(_FONT_METRIC_SAMPLE)
+        metrics = (
+            max(max(glyph.advance, glyph.width) for glyph in glyphs),
+            max(glyph.height for glyph in glyphs),
+        )
+        _FONT_GLYPH_METRICS[key] = metrics
+    return metrics
+
+
+def _menu_method(method):
+    """Keep menu text metrics stable while the resizable game view changes."""
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        was_active = self._menu_active
+        self._menu_active = True
+        if not was_active:
+            self._menu_text_records = []
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            self._menu_active = was_active
+            if not was_active and self._menu_font_resize_pending:
+                self._menu_font_resize_pending = False
+                self._select_font_size()
+
+    return wrapped
 
 # "Courier New" (the game's normal font) has no Japanese glyphs, so a label
 # containing translated text would render as tofu boxes. Rather than
@@ -337,11 +375,17 @@ class PygletUI:
         )
         self.window.set_mouse_visible(False)
 
+        self._menu_active = False
+        self._menu_font_resize_pending = False
+        self._menu_text_records = []
         self._select_font_size()
+        self._menu_scale = self.scale
+        self._update_menu_metrics()
 
         # Lazily resolved (font_name, size_scale) for non-ASCII text; see
         # _non_ascii_font(). None until first computed.
         self._non_ascii_font_result: Optional[Tuple[str, float]] = None
+        self._menu_non_ascii_font_result: Optional[Tuple[str, float]] = None
 
         self.batch = pyglet.graphics.Batch()
         self._drawables: list = []
@@ -445,6 +489,8 @@ class PygletUI:
         """Track the drawable size; resizable frontends can refine this."""
         self.window_width = width
         self.window_height = height
+        if self._menu_active:
+            self._redraw_menu_text()
 
     def _handle_horizontal_view_key(self, symbol: int):
         """Handle Shift+Left/Right when a frontend supports horizontal viewing.
@@ -549,46 +595,47 @@ class PygletUI:
 
     def _select_font_size(self) -> None:
         """Choose a font size that best fits measured glyphs inside a cell."""
-        target_size_x = self.cell_size_x / FONT_WIDTH_RATIO
-        target_size_y = self.cell_size_y / FONT_HEIGHT_RATIO
+        self.font_size = self._font_size_for_cells(
+            self.cell_size_x, self.cell_size_y
+        )
+
+    def _font_size_for_cells(self, cell_size_x: float, cell_size_y: float) -> int:
+        target_size_x = cell_size_x / FONT_WIDTH_RATIO
+        target_size_y = cell_size_y / FONT_HEIGHT_RATIO
         target_font_size = (target_size_x + target_size_y) / 2
         nominal_size = max(1, round(target_font_size))
-        candidate_sizes = range(max(1, nominal_size - 8), nominal_size + 9)
-        sample = "".join(chr(codepoint) for codepoint in range(32, 127))
-        candidates = []
+        candidate_sizes = sorted(
+            range(max(1, nominal_size - 8), nominal_size + 9),
+            key=lambda size: (abs(size - target_font_size), size),
+        )
         try:
             for size in candidate_sizes:
                 glyph_width = 0
                 glyph_height = 0
                 for weight in ("normal", "bold"):
-                    font = pyglet.font.load(
-                        self.font_name, size=size, weight=weight
+                    width, height = _font_glyph_metrics(
+                        self.font_name, size, weight
                     )
-                    glyphs, _ = font.get_glyphs(sample)
-                    glyph_width = max(
-                        glyph_width,
-                        *(max(glyph.advance, glyph.width) for glyph in glyphs),
-                    )
-                    glyph_height = max(
-                        glyph_height, *(glyph.height for glyph in glyphs)
-                    )
-                fits = (
-                    glyph_width <= self.cell_size_x
-                    and glyph_height <= self.cell_size_y
-                )
-                candidates.append(
-                    (
-                        not fits,
-                        abs(size - target_font_size),
-                        size,
-                    )
-                )
+                    glyph_width = max(glyph_width, width)
+                    glyph_height = max(glyph_height, height)
+                if glyph_width <= cell_size_x and glyph_height <= cell_size_y:
+                    return size
         except Exception:
             # Keep the nominal size if this platform cannot expose glyph metrics.
-            return
+            return nominal_size
 
-        if candidates:
-            self.font_size = min(candidates)[-1]
+        # No candidate fit; use the closest size as before.
+        return min(
+            candidate_sizes, key=lambda size: (abs(size - target_font_size), size)
+        )
+
+    def _update_menu_metrics(self) -> None:
+        self._menu_cell_size_x = max(1, round(CELL_SIZE_X * self._menu_scale))
+        self._menu_cell_size_y = max(1, round(CELL_SIZE_Y * self._menu_scale))
+        self._menu_font_size = self._font_size_for_cells(
+            self._menu_cell_size_x, self._menu_cell_size_y
+        )
+        self._menu_non_ascii_font_result = None
 
     def set_scale(self, scale: float, save: bool = True) -> None:
         """Resize the GUI and its grid cells without changing gameplay."""
@@ -597,11 +644,14 @@ class PygletUI:
         self._prepare_window_resize()
         self._non_ascii_font_result = None
         self._select_font_size()
+        self._menu_scale = self.scale
+        self._update_menu_metrics()
         self.window.set_size(self.window_width, self.window_height)
         self._update_minimum_window_size()
         # Process the resize immediately.  Otherwise the stage-selection
         # screen can be drawn with the old viewport until the next key event.
         self.window.dispatch_events()
+        self._menu_font_resize_pending = False
         if save:
             save_ui_scale(self.scale)
 
@@ -637,9 +687,19 @@ class PygletUI:
         return color
 
     def _clear_drawables(self):
+        if self._menu_active:
+            self._menu_text_records = []
         for obj in self._drawables:
             obj.delete()
         self._drawables = []
+
+    def _redraw_menu_text(self) -> None:
+        """Rebuild the active menu at the saved display scale after resizing."""
+        records = list(self._menu_text_records)
+        self._clear_drawables()
+        for args in records:
+            self._draw_text(*args)
+        self._flip()
 
     def _draw_object(self, signature, factory):
         """Create and track a drawable; sprite mode can retain matching objects."""
@@ -668,17 +728,26 @@ class PygletUI:
         Draws text at the grid cell defined by pos, optionally nudged by
         pixel offsets (used for inset text and non-grid HUD rows).
         """
+        if self._menu_active:
+            self._menu_text_records.append(
+                (pos, text, color, bold, x_offset, size_scale, group, y_offset)
+            )
+        cell_size_x = self._menu_cell_size_x if self._menu_active else self.cell_size_x
+        cell_size_y = self._menu_cell_size_y if self._menu_active else self.cell_size_y
+        base_font_size = self._menu_font_size if self._menu_active else self.font_size
         font_size: float
         if text.isascii():
-            font_name, font_size = self.font_name, self.font_size * size_scale
+            font_name, font_size = self.font_name, base_font_size * size_scale
         else:
-            non_ascii_font_name, non_ascii_size_scale = self._non_ascii_font()
+            non_ascii_font_name, non_ascii_size_scale = self._non_ascii_font(
+                base_font_size
+            )
             font_name, font_size = (
                 non_ascii_font_name,
-                self.font_size * non_ascii_size_scale * size_scale,
+                base_font_size * non_ascii_size_scale * size_scale,
             )
-        x = pos[0] * self.cell_size_x + x_offset
-        y = self.window_height - pos[1] * self.cell_size_y + y_offset
+        x = pos[0] * cell_size_x + x_offset
+        y = self.window_height - pos[1] * cell_size_y + y_offset
         label_color = (*self._display_color(color), 255)
         signature = ("label", text, font_name, font_size, "bold" if bold else "normal",
                      x, y, label_color, id(group) if group is not None else None)
@@ -715,7 +784,9 @@ class PygletUI:
     def _draw_floor_label_panel(self, label, x, width):
         """Draw an optional background beneath the floor label."""
 
-    def _non_ascii_font(self) -> Tuple[str, float]:
+    def _non_ascii_font(
+        self, base_font_size: Optional[float] = None
+    ) -> Tuple[str, float]:
         """Resolve the font (and a matching font-size scale) for non-ASCII
         text, trying generic family names in order: "monospace", then
         "sans-serif". These are resolved by the OS's own font substitution
@@ -728,26 +799,41 @@ class PygletUI:
         computed from actual font metrics rather than a fixed constant, so
         it adapts to whichever font actually gets resolved.
         """
-        if self._non_ascii_font_result is not None:
-            return self._non_ascii_font_result
+        use_menu_cache = (
+            self._menu_active and base_font_size == self._menu_font_size
+        )
+        if base_font_size is None:
+            base_font_size = self.font_size
+        cached_result = (
+            self._menu_non_ascii_font_result
+            if use_menu_cache
+            else self._non_ascii_font_result
+        )
+        if cached_result is not None:
+            return cached_result
 
         result = (self.font_name, 1.0)
         try:
-            base_ascent = pyglet.font.load(self.font_name, size=self.font_size).ascent
+            base_ascent = pyglet.font.load(
+                self.font_name, size=base_font_size
+            ).ascent
         except Exception:
             base_ascent = None
 
         if base_ascent:
             for candidate in NON_ASCII_FONT_CANDIDATES:
                 try:
-                    font = pyglet.font.load(candidate, size=self.font_size)
+                    font = pyglet.font.load(candidate, size=base_font_size)
                 except Exception:
                     continue
                 scale = base_ascent / font.ascent if font.ascent else 1.0
                 result = (candidate, scale)
                 break
 
-        self._non_ascii_font_result = result
+        if use_menu_cache:
+            self._menu_non_ascii_font_result = result
+        else:
+            self._non_ascii_font_result = result
         return result
 
     def _field_col_x(self, col: int) -> int:
@@ -1140,12 +1226,15 @@ class PygletUI:
     def _text_width(self, text: str, bold: bool = False, size_scale: float = 1.0) -> int:
         font_name: str
         font_size: float
+        base_font_size = self._menu_font_size if self._menu_active else self.font_size
         if text.isascii():
-            font_name, font_size = self.font_name, self.font_size * size_scale
+            font_name, font_size = self.font_name, base_font_size * size_scale
         else:
-            non_ascii_font_name, non_ascii_size_scale = self._non_ascii_font()
+            non_ascii_font_name, non_ascii_size_scale = self._non_ascii_font(
+                base_font_size
+            )
             font_name = non_ascii_font_name
-            font_size = self.font_size * non_ascii_size_scale * size_scale
+            font_size = base_font_size * non_ascii_size_scale * size_scale
         label = pyglet.text.Label(
             text,
             font_name=font_name,
@@ -1449,6 +1538,7 @@ class PygletUI:
         """Closes the game window."""
         self.window.close()
 
+    @_menu_method
     def controls_menu(self) -> None:
         """Show controls until the player dismisses the help screen."""
         self._clear_drawables()
@@ -1528,11 +1618,12 @@ class PygletUI:
                 return
             time.sleep(1 / 30)
 
+    @_menu_method
     def settings_menu(self) -> None:
         """Show GUI settings and persist the selected display and input options."""
         current_index = min(
             range(len(UI_SCALE_CHOICES)),
-            key=lambda index: abs(UI_SCALE_CHOICES[index] - self.scale),
+            key=lambda index: abs(UI_SCALE_CHOICES[index] - self._menu_scale),
         )
 
         repeat_index = KEY_REPEAT_CHOICES.index(self.key_repeat_interval) if self.key_repeat_interval in KEY_REPEAT_CHOICES else 0
@@ -1565,7 +1656,7 @@ class PygletUI:
                 x_offset=self._text_width(
                     scale_heading,
                     bold=row == 0,
-                ) + self.cell_size_x,
+                ) + self._menu_cell_size_x,
             )
             repeat_label = tr("Movement repeat interval")
             repeat_heading = f"{'>' if row == 1 else ' '} {repeat_label}"
@@ -1583,7 +1674,7 @@ class PygletUI:
                 x_offset=self._text_width(
                     repeat_heading,
                     bold=row == 1,
-                ) + self.cell_size_x,
+                ) + self._menu_cell_size_x,
             )
             stop_label = tr("Automatic repeat stop")
             stop_heading = f"{'>' if row == 2 else ' '} {stop_label}"
@@ -1601,7 +1692,7 @@ class PygletUI:
                 x_offset=self._text_width(
                     stop_heading,
                     bold=row == 2,
-                ) + self.cell_size_x,
+                ) + self._menu_cell_size_x,
             )
             gamepad_label = tr("Gamepad button settings")
             gamepad_heading = f"{'>' if row == 3 else ' '} {gamepad_label}"
@@ -1622,7 +1713,7 @@ class PygletUI:
                 x_offset=self._text_width(
                     gamepad_heading,
                     bold=row == 3,
-                ) + self.cell_size_x,
+                ) + self._menu_cell_size_x,
             )
             help_color = (145, 150, 160)
             self._draw_text(
@@ -1714,6 +1805,7 @@ class PygletUI:
                 if 1 in getattr(self, "_gamepad_pressed_buttons", ()):
                     return
 
+    @_menu_method
     def gamepad_button_settings_menu(self) -> None:
         """Configure gamepad mode buttons while keeping menu controls fixed."""
         if not self._gamepad_is_connected():
@@ -1753,7 +1845,7 @@ class PygletUI:
                         COLOR_MAP["default"],
                         bold=row == index,
                         x_offset=self._text_width(heading, bold=row == index)
-                        + self.cell_size_x,
+                        + self._menu_cell_size_x,
                     )
             help_color = (145, 150, 160)
             self._draw_text(
@@ -1861,6 +1953,7 @@ class PygletUI:
                 if 1 in pressed_buttons:
                     return
 
+    @_menu_method
     def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         """
         Displays a stage selection menu where the user can navigate with arrow keys or D-pad,
@@ -1919,6 +2012,12 @@ class PygletUI:
                 self._pump()
                 if self._closed:
                     return 0
+                # SpriteUI recalculates its cell and camera dimensions in the
+                # resize callback. Rebuild this menu as soon as that callback
+                # has run, rather than waiting for a key press to redraw it.
+                if getattr(self, "_resize_redraw_pending", False):
+                    self._resize_redraw_pending = False
+                    break
 
                 if 0 in getattr(self, "_gamepad_pressed_buttons", ()):
                     if current_index == 0:
