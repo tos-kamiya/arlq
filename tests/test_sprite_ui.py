@@ -826,3 +826,129 @@ def test_floor_copies_do_not_cover_fog_special_cells_or_the_odd_field_edge(cache
     assert {(sprite.x, sprite.y) for sprite in ui._drawables} == {
         (0, 460), (26, 420), (last_x * 26, 460), (last_x * 26, 420),
     }
+
+
+@pytest.mark.parametrize('left,width,visible', [
+    (-101, 100, False), (-100, 100, True), (-10, 20, True),
+    (90, 20, True), (100, 10, True), (100.25, 10, True), (101, 10, False),
+])
+def test_horizontal_culling_preserves_edge_overlap(sprite_ui, left, width, visible):
+    ui = sprite_ui
+    ui.window_width = 100
+    ui.field_pixel_width = 70  # The sidebar is translucent.
+    calls = []
+    result = ui._draw_bounded_object(left, width, ('test',), lambda: calls.append(1) or 42)
+    assert bool(calls) == visible
+    assert result == (42 if visible else None)
+
+
+def test_offscreen_body_keeps_visible_rank_mark(sprite_ui):
+    ui = sprite_ui
+    ui.window_width = 100
+    # A small body just beyond the left edge, with a rank mark reaching inside.
+    ui._horizontal_scroll_px = 13 * 4 + 6.5 + 3
+    ui._sprite_images['b'] = SimpleNamespace(width=10, height=20)
+    ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
+    assert not ui._drawables
+    assert (4, 5) in ui._sprite_cells
+    ui._draw_field_text((5, 5), "'", (220, 82, 82), True)
+    assert len(ui._drawables) == 1
+    assert ui._drawables[0].image is ui._mark_images["'"]
+    assert not ui.text_calls
+
+
+def test_large_sprite_with_offscreen_cell_is_retained(sprite_ui):
+    ui = sprite_ui
+    ui.window_width = 100
+    ui._horizontal_scroll_px = 80
+    ui._sprite_images['D'] = SimpleNamespace(width=600, height=220)
+    ui._draw_field_text((4, 5), 'D', (220, 82, 82), True)
+    assert len(ui._drawables) == 1
+    assert ui._drawables[0].x < 0
+    assert ui._drawables[0].x + 600 * ui._drawables[0].scale > 0
+
+
+def test_tile_columns_keep_checkerboard_alignment_and_terrain_margin(sprite_ui):
+    ui = sprite_ui
+    ui.window_width = 100
+    ui._horizontal_scroll_px = 200.5
+    columns = ui._field_draw_columns(79)
+    assert columns.start % 2 == columns.stop % 2 == 0
+    assert 0 < columns.start < columns.stop < 79
+    # Include a stair disc whose centre lies outside either window edge.
+    for x in range(79):
+        centre = ui._field_col_x(x) + ui.cell_size_x / 2
+        radius = sprite_funcs.GROUND_DISC_RADIUS * ui._sprite_unit()
+        if centre + radius >= 0 and centre - radius <= ui.window_width:
+            assert x in columns
+    assert list(PygletUI._field_draw_columns(ui, 79)) == list(range(79))
+
+
+def test_culled_cached_objects_are_removed_and_created_on_return(sprite_ui):
+    ui = sprite_ui
+    ui.window_width = 100
+    ui._drawable_cache = {}
+    ui._floor_cells = {}
+    objects = []
+
+    def create():
+        obj = SimpleNamespace(deleted=False)
+        obj.delete = lambda: setattr(obj, 'deleted', True)
+        objects.append(obj)
+        return obj
+
+    for left in (10, 200, 10):
+        ui._clear_drawables()
+        ui._draw_bounded_object(left, 20, ('test', left), create)
+        ui._finish_drawables()
+    assert len(objects) == 2
+    assert objects[0].deleted
+    assert not objects[1].deleted
+    assert ui._drawables == [objects[1]]
+
+
+def test_visible_disc_is_kept_when_body_is_offscreen(sprite_ui):
+    ui = sprite_ui
+    ui.window_width = 100
+    ui._horizontal_scroll_px = 70
+    ui._sprite_images['b'] = SimpleNamespace(width=10, height=20)
+    ui._disc_image = SimpleNamespace(width=64, height=64)
+    ui._disc_group = 'disc'
+    # Restore the implementation replaced by the fixture.
+    ui._draw_ground_disc = SpriteUI._draw_ground_disc.__get__(ui)
+    ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
+    assert len(ui._drawables) == 1
+    assert ui._drawables[0].image is ui._disc_image
+
+
+def test_floor_culling_keeps_full_blocks_at_window_edges(cached_floor_ui):
+    ui = cached_floor_ui
+    ui.window_width = 65
+    ui._horizontal_scroll_px = 100.5
+    for y in range(2):
+        for x in ui._field_draw_columns(79):
+            ui._draw_floor(x, y, sprite_funcs.VISIBLE_FLOOR, None, None)
+    ui._draw_floor_tiles()
+    assert len(ui._drawables) == 3
+    assert all(obj.image is ui._floor_tiles[sprite_funcs.VISIBLE_FLOOR, False]
+               for obj in ui._drawables)
+    assert ui._drawables[0].x < 0
+    assert ui._drawables[-1].x + 52 > ui.window_width
+
+
+def test_offscreen_terrain_still_reads_neighbors(sprite_ui):
+    ui = sprite_ui
+    ui.window_width = 100
+    ui._horizontal_scroll_px = 31
+    ui._terrain_images = {d.CHAR_COLLAPSE: SimpleNamespace(width=450, height=500)}
+    ui._terrain_regions = {}
+    ui._stage_field = [[d.CHAR_FLOOR, d.CHAR_COLLAPSE, d.CHAR_FLOOR]]
+    ui._stage_discovered_at = lambda x, y: True
+    ui._cur_torched = [[1, 1, 1]]
+    # The pit's own cell ends offscreen, but its right overhang reaches inside.
+    ui._draw_pit((1, 0))
+    assert len(ui._drawables) == 0  # right edge 29.25 is still left of 31
+    ui._horizontal_scroll_px = 28
+    ui._draw_pit((1, 0))
+    assert len(ui._drawables) == 1
+    assert ui._drawables[0].image is ui._terrain_images[d.CHAR_COLLAPSE]
