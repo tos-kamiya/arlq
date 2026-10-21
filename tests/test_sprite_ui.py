@@ -656,11 +656,17 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     ui._frame_drawable_cache = None
     ui._reused_drawable_ids = set()
     ui._display_color = lambda color: color
-    ui._terrain_images = {char: SimpleNamespace(width=260, height=500, char=char)
+    ui._terrain_images = {char: SimpleNamespace(width=450, height=600, char=char)
                           for char in sprite_funcs.TERRAIN_FILES}
+    ui._terrain_regions = {}
+    ui._stage_field = [[' ', ' ']]
+    ui._stage_discovered_at = lambda x, y: True
     ui._cur_torched = [[1, 0]]
     ui._disc_image = SimpleNamespace(width=64, height=64, char='disc')
     ui._disc_group = object()
+    for image in ui._terrain_images.values():
+        image.get_region = lambda x, y, w, h, image=image: SimpleNamespace(
+            width=w, height=h, char=image.char, region=(x, x + w))
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     ui._draw_stairs((0, 0), char)
@@ -675,9 +681,26 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     assert visible.image.char == char
     assert visible.color == sprite_funcs.TERRAIN_TINT
     assert sum(explored.color) < sum(visible.color)
-    # Placed like a wall part: one cell plus the band it rises into.
-    assert visible.y == 480 and visible.image.height * visible.scale_y == pytest.approx(25)
+    # One cell plus half a cell into the north band. Each flight spreads a
+    # quarter cell over the explored floor beside it and is cropped at the
+    # map edge on its other side.
+    assert visible.y == 480 and visible.image.height * visible.scale_y == pytest.approx(30)
+    assert visible.image.region == (75, 450) and visible.x == 0
+    assert visible.image.width * visible.scale_x == pytest.approx(13 * 1.25)
+    assert explored.image.region == (0, 375)
+    assert explored.x == pytest.approx(13 - 13 * sprite_funcs.TERRAIN_SIDE)
     assert visible.group is ui._row_group(0, layer)
+
+
+@pytest.mark.parametrize('neighbour, discovered, spreads', [
+    (' ', True, True), (' ', False, False), ('#', True, False), ('^', True, False)])
+def test_stairs_spread_only_over_explored_plain_floor(neighbour, discovered, spreads):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._stage_field = [[neighbour, '^', ' ']]
+    ui._stage_discovered_at = lambda x, y: discovered or x != 0
+    assert ui._open_floor(0, 0) == spreads
+    assert ui._open_floor(2, 0)
+    assert not ui._open_floor(3, 0)
 
 
 def test_stairs_without_images_stay_yellow_text(sprite_ui):
@@ -698,16 +721,24 @@ def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui._frame_drawable_cache = None
     ui._reused_drawable_ids = set()
     ui._display_color = lambda color: color
-    ui._terrain_images = {char: SimpleNamespace(width=260, height=500, char=char)
+    ui._terrain_images = {char: SimpleNamespace(width=450, height=500, char=char)
                           for char in sprite_funcs.TERRAIN_FILES}
-    ui._cur_torched = [[1]]
+    ui._terrain_regions = {}
+    ui._stage_field = [[' ', d.CHAR_COLLAPSE, ' ']]
+    ui._stage_discovered_at = lambda x, y: True
+    ui._cur_torched = [[1, 1, 1]]
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
-    ui._draw_pit((0, 0))
+    ui._draw_pit((1, 0))
     pit, = ui._drawables
     assert pit.image.char == d.CHAR_COLLAPSE
     assert pit.color == sprite_funcs.TERRAIN_TINT
     assert pit.group is ui._row_group(0, 'wall')
+    # Spread a quarter cell over the floor on both sides, and a quarter cell
+    # into the band to the north, like a wall part.
+    assert pit.x == pytest.approx(13 - 13 * sprite_funcs.TERRAIN_SIDE)
+    assert pit.image.width * pit.scale_x == pytest.approx(13 * 1.5)
+    assert pit.y == 480 and pit.image.height * pit.scale_y == pytest.approx(25)
 
 
 def test_collapse_pit_without_image_stays_yellow_text(sprite_ui):

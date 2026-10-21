@@ -184,6 +184,12 @@ TERRAIN_FILES = {d.CHAR_STAIRS_UP: 'stairs/stairs-up.png',
                  d.CHAR_STAIRS_DOWN: 'stairs/stairs-down.png',
                  d.CHAR_COLLAPSE: 'pit/pit.png'}
 TERRAIN_TINT = (255, 222, 150)
+# Stair and pit images reach TERRAIN_SIDE cells past each side of their cell
+# and TERRAIN_OVERHANG cells into the cell to the north. A side is drawn only
+# where the neighbouring cell is explored plain floor; elsewhere it is
+# cropped away.
+TERRAIN_SIDE = 0.25
+TERRAIN_OVERHANG = {d.CHAR_STAIRS_UP: 0.5, d.CHAR_STAIRS_DOWN: 0.5, d.CHAR_COLLAPSE: 0.25}
 TERRAIN_EXPLORED_SHADE = 0.55
 # Opacity of the yellow ground disc that marks each stair.
 STAIR_DISC_OPACITY = 90
@@ -340,6 +346,9 @@ class SpriteUI(PygletUI):
     # cools the barrier stones around it.
     _cur_torched = None
     _cooling_center = None
+    # The field being drawn, for stairs and pits that spread over neighbouring floor.
+    _stage_field = None
+    _stage_discovered_at = None
 
     def __init__(self, scale=None, key_repeat_interval=None):
         self._last_stage_draw = None
@@ -400,6 +409,7 @@ class SpriteUI(PygletUI):
         self._terrain_images = {char: mipmapped(pyglet.image.load(str(assets / filename)))
                                 for char, filename in TERRAIN_FILES.items()
                                 if (assets / filename).is_file()}
+        self._terrain_regions = {}
         self._flame_images = [flame_image(variant) for variant in (0, 1)]
         self._smoke_images = [smoke_image(flame) for flame in self._flame_images]
         self._floor_group = pyglet.graphics.Group(order=-1)
@@ -730,12 +740,19 @@ class SpriteUI(PygletUI):
         # The up flight rises into the cell to the north, like a column.
         self._draw_terrain(pos, char, 'column' if char == d.CHAR_STAIRS_UP else 'wall')
 
+    def _open_floor(self, x, y):
+        field = self._stage_field
+        return (field is not None and 0 <= y < len(field) and 0 <= x < len(field[y])
+                and field[y][x] == d.CHAR_FLOOR and self._stage_discovered_at(x, y))
+
     def _draw_pit(self, pos):
         if d.CHAR_COLLAPSE not in self._terrain_images:
             return super()._draw_pit(pos)
         self._draw_terrain(pos, d.CHAR_COLLAPSE, 'wall')
 
     def _draw_terrain(self, pos, char, layer):
+        """Draw a terrain image over its cell, spreading over the explored
+        plain floor beside it."""
         x, y = pos
         image = self._terrain_images[char]
         visible = self._cur_torched is not None and self._cur_torched[y][x]
@@ -744,8 +761,13 @@ class SpriteUI(PygletUI):
         draw_tint = self._display_color(tuple(round(c * shade) for c in base))
         left = self._field_col_x(x)
         bottom = self.window_height - (y + 1) * self.cell_size_y
-        scale_x = (self._field_col_width(x) + 1) / image.width
-        scale_y = (1 + WALL_OVERHANG) * self.cell_size_y / image.height
+        sides = self._open_floor(x - 1, y), self._open_floor(x + 1, y)
+        cell_pixels = image.width / (1 + 2 * TERRAIN_SIDE)
+        image = self._terrain_region(char, image, sides, round(TERRAIN_SIDE * cell_pixels))
+        if sides[0]:
+            left -= TERRAIN_SIDE * self.cell_size_x
+        scale_x = self.cell_size_x / cell_pixels
+        scale_y = (1 + TERRAIN_OVERHANG[char]) * self.cell_size_y / image.height
         group = self._row_group(y, layer)
         signature = ('sprite', id(image), left, bottom, scale_x, scale_y, id(group), draw_tint)
         terrain = self._draw_object(
@@ -757,7 +779,20 @@ class SpriteUI(PygletUI):
         self._set_drawable_attribute(terrain, 'scale_y', scale_y)
         self._set_drawable_attribute(terrain, 'color', draw_tint)
 
+    def _terrain_region(self, char, image, sides, side_pixels):
+        """The terrain image less each side that may not spread, kept for reuse."""
+        if all(sides):
+            return image
+        key = char, sides
+        if key not in self._terrain_regions:
+            x0 = 0 if sides[0] else side_pixels
+            x1 = image.width - (0 if sides[1] else side_pixels)
+            self._terrain_regions[key] = image.get_region(x0, 0, x1 - x0, image.height)
+        return self._terrain_regions[key]
+
     def _draw_tile(self, x, y, tile_color, field, discovered_at):
+        # Stairs and pits drawn after this cell look at their neighbours through these.
+        self._stage_field, self._stage_discovered_at = field, discovered_at
         if (field[y][x] == d.CHAR_BARRIER and discovered_at(x, y)
                 and tile_color != REACHABLE_CELL_COLOR and self._floor_images is not None):
             return self._draw_barrier(x, y, field, discovered_at)

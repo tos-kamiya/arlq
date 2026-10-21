@@ -4,9 +4,9 @@ Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-
 
 A Collapse pit (O) is a jagged hole broken through the flagstones: cracked
 slabs sag toward a dark shaft, with a few chunks falling into it. It is
-rendered with the walls' 60-degree orthographic camera on the walls' canvas
-(one cell plus the 0.25-cell band north of it), so the GUI places it like a
-stair. The slabs are a cool grey that the GUI's gold tint (the pit glyph was
+rendered with the walls' 60-degree orthographic camera, 1.2 times its
+original size, on a canvas that also reaches past each side of the cell, so
+the GUI places it like a stair. The slabs are a cool grey that the GUI's gold tint (the pit glyph was
 yellow) turns close to the floor's warm grey.
 """
 from pathlib import Path
@@ -20,11 +20,23 @@ from mathutils import Euler, Vector
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'pit'
 OUT.mkdir(parents=True, exist_ok=True)
-WIDTH, HEIGHT = 260, 500
+# The canvas covers one 15 x 20 px cell, 0.25 cells past each side (drawn by
+# the GUI only over explored floor) and the 0.25-cell band north of it
+# (sprite_funcs.TERRAIN_SIDE, TERRAIN_OVERHANG).
+CELL_PIXELS = (300, 400)  # 15 x 20 at 20 px per screen pixel
+SIDE, OVERHANG = 0.25, 0.25
+WIDTH = round(CELL_PIXELS[0] * (1 + 2 * SIDE))
+HEIGHT = round(CELL_PIXELS[1] * (1 + OVERHANG))
 ELEVATION = math.radians(60)
-OVERHANG = 0.25
-CELL_UP = (HEIGHT / WIDTH) / (1 + OVERHANG)  # cell height on the image plane
+CELL_UP = CELL_PIXELS[1] / CELL_PIXELS[0]  # cell height on the image plane
 DEPTH = CELL_UP / math.sin(ELEVATION)  # the cell spans y = 0 (south) to DEPTH
+# The hole's radii as fractions of the cell's width and depth (its size on
+# the original 13 x 20 cells), enlarged by PIT_SCALE; its centre sits this
+# fraction of the depth north of the cell's middle, so the larger slabs stay
+# within the canvas.
+HOLE_RADII = (0.36 * 13 / 15, 0.36)
+PIT_SCALE = 1.2
+PIT_NORTH = 0.12
 SLAB_COLOR = (0.14, 0.15, 0.27)
 EDGE_POINTS = 20
 
@@ -95,14 +107,15 @@ ground = holdout('Ground')
 # both irregular ellipses about the cell centre (the y radius is larger so
 # the hole looks round on the cell, which is taller than wide on screen).
 rng = random.Random(7)
-cy = DEPTH / 2
+cy = DEPTH * (0.5 + PIT_NORTH)
+rx, ry = PIT_SCALE * HOLE_RADII[0], PIT_SCALE * HOLE_RADII[1] * DEPTH
 hole, rim = [], []
 for i in range(EDGE_POINTS):
     a = 2 * math.pi * i / EDGE_POINTS
     r = 1 + rng.uniform(-0.16, 0.12)
-    hole.append((0.36 * r * math.cos(a), cy + 0.64 * r * math.sin(a)))
+    hole.append((rx * r * math.cos(a), cy + ry * r * math.sin(a)))
     s = r * rng.uniform(1.18, 1.28)
-    rim.append((0.36 * s * math.cos(a), cy + 0.64 * s * math.sin(a)))
+    rim.append((rx * s * math.cos(a), cy + ry * s * math.sin(a)))
 hole_z, rim_z, shaft_z = -0.07, 0.0, -0.6
 
 # Broken slabs: two rim segments each, shrunk toward their centre so the
@@ -140,10 +153,11 @@ mesh_object('Ground', [[Vector((*rim[i], 0.001)), Vector((*rim[(i + 1) % EDGE_PO
                        for i in range(EDGE_POINTS)], ground)
 
 # A few chunks falling into the dark.
-for n, (x, y, z, size) in enumerate(((-0.08, cy + 0.10, -0.22, 0.10),
-                                     (0.10, cy - 0.12, -0.32, 0.08),
-                                     (0.02, cy + 0.28, -0.40, 0.06))):
-    bpy.ops.mesh.primitive_cube_add(size=size, location=(x, y, z))
+for n, (x, y, z, size) in enumerate(((-0.08, 0.10, -0.22, 0.10),
+                                     (0.10, -0.12, -0.32, 0.08),
+                                     (0.02, 0.28, -0.40, 0.06))):
+    bpy.ops.mesh.primitive_cube_add(size=PIT_SCALE * size,
+                                    location=(PIT_SCALE * x, cy + PIT_SCALE * y, z))
     chunk = bpy.context.object
     chunk.name = 'Chunk %d' % n
     chunk.scale = (1.3, 1.0, 0.45)
@@ -162,7 +176,7 @@ for pos, power, size, color in [((-3, 3, 9), 420, 5, (1.0, 0.93, 0.85)),
     light.rotation_euler = (Vector((0, 0, 0)) - light.location).to_track_quat('-Z', 'Y').to_euler()
 
 # Frame the canvas from the cell's south edge on the ground (image-plane
-# up = 0) to OVERHANG cells above its north edge.
+# up = 0) to OVERHANG cells above its north edge, SIDE cells past each side.
 height = CELL_UP * (1 + OVERHANG)
 view = Vector((0, math.cos(ELEVATION), -math.sin(ELEVATION)))
 image_up = Vector((0, math.sin(ELEVATION), math.cos(ELEVATION)))
@@ -170,7 +184,7 @@ bpy.ops.object.camera_add(location=image_up * (height / 2) - view * 20)
 camera = bpy.context.object
 camera.rotation_euler = view.to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = height  # the canvas is taller than wide
+camera.data.ortho_scale = max(height, 1 + 2 * SIDE)
 scene.camera = camera
 
 scene.render.use_freestyle = True
