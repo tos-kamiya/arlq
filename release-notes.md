@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 5.8.5 - 2026-10-21
+
+- Widen the sprite GUI's field cells (13 to 15 px at scale 1) so characters
+  overflow their cells less; sprites, ground discs and the strength column
+  keep their size.
+- Open the sprite GUI window at about 16:9, showing part of the field and
+  scrolling with the player.
+- Size the strength sidebar labels and spacing to fit the HUD text, and draw
+  checkerboard floors faster from a cached fixed pixel grid.
+
 ## 5.8.4 - 2026-10-20
 
 - Clarify sprite GUI resizing: field zoom follows window height while the HUD
