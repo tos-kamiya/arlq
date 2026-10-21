@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 5.8.6 - 2026-10-21
+
+- Redraw the sprite GUI's stairs as marble plates floating by magic, turning
+  back at a landing: the way up hovers above the floor with shadows beneath,
+  the way down sinks into a dark opening.
+- Draw stairs and Collapse pits larger than their cell, spreading over the
+  explored floor beside them; pits are 1.2 times their former size.
+- Redraw the sprite GUI's walls, floor, stairs and pits for the wider 15:20
+  field cells instead of stretching the former images.
+
 ## 5.8.5 - 2026-10-21
 
 - Widen the sprite GUI's field cells (13 to 15 px at scale 1) so characters
