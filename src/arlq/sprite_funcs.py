@@ -87,8 +87,14 @@ FIELD_TEXT_RAISE = 0.1
 # overflow their row).
 STRENGTH_SPRITE_CELLS = 2
 MAX_WINDOW_WIDTH = 32767
+# A new (or rescaled) window is at most this wide relative to its height, so
+# the field is usually wider than the view and scrolls with the player.
+DEFAULT_WINDOW_ASPECT = 16 / 9
 STRENGTH_TEXT_SCALE = 0.7
-# Keep an integer 26x40 pixel grid per field cell at every window size.
+# Field cells are wider than the text GUI's (13) so characters overflow
+# their cells less; sprites and their discs keep the CELL_SIZE_X-based size.
+SPRITE_CELL_SIZE_X = 15
+# Keep an integer 30x40 pixel grid per field cell at every window size.
 LOW_RESOLUTION_DETAIL_SCALE = 2.0
 MIPMAP_LOD_BIAS = -1.0
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
@@ -415,7 +421,7 @@ class SpriteUI(PygletUI):
         if self._floor_images is None:
             return
         gl = pyglet.gl
-        cell_width = round(CELL_SIZE_X * LOW_RESOLUTION_DETAIL_SCALE)
+        cell_width = round(SPRITE_CELL_SIZE_X * LOW_RESOLUTION_DETAIL_SCALE)
         cell_height = round(CELL_SIZE_Y * LOW_RESOLUTION_DETAIL_SCALE)
         width, height = 2 * cell_width, 2 * cell_height
         texture = pyglet.image.Texture.create(
@@ -718,7 +724,7 @@ class SpriteUI(PygletUI):
         # so stairs stand out.
         self._draw_ground_disc(self._field_col_x(x) + self.cell_size_x / 2,
                                (y + 0.5) * self.cell_size_y,
-                               GROUND_DISC_RADIUS * self.cell_size_x,
+                               GROUND_DISC_RADIUS * self._sprite_unit(),
                                tuple(round(c * shade) for c in COLOR_MAP[CI_YELLOW]),
                                opacity=STAIR_DISC_OPACITY)
         # The up flight rises into the cell to the north, like a column.
@@ -893,19 +899,33 @@ class SpriteUI(PygletUI):
 
     def _set_scaled_dimensions(self):
         super()._set_scaled_dimensions()
+        self.cell_size_x = max(1, round(SPRITE_CELL_SIZE_X * self.scale))
+        self.field_pixel_width = self.field_width * self.cell_size_x
         self._select_font_size()
         self._update_strength_column_width()
         self._map_pixel_width = self.field_pixel_width
-        self.field_pixel_width = self._map_pixel_width
-        self.window_width = self._map_pixel_width + self.strength_column_width
         if hasattr(self, '_hud_row_height'):
             self._hud_row_height = self._row_height_for_width(self.window_width)
             self.window_height = round(
                 self.field_height * self.cell_size_y + 2 * self._hud_row_height
             )
+        self.window_width = min(
+            self._map_pixel_width + self.strength_column_width,
+            round(self.window_height * DEFAULT_WINDOW_ASPECT),
+        )
+        self.field_pixel_width = max(
+            self.cell_size_x, self.window_width - self.strength_column_width
+        )
         self._horizontal_scroll_px = 0
         self._camera_follow_player = True
         self._last_camera_player_pos = None
+
+    def _sprite_unit(self):
+        """Width that sizes characters, discs and the sidebar (not field cells)."""
+        return CELL_SIZE_X * self.scale
+
+    def _select_font_size(self):
+        self.font_size = self._font_size_for_cells(self._sprite_unit(), self.cell_size_y)
 
     def _row_height_for_width(self, width):
         return self._menu_cell_size_y
@@ -925,9 +945,9 @@ class SpriteUI(PygletUI):
                 for weight in ('normal', 'bold')
             )
         except (AttributeError, OSError, RuntimeError, ValueError):
-            text_width = 2 * self.cell_size_x * self._strength_text_scale()
+            text_width = 2 * self._sprite_unit() * self._strength_text_scale()
         self.strength_column_width = math.ceil(
-            text_width + STRENGTH_SPRITE_CELLS * self.cell_size_x
+            text_width + STRENGTH_SPRITE_CELLS * self._sprite_unit()
             + 2 * self.strength_column_padding
         )
 
@@ -947,7 +967,7 @@ class SpriteUI(PygletUI):
             (2 * STRENGTH_TEXT_SCALE + STRENGTH_SPRITE_CELLS) * max_cell_width
             + 2 * max_padding
         )
-        minimum_width = math.ceil(max_strength_width + max_cell_width)
+        minimum_width = math.ceil(max_strength_width + SPRITE_CELL_SIZE_X * MAX_UI_SCALE)
         minimum_height = math.ceil(
             self.field_height * CELL_SIZE_Y * MIN_UI_SCALE
             + 2 * self._menu_cell_size_y
@@ -1091,7 +1111,7 @@ class SpriteUI(PygletUI):
             self.scale = self._valid_scale(
                 field_pixel_height / (self.field_height * CELL_SIZE_Y)
             )
-        self.cell_size_x = CELL_SIZE_X * self.scale
+        self.cell_size_x = SPRITE_CELL_SIZE_X * self.scale
         self.cell_size_y = self.scale * CELL_SIZE_Y
         self.font_size = max(1, round(self.cell_size_y * FONT_HEIGHT_RATIO))
         self.strength_column_padding = max(
@@ -1109,7 +1129,9 @@ class SpriteUI(PygletUI):
         return col * self.cell_size_x - getattr(self, '_horizontal_scroll_px', 0)
 
     def _field_text_x_offset(self):
-        return -getattr(self, '_horizontal_scroll_px', 0)
+        # Text is sized for a CELL_SIZE_X-wide cell; center it in the wider one.
+        return ((self.cell_size_x - self._sprite_unit()) / 2
+                - getattr(self, '_horizontal_scroll_px', 0))
 
     def _horizontal_scroll_bounds(self):
         if self.field_pixel_width >= self._map_pixel_width:
@@ -1165,9 +1187,9 @@ class SpriteUI(PygletUI):
             return
         images = self._gray_images if self.map_mode else self._sprite_images
         picture = images[base]
-        box_width = STRENGTH_SPRITE_CELLS * self.cell_size_x
+        box_width = STRENGTH_SPRITE_CELLS * self._sprite_unit()
         padding = max(1, round(self.scale))
-        scale = 1.8 * max(1, self.cell_size_x - 2 * padding) / SPRITE_REFERENCE_PIXELS
+        scale = 1.8 * max(1, self._sprite_unit() - 2 * padding) / SPRITE_REFERENCE_PIXELS
         cx = (self.field_pixel_width + self.strength_column_width
               - self.strength_column_padding - box_width / 2)
         cy = self.window_height - (row + 0.5) * self.cell_size_y
@@ -1312,9 +1334,10 @@ class SpriteUI(PygletUI):
         image = self._mark_images[mark]
         size = self._sprite_cells[pos]
         padding = max(1, round(self.scale))
-        scale = size * 1.8 * max(1, self.cell_size_x - 2 * padding) / SPRITE_REFERENCE_PIXELS
+        scale = size * 1.8 * max(1, self._sprite_unit() - 2 * padding) / SPRITE_REFERENCE_PIXELS
         dx, dy = (size * offset for offset in MARK_OFFSET)
-        left = self._field_col_x(x) + (0.5 + dx) * self.cell_size_x - image.width * scale / 2
+        left = (self._field_col_x(x) + 0.5 * self.cell_size_x + dx * self._sprite_unit()
+                - image.width * scale / 2)
         bottom = self.window_height - (y + 0.5 - dy) * self.cell_size_y - image.height * scale / 2
         group = self._row_group(y, 'mark')
         # White like the strength column, not the strength color; only the
@@ -1344,7 +1367,7 @@ class SpriteUI(PygletUI):
             return super()._draw_companion_slot(pos, char)
         x, y = pos
         dx, dy = FAMILIAR_OFFSET
-        cx = self._field_col_x(x - 1) + (0.5 + dx) * self.cell_size_x
+        cx = self._field_col_x(x - 1) + 0.5 * self.cell_size_x + dx * self._sprite_unit()
         cy = (y + 0.5 - dy) * self.cell_size_y
         self._place_sprite(char, cx, cy, FAMILIAR_SIZE, y, 'familiar', dimmed=False)
         self._draw_pillar(cx, cy, FAMILIAR_SIZE, y, COLOR_MAP[CI_GREEN], familiar=True)
@@ -1380,7 +1403,7 @@ class SpriteUI(PygletUI):
         # Keep the original semantic color (strength, poison, etc.) readable
         # as a glowing disc on the ground the character stands on.
         color = tuple(round(c * shade) for c in color)
-        self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self.cell_size_x, color,
+        self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self._sprite_unit(), color,
                                upper_right_color)
 
     def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0):
@@ -1388,7 +1411,7 @@ class SpriteUI(PygletUI):
         images = self._gray_images if self.map_mode else self._sprite_images
         picture = images[text]
         padding = max(1, round(self.scale))
-        width = max(1, self.cell_size_x - 2 * padding)
+        width = max(1, self._sprite_unit() - 2 * padding)
         scale = size * 1.8 * width / SPRITE_REFERENCE_PIXELS
         left = cx - picture.width * scale / 2
         bottom = self.window_height - cy - (picture.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale
@@ -1408,13 +1431,13 @@ class SpriteUI(PygletUI):
 
     def _draw_pillar(self, cx, cy, size, row, color, familiar=False):
         """Additive light cylinder around a companion: far wall behind, near wall over it."""
-        radius = size * PILLAR_RADIUS * self.cell_size_x
+        radius = size * PILLAR_RADIUS * self._sprite_unit()
         for side, layer in (('back', 'pillar-back'), ('front', 'pillar-front')):
             image = self._pillar_images[side]
             left = cx - radius
             bottom = self.window_height - cy - radius * GROUND_DISC_FLATTEN
             scale_x = 2 * radius / image.width
-            scale_y = (PILLAR_HEIGHT * size * self.cell_size_x
+            scale_y = (PILLAR_HEIGHT * size * self._sprite_unit()
                        + 2 * radius * GROUND_DISC_FLATTEN) / image.height
             group = self._row_group(row, 'familiar-front' if familiar and side == 'front'
                                     else layer)
