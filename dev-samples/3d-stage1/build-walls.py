@@ -19,11 +19,18 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'walls'
 OUT.mkdir(parents=True, exist_ok=True)
-# Canvas aspect: one cell (13 x 20 px at scale 1) plus a 0.25-cell rise.
-WIDTH, HEIGHT = 260, 500
+# Canvas aspect: one sprite-mode cell (15 x 20 px at scale 1) plus a
+# 0.25-cell rise.
+WIDTH, HEIGHT = 300, 500
 ELEVATION = math.radians(60)
 DEPTH = 0.30  # half depth (north-south) of the plinth and abacus
 TOP = 2.81  # height of the abacus top, chosen so the column fills the canvas
+# The canvas, framed from the plinth's near bottom edge to the abacus's far
+# top edge on the image plane (up = z cos(60) + y sin(60)), and its width.
+# The column keeps the size it had on the former 13 px cells (1 unit wide);
+# the links reach the wider canvas's edges.
+CANVAS_UP = (TOP * math.cos(ELEVATION) + DEPTH * math.sin(ELEVATION)) + DEPTH * math.sin(ELEVATION)
+CANVAS_W = CANVAS_UP * WIDTH / HEIGHT
 
 
 def material(name, color, transmission, roughness, rim_strength=0.0):
@@ -122,8 +129,10 @@ parts['column'] += [
 # Links: half an architrave on top and half a stylobate step at the bottom.
 for name, side in (('link-west', -1), ('link-east', 1)):
     parts[name] += [
-        box('Architrave', (side * 0.25, 0, TOP - 0.25), (0.5, 1.8 * DEPTH, 0.46), marble, 0.005),
-        box('Stylobate', (side * 0.25, 0, 0.13), (0.5, 2 * DEPTH, 0.26), marble, 0.005),
+        box('Architrave', (side * CANVAS_W / 4, 0, TOP - 0.25), (CANVAS_W / 2, 1.8 * DEPTH, 0.46),
+            marble, 0.005),
+        box('Stylobate', (side * CANVAS_W / 4, 0, 0.13), (CANVAS_W / 2, 2 * DEPTH, 0.26),
+            marble, 0.005),
     ]
 
 # Softer than the character lights so the near-white marble keeps its face
@@ -150,7 +159,7 @@ camera.rotation_euler = view.to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
 camera.data.ortho_scale = height  # the canvas is taller than wide
 scene.camera = camera
-print('canvas width in world units', height * WIDTH / HEIGHT)
+assert abs(height - CANVAS_UP) < 1e-9
 
 scene.render.use_freestyle = True
 settings = scene.view_layers[0].freestyle_settings

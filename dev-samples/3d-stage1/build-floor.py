@@ -3,7 +3,7 @@
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-floor.py
 
 Two near-white flagstones with different surface patterns, each filling one
-cell (13 x 20 px at scale 1). The GUI lays them out as a checkerboard and
+sprite-mode cell (15 x 20 px at scale 1). The GUI lays them out as a checkerboard and
 tints them per visible/explored floor, slightly darker on alternate cells.
 """
 from pathlib import Path
@@ -15,7 +15,7 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'floor'
 OUT.mkdir(parents=True, exist_ok=True)
-WIDTH, HEIGHT = 130, 200
+WIDTH, HEIGHT = 150, 200
 SLAB_X, SLAB_Y = 1.0, HEIGHT / WIDTH  # the canvas in world units
 
 
