@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 5.8.7 - 2026-10-21
+
+- Speed up the sprite GUI, especially while scrolling, by skipping offscreen
+  terrain processing and drawable creation while preserving image overhangs,
+  rank marks, and the field beneath the translucent strength panel.
+
 ## 5.8.6 - 2026-10-21
 
 - Redraw the sprite GUI's stairs as marble plates floating by magic, turning
