@@ -238,10 +238,27 @@ def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
 
     assert (ui.window_width, ui.window_height) == (200, 120)
     assert ui.scale == pytest.approx(2)
-    assert ui.cell_size_x == pytest.approx(26)
+    assert ui.cell_size_x == pytest.approx(30)
     assert ui.cell_size_y == pytest.approx(40)
     assert ui.field_pixel_width == pytest.approx(106)
-    assert ui._horizontal_scroll_px == pytest.approx(26)
+    assert ui._horizontal_scroll_px == pytest.approx(30)
+
+
+def test_sprite_default_window_is_16_9_and_field_overflows():
+    ui = SpriteUI.__new__(SpriteUI)
+    ui.field_width, ui.field_height = d.FIELD_WIDTH, d.FIELD_HEIGHT
+    ui.scale = 1
+    ui._hud_row_height = ui._menu_cell_size_y = 20
+    ui._select_font_size = lambda: setattr(ui, 'font_size', 17)
+    ui._update_strength_column_width = lambda: setattr(ui, 'strength_column_width', 60)
+
+    ui._set_scaled_dimensions()
+
+    assert ui.window_height == d.FIELD_HEIGHT * 20 + 2 * 20
+    assert ui.window_width == round(ui.window_height * 16 / 9)
+    assert ui.field_pixel_width == ui.window_width - 60
+    assert ui.field_pixel_width < ui._map_pixel_width == d.FIELD_WIDTH * 15
+    assert ui._horizontal_scroll_px == 0 and ui._camera_follow_player
 
 
 def test_sprite_resize_constraints_allow_zoom_range():
@@ -260,7 +277,7 @@ def test_sprite_resize_constraints_allow_zoom_range():
 
     ui._update_minimum_window_size()
 
-    assert size_constraints[0][0:2] == ('minimum', 261)
+    assert size_constraints[0][0:2] == ('minimum', 269)
     assert size_constraints[0][2] == 250
     assert size_constraints[1] == ('maximum', sprite_funcs.MAX_WINDOW_WIDTH, 1720)
 
@@ -629,6 +646,7 @@ def test_floor_is_a_checkerboard_of_two_tinted_stones(monkeypatch):
 @pytest.mark.parametrize('char, layer', ((d.CHAR_STAIRS_UP, 'column'), (d.CHAR_STAIRS_DOWN, 'wall')))
 def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, char, layer):
     ui = SpriteUI.__new__(SpriteUI)
+    ui.scale = 1
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui.window_height = 500
     ui.batch = None

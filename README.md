@@ -49,7 +49,8 @@ connected gamepad's D-pad or left stick to move, and button 0 to select a
 stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
 
 Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
-through `arlq --sprites`. Its window can be resized in both dimensions.
+through `arlq --sprites`. Its window opens at about 16:9 and shows part of the
+field, scrolling with the player. The window can be resized in both dimensions.
 Changing the window height zooms the field while keeping its rendering detail
 consistent and the HUD at the configured interface size.
 The right-hand strength labels grow with the field up to the HUD text size;
