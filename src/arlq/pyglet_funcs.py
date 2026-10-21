@@ -856,6 +856,9 @@ class PygletUI:
     def _field_col_width(self, _col: int) -> int:
         return self.cell_size_x
 
+    def _field_draw_columns(self, width):
+        return range(width)
+
     def _draw_tile(self, x: int, y: int, tile_color: Tuple[int, int, int], field, discovered_at):
         """Fill one field cell; `field` and `discovered_at` let subclasses look at neighbors."""
         self._draw_rect(
@@ -988,7 +991,8 @@ class PygletUI:
             return bool(torched[y][x] or show_entities)
 
         for y, row in enumerate(field):
-            for x, cell in enumerate(row):
+            for x in self._field_draw_columns(len(row)):
+                cell = row[x]
                 discovered = discovered_at(x, y)
                 if cur_torched[y][x]:
                     tile_color = VISIBLE_WALL if cell == d.CHAR_WALL else VISIBLE_FLOOR

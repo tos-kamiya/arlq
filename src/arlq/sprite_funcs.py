@@ -711,8 +711,8 @@ class SpriteUI(PygletUI):
         opacity = SMOKE_OPACITY if cooled else 255
         signature = ('sprite', id(image), self._field_col_x(x), bottom, scale_x, scale_y,
                      id(group), pyglet.gl.GL_SRC_ALPHA, blend_dest, tint, opacity)
-        flame = self._draw_object(
-            signature,
+        flame = self._draw_bounded_object(
+            self._field_col_x(x), image.width * scale_x, signature,
             lambda: pyglet.sprite.Sprite(
                 image, x=self._field_col_x(x), y=bottom,
                 blend_src=pyglet.gl.GL_SRC_ALPHA, blend_dest=blend_dest,
@@ -770,8 +770,8 @@ class SpriteUI(PygletUI):
         scale_y = (1 + TERRAIN_OVERHANG[char]) * self.cell_size_y / image.height
         group = self._row_group(y, layer)
         signature = ('sprite', id(image), left, bottom, scale_x, scale_y, id(group), draw_tint)
-        terrain = self._draw_object(
-            signature,
+        terrain = self._draw_bounded_object(
+            left, image.width * scale_x, signature,
             partial(pyglet.sprite.Sprite, image, x=left, y=bottom,
                     batch=self.batch, group=group),
         )
@@ -831,8 +831,8 @@ class SpriteUI(PygletUI):
                     draw_tint = self._display_color(tint)
                     signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
                                  id(group), draw_tint)
-                    piece = self._draw_object(
-                        signature,
+                    piece = self._draw_bounded_object(
+                        left, image.width * scale_x, signature,
                         partial(
                             pyglet.sprite.Sprite, image, x=left, y=bottom,
                             batch=self.batch, group=group,
@@ -868,8 +868,8 @@ class SpriteUI(PygletUI):
         draw_tint = self._display_color(tint)
         signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
                      id(self._floor_group), draw_tint)
-        stone = self._draw_object(
-            signature,
+        stone = self._draw_bounded_object(
+            left, image.width * scale_x, signature,
             lambda: pyglet.sprite.Sprite(
                 image, x=left, y=bottom, batch=self.batch, group=self._floor_group,
             ),
@@ -901,8 +901,8 @@ class SpriteUI(PygletUI):
         bottom = self.window_height - (y + rows) * self.cell_size_y
         scale = self.scale / LOW_RESOLUTION_DETAIL_SCALE
         signature = ('floor-copy', id(image), left, bottom, scale, id(self._floor_group))
-        sprite = self._draw_object(
-            signature,
+        sprite = self._draw_bounded_object(
+            left, rows * max(self.cell_size_x, SPRITE_CELL_SIZE_X * self.scale), signature,
             lambda: pyglet.sprite.Sprite(
                 image, x=left, y=bottom, batch=self.batch, group=self._floor_group,
                 blend_src=pyglet.gl.GL_ONE, blend_dest=pyglet.gl.GL_ZERO,
@@ -915,8 +915,8 @@ class SpriteUI(PygletUI):
         bottom = self.window_height - y - height
         draw_color = self._display_color(color)
         signature = ('rectangle', x, bottom, width, height, draw_color, id(group))
-        self._draw_object(
-            signature,
+        self._draw_bounded_object(
+            x, width, signature,
             lambda: pyglet.shapes.Rectangle(
                 x, bottom, width, height, color=draw_color, batch=self.batch, group=group,
             ),
@@ -1018,6 +1018,9 @@ class SpriteUI(PygletUI):
         self.window.set_maximum_size(MAX_WINDOW_WIDTH, maximum_height)
 
     def _draw_rect(self, x, y, width, height, color):
+        if (not self._menu_active and not self._drawing_hud
+                and not self._intersects_window(x, width)):
+            return
         if not self._drawing_hud:
             if (
                 x == self.field_pixel_width
@@ -1065,6 +1068,10 @@ class SpriteUI(PygletUI):
                 return super()._draw_line(x1, y1, x2, y2, color, thickness)
             finally:
                 self.batch = scene_batch
+
+        if not self._intersects_window(min(x1, x2) - thickness,
+                                       abs(x2 - x1) + 2 * thickness):
+            return
 
         # Visibility boundaries and other field lines stay above sprites.
         y1, y2 = self.window_height - y1, self.window_height - y2
@@ -1159,6 +1166,35 @@ class SpriteUI(PygletUI):
         self.window_height = round(
             self.field_height * self.cell_size_y + 2 * self._hud_row_height
         )
+
+    def _intersects_window(self, left, width):
+        # The translucent sidebar still reveals the scene behind it.
+        window_width = getattr(self, 'window_width', None)
+        # Linear enlargement can sample the adjacent render-target texel.
+        guard = getattr(self, 'scale', 1) / LOW_RESOLUTION_DETAIL_SCALE
+        return window_width is None or (left <= window_width + guard
+                                        and left + width >= -guard)
+
+    def _draw_bounded_object(self, left, width, signature, factory):
+        if not self._intersects_window(left, width):
+            return None
+        return self._draw_object(signature, factory)
+
+    def _field_draw_columns(self, width):
+        window_width = getattr(self, 'window_width', None)
+        if window_width is None:
+            return range(width)
+        scroll = getattr(self, '_horizontal_scroll_px', 0)
+        # Include terrain overhang, stair discs and the one-pixel seam overlap.
+        margin = max(TERRAIN_SIDE, GROUND_DISC_RADIUS) * self.cell_size_x + 1
+        rock = getattr(self, '_sprite_images', {}).get(ROCK_SPRITE)
+        if rock is not None:
+            padding = max(1, round(self.scale))
+            rock_scale = 1.8 * max(1, self._sprite_unit() - 2 * padding) / SPRITE_REFERENCE_PIXELS
+            margin = max(margin, rock.width * rock_scale / 2 + 1)
+        first = math.floor((scroll - margin) / self.cell_size_x)
+        stop = math.ceil((scroll + window_width + margin) / self.cell_size_x)
+        return range(max(0, first // 2 * 2), min(width, (stop + 1) // 2 * 2))
 
     def _field_col_x(self, col):
         return col * self.cell_size_x - getattr(self, '_horizontal_scroll_px', 0)
@@ -1304,7 +1340,7 @@ class SpriteUI(PygletUI):
         self._reused_drawable_ids = set()
 
     def _set_drawable_attribute(self, drawable, name, value):
-        if id(drawable) not in getattr(self, '_reused_drawable_ids', ()):
+        if drawable is not None and id(drawable) not in getattr(self, '_reused_drawable_ids', ()):
             setattr(drawable, name, value)
 
     def _progress_mark_group(self):
@@ -1358,6 +1394,12 @@ class SpriteUI(PygletUI):
         if text in self._mark_images and (x - 1, y) in self._sprite_cells:
             return self._draw_rank_mark((x - 1, y), text, color)
         if text not in self._sprite_images:
+            if getattr(self, 'window_width', None) is not None:
+                left = x * self.cell_size_x + self._field_text_x_offset()
+                padding = self.cell_size_x
+                if not self._intersects_window(left - padding,
+                                               self._text_width(text, bold) + 2 * padding):
+                    return
             return super()._draw_field_text((x, y - FIELD_TEXT_RAISE), text, color, bold)
         tribe = d.CHAR_TO_MONSTER_TRIBE.get(text)
         met_elf = tribe is not None and tribe.is_elf and not bold
@@ -1381,8 +1423,8 @@ class SpriteUI(PygletUI):
         dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
         tint = self._display_color(self._dim_color(white) if dimmed else white)
         signature = ('sprite', id(image), left, bottom, scale, scale, id(group), tint)
-        sprite = self._draw_object(
-            signature,
+        sprite = self._draw_bounded_object(
+            left, image.width * scale, signature,
             lambda: pyglet.sprite.Sprite(
                 image, x=left, y=bottom, batch=self.batch, group=group,
             ),
@@ -1455,8 +1497,8 @@ class SpriteUI(PygletUI):
                 (round(255 * shade),) * 3 if shade < 1 else (255, 255, 255))
         tint = self._display_color(tint)
         signature = ('sprite', id(picture), left, bottom, scale, scale, id(group), tint)
-        sprite = self._draw_object(
-            signature,
+        sprite = self._draw_bounded_object(
+            left, picture.width * scale, signature,
             lambda: pyglet.sprite.Sprite(
                 picture, x=left, y=bottom, batch=self.batch, group=group,
             ),
@@ -1479,8 +1521,8 @@ class SpriteUI(PygletUI):
             tint = self._display_color(color)
             signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
                          id(group), pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE, tint)
-            pillar = self._draw_object(
-                signature,
+            pillar = self._draw_bounded_object(
+                left, image.width * scale_x, signature,
                 partial(
                     pyglet.sprite.Sprite, image, x=left, y=bottom,
                     blend_src=pyglet.gl.GL_SRC_ALPHA, blend_dest=pyglet.gl.GL_ONE,
@@ -1508,8 +1550,8 @@ class SpriteUI(PygletUI):
             draw_tint = self._display_color(tint)
             signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
                          id(self._disc_group), draw_tint, opacity)
-            disc = self._draw_object(
-                signature,
+            disc = self._draw_bounded_object(
+                left, image.width * scale_x, signature,
                 partial(
                     pyglet.sprite.Sprite, image, x=left, y=bottom,
                     batch=self.batch, group=self._disc_group,
