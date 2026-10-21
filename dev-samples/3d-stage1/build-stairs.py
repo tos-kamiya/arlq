@@ -2,21 +2,20 @@
 
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-stairs.py
 
-Each stair is a short flight turning back at a landing, seen from the front,
-rendered with the
-walls' 60-degree orthographic camera. The canvas covers one
-15 x 20 px cell, 0.25 cells past each side (drawn by the GUI only over
-explored floor) and the 0.5-cell band north of it (sprite_funcs.TERRAIN_SIDE,
-TERRAIN_OVERHANG):
-  stairs-up.png    steps rising from left to right on the floor, turning back
-                   at a landing and rising on to the left behind
+Each stair is a short flight of thin plates floating in place by magic,
+turning back at a landing, seen from the front with the walls' 60-degree
+orthographic camera. The canvas covers one 15 x 20 px cell, 0.25 cells past
+each side (drawn by the GUI only over explored floor) and the 0.5-cell band
+north of it (sprite_funcs.TERRAIN_SIDE, TERRAIN_OVERHANG):
+  stairs-up.png    plates rising from left to right above the floor, turning
+                   back at a landing and rising on to the left behind, with
+                   their shadows on the floor
   stairs-down.png  the same going down into a dark opening
 The stone is near-white; the GUI tints it gold, darker outside the view.
 """
 from pathlib import Path
 import math
 
-import bmesh
 import bpy
 from mathutils import Vector
 
@@ -43,6 +42,9 @@ DEPTH = CELL_UP / math.sin(ELEVATION)
 # up even at the top (DOWN_BRIGHT) and fades to near black at the bottom
 # (DOWN_DARK).
 FLIGHT_STEPS, STEP_RUN, FLIGHT_DEPTH, LANDING = 3, 0.24, 0.38, 0.3
+# Each step is a thin plate floating in place by magic, this thick, with
+# this gap to its neighbours.
+PLATE_THICKNESS, PLATE_GAP = 0.06, 0.03
 UP_RISE = 0.15
 DOWN_RISE, DOWN_GAP, DOWN_BRIGHT, DOWN_DARK = 0.1, 0.2, 0.6, 0.06
 KERB_COLOR = (0.12, 0.13, 0.24)
@@ -128,30 +130,6 @@ def box(name, x0, x1, y0, y1, z0, z1, mat, bevel=0.012):
     return obj
 
 
-def flight(name, x0, run, heights, y0, y1, mat, base=0):
-    """One solid stepped block: the steps' profile above z = base, extruded from y0 to y1."""
-    profile = [(x0, base)]
-    for i, h in enumerate(heights):
-        profile += [(x0 + i * run, h), (x0 + (i + 1) * run, h)]
-    profile.append((x0 + len(heights) * run, base))
-    bm = bmesh.new()
-    front = bm.faces.new([bm.verts.new((x, y0, z)) for x, z in profile])
-    extruded = bmesh.ops.extrude_face_region(bm, geom=[front])
-    bmesh.ops.translate(bm, vec=(0, y1 - y0, 0),
-                        verts=[v for v in extruded['geom'] if isinstance(v, bmesh.types.BMVert)])
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    mesh = bpy.data.meshes.new(name)
-    bm.to_mesh(mesh)
-    bm.free()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.scene.collection.objects.link(obj)
-    obj.data.materials.append(mat)
-    mod = obj.modifiers.new('Soft edges', 'BEVEL')
-    mod.width = 0.012
-    mod.segments = 2
-    return obj
-
-
 CENTRE_Y = DEPTH / 2
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -170,7 +148,6 @@ world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.05, 0.06,
 scene.world = world
 
 marble = material('Marble', (0.92, 0.91, 0.88), rim_strength=0.25)
-shadowed = material('Shadowed marble', (0.30, 0.30, 0.30), roughness=0.9)
 void = material('Void', (0.0, 0.0, 0.0), roughness=1.0)
 ground = holdout('Ground')
 parts = {'up': [], 'down': []}
@@ -180,31 +157,44 @@ x1 = x0 + FLIGHT_STEPS * STEP_RUN
 x2 = x1 + LANDING
 
 
-def switchback(name, rise, first, second, mat, base=0):
-    """A flight from left to right over the y range `first` (treads at rise,
-    2 rise, ...), a landing across both ranges, and a flight back to the left
-    over `second`, each tread one rise further from the floor; rise < 0 goes
-    down. The solids reach down (or up) to z = base."""
+def switchback(name, rise, first, second, mat):
+    """Floating plates: a flight from left to right over the y range `first`
+    (treads at rise, 2 rise, ...), a landing across both ranges, and a flight
+    back to the left over `second`, each tread one rise further from the
+    floor; rise < 0 goes down. Nothing holds them up."""
     n = FLIGHT_STEPS
     treads = [(i + 1) * rise for i in range(n)], [(2 * n + 1 - i) * rise for i in range(n)]
     ys = sorted(first + second)
-    low, high = sorted((base, (n + 1) * rise))
-    return [flight(name + ' first flight', x0, STEP_RUN, treads[0], *first, mat, base),
-            box(name + ' landing', x1, x2, ys[0], ys[-1], low, high, mat),
-            flight(name + ' second flight', x0, STEP_RUN, treads[1], *second, mat, base)]
+    gap = PLATE_GAP / 2
+
+    def plate(label, px0, px1, py0, py1, z):
+        return box(name + ' ' + label, px0 + gap, px1 - gap, py0 + gap, py1 - gap,
+                   z - PLATE_THICKNESS, z, mat)
+
+    plates = [plate('landing', x1, x2, ys[0], ys[-1], (n + 1) * rise)]
+    for flight_ys, heights in zip((first, second), treads):
+        for i, z in enumerate(heights):
+            plates.append(plate('plate', x0 + i * STEP_RUN, x0 + (i + 1) * STEP_RUN,
+                                *sorted(flight_ys), z))
+    return plates
 
 
-# Up: solid flights on the floor, so their fronts show the stepped profile
-# without lines between steps. The front one rises to the right, to a landing
-# as deep as both flights; the back one rises from there to the left, above
-# the front one. (The first flight is the front one here.)
+# Up: the front flight rises to the right, to a landing as deep as both
+# flights; the back one rises from there to the left, above the front one.
+# (The first flight is the front one here.)
 y0, y1, y2 = CENTRE_Y - FLIGHT_DEPTH, CENTRE_Y, CENTRE_Y + FLIGHT_DEPTH
 parts['up'] += switchback('Up', UP_RISE, (y0, y1), (y1, y2), marble)
+# The floor itself is not drawn, but it catches the plates' shadows, so they
+# read as floating above it.
+floor = box('Shadow floor', -3, 3, -3, 6, -0.02, 0, marble, bevel=0)
+floor.is_shadow_catcher = True
+parts['up'].append(floor)
 
-# Down: a low kerb rings a rectangular opening; inside, solid flights go down
-# from left to right along the back, turn at the landing and go on down to
-# the left in front, darker the deeper they go, above a black drop; a gap in
-# front of them lets the front flight show. An invisible holdout ground hides the opening's sides from outside.
+# Down: a low kerb rings a rectangular opening with no walls inside: the
+# plates float down from left to right along the back, turn at the landing
+# and go on down to the left in front, darker the deeper they go, and past
+# them the opening shows only a black drop; a gap in front of them lets the
+# front flight show. An invisible holdout ground hides the opening's sides from outside.
 # The kerb is a cool grey that the GUI's gold tint turns close to the
 # floor's warm grey.
 kerb = 0.07
@@ -223,19 +213,20 @@ for name, bx0, bx1, by0, by1 in (('Ground south', -3, 3, -3, y0 - kerb),
 parts['down'].append(box('Abyss', -3, 3, -3, 6, -3.1, -3, void, bevel=0))
 parts['down'] += switchback('Down', -DOWN_RISE, (CENTRE_Y, y1),
                             (CENTRE_Y - FLIGHT_DEPTH, CENTRE_Y),
-                            deepening('Deepening marble', (2 * FLIGHT_STEPS + 1) * DOWN_RISE),
-                            base=-3)
-parts['down'].append(box('Back wall', x0, x2, y1 - 0.02, y1, -3, 0, shadowed, bevel=0))
+                            deepening('Deepening marble', (2 * FLIGHT_STEPS + 1) * DOWN_RISE))
 
 # The key light is above and slightly behind the cell, unlike the walls', so
-# the treads are bright and the risers facing the camera read darker.
-for pos, power, size, color in [((-3, 3, 9), 420, 5, (1.0, 0.93, 0.85)),
+# the treads are bright and the risers facing the camera read darker. Only
+# the key light, kept small, casts shadows, so the floating plates' shadows
+# on the floor stay crisp.
+for pos, power, size, color in [((-3, 3, 9), 420, 1.5, (1.0, 0.93, 0.85)),
                                  ((6, -3, 4), 120, 6, (0.6, 0.75, 1.0)),
                                  ((-6, 6, 4), 300, 3, (0.55, 0.8, 1.0)),
                                  ((6, 6, 4), 300, 3, (1.0, 0.7, 0.9))]:
     bpy.ops.object.light_add(type='AREA', location=pos)
     light = bpy.context.object
     light.data.energy, light.data.size, light.data.color = power, size, color
+    light.data.cycles.cast_shadow = pos == (-3, 3, 9)
     light.rotation_euler = (Vector((0, 0, 0)) - light.location).to_track_quat('-Z', 'Y').to_euler()
 
 # Frame the canvas from the cell's south edge on the ground (image-plane
