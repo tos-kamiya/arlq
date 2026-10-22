@@ -56,6 +56,11 @@ def build_strength_column(
     return above_column + [(None, False), ("@", True), (None, False)] + below_column
 
 
+def strength_label_known(label: str, known_types: Set[str]) -> bool:
+    base, mark = label[0], label[1:]
+    return base + {"'": "2", '"': "3"}.get(mark, "") in known_types
+
+
 def level_item_labels(player: d.Player, stage_num: int) -> Tuple[str, str]:
     """Level and item fragments shared by both status bars.
 

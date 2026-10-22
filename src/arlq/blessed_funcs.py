@@ -327,7 +327,8 @@ class BlessedUI:
             if strength_char is None:
                 continue
             gauge_x = d.FIELD_WIDTH - (len(strength_char) - 1)
-            put(gauge_x, y, strength_char, bold=is_player)
+            known = is_player or ui_display.strength_label_known(strength_char, known_types)
+            put(gauge_x, y, strength_char, "white", bold=is_player, dim=not known)
 
         if stage_num in d.ELF_STAGES:
             progress_x = 0
