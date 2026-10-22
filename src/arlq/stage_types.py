@@ -28,9 +28,14 @@ class Floor:
     collapse_landings: set[d.Point] = dataclass_field(default_factory=set)
     room_components: Tuple[set[d.Point], ...] = ()
     persistent_barriers: set[d.Point] = dataclass_field(default_factory=set)
-    # Wall cells raised by a defeated Golem. They are ordinary walls in every
-    # rule; the sprite GUI only draws them as rubble instead of columns.
-    rock_cells: set[d.Point] = dataclass_field(default_factory=set)
+    # Decorations (d.DECOR_*), one per cell and the same size as `field`.
+    # No rule reads them; the sprite GUI draws them. They are written by turn
+    # processing, so a rewind's replay rebuilds them along with `field`.
+    decor: Optional[List[List[str]]] = None
+
+    def __post_init__(self) -> None:
+        if self.decor is None:
+            self.decor = [[d.DECOR_NONE] * len(row) for row in self.field]
 
 
 HistoryEntry = Optional[

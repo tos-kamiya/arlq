@@ -8,6 +8,9 @@ rendered with the walls' 60-degree orthographic camera, 1.2 times its
 original size, on a canvas that also reaches past each side of the cell, so
 the GUI places it like a stair. The rock is a cool grey that the GUI's gold
 tint (the pit glyph was yellow) turns to a neutral stone grey.
+
+A second image, fallen-rocks.png, is a few of the same rocks on the same
+canvas, which the GUI scatters on the floor below a pit.
 """
 from pathlib import Path
 import math
@@ -47,6 +50,11 @@ ROCKS = ((-80, 1.12, 0.13), (-55, 1.18, 0.08), (-110, 1.10, 0.09),
          (95, 1.02, 0.08), (40, 1.08, 0.11), (10, 1.20, 0.07),
          (-20, 1.10, 0.10))
 RUBBLE = 14
+# Rocks fallen onto the floor below a pit: (x as a fraction of the cell's
+# width from its centre, y as a fraction of its depth from the south edge,
+# size).
+FALLEN_ROCKS = ((-0.15, 0.42, 0.12), (0.17, 0.56, 0.09), (0.03, 0.27, 0.07),
+                (-0.06, 0.68, 0.06), (0.28, 0.32, 0.05))
 SHAFT_RINGS = 5
 # The top of the wall, just below the edge, is lighter rock.
 LIP_DEPTH = 0.07
@@ -232,4 +240,16 @@ lines.linestyle.thickness = 3.0
 scene.render.image_settings.file_format = 'PNG'
 scene.render.image_settings.color_mode = 'RGBA'
 scene.render.filepath = str(OUT / 'pit.png')
+bpy.ops.render.render(write_still=True)
+
+# Rocks fallen through a pit onto the floor below: a small cluster on the
+# same canvas, without the hole.
+for obj in [obj for obj in scene.objects if obj.type == 'MESH']:
+    bpy.data.objects.remove(obj)
+for n, (x, y, size) in enumerate(FALLEN_ROCKS):
+    boulder('Fallen rock %d' % n, (x, DEPTH * y, 0.2 * size), PIT_SCALE * size)
+# No outline, like the rocks around the pit (their outline is lost to the
+# holdout ground).
+scene.render.use_freestyle = False
+scene.render.filepath = str(OUT / 'fallen-rocks.png')
 bpy.ops.render.render(write_still=True)

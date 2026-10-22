@@ -64,7 +64,8 @@ Characters with bundled sprites use transparent images once identified;
 unknown characters keep their text symbols. Ground markers preserve strength
 and status colors, and faint light pillars distinguish companions. Terrain has
 a separate illustrated style, including marble walls and stairs, floor tiles,
-fires, and Collapse pits.
+fires, and Collapse pits; rocks fallen through a pit lie on the floor below
+it.
 Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
 `--scale` to enlarge the GUI. Blender is only needed to regenerate the bundled
 images.

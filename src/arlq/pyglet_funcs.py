@@ -972,11 +972,11 @@ class PygletUI:
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
         overshoot_markers: Optional[Set[d.Point]] = None,
-        rock_cells: Optional[Set[d.Point]] = None,
+        decor: Optional[List[List[str]]] = None,
     ):
         """
-        Renders the game stage (`rock_cells`, the walls a Golem raised, are
-        drawn as plain walls here):
+        Renders the game stage (`decor`, the decorations no rule reads, is
+        not drawn here):
         - Clears the screen.
         - Draws the field and its cells.
         - Draws the player and entities with appropriate colors.
