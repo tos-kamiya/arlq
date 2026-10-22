@@ -590,7 +590,7 @@ def _defeat_monster(
                 x
             ] == d.CHAR_FLOOR:
                 current.field[y][x] = d.CHAR_WALL
-                current.rock_cells.add((x, y))
+                current.decor[y][x] = d.DECOR_GOLEM_ROCK
     elif entity.tribe.effect == d.EFFECT_VORTEX:
         if (
             replay_context is not None
@@ -1209,6 +1209,7 @@ def _process_multi_floor_turn(
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("collapse_triggered")
         current.seen[collapse_contact.y][collapse_contact.x] = 1
+        lower = floors[floor[0] + 1] if floor[0] + 1 < len(floors) else None
         # Walking onto the Collapse reveals the four neighboring pits. Walls
         # keep their terrain and cannot become pit cells.
         for dx, dy in d.COLLAPSE_FOOTPRINT_OFFSETS[1:]:
@@ -1218,6 +1219,9 @@ def _process_multi_floor_turn(
                 if current.field[y][x] != d.CHAR_WALL:
                     current.field[y][x] = d.CHAR_COLLAPSE
                     current.seen[y][x] = 1
+                    # Rocks fallen through the pit lie on the floor below.
+                    if lower is not None and lower.field[y][x] == d.CHAR_FLOOR:
+                        lower.decor[y][x] = d.DECOR_FALLEN_ROCKS
 
     entered_pit = (
         not standing_on_collapse
@@ -1543,7 +1547,7 @@ def run_game(
             stage_num=stage_num,
             message=message[1],
             checkpoint=checkpoint[0],
-            rock_cells=display_floor.rock_cells,
+            decor=display_floor.decor,
             reachable_cells=reachable_cells,
             overshoot_markers=(
                 trace.overshoot_rewind_markers(floor[0])
@@ -1793,7 +1797,7 @@ def run_game(
             message=message[1],
             extra_keys=True,
             checkpoint=checkpoint[0],
-            rock_cells=display_floor.rock_cells,
+            decor=display_floor.decor,
             floor_view=floor_view,
             **stage_draw_options,
         )

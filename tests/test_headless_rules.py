@@ -73,7 +73,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "collapse_landings",
         "persistent_barriers",
         "room_components",
-        "rock_cells",
+        "decor",
     }
 
 
@@ -258,7 +258,7 @@ def test_game_loop_draws_with_keyword_arguments_only():
         "stage_num",
         "message",
         "checkpoint",
-        "rock_cells",
+        "decor",
         "reachable_cells",
         "overshoot_markers",
     }
@@ -1870,9 +1870,9 @@ def test_vortex_records_map_knowledge_before_disturbing_it(monkeypatch):
     assert floor.seen[4][5] == 0
 
 
-def test_golem_rocks_are_walls_recorded_as_rock_cells():
+def test_golem_rocks_are_walls_recorded_as_decor():
     """Rocks a defeated Golem scatters are ordinary walls; the floor also
-    records them so the sprite GUI can draw rubble instead of columns."""
+    records them as decor so the sprite GUI can draw rubble instead of columns."""
     player = d.Player(10, 10, 100, d.LP_INIT)
     golem = d.Monster(11, 10, d.CHAR_TO_MONSTER_TRIBE["g"])
     floor = Floor(
@@ -1895,7 +1895,48 @@ def test_golem_rocks_are_walls_recorded_as_rock_cells():
         if cell == d.CHAR_WALL and before[y][x] != d.CHAR_WALL
     }
     assert raised
-    assert floor.rock_cells == raised
+    assert {
+        (x, y)
+        for y, row in enumerate(floor.decor)
+        for x, decor in enumerate(row)
+        if decor == d.DECOR_GOLEM_ROCK
+    } == raised
+
+
+def test_collapse_pits_leave_fallen_rocks_decor_on_the_floor_below():
+    """Revealed pits mark the plain floor cells below them as fallen rocks;
+    walls and stairs below stay undecorated, and the field is unchanged."""
+    def make_floor(entities=()):
+        return Floor(
+            field=blank_field(),
+            entities=list(entities),
+            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            up=(1, 1),
+            down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+            island=None,
+        )
+
+    player = d.Player(2, 2, 100, d.LP_INIT)
+    upper = make_floor([d.Collapse(3, 2)])
+    lower = make_floor()
+    lower.field[1][3] = d.CHAR_WALL
+    lower.field[3][3] = d.CHAR_STAIRS_UP
+    lower_field = deepcopy(lower.field)
+
+    game_engine_module._process_multi_floor_turn(
+        (1, 0), [upper, lower], player, [0], [(2, 2)], Counter(), deque(), 1
+    )
+
+    assert {(x, y) for x, y in ((4, 2), (2, 2), (3, 1), (3, 3))
+            if upper.field[y][x] == d.CHAR_COLLAPSE} == {(4, 2), (2, 2), (3, 1), (3, 3)}
+    assert {
+        (x, y)
+        for y, row in enumerate(lower.decor)
+        for x, decor in enumerate(row)
+        if decor == d.DECOR_FALLEN_ROCKS
+    } == {(4, 2), (2, 2)}
+    assert lower.field == lower_field
+    assert all(decor == d.DECOR_NONE for row in upper.decor for decor in row)
 
 
 def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():

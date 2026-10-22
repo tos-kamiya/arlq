@@ -519,7 +519,8 @@ def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     field = [[d.CHAR_FLOOR] * 3 for _ in range(3)]
     field[1][0] = field[1][1] = d.CHAR_WALL
-    ui._rock_cells = {(1, 1)}
+    ui._decor = [[d.DECOR_NONE] * 3 for _ in range(3)]
+    ui._decor[1][1] = d.DECOR_GOLEM_ROCK
     ui._draw_tile(1, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: True)
     assert [piece.image for piece in ui._drawables] == [ui._sprite_images[sprite_funcs.ROCK_SPRITE]]
     ui._drawables.clear()
@@ -952,3 +953,18 @@ def test_offscreen_terrain_still_reads_neighbors(sprite_ui):
     ui._draw_pit((1, 0))
     assert len(ui._drawables) == 1
     assert ui._drawables[0].image is ui._terrain_images[d.CHAR_COLLAPSE]
+
+
+def test_fallen_rocks_are_hidden_under_characters_and_text(monkeypatch):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._frame_drawable_cache = {}
+    ui._drawable_cache = {}
+    ui._floor_cells = {}
+    ui._fallen_rock_draws = ((1, 1), (2, 1), (3, 1), (4, 1))
+    ui._sprite_cells = {(1, 1): 1.0}
+    ui._field_text_cells = frozenset({(2, 1)})
+    ui._player_cell = (3, 1)
+    drawn = []
+    monkeypatch.setattr(ui, '_draw_terrain', lambda pos, key, layer: drawn.append((pos, key)))
+    ui._finish_drawables()
+    assert drawn == [((4, 1), d.DECOR_FALLEN_ROCKS)]

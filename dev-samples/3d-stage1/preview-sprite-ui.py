@@ -19,10 +19,15 @@ for x in range(4, 40):
 for y in range(4, 17):
     field[y][4] = field[y][39] = d.CHAR_WALL
 field[11][20] = d.CHAR_WALL
+decor = [[d.DECOR_NONE] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
 # Rocks a defeated Golem raised beside the golem: walls drawn as rubble.
-rock_cells = {(35, 10), (38, 10), (35, 12)}
-for rx, ry in rock_cells:
+for rx, ry in ((35, 10), (38, 10), (35, 12)):
     field[ry][rx] = d.CHAR_WALL
+    decor[ry][rx] = d.DECOR_GOLEM_ROCK
+# Rocks fallen from pits on the floor above: two on open floor, one under an
+# elf (hidden), and one explored outside the view.
+for fx, fy in ((30, 15), (31, 16), (32, 15), (1, 9)):
+    decor[fy][fx] = d.DECOR_FALLEN_ROCKS
 # Scattered caltrops beside the caltrop plant, to compare their colors.
 for cx, cy in ((7, 10), (5, 12), (8, 12)):
     field[cy][cx] = d.CHAR_CALTROP
@@ -68,7 +73,7 @@ entities.append(d.Collapse(35, 15))
 ui.draw_stage(turn=0, player=player, entities=entities, field=field,
               cur_torched=current, torched=seen, known_types={'a', 'A', 'b', 'b2', 'b3', 'c', 'd', 'D', 'C', 'F', 'g', 'e', 'E', 'X'},
               show_entities=False, stage_num=1, message='Sprites + text fallback (c)',
-              rock_cells=rock_cells)
+              decor=decor)
 ui.window.switch_to()
 ui.window.clear()
 ui.batch.draw()

@@ -175,6 +175,9 @@ _FLAME_FIRES = ((0.335, 0.377, 0.28, 0.48, 1.0), (0.716, 0.505, 0.26, 0.40, 1.0)
 FLAME_FIRES = (tuple((1 - centre, *rest) for centre, *rest in _FLAME_FIRES), _FLAME_FIRES)
 SMOKE_TINT = (150, 150, 156)
 SMOKE_OPACITY = 140
+# Rocks fallen through a pit (d.DECOR_FALLEN_ROCKS) are hidden where the
+# cell has since become a wall, pit or stair, or a character stands there.
+FALLEN_ROCK_BLOCKERS = (d.CHAR_WALL, d.CHAR_COLLAPSE, d.CHAR_STAIRS_UP, d.CHAR_STAIRS_DOWN)
 # Stairs and Collapse pits are drawn on the walls' canvas and placed like a
 # wall part: near-white marble flights (up: rising north; down: descending
 # toward the viewer into a dark opening) and a shapeless hole with rocks lying
@@ -182,14 +185,16 @@ SMOKE_OPACITY = 140
 # like the floor outside the current view.
 TERRAIN_FILES = {d.CHAR_STAIRS_UP: 'stairs/stairs-up.png',
                  d.CHAR_STAIRS_DOWN: 'stairs/stairs-down.png',
-                 d.CHAR_COLLAPSE: 'pit/pit.png'}
+                 d.CHAR_COLLAPSE: 'pit/pit.png',
+                 d.DECOR_FALLEN_ROCKS: 'pit/fallen-rocks.png'}
 TERRAIN_TINT = (255, 222, 150)
 # Stair and pit images reach TERRAIN_SIDE cells past each side of their cell
 # and TERRAIN_OVERHANG cells into the cell to the north. A side is drawn only
 # where the neighbouring cell is explored plain floor; elsewhere it is
 # cropped away.
 TERRAIN_SIDE = 0.25
-TERRAIN_OVERHANG = {d.CHAR_STAIRS_UP: 0.5, d.CHAR_STAIRS_DOWN: 0.5, d.CHAR_COLLAPSE: 0.25}
+TERRAIN_OVERHANG = {d.CHAR_STAIRS_UP: 0.5, d.CHAR_STAIRS_DOWN: 0.5, d.CHAR_COLLAPSE: 0.25,
+                    d.DECOR_FALLEN_ROCKS: 0.25}
 TERRAIN_EXPLORED_SHADE = 0.55
 # Opacity of the yellow ground disc that marks each stair.
 STAIR_DISC_OPACITY = 90
@@ -334,8 +339,11 @@ class SpriteUI(PygletUI):
 
     supports_horizontal_view = True
 
-    # Walls a defeated Golem raised on the floor being drawn (see draw_stage).
-    _rock_cells = frozenset()
+    # Decorations of the floor being drawn (see draw_stage), and the cells to
+    # draw fallen rocks on once the characters of this frame are known.
+    _decor = None
+    _fallen_rock_draws = ()
+    _field_text_cells = frozenset()
     # The player's cell this frame (None while viewing another floor), and
     # whether characters next to it are enlarged (off while drawing followers).
     _player_cell = None
@@ -516,13 +524,13 @@ class SpriteUI(PygletUI):
             self._row_groups[order] = pyglet.graphics.Group(order=order)
         return self._row_groups[order]
 
-    def draw_stage(self, *, rock_cells=None, **kwargs):
+    def draw_stage(self, *, decor=None, **kwargs):
         self._update_strength_column_width()
         self.field_pixel_width = max(
             self.cell_size_x, self.window_width - self.strength_column_width,
         )
-        self._last_stage_draw = (rock_cells, kwargs.copy())
-        self._rock_cells = rock_cells or set()
+        self._last_stage_draw = (decor, kwargs.copy())
+        self._decor = decor
         self._known_types = kwargs.get('known_types') or set()
         self._cur_torched = kwargs.get('cur_torched')
         player = kwargs.get('player')
@@ -541,7 +549,7 @@ class SpriteUI(PygletUI):
             if player is not None and not kwargs.get('floor_view') and barrier_lp_damage(player) == 0
             else None
         )
-        result = super().draw_stage(rock_cells=rock_cells, **kwargs)
+        result = super().draw_stage(decor=decor, **kwargs)
         return result
 
     def _draw_text(
@@ -688,8 +696,8 @@ class SpriteUI(PygletUI):
             return
         self._resize_redraw_pending = False
         if self._last_stage_draw is not None:
-            rock_cells, kwargs = self._last_stage_draw
-            self.draw_stage(rock_cells=rock_cells, **kwargs)
+            decor, kwargs = self._last_stage_draw
+            self.draw_stage(decor=decor, **kwargs)
 
     def _draw_barrier(self, x, y, field, discovered_at):
         """Thin red flames on the floor, or faint smoke near the player while harmless."""
@@ -796,13 +804,17 @@ class SpriteUI(PygletUI):
         if (field[y][x] == d.CHAR_BARRIER and discovered_at(x, y)
                 and tile_color != REACHABLE_CELL_COLOR and self._floor_images is not None):
             return self._draw_barrier(x, y, field, discovered_at)
+        if (self._decor_at(x, y) == d.DECOR_FALLEN_ROCKS and discovered_at(x, y)
+                and field[y][x] not in FALLEN_ROCK_BLOCKERS
+                and d.DECOR_FALLEN_ROCKS in self._terrain_images):
+            self._fallen_rock_draws += ((x, y),)
         if tile_color in FLOOR_TINTS:
             return self._draw_floor(x, y, tile_color, field, discovered_at)
         if field[y][x] != d.CHAR_WALL or tile_color not in (VISIBLE_WALL, WALL):
             return super()._draw_tile(x, y, tile_color, field, discovered_at)
         floor = VISIBLE_FLOOR if tile_color == VISIBLE_WALL else FLOOR
         self._draw_floor(x, y, floor, field, discovered_at)
-        if (x, y) in self._rock_cells and ROCK_SPRITE in self._sprite_images:
+        if self._decor_at(x, y) == d.DECOR_GOLEM_ROCK and ROCK_SPRITE in self._sprite_images:
             # A wall raised by a Golem is drawn as its rubble, not a column.
             self._place_sprite(ROCK_SPRITE, self._field_col_x(x) + self.cell_size_x / 2,
                                (y + 0.5) * self.cell_size_y, 1.0, y, 'column', False,
@@ -815,7 +827,7 @@ class SpriteUI(PygletUI):
         def wall_at(wx, wy):
             return (0 <= wy < len(field) and 0 <= wx < len(field[wy])
                     and field[wy][wx] == d.CHAR_WALL and discovered_at(wx, wy)
-                    and (wx, wy) not in self._rock_cells)
+                    and self._decor_at(wx, wy) != d.DECOR_GOLEM_ROCK)
 
         if self._wall_images is not None:
             tint = tuple(min(255, round(c * WALL_TINT[tile_color])) for c in tile_color)
@@ -850,6 +862,12 @@ class SpriteUI(PygletUI):
             front = WALL_OVERHANG * self.cell_size_y
             self._draw_wall_rect(left, (y + 1) * self.cell_size_y - front, width, front + 1,
                                  tile_color, WALL_FRONT_SHADE, group)
+
+    def _decor_at(self, x, y):
+        decor = self._decor
+        if decor is None or not (0 <= y < len(decor) and 0 <= x < len(decor[y])):
+            return d.DECOR_NONE
+        return decor[y][x]
 
     def _draw_floor(self, x, y, tile_color, field, discovered_at):
         if getattr(self, '_floor_tiles', None) is not None:
@@ -1307,6 +1325,8 @@ class SpriteUI(PygletUI):
         self._drawables = []
         self._sprite_cells.clear()
         self._player_cell = None
+        self._fallen_rock_draws = ()
+        self._field_text_cells = frozenset()
         self._floor_cells = {}
 
     def _draw_object(self, signature, factory):
@@ -1328,6 +1348,10 @@ class SpriteUI(PygletUI):
     def _finish_drawables(self):
         if self._frame_drawable_cache is None:
             return
+        occupied = set(self._sprite_cells) | self._field_text_cells | {self._player_cell}
+        for pos in self._fallen_rock_draws:
+            if pos not in occupied:
+                self._draw_terrain(pos, d.DECOR_FALLEN_ROCKS, 'wall')
         if self._floor_cells:
             self._draw_floor_tiles()
         for signature, old_objects in self._drawable_cache.items():
@@ -1393,6 +1417,7 @@ class SpriteUI(PygletUI):
             return  # shown by the flames themselves
         if text in self._mark_images and (x - 1, y) in self._sprite_cells:
             return self._draw_rank_mark((x - 1, y), text, color)
+        self._field_text_cells = self._field_text_cells | {pos}
         if text not in self._sprite_images:
             if getattr(self, 'window_width', None) is not None:
                 left = x * self.cell_size_x + self._field_text_x_offset()
