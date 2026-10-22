@@ -186,7 +186,7 @@ Stage 2 also features empowered Bison (`b'`).
 | **C** Rare Chimera  | Its Cursed Sword gives 3x attack power at the cost of vitality. |
 | **e** Erebus        | Battling it drains your vitality by a small amount.                                                                     |
 | **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
-| **g** Golem         | When defeated, rocks scatter. It yields no food.                                                                        |
+| **g** Golem         | When defeated, rocks scatter up to two tiles in each of the four diagonal directions around you. It yields no food.                                                                        |
 | **H** High Elf      | Too powerful to defeat.                                                                                               |
 | **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you.                                                         |
 

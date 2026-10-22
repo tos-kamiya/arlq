@@ -1913,7 +1913,10 @@ def test_golem_rocks_are_walls_recorded_as_decor():
         for x, cell in enumerate(row)
         if cell == d.CHAR_WALL and before[y][x] != d.CHAR_WALL
     }
-    assert raised
+    assert raised == {
+        (8, 8), (12, 8), (9, 9), (11, 9),
+        (9, 11), (11, 11), (8, 12), (12, 12),
+    }
     assert {
         (x, y)
         for y, row in enumerate(floor.decor)
