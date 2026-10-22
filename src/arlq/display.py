@@ -73,7 +73,7 @@ def level_item_labels(player: d.Player, stage_num: int) -> Tuple[str, str]:
         level = f"LVL: {player.level} x3"
         item_str = f"+{item}({player.item_taken_from})"
     elif item == d.ITEM_POISONED:
-        level = f"LVL: {player.level} /2"
+        level = f"LVL: {player.level} /3"
         item_str = f"+{item}({player.item_taken_from})"
     elif item == d.ITEM_SPORES:
         level = f"LVL: {player.level}"
