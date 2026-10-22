@@ -1147,15 +1147,18 @@ def erebus(x, y, rare):
                 cone('Rare Erebus claw', hand, hand + Vector((-side * 0.08, -0.07, spread)),
                      0.025, 0, horn, 4, False)
         # A cracked gold halo held between the hands, with drifting shards.
+        # It is large so the rare Erebus reads apart from the Erebus (e).
         gold = material('Stolen halo gold', (1.0, 0.72, 0.22), roughness=0.2, metallic=1.0,
                         emission=(1.0, 0.6, 0.15), strength=0.6)
-        center = Vector((x, y - 0.50, 0.42))
+        center = Vector((x, y - 0.52, 0.44))
+        radius = 0.24
         for a0, a1 in ((20, 160), (195, 330)):
-            arc = [center + Vector((0.15 * math.cos(math.radians(a)), 0.15 * 0.5 * math.sin(math.radians(a)),
-                                    0.15 * 0.85 * math.sin(math.radians(a))))
+            arc = [center + Vector((radius * math.cos(math.radians(a)),
+                                    radius * 0.5 * math.sin(math.radians(a)),
+                                    radius * 0.85 * math.sin(math.radians(a))))
                    for a in range(a0, a1 + 1, 10)]
-            tube('Stolen halo arc', arc, [0.022] * len(arc), gold, sides=8, smooth=True)
-        for dx, dz in ((-0.22, 0.62), (0.20, 0.66), (0.05, 0.74)):
+            tube('Stolen halo arc', arc, [0.032] * len(arc), gold, sides=8, smooth=True)
+        for dx, dz in ((-0.30, 0.70), (0.28, 0.74), (0.06, 0.82)):
             base = Vector((x + dx, y - 0.46, dz))
             cone('Halo shard', base, base + Vector((0.02, 0, 0.06)), 0.03, 0, gold, 4, False)
 
