@@ -141,6 +141,7 @@ reproduce the same layout.
   Unencountered monsters are displayed as `?`, companions as `!`, and unidentified elves as `&`. Contact reveals an entity's type.
 
   Monster identification persists across floors. Companion identification is tracked separately on each floor in every stage, so an unencountered companion is shown again as `!` on a new floor.
+  In `arlq` and `arlq-cli`, the right-hand strength column shows identified monster types in white and unidentified types in gray.
 
   Contact starts combat. Defeating a monster at or below your attack power levels you up and restores LP. Losing to a stronger monster returns you to the checkpoint; losing twice in a row to the same monster sends you to a random location instead.
 

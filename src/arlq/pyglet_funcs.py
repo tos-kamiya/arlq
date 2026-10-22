@@ -885,8 +885,9 @@ class PygletUI:
     def _draw_strength_entry(self, row: int, label: str, is_player: bool):
         """Draws one strength-column entry, right-aligned in the column."""
         text_width = self._text_width(label, bold=is_player)
+        known = is_player or ui_display.strength_label_known(label, self._strength_known_types)
         self._draw_text(
-            (0, row), label, COLOR_MAP["default"], bold=is_player,
+            (0, row), label, COLOR_MAP["default"] if known else (100, 106, 118), bold=is_player,
             x_offset=(
                 self.field_pixel_width
                 + self.strength_column_width
@@ -1099,6 +1100,7 @@ class PygletUI:
             d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
         )
         ranking_attack = d.current_player_attack(player, stage_num)
+        self._strength_known_types = known_types
         for y, (strength_char, is_player) in enumerate(ui_display.build_strength_column(tribes, ranking_attack, self.field_height)):
             if strength_char is None:
                 continue

@@ -6,6 +6,7 @@ import pytest
 
 from arlq import arlq as arlq_module
 from arlq import defs as d
+from arlq import display
 from arlq import game_engine as game_engine_module
 from arlq import i18n
 from arlq import stage_replay as stage_replay_module
@@ -23,6 +24,21 @@ from arlq.arlq import (
 )
 from arlq.game_engine import Floor, _step
 from arlq.game_events import ContactEvent
+
+
+@pytest.mark.parametrize(
+    ("label", "known_types", "expected"),
+    [
+        ("b", {"b"}, True),
+        ("b", set(), False),
+        ("b'", {"b"}, False),
+        ("b'", {"b2"}, True),
+        ('b"', {"b2"}, False),
+        ('b"', {"b3"}, True),
+    ],
+)
+def test_strength_label_identification_distinguishes_ranks(label, known_types, expected):
+    assert display.strength_label_known(label, known_types) is expected
 
 
 @pytest.fixture(autouse=True)
