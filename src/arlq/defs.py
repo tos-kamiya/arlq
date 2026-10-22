@@ -117,8 +117,6 @@ MARKSMAN_LP_DAMAGE: int = 4
 BARRIER_LP_DAMAGE: int = 30
 
 ROCK_SPREAD_OFFSETS: List[Tuple[int, int]] = [
-    (-3, -3),
-    (3, -3),
     (-2, -2),
     (2, -2),
     (-1, -1),
@@ -127,8 +125,6 @@ ROCK_SPREAD_OFFSETS: List[Tuple[int, int]] = [
     (1, 1),
     (-2, 2),
     (2, 2),
-    (-3, 3),
-    (3, 3),
 ]
 
 
