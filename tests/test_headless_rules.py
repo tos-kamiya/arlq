@@ -2054,7 +2054,7 @@ def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
         (None, 10),
         (d.ITEM_SWORD_X1_5, 15),
         (d.ITEM_SWORD_CURSED, 30),
-        (d.ITEM_POISONED, 5),
+        (d.ITEM_POISONED, 4),
     ],
 )
 def test_sword_and_poison_attack_modifiers(item, expected_attack):
@@ -2547,12 +2547,12 @@ def test_level_item_labels_follow_permanent_elf_attack_bonuses():
     player = d.Player(1, 1, 100, 90)
     player.item = d.ITEM_POISONED
     player.item_taken_from = "d"
-    assert d.level_item_labels(player, 1) == ("LVL: 100 /2", "+Poisoned(d)")
+    assert d.level_item_labels(player, 1) == ("LVL: 100 /3", "+Poisoned(d)")
 
     player.elf_stage_flags = d.ELF_STAGE_K_FLAG
     player.persistent_followers.append((1, 1, 0, "J"))
-    assert d.level_item_labels(player, 3) == ("LVL: 100 /2 x1.2 x1.25", "+Poisoned(d)")
-    assert d.level_item_labels(player, 2) == ("LVL: 100 /2 x1.2 x1.25", "+Poisoned(d)")
+    assert d.level_item_labels(player, 3) == ("LVL: 100 /3 x1.2 x1.25", "+Poisoned(d)")
+    assert d.level_item_labels(player, 2) == ("LVL: 100 /3 x1.2 x1.25", "+Poisoned(d)")
 
     player.item = d.ITEM_SWORD_X1_5
     assert d.level_item_labels(player, 3)[0] == "LVL: 100 x1.5 x1.2 x1.25"

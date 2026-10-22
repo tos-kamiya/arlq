@@ -936,7 +936,7 @@ def current_player_attack(player: Player, stage_num: int = 0) -> int:
     elif player.item == ITEM_SWORD_CURSED:
         value = player.level * 3
     elif player.item == ITEM_POISONED:
-        value = (player.level + 1) // 2
+        value = (player.level + 2) // 3
     else:
         value = player.level
 
