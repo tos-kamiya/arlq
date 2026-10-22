@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 5.9.0 - 2026-10-22
+
+- Reduce poisoned attack power to one third, rounded up, and update the
+  status display to match.
+- Reduce Golem rock scatter to two tiles in each diagonal direction.
+- Show identified monster types in white and unidentified types in gray in
+  the strength column of the text GUI and terminal mode.
+- Start with 120 LP and ease respawn penalties: lose 6 LP with a minimum of
+  20, preserving LP above the normal maximum.
+- Float the sprite GUI's LP gauge above the player and show the player's
+  sword and Collector Elf upgrade on the sprite.
+- Refine sprite visuals with irregular Collapse pits, fewer and larger rocks,
+  fallen rocks on the floor below pits, and darker wall bases.
+- Shrink the Wyrm sprite and enlarge the rare Erebus's stolen halo to make
+  their appearances easier to distinguish.
+
 ## 5.8.7 - 2026-10-21
 
 - Speed up the sprite GUI, especially while scrolling, by skipping offscreen
