@@ -177,8 +177,8 @@ SMOKE_TINT = (150, 150, 156)
 SMOKE_OPACITY = 140
 # Stairs and Collapse pits are drawn on the walls' canvas and placed like a
 # wall part: near-white marble flights (up: rising north; down: descending
-# toward the viewer into a dark opening) and a jagged hole broken through the
-# flagstones. They are tinted gold, as their yellow glyphs were, and darkened
+# toward the viewer into a dark opening) and a shapeless hole with rocks lying
+# around it. They are tinted gold, as their yellow glyphs were, and darkened
 # like the floor outside the current view.
 TERRAIN_FILES = {d.CHAR_STAIRS_UP: 'stairs/stairs-up.png',
                  d.CHAR_STAIRS_DOWN: 'stairs/stairs-down.png',
