@@ -62,6 +62,11 @@ SPRITE_FILES = {
     'S': 'sylvan-elf.png',
     # Not a glyph: the rubble drawn on walls a defeated Golem raised.
     'golem rock': 'golem-rock.png',
+    # Not glyphs: the player holding a chimera's sword taken from it, or its
+    # own sword glowing blue after the Collector Elf's blessing.
+    'player sword': 'player-sword.png',
+    'player cursed sword': 'player-cursed-sword.png',
+    'player blessed': 'player-blessed.png',
 }
 ROCK_SPRITE = 'golem rock'
 # Golem rubble outside the current view is darkened like explored walls.
@@ -948,7 +953,21 @@ class SpriteUI(PygletUI):
         self._player_cell = pos
         _, background = ui_display.player_appearance(player)
         poison = self._tone_color('magenta') if player.item == d.ITEM_POISONED else None
-        self._draw_sprite(pos, '@', self._tone_color(background or 'default'), poison)
+        self._draw_sprite(pos, self._player_sprite(player),
+                          self._tone_color(background or 'default'), poison)
+
+    def _player_sprite(self, player):
+        """The player's image for its sword: a chimera's sword it holds, else
+        its own sword, glowing after the Collector Elf's blessing."""
+        if player.item == d.ITEM_SWORD_X1_5:
+            sprite = 'player sword'
+        elif player.item == d.ITEM_SWORD_CURSED:
+            sprite = 'player cursed sword'
+        elif player.elf_stage_flags & d.ELF_STAGE_K_FLAG:
+            sprite = 'player blessed'
+        else:
+            sprite = '@'
+        return sprite if sprite in self._sprite_images else '@'
 
     def _set_scaled_dimensions(self):
         super()._set_scaled_dimensions()

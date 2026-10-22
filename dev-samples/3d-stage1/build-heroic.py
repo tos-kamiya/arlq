@@ -45,10 +45,12 @@ scene.world = world
 SCREEN_PIXEL = 186 / 1.8 / 11 * 2.6 / 256
 CELL_W = SCREEN_PIXEL * 15
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
-GRID_COLS, GRID_ROWS = 14, 5
-# Back to front: the player, Stage 1 monsters and chest; the companions and
-# elves; the monsters added from Stage 2 on, the golem rock and rank marks.
-ORDER = [('@', 'PLAYER'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
+GRID_COLS, GRID_ROWS = 14, 6
+# Back to front: the player and its sword variants, Stage 1 monsters and chest;
+# the companions and elves; the monsters added from Stage 2 on, the golem rock
+# and rank marks.
+ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
+         ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
          ('l', 'LOOP'), ('n', 'NOMICON'), ('o', 'OCULAR'), ('p', 'PEGASUS'),
          ('H', 'HIGH ELF'), ('I', 'ISOLATED ELF'), ('J', 'JAVELIN ELF'), ('K', 'COLLECTOR ELF'),
@@ -76,7 +78,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # large each character appears; the boss dragon is built large, its wings
 # spreading past its cell. The amoebas, comodo dragon and Erebuses were
 # later shrunk to 0.9 of their first sizes.
-SIZES = {'@': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
+SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5}
@@ -397,7 +399,34 @@ def dragon(x, y):
     tube('Dragon dorsal crest', crest, [(0.025, 0.05)] * len(crest), belly, sides=4)
 
 
-def player(x, y):
+def chimera_sword_materials(cursed):
+    """Blade and hilt of the chimeras' swords: pale glowing steel and gold
+    for the chimera's, black steel glowing red and iron for the cursed one."""
+    if cursed:
+        steel = material('Cursed sword black steel', (0.04, 0.03, 0.04), 0.0, 0.15,
+                         emission=(0.9, 0.05, 0.02), strength=0.6, metallic=0.6,
+                         rim=(1.0, 0.15, 0.05), rim_strength=4.0)
+        hilt = material('Cursed sword iron hilt', (0.25, 0.22, 0.24), roughness=0.3,
+                        metallic=1.0)
+    else:
+        steel = material('Chimera sword steel', (0.85, 0.92, 1.0), 0.3, 0.08,
+                         emission=(0.7, 0.85, 1.0), strength=0.8, metallic=0.5,
+                         rim=(0.9, 0.95, 1.0), rim_strength=1.5)
+        hilt = material('Chimera sword hilt', (1.0, 0.68, 0.18), roughness=0.25, metallic=1.0)
+    return steel, hilt
+
+
+def chimera_blade(name, base, tip, width, steel):
+    """A flat blade narrowing steadily from `base` to a sharp point at `tip`,
+    an acute isosceles triangle seen from above."""
+    return tube(name, [base, tip], [(width, width * 0.2), 0], steel, sides=4)
+
+
+def player(x, y, sword=None):
+    """The player. `sword` picks the blade in the right hand: None for the
+    player's own broad short sword, 'blessed' for the same sword glowing blue
+    after the Collector Elf's blessing, 'c' or 'C' for the chimera's or the
+    cursed chimera's sword taken from them."""
     # Plate armour in bluish steel rather than the first frosted crystal,
     # which looked more like a spacesuit.
     tunic = material('Player steel plate', (0.55, 0.63, 0.74), roughness=0.32, metallic=0.8,
@@ -411,8 +440,13 @@ def player(x, y):
     iron = material('Player dark iron trim', (0.16, 0.16, 0.18), roughness=0.35, metallic=1.0)
     visor = material('Player visor glow', (0.3, 0.9, 1.0), emission=(0.1, 0.75, 1.0),
                      strength=2.5)
-    blade = material('Player iron blade', (0.62, 0.63, 0.66), roughness=0.4, metallic=0.55,
-                     rim=(0.85, 0.9, 1.0), rim_strength=0.8)
+    if sword == 'blessed':
+        blade = material('Player blessed blade', (0.10, 0.35, 1.0), roughness=0.3,
+                         metallic=0.3, emission=(0.03, 0.30, 1.0), strength=1.5,
+                         rim=(0.2, 0.6, 1.0), rim_strength=2.0)
+    else:
+        blade = material('Player iron blade', (0.62, 0.63, 0.66), roughness=0.4, metallic=0.55,
+                         rim=(0.85, 0.9, 1.0), rim_strength=0.8)
     # About three heads tall: a 0.34-tall head, a cylinder body about as
     # tall, and two legs below it ending in small boots.
     legs = material('Player steel greaves', (0.45, 0.52, 0.62), roughness=0.35, metallic=0.8,
@@ -453,11 +487,24 @@ def player(x, y):
         sphere('Player couter', (x + side * 0.275, y - 0.10, 0.46), (0.075, 0.07, 0.06), iron, 20)
     # Short sword in the right hand (screen left), held low and outward.
     hand = Vector((x - 0.30, y - 0.13, 0.34))
-    tip = hand + Vector((-0.34, -0.30, -0.10)) * 0.8
-    tube('Player sword blade', [hand + (tip - hand) * 0.12, tip * 0.94 + hand * 0.06, tip],
-         [(0.075, 0.016), (0.06, 0.014), 0], blade, sides=4)
-    tube('Player sword guard', [hand + Vector((0.07, -0.08, 0)), hand + Vector((-0.08, 0.06, 0))],
-         [0.025, 0.025], iron, sides=6)
+    if sword in ('c', 'C'):
+        # The chimera's longer, tapering sword, with its own hilt.
+        steel, hilt = chimera_sword_materials(sword == 'C')
+        ahead = Vector((-0.34, -0.30, -0.10)).normalized()
+        across = ahead.cross(Vector((0, 0, 1))).normalized()
+        chimera_blade('Player chimera sword blade', hand + ahead * 0.05, hand + ahead * 0.58,
+                      0.075, steel)
+        tube('Player chimera sword guard', [hand + across * 0.09, hand - across * 0.09],
+             [0.025, 0.025], hilt, sides=6)
+        sphere('Player chimera sword pommel', tuple(hand - ahead * 0.10),
+               (0.035, 0.035, 0.035), hilt, 12)
+    else:
+        tip = hand + Vector((-0.34, -0.30, -0.10)) * 0.8
+        tube('Player sword blade', [hand + (tip - hand) * 0.12, tip * 0.94 + hand * 0.06, tip],
+             [(0.075, 0.016), (0.06, 0.014), 0], blade, sides=4)
+        tube('Player sword guard', [hand + Vector((0.07, -0.08, 0)),
+                                    hand + Vector((-0.08, 0.06, 0))],
+             [0.025, 0.025], iron, sides=6)
     # Cloak: hugs the shoulders, drifts back and sideways toward the hem.
     columns, rows = 25, 8
     vertices = []
@@ -509,11 +556,6 @@ def chimera(x, y, cursed=False):
                          rim=(1.0, 0.95, 0.85), rim_strength=1.2, coat=0.8)
         snake_eye = material('Rare chimera snake eyes', (1.0, 0.1, 0.05),
                              emission=(1.0, 0.1, 0.05), strength=8.0)
-        steel = material('Cursed sword black steel', (0.04, 0.03, 0.04), 0.0, 0.15,
-                         emission=(0.9, 0.05, 0.02), strength=0.6, metallic=0.6,
-                         rim=(1.0, 0.15, 0.05), rim_strength=4.0)
-        hilt = material('Cursed sword iron hilt', (0.25, 0.22, 0.24), roughness=0.3,
-                        metallic=1.0)
     else:
         hide = material('Chimera golden lion resin', (0.95, 0.66, 0.18), 0.5, 0.22,
                         rim=(1.0, 0.85, 0.45), rim_strength=1.2, coat=0.6)
@@ -524,10 +566,7 @@ def chimera(x, y, cursed=False):
                          rim=(0.6, 1.0, 0.6), rim_strength=1.8, coat=0.8)
         snake_eye = material('Chimera snake eyes', (1.0, 0.9, 0.1), emission=(1.0, 0.85, 0.1),
                              strength=6.0)
-        steel = material('Chimera sword steel', (0.85, 0.92, 1.0), 0.3, 0.08,
-                         emission=(0.7, 0.85, 1.0), strength=0.8, metallic=0.5,
-                         rim=(0.9, 0.95, 1.0), rim_strength=1.5)
-        hilt = material('Chimera sword hilt', (1.0, 0.68, 0.18), roughness=0.25, metallic=1.0)
+    steel, hilt = chimera_sword_materials(cursed)
     tongue = material('Chimera snake tongue', (1.0, 0.1, 0.15), emission=(1.0, 0.1, 0.15),
                       strength=2.0)
     eye = material('Chimera ember eyes', (1.0, 0.3, 0.05), emission=(1.0, 0.3, 0.05),
@@ -549,10 +588,9 @@ def chimera(x, y, cursed=False):
                 location=(x + radius * math.cos(a), y + dy, 0.60 + radius * math.sin(a)),
                 rotation=(i * 0.9, i * 0.5 + ring, 0))
             finish(bpy.context.object, mane, False, 'Chimera mane clump')
-    # Flat blade so its broad face shows from above.
-    tube('Chimera sword blade', [(x - 0.20, y - 0.88, 0.50), (x - 0.64, y - 0.88, 0.50),
-                                 (x - 0.76, y - 0.88, 0.50)],
-         [(0.07, 0.014), (0.06, 0.012), 0], steel, sides=4)
+    # Flat blade so its broad face shows from above, tapering to a point.
+    chimera_blade('Chimera sword blade', (x - 0.20, y - 0.88, 0.50), (x - 0.80, y - 0.88, 0.50),
+                  0.085, steel)
     tube('Chimera sword guard', [(x - 0.18, y - 0.88, 0.40), (x - 0.18, y - 0.88, 0.62)],
          [0.03, 0.03], hilt, sides=6)
     tube('Chimera sword grip', [(x - 0.17, y - 0.88, 0.50), (x + 0.20, y - 0.88, 0.50)],
@@ -2181,7 +2219,9 @@ def label(value, pos, size):
     obj.data.materials.append(ink)
 
 
-builders = {'@': player, 'a': lambda x, y: amoeba(x, y, False),
+builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
+            '@C': lambda x, y: player(x, y, 'C'), '@K': lambda x, y: player(x, y, 'blessed'),
+            'a': lambda x, y: amoeba(x, y, False),
             'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'd': dragon,
             'c': chimera, 'T': treasure, 'M': lambda x, y: treasure(x, y, True), 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),

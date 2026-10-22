@@ -968,3 +968,27 @@ def test_fallen_rocks_are_hidden_under_characters_and_text(monkeypatch):
     monkeypatch.setattr(ui, '_draw_terrain', lambda pos, key, layer: drawn.append((pos, key)))
     ui._finish_drawables()
     assert drawn == [((4, 1), d.DECOR_FALLEN_ROCKS)]
+
+
+@pytest.mark.parametrize(
+    "item, k_blessed, sprite",
+    [
+        (None, False, '@'),
+        (d.ITEM_POISONED, False, '@'),
+        (None, True, 'player blessed'),
+        (d.ITEM_SWORD_X1_5, False, 'player sword'),
+        (d.ITEM_SWORD_X1_5, True, 'player sword'),
+        (d.ITEM_SWORD_CURSED, True, 'player cursed sword'),
+    ],
+)
+def test_player_sprite_shows_its_sword(item, k_blessed, sprite):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._sprite_images = dict.fromkeys(sprite_funcs.SPRITE_FILES)
+    player = d.Player(1, 1, 10, d.LP_INIT)
+    player.item = item
+    if k_blessed:
+        player.elf_stage_flags |= d.ELF_STAGE_K_FLAG
+    assert ui._player_sprite(player) == sprite
+    # Without the variant images, the plain player is drawn.
+    ui._sprite_images = {'@': None}
+    assert ui._player_sprite(player) == '@'
