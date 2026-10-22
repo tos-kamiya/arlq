@@ -45,16 +45,13 @@ SHAFT_COLOR = (0.10, 0.11, 0.16)
 EDGE_POINTS = 18
 # Rocks around the edge: (angle in degrees from east, counterclockwise;
 # distance from the centre as a fraction of the hole's radii; size).
-ROCKS = ((-80, 1.12, 0.13), (-55, 1.18, 0.08), (-110, 1.10, 0.09),
-         (-150, 1.08, 0.12), (175, 1.15, 0.07), (140, 1.05, 0.10),
-         (95, 1.02, 0.08), (40, 1.08, 0.11), (10, 1.20, 0.07),
-         (-20, 1.10, 0.10))
-RUBBLE = 14
+ROCKS = ((-75, 1.12, 0.17), (-140, 1.08, 0.14), (-20, 1.10, 0.13),
+         (150, 1.02, 0.12), (75, 1.00, 0.11))
+RUBBLE = 4
 # Rocks fallen onto the floor below a pit: (x as a fraction of the cell's
 # width from its centre, y as a fraction of its depth from the south edge,
 # size).
-FALLEN_ROCKS = ((-0.15, 0.42, 0.12), (0.17, 0.56, 0.09), (0.03, 0.27, 0.07),
-                (-0.06, 0.68, 0.06), (0.28, 0.32, 0.05))
+FALLEN_ROCKS = ((0.10, 0.27, 0.085), (-0.13, 0.44, 0.15), (0.17, 0.58, 0.105))
 SHAFT_RINGS = 5
 # The top of the wall, just below the edge, is lighter rock.
 LIP_DEPTH = 0.07
@@ -177,10 +174,10 @@ def boulder(name, location, size, flat=0.6):
     obj = bpy.context.object
     obj.name = name
     for v in obj.data.vertices:
-        v.co = v.co * rng.uniform(0.7, 1.2) + Vector([rng.uniform(-0.2, 0.2) * size
+        v.co = v.co * rng.uniform(0.85, 1.15) + Vector([rng.uniform(-0.12, 0.12) * size
                                                       for _ in range(3)])
         v.co.z = max(v.co.z, -0.35 * size)
-    obj.scale = (rng.uniform(1.0, 1.5), rng.uniform(0.7, 1.1), flat * rng.uniform(0.8, 1.2))
+    obj.scale = (rng.uniform(1.0, 1.3), rng.uniform(0.8, 1.1), flat * rng.uniform(0.8, 1.2))
     obj.rotation_euler = (rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15),
                           rng.uniform(0, 2 * math.pi))
     obj.data.materials.append(rock)
@@ -195,7 +192,7 @@ for n, (deg, dist, size) in enumerate(ROCKS):
 # Rubble between them.
 for n in range(RUBBLE):
     a = rng.uniform(0, 2 * math.pi)
-    size = rng.uniform(0.03, 0.05)
+    size = rng.uniform(0.05, 0.07)
     p = edge_point(a, edge_radius(a) * rng.uniform(1.04, 1.3), 0.0)
     boulder('Rubble %d' % n, (p.x, p.y, 0.2 * size), PIT_SCALE * size)
 
