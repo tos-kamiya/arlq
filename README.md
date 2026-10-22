@@ -114,7 +114,7 @@ reproduce the same layout.
 ## Game Description
 
 * **Objective**  
-  Explore the dungeon and claim its treasure. In Stages 1 and 2, find the chest; in Stages 3 and 4, defeat the stage boss and claim the chest it unlocks. Elves can help in the later stages.
+  Explore the dungeon, defeat the stage boss to unlock its treasure chest, and claim the treasure. Elves can help in the later stages.
 
 * **Player and Fog**  
   You control the character represented by `@` using the arrow keys or WASD.
@@ -143,23 +143,25 @@ reproduce the same layout.
   Monster identification persists across floors. Companion identification is tracked separately on each floor in every stage, so an unencountered companion is shown again as `!` on a new floor.
   In `arlq` and `arlq-cli`, the right-hand strength column shows identified monster types in white and unidentified types in gray.
 
-  Contact starts combat. Defeating a monster at or below your attack power levels you up and restores LP. Losing to a stronger monster returns you to the checkpoint; losing twice in a row to the same monster sends you to a random location instead.
+  Contact with an ordinary monster starts combat. You win if its level is at or below your current attack power. Most victories raise your level by 1 and restore LP, but some monsters give no LP or drain LP or levels instead. Each victory updates the checkpoint. Losing to a stronger monster returns you to the checkpoint and clears your held item; losing twice in a row to the same monster, without contacting another monster in between, sends you to a random location instead. Stairs and falls also update the checkpoint.
+
+  Defeating another ordinary monster replaces your held item, even if it carries nothing. This also removes poison or Spores. In Stages 3 and 4, contact with an elf you have not yet met clears Spores; Lifebringer also cures poison.
 
   Some monsters, such as `d`, respawn. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked `T` clears the stage.
 
-  Companions provide a temporary benefit. Defeating a monster consumes one unit of its duration, as does each Pegasus jump. For example, the Nomicon identifies nearby monsters and elves.
+  Companions provide a temporary benefit, with one temporary companion at a time. Defeating a monster consumes one unit of its duration, as does each Pegasus jump. For example, the Nomicon identifies nearby monsters and elves.
 
   Most elves appear from Stage 3 onward and provide support, such as increased attack power, when you meet certain conditions.
 
 * **Rare Monster Types and Empowered Monsters**  
-  Rare variants such as `A` (Rare Amoeba) and `C` (Rare Chimera) can grant special rewards. Empowered monsters appear from Stage 2 onward; their rank marks (`b'` and `b"`) identify them as stronger, separate monster types.
+  Rare variants have different effects: `A` (Rare Amoeba) grants extra levels, `C` (Rare Chimera) gives a cursed sword, and `E` (Rare Erebus) drains levels. Empowered monsters appear from Stage 2 onward. Rank 2 has the normal level × 3 + 10; rank 3 has three times the rank-2 level. Their rank marks (`b'` and `b"`) identify them as stronger, separate monster types.
 
 ## Companion List
 
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
-| **l** Loop Companion | Appears in Stages 3 and 4. Sends the world back 80 turns; monster identities remain known. |
-| **n** Nomicon  | Reveals the type of every monster within the player's field of vision. |
+| **l** Loop Companion | Appears in Stages 3 and 4. Rewinds up to 80 turns, or to the start of the current history if shorter; explored maps, monster identities, and learned elf locations remain known. |
+| **n** Nomicon  | Reveals the type of every active monster and elf within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |
 
@@ -170,7 +172,7 @@ reproduce the same layout.
 | Display & Name      | Description                                                                                                                                                       |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **a** Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                                |
-| **A** Rare Amoeba   | A rare amoeba that significantly boosts your level upon defeat.                                                                                                   |
+| **A** Rare Amoeba   | Defeating it raises your level by 10 instead of the usual 1. |
 | **b** Bison         | The second weakest. Defeating it restores a large amount of LP. Hunt it when you're hungry.                                                                       |
 | **c** Chimera       | Moderately strong. It carries a sword. Taking it raises combat power to 1.5x and lets you break up to three walls.                                               |
 | **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to one third (rounded up) until replaced.        |
@@ -184,16 +186,16 @@ Stage 2 also features empowered Bison (`b'`).
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **C** Rare Chimera  | Its Cursed Sword gives 3x attack power at the cost of vitality. |
+| **C** Rare Chimera  | Its Cursed Sword gives 3x attack power. Each monster or elf contact and each wall broken costs an extra 10 LP. Like the normal sword, it can break up to three walls. |
 | **e** Erebus        | Battling it drains your vitality by a small amount.                                                                     |
 | **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
 | **g** Golem         | When defeated, rocks scatter up to two tiles in each of the four diagonal directions around you. It yields no food.                                                                        |
-| **H** High Elf      | Too powerful to defeat.                                                                                               |
+| **H** High Elf      | In Stage 2, a passive elf: contact reveals it without combat or a reward. |
 | **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you.                                                         |
 
-Rare Erebus (`E`) and the Vortex (`V`) use random-floor respawns at a 65-turn
-tick and can return on any Stage 4 floor. The Caltrop Plant (`X`) also
-uses random-floor respawns; Stage 2, where it appears, currently has one floor.
+Queued respawns are processed every 65 turns. Rare Erebus (`E`) and the Vortex
+(`V`) can return on any Stage 4 floor. The Caltrop Plant (`X`), which appears
+in Stages 2, 3, and 4, also respawns on a random floor; Stage 2 has one floor.
 
 ### Stage 3
 
@@ -219,21 +221,25 @@ hidden; moving returns the display to the player's floor.
 | -------------- | ----------- |
 | **I** Isolated Elf | Reveals information about the other elves. It is in a sealed room, which you must enter by breaking a wall with a sword, flying in with Pegasus, or using stairs or a Collapse. On the second and later contacts, it sends the player to a random location on the map. |
 | **J** Javelin Elf | Follows the player and increases attack power by 25%. |
-| **K** Collector Elf | Exchanges the cursed sword for a permanent 1.2x attack enhancement; it cannot break walls. |
-| **H** High Elf | Grants the protective amulet after meeting any two of `I`, `J`, and `K`. |
+| **K** Collector Elf | After you have defeated Rare Chimera (`C`), grants a permanent 1.2x attack enhancement and clears your held item. You need not still carry the cursed sword. The enhancement cannot break walls. |
+| **H** High Elf | Grants the protective amulet after receiving help from any two of `I`, `J`, `K`, `L`, and `S` (only `I`, `J`, and `K` appear in Stage 3). |
 
 The High Elf (`H`) and the Collector Elf (`K`) only show a message on the first contact made while their condition is unmet; any contact after that sends you to a random location on the map.
 
+Entering a barrier (`=`) costs an extra 30 LP. The protective amulet removes
+this cost unless you are holding the cursed sword. Collector and Javelin
+bonuses stack with item modifiers, including swords and poison.
+
 ### Stage 4
 
-Like Stage 3, Stage 4 features elves, including some new ones. New monsters and traps also appear. The boss is the empowered Fire Drake (`F'`).
+Stage 4 has five connected floors and features elves, including some new ones. New monsters and traps also appear. The boss is the empowered Fire Drake (`F'`).
 
 #### Monsters
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **E** Rare Erebus | A troublesome enemy that drains your level. |
-| **k** Marksman | Shoots arrows along a horizontal or vertical line, but not from an adjacent cell. Walls, stairs, companions, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. |
+| **E** Rare Erebus | On defeat, reduces your level to two thirds, rounded down, with a minimum of 1. |
+| **k** Marksman | Shoots arrows along a horizontal or vertical line for 4 LP damage per hit, but not from an adjacent cell. Walls, stairs, companions, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. |
 
 #### Traps
 
@@ -251,7 +257,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| **L** Lifebringer Elf | Each meeting cures poison, raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then moves to a random floor. |
+| **L** Lifebringer Elf | Each meeting cures poison, raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then disappears and returns on a random floor at a later 65-turn respawn tick. |
 | **S** Sylvan Elf | Gives you fairy nectar. Companions recruited afterward, except `l`, stay with you 1.25 times longer. |
 
 ## Development commands
