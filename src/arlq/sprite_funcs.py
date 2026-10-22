@@ -125,6 +125,16 @@ GROUND_DISC_FLATTEN = math.sin(math.radians(60))
 GROUND_DISC_ALPHA = 1.0
 GROUND_DISC_FALLOFF = 0.8
 GROUND_DISC_TEXELS = 64
+# The player's LP gauge, drawn just above its head like a fighting game's:
+# this fraction of its ground disc's width, this tall and this far above the
+# head (both in cell widths), on a dark backing framed in this color. The
+# whole gauge is drawn at LP_GAUGE_OPACITY so the field shows through.
+LP_GAUGE_WIDTH = 0.8
+LP_GAUGE_HEIGHT = 0.22
+LP_GAUGE_GAP = 0.52
+LP_GAUGE_BACKING = (0, 0, 0, 170)
+LP_GAUGE_FRAME = (235, 235, 235)
+LP_GAUGE_OPACITY = 0.6
 # Companions stand inside a faint green pillar of light: an open cylinder on
 # the ground disc's ellipse, seen at the same 60-degree view. Radius and side
 # height in cell widths; peak opacity of the far wall (behind the sprite) and
@@ -381,6 +391,7 @@ class SpriteUI(PygletUI):
         directory = Path(__file__).parent / 'assets' / 'characters'
         self._sprite_images = {}
         self._gray_images = {}
+        self._sprite_head_room = {}
         for char, filename in SPRITE_FILES.items():
             path = directory / filename
             if not path.is_file():
@@ -388,6 +399,12 @@ class SpriteUI(PygletUI):
             data = pyglet.image.load(str(path)).get_image_data()
             self._sprite_images[char] = mipmapped(data)
             rgba = bytearray(data.get_data('RGBA', data.width * 4))
+            # Fully transparent rows above the character (rows run bottom
+            # to top), so things drawn over its head sit on the head itself.
+            row_bytes = data.width * 4
+            opaque_rows = [y for y in range(data.height)
+                           if any(rgba[y * row_bytes + 3:(y + 1) * row_bytes:4])]
+            self._sprite_head_room[char] = data.height - 1 - max(opaque_rows, default=0)
             for offset in range(0, len(rgba), 4):
                 r, g, b = rgba[offset:offset + 3]
                 gray = (299 * r + 587 * g + 114 * b) // 1000
@@ -430,6 +447,8 @@ class SpriteUI(PygletUI):
         # so walls overlap characters to their north but not to their south.
         self._row_groups = {}
         self._overlay_group = pyglet.graphics.Group(order=10000)
+        # Above every field row, below the HUD panels.
+        self._lp_gauge_group = pyglet.graphics.Group(order=9000)
         self._text_panel_group = pyglet.graphics.Group(order=9999)
         self._text_overlay_group = pyglet.graphics.Group(order=10001)
         self._sidebar_bg_group = pyglet.graphics.Group(order=9998)
@@ -953,8 +972,46 @@ class SpriteUI(PygletUI):
         self._player_cell = pos
         _, background = ui_display.player_appearance(player)
         poison = self._tone_color('magenta') if player.item == d.ITEM_POISONED else None
-        self._draw_sprite(pos, self._player_sprite(player),
-                          self._tone_color(background or 'default'), poison)
+        top = self._draw_sprite(pos, self._player_sprite(player),
+                                self._tone_color(background or 'default'), poison)
+        self._draw_lp_gauge(pos, player, top)
+
+    def _status_shows_lp_gauge(self):
+        # The gauge is drawn over the player instead (see _draw_lp_gauge).
+        return '@' not in self._sprite_images
+
+    def _draw_lp_gauge(self, pos, player, head_top):
+        """The LP gauge centred just above the player's head (field pixel
+        `head_top`), a little narrower than the player's ground disc."""
+        unit = self._sprite_unit()
+        width = round(LP_GAUGE_WIDTH * 2 * GROUND_DISC_RADIUS * unit)
+        height = max(2, round(LP_GAUGE_HEIGHT * unit))
+        frame = max(1, round(self.scale))
+        cx = self._field_col_x(pos[0]) + self.cell_size_x / 2
+        left = round(cx - width / 2)
+        top = max(frame, round(head_top - LP_GAUGE_GAP * unit) - height)
+        fill = round(width * self._lp_gauge_ratio(player))
+        # Translucent, so no part lies over another: the frame is four
+        # strips, and the fill and the empty backing sit side by side.
+        outer_w, outer_h = width + 2 * frame, height + 2 * frame
+        for x, y, w, h, color in (
+                (left - frame, top - frame, outer_w, frame, LP_GAUGE_FRAME),
+                (left - frame, top + height, outer_w, frame, LP_GAUGE_FRAME),
+                (left - frame, top, frame, height, LP_GAUGE_FRAME),
+                (left + width, top, frame, height, LP_GAUGE_FRAME),
+                (left, top, fill, height, self._lp_gauge_color(player)),
+                (left + fill, top, width - fill, height, LP_GAUGE_BACKING)):
+            if w <= 0:
+                continue
+            bottom = self.window_height - y - h
+            alpha = color[3] if len(color) == 4 else 255
+            draw_color = self._display_color((*color[:3], round(alpha * LP_GAUGE_OPACITY)))
+            signature = ('rectangle', x, bottom, w, h, draw_color, id(self._lp_gauge_group))
+            self._draw_bounded_object(
+                x, w, signature,
+                partial(pyglet.shapes.Rectangle, x, bottom, w, h, color=draw_color,
+                        batch=self.batch, group=self._lp_gauge_group),
+            )
 
     def _player_sprite(self, player):
         """The player's image for its sword: a chimera's sword it holds, else
@@ -1508,7 +1565,7 @@ class SpriteUI(PygletUI):
             # for dim neutral colors supplied by callers outside COLOR_MAP.
             dimmed = True
         size = NEIGHBOR_SCALE if self._neighbor_of_player(pos) else 1.0
-        self._place_sprite(text, cx, cy, size, y, 'sprite', dimmed, shade)
+        top = self._place_sprite(text, cx, cy, size, y, 'sprite', dimmed, shade)
         self._sprite_cells[pos] = size
         if text in d.CHAR_TO_COMPANION_TRIBE:
             green = COLOR_MAP[CI_GREEN]
@@ -1526,9 +1583,11 @@ class SpriteUI(PygletUI):
         color = tuple(round(c * shade) for c in color)
         self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self._sprite_unit(), color,
                                upper_right_color)
+        return top
 
     def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0):
-        """Draw a character image with its feet at field pixel (cx, cy)."""
+        """Draw a character image with its feet at field pixel (cx, cy); returns
+        the field pixel y of the top of the character in it."""
         images = self._gray_images if self.map_mode else self._sprite_images
         picture = images[text]
         padding = max(1, round(self.scale))
@@ -1549,6 +1608,8 @@ class SpriteUI(PygletUI):
         )
         self._set_drawable_attribute(sprite, 'scale', scale)
         self._set_drawable_attribute(sprite, 'color', tint)
+        head_room = getattr(self, '_sprite_head_room', {}).get(text, 0)
+        return cy - (picture.height / 2 + SPRITE_GROUND_OFFSET_PIXELS - head_room) * scale
 
     def _draw_pillar(self, cx, cy, size, row, color, familiar=False):
         """Additive light cylinder around a companion: far wall behind, near wall over it."""

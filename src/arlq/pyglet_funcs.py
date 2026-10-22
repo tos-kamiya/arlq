@@ -1189,7 +1189,10 @@ class PygletUI:
         x_offset = lp_text_x_offset + lp_width
 
         extra = "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
-        if flexible_hud:
+        if not self._status_shows_lp_gauge():
+            bar_width = 0
+            item_x_offset = x_offset + round(10 * hud_scale)
+        elif flexible_hud:
             item_width = self._text_width(extra, size_scale=hud_scale)
             item_gap = round(10 * hud_scale)
             available_bar_width = self.window_width - item_width - item_gap - x_offset
@@ -1203,20 +1206,15 @@ class PygletUI:
             item_x_offset = x_offset + bar_width + 10
         bar_height = max(1, round(self.cell_size_y * hud_scale / 2))
         y_offset = self.field_height * self.cell_size_y + (row_height - bar_height) // 2
-        lp_max = d.player_lp_max(player)
-        progress_ratio = min(player.lp, lp_max) / lp_max
-        fill_width = int(bar_width * progress_ratio)
-        lp_color = (
-            COLOR_MAP[CI_MAGENTA]
-            if player.lp > lp_max
-            else COLOR_MAP[CI_RED]
-            if player.lp <= d.LP_LOW_THRESHOLD
-            else COLOR_MAP["default"]
-        )
-
-        self._draw_rect_outline(x_offset, y_offset, bar_width, bar_height, COLOR_MAP["default"])
-        if fill_width > 0:
-            self._draw_rect(x_offset, y_offset, fill_width, bar_height, lp_color)
+        if bar_width > 0:
+            fill_width = int(bar_width * self._lp_gauge_ratio(player))
+            self._draw_rect_outline(
+                x_offset, y_offset, bar_width, bar_height, COLOR_MAP["default"]
+            )
+            if fill_width > 0:
+                self._draw_rect(
+                    x_offset, y_offset, fill_width, bar_height, self._lp_gauge_color(player)
+                )
 
         self._draw_text(
             (0, self.field_height), extra, COLOR_MAP["default"],
@@ -1236,6 +1234,23 @@ class PygletUI:
                 size_scale=hud_scale * MESSAGE_FONT_SIZE_SCALE,
                 y_offset=bottom_row_y_offset,
             )
+
+    def _status_shows_lp_gauge(self) -> bool:
+        return True
+
+    @staticmethod
+    def _lp_gauge_ratio(player: d.Player) -> float:
+        lp_max = d.player_lp_max(player)
+        return min(player.lp, lp_max) / lp_max
+
+    @staticmethod
+    def _lp_gauge_color(player: d.Player) -> Tuple[int, int, int]:
+        """LP gauge fill: magenta above the maximum, red when low, else white."""
+        if player.lp > d.player_lp_max(player):
+            return COLOR_MAP[CI_MAGENTA]
+        if player.lp <= d.LP_LOW_THRESHOLD:
+            return COLOR_MAP[CI_RED]
+        return COLOR_MAP["default"]
 
     def _status_font_scale(self) -> float:
         return 1.0
