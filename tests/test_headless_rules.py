@@ -41,6 +41,25 @@ KEYS = {
 }
 
 
+def test_starting_lp_is_temporary_overcharge():
+    player = d.Player(2, 2, 1, d.LP_INIT)
+    assert player.lp == 120
+    assert d.player_lp_max(player) == 100
+    player.lp -= 10
+    d.apply_feed(player, 20)
+    assert player.lp == 110
+    player.lp = 99
+    d.apply_feed(player, 20)
+    assert player.lp == 100
+
+
+@pytest.mark.parametrize("lp, expected", [(120, 114), (110, 104), (90, 84), (25, 20), (5, 20)])
+def test_respawn_cost_preserves_overcharge_and_guarantees_minimum(lp, expected):
+    player = d.Player(2, 2, 1, lp)
+    d.apply_respawn_penalty(player)
+    assert player.lp == expected
+
+
 def blank_field():
     return [[" " for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)]
 

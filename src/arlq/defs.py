@@ -38,7 +38,7 @@ LP_MAX: int = 100
 LP_MAX_LIFEBRINGER: int = 120
 LIFEBRINGER_LP_MAX_INCREASE: int = 5
 LP_OVERCHARGE_MAX: int = 120
-LP_INIT: int = 90
+LP_INIT: int = LP_OVERCHARGE_MAX
 LP_RESPAWN_MIN: int = 20
 LP_RESPAWN_COST: int = 6
 LP_WARNING_THRESHOLD: int = 40
@@ -896,7 +896,7 @@ def apply_feed(player: Player, feed: int) -> None:
 
 def apply_respawn_penalty(player: Player) -> None:
     player.lp -= LP_RESPAWN_COST
-    player.lp = max(LP_RESPAWN_MIN, min(player.lp, LP_INIT))
+    player.lp = max(LP_RESPAWN_MIN, player.lp)
 
 
 def clear_player_item(player: Player) -> None:

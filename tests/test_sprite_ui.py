@@ -998,7 +998,7 @@ def test_player_sprite_shows_its_sword(item, k_blessed, sprite):
     assert ui._player_sprite(player) == '@'
 
 
-@pytest.mark.parametrize('lp, tone', [(d.LP_INIT, 'default'), (d.LP_LOW_THRESHOLD, 'red')])
+@pytest.mark.parametrize('lp, tone', [(90, 'default'), (d.LP_INIT, 'magenta'), (d.LP_LOW_THRESHOLD, 'red')])
 def test_lp_gauge_sits_over_player_head_scaled_to_its_disc(sprite_ui, lp, tone):
     ui = sprite_ui
     ui._display_color = lambda color: color
@@ -1006,19 +1006,22 @@ def test_lp_gauge_sits_over_player_head_scaled_to_its_disc(sprite_ui, lp, tone):
     player = d.Player(4, 5, level=8, lp=lp)
     ui._draw_player((4, 5), player)
     sprite = ui._drawables[0]
-    top_frame, bottom_frame, left_frame, right_frame, fill, backing = ui._drawables[1:]
+    top_frame, bottom_frame, left_frame, right_frame, fill = ui._drawables[1:6]
+    backing = ui._drawables[6] if lp < d.LP_MAX else None
     width = round(sprite_funcs.LP_GAUGE_WIDTH * 2 * sprite_funcs.GROUND_DISC_RADIUS
                   * ui._sprite_unit())
-    assert fill.width + backing.width == width
+    assert fill.width + (backing.width if backing else 0) == width
     assert fill.width == round(width * min(lp, d.LP_MAX) / d.LP_MAX)
-    assert backing.x == fill.x + fill.width
+    if backing:
+        assert backing.x == fill.x + fill.width
     assert fill.color[:3] == ui._lp_gauge_color(player)
     assert (fill.color[:3] == sprite_funcs.COLOR_MAP['default']) == (tone == 'default')
     assert top_frame.width == bottom_frame.width == width + 2
     # The whole gauge is translucent.
     assert fill.color[3] == top_frame.color[3] == round(255 * sprite_funcs.LP_GAUGE_OPACITY)
-    assert backing.color[3] == round(sprite_funcs.LP_GAUGE_BACKING[3]
-                                     * sprite_funcs.LP_GAUGE_OPACITY)
+    if backing:
+        assert backing.color[3] == round(sprite_funcs.LP_GAUGE_BACKING[3]
+                                         * sprite_funcs.LP_GAUGE_OPACITY)
     # The gauge floats above the opaque top of the player's image, about
     # two gauge heights clear of it.
     head_top = sprite.y + (sprite.image.height - 10) * sprite.scale
