@@ -31,6 +31,11 @@ TOP = 2.81  # height of the abacus top, chosen so the column fills the canvas
 # the links reach the wider canvas's edges.
 CANVAS_UP = (TOP * math.cos(ELEVATION) + DEPTH * math.sin(ELEVATION)) + DEPTH * math.sin(ELEVATION)
 CANVAS_W = CANVAS_UP * WIDTH / HEIGHT
+# The marble darkens toward the floor to stress the walls' height
+# (darken_toward_floor): FOOT_SHADE of its brightness at the floor, rising
+# as height ** HEIGHT_CURVE to full brightness at the abacus top.
+FOOT_SHADE = 0.12
+HEIGHT_CURVE = 1.0
 
 
 def material(name, color, transmission, roughness, rim_strength=0.0):
@@ -59,6 +64,37 @@ def material(name, color, transmission, roughness, rim_strength=0.0):
         links.new(bsdf.outputs[0], mix.inputs[1])
         links.new(add.outputs[0], mix.inputs[2])
         links.new(mix.outputs[0], nodes['Material Output'].inputs['Surface'])
+    return mat
+
+
+def darken_toward_floor(mat, foot_shade, curve):
+    """Blend the whole surface (color, highlights and rim) toward black near
+    the floor: by foot_shade at z = 0, rising as height ** curve to full
+    brightness at TOP."""
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    surface = nodes['Material Output'].inputs['Surface']
+    shader = surface.links[0].from_socket
+    position = nodes.new('ShaderNodeNewGeometry')
+    xyz = nodes.new('ShaderNodeSeparateXYZ')
+    height = nodes.new('ShaderNodeMapRange')
+    height.inputs['From Min'].default_value = 0
+    height.inputs['From Max'].default_value = TOP
+    power = nodes.new('ShaderNodeMath')
+    power.operation = 'POWER'
+    power.inputs[1].default_value = curve
+    shade = nodes.new('ShaderNodeMapRange')
+    shade.inputs['To Min'].default_value = foot_shade
+    black = nodes.new('ShaderNodeEmission')
+    black.inputs['Strength'].default_value = 0
+    mix = nodes.new('ShaderNodeMixShader')
+    links.new(position.outputs['Position'], xyz.inputs[0])
+    links.new(xyz.outputs['Z'], height.inputs['Value'])
+    links.new(height.outputs['Result'], power.inputs[0])
+    links.new(power.outputs[0], shade.inputs['Value'])
+    links.new(shade.outputs['Result'], mix.inputs['Fac'])
+    links.new(black.outputs[0], mix.inputs[1])
+    links.new(shader, mix.inputs[2])
+    links.new(mix.outputs[0], surface)
     return mat
 
 
@@ -114,7 +150,9 @@ world.use_nodes = True
 world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.05, 0.06, 0.08, 1)
 scene.world = world
 
-marble = material('Marble', (0.92, 0.91, 0.88), 0.0, 0.65, rim_strength=0.25)
+marble = darken_toward_floor(
+    material('Marble', (0.92, 0.91, 0.88), 0.0, 0.65, rim_strength=0.25),
+    FOOT_SHADE, HEIGHT_CURVE)
 parts = {'column': [], 'link-west': [], 'link-east': []}
 # Column: square plinth, torus base, fluted shaft, flared echinus, abacus.
 parts['column'] += [
