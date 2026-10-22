@@ -61,7 +61,9 @@ Shift+Left/Right scrolls the view without moving. The scroll range includes a
 one-cell margin at each edge.
 
 Characters with bundled sprites use transparent images once identified;
-unknown characters keep their text symbols. Ground markers preserve strength
+unknown characters keep their text symbols. The player is shown holding a
+chimera's sword while carrying it, and its own blade glows blue after the
+Collector Elf's blessing. Ground markers preserve strength
 and status colors, and faint light pillars distinguish companions. Terrain has
 a separate illustrated style, including marble walls and stairs, floor tiles,
 fires, and Collapse pits; rocks fallen through a pit lie on the floor below
