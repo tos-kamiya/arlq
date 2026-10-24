@@ -58,6 +58,7 @@ def test_playground_has_all_recruits_and_connected_rank2_bosses():
         "Rogue",
         "Knight",
         "Dangeon Scholar",
+        "Guardian",
     }
     assert {
         e.role for e in floors[0].entities if isinstance(e, d.PartyMember)
@@ -67,6 +68,7 @@ def test_playground_has_all_recruits_and_connected_rank2_bosses():
         "Rogue",
         "Knight",
         "Dangeon Scholar",
+        "Guardian",
     }
     assert not any(
         isinstance(e, d.PartyMember)
@@ -90,7 +92,7 @@ def test_stage5_member_progress_has_no_floor_numbers():
     player.known_member_floors = {"Bard": 1, "Rogue": 2}
     assert [
         label for label, _ in display.stage5_member_progress_marks(player)
-    ] == ["B", "H", "R", "K", "D", "N"]
+    ] == ["B", "H", "R", "K", "D", "G", "N"]
 
 
 def test_fifo_noble_lock_and_companion_slot_are_independent():
@@ -117,6 +119,7 @@ def test_fifo_noble_lock_and_companion_slot_are_independent():
         (("Knight",), 0.5),
         (("Bard", "Knight"), 1),
         (("Healer", "Rogue"), 2 / 3),
+        (("Guardian",), 1),
     ],
 )
 def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain):
@@ -160,6 +163,18 @@ def test_fractional_attack_hazards_and_status():
     assert player.lp == 87
     assert "LVL: 100" in display.status_prefix(player, 5, 0)
     assert "ATK:" in display.status_prefix(player, 5, 0)
+
+
+def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
+    _, player = state(("Guardian",))
+    assert barrier_lp_damage(player) == 10
+    assert d.caltrop_lp_damage(player) == 1
+    assert d.movement_lp_cost(player) == 1
+
+    player.members.append(d.PartyMember(player.x, player.y, "Healer"))
+    assert barrier_lp_damage(player) == 10
+    assert d.caltrop_lp_damage(player) == 1
+    assert d.movement_lp_cost(player) == 0.5
 
 
 def test_rogue_detects_shooting_lane_and_respects_blockers():

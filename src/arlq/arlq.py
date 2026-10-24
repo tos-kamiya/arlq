@@ -649,7 +649,7 @@ def move_player(
 
 def barrier_lp_damage(player: d.Player) -> int:
     """Return the LP cost for entering a barrier cell."""
-    return (
+    damage = (
         0
         if (
             player.elf_stage_flags & d.ELF_STAGE_H_FLAG
@@ -657,6 +657,7 @@ def barrier_lp_damage(player: d.Player) -> int:
         )
         else d.BARRIER_LP_DAMAGE
     )
+    return damage // 3 if damage and d.has_member(player, "Guardian") else damage
 
 
 def apply_barrier_damage(
@@ -703,7 +704,7 @@ def update_entities(
 
     # Caltrop damage
     if field[player.y][player.x] == d.CHAR_CALTROP:
-        player.lp -= d.CALTROP_LP_DAMAGE
+        player.lp -= d.caltrop_lp_damage(player)
         field[player.y][player.x] = d.CHAR_FLOOR
     if apply_barrier_damage(field, player, previous):
         message = (MESSAGE_TICKS, trp("-- The barrier burns you.", 5))

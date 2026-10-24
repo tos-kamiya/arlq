@@ -264,7 +264,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 ### Stage 5 (five-floor party rescue)
 
-Run `--stage 5` to explore five floors starting at level 1. The seed determines the maze and enemy placement. The number of sealed rooms varies by floor, with short wall spurs added from floor 3 onward. The final floor has barriers scattered across 5% of its open cells (Stage 4's final floor uses 10%). There are no elves. A Loop Companion (`l`) appears on each floor. All five recruit candidates are somewhere on floor 1 and show their professions as soon as they enter your field of view. The lower edge of the field lists the members, and a member's marker becomes bright after they have joined your party. Touch a candidate to recruit them; two members fit alongside the existing temporary companion slot. Recruiting a third returns the earliest recruit to a random location on floor 1. The earlier member appears diagonally behind to the left, the later one to the right. Human characters currently use letter markers in the GUI too.
+Run `--stage 5` to explore five floors starting at level 1. The seed determines the maze and enemy placement. The number of sealed rooms varies by floor, with short wall spurs added from floor 3 onward. The final floor has barriers scattered across 5% of its open cells (Stage 4's final floor uses 10%). There are no elves. A Loop Companion (`l`) appears on each floor. All six recruit candidates are somewhere on floor 1 and show their professions as soon as they enter your field of view. The lower edge of the field lists the members, and a member's marker becomes bright after they have joined your party. Touch a candidate to recruit them; two members fit alongside the existing temporary companion slot. Recruiting a third returns the earliest recruit to a random location on floor 1. The earlier member appears diagonally behind to the left, the later one to the right. Human characters currently use letter markers in the GUI too.
 
 | Marker / profession | Ability |
 | --- | --- |
@@ -273,6 +273,7 @@ Run `--stage 5` to explore five floors starting at level 1. The seed determines 
 | `R` Rogue | Stop movement and key repeat before entering a pit, a firing lane, or a rare Erebus (`E`); press again to proceed. Identify adjacent Mimics as `M`, and reveal Golems (`g`) and Caltrop Plants (`X`) in cardinally adjacent cells. |
 | `K` Knight | Add the player's attack power and halve shared experience. |
 | `D` Dangeon Scholar | Reveal and use an extra stairway on each floor connection. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |
+| `G` Guardian | Reduce the extra LP damage from barriers and caltrops to one-third; movement cost is unchanged. |
 
 Enemies connected horizontally or vertically fight as one party of at most five. The party's monster glyphs are yellow while any member is unidentified; once all are known, they are blue if your attack can beat the group or red if it cannot. If monsters from separate parties end up diagonally adjacent, one is moved away; the `W` and `V'` bosses stay in place. Their attack power and experience are summed; LP reward uses the highest value in the party. Experience is divided among the player and companions, then tripled by Bard or halved by Knight; with both, the player receives 1.5 times the shared amount. Fractional LP and levels are retained internally and shown as whole numbers in the status bar.
 
@@ -290,7 +291,7 @@ Floors 2–5 share the same ordinary monster species, ranks, and base counts, ex
 
 ### Stage 6 (member-ability trial)
 
-Run `--stage 6` to try the Stage 5 members in a compact two-floor dungeon. All five recruitable candidates are on floor 1, and a dismissed candidate returns so you can rotate through the full roster. The floors include Golems, a Marksman, a Collapse, caltrops, and a barrier for trying the members' abilities. There is no rescue objective.
+Run `--stage 6` to try the Stage 5 members in a compact two-floor dungeon. All six recruitable candidates are on floor 1, and a dismissed candidate returns so you can rotate through the full roster. The floors include Golems, a Marksman, a Collapse, caltrops, and a barrier for trying the members' abilities. There is no rescue objective.
 
 ## Development commands
 

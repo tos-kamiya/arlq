@@ -62,7 +62,7 @@ STAGE5_SUPPORT_POOLS = (
     (("a", 1), ("w", 1), ("w", 1)),
 )
 STAGE5_MEMBER_FLOORS = (
-    ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar"),
+    ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar", "Guardian"),
     (),
     (),
     (),
@@ -71,7 +71,7 @@ STAGE5_MEMBER_FLOORS = (
 STAGE5_HAZARD_COUNTS = ((0, 0), (0, 3), (0, 5), (0, 6), (0, 0))
 MEMBER_GLYPHS = {
     "Bard": "B", "Healer": "H", "Rogue": "R",
-    "Knight": "K", "Dangeon Scholar": "D", "Noble": "N",
+    "Knight": "K", "Dangeon Scholar": "D", "Guardian": "G", "Noble": "N",
 }
 # Stages that feature elves and share the multi-floor progress state.
 ELF_STAGES = frozenset({3, 4})
@@ -1051,7 +1051,11 @@ def movement_lp_cost(player: Player) -> float:
 
 
 def caltrop_lp_damage(player: Player) -> float:
-    return CALTROP_LP_DAMAGE
+    return (
+        CALTROP_LP_DAMAGE // 3
+        if has_member(player, "Guardian")
+        else CALTROP_LP_DAMAGE
+    )
 
 
 def current_player_attack(player: Player, stage_num: int = 0) -> float:

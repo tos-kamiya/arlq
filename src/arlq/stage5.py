@@ -710,7 +710,14 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
         None,
         up_stairs=[down],
     )
-    for role in ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar"):
+    for role in (
+        "Bard",
+        "Healer",
+        "Rogue",
+        "Knight",
+        "Dangeon Scholar",
+        "Guardian",
+    ):
         upper.entities.append(
             d.PartyMember(*rand.choice(_open_points(upper)), role, origin_floor=0)
         )
