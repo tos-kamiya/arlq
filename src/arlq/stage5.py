@@ -137,6 +137,27 @@ def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str 
     if current.field[y][x] == d.CHAR_COLLAPSE:
         current.seen[y][x] = 1
         return "O"
+    collapse = next(
+        (
+            entity
+            for entity in current.entities
+            if isinstance(entity, d.Collapse)
+            and destination in d.collapse_footprint((entity.x, entity.y))
+        ),
+        None,
+    )
+    if collapse is not None:
+        for dx, dy in d.COLLAPSE_FOOTPRINT_OFFSETS[1:]:
+            pit_x, pit_y = collapse.x + dx, collapse.y + dy
+            if (
+                0 <= pit_y < len(current.field)
+                and 0 <= pit_x < len(current.field[pit_y])
+                and current.field[pit_y][pit_x] not in d.WALL_CHARS
+            ):
+                current.field[pit_y][pit_x] = d.CHAR_COLLAPSE
+                current.seen[pit_y][pit_x] = 1
+        current.seen[y][x] = 1
+        return "O"
     for entity in current.entities:
         if (
             not isinstance(entity, d.Monster)
