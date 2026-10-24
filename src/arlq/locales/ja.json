@@ -50,7 +50,6 @@
     "-- Ascended to floor {n}/{total}.": "-- フロア{n}/{total}に上った。",
     "-- The King has ordered the Dread Wyrm (W) slain.": "-- 国王からドレッドウィルム(W)の討伐を命じられた。",
     "-- The King has ordered the Strong Fire Drake (F') slain.": "-- 国王から強火龍(F')の討伐を命じられた。",
-    "-- Trap test: Mimic, Vortex, W, treasure, b and d.": "-- トラップテスト：ミミック、ボルテックス、W、宝箱、b、d。",
 
     "SEED: {seed_str}": "シード: {seed_str}",
     "Stage Selection": "ステージ選択",
@@ -117,5 +116,6 @@
     "-- Your party defeated {count} monsters!": "-- 敵パーティーの{count}体を倒した！",
     "-- Noble returned safely!": "-- Nobleと無事に帰還した！",
     "-- Rescue Noble on floor 4 and return to floor 1.": "-- 4階のNobleを救出し、1階へ帰還しよう。",
+    "-- Recruit members on both floors to try their abilities.": "-- 2フロアの候補者を仲間にし、メンバーの能力を試そう。",
     "-- Rogue spotted danger. Press again to proceed.": "-- Rogueが危険を察知！ 進むにはキーを押し直そう。"
 }

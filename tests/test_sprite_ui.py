@@ -522,7 +522,8 @@ def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     field = [[d.CHAR_FLOOR] * 3 for _ in range(3)]
-    field[1][0] = field[1][1] = d.CHAR_WALL
+    field[1][0] = d.CHAR_WALL
+    field[1][1] = d.CHAR_GOLEM_WALL
     ui._decor = [[d.DECOR_NONE] * 3 for _ in range(3)]
     ui._decor[1][1] = d.DECOR_GOLEM_ROCK
     ui._draw_tile(1, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: True)

@@ -192,7 +192,7 @@ SMOKE_TINT = (150, 150, 156)
 SMOKE_OPACITY = 140
 # Rocks fallen through a pit (d.DECOR_FALLEN_ROCKS) are hidden where the
 # cell has since become a wall, pit or stair, or a character stands there.
-FALLEN_ROCK_BLOCKERS = (d.CHAR_WALL, d.CHAR_COLLAPSE, d.CHAR_STAIRS_UP, d.CHAR_STAIRS_DOWN)
+FALLEN_ROCK_BLOCKERS = (*d.WALL_CHARS, d.CHAR_COLLAPSE, d.CHAR_STAIRS_UP, d.CHAR_STAIRS_DOWN)
 # Stairs and Collapse pits are drawn on the walls' canvas and placed like a
 # wall part: near-white marble flights (up: rising north; down: descending
 # toward the viewer into a dark opening) and a shapeless hole with rocks lying
@@ -834,7 +834,7 @@ class SpriteUI(PygletUI):
             self._fallen_rock_draws += ((x, y),)
         if tile_color in FLOOR_TINTS:
             return self._draw_floor(x, y, tile_color, field, discovered_at)
-        if field[y][x] != d.CHAR_WALL or tile_color not in (VISIBLE_WALL, WALL):
+        if field[y][x] not in d.WALL_CHARS or tile_color not in (VISIBLE_WALL, WALL):
             return super()._draw_tile(x, y, tile_color, field, discovered_at)
         floor = VISIBLE_FLOOR if tile_color == VISIBLE_WALL else FLOOR
         self._draw_floor(x, y, floor, field, discovered_at)
@@ -850,7 +850,7 @@ class SpriteUI(PygletUI):
         group = self._row_group(y, 'wall')
         def wall_at(wx, wy):
             return (0 <= wy < len(field) and 0 <= wx < len(field[wy])
-                    and field[wy][wx] == d.CHAR_WALL and discovered_at(wx, wy)
+                    and field[wy][wx] in d.WALL_CHARS and discovered_at(wx, wy)
                     and self._decor_at(wx, wy) != d.DECOR_GOLEM_ROCK)
 
         if self._wall_images is not None:

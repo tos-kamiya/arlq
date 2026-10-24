@@ -44,7 +44,6 @@ from .stage_world import (
     _spawn,
     build,
     build_single_floor,
-    build_trap_test,
 )
 from .trace import DIR_TO_KEY, TraceRecorder
 from .utils import rand
@@ -110,7 +109,11 @@ def reachable_known_cells(
                 continue
 
             cell = field[ny][nx]
-            if cell == d.CHAR_FLOOR:
+            if cell == d.CHAR_GOLEM_WALL and d.has_member(
+                player, "Dangeon Scholar"
+            ):
+                terrain_cost = d.movement_lp_cost(player)
+            elif cell == d.CHAR_FLOOR:
                 terrain_cost = d.movement_lp_cost(player)
             elif cell == d.CHAR_CALTROP:
                 terrain_cost = d.movement_lp_cost(player) + d.caltrop_lp_damage(player)
@@ -142,11 +145,22 @@ def _move_player(
     trace: Optional[TraceRecorder] = None,
 ) -> Optional[WallEvent]:
     """Apply one step of player movement, including sword-breaking and Pegasus jumps."""
+    phase_walls = (
+        {
+            (x, y)
+            for y, row in enumerate(current.field)
+            for x, cell in enumerate(row)
+            if cell == d.CHAR_GOLEM_WALL
+        }
+        if d.has_member(player, "Dangeon Scholar")
+        else set()
+    )
     wall_result = move_player(
         direction,
         current.field,
         player,
         PLAYER_PASSABLE_CELLS,
+        phase_walls=phase_walls,
     )
     if trace is not None and wall_result is not None:
         trace.record_wall(wall_result)
@@ -210,13 +224,14 @@ def _should_stop_movement_repeat(
         return True
 
     known_cell = bool(current.seen[ny][nx]) or show_all_entities
-    if known_cell and current.field[ny][nx] in (
-        d.CHAR_WALL,
+    cell = current.field[ny][nx]
+    if known_cell and cell in (
+        *d.WALL_CHARS,
         d.CHAR_CALTROP,
         d.CHAR_BARRIER,
         d.CHAR_COLLAPSE,
         *d.STAIR_CHARS,
-    ):
+    ) and not (cell == d.CHAR_GOLEM_WALL and d.has_member(player, "Dangeon Scholar")):
         return True
 
     next_position = (nx, ny)
@@ -289,7 +304,7 @@ def _marksman_shoot(
         for offset in range(1, distance):
             x, y = entity.x + step_x * offset, entity.y + step_y * offset
             if current.field[y][x] in (
-                d.CHAR_WALL,
+                *d.WALL_CHARS,
                 *d.STAIR_CHARS,
             ):
                 blocked = True
@@ -377,6 +392,8 @@ def _vortex_rearrange(
             if isinstance(entity, d.Collapse)
         )
     )
+    scholar_stairs = set(current.scholar_up_stairs + current.scholar_down_stairs)
+    reserved_collapse_cells.update(scholar_stairs)
     if lower is not None:
         reserved_collapse_cells.update(lower.collapse_landings)
     avoid = {(player.x, player.y)} | {(entity.x, entity.y) for entity in movable}
@@ -440,6 +457,10 @@ def _vortex_rearrange(
                     lower.down,
                     *lower.up_stairs,
                     *lower.down_stairs,
+                    *current.scholar_up_stairs,
+                    *current.scholar_down_stairs,
+                    *lower.scholar_up_stairs,
+                    *lower.scholar_down_stairs,
                 }
                 for point in sorted(affected_points, key=lambda item: (item[1], item[0])):
                     footprint = d.collapse_footprint(point)
@@ -476,7 +497,12 @@ def _vortex_rearrange(
             continue
 
         if isinstance(entity, d.Treasure):
-            reserved = avoid | set(current.up_stairs + current.down_stairs)
+            reserved = avoid | set(
+                current.up_stairs
+                + current.down_stairs
+                + current.scholar_up_stairs
+                + current.scholar_down_stairs
+            )
             entity.x, entity.y = find_random_place(
                 current.entities,
                 current.field,
@@ -496,7 +522,7 @@ def _vortex_rearrange(
 
     for current_entity in current.entities:
         if isinstance(current_entity, d.Monster) and current_entity.tribe.char in {"w", "W"}:
-            protected = current.collapse_landings | set().union(
+            protected = current.collapse_landings | scholar_stairs | set().union(
                 *(
                     d.collapse_footprint((fixed.x, fixed.y))
                     for fixed in current.entities
@@ -586,7 +612,12 @@ def _defeat_monster(
     player.karma += 1
 
     if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
-        spread_caltrops(current.field, (player.x, player.y), current.entities)
+        spread_caltrops(
+            current.field,
+            (player.x, player.y),
+            current.entities,
+            set(current.scholar_up_stairs + current.scholar_down_stairs),
+        )
     elif entity.tribe.effect == d.EFFECT_ROCK_SPREAD:
         protected_collapse_cells = current.collapse_landings | set().union(
             *(
@@ -594,6 +625,9 @@ def _defeat_monster(
                 for collapse in current.entities
                 if isinstance(collapse, d.Collapse)
             )
+        )
+        protected_collapse_cells.update(
+            current.scholar_up_stairs + current.scholar_down_stairs
         )
         for x, y in iterate_offsets(
             player.x,
@@ -604,7 +638,7 @@ def _defeat_monster(
             if (x, y) not in protected_collapse_cells and current.field[y][
                 x
             ] == d.CHAR_FLOOR:
-                current.field[y][x] = d.CHAR_WALL
+                current.field[y][x] = d.CHAR_GOLEM_WALL
                 current.decor[y][x] = d.DECOR_GOLEM_ROCK
     elif entity.tribe.effect == d.EFFECT_VORTEX:
         if (
@@ -620,14 +654,14 @@ def _defeat_monster(
             )
         _vortex_rearrange(
             current, player, floor[0], (entity.x, entity.y), floors=floors,
-            whole_floor=stage_num == 5 and entity.empowered == 2,
+            whole_floor=stage_num in (5, 6) and entity.empowered == 2,
         )
 
     if (
         d.monster_level(entity) > 0
         and ch not in d.MONSTERS_EXCLUDED_FROM_RESPAWN
         and entity.tribe.effect != d.EFFECT_UNLOCK_TREASURE
-        and not (stage_num == 5 and ch == "V" and entity.empowered == 2)
+        and not (stage_num in (5, 6) and ch == "V" and entity.empowered == 2)
     ):
         type_key = ch if stage_num in (1, 2) else d.monster_type_key(entity)
         spawn_key = (floor[0], type_key)
@@ -1063,7 +1097,13 @@ def _resolve_contact(
     entity = current.entities[hit]
 
     if isinstance(entity, d.PartyMember):
-        result = stage5.recruit(current, player, entity)
+        had_scholar = d.has_member(player, "Dangeon Scholar")
+        result = stage5.recruit(
+            current, player, entity, recycle_departed=stage_num == 6
+        )
+        has_scholar = d.has_member(player, "Dangeon Scholar")
+        if had_scholar != has_scholar:
+            stage5.set_scholar_stairs(floors, has_scholar)
         if trace is not None:
             trace.record_contact({"type": "member", "id": entity.role,
                                   "joined": entity in player.members})
@@ -1116,7 +1156,7 @@ def _resolve_contact(
     assert isinstance(entity, d.Monster)
     if entity.tribe.char == "M" and not entity.active:
         return _ContactResult(event_message)
-    if stage_num == 5:
+    if stage_num in (5, 6):
         return _resolve_party_contact(entity, current, floors, player, floor,
                                       checkpoint, queue, trace)
     return _resolve_monster_contact(
@@ -1158,14 +1198,23 @@ def _handle_floor_transition(
     checkpoint: List[d.Point],
 ) -> Optional[str]:
     point = (player.x, player.y)
-    legacy_floors = not any(f.up_stairs or f.down_stairs for f in floors)
+    legacy_floors = not any(
+        f.up_stairs or f.down_stairs or f.scholar_up_stairs or f.scholar_down_stairs
+        for f in floors
+    )
     down_stairs = current.down_stairs or ([current.down] if legacy_floors else [])
     up_stairs = current.up_stairs or ([current.up] if legacy_floors else [])
+    if d.has_member(player, "Dangeon Scholar"):
+        down_stairs = down_stairs + current.scholar_down_stairs
+        up_stairs = up_stairs + current.scholar_up_stairs
     floor_count = len(floors)
     if floor[0] < floor_count - 1 and point in down_stairs:
         stair_index = down_stairs.index(point)
         floor[0] += 1
-        destination_stairs = floors[floor[0]].up_stairs or [floors[floor[0]].up]
+        destination_floor = floors[floor[0]]
+        destination_stairs = destination_floor.up_stairs or [destination_floor.up]
+        if d.has_member(player, "Dangeon Scholar"):
+            destination_stairs += destination_floor.scholar_up_stairs
         player.x, player.y = destination_stairs[
             min(stair_index, len(destination_stairs) - 1)
         ]
@@ -1180,7 +1229,10 @@ def _handle_floor_transition(
     if floor[0] > 0 and point in up_stairs:
         stair_index = up_stairs.index(point)
         floor[0] -= 1
-        destination_stairs = floors[floor[0]].down_stairs or [floors[floor[0]].down]
+        destination_floor = floors[floor[0]]
+        destination_stairs = destination_floor.down_stairs or [destination_floor.down]
+        if d.has_member(player, "Dangeon Scholar"):
+            destination_stairs += destination_floor.scholar_down_stairs
         player.x, player.y = destination_stairs[
             min(stair_index, len(destination_stairs) - 1)
         ]
@@ -1195,7 +1247,9 @@ def _handle_floor_transition(
     return None
 
 
-def _reveal_paired_stair_cells(floors: List[Floor]) -> None:
+def _reveal_paired_stair_cells(
+    floors: List[Floor], player: Optional[d.Player] = None
+) -> None:
     """Mark a stair's matching cell on the adjacent floor as known."""
     for index in range(len(floors) - 1):
         upper = floors[index]
@@ -1207,6 +1261,16 @@ def _reveal_paired_stair_cells(floors: List[Floor]) -> None:
             ux, uy = upper_point
             lx, ly = lower_point
             if upper.seen[uy][ux] or lower.seen[ly][lx]:
+                upper.seen[uy][ux] = 1
+                lower.seen[ly][lx] = 1
+        if player is not None and d.has_member(player, "Dangeon Scholar"):
+            for upper_point, lower_point in zip(
+                upper.scholar_down_stairs,
+                lower.scholar_up_stairs,
+                strict=True,
+            ):
+                ux, uy = upper_point
+                lx, ly = lower_point
                 upper.seen[uy][ux] = 1
                 lower.seen[ly][lx] = 1
 
@@ -1343,7 +1407,7 @@ def _process_multi_floor_turn(
             x = collapse_contact.x + dx
             y = collapse_contact.y + dy
             if 0 <= y < len(current.field) and 0 <= x < len(current.field[y]):
-                if current.field[y][x] != d.CHAR_WALL:
+                if current.field[y][x] not in d.WALL_CHARS:
                     current.field[y][x] = d.CHAR_COLLAPSE
                     current.seen[y][x] = 1
                     # Rocks fallen through the pit lie on the floor below.
@@ -1527,12 +1591,12 @@ def _process_multi_floor_turn(
             trace.record_checkpoint("stairs", (player.x, player.y), floor[0])
 
     _process_respawn_queue(floors, player, floor, queue, turn, trace=trace)
-    if stage_num == 5:
+    if stage_num in (5, 6):
         for floor_data in floors:
             stage5.normalize_parties(floor_data)
         stage5.sync_members(player, previous, direction)
         stage5.reveal_mimics(floors[floor[0]], player)
-        if floor[0] == 0 and d.has_member(player, "Noble"):
+        if stage_num == 5 and floor[0] == 0 and d.has_member(player, "Noble"):
             player.noble_returned = True
             event_message = trp("-- Noble returned safely!", 9)
 
@@ -1552,7 +1616,7 @@ def _stage_draw_options(
 ) -> dict[str, Any]:
     if single_floor_stage:
         return {}
-    if stage_num == 5:
+    if stage_num in (5, 6):
         return {"stage_roster": stage5.strength_roster(),
                 "floor_label": f"{view_floor + 1}/{len(floors)}"}
     options: dict[str, Any] = {
@@ -1582,9 +1646,7 @@ def run_game(
     elif stage_num == 5:
         floors, player = stage5.build(config)
     elif stage_num == 6:
-        floors, player = build_trap_test(
-            config.corridor_h_width, config.corridor_v_width
-        )
+        floors, player = stage5.build_member_trial(config)
     else:
         floors, player = build(
             config.corridor_h_width,
@@ -1631,7 +1693,10 @@ def run_game(
             ),
         )
     elif stage_num == 6:
-        message = (5, trp("-- Trap test: Mimic, Vortex, W, treasure, b and d.", 1))
+        message = (
+            12,
+            trp("-- Recruit members on both floors to try their abilities.", 1),
+        )
     while player.lp > 0:
         current = floors[floor[0]]
         display_floor = floors[view_floor]
@@ -1645,9 +1710,12 @@ def run_game(
         for y in range(len(cur)):
             for x in range(len(cur[0])):
                 current.seen[y][x] |= cur[y][x]
-        if stage_num == 5:
+        if stage_num in (5, 6):
             stage5.reveal_mimics(current, player)
-        _reveal_paired_stair_cells(floors)
+            stage5.set_scholar_stairs(
+                floors, d.has_member(player, "Dangeon Scholar")
+            )
+        _reveal_paired_stair_cells(floors, player)
 
         message = tick_message(message)
 
@@ -1722,7 +1790,7 @@ def run_game(
 
         # A real movement always returns the display to the player's floor.
         view_floor = floor[0]
-        if stage_num == 5 and d.has_member(player, "Rogue"):
+        if stage_num in (5, 6) and d.has_member(player, "Rogue"):
             destination = (player.x + move[0], player.y + move[1])
             warning = ((player.x, player.y), destination)
             if player.rogue_warning != warning and stage5.rogue_danger(current, player, destination):

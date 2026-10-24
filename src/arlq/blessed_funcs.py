@@ -164,6 +164,7 @@ class BlessedUI:
 
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
+                display_cell = d.CHAR_WALL if cell == d.CHAR_GOLEM_WALL else cell
                 discovered = bool(torched[y][x] or show_entities)
                 visible = bool(cur_torched[y][x])
                 if self.dots:
@@ -171,9 +172,9 @@ class BlessedUI:
                         put(
                             x,
                             y,
-                            cell,
+                            display_cell,
                             "green"
-                            if cell == d.CHAR_WALL
+                            if cell in d.WALL_CHARS
                             else "magenta"
                             if cell == d.CHAR_CALTROP
                             else "yellow"
@@ -182,16 +183,16 @@ class BlessedUI:
                             bg="blue" if (x, y) in highlighted_cells else None,
                         )
                     elif discovered:
-                        if cell == d.CHAR_WALL:
-                            put(x, y, cell, "green", bg="blue" if (x, y) in highlighted_cells else None)
+                        if cell in d.WALL_CHARS:
+                            put(x, y, display_cell, "green", bg="blue" if (x, y) in highlighted_cells else None)
                         else:
-                            put(x, y, cell, bg="blue" if (x, y) in highlighted_cells else None)
+                            put(x, y, display_cell, bg="blue" if (x, y) in highlighted_cells else None)
                     elif (x + y) % 2 == 1:
                         put(x, y, ".", dim=True)
                 else:
                     color = (
                         "green"
-                        if cell == d.CHAR_WALL
+                        if cell in d.WALL_CHARS
                         else "magenta"
                         if cell == d.CHAR_CALTROP
                         else "yellow"
@@ -199,7 +200,7 @@ class BlessedUI:
                         else None
                     )
                     background = cell_background(x, y)
-                    put(x, y, cell if discovered else " ", color, bg=background)
+                    put(x, y, display_cell if discovered else " ", color, bg=background)
 
         if not floor_view:
             for x, y in rewind_markers:

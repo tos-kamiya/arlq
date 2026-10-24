@@ -58,7 +58,7 @@ def test_playground_has_all_recruits_and_connected_rank2_bosses():
         "Healer",
         "Rogue",
         "Knight",
-        "Paradin",
+        "Dangeon Scholar",
     }
     assert not any(
         isinstance(e, d.Monster) and e.tribe.is_elf for f in floors for e in f.entities
@@ -128,15 +128,15 @@ def test_group_keeps_unique_item_even_when_contacting_ordinary_member():
 
 
 def test_fractional_attack_hazards_and_status():
-    current, player = state(("Knight", "Paradin"), level=100.5)
-    assert d.current_player_attack(player) == pytest.approx(301.5)
+    current, player = state(("Knight", "Dangeon Scholar"), level=100.5)
+    assert d.current_player_attack(player) == pytest.approx(201)
     player.item = d.ITEM_SWORD_X1_5
-    assert d.current_player_attack(player) == pytest.approx(452.25)
-    assert barrier_lp_damage(player) == 15
-    assert d.caltrop_lp_damage(player) == 1.5
+    assert d.current_player_attack(player) == pytest.approx(301.5)
+    assert barrier_lp_damage(player) == 30
+    assert d.caltrop_lp_damage(player) == 3
     current.field[2][3] = d.CHAR_CALTROP
     step(current, player)
-    assert player.lp == 88.5
+    assert player.lp == 87
     assert "100.5" in display.status_prefix(player, 5, 0)
     assert "ATK:" in display.status_prefix(player, 5, 0)
 

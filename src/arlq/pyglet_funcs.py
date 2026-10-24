@@ -996,9 +996,9 @@ class PygletUI:
                 cell = row[x]
                 discovered = discovered_at(x, y)
                 if cur_torched[y][x]:
-                    tile_color = VISIBLE_WALL if cell == d.CHAR_WALL else VISIBLE_FLOOR
+                    tile_color = VISIBLE_WALL if cell in d.WALL_CHARS else VISIBLE_FLOOR
                 elif discovered:
-                    tile_color = WALL if cell == d.CHAR_WALL else FLOOR
+                    tile_color = WALL if cell in d.WALL_CHARS else FLOOR
                 else:
                     tile_color = FOG
                 if cell == d.CHAR_CALTROP and discovered:

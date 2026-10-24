@@ -84,7 +84,7 @@ it is large enough again.
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5` | Select a stage directly. Stage 5 is a four-floor party rescue dungeon. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a four-floor party rescue dungeon; Stage 6 is a compact member-ability trial. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -270,7 +270,7 @@ Run `--stage 5` to explore four floors starting at level 1. The seed determines 
 | `H` Healer | Reduce normal LP consumption to 0.5 and defeat's LP cost to 2. |
 | `R` Rogue | Stop movement and key repeat before entering a pit or firing lane; press again to proceed. Identify adjacent Mimics as `M`. |
 | `K` Knight | Add the player's attack power, but halve earned experience. |
-| `Q` Paradin | Add the player's attack power and halve barrier/caltrop damage. |
+| `D` Dangeon Scholar | Reveal and use an extra stairway on each floor connection. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |
 
 Enemies connected horizontally or vertically fight as one party of at most five. Their attack power, LP rewards, and experience are summed; Bard and Knight multiply the experience total (1.0 with both). Fractional LP and levels are retained and displayed.
 
@@ -284,6 +284,10 @@ Deeper floors feature stronger species and ranks, and larger enemy parties becom
 | 2 | 30% | 35% | 25% | 10% | 0% |
 | 3 | 20% | 30% | 30% | 15% | 5% |
 | 4 | 10% | 20% | 30% | 25% | 15% |
+
+### Stage 6 (member-ability trial)
+
+Run `--stage 6` to try the Stage 5 members in a compact two-floor dungeon. All five recruitable candidates are on floor 1, and a dismissed candidate returns so you can rotate through the full roster. The floors include Golems, a Marksman, a Collapse, caltrops, and a barrier for trying the members' abilities. There is no rescue objective.
 
 ## Development commands
 

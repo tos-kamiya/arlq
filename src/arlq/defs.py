@@ -8,12 +8,11 @@ TILE_NUM_Y: int = 3
 FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 # Stages available from the game's UI and command line.
-PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5)
+PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5, 6)
 PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
 BARD_EXP_MULTIPLIER = 2
 KNIGHT_EXP_MULTIPLIER = 0.5
-PARADIN_ATTACK_BONUS = 1
 HEALER_MOVE_COST = 0.5
 HEALER_RESPAWN_COST = 2
 STAGE5_START_LEVEL = 1
@@ -39,11 +38,11 @@ STAGE5_SUPPORT_POOLS = (
     (("w", 1), ("k", 1), ("w", 1), ("k", 1)),
     (("w", 1), ("k", 1), ("w", 1), ("k", 1)),
 )
-STAGE5_MEMBER_FLOORS = (("Bard", "Healer"), ("Rogue", "Knight"), ("Paradin",), ())
+STAGE5_MEMBER_FLOORS = (("Bard", "Healer"), ("Rogue", "Knight"), ("Dangeon Scholar",), ())
 STAGE5_HAZARD_COUNTS = ((0, 0), (6, 3), (9, 5), (12, 6))
 MEMBER_GLYPHS = {
     "Bard": "B", "Healer": "H", "Rogue": "R",
-    "Knight": "K", "Paradin": "Q", "Noble": "N",
+    "Knight": "K", "Dangeon Scholar": "D", "Noble": "N",
 }
 # Stages that feature elves and share the multi-floor progress state.
 ELF_STAGES = frozenset({3, 4})
@@ -54,6 +53,9 @@ STAGE1_COLUMN_MARGIN: int = 1
 CORRIDOR_V_WIDTH: int = 3
 CORRIDOR_H_WIDTH: int = 2
 CHAR_WALL: str = "#"
+# Internal identity only; renderers show this as the ordinary wall glyph.
+CHAR_GOLEM_WALL: str = "G"
+WALL_CHARS: Tuple[str, str] = (CHAR_WALL, CHAR_GOLEM_WALL)
 CHAR_FLOOR: str = " "
 CHAR_STAIRS_UP: str = "^"
 CHAR_STAIRS_DOWN: str = "v"
@@ -201,7 +203,7 @@ def collapse_placement_cells_valid(
         for x, y in collapse_footprint(point):
             if not (0 <= x < width and 0 <= y < height):
                 return False
-            if field[y][x] not in (CHAR_FLOOR, CHAR_WALL):
+            if field[y][x] not in (CHAR_FLOOR, *WALL_CHARS):
                 return False
     return True
 
@@ -987,7 +989,7 @@ def movement_lp_cost(player: Player) -> float:
 
 
 def caltrop_lp_damage(player: Player) -> float:
-    return CALTROP_LP_DAMAGE / 2 if has_member(player, "Paradin") else CALTROP_LP_DAMAGE
+    return CALTROP_LP_DAMAGE
 
 
 def current_player_attack(player: Player, stage_num: int = 0) -> float:
@@ -1006,8 +1008,6 @@ def current_player_attack(player: Player, stage_num: int = 0) -> float:
         elif player.item == ITEM_POISONED:
             value = ceil(value / 3)
         multiplier = 1.0 + int(has_member(player, "Knight"))
-        if has_member(player, "Paradin"):
-            multiplier += PARADIN_ATTACK_BONUS
         return value * multiplier
     if player.item == ITEM_SWORD_X1_5:
         value = player.level * 3 // 2

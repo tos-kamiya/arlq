@@ -24,6 +24,8 @@ class Floor:
     island: Optional[d.Point]
     up_stairs: List[d.Point] = dataclass_field(default_factory=list)
     down_stairs: List[d.Point] = dataclass_field(default_factory=list)
+    scholar_up_stairs: List[d.Point] = dataclass_field(default_factory=list)
+    scholar_down_stairs: List[d.Point] = dataclass_field(default_factory=list)
     contact_reveal: Optional[d.Point] = None
     collapse_landings: set[d.Point] = dataclass_field(default_factory=set)
     room_components: Tuple[set[d.Point], ...] = ()

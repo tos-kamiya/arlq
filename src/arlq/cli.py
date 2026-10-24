@@ -40,7 +40,7 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
         help="Replay the last stage with the same seed.",
     )
     general.add_argument(
-        "--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, 4, or 5)."
+        "--stage", action="store", type=int, default=0, help="Stage (1 through 6)."
     )
     general.add_argument("--seed", action="store", help="Seed value or seed string")
     g = general.add_mutually_exclusive_group()
@@ -99,9 +99,6 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
             help="Stop held movement near hazards and after encounters (saves for future GUI starts).",
         )
     dev.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
-    dev.add_argument(
-        "--trap-test", action="store_true", help="Start the trap test stage."
-    )
     dev.add_argument(
         "--trace",
         dest="trace_path",
@@ -166,14 +163,8 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
 
     set_language(args.lang)
 
-    if args.trap_test:
-        if args.stage or args.seed is not None or args.trace_path or args.trace_output:
-            parser.error(
-                "--trap-test cannot be combined with --stage, --seed, or trace options"
-            )
-        args.stage = 6
-    elif args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
-        parser.error("--stage must be 1, 2, 3, 4, or 5")
+    if args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
+        parser.error("--stage must be 1, 2, 3, 4, 5, or 6")
 
     if args.continue_trace and not args.trace_path:
         parser.error("--continue requires --trace")

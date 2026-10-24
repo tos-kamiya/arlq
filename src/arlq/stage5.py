@@ -1,7 +1,7 @@
-"""Four-floor rescue stage and party rules."""
+"""Stage 5 rescue stage, member trial, and party rules."""
 
 from . import defs as d
-from .arlq import GameConfig
+from .arlq import GameConfig, create_field
 from .i18n import trp
 from .stage_maze import generate_floor_field
 from .stage_types import Floor
@@ -69,17 +69,43 @@ def normalize_parties(current: Floor) -> None:
                 special |= is_special
 
 
-def recruit(current: Floor, player: d.Player, member: d.PartyMember) -> str:
+def recruit(
+    current: Floor,
+    player: d.Player,
+    member: d.PartyMember,
+    recycle_departed: bool = False,
+) -> str:
     if len(player.members) == d.PARTY_LIMIT and player.members[0].role == "Noble":
         return trp("-- Noble cannot leave. No more members can join.", 5)
     departed = player.members.pop(0) if len(player.members) == d.PARTY_LIMIT else None
     current.entities.remove(member)
     player.members.append(member)
+    if departed is not None and recycle_departed:
+        choices = [
+            point for point in _open_points(current) if point != (player.x, player.y)
+        ]
+        departed.x, departed.y = rand.choice(choices)
+        current.entities.append(departed)
     if departed is not None:
         return trp("-- {joined} joined; {departed} left for good.", 5).format(
             joined=member.role, departed=departed.role
         )
     return trp("-- {joined} joined your party.", 5).format(joined=member.role)
+
+
+def set_scholar_stairs(floors: list[Floor], active: bool) -> None:
+    """Reveal or conceal the paired stairs known to the Dangeon Scholar."""
+    for current in floors:
+        for point in current.scholar_up_stairs:
+            x, y = point
+            current.field[y][x] = d.CHAR_STAIRS_UP if active else d.CHAR_FLOOR
+            if active:
+                current.seen[y][x] = 1
+        for point in current.scholar_down_stairs:
+            x, y = point
+            current.field[y][x] = d.CHAR_STAIRS_DOWN if active else d.CHAR_FLOOR
+            if active:
+                current.seen[y][x] = 1
 
 
 def sync_members(player: d.Player, previous: d.Point, direction: d.Point) -> None:
@@ -125,7 +151,7 @@ def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str 
         sy = (dy > 0) - (dy < 0)
         for offset in range(1, abs(dx or dy)):
             point = (entity.x + sx * offset, entity.y + sy * offset)
-            if current.field[point[1]][point[0]] in (d.CHAR_WALL, *d.STAIR_CHARS):
+            if current.field[point[1]][point[0]] in (*d.WALL_CHARS, *d.STAIR_CHARS):
                 break
             if any(
                 (other.x, other.y) == point
@@ -160,7 +186,13 @@ def sample_party_size(floor_index: int) -> int:
 
 def _open_points(current: Floor) -> list[d.Point]:
     occupied = {(entity.x, entity.y) for entity in current.entities}
-    reserved = {current.up, current.down, *current.collapse_landings}
+    reserved = {
+        current.up,
+        current.down,
+        *current.collapse_landings,
+        *current.scholar_up_stairs,
+        *current.scholar_down_stairs,
+    }
     return [
         (x, y)
         for y, row in enumerate(current.field)
@@ -394,6 +426,116 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         floors.append(current)
         entry = down
     _place_collapses(floors)
+    _place_scholar_stairs(floors)
     player = d.Player(*floors[0].up, d.STAGE5_START_LEVEL, d.LP_INIT)
     player.rescue_stage = True
     return floors, player
+
+
+def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
+    """Build a compact two-floor area for trying every Stage 5 member."""
+    config = config or GameConfig()
+    field, up, down = create_field(
+        config.corridor_h_width,
+        config.corridor_v_width,
+        d.CHAR_WALL,
+        tile_columns=3,
+    )
+    lower_field = [row.copy() for row in field]
+    field[down[1]][down[0]] = d.CHAR_STAIRS_DOWN
+    lower_field[down[1]][down[0]] = d.CHAR_STAIRS_UP
+    upper = Floor(
+        field,
+        [],
+        [[0] * len(field[0]) for _ in field],
+        up,
+        down,
+        None,
+        down_stairs=[down],
+    )
+    lower = Floor(
+        lower_field,
+        [],
+        [[0] * len(lower_field[0]) for _ in lower_field],
+        down,
+        down,
+        None,
+        up_stairs=[down],
+    )
+    for role in ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar"):
+        upper.entities.append(d.PartyMember(*rand.choice(_open_points(upper)), role))
+
+    for char, count in (("g", 1), ("a", 1), ("b", 3)):
+        for _ in range(count):
+            _place_party(upper, [(char, 1)])
+    for char, count in (("g", 1), ("k", 1), ("b", 3), ("d", 1)):
+        for _ in range(count):
+            _place_party(lower, [(char, 1)], floor_index=1)
+
+    occupied = {
+        (entity.x, entity.y)
+        for current in (upper, lower)
+        for entity in current.entities
+    }
+    collapse_points = [
+        point
+        for point in _open_points(upper)
+        if not d.collapse_footprint(point) & occupied
+        if d.collapse_placement_cells_valid(point, upper.field, lower.field)
+    ]
+    collapse_point = rand.choice(collapse_points)
+    upper.entities.append(d.Collapse(*collapse_point))
+    lower.collapse_landings.update(d.collapse_footprint(collapse_point))
+    for hazard, current in ((d.CHAR_CALTROP, upper), (d.CHAR_BARRIER, lower)):
+        x, y = rand.choice(_open_points(current))
+        current.field[y][x] = hazard
+        if hazard == d.CHAR_BARRIER:
+            current.persistent_barriers.add((x, y))
+
+    floors = [upper, lower]
+    _place_scholar_stairs(floors)
+    player = d.Player(*upper.up, 30, d.LP_INIT)
+    player.rescue_stage = True
+    return floors, player
+
+
+def _place_scholar_stairs(floors: list[Floor]) -> None:
+    """Reserve one concealed matching stair pair on each floor transition."""
+    for upper, lower in zip(floors, floors[1:]):
+        occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
+        occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
+        fixed = {
+            upper.up,
+            upper.down,
+            *upper.up_stairs,
+            *upper.down_stairs,
+            *upper.collapse_landings,
+            lower.up,
+            lower.down,
+            *lower.up_stairs,
+            *lower.down_stairs,
+            *lower.collapse_landings,
+        }
+        fixed.update(
+            point
+            for current in (upper, lower)
+            for entity in current.entities
+            if isinstance(entity, d.Collapse)
+            for point in d.collapse_footprint((entity.x, entity.y))
+        )
+        candidates = [
+            (x, y)
+            for y, row in enumerate(upper.field)
+            for x, cell in enumerate(row)
+            if cell == d.CHAR_FLOOR
+            and lower.field[y][x] == d.CHAR_FLOOR
+            and (x, y) not in fixed | occupied_upper | occupied_lower
+            and all(
+                abs(x - sx) + abs(y - sy) > 1
+                for current in (upper, lower)
+                for sx, sy in current.up_stairs + current.down_stairs
+            )
+        ]
+        point = rand.choice(candidates)
+        upper.scholar_down_stairs.append(point)
+        lower.scholar_up_stairs.append(point)

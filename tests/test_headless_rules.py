@@ -573,26 +573,6 @@ def test_stage4_builds_elves_fire_drake_boss_and_barrier_wyrms(monkeypatch):
     ) == [0, 2, 2, 2, 3]
 
 
-def test_trap_test_places_requested_entities_and_collapse_landing():
-    floors, _ = stage_world_module.build_trap_test()
-
-    assert len(floors) == 2
-    assert all(cell == d.CHAR_WALL for row in floors[0].field for cell in row[:13])
-    assert all(cell == d.CHAR_WALL for row in floors[0].field for cell in row[52:])
-    assert sum(isinstance(entity, d.Collapse) for entity in floors[0].entities) == 1
-    assert [
-        sum(
-            isinstance(entity, d.Monster) and entity.tribe.char == char
-            for entity in floors[0].entities
-        )
-        for char in ("k", "X", "g")
-    ] == [1, 1, 1]
-    collapse = next(
-        entity for entity in floors[0].entities if isinstance(entity, d.Collapse)
-    )
-    assert d.collapse_footprint((collapse.x, collapse.y)) <= floors[1].collapse_landings
-
-
 def test_marksman_spawn_chooses_best_of_three_candidates(monkeypatch):
     scores = {(1, 1): 0, (2, 1): 4, (3, 1): 2}
     monkeypatch.setattr(arlq_module.rand, "randrange", lambda _length: 0)
@@ -893,40 +873,6 @@ def test_stage4_empowered_fire_drake_unlocks_treasure_and_completes_stage():
     assert player.stage_won
     assert treasure not in floors[0].entities
     assert not queue
-
-
-def test_trap_test_shows_treasure_message_after_main_loop(monkeypatch):
-    player = d.Player(2, 2, 200, d.LP_INIT)
-    wyrm = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["W"])
-    treasure = d.Treasure(4, 2, "TW")
-    floor = Floor(
-        field=blank_field(),
-        entities=[wyrm, treasure],
-        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-        up=(2, 2),
-        down=(4, 2),
-        island=None,
-    )
-    monkeypatch.setattr(
-        game_engine_module,
-        "build_trap_test",
-        lambda *_args, **_kwargs: ([floor], player),
-    )
-    draws = []
-    moves = iter([(1, 0), (1, 0)])
-    ui = SimpleNamespace(
-        draw_stage=lambda **kwargs: draws.append(kwargs),
-        input_direction=moves.__next__,
-        input_alphabet=lambda: None,
-        map_mode=False,
-    )
-
-    game_engine_module.run_game(ui, "seed", stage_num=6)
-
-    assert player.boss_defeated
-    assert player.treasure_collected
-    assert player.stage_won
-    assert draws[-1]["message"] == ">> Treasure chest obtained! <<"
 
 
 @pytest.mark.parametrize("stage_num", [3, 4])
@@ -1905,9 +1851,8 @@ def test_vortex_records_map_knowledge_before_disturbing_it(monkeypatch):
     assert floor.seen[4][5] == 0
 
 
-def test_golem_rocks_are_walls_recorded_as_decor():
-    """Rocks a defeated Golem scatters are ordinary walls; the floor also
-    records them as decor so the sprite GUI can draw rubble instead of columns."""
+def test_golem_rocks_mark_golem_walls_in_terrain_and_decor():
+    """Golem rocks have a distinct terrain value and a visual rubble decoration."""
     player = d.Player(10, 10, 100, d.LP_INIT)
     golem = d.Monster(11, 10, d.CHAR_TO_MONSTER_TRIBE["g"])
     floor = Floor(
@@ -1927,7 +1872,7 @@ def test_golem_rocks_are_walls_recorded_as_decor():
         (x, y)
         for y, row in enumerate(floor.field)
         for x, cell in enumerate(row)
-        if cell == d.CHAR_WALL and before[y][x] != d.CHAR_WALL
+        if cell == d.CHAR_GOLEM_WALL and before[y][x] != d.CHAR_GOLEM_WALL
     }
     assert raised == {
         (8, 8), (12, 8), (9, 9), (11, 9),

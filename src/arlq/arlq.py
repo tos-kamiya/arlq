@@ -238,7 +238,7 @@ def _marksman_sight_score(
             distance += 1
             if not (0 <= y < len(field) and 0 <= x < len(field[0])):
                 break
-            if field[y][x] in (d.CHAR_WALL, *d.STAIR_CHARS):
+            if field[y][x] in (*d.WALL_CHARS, *d.STAIR_CHARS):
                 break
             if (x, y) in blocked_entities:
                 break
@@ -474,7 +474,10 @@ def iterate_ellipse_points(
 
 
 def spread_caltrops(
-    field: List[List[str]], origin: d.Point, entities: List[d.Entity]
+    field: List[List[str]],
+    origin: d.Point,
+    entities: List[d.Entity],
+    protected_points: Container[d.Point] = (),
 ) -> None:
     ox, oy = origin
     for x, y in iterate_ellipse_points(
@@ -485,7 +488,11 @@ def spread_caltrops(
         except_for_center=True,
         except_for_entities=entities,
     ):
-        if (x + y) % 2 == 0 and field[y][x] in (d.CHAR_FLOOR, d.CHAR_WALL):
+        if (
+            (x, y) not in protected_points
+            and (x + y) % 2 == 0
+            and field[y][x] in (d.CHAR_FLOOR, d.CHAR_WALL)
+        ):
             field[y][x] = d.CHAR_CALTROP
 
 
@@ -585,6 +592,7 @@ def move_player(
     field: List[List[str]],
     player: d.Player,
     passable_cells: Container[str],
+    phase_walls: Container[d.Point] = (),
 ) -> Optional[WallEvent]:
     """Move the player and return a traceable wall-interaction result.
 
@@ -601,6 +609,9 @@ def move_player(
 
     cell = field[ny][nx]
     if cell in passable_cells:
+        player.x, player.y = nx, ny
+        return None
+    if cell == d.CHAR_GOLEM_WALL and (nx, ny) in phase_walls:
         player.x, player.y = nx, ny
         return None
 
@@ -620,7 +631,7 @@ def move_player(
     if (
         player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
         and player.item_uses > 0
-        and cell == d.CHAR_WALL
+        and cell in d.WALL_CHARS
     ):
         player.x, player.y = nx, ny
         field[ny][nx] = d.CHAR_FLOOR
@@ -642,7 +653,7 @@ def barrier_lp_damage(player: d.Player) -> int:
             player.elf_stage_flags & d.ELF_STAGE_H_FLAG
             and player.item != d.ITEM_SWORD_CURSED
         )
-        else d.BARRIER_LP_DAMAGE / 2 if d.has_member(player, "Paradin") else d.BARRIER_LP_DAMAGE
+        else d.BARRIER_LP_DAMAGE
     )
 
 
@@ -850,7 +861,7 @@ def update_entities(
                         except_for_entities=entities,
                     ):
                         if field[y][x] == d.CHAR_FLOOR:
-                            field[y][x] = d.CHAR_WALL
+                            field[y][x] = d.CHAR_GOLEM_WALL
 
                 d.apply_feed(player, m.tribe.feed)
 
@@ -924,7 +935,7 @@ def read_last_seed() -> Tuple[int, int]:
         stage, seed = int(parts[0]), int(parts[1])
     except ValueError as error:
         raise ValueError(f"invalid rematch stage or seed in {path}") from error
-    if stage not in d.PUBLIC_STAGE_NUMBERS and stage != 6:
+    if stage not in d.PUBLIC_STAGE_NUMBERS:
         raise ValueError(f"invalid rematch stage or seed in {path}")
     return stage, seed
 
@@ -1031,7 +1042,7 @@ def parse_seed_string(args, seed_str, enforce_version: bool = True):
     except ValueError:
         exit("Error: Stage value in seed string is not a valid integer.")
     if args.stage not in d.PUBLIC_STAGE_NUMBERS:
-        exit("Error: Stage value in seed string must be 1, 2, 3, or 4.")
+        exit("Error: Stage value in seed string must be between 1 and 6.")
 
     try:
         args.seed = int(seed_value_str)

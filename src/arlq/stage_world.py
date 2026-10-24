@@ -69,7 +69,7 @@ def _has_four_wall_neighbors(
     return all(
         (x + dx, y + dy) in added_walls
         or not (0 <= x + dx < width and 0 <= y + dy < height)
-        or field[y + dy][x + dx] == d.CHAR_WALL
+        or field[y + dy][x + dx] in d.WALL_CHARS
         for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
     )
 
@@ -104,7 +104,7 @@ def _add_filled_room_wall_notches(
         for x, y in edge_cells:
             if not (0 < x < width - 1 and 0 < y < height - 1):
                 continue
-            if field[y][x] != d.CHAR_WALL:
+            if field[y][x] not in d.WALL_CHARS:
                 continue
             if _has_four_wall_neighbors(field, (x, y)):
                 continue
@@ -122,7 +122,7 @@ def _add_stage1_margin_notches(field: List[List[str]]) -> None:
             for y in range(top + 1, bottom):
                 if not _is_wall_notch_point((x, y)):
                     continue
-                if field[y][x] != d.CHAR_WALL:
+                if field[y][x] not in d.WALL_CHARS:
                     continue
                 if _has_four_wall_neighbors(field, (x, y)):
                     continue
@@ -438,7 +438,7 @@ def _add_stage4_wall_spurs(
                         for y in (start, start + 1)
                     ]
                     if all(
-                        field[y][x] == d.CHAR_WALL for x, y in boundary_cells
+                        field[y][x] in d.WALL_CHARS for x, y in boundary_cells
                     ) and all(
                         field[y][x] == d.CHAR_FLOOR for x, y in spur_cells
                     ):
@@ -462,7 +462,7 @@ def _add_stage4_wall_spurs(
                         for x in (start, start + 1)
                     ]
                     if all(
-                        field[y][x] == d.CHAR_WALL for x, y in boundary_cells
+                        field[y][x] in d.WALL_CHARS for x, y in boundary_cells
                     ) and all(
                         field[y][x] == d.CHAR_FLOOR for x, y in spur_cells
                     ):
@@ -743,81 +743,6 @@ def build(
     if "L" in special_floors:
         player.elf_stage_floors["L"] = special_floors["L"] + 1
     return floors, player
-
-
-def build_trap_test(
-    corridor_h_width: int = d.CORRIDOR_H_WIDTH,
-    corridor_v_width: int = d.CORRIDOR_V_WIDTH,
-) -> Tuple[List[Floor], d.Player]:
-    """Build an arena for manually exercising Stage 4 monsters and traps."""
-    field, entry, wyrm_point = create_field(
-        corridor_h_width,
-        corridor_v_width,
-        d.CHAR_WALL,
-        tile_columns=3,
-    )
-    wyrm = d.Monster(*wyrm_point, d.CHAR_TO_MONSTER_TRIBE["W"])
-    entities: List[d.Entity] = [wyrm]
-    _place_barrier(field, wyrm_point)
-    reserved = {entry, wyrm_point}
-    _place_roster_treasures_and_mimics(
-        [("W", 1, 1), ("M", 1, 1)], entities, field, reserved
-    )
-    for _ in range(3):
-        _spawn(entities, field, "b", reserved, floor_index=0)
-        _spawn(entities, field, "d", reserved, floor_index=0)
-    _spawn(entities, field, "V", reserved, floor_index=0)
-    _spawn(entities, field, "k", reserved, floor_index=0)
-    _spawn(entities, field, "X", reserved, floor_index=0)
-    _spawn(entities, field, "g", reserved, floor_index=0)
-
-    stair_point = find_random_place(
-        entities, field, distance=2, avoid=lambda point: point in reserved
-    )
-    field[stair_point[1]][stair_point[0]] = d.CHAR_STAIRS_DOWN
-    collapse_candidates = []
-    occupied = {(entity.x, entity.y) for entity in entities} | reserved
-    for y in range(1, len(field) - 1):
-        for x in range(1, len(field[0]) - 1):
-            point = (x, y)
-            footprint = d.collapse_footprint(point)
-            if point == stair_point or footprint & occupied or stair_point in footprint:
-                continue
-            if (
-                field[y][x] == d.CHAR_FLOOR
-                and d.collapse_placement_cells_valid(point, field)
-            ):
-                collapse_candidates.append(point)
-    if not collapse_candidates:
-        raise RuntimeError("could not place the trap-test Collapse")
-    collapse_point = rand.choice(collapse_candidates)
-    entities.append(d.Collapse(*collapse_point))
-
-    arena = Floor(
-        field=field,
-        entities=entities,
-        seen=[[0] * len(field[0]) for _ in field],
-        up=entry,
-        down=wyrm_point,
-        island=None,
-        down_stairs=[stair_point],
-    )
-    lower_field = [row.copy() for row in field]
-    lower_field[stair_point[1]][stair_point[0]] = d.CHAR_STAIRS_UP
-    landing_floor = Floor(
-        field=lower_field,
-        entities=[],
-        seen=[[0] * len(lower_field[0]) for _ in lower_field],
-        up=stair_point,
-        down=stair_point,
-        island=None,
-        up_stairs=[stair_point],
-        collapse_landings=set(d.collapse_footprint(collapse_point)),
-    )
-    player = d.Player(entry[0], entry[1], 150, d.LP_INIT)
-    player.elf_stage_floors = {}
-    player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
-    return [arena, landing_floor], player
 
 
 def _transition_candidates(
