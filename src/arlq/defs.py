@@ -16,30 +16,39 @@ KNIGHT_EXP_MULTIPLIER = 0.5
 HEALER_MOVE_COST = 0.5
 HEALER_RESPAWN_COST = 2
 STAGE5_START_LEVEL = 1
-STAGE5_FLOORS = 4
+STAGE5_FLOORS = 5
 # Weights for parties of 1, 2, 3, 4, and 5 monsters, by floor.
 STAGE5_PARTY_SIZE_WEIGHTS = (
     (55, 25, 15, 5, 0),
     (30, 35, 25, 10, 0),
     (20, 30, 30, 15, 5),
     (10, 20, 30, 25, 15),
+    (5, 15, 25, 30, 25),
 )
 # Each roster entry (character, count, rank) supplies party leaders.
 # Additional members come from the floor's ordinary support pool below.
 STAGE5_ROSTER = (
-    (("a", 24, 1), ("A", 4, 1), ("b", 10, 1), ("c", 3, 1), ("d", 3, 1), ("e", 1, 1)),
-    (("a", 6, 2), ("A", 3, 1), ("b", 10, 2), ("c", 5, 2), ("d", 7, 2), ("g", 3, 1), ("k", 3, 1), ("w", 1, 1)),
-    (("a", 8, 2), ("b", 8, 2), ("c", 6, 2), ("d", 8, 2), ("g", 3, 1), ("k", 4, 1), ("w", 3, 1)),
-    (("b", 12, 2), ("c", 5, 2), ("d", 6, 2), ("k", 5, 1), ("w", 4, 2)),
+    (("a", 24, 1), ("A", 4, 1), ("b", 8, 1), ("c", 3, 1), ("d", 3, 1), ("e", 1, 1)),
+    (("a", 6, 2), ("A", 3, 1), ("b", 10, 2), ("c", 5, 2), ("d", 7, 2), ("g", 4, 1), ("k", 3, 1), ("w", 1, 1), ("X", 1, 1)),
+    (("a", 8, 2), ("b", 8, 2), ("c", 6, 2), ("d", 8, 2), ("g", 4, 1), ("k", 4, 1), ("w", 3, 1), ("E", 1, 1)),
+    (("b", 12, 2), ("c", 5, 2), ("d", 6, 2), ("g", 2, 1), ("k", 5, 1), ("w", 4, 2)),
+    (("b", 8, 2), ("c", 5, 2), ("d", 6, 2), ("g", 3, 1), ("k", 4, 1), ("w", 3, 2), ("X", 1, 1), ("E", 1, 1)),
 )
 STAGE5_SUPPORT_POOLS = (
     (("a", 1),),
     (("a", 1), ("w", 1), ("w", 1)),
     (("w", 1), ("k", 1), ("w", 1), ("k", 1)),
     (("w", 1), ("k", 1), ("w", 1), ("k", 1)),
+    (("w", 1), ("k", 1), ("w", 1), ("k", 1)),
 )
-STAGE5_MEMBER_FLOORS = (("Bard", "Healer"), ("Rogue", "Knight"), ("Dangeon Scholar",), ())
-STAGE5_HAZARD_COUNTS = ((0, 0), (6, 3), (9, 5), (12, 6))
+STAGE5_MEMBER_FLOORS = (
+    ("Bard", "Healer"),
+    ("Rogue", "Knight"),
+    ("Dangeon Scholar",),
+    (),
+    (),
+)
+STAGE5_HAZARD_COUNTS = ((0, 0), (0, 3), (0, 5), (0, 6), (0, 7))
 MEMBER_GLYPHS = {
     "Bard": "B", "Healer": "H", "Rogue": "R",
     "Knight": "K", "Dangeon Scholar": "D", "Noble": "N",
@@ -343,9 +352,12 @@ class Companion(Entity):
 class PartyMember(Entity):
     """A permanent recruit, separate from the temporary companion slot."""
 
-    def __init__(self, x: int, y: int, role: str):
+    def __init__(
+        self, x: int, y: int, role: str, origin_floor: Optional[int] = None
+    ):
         super().__init__(x, y)
         self.role = role
+        self.origin_floor = origin_floor
 
 
 class Monster(Entity):

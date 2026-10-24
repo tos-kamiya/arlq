@@ -395,14 +395,14 @@ def _spawn_island_elf(
     entities.append(d.Elf(x, y, tribe))
 
 
-def _add_stage4_wall_spurs(
+def _add_wall_spurs(
     field: List[List[str]],
     up: d.Point,
     down: d.Point,
     island_tile: Optional[d.Point],
     filled_rooms: Container[d.Point],
 ) -> None:
-    """Add short room-wall spurs on some rooms of Stage 4's final floors."""
+    """Add short room-wall spurs to selected unfilled rooms."""
     stair_rooms = {tile_at(up), tile_at(down)}
     for ty in range(d.TILE_NUM_Y):
         for tx in range(d.TILE_NUM_X):
@@ -513,7 +513,7 @@ def _build_floor(
     )
     island_tile = next(iter(island_rooms), None)
     if stage_num == 4 and index >= 2:
-        _add_stage4_wall_spurs(field, up, down, island_tile, filled_rooms)
+        _add_wall_spurs(field, up, down, island_tile, filled_rooms)
     _add_filled_room_wall_notches(field, filled_rooms)
 
     if index < floor_count - 1:

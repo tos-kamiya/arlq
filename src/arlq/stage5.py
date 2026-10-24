@@ -5,7 +5,11 @@ from .arlq import GameConfig, create_field
 from .i18n import trp
 from .stage_maze import generate_floor_field
 from .stage_types import Floor
-from .stage_world import _place_collapses
+from .stage_world import (
+    _add_filled_room_wall_notches,
+    _add_wall_spurs,
+    _place_collapses,
+)
 from .utils import rand
 
 
@@ -41,6 +45,7 @@ def special_monster(entity: d.Monster) -> bool:
 
 def normalize_parties(current: Floor) -> None:
     """Enforce party limits after spawning or rearranging; retain F' and V'."""
+    _separate_golems(current)
     checked = set()
     for entity in list(current.entities):
         if not isinstance(entity, d.Monster) or not entity.active or entity in checked:
@@ -68,6 +73,59 @@ def normalize_parties(current: Floor) -> None:
                 kept += 1
                 special |= is_special
     _separate_diagonal_monsters(current)
+
+
+def _separate_golems(current: Floor) -> None:
+    """Keep each Golem out of every other monster's cardinal adjacency."""
+    while True:
+        monsters = [
+            entity
+            for entity in current.entities
+            if isinstance(entity, d.Monster)
+            and entity.active
+            and not entity.tribe.is_elf
+        ]
+        conflict = next(
+            (
+                (first, second)
+                for index, first in enumerate(monsters)
+                for second in monsters[index + 1 :]
+                if (first.tribe.char == "g" or second.tribe.char == "g")
+                and abs(first.x - second.x) + abs(first.y - second.y) == 1
+            ),
+            None,
+        )
+        if conflict is None:
+            return
+        first, second = conflict
+        golem = first if first.tribe.char == "g" else second
+        other = second if golem is first else first
+        other_is_fixed = isinstance(other, d.Collapse) or (
+            other.tribe.char in ("F", "V") and other.empowered == 2
+        )
+        mover = golem if other_is_fixed or other.tribe.char == "g" else other
+
+        current.entities.remove(mover)
+        other_monsters = [
+            entity
+            for entity in current.entities
+            if isinstance(entity, d.Monster)
+            and entity.active
+            and not entity.tribe.is_elf
+        ]
+        candidates = [
+            point
+            for point in _open_points(current)
+            if all(
+                abs(point[0] - entity.x) > 1 or abs(point[1] - entity.y) > 1
+                for entity in other_monsters
+            )
+        ]
+        if not candidates:
+            current.entities.append(mover)
+            return
+        mover.x, mover.y = rand.choice(candidates)
+        current.entities.append(mover)
 
 
 def _separate_diagonal_monsters(current: Floor) -> None:
@@ -126,6 +184,7 @@ def recruit(
     player: d.Player,
     member: d.PartyMember,
     recycle_departed: bool = False,
+    floors: list[Floor] | None = None,
 ) -> str:
     if len(player.members) == d.PARTY_LIMIT and player.members[0].role == "Noble":
         return trp("-- Noble cannot leave. No more members can join.", 5)
@@ -133,13 +192,22 @@ def recruit(
     current.entities.remove(member)
     player.members.append(member)
     if departed is not None and recycle_departed:
+        target = current
+        if (
+            floors is not None
+            and departed.origin_floor is not None
+            and 0 <= departed.origin_floor < len(floors)
+        ):
+            target = floors[departed.origin_floor]
         choices = [
-            point for point in _open_points(current) if point != (player.x, player.y)
+            point
+            for point in _open_points(target)
+            if target is not current or point != (player.x, player.y)
         ]
         departed.x, departed.y = rand.choice(choices)
-        current.entities.append(departed)
+        target.entities.append(departed)
     if departed is not None:
-        return trp("-- {joined} joined; {departed} left for good.", 5).format(
+        return trp("-- {joined} joined; {departed} left the party.", 5).format(
             joined=member.role, departed=departed.role
         )
     return trp("-- {joined} joined your party.", 5).format(joined=member.role)
@@ -176,6 +244,21 @@ def reveal_mimics(current: Floor, player: d.Player) -> None:
             and entity.active
             and entity.tribe.char == "M"
             and max(abs(player.x - entity.x), abs(player.y - entity.y)) <= 1
+        ):
+            player.known_monsters.add(d.monster_type_key(entity))
+            current.seen[entity.y][entity.x] = 1
+
+
+def reveal_rogue_traps(current: Floor, player: d.Player) -> None:
+    """Identify adjacent Golems and Caltrop Plants for a Rogue."""
+    if not d.has_member(player, "Rogue"):
+        return
+    for entity in current.entities:
+        if (
+            isinstance(entity, d.Monster)
+            and entity.active
+            and entity.tribe.char in ("g", "X")
+            and abs(player.x - entity.x) + abs(player.y - entity.y) == 1
         ):
             player.known_monsters.add(d.monster_type_key(entity))
             current.seen[entity.y][entity.x] = 1
@@ -365,24 +448,20 @@ def respawn(
     empowered_positions = {
         (entity.x, entity.y) for entity in monsters if entity.empowered == 2
     }
-    if rank == 2:
-        # Rank-2 monsters stay separate from every other monster.
+    golem_positions = {
+        (entity.x, entity.y) for entity in monsters if entity.tribe.char == "g"
+    }
+    if rank == 2 or char == "g":
+        # Rank-2 monsters and Golems stay separate from every other monster.
+        isolated_positions = {(entity.x, entity.y) for entity in monsters}
+    else:
+        isolated_positions = empowered_positions | golem_positions
+    if isolated_positions:
         candidates = [
             point
             for point in candidates
             if all(
-                (point[0] + dx, point[1] + dy) not in {
-                    (entity.x, entity.y) for entity in monsters
-                }
-                for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
-            )
-        ]
-    elif empowered_positions:
-        candidates = [
-            point
-            for point in candidates
-            if all(
-                (point[0] + dx, point[1] + dy) not in empowered_positions
+                (point[0] + dx, point[1] + dy) not in isolated_positions
                 for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
             )
         ]
@@ -439,10 +518,25 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     config = config or GameConfig()
     floors = []
     entry = None
-    for index in range(d.STAGE5_FLOORS):
-        field, up, down, _, _, _ = generate_floor_field(
-            entry, None, config.corridor_h_width, config.corridor_v_width, 0, 0
+    filled_counts = list(d.STAGE4_FILLED_ROOM_COUNTS)
+    filled_counts.remove(0)
+    filled_counts_by_floor = [0]
+    while filled_counts:
+        filled_counts_by_floor.append(
+            filled_counts.pop(rand.randrange(len(filled_counts)))
         )
+    for index in range(d.STAGE5_FLOORS):
+        field, up, down, _, filled_rooms, _ = generate_floor_field(
+            entry,
+            None,
+            config.corridor_h_width,
+            config.corridor_v_width,
+            0,
+            filled_counts_by_floor[index],
+        )
+        if index >= 2:
+            _add_wall_spurs(field, up, down, None, filled_rooms)
+        _add_filled_room_wall_notches(field, filled_rooms)
         if index:
             field[up[1]][up[0]] = d.CHAR_STAIRS_UP
         if index < d.STAGE5_FLOORS - 1:
@@ -459,7 +553,9 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         )
         for role in d.STAGE5_MEMBER_FLOORS[index]:
             current.entities.append(
-                d.PartyMember(*rand.choice(_open_points(current)), role)
+                d.PartyMember(
+                    *rand.choice(_open_points(current)), role, origin_floor=index
+                )
             )
         for char in ("n", "o", "p"):
             current.entities.append(
@@ -476,7 +572,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             for _ in range(count):
                 party_size = (
                     1
-                    if rank == 2 or (index == 1 and char == "k")
+                    if rank == 2 or char == "g" or (index == 1 and char == "k")
                     else sample_party_size(index)
                 )
                 roster = [(char, rank)] + [
@@ -547,7 +643,9 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
         up_stairs=[down],
     )
     for role in ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar"):
-        upper.entities.append(d.PartyMember(*rand.choice(_open_points(upper)), role))
+        upper.entities.append(
+            d.PartyMember(*rand.choice(_open_points(upper)), role, origin_floor=0)
+        )
 
     for char, count in (("g", 1), ("a", 1), ("b", 3)):
         for _ in range(count):

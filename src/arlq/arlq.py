@@ -851,7 +851,7 @@ def update_entities(
                 if effect == d.EFFECT_UNLOCK_TREASURE:
                     player.boss_defeated = True
                     unlock_treasure_for_defeat(m, entities)
-                elif effect == d.EFFECT_CALTROP_SPREAD:
+                elif effect == d.EFFECT_CALTROP_SPREAD and stage_num != 5:
                     spread_caltrops(field, (player.x, player.y), entities)
                 elif effect == d.EFFECT_ROCK_SPREAD:
                     for x, y in iterate_offsets(

@@ -1,4 +1,4 @@
-"""Rules, generation, and rescue checks for the four-floor party stage."""
+"""Rules, generation, and rescue checks for the five-floor party stage."""
 
 from collections import Counter, deque
 from itertools import pairwise
@@ -49,7 +49,7 @@ def step(current, player, direction=(1, 0), checkpoint=(2, 2)):
 
 def test_playground_has_all_recruits_and_connected_rank2_bosses():
     floors, player = stage5.build()
-    assert len(floors) == 4 and player.rescue_stage
+    assert len(floors) == 5 and player.rescue_stage
     current = floors[-1]
     assert {
         e.role for f in floors for e in f.entities if isinstance(e, d.PartyMember)
@@ -82,9 +82,9 @@ def test_fifo_noble_lock_and_companion_slot_are_independent():
         step(current, player)
         player.x, player.y = 2, 2
     assert [e.role for e in player.members] == ["Noble", "Knight"]
-    assert [e.role for e in current.entities if isinstance(e, d.PartyMember)] == [
-        "Rogue"
-    ]
+    assert sorted(
+        e.role for e in current.entities if isinstance(e, d.PartyMember)
+    ) == ["Bard", "Healer", "Rogue"]
     assert player.companion is companion
 
 

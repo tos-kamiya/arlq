@@ -84,7 +84,7 @@ it is large enough again.
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a four-floor party rescue dungeon; Stage 6 is a compact member-ability trial. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a five-floor party rescue dungeon; Stage 6 is a compact member-ability trial. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -260,23 +260,23 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | **L** Lifebringer Elf | Each meeting cures poison, raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then disappears and returns on a random floor at a later 65-turn respawn tick. |
 | **S** Sylvan Elf | Gives you fairy nectar. Companions recruited afterward, except `l`, stay with you 1.25 times longer. |
 
-### Stage 5 (four-floor party rescue)
+### Stage 5 (five-floor party rescue)
 
-Run `--stage 5` to explore four floors starting at level 1. The seed determines the maze and enemy placement. There are no elves. Recruit candidates show their professions as soon as they enter your field of view. Touch one to recruit them; two members fit alongside the existing temporary companion slot. Recruiting a third permanently dismisses the earliest recruit. The earlier member appears diagonally behind to the left, the later one to the right. Human characters currently use letter markers in the GUI too.
+Run `--stage 5` to explore five floors starting at level 1. The seed determines the maze and enemy placement. The number of sealed rooms varies by floor, with short wall spurs added from floor 3 onward. There are no elves. Recruit candidates show their professions as soon as they enter your field of view. Touch one to recruit them; two members fit alongside the existing temporary companion slot. Recruiting a third returns the earliest recruit to a random location on their original floor. The earlier member appears diagonally behind to the left, the later one to the right. Human characters currently use letter markers in the GUI too.
 
 | Marker / profession | Ability |
 | --- | --- |
 | `B` Bard | Triple the shared experience gain. |
 | `H` Healer | Reduce normal LP consumption to 0.5 and defeat's LP cost to 2. |
-| `R` Rogue | Stop movement and key repeat before entering a pit or firing lane; press again to proceed. Identify adjacent Mimics as `M`. |
+| `R` Rogue | Stop movement and key repeat before entering a pit or firing lane; press again to proceed. Identify adjacent Mimics as `M`, and reveal Golems (`g`) and Caltrop Plants (`X`) in cardinally adjacent cells. |
 | `K` Knight | Add the player's attack power and halve shared experience. |
 | `D` Dangeon Scholar | Reveal and use an extra stairway on each floor connection. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |
 
 Enemies connected horizontally or vertically fight as one party of at most five. If monsters from separate parties end up diagonally adjacent, one is moved away; the `F'` and `V'` bosses stay in place. Their attack power, LP rewards, and experience are summed. Experience is divided among the player and companions, then tripled by Bard or halved by Knight; with both, the player receives 1.5 times the shared amount. Fractional LP and levels are retained internally and shown as whole numbers in the status bar.
 
-Defeat `F'` and its accompanying `V'` on floor 4 to rearrange that entire floor and erase its explored map. Recruit the newly appearing `N` (Noble), then return to floor 1 to win. Treasure is optional and does not end the stage. Noble provides no bonus and cannot leave, allowing at most one further member change after rescue. Members respawn with the player after defeat. Pits drop you to the next floor. Balance remains provisional.
+Defeat `F'` and its accompanying `V'` on floor 5 to rearrange that entire floor and erase its explored map. Recruit the newly appearing `N` (Noble), then return to floor 1 to win. Treasure is optional and does not end the stage. Noble provides no bonus and cannot leave, allowing at most one further member change after rescue. Members respawn with the player after defeat. Stage 5 also includes Golems (`g`), Erebus (`e`), rare Erebus (`E`), and Caltrop Plants (`X`); defeating a Caltrop Plant does not scatter caltrops in this stage. Pits drop you to the next floor. Balance remains provisional.
 
-Deeper floors feature stronger species and ranks, and larger enemy parties become more likely. Normal party sizes use these probabilities. Rank-2 monsters marked with an apostrophe always fight alone, except for the boss pair `F'` and `V'`. Marksmen (`k`) on floor 2 also spawn alone. Monsters may touch walls and block narrow passages.
+Deeper floors feature stronger species and ranks, and larger enemy parties become more likely. Normal party sizes use these probabilities. Rank-2 monsters marked with an apostrophe always fight alone, except for the boss pair `F'` and `V'`. Golems (`g`) and Marksmen (`k`) on floor 2 also spawn alone. Monsters may touch walls and block narrow passages.
 
 | Floor | 1 member | 2 members | 3 members | 4 members | 5 members |
 | --- | --- | --- | --- | --- | --- |
@@ -284,6 +284,7 @@ Deeper floors feature stronger species and ranks, and larger enemy parties becom
 | 2 | 30% | 35% | 25% | 10% | 0% |
 | 3 | 20% | 30% | 30% | 15% | 5% |
 | 4 | 10% | 20% | 30% | 25% | 15% |
+| 5 | 5% | 15% | 25% | 30% | 25% |
 
 ### Stage 6 (member-ability trial)
 

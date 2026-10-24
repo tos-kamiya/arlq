@@ -613,7 +613,7 @@ def _defeat_monster(
     d.apply_feed(player, entity.tribe.feed)
     player.karma += 1
 
-    if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
+    if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD and stage_num != 5:
         spread_caltrops(
             current.field,
             (player.x, player.y),
@@ -989,6 +989,7 @@ def _resolve_party_contact(
     checkpoint: List[d.Point],
     queue: Counter,
     trace: Optional[TraceRecorder],
+    stage_num: int,
 ) -> _ContactResult:
     party = stage5.monster_party(current, entity)
     strength = sum(d.monster_level(monster) for monster in party)
@@ -1052,7 +1053,7 @@ def _resolve_party_contact(
             queue,
             trace=trace,
             floors=floors,
-            stage_num=5,
+            stage_num=stage_num,
         )
     player.level = old_level + experience
     if any(monster.tribe.effect == d.EFFECT_LEVEL_REDUCE for monster in party):
@@ -1075,7 +1076,9 @@ def _resolve_party_contact(
             ),
             key=lambda point: (abs(point[0] - boss.x) + abs(point[1] - boss.y), point),
         )
-        current.entities.append(d.PartyMember(*candidates[0], "Noble"))
+        current.entities.append(
+            d.PartyMember(*candidates[0], "Noble", origin_floor=floor[0])
+        )
     stage5.normalize_parties(current)
     player.last_contact_monster = contact_key
     return _ContactResult(
@@ -1111,7 +1114,11 @@ def _resolve_contact(
     if isinstance(entity, d.PartyMember):
         had_scholar = d.has_member(player, "Dangeon Scholar")
         result = stage5.recruit(
-            current, player, entity, recycle_departed=stage_num == 6
+            current,
+            player,
+            entity,
+            recycle_departed=stage_num in (5, 6),
+            floors=floors,
         )
         has_scholar = d.has_member(player, "Dangeon Scholar")
         if had_scholar != has_scholar:
@@ -1169,8 +1176,9 @@ def _resolve_contact(
     if entity.tribe.char == "M" and not entity.active:
         return _ContactResult(event_message)
     if stage_num in (5, 6):
-        return _resolve_party_contact(entity, current, floors, player, floor,
-                                      checkpoint, queue, trace)
+        return _resolve_party_contact(
+            entity, current, floors, player, floor, checkpoint, queue, trace, stage_num
+        )
     return _resolve_monster_contact(
         hit,
         entity,
@@ -1608,6 +1616,7 @@ def _process_multi_floor_turn(
             stage5.normalize_parties(floor_data)
         stage5.sync_members(player, previous, direction)
         stage5.reveal_mimics(floors[floor[0]], player)
+        stage5.reveal_rogue_traps(floors[floor[0]], player)
         if stage_num == 5 and floor[0] == 0 and d.has_member(player, "Noble"):
             player.noble_returned = True
             event_message = trp("-- Noble returned safely!", 9)
@@ -1693,7 +1702,7 @@ def run_game(
     if single_floor_stage:
         message: Tuple[int, str] = (-1, "")
     elif stage_num == 5:
-        message = (12, trp("-- Rescue Noble on floor 4 and return to floor 1.", 1))
+        message = (12, trp("-- Rescue Noble on floor 5 and return to floor 1.", 1))
     elif stage_num in d.ELF_STAGES:
         message = (
             5,
@@ -1724,6 +1733,7 @@ def run_game(
                 current.seen[y][x] |= cur[y][x]
         if stage_num in (5, 6):
             stage5.reveal_mimics(current, player)
+            stage5.reveal_rogue_traps(current, player)
             stage5.set_scholar_stairs(
                 floors, d.has_member(player, "Dangeon Scholar")
             )
