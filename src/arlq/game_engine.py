@@ -1108,7 +1108,7 @@ def _resolve_party_contact(
         / (len(player.members) + 1)
         * d.experience_multiplier(player)
     )
-    feed = sum(monster.tribe.feed for monster in party)
+    feed = max(monster.tribe.feed for monster in party)
     boss = next(
         (monster for monster in party if monster.tribe.char in ("F", "W")), None
     )

@@ -594,14 +594,16 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         filled_counts_by_floor.append(
             filled_counts.pop(rand.randrange(len(filled_counts)))
         )
+    split_floor_index = rand.randrange(1, d.STAGE5_FLOORS)
     for index in range(d.STAGE5_FLOORS):
-        field, up, down, _, filled_rooms, _ = generate_floor_field(
+        field, up, down, _, filled_rooms, room_components = generate_floor_field(
             entry,
             None,
             config.corridor_h_width,
             config.corridor_v_width,
             0,
             filled_counts_by_floor[index],
+            split_room_graph=index == split_floor_index,
         )
         if index >= 2:
             _add_wall_spurs(field, up, down, None, filled_rooms)
@@ -619,6 +621,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             None,
             up_stairs=[up] if index else [],
             down_stairs=[down] if index < d.STAGE5_FLOORS - 1 else [],
+            room_components=room_components,
         )
         for role in d.STAGE5_MEMBER_FLOORS[index]:
             current.entities.append(
