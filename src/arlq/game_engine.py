@@ -609,7 +609,6 @@ def _defeat_monster(
         player.elf_stage_flags |= d.ELF_STAGE_C_FLAG
     d.grant_defeat_level(player, entity.tribe.effect)
     d.apply_feed(player, entity.tribe.feed)
-    player.karma += 1
 
     if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD and stage_num != 5:
         spread_caltrops(
@@ -881,6 +880,9 @@ def _resolve_monster_contact(
             entity, current, player, floor, queue, trace, event_message
         )
 
+    if not handled_elf:
+        player.karma += 1
+
     if not handled_elf and d.current_player_attack(player) < d.monster_level(entity):
         assert ch != "M", "A Mimic must not defeat the player."
         # Losing still identifies the monster, including W. Treasure glyphs
@@ -989,6 +991,7 @@ def _resolve_party_contact(
     stage_num: int,
 ) -> _ContactResult:
     party = stage5.monster_party(current, entity)
+    player.karma += 1
     strength = sum(d.monster_level(monster) for monster in party)
     contact_key = (floor[0], *min((monster.x, monster.y) for monster in party))
     for monster in party:

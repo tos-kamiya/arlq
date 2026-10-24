@@ -149,7 +149,7 @@ reproduce the same layout.
 
   Some monsters, such as `d`, respawn. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked `T` clears the stage.
 
-  Companions provide a temporary benefit, with one temporary companion at a time. Defeating a monster consumes one unit of its duration, as does each Pegasus jump. For example, the Nomicon identifies nearby monsters and elves.
+  Companions provide a temporary benefit, with one temporary companion at a time. Each monster combat encounter consumes one unit of its duration; a party encounter counts once regardless of its size. Each Pegasus jump also consumes one unit. For example, the Nomicon identifies nearby monsters and elves.
 
   Most elves appear from Stage 3 onward and provide support, such as increased attack power, when you meet certain conditions.
 
