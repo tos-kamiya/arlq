@@ -390,6 +390,40 @@ def _open_points(current: Floor) -> list[d.Point]:
     ]
 
 
+def _place_wyrm_barriers(current: Floor) -> None:
+    """Place a barrier ring around each w/W without covering occupied cells."""
+    occupied = {(entity.x, entity.y) for entity in current.entities}
+    reserved = {
+        current.up,
+        current.down,
+        *current.up_stairs,
+        *current.down_stairs,
+        *current.scholar_up_stairs,
+        *current.scholar_down_stairs,
+        *current.collapse_landings,
+    }
+    centers = [
+        (entity.x, entity.y)
+        for entity in current.entities
+        if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}
+    ]
+    for center_x, center_y in centers:
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if not (dx or dy):
+                    continue
+                point = (center_x + dx, center_y + dy)
+                x, y = point
+                if (
+                    0 <= y < len(current.field)
+                    and 0 <= x < len(current.field[y])
+                    and point not in occupied
+                    and point not in reserved
+                    and current.field[y][x] == d.CHAR_FLOOR
+                ):
+                    current.field[y][x] = d.CHAR_BARRIER
+
+
 def _place_party(
     current: Floor, roster: list[tuple[str, int]], floor_index: int = 0
 ) -> None:
@@ -527,17 +561,6 @@ def respawn(
     return point
 
 
-def strength_roster() -> list[d.MonsterTribe]:
-    variants = {(char, rank) for roster in d.STAGE5_ROSTER for char, _, rank in roster}
-    variants.update(variant for pool in d.STAGE5_SUPPORT_POOLS for variant in pool)
-    variants.update({("F", 2), ("W", 1), ("V", 2), ("M", 1)})
-    return sorted(
-        (d._empowered_strength_tribe(char, rank) for char, rank in sorted(variants)),
-        key=lambda tribe: tribe.level,
-        reverse=True,
-    )
-
-
 def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     config = config or GameConfig()
     floors = []
@@ -590,8 +613,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 )
             )
         if index == d.STAGE5_FLOORS - 1:
-            boss_roster = [("W", 1), ("V", 2)]
-            _place_party(current, boss_roster, index)
+            _place_party(current, list(d.STAGE5_BOSS_PARTY), index)
         for char, count, rank in d.STAGE5_ROSTER[index]:
             for _ in range(count):
                 party_size = (
@@ -624,6 +646,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         floors[-1], d.STAGE5_FINAL_FLOOR_BARRIER_PERCENT
     )
     for current in floors:
+        _place_wyrm_barriers(current)
         normalize_parties(current)
     player = d.Player(*floors[0].up, d.STAGE5_START_LEVEL, d.LP_INIT)
     player.rescue_stage = True

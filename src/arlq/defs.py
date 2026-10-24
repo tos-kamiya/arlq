@@ -34,6 +34,7 @@ STAGE5_ROSTER = (
     (("A", 2, 1), ("b", 12, 2), ("c", 5, 2), ("d", 6, 2), ("g", 2, 1), ("k", 3, 1), ("w", 4, 2)),
     (("b", 8, 2), ("A", 2, 1), ("c", 5, 2), ("d", 6, 2), ("g", 3, 1), ("k", 2, 1), ("w", 3, 2), ("X", 1, 1), ("E", 1, 1)),
 )
+STAGE5_BOSS_PARTY = (("W", 1), ("V", 2))
 STAGE5_SUPPORT_POOLS = (
     (("a", 1),),
     (("a", 1), ("w", 1), ("w", 1)),
@@ -944,6 +945,31 @@ STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
     key=lambda tribe: tribe.level,
     reverse=True,
 )
+
+
+def _get_stage5_roster_tribes() -> List[MonsterTribe]:
+    variants = {
+        (char, rank)
+        for floor in STAGE5_ROSTER
+        for char, _, rank in floor
+    }
+    variants.update(
+        variant for floor_pool in STAGE5_SUPPORT_POOLS for variant in floor_pool
+    )
+    variants.update(STAGE5_BOSS_PARTY)
+    return sorted(
+        (
+            _empowered_strength_tribe(char, rank)
+            for char, rank in variants
+        ),
+        key=lambda tribe: tribe.level,
+        reverse=True,
+    )
+
+
+STAGE5_ROSTER_TRIBES: List[MonsterTribe] = _get_stage5_roster_tribes()
+
+
 def _javelin_follower_active(player: Player) -> bool:
     return any(follower[3] == "J" for follower in player.persistent_followers)
 

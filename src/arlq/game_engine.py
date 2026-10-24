@@ -519,6 +519,7 @@ def _vortex_rearrange(
             )
             relocate(char, origin_floor, empowered)
 
+    occupied = {(entity.x, entity.y) for entity in current.entities}
     for current_entity in current.entities:
         if isinstance(current_entity, d.Monster) and current_entity.tribe.char in {"w", "W"}:
             protected = current.collapse_landings | scholar_stairs | set().union(
@@ -536,6 +537,7 @@ def _vortex_rearrange(
                         (dx or dy)
                         and point in affected_points
                         and current.field[y][x] == d.CHAR_FLOOR
+                        and point not in occupied
                         and point not in protected
                     ):
                         current.field[y][x] = d.CHAR_BARRIER
@@ -1641,8 +1643,10 @@ def _stage_draw_options(
     if single_floor_stage:
         return {}
     if stage_num in (5, 6):
-        return {"stage_roster": stage5.strength_roster(),
-                "floor_label": f"{view_floor + 1}/{len(floors)}"}
+        return {
+            "stage_roster": d.STAGE5_ROSTER_TRIBES,
+            "floor_label": f"{view_floor + 1}/{len(floors)}",
+        }
     options: dict[str, Any] = {
         "stage_roster": d.STAGE3_ROSTER_TRIBES
         if stage_num == 3
