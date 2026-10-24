@@ -285,6 +285,7 @@ class BlessedUI:
                 reveal_disguises=reveal_disguises,
                 debug_show_entities=debug_show_entities,
                 stage_num=stage_num,
+                party_entities=entities,
             ):
                 paint(glyph)
 

@@ -1,5 +1,6 @@
 """Shared text and glyph calculations used by both frontends."""
 
+from math import floor
 from typing import List, NamedTuple, Optional, Set, Tuple
 
 from . import defs as d
@@ -71,7 +72,7 @@ def level_item_labels(player: d.Player, stage_num: int) -> Tuple[str, str]:
     has_k = bool(player.elf_stage_flags & d.ELF_STAGE_K_FLAG)
     has_j = d._javelin_follower_active(player)
     item = player.item
-    level_value = int(player.level)
+    level_value = floor(player.level)
     if item == d.ITEM_SWORD_X1_5:
         level = f"LVL: {level_value} x1.5"
         item_str = f"+{item}({player.item_taken_from})"
@@ -298,6 +299,7 @@ def revealed_entity_glyphs(
     reveal_disguises: bool = False,
     debug_show_entities: bool = False,
     stage_num: int = 0,
+    party_entities: Optional[List[d.Entity]] = None,
 ) -> List[FieldGlyph]:
     """Glyphs for an entity inside the explored map.
 
@@ -348,12 +350,20 @@ def revealed_entity_glyphs(
             tone = "default"
         elif stage2_high_elf:
             tone = "red"
-        elif d.monster_level(entity) <= player_attack:
-            tone = (
-                "yellow" if entity.tribe.effect == d.EFFECT_UNLOCK_TREASURE else "blue"
-            )
         else:
-            tone = "red"
+            party = [entity]
+            if stage_num in (5, 6) and party_entities is not None:
+                from .stage5 import monster_party_entities
+
+                party = monster_party_entities(party_entities, entity)
+            party_known = all(
+                d.monster_type_key(member) in known_types for member in party
+            )
+            if not party_known:
+                tone = "yellow"
+            else:
+                party_strength = sum(d.monster_level(member) for member in party)
+                tone = "blue" if party_strength <= player_attack else "red"
         dim = (
             False
             if entity.tribe.is_elf

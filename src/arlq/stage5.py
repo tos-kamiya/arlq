@@ -15,9 +15,16 @@ from .utils import rand
 
 
 def monster_party(current: Floor, first: d.Monster) -> list[d.Monster]:
+    return monster_party_entities(current.entities, first)
+
+
+def monster_party_entities(
+    entities: list[d.Entity], first: d.Monster
+) -> list[d.Monster]:
+    """Return the active cardinally connected party containing ``first``."""
     candidates = {
         (entity.x, entity.y): entity
-        for entity in current.entities
+        for entity in entities
         if isinstance(entity, d.Monster) and entity.active and not entity.tribe.is_elf
     }
     party = []
