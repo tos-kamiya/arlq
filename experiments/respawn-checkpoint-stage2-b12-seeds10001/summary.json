@@ -1,0 +1,35 @@
+{
+  "checkpoint:stage2:discovery": {
+    "clear_rate": 0.067,
+    "early_starvation_rate": 0.127,
+    "end_reasons": {
+      "lp_depleted": 931,
+      "turn_limit": 2,
+      "won": 67
+    },
+    "runs": 1000,
+    "wins": 67
+  },
+  "checkpoint:stage2:nearest": {
+    "clear_rate": 0.085,
+    "early_starvation_rate": 0.076,
+    "end_reasons": {
+      "lp_depleted": 913,
+      "turn_limit": 2,
+      "won": 85
+    },
+    "runs": 1000,
+    "wins": 85
+  },
+  "checkpoint:stage2:situational": {
+    "clear_rate": 0.081,
+    "early_starvation_rate": 0.076,
+    "end_reasons": {
+      "lp_depleted": 918,
+      "turn_limit": 1,
+      "won": 81
+    },
+    "runs": 1000,
+    "wins": 81
+  }
+}

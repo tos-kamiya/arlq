@@ -1,0 +1,92 @@
+{
+  "baseline": {
+    "feed": {
+      "b": 40
+    },
+    "spawn": {
+      "1": {
+        "a": 14
+      },
+      "2": {
+        "a": 14
+      }
+    }
+  },
+  "candidate_ids": [
+    "13c1f19cd7bb",
+    "3697c176129d",
+    "f934e3f30b3b",
+    "d017ccc70331"
+  ],
+  "config": {
+    "early_turn": 100,
+    "final": {
+      "keep": 2,
+      "seed_start": 200001,
+      "seeds": 50
+    },
+    "max_steps": 1000,
+    "parameters": {
+      "feed": {
+        "b": {
+          "max": 45,
+          "min": 35,
+          "step": 5
+        }
+      },
+      "max_total_population": {
+        "1": 40,
+        "2": 48
+      },
+      "spawn": {
+        "1": {
+          "a": {
+            "max": 16,
+            "min": 12,
+            "step": 2
+          }
+        },
+        "2": {
+          "a": {
+            "max": 16,
+            "min": 12,
+            "step": 2
+          }
+        }
+      }
+    },
+    "policies": [
+      "discovery",
+      "nearest",
+      "situational"
+    ],
+    "search": {
+      "candidates": 4,
+      "seed_start": 1,
+      "seeds": 10
+    },
+    "stages": [
+      1,
+      2
+    ],
+    "stalled_steps": 50,
+    "targets": {},
+    "validation": {
+      "keep": 2,
+      "seed_start": 100001,
+      "seeds": 20
+    }
+  },
+  "created_at": "2026-09-06T09:17:46.972721+00:00",
+  "elapsed_seconds": 490.35053736300324,
+  "git": {
+    "dirty": true,
+    "revision": "68ec4ab7afb4a3fa6850775d53336de0839094e0"
+  },
+  "information_condition": "observed",
+  "jobs": 6,
+  "policy_version": "observed-v1",
+  "random_seed": 20260906,
+  "randomness": "ARLQ MyRandom for games; Python random.Random for candidates",
+  "total_runs": 1080
+}

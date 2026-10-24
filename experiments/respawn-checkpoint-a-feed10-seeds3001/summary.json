@@ -1,0 +1,63 @@
+{
+  "checkpoint:stage1:discovery": {
+    "clear_rate": 0.37,
+    "early_starvation_rate": 0.08,
+    "end_reasons": {
+      "lp_depleted": 63,
+      "won": 37
+    },
+    "runs": 100,
+    "wins": 37
+  },
+  "checkpoint:stage1:nearest": {
+    "clear_rate": 0.39,
+    "early_starvation_rate": 0.05,
+    "end_reasons": {
+      "lp_depleted": 60,
+      "turn_limit": 1,
+      "won": 39
+    },
+    "runs": 100,
+    "wins": 39
+  },
+  "checkpoint:stage1:situational": {
+    "clear_rate": 0.42,
+    "early_starvation_rate": 0.05,
+    "end_reasons": {
+      "lp_depleted": 58,
+      "won": 42
+    },
+    "runs": 100,
+    "wins": 42
+  },
+  "checkpoint:stage2:discovery": {
+    "clear_rate": 0.06,
+    "early_starvation_rate": 0.12,
+    "end_reasons": {
+      "lp_depleted": 94,
+      "won": 6
+    },
+    "runs": 100,
+    "wins": 6
+  },
+  "checkpoint:stage2:nearest": {
+    "clear_rate": 0.08,
+    "early_starvation_rate": 0.04,
+    "end_reasons": {
+      "lp_depleted": 92,
+      "won": 8
+    },
+    "runs": 100,
+    "wins": 8
+  },
+  "checkpoint:stage2:situational": {
+    "clear_rate": 0.07,
+    "early_starvation_rate": 0.05,
+    "end_reasons": {
+      "lp_depleted": 93,
+      "won": 7
+    },
+    "runs": 100,
+    "wins": 7
+  }
+}

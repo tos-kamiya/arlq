@@ -1,0 +1,126 @@
+{
+  "all:stage1:discovery": {
+    "clear_rate": 0.14,
+    "early_starvation_rate": 0.3,
+    "end_reasons": {
+      "lp_depleted": 40,
+      "turn_limit": 3,
+      "won": 7
+    },
+    "runs": 50,
+    "wins": 7
+  },
+  "all:stage1:nearest": {
+    "clear_rate": 0.42,
+    "early_starvation_rate": 0.26,
+    "end_reasons": {
+      "lp_depleted": 29,
+      "won": 21
+    },
+    "runs": 50,
+    "wins": 21
+  },
+  "all:stage1:situational": {
+    "clear_rate": 0.28,
+    "early_starvation_rate": 0.26,
+    "end_reasons": {
+      "lp_depleted": 31,
+      "turn_limit": 5,
+      "won": 14
+    },
+    "runs": 50,
+    "wins": 14
+  },
+  "all:stage2:discovery": {
+    "clear_rate": 0.04,
+    "early_starvation_rate": 0.24,
+    "end_reasons": {
+      "lp_depleted": 47,
+      "turn_limit": 1,
+      "won": 2
+    },
+    "runs": 50,
+    "wins": 2
+  },
+  "all:stage2:nearest": {
+    "clear_rate": 0.12,
+    "early_starvation_rate": 0.18,
+    "end_reasons": {
+      "lp_depleted": 44,
+      "won": 6
+    },
+    "runs": 50,
+    "wins": 6
+  },
+  "all:stage2:situational": {
+    "clear_rate": 0.06,
+    "early_starvation_rate": 0.2,
+    "end_reasons": {
+      "lp_depleted": 46,
+      "turn_limit": 1,
+      "won": 3
+    },
+    "runs": 50,
+    "wins": 3
+  },
+  "no-a-b:stage1:discovery": {
+    "clear_rate": 0.04,
+    "early_starvation_rate": 0.38,
+    "end_reasons": {
+      "lp_depleted": 48,
+      "won": 2
+    },
+    "runs": 50,
+    "wins": 2
+  },
+  "no-a-b:stage1:nearest": {
+    "clear_rate": 0.08,
+    "early_starvation_rate": 0.3,
+    "end_reasons": {
+      "lp_depleted": 46,
+      "won": 4
+    },
+    "runs": 50,
+    "wins": 4
+  },
+  "no-a-b:stage1:situational": {
+    "clear_rate": 0.06,
+    "early_starvation_rate": 0.3,
+    "end_reasons": {
+      "lp_depleted": 47,
+      "won": 3
+    },
+    "runs": 50,
+    "wins": 3
+  },
+  "no-a-b:stage2:discovery": {
+    "clear_rate": 0.04,
+    "early_starvation_rate": 0.26,
+    "end_reasons": {
+      "lp_depleted": 48,
+      "won": 2
+    },
+    "runs": 50,
+    "wins": 2
+  },
+  "no-a-b:stage2:nearest": {
+    "clear_rate": 0.06,
+    "early_starvation_rate": 0.24,
+    "end_reasons": {
+      "lp_depleted": 47,
+      "won": 3
+    },
+    "runs": 50,
+    "wins": 3
+  },
+  "no-a-b:stage2:situational": {
+    "clear_rate": 0.04,
+    "early_starvation_rate": 0.24,
+    "end_reasons": {
+      "lp_depleted": 48,
+      "won": 2
+    },
+    "runs": 50,
+    "wins": 2
+  }
+}
