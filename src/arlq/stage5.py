@@ -189,6 +189,9 @@ def recruit(
 ) -> str:
     if len(player.members) == d.PARTY_LIMIT and player.members[0].role == "Noble":
         return trp("-- Noble cannot leave. No more members can join.", 5)
+    player.joined_members.add(member.role)
+    if member.origin_floor is not None:
+        player.known_member_floors.setdefault(member.role, member.origin_floor + 1)
     departed = player.members.pop(0) if len(player.members) == d.PARTY_LIMIT else None
     current.entities.remove(member)
     player.members.append(member)
@@ -558,7 +561,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                     *rand.choice(_open_points(current)), role, origin_floor=index
                 )
             )
-        for char in ("n", "o", "p"):
+        for char in ("l", "n", "o", "p"):
             current.entities.append(
                 d.Companion(
                     *rand.choice(_open_points(current)),

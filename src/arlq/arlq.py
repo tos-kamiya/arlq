@@ -568,14 +568,16 @@ def reveal_entities_in_fov(
     torch_radius: int = d.TORCH_RADIUS,
     floor_index: int = 0,
 ) -> None:
-    """Reveal active monsters currently inside the player's FOV."""
-    if player.companion is None or player.companion.tribe.char != "n":
-        return
+    """Record visible Stage 5 members and reveal eligible monsters in the FOV."""
     torched = get_torched(player, torch_radius)
     for entity in entities:
         if not (0 <= entity.y < d.FIELD_HEIGHT and 0 <= entity.x < d.FIELD_WIDTH):
             continue
         if not torched[entity.y][entity.x]:
+            continue
+        if player.rescue_stage and isinstance(entity, d.PartyMember):
+            player.known_member_floors.setdefault(entity.role, floor_index + 1)
+        if player.companion is None or player.companion.tribe.char != "n":
             continue
         if isinstance(entity, d.Monster) and entity.active:
             if entity.tribe.is_elf:

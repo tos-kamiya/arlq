@@ -163,6 +163,26 @@ def elf_stage_progress_marks(
     return marks
 
 
+def stage5_member_progress_marks(
+    player: d.Player,
+) -> List[Tuple[str, bool]]:
+    """Member labels and whether each member has ever joined the party."""
+    roles = (
+        *d.STAGE5_MEMBER_FLOORS[0],
+        *d.STAGE5_MEMBER_FLOORS[1],
+        *d.STAGE5_MEMBER_FLOORS[2],
+        "Noble",
+    )
+    marks = []
+    for role in roles:
+        label = d.MEMBER_GLYPHS[role]
+        floor = player.known_member_floors.get(role)
+        if floor is not None:
+            label += str(floor)
+        marks.append((label, role in player.joined_members))
+    return marks
+
+
 class FieldGlyph(NamedTuple):
     """One character to draw on the field.
 

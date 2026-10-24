@@ -356,6 +356,17 @@ class BlessedUI:
                     dim=not achieved,
                 )
                 progress_x += len(label) + 1
+        elif stage_num == 5:
+            progress_x = 0
+            for label, joined in ui_display.stage5_member_progress_marks(player):
+                put(
+                    progress_x,
+                    d.FIELD_HEIGHT - 1,
+                    label,
+                    bold=joined,
+                    dim=not joined,
+                )
+                progress_x += len(label) + 1
 
         if floor_label:
             put(d.FIELD_WIDTH - len(floor_label) - 2, d.FIELD_HEIGHT - 1, floor_label)

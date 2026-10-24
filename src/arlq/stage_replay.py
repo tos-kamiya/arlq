@@ -88,6 +88,8 @@ def rewind_to_history(
     known_c_floors = set(player.known_c_floors)
     elf_floors = deepcopy(player.elf_stage_floors)
     known_elf_floors = set(player.known_elf_floors)
+    known_member_floors = deepcopy(player.known_member_floors)
+    joined_members = set(player.joined_members)
     seen = deepcopy([floor_data.seen for floor_data in floors])
 
     if replay_context is not None:
@@ -145,6 +147,8 @@ def rewind_to_history(
     player.known_c_floors = known_c_floors
     player.elf_stage_floors = elf_floors
     player.known_elf_floors = known_elf_floors
+    player.known_member_floors = known_member_floors
+    player.joined_members = joined_members
 
     history.clear()
 

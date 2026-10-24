@@ -1137,6 +1137,24 @@ class PygletUI:
                     group=self._progress_mark_group(),
                 )
                 progress_x += len(label) + 1
+        elif stage_num == 5:
+            progress_marks = ui_display.stage5_member_progress_marks(player)
+            self._draw_progress_panel(progress_marks)
+            overlay_font_scale = self._field_overlay_font_scale()
+            overlay_cell_width = self._field_overlay_cell_width()
+            progress_x = 0
+            for label, joined in progress_marks:
+                color = COLOR_MAP["default"] if joined else (100, 106, 118)
+                self._draw_text(
+                    (0, self.field_height - 1), label, color, bold=joined,
+                    x_offset=(
+                        progress_x * overlay_cell_width
+                        + self._progress_mark_x_offset()
+                    ),
+                    size_scale=overlay_font_scale,
+                    group=self._progress_mark_group(),
+                )
+                progress_x += len(label) + 1
 
         if floor_label:
             overlay_font_scale = self._field_overlay_font_scale()

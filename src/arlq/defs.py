@@ -464,6 +464,8 @@ class Player(Entity):
         self.known_c_floors: Set[int] = set()
         self.elf_stage_floors: Dict[str, int] = {}
         self.known_elf_floors: Set[str] = set()
+        self.known_member_floors: Dict[str, int] = {}
+        self.joined_members: Set[str] = set()
         # Shared progress for the elf stages, including Stage 3's W flag.
         self.elf_stage_flags: int = 0
         self.lifebringer_lp_max: int = LP_MAX
