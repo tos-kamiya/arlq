@@ -1017,6 +1017,10 @@ def _resolve_party_contact(
         return _ContactResult(trp("-- Your party lost and respawned together.", 5))
 
     old_level, old_lp = player.level, player.lp
+    composition = "".join(
+        monster.tribe.char
+        for monster in sorted(party, key=lambda monster: (monster.y, monster.x))
+    )
     experience = sum(
         10
         if monster.tribe.effect == d.EFFECT_SPECIAL_EXP
@@ -1069,7 +1073,9 @@ def _resolve_party_contact(
     stage5.normalize_parties(current)
     player.last_contact_monster = contact_key
     return _ContactResult(
-        trp("-- Your party defeated {count} monsters!", 5).format(count=len(party))
+        trp("-- Defeated monster party ({composition})!", 5).format(
+            composition=composition
+        )
     )
 
 

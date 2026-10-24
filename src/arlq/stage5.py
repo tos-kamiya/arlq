@@ -67,6 +67,58 @@ def normalize_parties(current: Floor) -> None:
             else:
                 kept += 1
                 special |= is_special
+    _separate_diagonal_monsters(current)
+
+
+def _separate_diagonal_monsters(current: Floor) -> None:
+    """Move non-boss monsters away from diagonal neighbors."""
+    while True:
+        monsters = [
+            entity
+            for entity in current.entities
+            if isinstance(entity, d.Monster)
+            and not isinstance(entity, d.Collapse)
+            and entity.active
+            and not entity.tribe.is_elf
+        ]
+        mover = None
+        for index, first in enumerate(monsters):
+            for second in monsters[index + 1 :]:
+                if abs(first.x - second.x) != 1 or abs(first.y - second.y) != 1:
+                    continue
+                first_is_boss = first.tribe.char in ("F", "V") and first.empowered == 2
+                second_is_boss = second.tribe.char in ("F", "V") and second.empowered == 2
+                if first_is_boss and second_is_boss:
+                    continue
+                mover = second if not second_is_boss else first
+                break
+            if mover is not None:
+                break
+        if mover is None:
+            return
+
+        current.entities.remove(mover)
+        other_monsters = [
+            entity
+            for entity in current.entities
+            if isinstance(entity, d.Monster)
+            and not isinstance(entity, d.Collapse)
+            and entity.active
+            and not entity.tribe.is_elf
+        ]
+        candidates = [
+            point
+            for point in _open_points(current)
+            if all(
+                abs(point[0] - other.x) > 1 or abs(point[1] - other.y) > 1
+                for other in other_monsters
+            )
+        ]
+        if not candidates:
+            current.entities.append(mover)
+            return
+        mover.x, mover.y = rand.choice(candidates)
+        current.entities.append(mover)
 
 
 def recruit(
@@ -448,6 +500,8 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         entry = down
     _place_collapses(floors)
     _place_scholar_stairs(floors)
+    for current in floors:
+        normalize_parties(current)
     player = d.Player(*floors[0].up, d.STAGE5_START_LEVEL, d.LP_INIT)
     player.rescue_stage = True
     return floors, player
@@ -515,6 +569,8 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
 
     floors = [upper, lower]
     _place_scholar_stairs(floors)
+    for current in floors:
+        normalize_parties(current)
     player = d.Player(*upper.up, 30, d.LP_INIT)
     player.rescue_stage = True
     return floors, player

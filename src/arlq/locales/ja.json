@@ -113,7 +113,7 @@
     "-- {joined} joined; {departed} left for good.": "-- {joined}が加入し、{departed}は旅立った。",
     "-- {joined} joined your party.": "-- {joined}がパーティーに加入した。",
     "-- Your party lost and respawned together.": "-- 敗北！ パーティー全員でリスポーンした。",
-    "-- Your party defeated {count} monsters!": "-- 敵パーティーの{count}体を倒した！",
+    "-- Defeated monster party ({composition})!": "-- 敵パーティー（{composition}）を倒した！",
     "-- Noble returned safely!": "-- Nobleと無事に帰還した！",
     "-- Rescue Noble on floor 4 and return to floor 1.": "-- 4階のNobleを救出し、1階へ帰還しよう。",
     "-- Recruit members on both floors to try their abilities.": "-- 2フロアの候補者を仲間にし、メンバーの能力を試そう。",
