@@ -131,12 +131,19 @@ def _add_stage1_margin_notches(field: List[List[str]]) -> None:
 
 def _place_stage4_final_floor_barriers(floor: Floor) -> None:
     """Cover ten percent of eligible final-floor cells with barriers."""
+    _place_final_floor_barriers(floor, d.STAGE4_FINAL_FLOOR_BARRIER_PERCENT)
+
+
+def _place_final_floor_barriers(floor: Floor, percent: int) -> None:
+    """Cover a percentage of eligible final-floor cells with barriers."""
     occupied = {(entity.x, entity.y) for entity in floor.entities}
     protected = {
         floor.up,
         floor.down,
         *floor.up_stairs,
         *floor.down_stairs,
+        *floor.scholar_up_stairs,
+        *floor.scholar_down_stairs,
         *floor.collapse_landings,
         *occupied,
     }
@@ -146,7 +153,7 @@ def _place_stage4_final_floor_barriers(floor: Floor) -> None:
         for x, cell in enumerate(row)
         if cell == d.CHAR_FLOOR and (x, y) not in protected
     ]
-    count = len(candidates) * d.STAGE4_FINAL_FLOOR_BARRIER_PERCENT // 100
+    count = len(candidates) * percent // 100
     for _ in range(count):
         x, y = candidates.pop(rand.randrange(len(candidates)))
         floor.field[y][x] = d.CHAR_BARRIER

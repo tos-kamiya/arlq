@@ -9,6 +9,7 @@ from .stage_world import (
     _add_filled_room_wall_notches,
     _add_wall_spurs,
     _place_collapses,
+    _place_final_floor_barriers,
 )
 from .utils import rand
 
@@ -605,6 +606,9 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         entry = down
     _place_collapses(floors)
     _place_scholar_stairs(floors)
+    _place_final_floor_barriers(
+        floors[-1], d.STAGE5_FINAL_FLOOR_BARRIER_PERCENT
+    )
     for current in floors:
         normalize_parties(current)
     player = d.Player(*floors[0].up, d.STAGE5_START_LEVEL, d.LP_INIT)

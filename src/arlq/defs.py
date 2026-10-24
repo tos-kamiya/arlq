@@ -48,7 +48,7 @@ STAGE5_MEMBER_FLOORS = (
     (),
     (),
 )
-STAGE5_HAZARD_COUNTS = ((0, 0), (0, 3), (0, 5), (0, 6), (0, 7))
+STAGE5_HAZARD_COUNTS = ((0, 0), (0, 3), (0, 5), (0, 6), (0, 0))
 MEMBER_GLYPHS = {
     "Bard": "B", "Healer": "H", "Rogue": "R",
     "Knight": "K", "Dangeon Scholar": "D", "Noble": "N",
@@ -114,6 +114,7 @@ ELF_STAGE_J_FLAG: int = 64
 ELF_STAGE_L_FLAG: int = 128
 SYLVAN_COMPANION_DURATION_MULTIPLIER: float = 1.25
 STAGE4_FINAL_FLOOR_BARRIER_PERCENT = 10
+STAGE5_FINAL_FLOOR_BARRIER_PERCENT = 5
 LOOP_TURNS = 80
 OVERSHOOT_REWIND_TURNS = 5
 MARKSMAN_ARROW_LIMIT = 20

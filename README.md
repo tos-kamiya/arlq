@@ -262,7 +262,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 ### Stage 5 (five-floor party rescue)
 
-Run `--stage 5` to explore five floors starting at level 1. The seed determines the maze and enemy placement. The number of sealed rooms varies by floor, with short wall spurs added from floor 3 onward. There are no elves. Recruit candidates show their professions as soon as they enter your field of view. Touch one to recruit them; two members fit alongside the existing temporary companion slot. Recruiting a third returns the earliest recruit to a random location on their original floor. The earlier member appears diagonally behind to the left, the later one to the right. Human characters currently use letter markers in the GUI too.
+Run `--stage 5` to explore five floors starting at level 1. The seed determines the maze and enemy placement. The number of sealed rooms varies by floor, with short wall spurs added from floor 3 onward. The final floor has barriers scattered across 5% of its open cells (Stage 4's final floor uses 10%). There are no elves. Recruit candidates show their professions as soon as they enter your field of view. Touch one to recruit them; two members fit alongside the existing temporary companion slot. Recruiting a third returns the earliest recruit to a random location on their original floor. The earlier member appears diagonally behind to the left, the later one to the right. Human characters currently use letter markers in the GUI too.
 
 | Marker / profession | Ability |
 | --- | --- |
