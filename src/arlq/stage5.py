@@ -645,7 +645,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                     1
                     if rank == 2
                     or char == "g"
-                    or (index == 1 and char == "k")
+                    or (index > 0 and char == "k")
                     else sample_party_size(index)
                 )
                 roster = [(char, rank)] + [
@@ -774,12 +774,29 @@ def _place_scholar_stairs(floors: list[Floor]) -> None:
             if isinstance(entity, d.Collapse)
             for point in d.collapse_footprint((entity.x, entity.y))
         )
+        entry = upper.scholar_up_stairs[-1] if upper.scholar_up_stairs else upper.up
+        reachable = {entry}
+        pending = [entry]
+        while pending:
+            x, y = pending.pop()
+            for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+                point = (x + dx, y + dy)
+                px, py = point
+                if (
+                    point not in reachable
+                    and 0 <= py < len(upper.field)
+                    and 0 <= px < len(upper.field[py])
+                    and upper.field[py][px] not in d.WALL_CHARS
+                ):
+                    reachable.add(point)
+                    pending.append(point)
         candidates = [
             (x, y)
             for y, row in enumerate(upper.field)
             for x, cell in enumerate(row)
             if cell == d.CHAR_FLOOR
             and lower.field[y][x] == d.CHAR_FLOOR
+            and (x, y) in reachable
             and (x, y) not in fixed | occupied_upper | occupied_lower
             and all(
                 abs(x - sx) + abs(y - sy) > 1

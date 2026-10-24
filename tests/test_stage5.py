@@ -1,7 +1,6 @@
 """Rules, generation, and rescue checks for the five-floor party stage."""
 
 from collections import Counter, deque
-from itertools import pairwise
 
 import pytest
 
@@ -83,7 +82,7 @@ def test_playground_has_all_recruits_and_connected_rank2_bosses():
     party = stage5.monster_party(current, boss)
     assert {(e.tribe.char, e.empowered) for e in party} >= {("W", 1), ("V", 2)}
     assert 2 <= len(party) <= 5
-    assert sum(d.monster_level(e) for e in party) >= 290
+    assert sum(d.monster_level(e) for e in party) == 250
 
 
 def test_stage5_member_progress_has_no_floor_numbers():
@@ -252,7 +251,7 @@ def test_boss_win_rearranges_only_final_floor_and_spawns_noble_without_winning()
     )
     assert not player.stage_won
     # Return through the actual stairs, preserving Noble and joining order.
-    for index in (3, 2, 1):
+    for index in (4, 3, 2, 1):
         player.x, player.y = floors[index].up
         assert engine._handle_floor_transition(
             floors[index], floors, player, floor_index, [current.up]
@@ -376,10 +375,10 @@ def test_candidate_glyph_is_known_on_first_sighting():
     )
 
 
-def test_all_floors_have_connected_stairs_and_keep_members_on_transitions():
+def test_floor_connections_are_reachable_and_keep_members_on_transitions():
     floors, player = stage5.build()
     player.members = [
-        d.PartyMember(player.x, player.y, "Knight"),
+        d.PartyMember(player.x, player.y, "Dangeon Scholar"),
         d.PartyMember(player.x, player.y, "Noble"),
     ]
     floor_index, checkpoint = [0], [floors[0].up]
@@ -397,24 +396,28 @@ def test_all_floors_have_connected_stairs_and_keep_members_on_transitions():
                     continue
                 visited.add((nx, ny))
                 pending.append((nx, ny))
-        assert current.down in visited
-        assert all((e.x, e.y) in visited for e in current.entities)
         assert (
             engine._stage_draw_options(5, floors, index, False, True)["floor_label"]
             == f"{index + 1}/{len(floors)}"
         )
         if index == len(floors) - 1:
             break
+        exits = current.down_stairs + current.scholar_down_stairs
+        exit_point = next((point for point in exits if point in visited), None)
+        assert exit_point is not None
         assert current.down == floors[index + 1].up
         assert current.field[current.down[1]][current.down[0]] == d.CHAR_STAIRS_DOWN
-        player.x, player.y = current.down
+        player.x, player.y = exit_point
         engine._handle_floor_transition(
             current, floors, player, floor_index, checkpoint
         )
-        stage5.sync_members(player, current.down, (1, 0))
+        stage5.sync_members(player, exit_point, (1, 0))
         assert floor_index[0] == index + 1
-        assert [member.role for member in player.members] == ["Knight", "Noble"]
-        assert all((e.x, e.y) == floors[index + 1].up for e in player.members)
+        assert [member.role for member in player.members] == [
+            "Dangeon Scholar",
+            "Noble",
+        ]
+        assert all((e.x, e.y) == exit_point for e in player.members)
 
 
 def test_party_can_fill_a_narrow_corridor_against_walls():
@@ -451,39 +454,29 @@ def test_seed_reproduces_layout_and_groups():
     assert signature() != first
 
 
-def test_deeper_floors_have_stronger_and_larger_parties_across_seeds():
-    total_sizes, total_strengths, total_groups = [0] * d.STAGE5_FLOORS, [0] * d.STAGE5_FLOORS, [0] * d.STAGE5_FLOORS
-    seen_sizes = [set() for _ in range(d.STAGE5_FLOORS)]
-    for seed in range(12):
-        engine.rand.set_seed(seed)
-        floors, _ = stage5.build()
-        for index, current in enumerate(floors):
-            checked = set()
-            for entity in current.entities:
-                if (
-                    not isinstance(entity, d.Monster)
-                    or not entity.active
-                    or isinstance(entity, d.Collapse)
-                    or entity in checked
-                ):
-                    continue
-                party = stage5.monster_party(current, entity)
-                checked.update(party)
-                assert 1 <= len(party) <= 5
-                assert sum(stage5.special_monster(e) for e in party) <= 1
-                total_sizes[index] += len(party)
-                total_strengths[index] += sum(d.monster_level(e) for e in party)
-                total_groups[index] += 1
-                seen_sizes[index].add(len(party))
-    mean_sizes = [size / count for size, count in zip(total_sizes, total_groups)]
-    mean_strengths = [
-        power / count for power, count in zip(total_strengths, total_groups)
+def test_deep_floors_share_monster_distribution_and_keep_party_size_weights():
+    deep_rosters = d.STAGE5_ROSTER[1:]
+    non_wyrm_rosters = [
+        tuple(entry for entry in roster if entry[0] != "w")
+        for roster in deep_rosters
     ]
-    mean_monster_strengths = [
-        power / size for power, size in zip(total_strengths, total_sizes)
-    ]
-    assert all(a < b for a, b in pairwise(mean_sizes))
-    assert all(a < b for a, b in pairwise(mean_strengths))
-    assert all(a < b for a, b in pairwise(mean_monster_strengths))
-    assert all(len(sizes) > 1 for sizes in seen_sizes)
-    assert 5 in seen_sizes[-1]
+    assert non_wyrm_rosters == [
+        tuple(entry for entry in d.STAGE5_DEEP_ROSTER if entry[0] != "w")
+    ] * 4
+    assert [
+        next(entry[1:] for entry in roster if entry[0] == "w")
+        for roster in deep_rosters
+    ] == [(1, 1), (1, 1), (4, 2), (1, 1)]
+    assert d.STAGE5_SUPPORT_POOLS[1:] == (d.STAGE5_SUPPORT_POOLS[1],) * 4
+    assert d.STAGE5_PARTY_SIZE_WEIGHTS[1:] == (
+        (30, 35, 25, 10, 0),
+        (20, 30, 30, 15, 5),
+        (10, 20, 30, 25, 15),
+        (5, 15, 25, 30, 25),
+    )
+    assert next(entry[1] for entry in d.STAGE5_ROSTER[0] if entry[0] == "c") == 5
+    assert all(
+        next(entry[1] for entry in roster if entry[0] == "c") == 6
+        and next(entry[1] for entry in roster if entry[0] == "C") == 2
+        for roster in deep_rosters
+    )

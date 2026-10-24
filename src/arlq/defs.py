@@ -26,21 +26,40 @@ STAGE5_PARTY_SIZE_WEIGHTS = (
     (5, 15, 25, 30, 25),
 )
 # Each roster entry (character, count, rank) supplies party leaders.
+# Floors 2-5 share a roster; party-size probabilities still vary by floor.
 # Additional members come from the floor's ordinary support pool below.
+STAGE5_DEEP_ROSTER = (
+    ("a", 4, 2),
+    ("A", 2, 1),
+    ("b", 10, 2),
+    ("c", 6, 2),
+    ("C", 2, 1),
+    ("d", 7, 2),
+    ("f", 2, 2),
+    ("g", 3, 1),
+    ("k", 2, 1),
+    ("w", 1, 1),
+    ("w", 2, 2),
+    ("X", 1, 1),
+    ("E", 1, 1),
+)
+STAGE5_FLOOR4_ROSTER = tuple(
+    entry for entry in STAGE5_DEEP_ROSTER if entry[0] != "w"
+) + (("w", 4, 2),)
 STAGE5_ROSTER = (
-    (("a", 24, 1), ("A", 2, 1), ("b", 8, 1), ("c", 3, 1), ("d", 3, 1), ("e", 1, 1), ("f", 2, 1)),
-    (("a", 6, 2), ("A", 2, 1), ("b", 10, 2), ("c", 4, 2), ("C", 1, 1), ("d", 7, 2), ("f", 2, 2), ("g", 4, 1), ("k", 2, 1), ("w", 1, 1), ("X", 1, 1)),
-    (("a", 8, 2), ("A", 2, 1), ("b", 8, 2), ("c", 5, 2), ("C", 1, 1), ("d", 8, 2), ("f", 2, 2), ("g", 4, 1), ("k", 2, 1), ("w", 3, 1), ("E", 1, 1)),
-    (("A", 2, 1), ("b", 12, 2), ("c", 4, 2), ("C", 1, 1), ("d", 6, 2), ("f", 2, 2), ("g", 2, 1), ("k", 3, 1), ("w", 4, 2)),
-    (("b", 8, 2), ("A", 2, 1), ("c", 4, 2), ("C", 1, 1), ("d", 6, 2), ("f", 2, 2), ("g", 3, 1), ("k", 2, 1), ("w", 3, 2), ("X", 1, 1), ("E", 1, 1)),
+    (("a", 24, 1), ("A", 2, 1), ("b", 8, 1), ("c", 5, 1), ("d", 3, 1), ("e", 1, 1), ("f", 2, 1)),
+    STAGE5_DEEP_ROSTER,
+    STAGE5_DEEP_ROSTER,
+    STAGE5_FLOOR4_ROSTER,
+    STAGE5_DEEP_ROSTER,
 )
 STAGE5_BOSS_PARTY = (("W", 1), ("V", 2))
 STAGE5_SUPPORT_POOLS = (
     (("a", 1),),
     (("a", 1), ("w", 1), ("w", 1)),
-    (("w", 1), ("k", 1), ("w", 1), ("w", 1)),
-    (("w", 1), ("k", 1), ("w", 1), ("w", 1)),
-    (("w", 1), ("k", 1), ("w", 1), ("w", 1)),
+    (("a", 1), ("w", 1), ("w", 1)),
+    (("a", 1), ("w", 1), ("w", 1)),
+    (("a", 1), ("w", 1), ("w", 1)),
 )
 STAGE5_MEMBER_FLOORS = (
     ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar"),
