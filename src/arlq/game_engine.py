@@ -1676,7 +1676,7 @@ def run_game(
     player.treasure_collected = False
     replay_context = (
         ReplayContext(stage_num, initial_seed, config)
-        if stage_num in d.ELF_STAGES
+        if stage_num in d.ELF_STAGES or stage_num == 5
         else None
     )
     game_start_turn = 0

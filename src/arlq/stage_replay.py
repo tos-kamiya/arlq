@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import Deque, List, Optional, Tuple
 
 from . import defs as d
+from . import stage5
 from .i18n import trp
 from .stage_types import Floor, HistoryEntry, ReplayContext, _RewindRequest
 from .stage_world import _spawn, build
@@ -26,11 +27,14 @@ def replay_to_operation(
     replay.vortex_maps = []
     try:
         rand.set_seed(replay.seed)
-        floors, player = build(
-            replay.config.corridor_h_width,
-            replay.config.corridor_v_width,
-            replay.stage_num,
-        )
+        if replay.stage_num == 5:
+            floors, player = stage5.build(replay.config)
+        else:
+            floors, player = build(
+                replay.config.corridor_h_width,
+                replay.config.corridor_v_width,
+                replay.stage_num,
+            )
         player.known_monsters = set()
         player.boss_defeated = False
         player.treasure_collected = False
