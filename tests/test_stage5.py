@@ -377,6 +377,16 @@ def test_candidate_glyph_is_known_on_first_sighting():
 
 def test_floor_connections_are_reachable_and_keep_members_on_transitions():
     floors, player = stage5.build()
+    for upper, lower in zip(floors, floors[1:]):
+        assert len(upper.down_stairs) == 2
+        assert len(lower.up_stairs) == 2
+        assert len(upper.scholar_down_stairs) == 1
+        assert len(lower.scholar_up_stairs) == 1
+        sections = {
+            stage5.tile_at(point)
+            for point in upper.down_stairs + upper.scholar_down_stairs
+        }
+        assert len(sections) == 3
     player.members = [
         d.PartyMember(player.x, player.y, "Dangeon Scholar"),
         d.PartyMember(player.x, player.y, "Noble"),
@@ -403,7 +413,11 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
         )
         if index == len(floors) - 1:
             break
-        exits = current.scholar_down_stairs + current.down_stairs
+        exits = (
+            current.down_stairs[1:]
+            + current.scholar_down_stairs
+            + current.down_stairs[:1]
+        )
         exit_point = next((point for point in exits if point in visited), None)
         assert exit_point is not None
         assert current.down == floors[index + 1].up

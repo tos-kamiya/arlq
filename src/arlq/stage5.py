@@ -3,7 +3,7 @@
 from . import defs as d
 from .arlq import GameConfig, create_field
 from .i18n import trp
-from .stage_maze import generate_floor_field
+from .stage_maze import generate_floor_field, tile_at
 from .stage_types import Floor
 from .stage_world import (
     _add_filled_room_wall_notches,
@@ -668,6 +668,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         floors.append(current)
         entry = down
     _place_collapses(floors)
+    _place_additional_stairs(floors)
     _place_scholar_stairs(floors)
     _place_final_floor_barriers(
         floors[-1], d.STAGE5_FINAL_FLOOR_BARRIER_PERCENT
@@ -750,6 +751,88 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
     return floors, player
 
 
+def _reachable_floor_points(current: Floor, entry: d.Point) -> set[d.Point]:
+    reachable = {entry}
+    pending = [entry]
+    while pending:
+        x, y = pending.pop()
+        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+            point = (x + dx, y + dy)
+            px, py = point
+            if (
+                point not in reachable
+                and 0 <= py < len(current.field)
+                and 0 <= px < len(current.field[py])
+                and current.field[py][px] not in d.WALL_CHARS
+            ):
+                reachable.add(point)
+                pending.append(point)
+    return reachable
+
+
+def _choose_stair_point(
+    candidates: list[d.Point], used_sections: set[d.Point], retries: int = 20
+) -> d.Point:
+    """Prefer a new room section, retrying random choices before fallback."""
+    for _ in range(retries):
+        point = rand.choice(candidates)
+        if tile_at(point) not in used_sections:
+            return point
+    distinct_section_candidates = [
+        point for point in candidates if tile_at(point) not in used_sections
+    ]
+    return rand.choice(distinct_section_candidates or candidates)
+
+
+def _place_additional_stairs(floors: list[Floor]) -> None:
+    """Add a second ordinary paired staircase on each floor transition."""
+    for upper, lower in zip(floors, floors[1:]):
+        occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
+        occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
+        fixed = {
+            upper.up,
+            upper.down,
+            *upper.up_stairs,
+            *upper.down_stairs,
+            *upper.collapse_landings,
+            lower.up,
+            lower.down,
+            *lower.up_stairs,
+            *lower.down_stairs,
+            *lower.collapse_landings,
+        }
+        fixed.update(
+            point
+            for current in (upper, lower)
+            for entity in current.entities
+            if isinstance(entity, d.Collapse)
+            for point in d.collapse_footprint((entity.x, entity.y))
+        )
+        entry = upper.up_stairs[-1] if upper.up_stairs else upper.up
+        reachable = _reachable_floor_points(upper, entry)
+        candidates = [
+            (x, y)
+            for y, row in enumerate(upper.field)
+            for x, cell in enumerate(row)
+            if cell == d.CHAR_FLOOR
+            and lower.field[y][x] == d.CHAR_FLOOR
+            and (x, y) in reachable
+            and (x, y) not in fixed | occupied_upper | occupied_lower
+            and all(
+                abs(x - sx) + abs(y - sy) > 1
+                for current in (upper, lower)
+                for sx, sy in current.up_stairs + current.down_stairs
+            )
+        ]
+        used_sections = {tile_at(point) for point in upper.down_stairs}
+        point = _choose_stair_point(candidates, used_sections)
+        upper.down_stairs.append(point)
+        lower.up_stairs.append(point)
+        x, y = point
+        upper.field[y][x] = d.CHAR_STAIRS_DOWN
+        lower.field[y][x] = d.CHAR_STAIRS_UP
+
+
 def _place_scholar_stairs(floors: list[Floor]) -> None:
     """Reserve one concealed matching stair pair on each floor transition."""
     for upper, lower in zip(floors, floors[1:]):
@@ -774,22 +857,8 @@ def _place_scholar_stairs(floors: list[Floor]) -> None:
             if isinstance(entity, d.Collapse)
             for point in d.collapse_footprint((entity.x, entity.y))
         )
-        entry = upper.scholar_up_stairs[-1] if upper.scholar_up_stairs else upper.up
-        reachable = {entry}
-        pending = [entry]
-        while pending:
-            x, y = pending.pop()
-            for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
-                point = (x + dx, y + dy)
-                px, py = point
-                if (
-                    point not in reachable
-                    and 0 <= py < len(upper.field)
-                    and 0 <= px < len(upper.field[py])
-                    and upper.field[py][px] not in d.WALL_CHARS
-                ):
-                    reachable.add(point)
-                    pending.append(point)
+        entry = upper.up_stairs[-1] if upper.up_stairs else upper.up
+        reachable = _reachable_floor_points(upper, entry)
         candidates = [
             (x, y)
             for y, row in enumerate(upper.field)
@@ -804,6 +873,7 @@ def _place_scholar_stairs(floors: list[Floor]) -> None:
                 for sx, sy in current.up_stairs + current.down_stairs
             )
         ]
-        point = rand.choice(candidates)
+        used_sections = {tile_at(point) for point in upper.down_stairs}
+        point = _choose_stair_point(candidates, used_sections)
         upper.scholar_down_stairs.append(point)
         lower.scholar_up_stairs.append(point)

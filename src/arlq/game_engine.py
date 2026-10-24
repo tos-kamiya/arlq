@@ -1302,7 +1302,9 @@ def _handle_floor_transition(
         stair_index = down_stairs.index(point)
         floor[0] += 1
         destination_floor = floors[floor[0]]
-        destination_stairs = destination_floor.up_stairs or [destination_floor.up]
+        destination_stairs = list(
+            destination_floor.up_stairs or [destination_floor.up]
+        )
         if d.has_member(player, "Dangeon Scholar"):
             destination_stairs += destination_floor.scholar_up_stairs
         player.x, player.y = destination_stairs[
@@ -1320,7 +1322,9 @@ def _handle_floor_transition(
         stair_index = up_stairs.index(point)
         floor[0] -= 1
         destination_floor = floors[floor[0]]
-        destination_stairs = destination_floor.down_stairs or [destination_floor.down]
+        destination_stairs = list(
+            destination_floor.down_stairs or [destination_floor.down]
+        )
         if d.has_member(player, "Dangeon Scholar"):
             destination_stairs += destination_floor.scholar_down_stairs
         player.x, player.y = destination_stairs[
