@@ -1037,7 +1037,9 @@ def _resolve_party_contact(
         * d.experience_multiplier(player)
     )
     feed = sum(monster.tribe.feed for monster in party)
-    boss = next((monster for monster in party if monster.tribe.char == "F"), None)
+    boss = next(
+        (monster for monster in party if monster.tribe.char in ("F", "W")), None
+    )
     # Resolve ordinary drops first, the unique item/effect last. All defeated
     # entities must be removed before V can rearrange the survivors.
     party.sort(key=lambda monster: stage5.special_monster(monster))

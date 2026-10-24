@@ -45,14 +45,14 @@ def monster_party_entities(
 
 
 def special_monster(entity: d.Monster) -> bool:
-    # Unlocking the objective is not a combat ability; F' can accompany V'.
+    # Unlocking the objective is not a combat ability; W can accompany V'.
     return bool(
         entity.tribe.item or entity.tribe.effect not in (None, d.EFFECT_UNLOCK_TREASURE)
     )
 
 
 def normalize_parties(current: Floor) -> None:
-    """Enforce party limits after spawning or rearranging; retain F' and V'."""
+    """Enforce party limits after spawning or rearranging; retain W and V'."""
     _separate_golems(current)
     checked = set()
     for entity in list(current.entities):
@@ -63,7 +63,7 @@ def normalize_parties(current: Floor) -> None:
         party.sort(
             key=lambda monster: (
                 0
-                if monster.tribe.char == "F"
+                if monster.tribe.char == "W"
                 else 1
                 if monster.tribe.char == "V" and monster.empowered == 2
                 else 2,
@@ -109,7 +109,8 @@ def _separate_golems(current: Floor) -> None:
         golem = first if first.tribe.char == "g" else second
         other = second if golem is first else first
         other_is_fixed = isinstance(other, d.Collapse) or (
-            other.tribe.char in ("F", "V") and other.empowered == 2
+            (other.tribe.char == "W" and other.empowered == 1)
+            or (other.tribe.char == "V" and other.empowered == 2)
         )
         mover = golem if other_is_fixed or other.tribe.char == "g" else other
 
@@ -152,8 +153,12 @@ def _separate_diagonal_monsters(current: Floor) -> None:
             for second in monsters[index + 1 :]:
                 if abs(first.x - second.x) != 1 or abs(first.y - second.y) != 1:
                     continue
-                first_is_boss = first.tribe.char in ("F", "V") and first.empowered == 2
-                second_is_boss = second.tribe.char in ("F", "V") and second.empowered == 2
+                first_is_boss = (first.tribe.char == "W" and first.empowered == 1) or (
+                    first.tribe.char == "V" and first.empowered == 2
+                )
+                second_is_boss = (
+                    second.tribe.char == "W" and second.empowered == 1
+                ) or (second.tribe.char == "V" and second.empowered == 2)
                 if first_is_boss and second_is_boss:
                     continue
                 mover = second if not second_is_boss else first
@@ -391,7 +396,7 @@ def _place_party(
     # Only keep distinct parties from merging. Walls and narrow corridors do
     # not exclude a spawn cell; a party may completely block a passage.
     occupied = {(entity.x, entity.y) for entity in current.entities}
-    boss_pair = set(roster) == {("F", 2), ("V", 2)} and len(roster) == 2
+    boss_pair = set(roster) == {("W", 1), ("V", 2)} and len(roster) == 2
     if any(rank == 2 for _, rank in roster) and not boss_pair and len(roster) != 1:
         raise ValueError("rank-2 Stage 5 monsters must spawn alone")
     monsters = {
@@ -525,7 +530,7 @@ def respawn(
 def strength_roster() -> list[d.MonsterTribe]:
     variants = {(char, rank) for roster in d.STAGE5_ROSTER for char, _, rank in roster}
     variants.update(variant for pool in d.STAGE5_SUPPORT_POOLS for variant in pool)
-    variants.update({("F", 2), ("V", 2), ("M", 1)})
+    variants.update({("F", 2), ("W", 1), ("V", 2), ("M", 1)})
     return sorted(
         (d._empowered_strength_tribe(char, rank) for char, rank in sorted(variants)),
         key=lambda tribe: tribe.level,
@@ -585,7 +590,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 )
             )
         if index == d.STAGE5_FLOORS - 1:
-            boss_roster = [("F", 2), ("V", 2)]
+            boss_roster = [("W", 1), ("V", 2)]
             _place_party(current, boss_roster, index)
         for char, count, rank in d.STAGE5_ROSTER[index]:
             for _ in range(count):
@@ -601,17 +606,8 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 _place_party(current, roster, index)
         if index == d.STAGE5_FLOORS - 1:
             current.entities.append(
-                d.Treasure(*rand.choice(_open_points(current)), "TF")
+                d.Treasure(*rand.choice(_open_points(current)), "TW")
             )
-            for _ in range(2):
-                mimic = d.Monster(
-                    *rand.choice(_open_points(current)),
-                    d.CHAR_TO_MONSTER_TRIBE["M"],
-                    mimic_boss_char="F",
-                    mimic_boss_empowered=2,
-                )
-                mimic.active = False
-                current.entities.append(mimic)
         for char, count in zip(
             (d.CHAR_CALTROP, d.CHAR_BARRIER), d.STAGE5_HAZARD_COUNTS[index]
         ):
