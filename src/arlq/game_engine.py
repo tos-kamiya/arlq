@@ -1729,8 +1729,6 @@ def run_game(
         current = floors[floor[0]]
         display_floor = floors[view_floor]
         cur = get_torched(player, config.torch_radius)
-        for member in player.members:
-            player.known_member_floors[member.role] = floor[0] + 1
         reveal_entities_in_fov(player, current.entities, floor_index=floor[0])
         if display_floor is current and display_floor.contact_reveal is not None:
             rx, ry = display_floor.contact_reveal
