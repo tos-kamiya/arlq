@@ -104,6 +104,8 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "island",
         "up_stairs",
         "down_stairs",
+        "scholar_up_stairs",
+        "scholar_down_stairs",
         "contact_reveal",
         "collapse_landings",
         "persistent_barriers",

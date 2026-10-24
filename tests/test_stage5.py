@@ -78,10 +78,10 @@ def test_playground_has_all_recruits_and_connected_rank2_bosses():
         isinstance(e, d.Monster) and e.tribe.is_elf for f in floors for e in f.entities
     )
     boss = next(
-        e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "F"
+        e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W"
     )
     party = stage5.monster_party(current, boss)
-    assert {(e.tribe.char, e.empowered) for e in party} >= {("F", 2), ("V", 2)}
+    assert {(e.tribe.char, e.empowered) for e in party} >= {("W", 1), ("V", 2)}
     assert 2 <= len(party) <= 5
     assert sum(d.monster_level(e) for e in party) >= 290
 
@@ -168,7 +168,7 @@ def test_rogue_detects_shooting_lane_and_respects_blockers():
     marksman = monster(7, 3, "k")
     current.entities.append(marksman)
     assert stage5.rogue_danger(current, player, (3, 3)) == "-"
-    assert ((3, 3), "-") in marksman.arrow_marks
+    assert ((3, 3), "-") in marksman.warning_arrow_marks
     current.field[3][5] = d.CHAR_WALL
     assert stage5.rogue_danger(current, player, (3, 3)) is None
     current.field[3][5] = d.CHAR_FLOOR
@@ -195,14 +195,14 @@ def test_boss_win_rearranges_only_final_floor_and_spawns_noble_without_winning()
     floors, player = stage5.build()
     current = floors[-1]
     boss = next(
-        e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "F"
+        e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W"
     )
     origin = (boss.x, boss.y)
     player.level = 10000
     player.x, player.y = boss.x, boss.y
     for floor_data in floors:
         floor_data.seen = [[1] * d.FIELD_WIDTH for _ in floor_data.field]
-    floor_index = [3]
+    floor_index = [len(floors) - 1]
     engine._step(
         (0, 0),
         floors,
@@ -285,7 +285,7 @@ def test_treasure_is_optional_and_does_not_finish_stage():
 def test_normalize_limits_and_protects_boss_pair():
     current, _ = state()
     current.entities = [monster(x, 2, "a") for x in range(2, 8)]
-    boss, vortex = monster(8, 2, "F", 2), monster(9, 2, "V", 2)
+    boss, vortex = monster(8, 2, "W"), monster(9, 2, "V", 2)
     current.entities += [boss, vortex, monster(10, 2, "c")]
     stage5.normalize_parties(current)
     assert boss in current.entities and vortex in current.entities
@@ -361,7 +361,7 @@ def test_rogue_warning_stops_repeat_and_requires_fresh_press_without_lp_cost(
     ui = UI()
     engine.run_game(ui, "test", stage_num=5)
     assert ui.frames[:3] == [(0, 90, (2, 2))] * 3
-    assert player.lp == 89.25
+    assert player.lp == 89.5
     assert (player.x, player.y) == (3, 2)
     assert ui.stops >= 2
 
@@ -401,9 +401,9 @@ def test_all_floors_have_connected_stairs_and_keep_members_on_transitions():
         assert all((e.x, e.y) in visited for e in current.entities)
         assert (
             engine._stage_draw_options(5, floors, index, False, True)["floor_label"]
-            == f"{index + 1}/4"
+            == f"{index + 1}/{len(floors)}"
         )
-        if index == 3:
+        if index == len(floors) - 1:
             break
         assert current.down == floors[index + 1].up
         assert current.field[current.down[1]][current.down[0]] == d.CHAR_STAIRS_DOWN
@@ -452,8 +452,8 @@ def test_seed_reproduces_layout_and_groups():
 
 
 def test_deeper_floors_have_stronger_and_larger_parties_across_seeds():
-    total_sizes, total_strengths, total_groups = [0] * 4, [0] * 4, [0] * 4
-    seen_sizes = [set() for _ in range(4)]
+    total_sizes, total_strengths, total_groups = [0] * d.STAGE5_FLOORS, [0] * d.STAGE5_FLOORS, [0] * d.STAGE5_FLOORS
+    seen_sizes = [set() for _ in range(d.STAGE5_FLOORS)]
     for seed in range(12):
         engine.rand.set_seed(seed)
         floors, _ = stage5.build()
