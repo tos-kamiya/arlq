@@ -73,7 +73,6 @@ CHAR_COLLAPSE: str = "O"
 # Decorations kept beside the field (Floor.decor): no rule reads them, only
 # the sprite GUI draws them.
 DECOR_NONE: str = ""
-DECOR_GOLEM_ROCK: str = "golem rock"  # a wall raised by a defeated Golem
 DECOR_FALLEN_ROCKS: str = "fallen rocks"  # below a pit on the floor above
 
 TORCH_RADIUS: int = 3

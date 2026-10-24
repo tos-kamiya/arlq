@@ -838,7 +838,7 @@ class SpriteUI(PygletUI):
             return super()._draw_tile(x, y, tile_color, field, discovered_at)
         floor = VISIBLE_FLOOR if tile_color == VISIBLE_WALL else FLOOR
         self._draw_floor(x, y, floor, field, discovered_at)
-        if self._decor_at(x, y) == d.DECOR_GOLEM_ROCK and ROCK_SPRITE in self._sprite_images:
+        if field[y][x] == d.CHAR_GOLEM_WALL and ROCK_SPRITE in self._sprite_images:
             # A wall raised by a Golem is drawn as its rubble, not a column.
             self._place_sprite(ROCK_SPRITE, self._field_col_x(x) + self.cell_size_x / 2,
                                (y + 0.5) * self.cell_size_y, 1.0, y, 'column', False,
@@ -851,7 +851,7 @@ class SpriteUI(PygletUI):
         def wall_at(wx, wy):
             return (0 <= wy < len(field) and 0 <= wx < len(field[wy])
                     and field[wy][wx] in d.WALL_CHARS and discovered_at(wx, wy)
-                    and self._decor_at(wx, wy) != d.DECOR_GOLEM_ROCK)
+                    and field[wy][wx] != d.CHAR_GOLEM_WALL)
 
         if self._wall_images is not None:
             tint = tuple(min(255, round(c * WALL_TINT[tile_color])) for c in tile_color)

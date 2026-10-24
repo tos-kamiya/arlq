@@ -1878,12 +1878,7 @@ def test_golem_rocks_mark_golem_walls_in_terrain_and_decor():
         (8, 8), (12, 8), (9, 9), (11, 9),
         (9, 11), (11, 11), (8, 12), (12, 12),
     }
-    assert {
-        (x, y)
-        for y, row in enumerate(floor.decor)
-        for x, decor in enumerate(row)
-        if decor == d.DECOR_GOLEM_ROCK
-    } == raised
+    assert all(decor == d.DECOR_NONE for row in floor.decor for decor in row)
 
 
 def test_collapse_pits_leave_fallen_rocks_decor_on_the_floor_below():

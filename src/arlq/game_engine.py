@@ -639,7 +639,6 @@ def _defeat_monster(
                 x
             ] == d.CHAR_FLOOR:
                 current.field[y][x] = d.CHAR_GOLEM_WALL
-                current.decor[y][x] = d.DECOR_GOLEM_ROCK
     elif entity.tribe.effect == d.EFFECT_VORTEX:
         if (
             replay_context is not None
