@@ -380,6 +380,16 @@ def _vortex_rearrange(
             )
         )
     ]
+    moved_wyrm_barrier_cells = {
+        (entity.x + dx, entity.y + dy)
+        for entity in movable
+        if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}
+        for dx in (-1, 0, 1)
+        for dy in (-1, 0, 1)
+        if (dx or dy)
+        and 0 <= entity.y + dy < len(current.field)
+        and 0 <= entity.x + dx < len(current.field[0])
+    }
     lower = (
         floors[floor_index + 1]
         if floors is not None and floor_index + 1 < len(floors)
@@ -542,6 +552,23 @@ def _vortex_rearrange(
                     ):
                         current.field[y][x] = d.CHAR_BARRIER
 
+    current_wyrm_barrier_cells = {
+        (entity.x + dx, entity.y + dy)
+        for entity in current.entities
+        if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}
+        for dx in (-1, 0, 1)
+        for dy in (-1, 0, 1)
+        if (dx or dy)
+        and 0 <= entity.y + dy < len(current.field)
+        and 0 <= entity.x + dx < len(current.field[0])
+    }
+    for x, y in moved_wyrm_barrier_cells - affected_points - current_wyrm_barrier_cells:
+        if (
+            current.field[y][x] == d.CHAR_BARRIER
+            and (x, y) not in current.persistent_barriers
+        ):
+            current.field[y][x] = d.CHAR_FLOOR
+
     for x, y in affected_points:
         if (
             current.field[y][x] in (d.CHAR_FLOOR, d.CHAR_BARRIER)
@@ -565,6 +592,44 @@ def _defeat_monster(
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
     ch = entity.tribe.char
+    if ch == "w":
+        other_wyrm_barrier_cells = {
+            (other.x + dx, other.y + dy)
+            for other in current.entities
+            if other is not entity
+            and isinstance(other, d.Monster)
+            and other.tribe.char in {"w", "W"}
+            for dx in (-1, 0, 1)
+            for dy in (-1, 0, 1)
+            if (dx or dy)
+            and 0 <= other.y + dy < len(current.field)
+            and 0 <= other.x + dx < len(current.field[0])
+        }
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if not (dx or dy):
+                    continue
+                x, y = entity.x + dx, entity.y + dy
+                if (
+                    0 <= y < len(current.field)
+                    and 0 <= x < len(current.field[y])
+                    and (x, y) not in other_wyrm_barrier_cells
+                    and (x, y) not in current.persistent_barriers
+                    and current.field[y][x] == d.CHAR_BARRIER
+                ):
+                    current.field[y][x] = d.CHAR_FLOOR
+    elif ch == "W":
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if not (dx or dy):
+                    continue
+                x, y = entity.x + dx, entity.y + dy
+                if (
+                    0 <= y < len(current.field)
+                    and 0 <= x < len(current.field[y])
+                    and current.field[y][x] == d.CHAR_BARRIER
+                ):
+                    current.persistent_barriers.add((x, y))
     if ch == "k":
         entity.arrow_marks.clear()
         entity.warning_arrow_marks.clear()

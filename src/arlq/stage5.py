@@ -81,6 +81,7 @@ def normalize_parties(current: Floor) -> None:
                 kept += 1
                 special |= is_special
     _separate_diagonal_monsters(current)
+    _sync_wyrm_barriers(current)
 
 
 def _separate_golems(current: Floor) -> None:
@@ -390,8 +391,8 @@ def _open_points(current: Floor) -> list[d.Point]:
     ]
 
 
-def _place_wyrm_barriers(current: Floor) -> None:
-    """Place a barrier ring around each w/W without covering occupied cells."""
+def _sync_wyrm_barriers(current: Floor) -> None:
+    """Keep non-persistent barrier rings centered on the surviving w/W."""
     occupied = {(entity.x, entity.y) for entity in current.entities}
     reserved = {
         current.up,
@@ -402,26 +403,47 @@ def _place_wyrm_barriers(current: Floor) -> None:
         *current.scholar_down_stairs,
         *current.collapse_landings,
     }
-    centers = [
-        (entity.x, entity.y)
-        for entity in current.entities
-        if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}
-    ]
-    for center_x, center_y in centers:
+    ring_cells = set()
+    for entity in current.entities:
+        if (
+            not isinstance(entity, d.Monster)
+            or not entity.active
+            or entity.tribe.char not in {"w", "W"}
+        ):
+            continue
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
                 if not (dx or dy):
                     continue
-                point = (center_x + dx, center_y + dy)
+                point = (entity.x + dx, entity.y + dy)
                 x, y = point
                 if (
                     0 <= y < len(current.field)
                     and 0 <= x < len(current.field[y])
                     and point not in occupied
                     and point not in reserved
-                    and current.field[y][x] == d.CHAR_FLOOR
+                    and (
+                        current.field[y][x] == d.CHAR_FLOOR
+                        or (
+                            current.field[y][x] == d.CHAR_BARRIER
+                            and point not in current.persistent_barriers
+                        )
+                    )
                 ):
-                    current.field[y][x] = d.CHAR_BARRIER
+                    ring_cells.add(point)
+
+    for y, row in enumerate(current.field):
+        for x, cell in enumerate(row):
+            point = (x, y)
+            if (
+                cell == d.CHAR_BARRIER
+                and point not in current.persistent_barriers
+                and point not in ring_cells
+            ):
+                current.field[y][x] = d.CHAR_FLOOR
+    for x, y in ring_cells:
+        if current.field[y][x] == d.CHAR_FLOOR:
+            current.field[y][x] = d.CHAR_BARRIER
 
 
 def _place_party(
@@ -618,7 +640,9 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             for _ in range(count):
                 party_size = (
                     1
-                    if rank == 2 or char == "g" or (index == 1 and char == "k")
+                    if rank == 2
+                    or char == "g"
+                    or (index == 1 and char == "k")
                     else sample_party_size(index)
                 )
                 roster = [(char, rank)] + [
@@ -646,7 +670,6 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         floors[-1], d.STAGE5_FINAL_FLOOR_BARRIER_PERCENT
     )
     for current in floors:
-        _place_wyrm_barriers(current)
         normalize_parties(current)
     player = d.Player(*floors[0].up, d.STAGE5_START_LEVEL, d.LP_INIT)
     player.rescue_stage = True
