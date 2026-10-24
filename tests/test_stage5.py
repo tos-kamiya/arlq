@@ -101,7 +101,7 @@ def test_fifo_noble_lock_and_companion_slot_are_independent():
 def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain):
     current, player = state(roles, lp=10)
     current.entities = [monster(3, 2, "b"), monster(4, 2, "a")]
-    feed = sum(e.tribe.feed for e in current.entities)
+    feed = max(e.tribe.feed for e in current.entities)
     step(current, player)
     assert current.entities == []
     assert player.level == 100 + gain
