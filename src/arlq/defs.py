@@ -39,19 +39,19 @@ STAGE5_DEEP_ROSTER = (
     ("g", 3, 1),
     ("k", 2, 1),
     ("w", 1, 1),
-    ("w", 2, 2),
     ("X", 1, 1),
     ("E", 1, 1),
 )
 STAGE5_FLOOR4_ROSTER = tuple(
     entry for entry in STAGE5_DEEP_ROSTER if entry[0] != "w"
-) + (("w", 4, 2),)
+) + (("w", 2, 2),)
+STAGE5_FLOOR5_ROSTER = STAGE5_DEEP_ROSTER + (("w", 2, 2),)
 STAGE5_ROSTER = (
     (("a", 24, 1), ("A", 2, 1), ("b", 8, 1), ("c", 5, 1), ("d", 3, 1), ("e", 1, 1), ("f", 2, 1)),
     STAGE5_DEEP_ROSTER,
     STAGE5_DEEP_ROSTER,
     STAGE5_FLOOR4_ROSTER,
-    STAGE5_DEEP_ROSTER,
+    STAGE5_FLOOR5_ROSTER,
 )
 STAGE5_BOSS_PARTY = (("W", 1), ("V", 2))
 STAGE5_SUPPORT_POOLS = (

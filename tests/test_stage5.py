@@ -383,7 +383,8 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
     ]
     floor_index, checkpoint = [0], [floors[0].up]
     for index, current in enumerate(floors):
-        pending, visited = [current.up], {current.up}
+        entry = (player.x, player.y)
+        pending, visited = [entry], {entry}
         while pending:
             x, y = pending.pop()
             for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
@@ -402,7 +403,7 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
         )
         if index == len(floors) - 1:
             break
-        exits = current.down_stairs + current.scholar_down_stairs
+        exits = current.scholar_down_stairs + current.down_stairs
         exit_point = next((point for point in exits if point in visited), None)
         assert exit_point is not None
         assert current.down == floors[index + 1].up
@@ -464,9 +465,9 @@ def test_deep_floors_share_monster_distribution_and_keep_party_size_weights():
         tuple(entry for entry in d.STAGE5_DEEP_ROSTER if entry[0] != "w")
     ] * 4
     assert [
-        next(entry[1:] for entry in roster if entry[0] == "w")
+        sum(count for char, count, rank in roster if char == "w" and rank == 2)
         for roster in deep_rosters
-    ] == [(1, 1), (1, 1), (4, 2), (1, 1)]
+    ] == [0, 0, 2, 2]
     assert d.STAGE5_SUPPORT_POOLS[1:] == (d.STAGE5_SUPPORT_POOLS[1],) * 4
     assert d.STAGE5_PARTY_SIZE_WEIGHTS[1:] == (
         (30, 35, 25, 10, 0),
