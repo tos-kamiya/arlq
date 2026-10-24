@@ -167,6 +167,21 @@ class BlessedUI:
                 display_cell = d.CHAR_WALL if cell == d.CHAR_GOLEM_WALL else cell
                 discovered = bool(torched[y][x] or show_entities)
                 visible = bool(cur_torched[y][x])
+                if discovered and cell in d.SCHOLAR_STAIR_CHARS:
+                    stair_glyph = (
+                        d.CHAR_STAIRS_UP
+                        if cell == d.CHAR_SCHOLAR_STAIRS_UP
+                        else d.CHAR_STAIRS_DOWN
+                    )
+                    put(
+                        x,
+                        y,
+                        stair_glyph,
+                        "green",
+                        bold=True,
+                        bg=cell_background(x, y),
+                    )
+                    continue
                 if self.dots:
                     if visible:
                         put(

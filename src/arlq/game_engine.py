@@ -1295,8 +1295,16 @@ def _handle_floor_transition(
     down_stairs = current.down_stairs or ([current.down] if legacy_floors else [])
     up_stairs = current.up_stairs or ([current.up] if legacy_floors else [])
     if d.has_member(player, "Dangeon Scholar"):
-        down_stairs = down_stairs + current.scholar_down_stairs
-        up_stairs = up_stairs + current.scholar_up_stairs
+        down_stairs = down_stairs + [
+            point
+            for point in current.scholar_down_stairs
+            if current.field[point[1]][point[0]] == d.CHAR_SCHOLAR_STAIRS_DOWN
+        ]
+        up_stairs = up_stairs + [
+            point
+            for point in current.scholar_up_stairs
+            if current.field[point[1]][point[0]] == d.CHAR_SCHOLAR_STAIRS_UP
+        ]
     floor_count = len(floors)
     if floor[0] < floor_count - 1 and point in down_stairs:
         stair_index = down_stairs.index(point)
@@ -1306,7 +1314,12 @@ def _handle_floor_transition(
             destination_floor.up_stairs or [destination_floor.up]
         )
         if d.has_member(player, "Dangeon Scholar"):
-            destination_stairs += destination_floor.scholar_up_stairs
+            destination_stairs += [
+                point
+                for point in destination_floor.scholar_up_stairs
+                if destination_floor.field[point[1]][point[0]]
+                == d.CHAR_SCHOLAR_STAIRS_UP
+            ]
         player.x, player.y = destination_stairs[
             min(stair_index, len(destination_stairs) - 1)
         ]
@@ -1326,7 +1339,12 @@ def _handle_floor_transition(
             destination_floor.down_stairs or [destination_floor.down]
         )
         if d.has_member(player, "Dangeon Scholar"):
-            destination_stairs += destination_floor.scholar_down_stairs
+            destination_stairs += [
+                point
+                for point in destination_floor.scholar_down_stairs
+                if destination_floor.field[point[1]][point[0]]
+                == d.CHAR_SCHOLAR_STAIRS_DOWN
+            ]
         player.x, player.y = destination_stairs[
             min(stair_index, len(destination_stairs) - 1)
         ]

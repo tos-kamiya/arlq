@@ -905,8 +905,16 @@ class PygletUI:
         self._draw_field_text(pos, char, COLOR_MAP[CI_GREEN], bold=True)
 
     def _draw_stairs(self, pos: d.Point, char: str):
-        """Draws a discovered up (`^`) or down (`v`) stair cell."""
-        self._draw_field_text(pos, char, COLOR_MAP[CI_YELLOW], bold=True)
+        """Draw an ordinary stair or a Scholar stair marker."""
+        is_scholar = char in d.SCHOLAR_STAIR_CHARS
+        if char in d.SCHOLAR_STAIR_CHARS:
+            char = (
+                d.CHAR_STAIRS_UP
+                if char == d.CHAR_SCHOLAR_STAIRS_UP
+                else d.CHAR_STAIRS_DOWN
+            )
+        color = COLOR_MAP[CI_GREEN if is_scholar else CI_YELLOW]
+        self._draw_field_text(pos, char, color, bold=True)
 
     def _draw_pit(self, pos: d.Point):
         """Draws a revealed Collapse pit (`O`)."""

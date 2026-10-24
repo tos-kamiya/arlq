@@ -88,9 +88,19 @@ WALL_CHARS: Tuple[str, str] = (CHAR_WALL, CHAR_GOLEM_WALL)
 CHAR_FLOOR: str = " "
 CHAR_STAIRS_UP: str = "^"
 CHAR_STAIRS_DOWN: str = "v"
-STAIR_CHARS: Tuple[str, str] = (CHAR_STAIRS_UP, CHAR_STAIRS_DOWN)
+CHAR_SCHOLAR_STAIRS_UP: str = "↑"
+CHAR_SCHOLAR_STAIRS_DOWN: str = "↓"
+SCHOLAR_STAIR_CHARS: Tuple[str, str] = (
+    CHAR_SCHOLAR_STAIRS_UP,
+    CHAR_SCHOLAR_STAIRS_DOWN,
+)
+STAIR_CHARS: Tuple[str, ...] = (
+    CHAR_STAIRS_UP,
+    CHAR_STAIRS_DOWN,
+    *SCHOLAR_STAIR_CHARS,
+)
 CHAR_COLLAPSE: str = "O"
-# Decorations kept beside the field (Floor.decor): no rule reads them, only
+# Decorations kept beside the field (Floor.decor): no rule reads them; only
 # the sprite GUI draws them.
 DECOR_NONE: str = ""
 DECOR_FALLEN_ROCKS: str = "fallen rocks"  # below a pit on the floor above

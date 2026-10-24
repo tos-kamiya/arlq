@@ -192,12 +192,12 @@ SMOKE_TINT = (150, 150, 156)
 SMOKE_OPACITY = 140
 # Rocks fallen through a pit (d.DECOR_FALLEN_ROCKS) are hidden where the
 # cell has since become a wall, pit or stair, or a character stands there.
-FALLEN_ROCK_BLOCKERS = (*d.WALL_CHARS, d.CHAR_COLLAPSE, d.CHAR_STAIRS_UP, d.CHAR_STAIRS_DOWN)
+FALLEN_ROCK_BLOCKERS = (*d.WALL_CHARS, d.CHAR_COLLAPSE, *d.STAIR_CHARS)
 # Stairs and Collapse pits are drawn on the walls' canvas and placed like a
 # wall part: near-white marble flights (up: rising north; down: descending
 # toward the viewer into a dark opening) and a shapeless hole with rocks lying
-# around it. They are tinted gold, as their yellow glyphs were, and darkened
-# like the floor outside the current view.
+# around it. Ordinary stair flights are gold and darkened outside the current
+# view; Scholar stairs use a colored text marker instead.
 TERRAIN_FILES = {d.CHAR_STAIRS_UP: 'stairs/stairs-up.png',
                  d.CHAR_STAIRS_DOWN: 'stairs/stairs-down.png',
                  d.CHAR_COLLAPSE: 'pit/pit.png',
@@ -208,7 +208,8 @@ TERRAIN_TINT = (255, 222, 150)
 # where the neighbouring cell is explored plain floor; elsewhere it is
 # cropped away.
 TERRAIN_SIDE = 0.25
-TERRAIN_OVERHANG = {d.CHAR_STAIRS_UP: 0.5, d.CHAR_STAIRS_DOWN: 0.5, d.CHAR_COLLAPSE: 0.25,
+TERRAIN_OVERHANG = {d.CHAR_STAIRS_UP: 0.5, d.CHAR_STAIRS_DOWN: 0.5,
+                    d.CHAR_COLLAPSE: 0.25,
                     d.DECOR_FALLEN_ROCKS: 0.25}
 TERRAIN_EXPLORED_SHADE = 0.55
 # Opacity of the yellow ground disc that marks each stair.
@@ -757,20 +758,24 @@ class SpriteUI(PygletUI):
         self._set_drawable_attribute(flame, 'opacity', opacity)
 
     def _draw_stairs(self, pos, char):
+        if char in d.SCHOLAR_STAIR_CHARS:
+            return super()._draw_stairs(pos, char)
         if char not in self._terrain_images:
             return super()._draw_stairs(pos, char)
         x, y = pos
         visible = self._cur_torched is not None and self._cur_torched[y][x]
         shade = 1 if visible else TERRAIN_EXPLORED_SHADE
-        # A ground disc like the characters', in the respawn point's yellow,
-        # so stairs stand out.
+        stair_color = COLOR_MAP[CI_YELLOW]
+        # A ground disc gives stairs a distinct colored marker.
         self._draw_ground_disc(self._field_col_x(x) + self.cell_size_x / 2,
                                (y + 0.5) * self.cell_size_y,
                                GROUND_DISC_RADIUS * self._sprite_unit(),
-                               tuple(round(c * shade) for c in COLOR_MAP[CI_YELLOW]),
+                               tuple(round(c * shade) for c in stair_color),
                                opacity=STAIR_DISC_OPACITY)
         # The up flight rises into the cell to the north, like a column.
-        self._draw_terrain(pos, char, 'column' if char == d.CHAR_STAIRS_UP else 'wall')
+        self._draw_terrain(
+            pos, char, 'column' if char == d.CHAR_STAIRS_UP else 'wall'
+        )
 
     def _open_floor(self, x, y):
         field = self._stage_field
@@ -782,14 +787,14 @@ class SpriteUI(PygletUI):
             return super()._draw_pit(pos)
         self._draw_terrain(pos, d.CHAR_COLLAPSE, 'wall')
 
-    def _draw_terrain(self, pos, char, layer):
+    def _draw_terrain(self, pos, char, layer, tint=None):
         """Draw a terrain image over its cell, spreading over the explored
         plain floor beside it."""
         x, y = pos
         image = self._terrain_images[char]
         visible = self._cur_torched is not None and self._cur_torched[y][x]
         shade = 1 if visible else TERRAIN_EXPLORED_SHADE
-        base = (220, 220, 220) if self.map_mode else TERRAIN_TINT
+        base = tint or ((220, 220, 220) if self.map_mode else TERRAIN_TINT)
         draw_tint = self._display_color(tuple(round(c * shade) for c in base))
         left = self._field_col_x(x)
         bottom = self.window_height - (y + 1) * self.cell_size_y

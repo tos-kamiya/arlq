@@ -406,6 +406,7 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
         d.PartyMember(player.x, player.y, "Dangeon Scholar"),
         d.PartyMember(player.x, player.y, "Noble"),
     ]
+    stage5.set_scholar_stairs(floors, True)
     floor_index, checkpoint = [0], [floors[0].up]
     for index, current in enumerate(floors):
         entry = (player.x, player.y)
@@ -437,6 +438,11 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
         assert exit_point is not None
         assert current.down == floors[index + 1].up
         assert current.field[current.down[1]][current.down[0]] == d.CHAR_STAIRS_DOWN
+        assert current.field[exit_point[1]][exit_point[0]] == (
+            d.CHAR_SCHOLAR_STAIRS_DOWN
+            if exit_point in current.scholar_down_stairs
+            else d.CHAR_STAIRS_DOWN
+        )
         player.x, player.y = exit_point
         engine._handle_floor_transition(
             current, floors, player, floor_index, checkpoint

@@ -715,6 +715,15 @@ def test_stairs_without_images_stay_yellow_text(sprite_ui):
     assert not sprite_ui._drawables
 
 
+def test_scholar_stairs_use_green_direction_glyph_without_background(sprite_ui):
+    sprite_ui._terrain_images = {d.CHAR_SCHOLAR_STAIRS_DOWN: object()}
+    sprite_ui._draw_rect = lambda *args: pytest.fail("Scholar stairs have no background")
+    sprite_ui._draw_stairs((4, 5), d.CHAR_SCHOLAR_STAIRS_DOWN)
+    assert sprite_ui.text_calls[0][1] == d.CHAR_STAIRS_DOWN
+    assert sprite_ui.text_calls[0][2] == sprite_funcs.COLOR_MAP[sprite_funcs.CI_GREEN]
+    assert not sprite_ui._drawables
+
+
 def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
     ui.cell_size_x, ui.cell_size_y = 13, 20

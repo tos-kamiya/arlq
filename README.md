@@ -272,7 +272,7 @@ Run `--stage 5` to explore five floors starting at level 1. The seed determines 
 | `H` Healer | Reduce normal LP consumption to 0.5 and defeat's LP cost to 2. |
 | `R` Rogue | Stop movement and key repeat before entering a pit, a firing lane, or a rare Erebus (`E`); press again to proceed. Identify adjacent Mimics as `M`, and reveal Golems (`g`) and Caltrop Plants (`X`) in cardinally adjacent cells. |
 | `K` Knight | Add the player's attack power and halve shared experience. |
-| `D` Dangeon Scholar | Reveal and use an extra stairway on each floor connection. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |
+| `D` Dangeon Scholar | Reveal and use an extra stairway on each floor connection, marked `^` and `v` in green. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |
 | `G` Guardian | Reduce the extra LP damage from barriers and caltrops to one-third; movement cost is unchanged. |
 
 Enemies connected horizontally or vertically fight as one party of at most five. The party's monster glyphs are yellow while any member is unidentified; once all are known, they are blue if your attack can beat the group or red if it cannot. If monsters from separate parties end up diagonally adjacent, one is moved away; the `W` and `V'` bosses stay in place. Their attack power and experience are summed; LP reward uses the highest value in the party. Experience is divided among the player and companions, then tripled by Bard or halved by Knight; with both, the player receives 1.5 times the shared amount. Fractional LP and levels are retained internally and shown as whole numbers in the status bar.

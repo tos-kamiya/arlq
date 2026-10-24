@@ -235,12 +235,16 @@ def set_scholar_stairs(floors: list[Floor], active: bool) -> None:
     for current in floors:
         for point in current.scholar_up_stairs:
             x, y = point
-            current.field[y][x] = d.CHAR_STAIRS_UP if active else d.CHAR_FLOOR
+            current.field[y][x] = (
+                d.CHAR_SCHOLAR_STAIRS_UP if active else d.CHAR_FLOOR
+            )
             if active:
                 current.seen[y][x] = 1
         for point in current.scholar_down_stairs:
             x, y = point
-            current.field[y][x] = d.CHAR_STAIRS_DOWN if active else d.CHAR_FLOOR
+            current.field[y][x] = (
+                d.CHAR_SCHOLAR_STAIRS_DOWN if active else d.CHAR_FLOOR
+            )
             if active:
                 current.seen[y][x] = 1
 
