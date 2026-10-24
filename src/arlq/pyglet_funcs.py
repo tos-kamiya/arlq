@@ -1034,6 +1034,9 @@ class PygletUI:
         for entity in entities:
             if not isinstance(entity, d.Monster) or entity.tribe.char != "k":
                 continue
+            for (x, y), char in entity.warning_arrow_marks:
+                if (show_entities or torched[y][x]) and (x, y) != (px, py):
+                    self._draw_field_text((x, y), char, (112, 120, 130))
             for (x, y), char in entity.arrow_marks:
                 if (show_entities or torched[y][x]) and (x, y) != (px, py):
                     self._draw_field_text((x, y), char, COLOR_MAP[CI_RED], bold=True)

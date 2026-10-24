@@ -210,6 +210,15 @@ def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str 
                 current.seen[pit_y][pit_x] = 1
         current.seen[y][x] = 1
         return "O"
+    if current.field[y][x] in (*d.WALL_CHARS, *d.STAIR_CHARS) or any(
+        (entity.x, entity.y) == destination
+        and (
+            isinstance(entity, (d.Companion, d.Treasure))
+            or isinstance(entity, d.Monster) and entity.active
+        )
+        for entity in current.entities
+    ):
+        return None
     for entity in current.entities:
         if (
             not isinstance(entity, d.Monster)
@@ -238,10 +247,10 @@ def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str 
                 break
         else:
             char = "-" if sx else "|"
-            entity.arrow_marks[:] = [
-                mark for mark in entity.arrow_marks if mark[0] != destination
+            entity.warning_arrow_marks[:] = [
+                mark for mark in entity.warning_arrow_marks if mark[0] != destination
             ]
-            entity.arrow_marks.append((destination, char))
+            entity.warning_arrow_marks.append((destination, char))
             current.seen[y][x] = 1
             return char
     return None

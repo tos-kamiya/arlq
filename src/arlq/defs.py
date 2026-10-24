@@ -378,6 +378,7 @@ class Monster(Entity):
         self.met: bool = False
         self.active: bool = True
         self.arrow_marks: List[Tuple[Point, str]] = []
+        self.warning_arrow_marks: List[Tuple[Point, str]] = []
         self.marksman_cooldown: int = 0
 
 

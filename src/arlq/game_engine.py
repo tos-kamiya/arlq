@@ -400,6 +400,7 @@ def _vortex_rearrange(
     for entity in movable:
         if isinstance(entity, d.Monster) and entity.tribe.char == "k":
             entity.arrow_marks.clear()
+            entity.warning_arrow_marks.clear()
     current.entities[:] = [
         entity for entity in current.entities if entity not in movable
     ]
@@ -566,6 +567,7 @@ def _defeat_monster(
     ch = entity.tribe.char
     if ch == "k":
         entity.arrow_marks.clear()
+        entity.warning_arrow_marks.clear()
     if ch == "M":
         entity.met = True
         entity.active = False
