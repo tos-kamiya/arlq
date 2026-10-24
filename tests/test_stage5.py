@@ -137,7 +137,7 @@ def test_fractional_attack_hazards_and_status():
     current.field[2][3] = d.CHAR_CALTROP
     step(current, player)
     assert player.lp == 87
-    assert "100.5" in display.status_prefix(player, 5, 0)
+    assert "LVL: 100" in display.status_prefix(player, 5, 0)
     assert "ATK:" in display.status_prefix(player, 5, 0)
 
 

@@ -1190,7 +1190,7 @@ class PygletUI:
         text_width = self._text_width(status_line, size_scale=hud_scale)
         x_offset = text_width + round(10 * hud_scale)
 
-        lp_str = f"{player.lp:g} "
+        lp_str = f"{int(player.lp)} "
         flexible_hud = self._status_uses_window_width()
         lp_text_x_offset = (
             x_offset if flexible_hud else x_offset // self.cell_size_x * self.cell_size_x

@@ -71,20 +71,21 @@ def level_item_labels(player: d.Player, stage_num: int) -> Tuple[str, str]:
     has_k = bool(player.elf_stage_flags & d.ELF_STAGE_K_FLAG)
     has_j = d._javelin_follower_active(player)
     item = player.item
+    level_value = int(player.level)
     if item == d.ITEM_SWORD_X1_5:
-        level = f"LVL: {player.level:g} x1.5"
+        level = f"LVL: {level_value} x1.5"
         item_str = f"+{item}({player.item_taken_from})"
     elif item == d.ITEM_SWORD_CURSED:
-        level = f"LVL: {player.level:g} x3"
+        level = f"LVL: {level_value} x3"
         item_str = f"+{item}({player.item_taken_from})"
     elif item == d.ITEM_POISONED:
-        level = f"LVL: {player.level:g} /3"
+        level = f"LVL: {level_value} /3"
         item_str = f"+{item}({player.item_taken_from})"
     elif item == d.ITEM_SPORES:
-        level = f"LVL: {player.level:g}"
+        level = f"LVL: {level_value}"
         item_str = f"+{item}({player.item_taken_from})"
     else:
-        level = f"LVL: {player.level:g}"
+        level = f"LVL: {level_value}"
         item_str = ""
     if has_k:
         level += " x1.2"

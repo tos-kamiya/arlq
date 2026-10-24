@@ -380,7 +380,7 @@ class BlessedUI:
             x += self.term.length(text)
 
         add(ui_display.status_prefix(player, stage_num, turn, game_start_turn))
-        add(f"LP: {player.lp:g} [")
+        add(f"LP: {int(player.lp)} [")
         bar_len = 8
         lp_max = d.player_lp_max(player)
         filled = round(max(0, min(player.lp, lp_max)) / lp_max * bar_len)

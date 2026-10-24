@@ -272,7 +272,7 @@ Run `--stage 5` to explore four floors starting at level 1. The seed determines 
 | `K` Knight | Add the player's attack power and halve shared experience. |
 | `D` Dangeon Scholar | Reveal and use an extra stairway on each floor connection. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |
 
-Enemies connected horizontally or vertically fight as one party of at most five. If monsters from separate parties end up diagonally adjacent, one is moved away; the `F'` and `V'` bosses stay in place. Their attack power, LP rewards, and experience are summed. Experience is divided among the player and companions, then doubled by Bard or halved by Knight; with both, the player receives the undiscounted share. Fractional LP and levels are retained and displayed.
+Enemies connected horizontally or vertically fight as one party of at most five. If monsters from separate parties end up diagonally adjacent, one is moved away; the `F'` and `V'` bosses stay in place. Their attack power, LP rewards, and experience are summed. Experience is divided among the player and companions, then doubled by Bard or halved by Knight; with both, the player receives the undiscounted share. Fractional LP and levels are retained internally and shown as whole numbers in the status bar.
 
 Defeat `F'` and its accompanying `V'` on floor 4 to rearrange that entire floor and erase its explored map. Recruit the newly appearing `N` (Noble), then return to floor 1 to win. Treasure is optional and does not end the stage. Noble provides no bonus and cannot leave, allowing at most one further member change after rescue. Members respawn with the player after defeat. Pits drop you to the next floor. Balance remains provisional.
 
