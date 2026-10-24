@@ -297,6 +297,14 @@ def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str 
                 current.seen[pit_y][pit_x] = 1
         current.seen[y][x] = 1
         return "O"
+    if any(
+        isinstance(entity, d.Monster)
+        and entity.active
+        and entity.tribe.char == "E"
+        and (entity.x, entity.y) == destination
+        for entity in current.entities
+    ):
+        return "E"
     if current.field[y][x] in (*d.WALL_CHARS, *d.STAIR_CHARS) or any(
         (entity.x, entity.y) == destination
         and (
