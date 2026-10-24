@@ -409,6 +409,11 @@ class BlessedUI:
 
         y += 1
         x = 0
+        party = player.last_encounter_party
+        if party:
+            party_panel = f"[{party}]  "
+            available = max(0, self.term.width - x - 1)
+            add(self.term.truncate(party_panel, available), color="cyan")
         if message:
             available = self.term.width - x - 1
             if available > 0:

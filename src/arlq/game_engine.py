@@ -836,6 +836,8 @@ def _resolve_monster_contact(
 ) -> _ContactResult:
     """Resolve contact with a monster, including early-ending elf encounters."""
     ch = entity.tribe.char
+    if not entity.tribe.is_elf:
+        player.last_encounter_party = ch
     contact_key = (floor[0], entity.x, entity.y)
     if player.item == d.ITEM_SWORD_CURSED:
         player.lp -= d.CURSED_SWORD_LP_COST
@@ -991,6 +993,13 @@ def _resolve_party_contact(
     stage_num: int,
 ) -> _ContactResult:
     party = stage5.monster_party(current, entity)
+    enemy_party = [monster for monster in party if not monster.tribe.is_elf]
+    composition = "".join(
+        monster.tribe.char
+        for monster in sorted(enemy_party, key=lambda monster: (monster.y, monster.x))
+    )
+    if composition:
+        player.last_encounter_party = composition
     player.karma += 1
     strength = sum(d.monster_level(monster) for monster in party)
     contact_key = (floor[0], *min((monster.x, monster.y) for monster in party))
@@ -1020,10 +1029,6 @@ def _resolve_party_contact(
         return _ContactResult(trp("-- Your party lost and respawned together.", 5))
 
     old_level, old_lp = player.level, player.lp
-    composition = "".join(
-        monster.tribe.char
-        for monster in sorted(party, key=lambda monster: (monster.y, monster.x))
-    )
     experience = (
         sum(
             10
@@ -1083,11 +1088,7 @@ def _resolve_party_contact(
         )
     stage5.normalize_parties(current)
     player.last_contact_monster = contact_key
-    return _ContactResult(
-        trp("-- Defeated monster party ({composition})!", 5).format(
-            composition=composition
-        )
-    )
+    return _ContactResult(None)
 
 
 def _resolve_contact(

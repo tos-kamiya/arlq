@@ -1260,11 +1260,27 @@ class PygletUI:
             y_offset=top_row_y_offset,
         )
 
+        party = player.last_encounter_party
+        message_x_offset = 0
+        if party:
+            party_prefix = f"[{party}]  "
+            party_width = self._text_width(
+                party_prefix, size_scale=hud_scale * MESSAGE_FONT_SIZE_SCALE
+            )
+            self._draw_text(
+                (0, self.field_height),
+                party_prefix,
+                COLOR_MAP[CI_CYAN],
+                size_scale=hud_scale * MESSAGE_FONT_SIZE_SCALE,
+                y_offset=bottom_row_y_offset,
+            )
+            message_x_offset = party_width
         if message:
             self._draw_text(
                 (0, self.field_height),
                 message,
                 COLOR_MAP[CI_YELLOW],
+                x_offset=message_x_offset,
                 size_scale=hud_scale * MESSAGE_FONT_SIZE_SCALE,
                 y_offset=bottom_row_y_offset,
             )

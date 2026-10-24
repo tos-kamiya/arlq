@@ -47,6 +47,8 @@ Running `arlq` without options opens the graphical interface. Running
 `arlq-cli` without options starts the terminal interface. In the GUI, use a
 connected gamepad's D-pad or left stick to move, and button 0 to select a
 stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
+After contacting an enemy, its party composition remains in brackets to the
+left of event messages.
 
 Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
 through `arlq --sprites`. Its window opens at about 16:9 and shows part of the
