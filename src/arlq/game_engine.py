@@ -348,7 +348,7 @@ def _vortex_rearrange(
     floors: Optional[List[Floor]] = None,
     whole_floor: bool = False,
 ) -> None:
-    """Reposition entities and forget explored cells near the Vortex."""
+    """Reposition entities and forget explored floor and barrier cells."""
     # Keep the horizontal reach while matching the FOV ellipse's proportions.
     horizontal_radius = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
     radius = round(horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO)
@@ -407,8 +407,6 @@ def _vortex_rearrange(
 
     # Clear and rebuild only barriers inside the Vortex's affected area.
     for x, y in affected_points:
-        if whole_floor:
-            current.seen[y][x] = 0
         if (
             current.field[y][x] == d.CHAR_BARRIER
             and (x, y) not in current.persistent_barriers

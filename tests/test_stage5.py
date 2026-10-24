@@ -199,7 +199,14 @@ def test_boss_win_rearranges_only_final_floor_and_spawns_noble_without_winning()
         if isinstance(e, d.PartyMember) and e.role == "Noble"
     )
     assert abs(noble.x - origin[0]) + abs(noble.y - origin[1]) <= 2
-    assert current.seen[1][1] == 0
+    assert current.seen[0][0] == 1  # Wall locations remain explored.
+    assert current.seen[current.up[1]][current.up[0]] == 1
+    assert any(
+        current.seen[y][x] == 0
+        for y, row in enumerate(current.field)
+        for x, cell in enumerate(row)
+        if cell == d.CHAR_FLOOR
+    )
     assert floors[0].seen[1][1] == 1
     assert any(isinstance(e, d.Treasure) and e.unlocked for e in current.entities)
     assert all(
