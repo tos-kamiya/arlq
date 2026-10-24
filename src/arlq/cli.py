@@ -40,7 +40,7 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
         help="Replay the last stage with the same seed.",
     )
     general.add_argument(
-        "--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, or 4)."
+        "--stage", action="store", type=int, default=0, help="Stage (1, 2, 3, 4, or 5)."
     )
     general.add_argument("--seed", action="store", help="Seed value or seed string")
     g = general.add_mutually_exclusive_group()
@@ -173,7 +173,7 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
             )
         args.stage = 6
     elif args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
-        parser.error("--stage must be 1, 2, 3, or 4")
+        parser.error("--stage must be 1, 2, 3, 4, or 5")
 
     if args.continue_trace and not args.trace_path:
         parser.error("--continue requires --trace")

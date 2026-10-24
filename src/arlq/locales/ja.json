@@ -109,5 +109,13 @@
     "[q]uit": "[q] 終了",
     "stage [{n}]": "ステージ [{n}]",
     "[s]ettings": "[s] 設定",
-    "Please resize the terminal to at least 80x24.": "端末を 80x24 以上の大きさにしてください。"
+    "Please resize the terminal to at least 80x24.": "端末を 80x24 以上の大きさにしてください。",
+    "-- Noble cannot leave. No more members can join.": "-- Nobleは脱退できないため、新たなメンバーは加入できない。",
+    "-- {joined} joined; {departed} left for good.": "-- {joined}が加入し、{departed}は旅立った。",
+    "-- {joined} joined your party.": "-- {joined}がパーティーに加入した。",
+    "-- Your party lost and respawned together.": "-- 敗北！ パーティー全員でリスポーンした。",
+    "-- Your party defeated {count} monsters!": "-- 敵パーティーの{count}体を倒した！",
+    "-- Noble returned safely!": "-- Nobleと無事に帰還した！",
+    "-- Rescue Noble on floor 4 and return to floor 1.": "-- 4階のNobleを救出し、1階へ帰還しよう。",
+    "-- Rogue spotted danger. Press again to proceed.": "-- Rogueが危険を察知！ 進むにはキーを押し直そう。"
 }

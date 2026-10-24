@@ -244,7 +244,7 @@ class BlessedUI:
         player_attack = d.current_player_attack(player, stage_num)
 
         def paint(glyph: ui_display.FieldGlyph) -> None:
-            color = None if glyph.tone in ("companion", "default", "stair") else glyph.tone
+            color = None if glyph.tone in ("companion", "member", "default", "stair") else glyph.tone
             background = cell_background(glyph.x, glyph.y)
             put(
                 glyph.x,
@@ -294,6 +294,10 @@ class BlessedUI:
                     visible_default_foreground(None, background),
                     bg=background,
                 )
+
+        if not floor_view:
+            for glyph in ui_display.member_glyphs(player):
+                paint(glyph)
 
         foreground, background = ui_display.player_appearance(player)
         if not floor_view:
@@ -365,7 +369,7 @@ class BlessedUI:
             x += self.term.length(text)
 
         add(ui_display.status_prefix(player, stage_num, turn, game_start_turn))
-        add(f"LP: {player.lp} [")
+        add(f"LP: {player.lp:g} [")
         bar_len = 8
         lp_max = d.player_lp_max(player)
         filled = round(max(0, min(player.lp, lp_max)) / lp_max * bar_len)

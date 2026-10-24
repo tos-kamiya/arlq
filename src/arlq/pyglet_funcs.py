@@ -1054,6 +1054,12 @@ class PygletUI:
         player_attack = d.current_player_attack(player, stage_num)
 
         def paint(glyph: ui_display.FieldGlyph) -> None:
+            if glyph.tone == "member":
+                # Text markers until dedicated human artwork is available;
+                # bypass sprite mappings such as H (High Elf).
+                self._draw_text((glyph.x, glyph.y), glyph.char, COLOR_MAP[CI_GREEN],
+                                bold=True, x_offset=self._field_text_x_offset())
+                return
             self._draw_field_text(
                 (glyph.x, glyph.y), glyph.char, self._tone_color(glyph.tone, glyph.dim), bold=glyph.bold
             )
@@ -1084,6 +1090,10 @@ class PygletUI:
         for fx, fy, ffloor, fchar in getattr(player, "persistent_followers", []):
             if not floor_view and ffloor == player.current_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
                 self._draw_follower((fx, fy), fchar)
+
+        if not floor_view:
+            for glyph in ui_display.member_glyphs(player):
+                paint(glyph)
 
         # Draw the right-edge strength column: the stage's monster tribes and
         # the player, ranked strongest-first. A tinted background (full
@@ -1177,7 +1187,7 @@ class PygletUI:
         text_width = self._text_width(status_line, size_scale=hud_scale)
         x_offset = text_width + round(10 * hud_scale)
 
-        lp_str = "%d " % player.lp
+        lp_str = f"{player.lp:g} "
         flexible_hud = self._status_uses_window_width()
         lp_text_x_offset = (
             x_offset if flexible_hud else x_offset // self.cell_size_x * self.cell_size_x

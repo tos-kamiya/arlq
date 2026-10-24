@@ -642,7 +642,7 @@ def barrier_lp_damage(player: d.Player) -> int:
             player.elf_stage_flags & d.ELF_STAGE_H_FLAG
             and player.item != d.ITEM_SWORD_CURSED
         )
-        else d.BARRIER_LP_DAMAGE
+        else d.BARRIER_LP_DAMAGE / 2 if d.has_member(player, "Paradin") else d.BARRIER_LP_DAMAGE
     )
 
 
@@ -963,7 +963,7 @@ def run_game(
         remember_seed(stage_num, seed_value)
 
     stage_module = import_module(f".{GAME_ENGINE_MODULE}", package=__package__)
-    if stage_num in (1, 2, 4, 6):
+    if stage_num in (1, 2, 4, 5, 6):
         stage_module.run_game(
             ui,
             seed_str,

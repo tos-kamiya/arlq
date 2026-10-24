@@ -1,0 +1,399 @@
+"""Four-floor rescue stage and party rules."""
+
+from . import defs as d
+from .arlq import GameConfig
+from .i18n import trp
+from .stage_maze import generate_floor_field
+from .stage_types import Floor
+from .stage_world import _place_collapses
+from .utils import rand
+
+
+def monster_party(current: Floor, first: d.Monster) -> list[d.Monster]:
+    candidates = {
+        (entity.x, entity.y): entity
+        for entity in current.entities
+        if isinstance(entity, d.Monster) and entity.active and not entity.tribe.is_elf
+    }
+    party = []
+    pending = [first]
+    visited = set()
+    while pending:
+        entity = pending.pop()
+        point = (entity.x, entity.y)
+        if point in visited:
+            continue
+        visited.add(point)
+        party.append(entity)
+        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+            neighbor = candidates.get((entity.x + dx, entity.y + dy))
+            if neighbor is not None:
+                pending.append(neighbor)
+    return party
+
+
+def special_monster(entity: d.Monster) -> bool:
+    # Unlocking the objective is not a combat ability; F' can accompany V'.
+    return bool(
+        entity.tribe.item or entity.tribe.effect not in (None, d.EFFECT_UNLOCK_TREASURE)
+    )
+
+
+def normalize_parties(current: Floor) -> None:
+    """Enforce party limits after spawning or rearranging; retain F' and V'."""
+    checked = set()
+    for entity in list(current.entities):
+        if not isinstance(entity, d.Monster) or not entity.active or entity in checked:
+            continue
+        party = monster_party(current, entity)
+        checked.update(party)
+        party.sort(
+            key=lambda monster: (
+                0
+                if monster.tribe.char == "F"
+                else 1
+                if monster.tribe.char == "V" and monster.empowered == 2
+                else 2,
+                monster.y,
+                monster.x,
+            )
+        )
+        kept = 0
+        special = False
+        for monster in party:
+            is_special = special_monster(monster)
+            if kept >= d.MONSTER_PARTY_LIMIT or (special and is_special):
+                current.entities.remove(monster)
+            else:
+                kept += 1
+                special |= is_special
+
+
+def recruit(current: Floor, player: d.Player, member: d.PartyMember) -> str:
+    if len(player.members) == d.PARTY_LIMIT and player.members[0].role == "Noble":
+        return trp("-- Noble cannot leave. No more members can join.", 5)
+    departed = player.members.pop(0) if len(player.members) == d.PARTY_LIMIT else None
+    current.entities.remove(member)
+    player.members.append(member)
+    if departed is not None:
+        return trp("-- {joined} joined; {departed} left for good.", 5).format(
+            joined=member.role, departed=departed.role
+        )
+    return trp("-- {joined} joined your party.", 5).format(joined=member.role)
+
+
+def sync_members(player: d.Player, previous: d.Point, direction: d.Point) -> None:
+    if (player.x, player.y) != previous:
+        player.facing = direction
+    for member in player.members:
+        member.x, member.y = player.x, player.y
+
+
+def reveal_mimics(current: Floor, player: d.Player) -> None:
+    if not d.has_member(player, "Rogue"):
+        return
+    for entity in current.entities:
+        if (
+            isinstance(entity, d.Monster)
+            and entity.active
+            and entity.tribe.char == "M"
+            and max(abs(player.x - entity.x), abs(player.y - entity.y)) <= 1
+        ):
+            player.known_monsters.add(d.monster_type_key(entity))
+            current.seen[entity.y][entity.x] = 1
+
+
+def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str | None:
+    """Inspect the destination using the same blockers as marksman arrows."""
+    x, y = destination
+    if not (0 <= y < len(current.field) and 0 <= x < len(current.field[y])):
+        return None
+    if current.field[y][x] == d.CHAR_COLLAPSE:
+        current.seen[y][x] = 1
+        return "O"
+    for entity in current.entities:
+        if (
+            not isinstance(entity, d.Monster)
+            or not entity.active
+            or entity.tribe.char != "k"
+        ):
+            continue
+        dx, dy = x - entity.x, y - entity.y
+        if (dx == 0) == (dy == 0) or abs(dx or dy) <= 1:
+            continue
+        sx = (dx > 0) - (dx < 0)
+        sy = (dy > 0) - (dy < 0)
+        for offset in range(1, abs(dx or dy)):
+            point = (entity.x + sx * offset, entity.y + sy * offset)
+            if current.field[point[1]][point[0]] in (d.CHAR_WALL, *d.STAIR_CHARS):
+                break
+            if any(
+                (other.x, other.y) == point
+                and (
+                    isinstance(other, (d.Companion, d.Treasure))
+                    or isinstance(other, d.Monster)
+                    and other.active
+                )
+                for other in current.entities
+            ):
+                break
+        else:
+            char = "-" if sx else "|"
+            entity.arrow_marks[:] = [
+                mark for mark in entity.arrow_marks if mark[0] != destination
+            ]
+            entity.arrow_marks.append((destination, char))
+            current.seen[y][x] = 1
+            return char
+    return None
+
+
+def sample_party_size(floor_index: int) -> int:
+    weights = d.STAGE5_PARTY_SIZE_WEIGHTS[floor_index]
+    roll = rand.randrange(sum(weights))
+    for size, weight in enumerate(weights, 1):
+        if roll < weight:
+            return size
+        roll -= weight
+    raise AssertionError("invalid party weights")
+
+
+def _open_points(current: Floor) -> list[d.Point]:
+    occupied = {(entity.x, entity.y) for entity in current.entities}
+    reserved = {current.up, current.down, *current.collapse_landings}
+    return [
+        (x, y)
+        for y, row in enumerate(current.field)
+        for x, cell in enumerate(row)
+        if cell == d.CHAR_FLOOR and (x, y) not in occupied | reserved
+    ]
+
+
+def _place_party(
+    current: Floor, roster: list[tuple[str, int]], floor_index: int = 0
+) -> None:
+    # Only keep distinct parties from merging. Walls and narrow corridors do
+    # not exclude a spawn cell; a party may completely block a passage.
+    occupied = {(entity.x, entity.y) for entity in current.entities}
+    boss_pair = set(roster) == {("F", 2), ("V", 2)} and len(roster) == 2
+    if any(rank == 2 for _, rank in roster) and not boss_pair and len(roster) != 1:
+        raise ValueError("rank-2 Stage 5 monsters must spawn alone")
+    monsters = {
+        (entity.x, entity.y)
+        for entity in current.entities
+        if isinstance(entity, d.Monster)
+    }
+    candidates = set(_open_points(current))
+    candidates = {
+        point
+        for point in candidates
+        if all(
+            (point[0] + dx, point[1] + dy) not in monsters
+            for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+        )
+    }
+    if floor_index == 1:
+        # Marksmen are dangerous enough alone. Do not let this party touch an
+        # existing one, and keep later parties out of its cardinal neighbors.
+        marksmen = {
+            (entity.x, entity.y)
+            for entity in current.entities
+            if isinstance(entity, d.Monster) and entity.tribe.char == "k"
+        }
+        if any(char == "k" for char, _ in roster) and len(roster) != 1:
+            raise ValueError("Stage 5 floor-2 marksmen must spawn alone")
+        if marksmen:
+            candidates = {
+                point
+                for point in candidates
+                if all(
+                    (point[0] + dx, point[1] + dy) not in marksmen
+                    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+                )
+            }
+    while candidates:
+        seed = rand.choice(sorted(candidates))
+        cells = [seed]
+        while len(cells) < len(roster):
+            frontier = sorted(
+                {
+                    (x + dx, y + dy)
+                    for x, y in cells
+                    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+                }
+                & candidates - set(cells) - occupied
+            )
+            if not frontier:
+                break
+            cells.append(rand.choice(frontier))
+        if len(cells) == len(roster):
+            for (x, y), (char, rank) in zip(cells, roster):
+                current.entities.append(
+                    d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[char], rank)
+                )
+            return
+        # This component cannot fit the party; try another without requiring
+        # any clearance from walls.
+        candidates.difference_update(cells)
+    raise RuntimeError("could not place Stage 5 monster party")
+
+
+def respawn(
+    current: Floor,
+    char: str,
+    rank: int,
+    origin_floor: int,
+    avoid: set[d.Point],
+    floor_index: int = 0,
+) -> d.Point:
+    candidates = [point for point in _open_points(current) if point not in avoid]
+    monsters = [entity for entity in current.entities if isinstance(entity, d.Monster)]
+    empowered_positions = {
+        (entity.x, entity.y) for entity in monsters if entity.empowered == 2
+    }
+    if rank == 2:
+        # Rank-2 monsters stay separate from every other monster.
+        candidates = [
+            point
+            for point in candidates
+            if all(
+                (point[0] + dx, point[1] + dy) not in {
+                    (entity.x, entity.y) for entity in monsters
+                }
+                for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+            )
+        ]
+    elif empowered_positions:
+        candidates = [
+            point
+            for point in candidates
+            if all(
+                (point[0] + dx, point[1] + dy) not in empowered_positions
+                for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+            )
+        ]
+    if floor_index == 1:
+        marksmen = {
+            (entity.x, entity.y)
+            for entity in current.entities
+            if isinstance(entity, d.Monster) and entity.tribe.char == "k"
+        }
+        candidates = [
+            point
+            for point in candidates
+            if all(
+                (point[0] + dx, point[1] + dy) not in marksmen
+                for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+            )
+        ]
+        if char == "k":
+            candidates = [
+                point
+                for point in candidates
+                if all(
+                    (point[0] + dx, point[1] + dy)
+                    not in {
+                        (entity.x, entity.y)
+                        for entity in current.entities
+                        if isinstance(entity, d.Monster)
+                    }
+                    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+                )
+            ]
+    point = rand.choice(candidates)
+    tribe = d.CHAR_TO_TRIBE[char]
+    if isinstance(tribe, d.MonsterTribe):
+        entity = d.Monster(*point, tribe, rank)
+    else:
+        entity = d.Companion(*point, tribe, origin_floor=origin_floor)
+    current.entities.append(entity)
+    return point
+
+
+def strength_roster() -> list[d.MonsterTribe]:
+    variants = {(char, rank) for roster in d.STAGE5_ROSTER for char, _, rank in roster}
+    variants.update(variant for pool in d.STAGE5_SUPPORT_POOLS for variant in pool)
+    variants.update({("F", 2), ("V", 2), ("M", 1)})
+    return sorted(
+        (d._empowered_strength_tribe(char, rank) for char, rank in sorted(variants)),
+        key=lambda tribe: tribe.level,
+        reverse=True,
+    )
+
+
+def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
+    config = config or GameConfig()
+    floors = []
+    entry = None
+    for index in range(d.STAGE5_FLOORS):
+        field, up, down, _, _, _ = generate_floor_field(
+            entry, None, config.corridor_h_width, config.corridor_v_width, 0, 0
+        )
+        if index:
+            field[up[1]][up[0]] = d.CHAR_STAIRS_UP
+        if index < d.STAGE5_FLOORS - 1:
+            field[down[1]][down[0]] = d.CHAR_STAIRS_DOWN
+        current = Floor(
+            field,
+            [],
+            [[0] * len(field[0]) for _ in field],
+            up,
+            down,
+            None,
+            up_stairs=[up] if index else [],
+            down_stairs=[down] if index < d.STAGE5_FLOORS - 1 else [],
+        )
+        for role in d.STAGE5_MEMBER_FLOORS[index]:
+            current.entities.append(
+                d.PartyMember(*rand.choice(_open_points(current)), role)
+            )
+        for char in ("n", "o", "p"):
+            current.entities.append(
+                d.Companion(
+                    *rand.choice(_open_points(current)),
+                    d.CHAR_TO_TRIBE[char],
+                    origin_floor=index,
+                )
+            )
+        if index == d.STAGE5_FLOORS - 1:
+            boss_roster = [("F", 2), ("V", 2)]
+            _place_party(current, boss_roster, index)
+        for char, count, rank in d.STAGE5_ROSTER[index]:
+            for _ in range(count):
+                party_size = (
+                    1
+                    if rank == 2 or (index == 1 and char == "k")
+                    else sample_party_size(index)
+                )
+                roster = [(char, rank)] + [
+                    rand.choice(d.STAGE5_SUPPORT_POOLS[index])
+                    for _ in range(party_size - 1)
+                ]
+                _place_party(current, roster, index)
+        if index == d.STAGE5_FLOORS - 1:
+            current.entities.append(
+                d.Treasure(*rand.choice(_open_points(current)), "TF")
+            )
+            for _ in range(2):
+                mimic = d.Monster(
+                    *rand.choice(_open_points(current)),
+                    d.CHAR_TO_MONSTER_TRIBE["M"],
+                    mimic_boss_char="F",
+                    mimic_boss_empowered=2,
+                )
+                mimic.active = False
+                current.entities.append(mimic)
+        for char, count in zip(
+            (d.CHAR_CALTROP, d.CHAR_BARRIER), d.STAGE5_HAZARD_COUNTS[index]
+        ):
+            for _ in range(count):
+                x, y = rand.choice(_open_points(current))
+                current.field[y][x] = char
+                if char == d.CHAR_BARRIER:
+                    current.persistent_barriers.add((x, y))
+        floors.append(current)
+        entry = down
+    _place_collapses(floors)
+    player = d.Player(*floors[0].up, d.STAGE5_START_LEVEL, d.LP_INIT)
+    player.rescue_stage = True
+    return floors, player

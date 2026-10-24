@@ -84,7 +84,7 @@ it is large enough again.
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4` | Select a stage directly. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5` | Select a stage directly. Stage 5 is a four-floor party rescue dungeon. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -259,6 +259,31 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | -------------- | ----------- |
 | **L** Lifebringer Elf | Each meeting cures poison, raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then disappears and returns on a random floor at a later 65-turn respawn tick. |
 | **S** Sylvan Elf | Gives you fairy nectar. Companions recruited afterward, except `l`, stay with you 1.25 times longer. |
+
+### Stage 5 (four-floor party rescue)
+
+Run `--stage 5` to explore four floors starting at level 1. The seed determines the maze and enemy placement. There are no elves. Recruit candidates show their professions as soon as they enter your field of view. Touch one to recruit them; two members fit alongside the existing temporary companion slot. Recruiting a third permanently dismisses the earliest recruit. The earlier member appears diagonally behind to the left, the later one to the right. Human characters currently use letter markers in the GUI too.
+
+| Marker / profession | Ability |
+| --- | --- |
+| `B` Bard | Multiply earned experience by 2. |
+| `H` Healer | Reduce normal LP consumption to 0.5 and defeat's LP cost to 2. |
+| `R` Rogue | Stop movement and key repeat before entering a pit or firing lane; press again to proceed. Identify adjacent Mimics as `M`. |
+| `K` Knight | Add the player's attack power, but halve earned experience. |
+| `Q` Paradin | Add the player's attack power and halve barrier/caltrop damage. |
+
+Enemies connected horizontally or vertically fight as one party of at most five. Their attack power, LP rewards, and experience are summed; Bard and Knight multiply the experience total (1.0 with both). Fractional LP and levels are retained and displayed.
+
+Defeat `F'` and its accompanying `V'` on floor 4 to rearrange that entire floor and erase its explored map. Recruit the newly appearing `N` (Noble), then return to floor 1 to win. Treasure is optional and does not end the stage. Noble provides no bonus and cannot leave, allowing at most one further member change after rescue. Members respawn with the player after defeat. Pits drop you to the next floor. Balance remains provisional.
+
+Deeper floors feature stronger species and ranks, and larger enemy parties become more likely. Normal party sizes use these probabilities. Rank-2 monsters marked with an apostrophe always fight alone, except for the boss pair `F'` and `V'`. Marksmen (`k`) on floor 2 also spawn alone. Monsters may touch walls and block narrow passages.
+
+| Floor | 1 member | 2 members | 3 members | 4 members | 5 members |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 55% | 25% | 15% | 5% | 0% |
+| 2 | 30% | 35% | 25% | 10% | 0% |
+| 3 | 20% | 30% | 30% | 15% | 5% |
+| 4 | 10% | 20% | 30% | 25% | 15% |
 
 ## Development commands
 

@@ -72,19 +72,19 @@ def level_item_labels(player: d.Player, stage_num: int) -> Tuple[str, str]:
     has_j = d._javelin_follower_active(player)
     item = player.item
     if item == d.ITEM_SWORD_X1_5:
-        level = f"LVL: {player.level} x1.5"
+        level = f"LVL: {player.level:g} x1.5"
         item_str = f"+{item}({player.item_taken_from})"
     elif item == d.ITEM_SWORD_CURSED:
-        level = f"LVL: {player.level} x3"
+        level = f"LVL: {player.level:g} x3"
         item_str = f"+{item}({player.item_taken_from})"
     elif item == d.ITEM_POISONED:
-        level = f"LVL: {player.level} /3"
+        level = f"LVL: {player.level:g} /3"
         item_str = f"+{item}({player.item_taken_from})"
     elif item == d.ITEM_SPORES:
-        level = f"LVL: {player.level}"
+        level = f"LVL: {player.level:g}"
         item_str = f"+{item}({player.item_taken_from})"
     else:
-        level = f"LVL: {player.level}"
+        level = f"LVL: {player.level:g}"
         item_str = ""
     if has_k:
         level += " x1.2"
@@ -110,6 +110,8 @@ def status_prefix(
         text += f"TURN: {game_start_turn} (OP: {turn})  "
     text += level_str + "  "
     text += item_str + "  "
+    if player.rescue_stage:
+        text += f"ATK: {d.current_player_attack(player):g}  "
     return text
 
 
@@ -177,6 +179,20 @@ class FieldGlyph(NamedTuple):
     dim: bool = False
 
 
+def member_glyphs(player: d.Player) -> List[FieldGlyph]:
+    dx, dy = player.facing
+    # Screen coordinates: for north, left-back is (-1, +1).
+    left_x, left_y = dy, -dx
+    return [
+        FieldGlyph(player.x - dx + side * left_x,
+                   player.y - dy + side * left_y,
+                   d.MEMBER_GLYPHS[member.role], "member", bold=True)
+        for member, side in zip(player.members, (1, -1))
+        if 0 <= player.x - dx + side * left_x < d.FIELD_WIDTH
+        and 0 <= player.y - dy + side * left_y < d.FIELD_HEIGHT
+    ]
+
+
 def player_appearance(player: d.Player) -> Tuple[str, Optional[str]]:
     """Foreground and background tones for '@'.
 
@@ -204,6 +220,8 @@ def preview_entity_glyphs(
 ) -> List[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
     known_types = known_types or set()
+    if isinstance(entity, d.PartyMember):
+        return [FieldGlyph(entity.x, entity.y, d.MEMBER_GLYPHS[entity.role], "member", bold=True)]
     if isinstance(entity, d.Collapse):
         return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if (
@@ -265,6 +283,8 @@ def revealed_entity_glyphs(
     Empty when the entity stays hidden (an unknown monster while the whole
     map is already shown, or a treasure that is still locked).
     """
+    if isinstance(entity, d.PartyMember):
+        return [FieldGlyph(entity.x, entity.y, d.MEMBER_GLYPHS[entity.role], "member", bold=True)]
     if isinstance(entity, d.Collapse):
         return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if isinstance(entity, d.Companion):

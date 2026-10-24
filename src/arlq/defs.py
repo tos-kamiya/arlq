@@ -1,3 +1,4 @@
+from math import ceil
 from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
 TILE_WIDTH: int = 12
@@ -7,7 +8,43 @@ TILE_NUM_Y: int = 3
 FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 # Stages available from the game's UI and command line.
-PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4)
+PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5)
+PARTY_LIMIT = 2
+MONSTER_PARTY_LIMIT = 5
+BARD_EXP_MULTIPLIER = 2
+KNIGHT_EXP_MULTIPLIER = 0.5
+PARADIN_ATTACK_BONUS = 1
+HEALER_MOVE_COST = 0.5
+HEALER_RESPAWN_COST = 2
+STAGE5_START_LEVEL = 1
+STAGE5_FLOORS = 4
+# Weights for parties of 1, 2, 3, 4, and 5 monsters, by floor.
+STAGE5_PARTY_SIZE_WEIGHTS = (
+    (55, 25, 15, 5, 0),
+    (30, 35, 25, 10, 0),
+    (20, 30, 30, 15, 5),
+    (10, 20, 30, 25, 15),
+)
+# Each roster entry (character, count, rank) supplies party leaders.
+# Additional members come from the floor's ordinary support pool below.
+STAGE5_ROSTER = (
+    (("a", 24, 1), ("A", 4, 1), ("b", 10, 1), ("c", 3, 1), ("d", 3, 1), ("e", 1, 1)),
+    (("a", 6, 2), ("A", 3, 1), ("b", 10, 2), ("c", 5, 2), ("d", 7, 2), ("g", 3, 1), ("k", 3, 1), ("w", 1, 1)),
+    (("a", 8, 2), ("b", 8, 2), ("c", 6, 2), ("d", 8, 2), ("g", 3, 1), ("k", 4, 1), ("w", 3, 1)),
+    (("b", 12, 2), ("c", 5, 2), ("d", 6, 2), ("k", 5, 1), ("w", 4, 2)),
+)
+STAGE5_SUPPORT_POOLS = (
+    (("a", 1),),
+    (("a", 1), ("w", 1), ("w", 1)),
+    (("w", 1), ("k", 1), ("w", 1), ("k", 1)),
+    (("w", 1), ("k", 1), ("w", 1), ("k", 1)),
+)
+STAGE5_MEMBER_FLOORS = (("Bard", "Healer"), ("Rogue", "Knight"), ("Paradin",), ())
+STAGE5_HAZARD_COUNTS = ((0, 0), (6, 3), (9, 5), (12, 6))
+MEMBER_GLYPHS = {
+    "Bard": "B", "Healer": "H", "Rogue": "R",
+    "Knight": "K", "Paradin": "Q", "Noble": "N",
+}
 # Stages that feature elves and share the multi-floor progress state.
 ELF_STAGES = frozenset({3, 4})
 # Stage 1 is a smaller, introductory map: it walls off this many tile
@@ -301,6 +338,14 @@ class Companion(Entity):
         self.revealed: bool = False
 
 
+class PartyMember(Entity):
+    """A permanent recruit, separate from the temporary companion slot."""
+
+    def __init__(self, x: int, y: int, role: str):
+        super().__init__(x, y)
+        self.role = role
+
+
 class Monster(Entity):
     """
     Class representing monster entities in the game.
@@ -385,11 +430,11 @@ class Player(Entity):
     """
 
     def __init__(
-        self, x: int, y: int, level: int, lp: int, companion: Optional[Companion] = None
+        self, x: int, y: int, level: float, lp: float, companion: Optional[Companion] = None
     ):
         super().__init__(x, y)
-        self.level: int = level
-        self.lp: int = lp
+        self.level: float = level
+        self.lp: float = lp
         self.item: Optional[str] = None
         self.item_uses: int = 0
         self.item_taken_from: Optional[str] = None
@@ -408,6 +453,11 @@ class Player(Entity):
         self.lifebringer_lp_max: int = LP_MAX
         self.current_floor: int = 0
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
+        self.members: List[PartyMember] = []
+        self.facing: Point = (0, -1)
+        self.rogue_warning: Optional[Tuple[Point, Point]] = None
+        self.rescue_stage = False
+        self.noble_returned = False
         # (floor, x, y) of the monster involved in the most recent monster
         # contact (win, loss, or a no-combat gatekeeper like High Elf), or
         # None. Losing combat against the same (floor, x, y) twice in a row,
@@ -426,6 +476,8 @@ class Player(Entity):
 
     @property
     def stage_won(self) -> bool:
+        if self.rescue_stage:
+            return self.noble_returned
         return self.boss_defeated and self.treasure_collected
 
 
@@ -891,7 +943,7 @@ def apply_feed(player: Player, feed: int) -> None:
 
 
 def apply_respawn_penalty(player: Player) -> None:
-    player.lp -= LP_RESPAWN_COST
+    player.lp -= HEALER_RESPAWN_COST if has_member(player, "Healer") else LP_RESPAWN_COST
     player.lp = max(LP_RESPAWN_MIN, player.lp)
 
 
@@ -920,13 +972,43 @@ def grant_defeat_level(player: Player, effect: Optional[str]) -> None:
         player.level += 10 if effect == EFFECT_SPECIAL_EXP else 1
 
 
-def current_player_attack(player: Player, stage_num: int = 0) -> int:
+def has_member(player: Player, role: str) -> bool:
+    return any(member.role == role for member in player.members)
+
+
+def experience_multiplier(player: Player) -> float:
+    return (BARD_EXP_MULTIPLIER if has_member(player, "Bard") else 1) * (
+        KNIGHT_EXP_MULTIPLIER if has_member(player, "Knight") else 1
+    )
+
+
+def movement_lp_cost(player: Player) -> float:
+    return HEALER_MOVE_COST if has_member(player, "Healer") else 1
+
+
+def caltrop_lp_damage(player: Player) -> float:
+    return CALTROP_LP_DAMAGE / 2 if has_member(player, "Paradin") else CALTROP_LP_DAMAGE
+
+
+def current_player_attack(player: Player, stage_num: int = 0) -> float:
     """
     Player's current attack power: level and equipped item, plus permanent
     bonuses from the Collector's flag and the Javelin Elf follower. Bonuses
     apply in every stage, and this shared calculation keeps combat and display
     consistent. `stage_num` is retained for existing callers.
     """
+    if player.rescue_stage:
+        value = player.level
+        if player.item == ITEM_SWORD_X1_5:
+            value *= 1.5
+        elif player.item == ITEM_SWORD_CURSED:
+            value *= 3
+        elif player.item == ITEM_POISONED:
+            value = ceil(value / 3)
+        multiplier = 1.0 + int(has_member(player, "Knight"))
+        if has_member(player, "Paradin"):
+            multiplier += PARADIN_ATTACK_BONUS
+        return value * multiplier
     if player.item == ITEM_SWORD_X1_5:
         value = player.level * 3 // 2
     elif player.item == ITEM_SWORD_CURSED:
