@@ -92,9 +92,9 @@ def test_fifo_noble_lock_and_companion_slot_are_independent():
     "roles, gain",
     [
         ((), 2),
-        (("Bard",), 2),
+        (("Bard",), 3),
         (("Knight",), 0.5),
-        (("Bard", "Knight"), 2 / 3),
+        (("Bard", "Knight"), 1),
         (("Healer", "Rogue"), 2 / 3),
     ],
 )
