@@ -43,9 +43,9 @@ STAGE5_SUPPORT_POOLS = (
     (("w", 1), ("k", 1), ("w", 1), ("w", 1)),
 )
 STAGE5_MEMBER_FLOORS = (
-    ("Bard", "Healer"),
-    ("Rogue", "Knight"),
-    ("Dangeon Scholar",),
+    ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar"),
+    (),
+    (),
     (),
     (),
 )

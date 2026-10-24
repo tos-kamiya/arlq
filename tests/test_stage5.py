@@ -60,6 +60,20 @@ def test_playground_has_all_recruits_and_connected_rank2_bosses():
         "Knight",
         "Dangeon Scholar",
     }
+    assert {
+        e.role for e in floors[0].entities if isinstance(e, d.PartyMember)
+    } == {
+        "Bard",
+        "Healer",
+        "Rogue",
+        "Knight",
+        "Dangeon Scholar",
+    }
+    assert not any(
+        isinstance(e, d.PartyMember)
+        for floor in floors[1:]
+        for e in floor.entities
+    )
     assert not any(
         isinstance(e, d.Monster) and e.tribe.is_elf for f in floors for e in f.entities
     )
@@ -70,6 +84,14 @@ def test_playground_has_all_recruits_and_connected_rank2_bosses():
     assert {(e.tribe.char, e.empowered) for e in party} >= {("F", 2), ("V", 2)}
     assert 2 <= len(party) <= 5
     assert sum(d.monster_level(e) for e in party) >= 290
+
+
+def test_stage5_member_progress_has_no_floor_numbers():
+    _, player = state()
+    player.known_member_floors = {"Bard": 1, "Rogue": 2}
+    assert [
+        label for label, _ in display.stage5_member_progress_marks(player)
+    ] == ["B", "H", "R", "K", "D", "N"]
 
 
 def test_fifo_noble_lock_and_companion_slot_are_independent():

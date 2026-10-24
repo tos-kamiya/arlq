@@ -177,9 +177,6 @@ def stage5_member_progress_marks(
     marks = []
     for role in roles:
         label = d.MEMBER_GLYPHS[role]
-        floor = player.known_member_floors.get(role)
-        if floor is not None:
-            label += str(floor)
         marks.append((label, role in player.joined_members))
     return marks
 
