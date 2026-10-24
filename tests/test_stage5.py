@@ -92,13 +92,13 @@ def test_fifo_noble_lock_and_companion_slot_are_independent():
     "roles, gain",
     [
         ((), 2),
-        (("Bard",), 4),
-        (("Knight",), 1),
-        (("Bard", "Knight"), 2),
-        (("Healer", "Rogue"), 2),
+        (("Bard",), 2),
+        (("Knight",), 0.5),
+        (("Bard", "Knight"), 2 / 3),
+        (("Healer", "Rogue"), 2 / 3),
     ],
 )
-def test_group_rewards_are_summed_then_multiplied(roles, gain):
+def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain):
     current, player = state(roles, lp=10)
     current.entities = [monster(3, 2, "b"), monster(4, 2, "a")]
     feed = sum(e.tribe.feed for e in current.entities)

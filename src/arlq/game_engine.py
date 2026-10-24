@@ -1021,14 +1021,18 @@ def _resolve_party_contact(
         monster.tribe.char
         for monster in sorted(party, key=lambda monster: (monster.y, monster.x))
     )
-    experience = sum(
-        10
-        if monster.tribe.effect == d.EFFECT_SPECIAL_EXP
-        else 0
-        if monster.tribe.effect == d.EFFECT_LEVEL_REDUCE
-        else 1
-        for monster in party
-    ) * d.experience_multiplier(player)
+    experience = (
+        sum(
+            10
+            if monster.tribe.effect == d.EFFECT_SPECIAL_EXP
+            else 0
+            if monster.tribe.effect == d.EFFECT_LEVEL_REDUCE
+            else 1
+            for monster in party
+        )
+        / (len(player.members) + 1)
+        * d.experience_multiplier(player)
+    )
     feed = sum(monster.tribe.feed for monster in party)
     boss = next((monster for monster in party if monster.tribe.char == "F"), None)
     # Resolve ordinary drops first, the unique item/effect last. All defeated
