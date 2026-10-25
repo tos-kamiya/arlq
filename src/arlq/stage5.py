@@ -500,23 +500,49 @@ def _in_detached_terminal_room(current: Floor, point: d.Point) -> bool:
     )
 
 
-def _place_detached_room_monster(
+def _place_detached_room_monsters(
     current: Floor, room_components: tuple[set[d.Point], ...]
-) -> d.Monster:
+) -> list[d.Monster]:
     detached = next(
         (component for component in room_components if len(component) == 1), None
     )
     if detached is None:
         raise ValueError("Stage 5 floor needs one detached terminal room")
     points = [point for point in _open_points(current) if tile_at(point) in detached]
-    if not points:
-        raise RuntimeError("no open cell in detached Stage 5 room")
-    char = rand.choice(("b", "c", "A"))
-    monster = d.Monster(
-        *rand.choice(points), d.CHAR_TO_MONSTER_TRIBE[char], empowered=1
-    )
-    current.entities.append(monster)
-    return monster
+    if len(points) < 2:
+        raise RuntimeError("detached Stage 5 room needs two open cells")
+    existing_monsters = [
+        entity for entity in current.entities if isinstance(entity, d.Monster)
+    ]
+    points = [
+        point
+        for point in points
+        if all(
+            max(abs(point[0] - monster.x), abs(point[1] - monster.y)) > 1
+            for monster in existing_monsters
+        )
+    ]
+    point_pairs = [
+        (first, second)
+        for index, first in enumerate(points)
+        for second in points[index + 1 :]
+        if max(abs(first[0] - second[0]), abs(first[1] - second[1])) > 1
+    ]
+    if not point_pairs:
+        raise RuntimeError("detached Stage 5 room needs two separated open cells")
+    points = rand.choice(point_pairs)
+    candidates = [("b", 1), ("b", 2), ("c", 1), ("A", 1)]
+    roster = []
+    for _ in range(2):
+        choice = rand.choice(candidates)
+        candidates.remove(choice)
+        roster.append(choice)
+    monsters = [
+        d.Monster(*point, d.CHAR_TO_MONSTER_TRIBE[char], empowered=empowered)
+        for point, (char, empowered) in zip(points, roster, strict=True)
+    ]
+    current.entities.extend(monsters)
+    return monsters
 
 
 def _sync_wyrm_barriers(current: Floor) -> None:
@@ -774,7 +800,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 )
             current.d_gates[gate] = "."
             current.field[gate[1]][gate[0]] = d.CHAR_HIDDEN_D_GATE
-        _place_detached_room_monster(current, room_components)
+        _place_detached_room_monsters(current, room_components)
         member_roles = list(d.STAGE5_MEMBER_FLOORS[index])
         if index == 0:
             for _ in range(len(member_roles) - 4):

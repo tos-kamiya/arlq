@@ -672,14 +672,18 @@ def test_horizontal_adjacency_does_not_join_monster_parties():
     assert stage5.monster_party(current, horizontal) == [horizontal]
 
 
-def test_detached_terminal_room_receives_one_random_monster():
+def test_detached_terminal_room_receives_two_distinct_random_monsters():
     current, _ = state()
-    monster = stage5._place_detached_room_monster(
+    monsters = stage5._place_detached_room_monsters(
         current, ({(0, 0), (1, 0)}, {(2, 0)})
     )
-    assert monster.tribe.char in {"b", "c", "A"}
-    assert stage5.tile_at((monster.x, monster.y)) == (2, 0)
-    assert current.entities == [monster]
+    assert len(monsters) == 2
+    assert {(monster.tribe.char, monster.empowered) for monster in monsters} <= {
+        ("b", 1), ("b", 2), ("c", 1), ("A", 1)
+    }
+    assert len({(monster.x, monster.y) for monster in monsters}) == 2
+    assert all(stage5.tile_at((monster.x, monster.y)) == (2, 0) for monster in monsters)
+    assert current.entities == monsters
 
 
 def test_seed_reproduces_layout_and_groups():
