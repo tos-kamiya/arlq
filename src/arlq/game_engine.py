@@ -910,7 +910,7 @@ def _resolve_monster_contact(
     """Resolve contact with a monster, including early-ending elf encounters."""
     ch = entity.tribe.char
     if not entity.tribe.is_elf:
-        player.last_encounter_party = ch
+        player.last_encounter_party = d.monster_variant_label(ch, entity.empowered)
     contact_key = (floor[0], entity.x, entity.y)
     if player.item == d.ITEM_SWORD_CURSED:
         player.lp -= d.CURSED_SWORD_LP_COST
@@ -1068,7 +1068,7 @@ def _resolve_party_contact(
     party = stage5.monster_party(current, entity)
     enemy_party = [monster for monster in party if not monster.tribe.is_elf]
     composition = "".join(
-        monster.tribe.char
+        d.monster_variant_label(monster.tribe.char, monster.empowered)
         for monster in sorted(enemy_party, key=lambda monster: (monster.y, monster.x))
     )
     if composition:
