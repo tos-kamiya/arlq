@@ -112,6 +112,7 @@
     "-- Noble cannot leave. No more members can join.": "-- Nobleは脱退できないため、新たなメンバーは加入できない。",
     "-- {joined} joined; {departed} left the party.": "-- {joined}が加入し、{departed}はパーティーを離れた。",
     "-- {joined} joined your party.": "-- {joined}がパーティーに加入した。",
+    "-- Your party is full. No member joined.": "-- パーティーが満員のため、メンバーは加入しなかった。",
     "-- Your party lost and respawned together.": "-- 敗北！ パーティー全員でリスポーンした。",
     "-- Defeated monster party ({composition})!": "-- 敵パーティー（{composition}）を倒した！",
     "-- Noble returned safely!": "-- Nobleと無事に帰還した！",

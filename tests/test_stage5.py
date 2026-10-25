@@ -251,20 +251,21 @@ def test_departed_member_respawns_near_departure_after_long_delay():
     assert "Bard" not in player.member_respawns
 
 
-def test_fifo_noble_lock_and_companion_slot_are_independent():
-    current, player = state()
+def test_stage5_does_not_replace_two_members_when_a_third_candidate_is_met():
+    current, player = state(("Bard", "Healer"))
     companion = d.Companion(2, 2, d.CHAR_TO_TRIBE["n"])
     player.companion = companion
-    for role in ("Bard", "Healer", "Noble", "Knight", "Rogue"):
-        recruit = d.PartyMember(3, 2, role)
-        current.entities.append(recruit)
-        step(current, player)
-        player.x, player.y = 2, 2
-    assert [e.role for e in player.members] == ["Noble", "Knight"]
-    assert sorted(
-        e.role for e in current.entities if isinstance(e, d.PartyMember)
-    ) == ["Rogue"]
-    assert set(player.member_respawns) == {"Bard", "Healer"}
+    recruit = d.PartyMember(3, 2, "Rogue")
+    current.entities.append(recruit)
+    members_before = list(player.members)
+    joined_before = set(player.joined_members)
+
+    step(current, player)
+
+    assert player.members == members_before
+    assert recruit in current.entities
+    assert player.joined_members == joined_before
+    assert not player.member_respawns
     assert player.companion is companion
 
 

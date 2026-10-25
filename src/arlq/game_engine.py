@@ -1222,6 +1222,7 @@ def _resolve_contact(
             respawn_delay=(
                 d.STAGE5_MEMBER_RESPAWN_TURNS if stage_num == 5 else 0
             ),
+            replace_departed=stage_num != 5,
         )
         has_scholar = d.has_member(player, "Dangeon Scholar")
         if had_scholar != has_scholar:
