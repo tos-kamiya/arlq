@@ -206,10 +206,10 @@ def test_stage5_member_progress_shows_candidates_before_they_depart():
     ] == ["B1", "H", "R2", "K", "D", "G"]
 
 
-def test_departed_member_does_not_respawn_after_long_delay():
+def test_stage6_recycles_departed_member_on_their_origin_floor():
     current, player = state(("Bard", "Healer"))
     lower, _ = state()
-    player.joined_members.update(("Bard", "Healer"))
+    player.members[0].origin_floor = 0
     recruit = d.PartyMember(3, 2, "Rogue", origin_floor=1)
     current.entities.append(recruit)
 
@@ -219,29 +219,12 @@ def test_departed_member_does_not_respawn_after_long_delay():
         recruit,
         recycle_departed=True,
         floors=[lower, current],
-        floor_index=1,
-        turn=40,
-        respawn_delay=d.STAGE5_MEMBER_RESPAWN_TURNS,
     )
 
-    assert not any(
+    assert [member.role for member in player.members] == ["Healer", "Rogue"]
+    assert any(
         isinstance(entity, d.PartyMember) and entity.role == "Bard"
-        for entity in current.entities
-    )
-    assert "Bard" not in player.member_respawns
-    assert display.stage5_member_progress_marks(player)[0] == ("B-", False)
-
-    stage5.process_member_respawns(
-        [lower, current], player, 39 + d.STAGE5_MEMBER_RESPAWN_TURNS
-    )
-    assert "Bard" not in player.member_respawns
-    stage5.process_member_respawns(
-        [lower, current], player, 40 + d.STAGE5_MEMBER_RESPAWN_TURNS
-    )
-    assert not any(
-        isinstance(entity, d.PartyMember) and entity.role == "Bard"
-        for floor in (lower, current)
-        for entity in floor.entities
+        for entity in lower.entities
     )
 
 
@@ -258,7 +241,6 @@ def test_stage5_replaces_oldest_member_without_respawning_them():
     assert [member.role for member in player.members] == ["Healer", "Rogue"]
     assert recruit not in current.entities
     assert player.joined_members == {"Bard", "Healer", "Rogue"}
-    assert not player.member_respawns
     assert not any(
         isinstance(entity, d.PartyMember) and entity.role == "Bard"
         for entity in current.entities

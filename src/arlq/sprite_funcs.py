@@ -997,7 +997,7 @@ class SpriteUI(PygletUI):
         fill = round(width * self._lp_gauge_ratio(player))
         # Translucent, so no part lies over another: the frame is four
         # strips, and the fill and the empty backing sit side by side.
-        outer_w, outer_h = width + 2 * frame, height + 2 * frame
+        outer_w = width + 2 * frame
         for x, y, w, h, color in (
                 (left - frame, top - frame, outer_w, frame, LP_GAUGE_FRAME),
                 (left - frame, top + height, outer_w, frame, LP_GAUGE_FRAME),

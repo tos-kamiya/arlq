@@ -27,23 +27,6 @@ STAGE5_PARTY_SIZE_WEIGHTS = (
     (45, 30, 25, 0, 0),
 )
 # Each roster entry (character, count, rank) supplies party leaders.
-# The deep-floor roster is spread across four floors to reduce crowding.
-# One fewer leader offsets the extra detached-room monster on the fifth floor;
-# floor 5 also has the empowered wyrms.
-STAGE5_DEEP_ROSTER = (
-    ("a", 4, 2),
-    ("A", 2, 1),
-    ("b", 11, 2),
-    ("c", 6, 2),
-    ("C", 2, 1),
-    ("d", 8, 2),
-    ("f", 2, 2),
-    ("g", 4, 1),
-    ("k", 2, 1),
-    ("w", 1, 1),
-    ("X", 1, 1),
-    ("E", 1, 1),
-)
 STAGE5_ROSTER = (
     (
         ("a", 24, 1), ("A", 2, 1), ("b", 9, 1), ("c", 5, 1),
@@ -160,7 +143,6 @@ LP_LOW_THRESHOLD: int = 20  # LP bar/player "@" turn red at or below this
 
 MONSTER_RESPAWN_INTERVAL: int = 65
 MARKSMAN_RESPAWN_INTERVAL: int = 3 * MONSTER_RESPAWN_INTERVAL
-STAGE5_MEMBER_RESPAWN_TURNS: int = 3 * MONSTER_RESPAWN_INTERVAL
 SWORD_USES: int = 3
 CURSED_SWORD_LP_COST: int = 10
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
@@ -540,8 +522,6 @@ class Player(Entity):
         self.known_member_floors: Dict[str, int] = {}
         self.joined_members: Set[str] = set()
         self.seen_members: Set[str] = set()
-        # role -> (floor index, last position, turn when the member returns)
-        self.member_respawns: Dict[str, Tuple[int, int, int, int]] = {}
         # Shared progress for the elf stages, including Stage 3's W flag.
         self.elf_stage_flags: int = 0
         self.lifebringer_lp_max: int = LP_MAX

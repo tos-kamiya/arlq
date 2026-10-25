@@ -221,9 +221,6 @@ def recruit(
     member: d.PartyMember,
     recycle_departed: bool = False,
     floors: list[Floor] | None = None,
-    floor_index: int = 0,
-    turn: int = 0,
-    respawn_delay: int = 0,
     replace_departed: bool = True,
 ) -> str:
     if len(player.members) >= d.PARTY_LIMIT and not replace_departed:
@@ -243,58 +240,27 @@ def recruit(
         player.seen_members.add(departed.role)
         player.known_member_floors.pop(departed.role, None)
     current.entities.remove(member)
-    player.member_respawns.pop(member.role, None)
     player.members.append(member)
     if departed is not None and recycle_departed:
-        if respawn_delay > 0:
-            # Stage 5 departures are permanent; only Stage 6 recycles them.
-            player.member_respawns.pop(departed.role, None)
-        else:
-            target = current
-            if (
-                floors is not None
-                and departed.origin_floor is not None
-                and 0 <= departed.origin_floor < len(floors)
-            ):
-                target = floors[departed.origin_floor]
-            choices = [
-                point
-                for point in _open_points(target)
-                if target is not current or point != (player.x, player.y)
-            ]
-            departed.x, departed.y = rand.choice(choices)
-            target.entities.append(departed)
+        target = current
+        if (
+            floors is not None
+            and departed.origin_floor is not None
+            and 0 <= departed.origin_floor < len(floors)
+        ):
+            target = floors[departed.origin_floor]
+        choices = [
+            point
+            for point in _open_points(target)
+            if target is not current or point != (player.x, player.y)
+        ]
+        departed.x, departed.y = rand.choice(choices)
+        target.entities.append(departed)
     if departed is not None:
         return trp("-- {joined} joined; {departed} left the party.", 5).format(
             joined=member.role, departed=departed.role
         )
     return trp("-- {joined} joined your party.", 5).format(joined=member.role)
-
-
-def process_member_respawns(
-    floors: list[Floor], player: d.Player, turn: int, current_floor: int = -1
-) -> None:
-    for role, (floor_index, x, y, due_turn) in list(player.member_respawns.items()):
-        if turn < due_turn:
-            continue
-        target = floors[floor_index]
-        points = [
-            point
-            for point in _open_points(target)
-            if floor_index != current_floor or point != (player.x, player.y)
-        ]
-        if not points:
-            continue
-        distance = min(abs(px - x) + abs(py - y) for px, py in points)
-        nearby = [
-            point
-            for point in points
-            if abs(point[0] - x) + abs(point[1] - y) <= distance + 1
-        ]
-        member = d.PartyMember(*rand.choice(nearby), role, origin_floor=floor_index)
-        target.entities.append(member)
-        player.known_member_floors[role] = floor_index + 1
-        del player.member_respawns[role]
 
 
 def set_scholar_stairs(floors: list[Floor], active: bool) -> None:

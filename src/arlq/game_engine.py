@@ -1212,13 +1212,8 @@ def _resolve_contact(
             current,
             player,
             entity,
-            recycle_departed=stage_num in (5, 6),
+            recycle_departed=stage_num == 6,
             floors=floors,
-            floor_index=floor[0],
-            turn=turn,
-            respawn_delay=(
-                d.STAGE5_MEMBER_RESPAWN_TURNS if stage_num == 5 else 0
-            ),
             replace_departed=True,
         )
         if trace is not None:
@@ -1737,8 +1732,6 @@ def _process_multi_floor_turn(
         floors, player, floor, queue, turn, trace=trace, stage_num=stage_num
     )
     if stage_num in (5, 6):
-        if stage_num == 5:
-            stage5.process_member_respawns(floors, player, turn, floor[0])
         for floor_data in floors:
             stage5.normalize_parties(
                 floor_data,
