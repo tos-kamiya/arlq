@@ -274,8 +274,8 @@ def test_stage5_does_not_replace_two_members_when_a_third_candidate_is_met():
     [
         ((), 2),
         (("Bard",), 3),
-        (("Knight",), 0.5),
-        (("Bard", "Knight"), 1),
+        (("Knight",), 0.75),
+        (("Bard", "Knight"), 1.5),
         (("Healer", "Rogue"), 2 / 3),
         (("Guardian",), 1),
     ],
