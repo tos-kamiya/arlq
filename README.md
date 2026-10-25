@@ -193,7 +193,7 @@ Stage 2 also features empowered Bison (`b'`).
 | **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
 | **g** Golem         | When defeated, rocks scatter up to two tiles in each of the four diagonal directions around you. It yields no food.                                                                        |
 | **H** High Elf      | In Stage 2, a passive elf: contact reveals it without combat or a reward. |
-| **X** Caltrop Plant | Contacting it causes caltrops (`x`) to be scattered around you.                                                         |
+| **X** Caltrop Plant | Contacting it scatters caltrops (`x`) around you in a checkerboard pattern centered on the contact cell, consistent at every location. |
 
 Queued respawns are processed every 65 turns. Rare Erebus (`E`) and the Vortex
 (`V`) can return on any Stage 4 floor. The Caltrop Plant (`X`), which appears

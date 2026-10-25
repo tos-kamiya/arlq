@@ -490,7 +490,7 @@ def spread_caltrops(
     ):
         if (
             (x, y) not in protected_points
-            and (x + y) % 2 == 0
+            and ((x - ox) + (y - oy)) % 2 == 0
             and field[y][x] in (d.CHAR_FLOOR, d.CHAR_WALL)
         ):
             field[y][x] = d.CHAR_CALTROP
