@@ -86,7 +86,7 @@ it is large enough again.
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a five-floor party rescue dungeon; Stage 6 is a compact member-ability trial. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a four-floor boss and treasure dungeon; Stage 6 is a compact member-ability trial. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -241,7 +241,7 @@ Stage 4 has five connected floors and features elves, including some new ones. N
 | Display & Name | Description |
 | -------------- | ----------- |
 | **E** Rare Erebus | On defeat, reduces your level to two thirds, rounded down, with a minimum of 1. |
-| **k** Marksman | Shoots arrows along a horizontal or vertical line for 4 LP damage per hit, but not from an adjacent cell. Walls, stairs, companions, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. |
+| **k** Marksman | Shoots arrows along a horizontal or vertical line for 4 LP damage per hit, but not from an adjacent cell. Walls, stairs, companions, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. Respawns on a 195-turn cycle after defeat. |
 
 #### Traps
 
@@ -262,32 +262,31 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | **L** Lifebringer Elf | Each meeting cures poison, raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then disappears and returns on a random floor at a later 65-turn respawn tick. |
 | **S** Sylvan Elf | Gives you fairy nectar. Companions recruited afterward, except `l`, stay with you 1.25 times longer. |
 
-### Stage 5 (five-floor party rescue)
+### Stage 5 (four-floor boss and treasure dungeon)
 
-Run `--stage 5` to explore five floors starting at level 1. The seed determines the maze and enemy placement. The number of sealed rooms varies by floor, with short wall spurs added from floor 3 onward. The final floor has barriers scattered across 5% of its open cells (Stage 4's final floor uses 10%). There are no elves. A Loop Companion (`l`) appears on each floor. All six recruit candidates are somewhere on floor 1 and show their professions as soon as they enter your field of view. The lower edge of the field lists the members, and a member's marker becomes bright after they have joined your party. Touch a candidate to recruit them; two members fit alongside the existing temporary companion slot. Recruiting a third returns the earliest recruit to a random location on floor 1. The earlier member appears diagonally behind to the left, the later one to the right. Human characters currently use letter markers in the GUI too.
+Run `--stage 5` to explore four floors starting at level 1. The seed determines the maze and enemy placement. The number of sealed rooms varies by floor, with short wall spurs added from floor 3 onward. Each floor has one terminal room separated from the room graph, with one additional `b`, `c`, or `A` chosen at random inside it. There are no elves. A Loop Companion (`l`) appears on each floor. Four of the six recruit candidates are chosen at random and placed across floors 1 and 2; they show their professions as soon as they enter your field of view. The lower edge of the field lists the members, and a member's marker becomes bright after they have joined your party. Touch a candidate to recruit them; two members fit alongside the existing temporary companion slot. Recruiting a third returns the earliest recruit near where they left after 195 turns. Their marker shows the return floor until they rejoin. The earlier member appears diagonally behind to the left, the later one to the right. Human characters currently use letter markers in the GUI too. The final floor has barriers scattered across 5% of its open cells (Stage 4's final floor uses 10%).
 
 | Marker / profession | Ability |
 | --- | --- |
 | `B` Bard | Triple the shared experience gain. |
-| `H` Healer | Reduce normal LP consumption to 0.5 and defeat's LP cost to 2. |
+| `H` Healer | Reduce movement LP consumption to one-third and defeat's LP cost to 2. |
 | `R` Rogue | Stop movement and key repeat before entering a pit, a firing lane, or a rare Erebus (`E`); press again to proceed. Identify adjacent Mimics as `M`, and reveal Golems (`g`) and Caltrop Plants (`X`) in cardinally adjacent cells. |
-| `K` Knight | Add the player's attack power and halve shared experience. |
+| `K` Knight | Triple the player's attack power and halve shared experience. |
 | `D` Dangeon Scholar | Reveal and use an extra stairway on each floor connection, marked `^` and `v` in green. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |
-| `G` Guardian | Reduce the extra LP damage from barriers and caltrops to one-third; movement cost is unchanged. |
+| `G` Guardian | Halve the extra LP damage from barriers and reduce caltrop damage to one-third; movement cost is unchanged. |
 
-Enemies connected horizontally or vertically fight as one party of at most five. The party's monster glyphs are yellow while any member is unidentified; once all are known, they are blue if your attack can beat the group or red if it cannot. If monsters from separate parties end up diagonally adjacent, one is moved away; the `W` and `V'` bosses stay in place. Their attack power and experience are summed; LP reward uses the highest value in the party. Experience is divided among the player and companions, then tripled by Bard or halved by Knight; with both, the player receives 1.5 times the shared amount. Fractional LP and levels are retained internally and shown as whole numbers in the status bar.
+Vertically adjacent monsters fight as one party of at most five; horizontal adjacency does not connect them. Rank 2 and rank 3 monsters can join parties. The party's monster glyphs are yellow while any member is unidentified; once all are known, they are blue if your attack can beat the group or red if it cannot. If monsters from separate parties end up diagonally adjacent, one is moved away; the `W` and `V'` bosses stay in place. Their attack power and experience are summed; LP reward uses the highest value in the party. Experience is divided among the player and companions, then tripled by Bard or halved by Knight; with both, the player receives 1.5 times the shared amount. Fractional LP and levels are retained internally and shown as whole numbers in the status bar.
 
-Defeat `W` and its accompanying `V'` on floor 5 to rearrange the enemies across that floor and erase explored floor and barrier cells. Wall and stair positions remain on the map. Recruit the newly appearing `N` (Noble), then return to floor 1 to win. Treasure is optional and does not end the stage. Noble provides no bonus and cannot leave, allowing at most one further member change after rescue. Members respawn with the player after defeat. Stage 5 also includes Golems (`g`), Erebus (`e`), rare Erebus (`E`), and Caltrop Plants (`X`); defeating a Caltrop Plant does not scatter caltrops in this stage. Pits drop you to the next floor. Balance remains provisional.
+Defeat the single `W` on floor 4 to rearrange the remaining enemies across that floor and erase explored floor and barrier cells. Wall and stair positions remain on the map. Its party may include zero to two random empowered escorts, but never `W'` or `V'`. A Mimic imitating `W` also appears and activates when the boss is defeated. You need a Knight or a sword obtained from a Chimera (`c` or `C`) to defeat the boss. The unlocked treasure chest appears in a different room section; take it to win. Members respawn with the player after defeat. Stage 5 also includes Golems (`g`), Erebus (`e`), rare Erebus (`E`), and Caltrop Plants (`X`); defeating a Caltrop Plant does not scatter caltrops in this stage. Pits drop you to the next floor. Balance remains provisional.
 
-Floors 2–5 share the same ordinary monster species, ranks, and base counts, except for empowered Wyrms (`w'`): none appear on floors 2–3, and two appear on floors 4–5. The base counts for Chimera (`c`) and High Chimera (`C`) are 1.5 times their previous values, rounded up. Each floor connection has two ordinary stair pairs; a Dangeon Scholar reveals and enables one additional hidden pair. The stairs are placed in separate room sections where possible. Larger enemy parties become more likely on deeper floors; normal party sizes use these probabilities. Rank-2 monsters marked with an apostrophe always fight alone, except for the boss pair `W` and `V'`. Floor 1 has two level-25 `f` monsters that are too strong to defeat at the start; they may join parties. Floors 2–5 each have two solitary `f'` monsters. Two A's appear on every floor. Wyrms (`w` and `W`) raise barriers in their surrounding eight cells when those cells are unoccupied. Golems (`g`) and Marksmen (`k`) on floors 2–5 spawn alone; Golems are kept apart from other monsters, and floor 2 Marksmen are also kept apart. Monsters may touch walls and block narrow passages.
+Floors 2–4 share the same ordinary monster species, ranks, and base counts, except for empowered Wyrms (`w'`): none appear on floors 2–3, and two appear on floor 4. The base counts for Chimera (`c`) and High Chimera (`C`) are 1.5 times their previous values, rounded up. Each floor connection has two ordinary stair pairs; a Dangeon Scholar reveals and enables one additional hidden pair. The stairs are placed in separate room sections where possible. Larger enemy parties become more likely on deeper floors; normal party sizes use these probabilities. Extra party members are chosen from `a`, `f`, `b`, and `e` at twice the weight of `w` and `k`; rank-2 monsters can appear in ordinary parties. The final boss may have up to two random empowered escorts. Floor 1 has two level-25 `f` monsters that are too strong to defeat at the start; they may join parties. Floors 2–4 each have two `f'` monsters. Two A's appear on every floor. Wyrms (`w` and `W`) raise barriers in their surrounding eight cells when those cells are unoccupied. Golems (`g`) appear once on floor 1 and four times on floors 2–4. They are rank 1, spawn alone, and are kept apart from other monsters. Floor 2 Marksman leaders (`k`) spawn alone and are kept apart; `k` can also appear as an extra party member. Monsters may touch walls and block narrow passages.
 
 | Floor | 1 member | 2 members | 3 members | 4 members | 5 members |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 55% | 25% | 15% | 5% | 0% |
-| 2 | 30% | 35% | 25% | 10% | 0% |
-| 3 | 20% | 30% | 30% | 15% | 5% |
-| 4 | 10% | 20% | 30% | 25% | 15% |
-| 5 | 5% | 15% | 25% | 30% | 25% |
+| 1 | 70% | 22% | 7% | 1% | 0% |
+| 2 | 50% | 30% | 15% | 4% | 1% |
+| 3 | 40% | 30% | 20% | 8% | 2% |
+| 4 | 30% | 30% | 22% | 13% | 5% |
 
 ### Stage 6 (member-ability trial)
 

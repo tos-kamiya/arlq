@@ -13,62 +13,74 @@ PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
 BARD_EXP_MULTIPLIER = 3
 KNIGHT_EXP_MULTIPLIER = 0.5
-HEALER_MOVE_COST = 0.5
+HEALER_MOVE_COST = 1 / 3
 HEALER_RESPAWN_COST = 2
 STAGE5_START_LEVEL = 1
-STAGE5_FLOORS = 5
+STAGE5_FLOORS = 4
 # Weights for parties of 1, 2, 3, 4, and 5 monsters, by floor.
 STAGE5_PARTY_SIZE_WEIGHTS = (
-    (55, 25, 15, 5, 0),
-    (30, 35, 25, 10, 0),
-    (20, 30, 30, 15, 5),
-    (10, 20, 30, 25, 15),
-    (5, 15, 25, 30, 25),
+    (70, 22, 7, 1, 0),
+    (50, 30, 15, 4, 1),
+    (40, 30, 20, 8, 2),
+    (30, 30, 22, 13, 5),
 )
 # Each roster entry (character, count, rank) supplies party leaders.
-# Floors 2-5 share a roster; party-size probabilities still vary by floor.
+# Floors 2-3 share a roster; floor 4 uses that roster plus empowered wyrms.
 # Additional members come from the floor's ordinary support pool below.
 STAGE5_DEEP_ROSTER = (
     ("a", 4, 2),
     ("A", 2, 1),
-    ("b", 10, 2),
+    ("b", 11, 2),
     ("c", 6, 2),
     ("C", 2, 1),
-    ("d", 7, 2),
+    ("d", 8, 2),
     ("f", 2, 2),
-    ("g", 3, 1),
+    ("g", 4, 1),
     ("k", 2, 1),
     ("w", 1, 1),
     ("X", 1, 1),
     ("E", 1, 1),
 )
-STAGE5_FLOOR4_ROSTER = tuple(
-    entry for entry in STAGE5_DEEP_ROSTER if entry[0] != "w"
-) + (("w", 2, 2),)
-STAGE5_FLOOR5_ROSTER = STAGE5_DEEP_ROSTER + (("w", 2, 2),)
+STAGE5_FINAL_FLOOR_ROSTER = STAGE5_DEEP_ROSTER + (("w", 2, 2),)
 STAGE5_ROSTER = (
-    (("a", 24, 1), ("A", 2, 1), ("b", 8, 1), ("c", 5, 1), ("d", 3, 1), ("e", 1, 1), ("f", 2, 1)),
+    (("a", 24, 1), ("A", 2, 1), ("b", 9, 1), ("c", 5, 1), ("d", 4, 1), ("e", 1, 1), ("f", 2, 1), ("g", 1, 1)),
     STAGE5_DEEP_ROSTER,
     STAGE5_DEEP_ROSTER,
-    STAGE5_FLOOR4_ROSTER,
-    STAGE5_FLOOR5_ROSTER,
+    STAGE5_FINAL_FLOOR_ROSTER,
 )
-STAGE5_BOSS_PARTY = (("W", 1), ("V", 2))
+STAGE5_BOSS_PARTY = (("W", 1),)
+STAGE5_BOSS_ESCORTS = tuple("aAbcCdefkwXE")
 STAGE5_SUPPORT_POOLS = (
     (("a", 1),),
-    (("a", 1), ("w", 1), ("w", 1)),
-    (("a", 1), ("w", 1), ("w", 1)),
-    (("a", 1), ("w", 1), ("w", 1)),
-    (("a", 1), ("w", 1), ("w", 1)),
+    (
+        ("a", 1), ("a", 1),
+        ("f", 1), ("f", 1),
+        ("b", 1), ("b", 1),
+        ("e", 1), ("e", 1),
+        ("w", 1), ("k", 1),
+    ),
+    (
+        ("a", 1), ("a", 1),
+        ("f", 1), ("f", 1),
+        ("b", 1), ("b", 1),
+        ("e", 1), ("e", 1),
+        ("w", 1), ("k", 1),
+    ),
+    (
+        ("a", 1), ("a", 1),
+        ("f", 1), ("f", 1),
+        ("b", 1), ("b", 1),
+        ("e", 1), ("e", 1),
+        ("w", 1), ("k", 1),
+    ),
 )
 STAGE5_MEMBER_FLOORS = (
     ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar", "Guardian"),
     (),
     (),
     (),
-    (),
 )
-STAGE5_HAZARD_COUNTS = ((0, 0), (0, 3), (0, 5), (0, 6), (0, 0))
+STAGE5_HAZARD_COUNTS = ((0, 0), (0, 3), (0, 5), (0, 0))
 MEMBER_GLYPHS = {
     "Bard": "B", "Healer": "H", "Rogue": "R",
     "Knight": "K", "Dangeon Scholar": "D", "Guardian": "G", "Noble": "N",
@@ -122,6 +134,8 @@ LP_WARNING_THRESHOLD: int = 40
 LP_LOW_THRESHOLD: int = 20  # LP bar/player "@" turn red at or below this
 
 MONSTER_RESPAWN_INTERVAL: int = 65
+MARKSMAN_RESPAWN_INTERVAL: int = 3 * MONSTER_RESPAWN_INTERVAL
+STAGE5_MEMBER_RESPAWN_TURNS: int = 3 * MONSTER_RESPAWN_INTERVAL
 SWORD_USES: int = 3
 CURSED_SWORD_LP_COST: int = 10
 NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
@@ -495,6 +509,8 @@ class Player(Entity):
         self.known_elf_floors: Set[str] = set()
         self.known_member_floors: Dict[str, int] = {}
         self.joined_members: Set[str] = set()
+        # role -> (floor index, last position, turn when the member returns)
+        self.member_respawns: Dict[str, Tuple[int, int, int, int]] = {}
         # Shared progress for the elf stages, including Stage 3's W flag.
         self.elf_stage_flags: int = 0
         self.lifebringer_lp_max: int = LP_MAX
@@ -504,6 +520,7 @@ class Player(Entity):
         self.facing: Point = (0, -1)
         self.rogue_warning: Optional[Tuple[Point, Point]] = None
         self.rescue_stage = False
+        self.treasure_stage = False
         self.noble_returned = False
         # (floor, x, y) of the monster involved in the most recent monster
         # contact (win, loss, or a no-combat gatekeeper like High Elf), or
@@ -524,7 +541,7 @@ class Player(Entity):
 
     @property
     def stage_won(self) -> bool:
-        if self.rescue_stage:
+        if self.rescue_stage and not self.treasure_stage:
             return self.noble_returned
         return self.boss_defeated and self.treasure_collected
 
@@ -987,6 +1004,8 @@ def _get_stage5_roster_tribes() -> List[MonsterTribe]:
         variant for floor_pool in STAGE5_SUPPORT_POOLS for variant in floor_pool
     )
     variants.update(STAGE5_BOSS_PARTY)
+    variants.update((char, 2) for char in STAGE5_BOSS_ESCORTS)
+    variants.add(("M", 1))
     return sorted(
         (
             _empowered_strength_tribe(char, rank)
@@ -1083,7 +1102,10 @@ def current_player_attack(player: Player, stage_num: int = 0) -> float:
             value *= 3
         elif player.item == ITEM_POISONED:
             value = ceil(value / 3)
-        multiplier = 1.0 + int(has_member(player, "Knight"))
+        multiplier = (
+            3 if stage_num in (5, 6) and has_member(player, "Knight")
+            else 1.0 + int(has_member(player, "Knight"))
+        )
         return value * multiplier
     if player.item == ITEM_SWORD_X1_5:
         value = player.level * 3 // 2
@@ -1098,6 +1120,8 @@ def current_player_attack(player: Player, stage_num: int = 0) -> float:
         value = (value * 6 + 1) // 5
     if _javelin_follower_active(player):
         value = (value * 5 + 2) // 4
+    if stage_num in (5, 6) and has_member(player, "Knight"):
+        value *= 3
     return value
 
 

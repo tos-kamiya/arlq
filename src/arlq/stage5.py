@@ -1,4 +1,4 @@
-"""Stage 5 rescue stage, member trial, and party rules."""
+"""Stage 5 boss dungeon, member trial, and party rules."""
 
 from . import defs as d
 from .arlq import GameConfig, create_field
@@ -21,7 +21,7 @@ def monster_party(current: Floor, first: d.Monster) -> list[d.Monster]:
 def monster_party_entities(
     entities: list[d.Entity], first: d.Monster
 ) -> list[d.Monster]:
-    """Return the active cardinally connected party containing ``first``."""
+    """Return the active vertically connected party containing ``first``."""
     candidates = {
         (entity.x, entity.y): entity
         for entity in entities
@@ -37,7 +37,7 @@ def monster_party_entities(
             continue
         visited.add(point)
         party.append(entity)
-        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+        for dx, dy in ((0, -1), (0, 1)):
             neighbor = candidates.get((entity.x + dx, entity.y + dy))
             if neighbor is not None:
                 pending.append(neighbor)
@@ -199,6 +199,9 @@ def recruit(
     member: d.PartyMember,
     recycle_departed: bool = False,
     floors: list[Floor] | None = None,
+    floor_index: int = 0,
+    turn: int = 0,
+    respawn_delay: int = 0,
 ) -> str:
     if len(player.members) == d.PARTY_LIMIT and player.members[0].role == "Noble":
         return trp("-- Noble cannot leave. No more members can join.", 5)
@@ -207,27 +210,63 @@ def recruit(
         player.known_member_floors.setdefault(member.role, member.origin_floor + 1)
     departed = player.members.pop(0) if len(player.members) == d.PARTY_LIMIT else None
     current.entities.remove(member)
+    player.member_respawns.pop(member.role, None)
     player.members.append(member)
     if departed is not None and recycle_departed:
-        target = current
-        if (
-            floors is not None
-            and departed.origin_floor is not None
-            and 0 <= departed.origin_floor < len(floors)
-        ):
-            target = floors[departed.origin_floor]
-        choices = [
-            point
-            for point in _open_points(target)
-            if target is not current or point != (player.x, player.y)
-        ]
-        departed.x, departed.y = rand.choice(choices)
-        target.entities.append(departed)
+        if respawn_delay > 0:
+            player.member_respawns[departed.role] = (
+                floor_index,
+                departed.x,
+                departed.y,
+                turn + respawn_delay,
+            )
+            player.known_member_floors[departed.role] = floor_index + 1
+        else:
+            target = current
+            if (
+                floors is not None
+                and departed.origin_floor is not None
+                and 0 <= departed.origin_floor < len(floors)
+            ):
+                target = floors[departed.origin_floor]
+            choices = [
+                point
+                for point in _open_points(target)
+                if target is not current or point != (player.x, player.y)
+            ]
+            departed.x, departed.y = rand.choice(choices)
+            target.entities.append(departed)
     if departed is not None:
         return trp("-- {joined} joined; {departed} left the party.", 5).format(
             joined=member.role, departed=departed.role
         )
     return trp("-- {joined} joined your party.", 5).format(joined=member.role)
+
+
+def process_member_respawns(
+    floors: list[Floor], player: d.Player, turn: int, current_floor: int = -1
+) -> None:
+    for role, (floor_index, x, y, due_turn) in list(player.member_respawns.items()):
+        if turn < due_turn:
+            continue
+        target = floors[floor_index]
+        points = [
+            point
+            for point in _open_points(target)
+            if floor_index != current_floor or point != (player.x, player.y)
+        ]
+        if not points:
+            continue
+        distance = min(abs(px - x) + abs(py - y) for px, py in points)
+        nearby = [
+            point
+            for point in points
+            if abs(point[0] - x) + abs(point[1] - y) <= distance + 1
+        ]
+        member = d.PartyMember(*rand.choice(nearby), role, origin_floor=floor_index)
+        target.entities.append(member)
+        player.known_member_floors[role] = floor_index + 1
+        del player.member_respawns[role]
 
 
 def set_scholar_stairs(floors: list[Floor], active: bool) -> None:
@@ -395,6 +434,32 @@ def _open_points(current: Floor) -> list[d.Point]:
     ]
 
 
+def _in_detached_terminal_room(current: Floor, point: d.Point) -> bool:
+    return any(
+        len(component) == 1 and tile_at(point) in component
+        for component in current.room_components
+    )
+
+
+def _place_detached_room_monster(
+    current: Floor, room_components: tuple[set[d.Point], ...]
+) -> d.Monster:
+    detached = next(
+        (component for component in room_components if len(component) == 1), None
+    )
+    if detached is None:
+        raise ValueError("Stage 5 floor needs one detached terminal room")
+    points = [point for point in _open_points(current) if tile_at(point) in detached]
+    if not points:
+        raise RuntimeError("no open cell in detached Stage 5 room")
+    char = rand.choice(("b", "c", "A"))
+    monster = d.Monster(
+        *rand.choice(points), d.CHAR_TO_MONSTER_TRIBE[char], empowered=1
+    )
+    current.entities.append(monster)
+    return monster
+
+
 def _sync_wyrm_barriers(current: Floor) -> None:
     """Keep non-persistent barrier rings centered on the surviving w/W."""
     occupied = {(entity.x, entity.y) for entity in current.entities}
@@ -453,12 +518,9 @@ def _sync_wyrm_barriers(current: Floor) -> None:
 def _place_party(
     current: Floor, roster: list[tuple[str, int]], floor_index: int = 0
 ) -> None:
-    # Only keep distinct parties from merging. Walls and narrow corridors do
-    # not exclude a spawn cell; a party may completely block a passage.
+    # Keep vertical parties distinct. Horizontal adjacency does not connect
+    # monsters into one party. Walls and narrow corridors may be blocked.
     occupied = {(entity.x, entity.y) for entity in current.entities}
-    boss_pair = set(roster) == {("W", 1), ("V", 2)} and len(roster) == 2
-    if any(rank == 2 for _, rank in roster) and not boss_pair and len(roster) != 1:
-        raise ValueError("rank-2 Stage 5 monsters must spawn alone")
     monsters = {
         (entity.x, entity.y)
         for entity in current.entities
@@ -470,7 +532,7 @@ def _place_party(
         for point in candidates
         if all(
             (point[0] + dx, point[1] + dy) not in monsters
-            for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+            for dx, dy in ((0, -1), (0, 1))
         )
     }
     if floor_index == 1:
@@ -481,7 +543,7 @@ def _place_party(
             for entity in current.entities
             if isinstance(entity, d.Monster) and entity.tribe.char == "k"
         }
-        if any(char == "k" for char, _ in roster) and len(roster) != 1:
+        if roster[0][0] == "k" and len(roster) != 1:
             raise ValueError("Stage 5 floor-2 marksmen must spawn alone")
         if marksmen:
             candidates = {
@@ -500,7 +562,7 @@ def _place_party(
                 {
                     (x + dx, y + dy)
                     for x, y in cells
-                    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+                    for dx, dy in ((0, -1), (0, 1))
                 }
                 & candidates - set(cells) - occupied
             )
@@ -529,17 +591,14 @@ def respawn(
 ) -> d.Point:
     candidates = [point for point in _open_points(current) if point not in avoid]
     monsters = [entity for entity in current.entities if isinstance(entity, d.Monster)]
-    empowered_positions = {
-        (entity.x, entity.y) for entity in monsters if entity.empowered == 2
-    }
     golem_positions = {
         (entity.x, entity.y) for entity in monsters if entity.tribe.char == "g"
     }
-    if rank == 2 or char == "g":
-        # Rank-2 monsters and Golems stay separate from every other monster.
+    if char == "g":
+        # Golems stay separate from every other monster.
         isolated_positions = {(entity.x, entity.y) for entity in monsters}
     else:
-        isolated_positions = empowered_positions | golem_positions
+        isolated_positions = golem_positions
     if isolated_positions:
         candidates = [
             point
@@ -591,14 +650,14 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     config = config or GameConfig()
     floors = []
     entry = None
+    pending_members: list[str] = []
     filled_counts = list(d.STAGE4_FILLED_ROOM_COUNTS)
     filled_counts.remove(0)
     filled_counts_by_floor = [0]
-    while filled_counts:
+    while filled_counts and len(filled_counts_by_floor) < d.STAGE5_FLOORS:
         filled_counts_by_floor.append(
             filled_counts.pop(rand.randrange(len(filled_counts)))
         )
-    split_floor_index = rand.randrange(1, d.STAGE5_FLOORS)
     for index in range(d.STAGE5_FLOORS):
         field, up, down, _, filled_rooms, room_components = generate_floor_field(
             entry,
@@ -607,7 +666,8 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             config.corridor_v_width,
             0,
             filled_counts_by_floor[index],
-            split_room_graph=index == split_floor_index,
+            split_room_graph=True,
+            detach_leaf_room=True,
         )
         if index >= 2:
             _add_wall_spurs(field, up, down, None, filled_rooms)
@@ -627,7 +687,18 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             down_stairs=[down] if index < d.STAGE5_FLOORS - 1 else [],
             room_components=room_components,
         )
-        for role in d.STAGE5_MEMBER_FLOORS[index]:
+        _place_detached_room_monster(current, room_components)
+        member_roles = list(d.STAGE5_MEMBER_FLOORS[index])
+        if index == 0:
+            for _ in range(len(member_roles) - 4):
+                member_roles.pop(rand.randrange(len(member_roles)))
+            for role in member_roles[:]:
+                if rand.randrange(2) == 1:
+                    member_roles.remove(role)
+                    pending_members.append(role)
+        elif index == 1:
+            member_roles.extend(pending_members)
+        for role in member_roles:
             current.entities.append(
                 d.PartyMember(
                     *rand.choice(_open_points(current)), role, origin_floor=index
@@ -642,13 +713,24 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 )
             )
         if index == d.STAGE5_FLOORS - 1:
-            _place_party(current, list(d.STAGE5_BOSS_PARTY), index)
+            boss_party = list(d.STAGE5_BOSS_PARTY)
+            boss_party.extend(
+                (rand.choice(d.STAGE5_BOSS_ESCORTS), 2)
+                for _ in range(rand.randrange(3))
+            )
+            _place_party(current, boss_party, index)
+            mimic = d.Monster(
+                *rand.choice(_open_points(current)),
+                d.CHAR_TO_MONSTER_TRIBE["M"],
+                mimic_boss_char="W",
+            )
+            mimic.active = False
+            current.entities.append(mimic)
         for char, count, rank in d.STAGE5_ROSTER[index]:
             for _ in range(count):
                 party_size = (
                     1
-                    if rank == 2
-                    or char == "g"
+                    if char == "g"
                     or (index > 0 and char == "k")
                     else sample_party_size(index)
                 )
@@ -658,8 +740,17 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 ]
                 _place_party(current, roster, index)
         if index == d.STAGE5_FLOORS - 1:
+            boss = next(
+                entity
+                for entity in current.entities
+                if isinstance(entity, d.Monster) and entity.tribe.char == "W"
+            )
+            boss_zone = tile_at((boss.x, boss.y))
+            treasure_points = [
+                point for point in _open_points(current) if tile_at(point) != boss_zone
+            ]
             current.entities.append(
-                d.Treasure(*rand.choice(_open_points(current)), "TW")
+                d.Treasure(*rand.choice(treasure_points), "TW")
             )
         for char, count in zip(
             (d.CHAR_CALTROP, d.CHAR_BARRIER), d.STAGE5_HAZARD_COUNTS[index]
@@ -681,6 +772,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         normalize_parties(current)
     player = d.Player(*floors[0].up, d.STAGE5_START_LEVEL, d.LP_INIT)
     player.rescue_stage = True
+    player.treasure_stage = True
     return floors, player
 
 
@@ -821,6 +913,7 @@ def _place_additional_stairs(floors: list[Floor]) -> None:
         )
         entry = upper.up_stairs[-1] if upper.up_stairs else upper.up
         reachable = _reachable_floor_points(upper, entry)
+        lower_reachable = _reachable_floor_points(lower, lower.up)
         candidates = [
             (x, y)
             for y, row in enumerate(upper.field)
@@ -828,6 +921,9 @@ def _place_additional_stairs(floors: list[Floor]) -> None:
             if cell == d.CHAR_FLOOR
             and lower.field[y][x] == d.CHAR_FLOOR
             and (x, y) in reachable
+            and (x, y) in lower_reachable
+            and not _in_detached_terminal_room(upper, (x, y))
+            and not _in_detached_terminal_room(lower, (x, y))
             and (x, y) not in fixed | occupied_upper | occupied_lower
             and all(
                 abs(x - sx) + abs(y - sy) > 1
@@ -870,6 +966,7 @@ def _place_scholar_stairs(floors: list[Floor]) -> None:
         )
         entry = upper.up_stairs[-1] if upper.up_stairs else upper.up
         reachable = _reachable_floor_points(upper, entry)
+        lower_reachable = _reachable_floor_points(lower, lower.up)
         candidates = [
             (x, y)
             for y, row in enumerate(upper.field)
@@ -877,6 +974,9 @@ def _place_scholar_stairs(floors: list[Floor]) -> None:
             if cell == d.CHAR_FLOOR
             and lower.field[y][x] == d.CHAR_FLOOR
             and (x, y) in reachable
+            and (x, y) in lower_reachable
+            and not _in_detached_terminal_room(upper, (x, y))
+            and not _in_detached_terminal_room(lower, (x, y))
             and (x, y) not in fixed | occupied_upper | occupied_lower
             and all(
                 abs(x - sx) + abs(y - sy) > 1

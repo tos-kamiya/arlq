@@ -33,6 +33,7 @@ def generate_floor_field(
     island_room_count: int,
     filled_room_count: int,
     split_room_graph: bool = False,
+    detach_leaf_room: bool = False,
 ) -> tuple[
     list[list[str]],
     d.Point,
@@ -104,31 +105,51 @@ def generate_floor_field(
 
         room_components: tuple[set[d.Point], ...] = ()
         if split_room_graph:
-            split_options = []
-            for edge in edges:
-                remaining_edges = [candidate for candidate in edges if candidate != edge]
-                adjacency: dict[d.Point, set[d.Point]] = {
-                    room: set() for room in connected_rooms
-                }
-                for room_a, room_b in remaining_edges:
-                    adjacency[room_a].add(room_b)
-                    adjacency[room_b].add(room_a)
-                first = {edge[0]}
-                pending = [edge[0]]
-                while pending:
-                    room = pending.pop()
-                    for neighbor in adjacency[room] - first:
-                        first.add(neighbor)
-                        pending.append(neighbor)
-                second = connected_rooms - first
-                if len(first) < 3 or len(second) < 3:
+            if detach_leaf_room:
+                degree = dict.fromkeys(connected_rooms, 0)
+                for room_a, room_b in edges:
+                    degree[room_a] += 1
+                    degree[room_b] += 1
+                split_options = [
+                    (edge, room)
+                    for edge in edges
+                    for room in edge
+                    if degree[room] == 1 and room not in {up_tile, down_tile}
+                ]
+                if not split_options:
                     continue
-                split_options.append((edge, first, second))
-            if not split_options:
-                continue
-            split_edge, first_component, second_component = rand.choice(split_options)
-            edges.remove(split_edge)
-            room_components = (first_component, second_component)
+                split_edge, detached_room = rand.choice(split_options)
+                edges.remove(split_edge)
+                room_components = (
+                    connected_rooms - {detached_room},
+                    {detached_room},
+                )
+            else:
+                split_options = []
+                for edge in edges:
+                    remaining_edges = [candidate for candidate in edges if candidate != edge]
+                    adjacency: dict[d.Point, set[d.Point]] = {
+                        room: set() for room in connected_rooms
+                    }
+                    for room_a, room_b in remaining_edges:
+                        adjacency[room_a].add(room_b)
+                        adjacency[room_b].add(room_a)
+                    first = {edge[0]}
+                    pending = [edge[0]]
+                    while pending:
+                        room = pending.pop()
+                        for neighbor in adjacency[room] - first:
+                            first.add(neighbor)
+                            pending.append(neighbor)
+                    second = connected_rooms - first
+                    if len(first) < 3 or len(second) < 3:
+                        continue
+                    split_options.append((edge, first, second))
+                if not split_options:
+                    continue
+                split_edge, first_component, second_component = rand.choice(split_options)
+                edges.remove(split_edge)
+                room_components = (first_component, second_component)
 
         for room in sealed_rooms:
             left = room[0] * (d.TILE_WIDTH + 1) + 1

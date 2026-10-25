@@ -113,7 +113,7 @@ def status_prefix(
     text += level_str + "  "
     text += item_str + "  "
     if player.rescue_stage:
-        text += f"ATK: {d.current_player_attack(player):g}  "
+        text += f"ATK: {d.current_player_attack(player, stage_num):g}  "
     return text
 
 
@@ -170,13 +170,15 @@ def stage5_member_progress_marks(
     """Member labels and whether each member has ever joined the party."""
     roles = (
         *d.STAGE5_MEMBER_FLOORS[0],
-        *d.STAGE5_MEMBER_FLOORS[1],
-        *d.STAGE5_MEMBER_FLOORS[2],
-        "Noble",
     )
     marks = []
+    current_roles = {member.role for member in player.members}
     for role in roles:
         label = d.MEMBER_GLYPHS[role]
+        if role in player.joined_members and role not in current_roles:
+            respawn_floor = player.known_member_floors.get(role)
+            if respawn_floor is not None:
+                label += str(respawn_floor)
         marks.append((label, role in player.joined_members))
     return marks
 

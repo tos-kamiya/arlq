@@ -347,6 +347,8 @@ def _vortex_rearrange(
     center: d.Point,
     floors: Optional[List[Floor]] = None,
     whole_floor: bool = False,
+    include_treasures: bool = True,
+    stage_num: int = 0,
 ) -> None:
     """Reposition entities and forget explored floor and barrier cells."""
     # Keep the horizontal reach while matching the FOV ellipse's proportions.
@@ -366,7 +368,8 @@ def _vortex_rearrange(
         for entity in current.entities
         if (entity.x, entity.y) in affected_points
         and (
-            isinstance(entity, (d.Companion, d.Treasure))
+            isinstance(entity, d.Companion)
+            or isinstance(entity, d.Treasure) and include_treasures
             or (
                 isinstance(entity, d.Monster)
                 and entity.active
@@ -424,7 +427,7 @@ def _vortex_rearrange(
             current.field[y][x] = d.CHAR_FLOOR
 
     def relocate(char: str, origin_floor: Optional[int], empowered: int = 1) -> None:
-        if whole_floor and player.rescue_stage:
+        if whole_floor and stage_num in (5, 6):
             stage5.respawn(
                 current, char, empowered,
                 floor_index if origin_floor is None else origin_floor, avoid,
@@ -720,6 +723,7 @@ def _defeat_monster(
         _vortex_rearrange(
             current, player, floor[0], (entity.x, entity.y), floors=floors,
             whole_floor=stage_num in (5, 6) and entity.empowered == 2,
+            stage_num=stage_num,
         )
 
     if (
@@ -952,7 +956,7 @@ def _resolve_monster_contact(
     if not handled_elf:
         player.karma += 1
 
-    if not handled_elf and d.current_player_attack(player) < d.monster_level(entity):
+    if not handled_elf and d.current_player_attack(player, stage_num) < d.monster_level(entity):
         assert ch != "M", "A Mimic must not defeat the player."
         # Losing still identifies the monster, including W. Treasure glyphs
         # remain gated separately by their unlock state in the renderer.
@@ -1022,7 +1026,7 @@ def _resolve_monster_contact(
             event_message = trp(
                 "-- You defeated the Mimic, but were sent somewhere else.", 5
             )
-        if ch == "W" and player.treasure_collected:
+        if ch == "W" and player.treasure_collected and stage_num != 5:
             event_message = trp(">> The King's request is complete! <<", 9)
         elif ch == d.CHAR_FIRE_DRAKE and entity.empowered == 2:
             if player.treasure_collected:
@@ -1070,11 +1074,23 @@ def _resolve_party_contact(
     player.karma += 1
     strength = sum(d.monster_level(monster) for monster in party)
     contact_key = (floor[0], *min((monster.x, monster.y) for monster in party))
+    boss = next(
+        (monster for monster in party if monster.tribe.char in ("F", "W")), None
+    )
+    boss_qualified = (
+        d.has_member(player, "Knight")
+        or (
+            player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
+            and player.item_taken_from in ("c", "C")
+        )
+    )
     for monster in party:
         player.known_monsters.add(d.monster_type_key(monster))
     if player.item == d.ITEM_SWORD_CURSED:
         player.lp -= d.CURSED_SWORD_LP_COST
-    won = d.current_player_attack(player) >= strength
+    won = d.current_player_attack(player, stage_num) >= strength and not (
+        stage_num == 5 and boss is not None and not boss_qualified
+    )
     if trace is not None:
         for monster in party:
             trace.record_contact(
@@ -1109,9 +1125,6 @@ def _resolve_party_contact(
         * d.experience_multiplier(player)
     )
     feed = max(monster.tribe.feed for monster in party)
-    boss = next(
-        (monster for monster in party if monster.tribe.char in ("F", "W")), None
-    )
     # Resolve ordinary drops first, the unique item/effect last. All defeated
     # entities must be removed before V can rearrange the survivors.
     party.sort(key=lambda monster: stage5.special_monster(monster))
@@ -1137,22 +1150,34 @@ def _resolve_party_contact(
     if any(monster.tribe.char == "M" for monster in party):
         player.x, player.y = _find_escape_place(current)
     if boss is not None:
-        # Spawn after the full-floor rearrangement so the rescue target stays
-        # beside the defeated boss rather than being scattered with the loot.
-        candidates = sorted(
-            (
-                (x, y)
-                for y, row in enumerate(current.field)
-                for x, cell in enumerate(row)
-                if cell == d.CHAR_FLOOR
-                and (x, y) != (player.x, player.y)
-                and not any((other.x, other.y) == (x, y) for other in current.entities)
-            ),
-            key=lambda point: (abs(point[0] - boss.x) + abs(point[1] - boss.y), point),
-        )
-        current.entities.append(
-            d.PartyMember(*candidates[0], "Noble", origin_floor=floor[0])
-        )
+        if stage_num == 5:
+            _vortex_rearrange(
+                current,
+                player,
+                floor[0],
+                (boss.x, boss.y),
+                floors=floors,
+                whole_floor=True,
+                include_treasures=False,
+                stage_num=stage_num,
+            )
+        else:
+            # Other multi-floor stages retain the rescue member spawned by
+            # their boss encounter.
+            candidates = sorted(
+                (
+                    (x, y)
+                    for y, row in enumerate(current.field)
+                    for x, cell in enumerate(row)
+                    if cell == d.CHAR_FLOOR
+                    and (x, y) != (player.x, player.y)
+                    and not any((other.x, other.y) == (x, y) for other in current.entities)
+                ),
+                key=lambda point: (abs(point[0] - boss.x) + abs(point[1] - boss.y), point),
+            )
+            current.entities.append(
+                d.PartyMember(*candidates[0], "Noble", origin_floor=floor[0])
+            )
     stage5.normalize_parties(current)
     player.last_contact_monster = contact_key
     return _ContactResult(None)
@@ -1172,6 +1197,7 @@ def _resolve_contact(
     replay_context: Optional[ReplayContext] = None,
     operation_index: Optional[int] = None,
     stage_num: int = 3,
+    turn: int = 0,
 ) -> _ContactResult:
     """Resolve contact with the entity at `hit` in current.entities.
 
@@ -1189,6 +1215,11 @@ def _resolve_contact(
             entity,
             recycle_departed=stage_num in (5, 6),
             floors=floors,
+            floor_index=floor[0],
+            turn=turn,
+            respawn_delay=(
+                d.STAGE5_MEMBER_RESPAWN_TURNS if stage_num == 5 else 0
+            ),
         )
         has_scholar = d.has_member(player, "Dangeon Scholar")
         if had_scholar != has_scholar:
@@ -1394,6 +1425,7 @@ def _process_respawn_queue(
     queue: Counter[Tuple[int, str]],
     turn: int,
     trace: Optional[TraceRecorder] = None,
+    stage_num: int = 0,
 ) -> None:
     if turn % d.MONSTER_RESPAWN_INTERVAL != 0:
         return
@@ -1401,6 +1433,8 @@ def _process_respawn_queue(
         if not count:
             continue
         ch = type_key[:-1] if type_key[-1].isdigit() else type_key
+        if ch == "k" and turn % d.MARKSMAN_RESPAWN_INTERVAL:
+            continue
         tribe = d.CHAR_TO_TRIBE[ch]
         spawn_floor = (
             rand.randrange(len(floors))
@@ -1423,7 +1457,7 @@ def _process_respawn_queue(
             spawn_floor,
         )
         previous_entity_count = len(floors[spawn_floor].entities)
-        if player.rescue_stage:
+        if stage_num in (5, 6):
             x, y = stage5.respawn(
                 floors[spawn_floor], ch, empowered, spawn_floor, avoid,
                 floor_index=spawn_floor,
@@ -1566,6 +1600,7 @@ def _process_multi_floor_turn(
                 replay_context=replay_context,
                 operation_index=operation_index,
                 stage_num=stage_num,
+                turn=turn,
             )
             if contact.rewind_requested:
                 return _RewindRequest(floor[0])
@@ -1647,6 +1682,7 @@ def _process_multi_floor_turn(
             replay_context=replay_context,
             operation_index=operation_index,
             stage_num=stage_num,
+            turn=turn,
         )
         if contact.end_turn:
             end_turn_message = prefer_event_message(event_message, contact.message)
@@ -1702,17 +1738,17 @@ def _process_multi_floor_turn(
             )
             trace.record_checkpoint("stairs", (player.x, player.y), floor[0])
 
-    _process_respawn_queue(floors, player, floor, queue, turn, trace=trace)
+    _process_respawn_queue(
+        floors, player, floor, queue, turn, trace=trace, stage_num=stage_num
+    )
     if stage_num in (5, 6):
+        if stage_num == 5:
+            stage5.process_member_respawns(floors, player, turn, floor[0])
         for floor_data in floors:
             stage5.normalize_parties(floor_data)
         stage5.sync_members(player, previous, direction)
         stage5.reveal_mimics(floors[floor[0]], player)
         stage5.reveal_rogue_traps(floors[floor[0]], player)
-        if stage_num == 5 and floor[0] == 0 and d.has_member(player, "Noble"):
-            player.noble_returned = True
-            event_message = trp("-- Noble returned safely!", 9)
-
     return (MESSAGE_TICKS, event_message) if event_message else None
 
 
@@ -1796,7 +1832,7 @@ def run_game(
     if single_floor_stage:
         message: Tuple[int, str] = (-1, "")
     elif stage_num == 5:
-        message = (12, trp("-- Rescue Noble on floor 5 and return to floor 1.", 1))
+        message = (12, trp("-- Defeat the Wyrm on floor 4, then take the treasure.", 1))
     elif stage_num in d.ELF_STAGES:
         message = (
             5,
@@ -2106,8 +2142,6 @@ def run_game(
 
     if not won:
         message = (-1, trp(">> Collapsed from hunger! <<", 9))
-    elif stage_num == 5:
-        message = (-1, trp("-- Noble returned safely!", 9))
     else:
         message = (-1, trp(">> Treasure chest obtained! <<", 9))
     view_floor = floor[0]

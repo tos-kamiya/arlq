@@ -1289,6 +1289,39 @@ def test_stage3_respawned_companion_is_already_revealed(monkeypatch):
     assert companion.revealed
 
 
+@pytest.mark.parametrize("stage_num", d.PUBLIC_STAGE_NUMBERS)
+def test_marksman_respawns_on_a_195_turn_cycle_in_every_stage(stage_num):
+    floor = Floor(
+        field=blank_field(),
+        entities=[],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        up=(2, 2),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+    )
+    player = d.Player(2, 2, 100, 90)
+    queue = Counter({(0, "k"): 1})
+
+    for turn in (65, 130):
+        game_engine_module._process_respawn_queue(
+            [floor], player, [0], queue, turn, stage_num=stage_num
+        )
+        assert queue[(0, "k")] == 1
+        assert not any(
+            isinstance(entity, d.Monster) and entity.tribe.char == "k"
+            for entity in floor.entities
+        )
+
+    game_engine_module._process_respawn_queue(
+        [floor], player, [0], queue, 195, stage_num=stage_num
+    )
+    assert queue[(0, "k")] == 0
+    assert sum(
+        isinstance(entity, d.Monster) and entity.tribe.char == "k"
+        for entity in floor.entities
+    ) == 1
+
+
 def test_legacy_non_respawning_monster_does_not_enter_respawn_queue():
     player = d.Player(2, 2, 100, 90)
     amoeba = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["a"])

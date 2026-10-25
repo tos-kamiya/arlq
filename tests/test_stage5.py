@@ -1,4 +1,4 @@
-"""Rules, generation, and rescue checks for the five-floor party stage."""
+"""Rules and generation checks for the four-floor Stage 5 dungeon."""
 
 from collections import Counter, deque
 
@@ -46,23 +46,38 @@ def step(current, player, direction=(1, 0), checkpoint=(2, 2)):
     )
 
 
-def test_playground_has_all_recruits_and_connected_rank2_bosses():
+def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
     floors, player = stage5.build()
-    assert len(floors) == 5 and player.rescue_stage
+    assert len(floors) == 4 and player.rescue_stage and player.treasure_stage
+    for floor in floors:
+        assert len(floor.room_components) == 2
+        detached = next(component for component in floor.room_components if len(component) == 1)
+        assert stage5.tile_at(floor.up) not in detached
+        assert stage5.tile_at(floor.down) not in detached
+        assert all(
+            stage5.tile_at(point) not in detached
+            for point in (
+                floor.up_stairs
+                + floor.down_stairs
+                + floor.scholar_up_stairs
+                + floor.scholar_down_stairs
+            )
+        )
+        assert any(
+            isinstance(entity, d.Monster)
+            and entity.tribe.char in {"b", "c", "A"}
+            and stage5.tile_at((entity.x, entity.y)) in detached
+            for entity in floor.entities
+        )
+    assert stage5.tile_at((player.x, player.y)) not in next(
+        component for component in floors[0].room_components if len(component) == 1
+    )
     current = floors[-1]
-    assert {
+    members = {
         e.role for f in floors for e in f.entities if isinstance(e, d.PartyMember)
-    } == {
-        "Bard",
-        "Healer",
-        "Rogue",
-        "Knight",
-        "Dangeon Scholar",
-        "Guardian",
     }
-    assert {
-        e.role for e in floors[0].entities if isinstance(e, d.PartyMember)
-    } == {
+    assert len(members) == 4
+    assert members <= {
         "Bard",
         "Healer",
         "Rogue",
@@ -72,9 +87,20 @@ def test_playground_has_all_recruits_and_connected_rank2_bosses():
     }
     assert not any(
         isinstance(e, d.PartyMember)
-        for floor in floors[1:]
+        for floor in floors[2:]
         for e in floor.entities
     )
+    assert {
+        e.origin_floor
+        for floor in floors[:2]
+        for e in floor.entities
+        if isinstance(e, d.PartyMember)
+    } <= {0, 1}
+    assert sum(
+        isinstance(e, d.PartyMember)
+        for floor in floors[:2]
+        for e in floor.entities
+    ) == 4
     assert not any(
         isinstance(e, d.Monster) and e.tribe.is_elf for f in floors for e in f.entities
     )
@@ -82,17 +108,99 @@ def test_playground_has_all_recruits_and_connected_rank2_bosses():
         e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W"
     )
     party = stage5.monster_party(current, boss)
-    assert {(e.tribe.char, e.empowered) for e in party} >= {("W", 1), ("V", 2)}
-    assert 2 <= len(party) <= 5
-    assert sum(d.monster_level(e) for e in party) == 250
+    assert (boss.tribe.char, boss.empowered) == ("W", 1)
+    assert sum(
+        isinstance(e, d.Monster) and e.tribe.char == "W"
+        for floor in floors
+        for e in floor.entities
+    ) == 1
+    assert not any(
+        isinstance(e, d.Monster) and e.tribe.char == "W" and e.empowered > 1
+        for floor in floors
+        for e in floor.entities
+    )
+    escorts = [e for e in party if e is not boss]
+    assert len(escorts) <= 2
+    assert all(
+        e.empowered == 2 and e.tribe.char not in {"V", "W", "g"} for e in escorts
+    )
+    mimics = [
+        e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "M"
+    ]
+    assert len(mimics) == 1
+    assert not mimics[0].active and mimics[0].mimic_boss_char == "W"
+    assert [
+        sum(
+            isinstance(entity, d.Monster)
+            and entity.tribe.char == "g"
+            and entity.empowered == 1
+            for entity in floor.entities
+        )
+        for floor in floors
+    ] == [1, 4, 4, 4]
+    assert not any(
+        isinstance(entity, d.Monster)
+        and entity.tribe.char == "g"
+        and entity.empowered > 1
+        for floor in floors
+        for entity in floor.entities
+    )
+    assert len([e for e in current.entities if isinstance(e, d.Treasure)]) == 1
 
 
-def test_stage5_member_progress_has_no_floor_numbers():
+def test_stage5_member_progress_shows_candidates_before_they_depart():
     _, player = state()
     player.known_member_floors = {"Bard": 1, "Rogue": 2}
     assert [
         label for label, _ in display.stage5_member_progress_marks(player)
-    ] == ["B", "H", "R", "K", "D", "G", "N"]
+    ] == ["B", "H", "R", "K", "D", "G"]
+
+
+def test_departed_member_respawns_near_departure_after_long_delay():
+    current, player = state(("Bard", "Healer"))
+    lower, _ = state()
+    player.joined_members.update(("Bard", "Healer"))
+    departed = player.members[0]
+    recruit = d.PartyMember(3, 2, "Rogue", origin_floor=1)
+    current.entities.append(recruit)
+
+    stage5.recruit(
+        current,
+        player,
+        recruit,
+        recycle_departed=True,
+        floors=[lower, current],
+        floor_index=1,
+        turn=40,
+        respawn_delay=d.STAGE5_MEMBER_RESPAWN_TURNS,
+    )
+
+    assert not any(
+        isinstance(entity, d.PartyMember) and entity.role == "Bard"
+        for entity in current.entities
+    )
+    assert player.member_respawns["Bard"] == (
+        1,
+        departed.x,
+        departed.y,
+        40 + d.STAGE5_MEMBER_RESPAWN_TURNS,
+    )
+    assert display.stage5_member_progress_marks(player)[0] == ("B2", True)
+
+    stage5.process_member_respawns(
+        [lower, current], player, 39 + d.STAGE5_MEMBER_RESPAWN_TURNS
+    )
+    assert "Bard" in player.member_respawns
+    stage5.process_member_respawns(
+        [lower, current], player, 40 + d.STAGE5_MEMBER_RESPAWN_TURNS
+    )
+    respawned = next(
+        entity
+        for entity in current.entities
+        if isinstance(entity, d.PartyMember) and entity.role == "Bard"
+    )
+    assert abs(respawned.x - departed.x) + abs(respawned.y - departed.y) <= 1
+    assert "Bard" not in player.member_respawns
 
 
 def test_fifo_noble_lock_and_companion_slot_are_independent():
@@ -107,7 +215,8 @@ def test_fifo_noble_lock_and_companion_slot_are_independent():
     assert [e.role for e in player.members] == ["Noble", "Knight"]
     assert sorted(
         e.role for e in current.entities if isinstance(e, d.PartyMember)
-    ) == ["Bard", "Healer", "Rogue"]
+    ) == ["Rogue"]
+    assert set(player.member_respawns) == {"Bard", "Healer"}
     assert player.companion is companion
 
 
@@ -124,7 +233,7 @@ def test_fifo_noble_lock_and_companion_slot_are_independent():
 )
 def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain):
     current, player = state(roles, lp=10)
-    current.entities = [monster(3, 2, "b"), monster(4, 2, "a")]
+    current.entities = [monster(3, 2, "b"), monster(3, 3, "a")]
     feed = max(e.tribe.feed for e in current.entities)
     step(current, player)
     assert current.entities == []
@@ -134,7 +243,7 @@ def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain):
 
 def test_group_strength_defeat_preserves_party_and_healer_penalty():
     current, player = state(("Healer", "Rogue"), level=10)
-    enemies = [monster(3, 2, "b", 2), monster(4, 2, "w")]
+    enemies = [monster(3, 2, "b", 2), monster(3, 3, "w")]
     current.entities = enemies.copy()
     before = player.members.copy()
     step(current, player, checkpoint=(1, 1))
@@ -146,7 +255,7 @@ def test_group_strength_defeat_preserves_party_and_healer_penalty():
 
 def test_group_keeps_unique_item_even_when_contacting_ordinary_member():
     current, player = state()
-    current.entities = [monster(3, 2, "a"), monster(4, 2, "c")]
+    current.entities = [monster(3, 2, "a"), monster(3, 3, "c")]
     step(current, player)
     assert player.item == d.ITEM_SWORD_X1_5
 
@@ -154,27 +263,29 @@ def test_group_keeps_unique_item_even_when_contacting_ordinary_member():
 def test_fractional_attack_hazards_and_status():
     current, player = state(("Knight", "Dangeon Scholar"), level=100.5)
     assert d.current_player_attack(player) == pytest.approx(201)
+    assert d.current_player_attack(player, 5) == pytest.approx(301.5)
     player.item = d.ITEM_SWORD_X1_5
     assert d.current_player_attack(player) == pytest.approx(301.5)
+    assert d.current_player_attack(player, 5) == pytest.approx(452.25)
     assert barrier_lp_damage(player) == 30
     assert d.caltrop_lp_damage(player) == 3
     current.field[2][3] = d.CHAR_CALTROP
     step(current, player)
     assert player.lp == 87
     assert "LVL: 100" in display.status_prefix(player, 5, 0)
-    assert "ATK:" in display.status_prefix(player, 5, 0)
+    assert "ATK: 452.25" in display.status_prefix(player, 5, 0)
 
 
 def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
     _, player = state(("Guardian",))
-    assert barrier_lp_damage(player) == 10
+    assert barrier_lp_damage(player) == 15
     assert d.caltrop_lp_damage(player) == 1
     assert d.movement_lp_cost(player) == 1
 
     player.members.append(d.PartyMember(player.x, player.y, "Healer"))
-    assert barrier_lp_damage(player) == 10
+    assert barrier_lp_damage(player) == 15
     assert d.caltrop_lp_damage(player) == 1
-    assert d.movement_lp_cost(player) == 0.5
+    assert d.movement_lp_cost(player) == pytest.approx(1 / 3)
 
 
 def test_rogue_detects_shooting_lane_and_respects_blockers():
@@ -205,13 +316,15 @@ def test_rogue_mimic_identification_requires_adjacency_and_activation():
     assert "M" in player.known_monsters
 
 
-def test_boss_win_rearranges_only_final_floor_and_spawns_noble_without_winning():
+def test_qualified_boss_win_rearranges_final_floor_and_unlocks_separate_treasure():
     floors, player = stage5.build()
     current = floors[-1]
     boss = next(
         e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W"
     )
     origin = (boss.x, boss.y)
+    boss_zone = stage5.tile_at(origin)
+    player.members.append(d.PartyMember(player.x, player.y, "Knight"))
     player.level = 10000
     player.x, player.y = boss.x, boss.y
     for floor_data in floors:
@@ -229,12 +342,6 @@ def test_boss_win_rearranges_only_final_floor_and_spawns_noble_without_winning()
         stage_num=5,
     )
     assert player.boss_defeated and not player.stage_won
-    noble = next(
-        e
-        for e in current.entities
-        if isinstance(e, d.PartyMember) and e.role == "Noble"
-    )
-    assert abs(noble.x - origin[0]) + abs(noble.y - origin[1]) <= 2
     assert current.seen[0][0] == 1  # Wall locations remain explored.
     assert current.seen[current.up[1]][current.up[0]] == 1
     assert any(
@@ -245,45 +352,41 @@ def test_boss_win_rearranges_only_final_floor_and_spawns_noble_without_winning()
     )
     assert floors[0].seen[1][1] == 1
     assert any(isinstance(e, d.Treasure) and e.unlocked for e in current.entities)
+    chest = next(e for e in current.entities if isinstance(e, d.Treasure))
+    assert stage5.tile_at((chest.x, chest.y)) != boss_zone
     assert all(
         e.active
         for e in current.entities
         if isinstance(e, d.Monster) and e.tribe.char == "M"
     )
-    stage5.recruit(current, player, noble)
-    # A matching coordinate on another floor must not finish the rescue.
-    player.x, player.y = floors[0].up
-    engine._step(
-        (0, 0),
-        floors,
-        player,
-        floor_index,
-        [current.up],
-        Counter(),
-        deque(),
-        1,
-        stage_num=5,
+    assert all(
+        e.role != "Noble"
+        for e in current.entities
+        if isinstance(e, d.PartyMember)
     )
-    assert not player.stage_won
-    # Return through the actual stairs, preserving Noble and joining order.
-    for index in (4, 3, 2, 1):
-        player.x, player.y = floors[index].up
-        assert engine._handle_floor_transition(
-            floors[index], floors, player, floor_index, [current.up]
-        )
-        assert floor_index[0] == index - 1
-    engine._step(
-        (0, 0),
-        floors,
-        player,
-        floor_index,
-        [floors[0].up],
-        Counter(),
-        deque(),
-        1,
-        stage_num=5,
-    )
-    assert player.stage_won and not player.treasure_collected
+    player.treasure_collected = True
+    assert player.stage_won
+
+
+def test_stage5_boss_requires_knight_or_sword_from_chimera():
+    current, player = state(level=10000)
+    boss = monster(3, 2, "W")
+    current.entities = [boss]
+    step(current, player)
+    assert not player.boss_defeated
+    assert boss in current.entities
+
+    player.x, player.y = 2, 2
+    player.item = d.ITEM_SWORD_X1_5
+    player.item_taken_from = "a"
+    step(current, player)
+    assert not player.boss_defeated
+
+    player.x, player.y = 2, 2
+    player.item = d.ITEM_SWORD_X1_5
+    player.item_taken_from = "c"
+    step(current, player)
+    assert player.boss_defeated
 
 
 def test_treasure_is_optional_and_does_not_finish_stage():
@@ -298,9 +401,9 @@ def test_treasure_is_optional_and_does_not_finish_stage():
 
 def test_normalize_limits_and_protects_boss_pair():
     current, _ = state()
-    current.entities = [monster(x, 2, "a") for x in range(2, 8)]
-    boss, vortex = monster(8, 2, "W"), monster(9, 2, "V", 2)
-    current.entities += [boss, vortex, monster(10, 2, "c")]
+    current.entities = [monster(2, y, "a") for y in range(2, 9)]
+    boss, vortex = monster(10, 2, "W"), monster(10, 3, "V", 2)
+    current.entities += [boss, vortex, monster(10, 4, "c")]
     stage5.normalize_parties(current)
     assert boss in current.entities and vortex in current.entities
     for entity in current.entities:
@@ -375,7 +478,7 @@ def test_rogue_warning_stops_repeat_and_requires_fresh_press_without_lp_cost(
     ui = UI()
     engine.run_game(ui, "test", stage_num=5)
     assert ui.frames[:3] == [(0, 90, (2, 2))] * 3
-    assert player.lp == 89.5
+    assert player.lp == pytest.approx(89 + 2 / 3)
     assert (player.x, player.y) == (3, 2)
     assert ui.stops >= 2
 
@@ -456,16 +559,37 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
         assert all((e.x, e.y) == exit_point for e in player.members)
 
 
-def test_party_can_fill_a_narrow_corridor_against_walls():
+def test_parties_extend_vertically_and_accept_rank_two_and_three():
     current, _ = state()
     current.field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in current.field]
-    for x in range(5, 10):
-        current.field[5][x] = d.CHAR_FLOOR
-    stage5._place_party(current, [("a", 1)] * 5)
-    assert {(e.x, e.y) for e in current.entities} == {(x, 5) for x in range(5, 10)}
+    for y in range(3, 8):
+        current.field[y][7] = d.CHAR_FLOOR
+    roster = [("a", 1), ("b", 2), ("c", 3), ("d", 1), ("e", 1)]
+    stage5._place_party(current, roster)
+    assert {(e.x, e.y) for e in current.entities} == {(7, y) for y in range(3, 8)}
     assert len(stage5.monster_party(current, current.entities[0])) == 5
+    assert {e.empowered for e in current.entities} == {1, 2, 3}
     removed = current.entities.pop()
     assert stage5.respawn(current, "b", 1, 0, set()) == (removed.x, removed.y)
+
+
+def test_horizontal_adjacency_does_not_join_monster_parties():
+    current, _ = state()
+    vertical = [monster(5, y, "a") for y in (3, 4, 5)]
+    horizontal = monster(6, 4, "b")
+    current.entities = [*vertical, horizontal]
+    assert set(stage5.monster_party(current, vertical[1])) == set(vertical)
+    assert stage5.monster_party(current, horizontal) == [horizontal]
+
+
+def test_detached_terminal_room_receives_one_random_monster():
+    current, _ = state()
+    monster = stage5._place_detached_room_monster(
+        current, ({(0, 0), (1, 0)}, {(2, 0)})
+    )
+    assert monster.tribe.char in {"b", "c", "A"}
+    assert stage5.tile_at((monster.x, monster.y)) == (2, 0)
+    assert current.entities == [monster]
 
 
 def test_seed_reproduces_layout_and_groups():
@@ -498,18 +622,20 @@ def test_deep_floors_share_monster_distribution_and_keep_party_size_weights():
     ]
     assert non_wyrm_rosters == [
         tuple(entry for entry in d.STAGE5_DEEP_ROSTER if entry[0] != "w")
-    ] * 4
+    ] * 3
     assert [
         sum(count for char, count, rank in roster if char == "w" and rank == 2)
         for roster in deep_rosters
-    ] == [0, 0, 2, 2]
-    assert d.STAGE5_SUPPORT_POOLS[1:] == (d.STAGE5_SUPPORT_POOLS[1],) * 4
+    ] == [0, 0, 2]
+    assert d.STAGE5_SUPPORT_POOLS[1:] == (d.STAGE5_SUPPORT_POOLS[1],) * 3
+    support_weights = Counter(char for char, _ in d.STAGE5_SUPPORT_POOLS[1])
+    assert support_weights == Counter({"a": 2, "f": 2, "b": 2, "e": 2, "w": 1, "k": 1})
     assert d.STAGE5_PARTY_SIZE_WEIGHTS[1:] == (
-        (30, 35, 25, 10, 0),
-        (20, 30, 30, 15, 5),
-        (10, 20, 30, 25, 15),
-        (5, 15, 25, 30, 25),
+        (50, 30, 15, 4, 1),
+        (40, 30, 20, 8, 2),
+        (30, 30, 22, 13, 5),
     )
+    assert all(sum(weights) == 100 for weights in d.STAGE5_PARTY_SIZE_WEIGHTS)
     assert next(entry[1] for entry in d.STAGE5_ROSTER[0] if entry[0] == "c") == 5
     assert all(
         next(entry[1] for entry in roster if entry[0] == "c") == 6
