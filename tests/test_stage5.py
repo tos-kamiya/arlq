@@ -117,6 +117,10 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
         isinstance(entity, d.Monster) and entity.tribe.char == "w"
         for entity in floors[1].entities
     )
+    assert sum(
+        isinstance(entity, d.Monster) and entity.tribe.char == "k"
+        for entity in floors[1].entities
+    ) == 2
     members = {
         e.role for f in floors for e in f.entities if isinstance(e, d.PartyMember)
     }
@@ -717,29 +721,36 @@ def test_deep_roster_preserves_population_and_scales_party_sizes_by_floor():
     )
     expected_counts[("w", 1)] -= 1
     expected_counts[("w", 2)] += 2
+    expected_counts[("A", 1)] += 4
     assert actual_counts == expected_counts
     current_fixed_total = sum(
         count for roster in d.STAGE5_ROSTER for _, count, _ in roster
     ) + d.STAGE5_FLOORS
     previous_fixed_total = (
         sum(count for _, count, _ in d.STAGE5_ROSTER[0])
+        - 1
         + 3 * sum(count for _, count, _ in d.STAGE5_DEEP_ROSTER)
         + 2
         + 4
     )
-    assert current_fixed_total == previous_fixed_total
+    assert current_fixed_total == previous_fixed_total + 5
+    assert [
+        sum(count for char, count, _ in roster if char == "A")
+        for roster in d.STAGE5_ROSTER
+    ] == [3, 2, 3, 2, 3]
     assert [sum(count for _, count, _ in roster) for roster in deep_rosters] == [
-        33, 33, 33, 34
+        34, 34, 34, 35
     ]
     assert [
         sum(count for char, count, rank in roster if char == "w" and rank == 2)
         for roster in deep_rosters
     ] == [0, 0, 0, 2]
     assert "w" not in {char for char, _ in d.STAGE5_SUPPORT_POOLS[1]}
+    assert "k" not in {char for char, _ in d.STAGE5_SUPPORT_POOLS[1]}
     assert d.STAGE5_SUPPORT_POOLS[2:] == (d.STAGE5_SUPPORT_POOLS[2],) * 3
     floor2_support_weights = Counter(char for char, _ in d.STAGE5_SUPPORT_POOLS[1])
     assert floor2_support_weights == Counter(
-        {"a": 2, "f": 2, "b": 3, "e": 2, "k": 1}
+        {"a": 3, "f": 2, "b": 3, "e": 2}
     )
     support_weights = Counter(char for char, _ in d.STAGE5_SUPPORT_POOLS[2])
     assert support_weights == Counter({"a": 2, "f": 2, "b": 2, "e": 2, "w": 1, "k": 1})
