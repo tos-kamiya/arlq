@@ -318,8 +318,8 @@ def set_scholar_stairs(floors: list[Floor], active: bool) -> None:
                 current.seen[y][x] = 1
 
 
-def reveal_scholar_features(current: Floor, visible: list[list[int]]) -> None:
-    """Persistently reveal Scholar secrets currently inside the player's FOV."""
+def reveal_scholar_features(current: Floor, known: list[list[int]]) -> None:
+    """Reveal Scholar secrets anywhere in the explored part of the floor."""
     for points, hidden, revealed in (
         (
             current.scholar_up_stairs,
@@ -333,13 +333,11 @@ def reveal_scholar_features(current: Floor, visible: list[list[int]]) -> None:
         ),
     ):
         for x, y in points:
-            if visible[y][x] and current.field[y][x] == hidden:
+            if known[y][x] and current.field[y][x] == hidden:
                 current.field[y][x] = revealed
-                current.seen[y][x] = 1
     for x, y in current.d_gates:
-        if visible[y][x] and current.field[y][x] == d.CHAR_HIDDEN_D_GATE:
+        if known[y][x] and current.field[y][x] == d.CHAR_HIDDEN_D_GATE:
             current.field[y][x] = d.CHAR_D_GATE
-            current.seen[y][x] = 1
 
 
 def sync_members(player: d.Player, previous: d.Point, direction: d.Point) -> None:
@@ -933,12 +931,37 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
             current.persistent_barriers.add((x, y))
 
     floors = [upper, lower]
+    for current in floors:
+        _add_trial_detached_room(current, config)
     _place_scholar_stairs(floors)
     for current in floors:
         normalize_parties(current)
     player = d.Player(*upper.up, 30, d.LP_INIT)
     player.rescue_stage = True
     return floors, player
+
+
+def _add_trial_detached_room(current: Floor, config: GameConfig) -> None:
+    """Add a fixed isolated room to the right of Stage 6's bottom-right tile."""
+    active_tile_columns = 3
+    tile_offset_x = (d.TILE_NUM_X - active_tile_columns) // 2
+    room_x = tile_offset_x + active_tile_columns
+    room_y = d.TILE_NUM_Y - 1
+    left = room_x * (d.TILE_WIDTH + 1) + 1
+    top = room_y * (d.TILE_HEIGHT + 1) + 1
+    for y in range(top, top + d.TILE_HEIGHT):
+        for x in range(left, left + d.TILE_WIDTH):
+            current.field[y][x] = d.CHAR_FLOOR
+
+    gate = (
+        room_x * (d.TILE_WIDTH + 1),
+        room_y * (d.TILE_HEIGHT + 1)
+        + 1
+        + (d.TILE_HEIGHT + 1 - config.corridor_h_width) // 2
+        + config.corridor_h_width // 2,
+    )
+    current.field[gate[1]][gate[0]] = d.CHAR_HIDDEN_D_GATE
+    current.d_gates[gate] = d.CHAR_D_GATE
 
 
 def _reachable_floor_points(current: Floor, entry: d.Point) -> set[d.Point]:

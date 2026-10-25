@@ -1338,8 +1338,10 @@ def _handle_floor_transition(
         f.up_stairs or f.down_stairs or f.scholar_up_stairs or f.scholar_down_stairs
         for f in floors
     )
-    down_stairs = current.down_stairs or ([current.down] if legacy_floors else [])
-    up_stairs = current.up_stairs or ([current.up] if legacy_floors else [])
+    down_stairs = list(
+        current.down_stairs or ([current.down] if legacy_floors else [])
+    )
+    up_stairs = list(current.up_stairs or ([current.up] if legacy_floors else []))
     down_stairs += [
         point for point in current.scholar_down_stairs
         if current.field[point[1]][point[0]] == d.CHAR_SCHOLAR_STAIRS_DOWN
@@ -1877,7 +1879,7 @@ def run_game(
             stage5.reveal_mimics(current, player)
             stage5.reveal_rogue_traps(current, player)
             if d.has_member(player, "Dangeon Scholar"):
-                stage5.reveal_scholar_features(current, cur)
+                stage5.reveal_scholar_features(current, current.seen)
         _reveal_paired_stair_cells(floors, player)
 
         message = tick_message(message)
