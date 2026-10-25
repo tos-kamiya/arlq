@@ -148,16 +148,20 @@ def test_stage3_adds_one_random_extra_stair_pair():
 
 
 def run_stage3_keys(
-    keys, floors, player, floor, checkpoint, queue, history, stage_num=3
+    keys, floors, player, floor, checkpoint, queue, history, stage_num=3,
+    replay_context=None,
 ):
     messages = []
     for key in keys:
+        if replay_context is not None:
+            replay_context.operations.append(KEYS[key])
         result = _step(
             KEYS[key], floors, player, floor, checkpoint, queue, history, 1, stage_num
         )
         if isinstance(result, game_engine_module._RewindRequest):
             result = game_engine_module._rewind_to_history(
-                floors, player, floor, checkpoint, queue, history
+                floors, player, floor, checkpoint, queue, history, replay_context,
+                operation_count=len(replay_context.operations),
             )
             messages.append(result)
         else:
@@ -1466,18 +1470,21 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
         old_player, [old_loop, old_companion, old_treasure]
     )
     old_field[10][10] = " "
-    old_queue = Counter({(0, "a"): 2})
+    old_floors[0].up = (4, 5)
+    monkeypatch.setattr(stage_replay_module, "build", lambda *_: deepcopy((old_floors, old_player)))
+    replay = game_engine_module.ReplayContext(3, 123, GameConfig())
     current_queue = Counter({(0, "X"): 3})
-    history = deque([(old_floors, old_player, 0, (4, 5), old_queue)])
+    history = deque()
     floor = [0]
     checkpoint = [(2, 2)]
 
     def spawn_loop(entities, _field, _char, _avoid, _island, _floor_index=None):
         entities.append(d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"]))
 
-    monkeypatch.setattr(game_engine_module, "_spawn", spawn_loop)
+    monkeypatch.setattr(stage_replay_module, "_spawn", spawn_loop)
     messages = run_stage3_keys(
-        "R", current_floors, player, floor, checkpoint, current_queue, history
+        "R", current_floors, player, floor, checkpoint, current_queue, history,
+        replay_context=replay,
     )
 
     assert messages == ["-- Time folds back to the beginning of the recorded past."]
@@ -1485,7 +1492,7 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
     assert player.level == 7
     assert player.lp == 60
     assert checkpoint == [(4, 5)]
-    assert current_queue == Counter({(0, "a"): 2})
+    assert current_queue == Counter()
     assert current_floors[0].field[10][10] == " "
     assert current_floors[0].seen[1][1] == 9
     assert player.known_monsters == {"a", "W"}
@@ -1534,7 +1541,9 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     old_high_elf = d.Monster(7, 5, d.CHAR_TO_MONSTER_TRIBE["H"])
     old_sylvan_elf = d.Monster(8, 5, d.CHAR_TO_MONSTER_TRIBE["S"])
     old_floors, _ = stage3_state(old_player, [old_loop, old_high_elf, old_sylvan_elf])
-    history = deque([(old_floors, old_player, 0, (4, 5), Counter())])
+    monkeypatch.setattr(stage_replay_module, "build", lambda *_: deepcopy((old_floors, old_player)))
+    replay = game_engine_module.ReplayContext(3, 123, GameConfig())
+    history = deque()
     floor = [0]
     checkpoint = [(2, 2)]
     queue: "Counter" = Counter()
@@ -1542,8 +1551,11 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     def spawn_loop(entities, _field, _char, _avoid, _island, _floor_index=None):
         entities.append(d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"]))
 
-    monkeypatch.setattr(game_engine_module, "_spawn", spawn_loop)
-    run_stage3_keys("R", current_floors, player, floor, checkpoint, queue, history)
+    monkeypatch.setattr(stage_replay_module, "_spawn", spawn_loop)
+    run_stage3_keys(
+        "R", current_floors, player, floor, checkpoint, queue, history,
+        replay_context=replay,
+    )
 
     assert not (player.elf_stage_flags & d.ELF_STAGE_H_FLAG)
     assert not (player.elf_stage_flags & d.ELF_STAGE_S_FLAG)
@@ -1610,7 +1622,9 @@ def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
     floor = [1]
     checkpoint = [(2, 2)]
     queue = Counter()
-    history = deque([(saved_floors, saved_player, 0, (2, 2), Counter())])
+    monkeypatch.setattr(stage_replay_module, "build", lambda *_: deepcopy((saved_floors, saved_player)))
+    replay = game_engine_module.ReplayContext(3, 123, GameConfig(), operations=[KEYS["R"]])
+    history = deque()
     respawn_position = (6, 6)
 
     def spawn_loop(entities, _field, char, _avoid, _island, floor_index=None):
@@ -1636,6 +1650,8 @@ def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
         checkpoint,
         queue,
         history,
+        replay,
+        operation_count=1,
         loop_floor_index=result.floor_index,
     )
 
@@ -1660,12 +1676,12 @@ def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
     )
 
 
-@pytest.mark.parametrize("has_vortex_map", [False, True])
-def test_replay_rewind_restores_world_state_and_preserves_selected_map(
-    monkeypatch, has_vortex_map
+@pytest.mark.parametrize("has_vortex", [False, True])
+def test_replay_rewind_restores_world_state_and_regenerates_pre_vortex_map(
+    monkeypatch, has_vortex
 ):
     def initial_state(*_args, **_kwargs):
-        player = d.Player(5, 5, 1, d.LP_INIT)
+        player = d.Player(5, 5, 1000, d.LP_INIT)
         mimic = d.Monster(8, 8, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
         companion = d.Companion(7, 8, d.CHAR_TO_COMPANION_TRIBE["n"])
         chest = d.Treasure(9, 8, "TW")
@@ -1677,6 +1693,9 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(
             down=(9, 8),
             island=None,
         )
+        if has_vortex:
+            floor.entities.append(d.Monster(6, 5, d.CHAR_TO_MONSTER_TRIBE["V"]))
+        floor.seen[2][2] = 3
         return [floor], player
 
     monkeypatch.setattr(game_engine_module, "build", initial_state)
@@ -1701,14 +1720,11 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(
     changed_chest.unlocked = True
     floors[0].entities.extend([changed_mimic, changed_chest])
 
-    vortex_seen = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
-    vortex_seen[2][2] = 3
     context = game_engine_module.ReplayContext(
         stage_num=4,
         seed=2468,
         config=GameConfig(),
         operations=[(1, 0), (0, 1)],
-        vortex_maps=[(1, [vortex_seen])] if has_vortex_map else [],
     )
     history = deque([None])
     floor_index = [0]
@@ -1753,59 +1769,47 @@ def test_replay_rewind_restores_world_state_and_preserves_selected_map(
     assert not restored_chest.unlocked
     assert player.known_monsters == {"MW"}
     assert player.elf_stage_floors == {"I": 2}
-    assert floors[0].seen[2][2] == (3 if has_vortex_map else 0)
-    assert floors[0].seen[1][1] == (0 if has_vortex_map else 7)
+    assert floors[0].seen[2][2] == (3 if has_vortex else 0)
+    assert floors[0].seen[1][1] == (0 if has_vortex else 7)
 
 
-def test_repeated_loop_rewind_uses_global_operation_window_and_keeps_vortex_history(
-    monkeypatch,
-):
+def test_repeated_loop_rewind_uses_global_window_and_regenerates_first_vortex_map(monkeypatch):
+    marker = (20, 10)
+
+    def initial_state(*_):
+        player = d.Player(2, 2, 10000, 1000)
+        entities = [d.Monster(x, 2, d.CHAR_TO_MONSTER_TRIBE["V"]) for x in (3, 4)]
+        floors, _ = stage3_state(player, entities)
+        floors[0].seen[marker[1]][marker[0]] = 5
+        return floors, player
+
+    def disturb_map(current, *_args, **_kwargs):
+        current.seen[marker[1]][marker[0]] = 9
+
+    monkeypatch.setattr(stage_replay_module, "build", initial_state)
+    monkeypatch.setattr(game_engine_module, "_vortex_rearrange", disturb_map)
+    operations = ([(0, 1), (0, -1)] * 17 + [(0, 0), (1, 0)]
+                  + [(0, 1), (0, -1)] * 22 + [(1, 0)] + [(0, 0)] * 30)
+    assert len(operations) == 111
+    replay = game_engine_module.ReplayContext(4, 123, GameConfig(), operations=operations)
     player = d.Player(2, 2, 9, 30)
     floors, _ = stage3_state(player, [])
-    history = deque(
-        [None] * 11
-    )  # Only ten turns have passed since the previous rewind.
-    early_vortex_map = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
-    later_vortex_map = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
-    early_vortex_map[3][4] = 5
-    later_vortex_map[3][4] = 9
-    replay = game_engine_module.ReplayContext(
-        stage_num=4,
-        seed=123,
-        config=GameConfig(),
-        operations=[(1, 0)] * 111,
-        vortex_maps=[(35, [early_vortex_map]), (80, [later_vortex_map])],
-    )
-    restored_player = d.Player(5, 5, 3, 20)
-    restored_floors, _ = stage3_state(restored_player, [])
-    replay_targets = []
+    history = deque([None] * 11)
+    targets = []
+    replay_prefix = stage_replay_module.replay_to_operation
 
-    def replay_prefix(context, target_count):
-        replay_targets.append(target_count)
-        return restored_floors, restored_player, 0, (1, 1), Counter()
+    def record_target(context, target_count):
+        targets.append(target_count)
+        return replay_prefix(context, target_count)
 
-    def spawn_loop(entities, _field, _char, _avoid, _island, _floor_index=None):
-        entities.append(d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"]))
-
-    monkeypatch.setattr(stage_replay_module, "replay_to_operation", replay_prefix)
-    monkeypatch.setattr(stage_replay_module, "_spawn", spawn_loop)
-
+    monkeypatch.setattr(stage_replay_module, "replay_to_operation", record_target)
     game_engine_module._rewind_to_history(
-        floors,
-        player,
-        [0],
-        [(2, 2)],
-        Counter(),
-        history,
-        replay,
+        floors, player, [0], [(2, 2)], Counter(), history, replay,
         operation_count=111,
     )
-
-    # Rewinding 80 operations from operation 111 crosses the first l at 100;
-    # it must reach the original timeline at 31, despite history holding 11.
-    assert replay_targets == [111 - d.LOOP_TURNS]
-    assert floors[0].seen[3][4] == 5
-    assert replay.vortex_maps == [(35, [early_vortex_map]), (80, [later_vortex_map])]
+    assert targets == [31]
+    assert floors[0].seen[marker[1]][marker[0]] == 5
+    assert replay.operations == operations
 
 
 def test_live_loop_rewind_replays_from_seed_for_repeatable_random_results(monkeypatch):
@@ -1852,7 +1856,7 @@ def test_live_loop_rewind_replays_from_seed_for_repeatable_random_results(monkey
     assert play_once() == play_once()
 
 
-def test_vortex_records_map_knowledge_before_disturbing_it(monkeypatch):
+def test_vortex_observer_sees_map_before_disturbance(monkeypatch):
     player = d.Player(2, 2, 1, d.LP_INIT)
     vortex = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["V"])
     floor = Floor(
@@ -1864,7 +1868,7 @@ def test_vortex_records_map_knowledge_before_disturbing_it(monkeypatch):
         island=None,
     )
     floor.seen[4][5] = 8
-    replay = game_engine_module.ReplayContext(4, 55, GameConfig())
+    observed = []
 
     def disturb_map(current, *_args, **_kwargs):
         current.seen[4][5] = 0
@@ -1878,13 +1882,10 @@ def test_vortex_records_map_knowledge_before_disturbing_it(monkeypatch):
         [(2, 2)],
         Counter(),
         floors=[floor],
-        replay_context=replay,
-        operation_index=2,
+        before_vortex=lambda: observed.append(floor.seen[4][5]),
     )
 
-    assert len(replay.vortex_maps) == 1
-    assert replay.vortex_maps[0][0] == 2
-    assert replay.vortex_maps[0][1][0][4][5] == 8
+    assert observed == [8]
     assert floor.seen[4][5] == 0
 
 
@@ -2507,7 +2508,7 @@ def test_fairy_nectar_extends_future_companions_except_loop_companion(
     floors, _ = stage3_state(player, [companion])
 
     game_engine_module._resolve_contact(
-        0, floors[0], floors, player, [0], [(2, 2)], Counter(), deque(), None
+        0, floors[0], floors, player, [0], [(2, 2)], Counter(), deque()
     )
 
     assert player.companion is companion
@@ -2648,3 +2649,14 @@ def test_revealed_entity_glyphs_distinguish_unknown_known_and_empowered():
         "b",
         '"',
     ]
+
+
+@pytest.mark.parametrize("importance", [3, 7])
+def test_terrain_and_contact_messages_compete_by_priority(importance):
+    player = d.Player(2, 2, 100, 90)
+    tribe = d.MonsterTribe("a", 1, 10, event_message="Contact message",
+                           event_message_importance=importance)
+    floors, field = stage3_state(player, [d.Monster(3, 2, tribe)])
+    field[2][3] = d.CHAR_BARRIER
+    result = _step((1, 0), floors, player, [0], [(2, 2)], Counter(), deque(), 1)
+    assert result[1] == ("Contact message" if importance == 7 else "-- The barrier burns you.")

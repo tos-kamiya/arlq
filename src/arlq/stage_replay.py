@@ -7,74 +7,111 @@ from typing import Deque, List, Optional, Tuple
 from . import defs as d
 from . import stage5
 from .i18n import trp
-from .stage_types import Floor, HistoryEntry, ReplayContext, _RewindRequest
+from .stage_types import Floor, ReplayContext, _RewindRequest
 from .stage_world import _spawn, build
 from .utils import rand
 
 
-def replay_to_operation(
-    replay: ReplayContext,
-    operation_count: int,
-) -> Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]:
-    """Rebuild a run from its seed and replay the requested input prefix."""
-    # Imported lazily because game_engine owns turn execution and imports this
-    # module for rewind handling.
-    from .game_engine import _step
+ReplayedState = Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]
+ExploredMaps = List[List[List[int]]]
 
-    previous_vortex_maps = replay.vortex_maps
-    # Rebuild V snapshots from the seed as well. Earlier l contacts need the
-    # pre-disturbance map generated on this replayed timeline.
-    replay.vortex_maps = []
-    try:
-        rand.set_seed(replay.seed)
-        if replay.stage_num == 5:
-            floors, player = stage5.build(replay.config)
+
+def replay_to_operation(replay: ReplayContext, operation_count: int) -> ReplayedState:
+    """Rebuild a run, including discoveries, from its seed and input prefix."""
+    state, _ = _replay(replay, operation_count)
+    return state
+
+
+def _replay(
+    replay: ReplayContext, operation_count: int, map_since: Optional[int] = None,
+) -> Tuple[ReplayedState, Optional[ExploredMaps]]:
+    # Imported lazily because game_engine owns turn execution.
+    from .game_engine import _step, observe_world
+
+    rand.set_seed(replay.seed)
+    if replay.stage_num == 5:
+        floors, player = stage5.build(replay.config)
+    elif replay.stage_num == 6:
+        floors, player = stage5.build_member_trial(replay.config)
+    else:
+        floors, player = build(
+            replay.config.corridor_h_width,
+            replay.config.corridor_v_width,
+            replay.stage_num,
+        )
+    player.known_monsters = set()
+    player.boss_defeated = False
+    player.treasure_collected = False
+    floor = [0]
+    checkpoint = [floors[0].up]
+    queue: Counter[Tuple[int, str]] = Counter()
+    history: Deque[None] = deque()
+    # These maps are derived during this replay only, never stored in the
+    # live session. Nested Loop contacts reuse them instead of replaying again
+    # just to recover knowledge from an earlier disturbance.
+    vortex_maps: List[Tuple[int, ExploredMaps]] = []
+    first_vortex_map = None
+
+    def observe() -> None:
+        observe_world(
+            floors, player, floor[0], replay.stage_num, replay.config.torch_radius,
+        )
+
+    def remember_map() -> None:
+        vortex_maps.append((index, deepcopy([current.seen for current in floors])))
+
+    for index, direction in enumerate(replay.operations[:operation_count]):
+        observe()
+        for destination in replay.rogue_checks.get(index, ()):
+            stage5.rogue_danger(floors[floor[0]], player, destination)
+            observe()
+        result = _step(
+            direction, floors, player, floor, checkpoint, queue, history, index,
+            stage_num=replay.stage_num,
+            before_vortex=remember_map,
+        )
+        if map_since is not None:
+            first_vortex_map = next(
+                (
+                    explored for operation, explored in vortex_maps
+                    if operation >= map_since
+                ),
+                None,
+            )
+            if first_vortex_map is not None:
+                break
+        if isinstance(result, _RewindRequest):
+            target = replay.rewind_targets.get(
+                index + 1, max(0, index + 1 - d.LOOP_TURNS),
+            )
+            preserved_seen = next(
+                (
+                    explored for operation, explored in vortex_maps
+                    if target <= operation <= index
+                ),
+                [current.seen for current in floors],
+            )
+            rewind_to_history(
+                floors, player, floor, checkpoint, queue, history, replay,
+                operation_count=index + 1, loop_floor_index=result.floor_index,
+                regenerated_map=preserved_seen,
+            )
         else:
-            floors, player = build(
-                replay.config.corridor_h_width,
-                replay.config.corridor_v_width,
-                replay.stage_num,
-            )
-        player.known_monsters = set()
-        player.boss_defeated = False
-        player.treasure_collected = False
-        floor = [0]
-        checkpoint = [floors[0].up]
-        queue: Counter[Tuple[int, str]] = Counter()
-        history: Deque[HistoryEntry] = deque()
-        turn = 0
-        for index, direction in enumerate(replay.operations[:operation_count]):
-            result = _step(
-                direction,
-                floors,
-                player,
-                floor,
-                checkpoint,
-                queue,
-                history,
-                turn,
-                stage_num=replay.stage_num,
-                replay_context=replay,
-                operation_index=index,
-            )
-            if isinstance(result, _RewindRequest):
-                rewind_to_history(
-                    floors,
-                    player,
-                    floor,
-                    checkpoint,
-                    queue,
-                    history,
-                    replay,
-                    operation_count=index + 1,
-                    loop_floor_index=result.floor_index,
-                )
-            else:
-                player.lp -= d.movement_lp_cost(player)
-            turn += 1
-        return floors, player, floor[0], checkpoint[0], queue
-    finally:
-        replay.vortex_maps = previous_vortex_maps
+            player.lp -= d.movement_lp_cost(player)
+        player.current_floor = floor[0]
+    observe()
+    return (floors, player, floor[0], checkpoint[0], queue), first_vortex_map
+
+
+def _map_before_vortex(
+    replay: ReplayContext, target_count: int, operation_count: int,
+) -> Optional[ExploredMaps]:
+    # The last operation is the Loop contact itself. Replay earlier inputs to
+    # regenerate the first pre-Vortex map in the rewind window, only when needed.
+    if target_count >= operation_count - 1:
+        return None
+    _, explored = _replay(replay, operation_count - 1, map_since=target_count)
+    return explored
 
 
 def rewind_to_history(
@@ -83,10 +120,12 @@ def rewind_to_history(
     floor: List[int],
     checkpoint: List[d.Point],
     queue: Counter[Tuple[int, str]],
-    history: Deque[HistoryEntry],
-    replay_context: Optional[ReplayContext] = None,
-    operation_count: Optional[int] = None,
+    history: Deque[None],
+    replay_context: ReplayContext,
+    *,
+    operation_count: int,
     loop_floor_index: Optional[int] = None,
+    regenerated_map: Optional[ExploredMaps] = None,
 ) -> str:
     """Rebuild the state at the start of the recorded rewind window."""
     known_monsters = set(player.known_monsters)
@@ -112,51 +151,22 @@ def rewind_to_history(
         for floor_data in floors
     ]
 
-    if replay_context is not None:
-        if operation_count is None:
-            raise ValueError("operation_count is required when replaying a rewind")
-        # Live sessions record the chronological operation prefix that
-        # corresponds to the game-start turn reached by this rewind. This
-        # preserves earlier branch changes when replaying a later rewind.
-        target_count = replay_context.rewind_targets.get(
-            operation_count,
-            max(0, operation_count - d.LOOP_TURNS),
-        )
-        first_vortex_map = next(
-            (
-                map_state
-                for operation_index, map_state in replay_context.vortex_maps
-                if target_count <= operation_index < operation_count
-            ),
-            seen,
-        )
-        (
-            restored_floors,
-            restored_player,
-            restored_floor,
-            restored_checkpoint,
-            restored_queue,
-        ) = replay_to_operation(replay_context, target_count)
-        floors[:] = restored_floors
-        floor[0] = restored_floor
-        checkpoint[0] = restored_checkpoint
-        queue.clear()
-        queue.update(restored_queue)
-        restored_player_state = restored_player
-        seen = deepcopy(first_vortex_map)
-    else:
-        # Keep direct rule-level callers compatible; actual game sessions use
-        # seed-and-input replay through replay_context.
-        old_entry = history[0]
-        if old_entry is None:
-            raise RuntimeError("snapshot-free rewind requires a replay context")
-        old_floors, restored_player_state, old_floor, old_checkpoint, old_queue = (
-            old_entry
-        )
-        floors[:] = old_floors
-        queue.clear()
-        queue.update(old_queue)
-        floor[0], checkpoint[0] = old_floor, old_checkpoint
+    target_count = replay_context.rewind_targets.get(
+        operation_count, max(0, operation_count - d.LOOP_TURNS),
+    )
+    if regenerated_map is None:
+        regenerated_map = _map_before_vortex(replay_context, target_count, operation_count)
+    (
+        restored_floors, restored_player_state, restored_floor,
+        restored_checkpoint, restored_queue,
+    ) = replay_to_operation(replay_context, target_count)
+    floors[:] = restored_floors
+    floor[0] = restored_floor
+    checkpoint[0] = restored_checkpoint
+    queue.clear()
+    queue.update(restored_queue)
+    if regenerated_map is not None:
+        seen = deepcopy(regenerated_map)
 
     for floor_data, preserved_seen, preserved_secrets in zip(
         floors, seen, discovered_secrets, strict=True

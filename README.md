@@ -162,7 +162,7 @@ reproduce the same layout.
 
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
-| **l** Loop Companion | Appears in Stages 3, 4, and 5. Rewinds up to 80 turns, or to the start of the current history if shorter; explored maps, monster identities, and learned elf and member locations remain known. |
+| **l** Loop Companion | Appears in Stages 3–6. Rewinds up to 80 turns, or to the start of the current history if shorter; explored maps, monster identities, and learned elf and member locations remain known. |
 | **n** Nomicon  | Reveals the type of every active monster and elf within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |

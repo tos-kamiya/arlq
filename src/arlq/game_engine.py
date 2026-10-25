@@ -4,7 +4,7 @@ import heapq
 import math
 from collections import Counter, deque
 from copy import deepcopy
-from typing import Any, Deque, List, Optional, Set, Tuple
+from typing import Any, Callable, Deque, List, Optional, Set, Tuple
 
 from . import defs as d
 from . import display as ui_display
@@ -34,7 +34,6 @@ from .i18n import trp
 from .stage_replay import rewind_to_history as _rewind_to_history
 from .stage_types import (
     Floor,
-    HistoryEntry,
     ReplayContext,
     _ContactResult,
     _RewindRequest,
@@ -607,8 +606,7 @@ def _defeat_monster(
     queue: Counter[Tuple[int, str]],
     trace: Optional[TraceRecorder] = None,
     floors: Optional[List[Floor]] = None,
-    replay_context: Optional[ReplayContext] = None,
-    operation_index: Optional[int] = None,
+    before_vortex: Optional[Callable[[], None]] = None,
     stage_num: int = 3,
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
@@ -727,17 +725,8 @@ def _defeat_monster(
             ] == d.CHAR_FLOOR:
                 current.field[y][x] = d.CHAR_GOLEM_WALL
     elif entity.tribe.effect == d.EFFECT_VORTEX:
-        if (
-            replay_context is not None
-            and floors is not None
-            and operation_index is not None
-        ):
-            replay_context.vortex_maps.append(
-                (
-                    operation_index,
-                    deepcopy([floor_data.seen for floor_data in floors]),
-                )
-            )
+        if before_vortex is not None:
+            before_vortex()
         _vortex_rearrange(
             current, player, floor[0], (entity.x, entity.y), floors=floors,
             whole_floor=stage_num in (5, 6) and entity.empowered == 2,
@@ -812,10 +801,10 @@ def _resolve_elf_contact(
     floor: List[int],
     queue: Counter[Tuple[int, str]],
     trace: Optional[TraceRecorder],
-    event_message: Optional[str],
 ) -> Tuple[bool, Optional[str]]:
     """Apply a first-time elf's reward or refusal, if this elf is eligible."""
     ch = entity.tribe.char
+    event_message = None
     if ch == "I":
         player.elf_stage_flags |= d.ELF_STAGE_I_FLAG
         if trace is not None:
@@ -916,15 +905,14 @@ def _resolve_monster_contact(
     floor: List[int],
     checkpoint: List[d.Point],
     queue: Counter[Tuple[int, str]],
-    event_message: Optional[str],
     trace: Optional[TraceRecorder] = None,
     floors: Optional[List[Floor]] = None,
-    replay_context: Optional[ReplayContext] = None,
-    operation_index: Optional[int] = None,
+    before_vortex: Optional[Callable[[], None]] = None,
     stage_num: int = 3,
 ) -> _ContactResult:
     """Resolve contact with a monster, including early-ending elf encounters."""
     ch = entity.tribe.char
+    event_message = None
     if not entity.tribe.is_elf:
         player.last_encounter_party = d.monster_variant_label(ch, entity.empowered)
     contact_key = (floor[0], entity.x, entity.y)
@@ -968,7 +956,7 @@ def _resolve_monster_contact(
     handled_elf = False
     if entity.tribe.is_elf:
         handled_elf, event_message = _resolve_elf_contact(
-            entity, current, player, floor, queue, trace, event_message
+            entity, current, player, floor, queue, trace
         )
 
     if not handled_elf:
@@ -1030,8 +1018,7 @@ def _resolve_monster_contact(
             queue,
             trace=trace,
             floors=floors,
-            replay_context=replay_context,
-            operation_index=operation_index,
+            before_vortex=before_vortex,
             stage_num=stage_num,
         )
         if ch == "M":
@@ -1080,6 +1067,7 @@ def _resolve_party_contact(
     queue: Counter,
     trace: Optional[TraceRecorder],
     stage_num: int,
+    before_vortex: Optional[Callable[[], None]] = None,
 ) -> _ContactResult:
     party = stage5.monster_party(current, entity)
     enemy_party = [monster for monster in party if not monster.tribe.is_elf]
@@ -1150,6 +1138,7 @@ def _resolve_party_contact(
             trace=trace,
             floors=floors,
             stage_num=stage_num,
+            before_vortex=before_vortex,
         )
     player.level = old_level + experience
     if any(monster.tribe.effect == d.EFFECT_LEVEL_REDUCE for monster in party):
@@ -1191,13 +1180,10 @@ def _resolve_contact(
     floor: List[int],
     checkpoint: List[d.Point],
     queue: Counter[Tuple[int, str]],
-    history: Deque[HistoryEntry],
-    event_message: Optional[str],
+    history: Deque[None],
     trace: Optional[TraceRecorder] = None,
-    replay_context: Optional[ReplayContext] = None,
-    operation_index: Optional[int] = None,
+    before_vortex: Optional[Callable[[], None]] = None,
     stage_num: int = 3,
-    turn: int = 0,
 ) -> _ContactResult:
     """Resolve contact with the entity at `hit` in current.entities.
 
@@ -1231,11 +1217,13 @@ def _resolve_contact(
             current.entities.pop(hit)
             player.treasure_collected = True
             if not player.boss_defeated:
-                event_message = trp(
-                    "-- You took the treasure chest, but the King's request remains.",
-                    7,
+                return _ContactResult(
+                    trp(
+                        "-- You took the treasure chest, but the King's request remains.",
+                        7,
+                    )
                 )
-        return _ContactResult(event_message)
+        return _ContactResult(None)
 
     if isinstance(entity, d.Companion):
         ch = entity.tribe.char
@@ -1267,10 +1255,11 @@ def _resolve_contact(
 
     assert isinstance(entity, d.Monster)
     if entity.tribe.char == "M" and not entity.active:
-        return _ContactResult(event_message)
+        return _ContactResult(None)
     if stage_num in (5, 6):
         return _resolve_party_contact(
-            entity, current, floors, player, floor, checkpoint, queue, trace, stage_num
+            entity, current, floors, player, floor, checkpoint, queue, trace, stage_num,
+            before_vortex=before_vortex,
         )
     return _resolve_monster_contact(
         hit,
@@ -1280,11 +1269,9 @@ def _resolve_contact(
         floor,
         checkpoint,
         queue,
-        event_message,
         trace=trace,
         floors=floors,
-        replay_context=replay_context,
-        operation_index=operation_index,
+        before_vortex=before_vortex,
         stage_num=stage_num,
     )
 
@@ -1491,12 +1478,11 @@ def _process_multi_floor_turn(
     floor: List[int],
     checkpoint: List[d.Point],
     queue: Counter[Tuple[int, str]],
-    history: Deque[HistoryEntry],
+    history: Deque[None],
     turn: int,
     stage_num: int = 3,
     trace: Optional[TraceRecorder] = None,
-    replay_context: Optional[ReplayContext] = None,
-    operation_index: Optional[int] = None,
+    before_vortex: Optional[Callable[[], None]] = None,
     repeat_stop_reasons: Optional[Set[str]] = None,
 ) -> Optional[Tuple[int, str]] | _RewindRequest:
     current = floors[floor[0]]
@@ -1585,12 +1571,9 @@ def _process_multi_floor_turn(
                 checkpoint,
                 queue,
                 history,
-                None,
                 trace=trace,
-                replay_context=replay_context,
-                operation_index=operation_index,
+                before_vortex=before_vortex,
                 stage_num=stage_num,
-                turn=turn,
             )
             if contact.rewind_requested:
                 return _RewindRequest(floor[0])
@@ -1667,12 +1650,9 @@ def _process_multi_floor_turn(
             checkpoint,
             queue,
             history,
-            event_message,
             trace=trace,
-            replay_context=replay_context,
-            operation_index=operation_index,
+            before_vortex=before_vortex,
             stage_num=stage_num,
-            turn=turn,
         )
         if contact.end_turn:
             end_turn_message = prefer_event_message(event_message, contact.message)
@@ -1747,6 +1727,29 @@ def _process_multi_floor_turn(
 _step = _process_multi_floor_turn
 
 
+def observe_world(
+    floors: List[Floor], player: d.Player, floor_index: int,
+    stage_num: int, torch_radius: int,
+) -> List[List[int]]:
+    """Update exploration and discoveries before the next player input."""
+    current = floors[floor_index]
+    visible = get_torched(player, torch_radius)
+    reveal_entities_in_fov(player, current.entities, floor_index=floor_index)
+    if current.contact_reveal is not None:
+        x, y = current.contact_reveal
+        current.seen[y][x] = 1
+    for y, row in enumerate(visible):
+        for x, value in enumerate(row):
+            current.seen[y][x] |= value
+    if stage_num in (5, 6):
+        stage5.reveal_mimics(current, player)
+        stage5.reveal_rogue_traps(current, player)
+        if d.has_member(player, "Dangeon Scholar"):
+            stage5.reveal_scholar_features(current, current.seen)
+    _reveal_paired_stair_cells(floors, player)
+    return visible
+
+
 def _stage_draw_options(
     stage_num: int,
     floors: List[Floor],
@@ -1800,7 +1803,7 @@ def run_game(
     player.treasure_collected = False
     replay_context = (
         ReplayContext(stage_num, initial_seed, config)
-        if stage_num in d.ELF_STAGES or stage_num == 5
+        if stage_num in d.ELF_STAGES or stage_num in (5, 6)
         else None
     )
     game_start_turn = 0
@@ -1818,7 +1821,7 @@ def run_game(
     trace_known_monsters_recorded = set(player.known_monsters)
     view_floor = 0
     queue: Counter[Tuple[int, str]] = Counter()
-    history: Deque[HistoryEntry] = deque()
+    history: Deque[None] = deque()
     turn = 0
     if single_floor_stage:
         message: Tuple[int, str] = (-1, "")
@@ -1842,23 +1845,7 @@ def run_game(
     while player.lp > 0:
         current = floors[floor[0]]
         display_floor = floors[view_floor]
-        cur = get_torched(player, config.torch_radius)
-        reveal_entities_in_fov(player, current.entities, floor_index=floor[0])
-        if display_floor is current and display_floor.contact_reveal is not None:
-            rx, ry = display_floor.contact_reveal
-            # Mark the cell as explored without adding it to the current FOV;
-            # this keeps the monster visible without extending the blue FOV
-            # boundary out to its location.
-            display_floor.seen[ry][rx] = 1
-        for y in range(len(cur)):
-            for x in range(len(cur[0])):
-                current.seen[y][x] |= cur[y][x]
-        if stage_num in (5, 6):
-            stage5.reveal_mimics(current, player)
-            stage5.reveal_rogue_traps(current, player)
-            if d.has_member(player, "Dangeon Scholar"):
-                stage5.reveal_scholar_features(current, current.seen)
-        _reveal_paired_stair_cells(floors, player)
+        cur = observe_world(floors, player, floor[0], stage_num, config.torch_radius)
 
         message = tick_message(message)
 
@@ -1949,6 +1936,10 @@ def run_game(
             warning = ((player.x, player.y), destination)
             if player.rogue_warning != warning and stage5.rogue_danger(current, player, destination):
                 player.rogue_warning = warning
+                if replay_context is not None:
+                    replay_context.rogue_checks.setdefault(
+                        len(replay_context.operations), []
+                    ).append(destination)
                 _stop_movement_repeat(ui)
                 message = (5, trp("-- Rogue spotted danger. Press again to proceed.", 5))
                 continue
@@ -2001,24 +1992,16 @@ def run_game(
             turn,
             stage_num=stage_num,
             trace=trace,
-            replay_context=replay_context,
-            operation_index=len(replay_context.operations) - 1
-            if replay_context is not None
-            else None,
             repeat_stop_reasons=repeat_stop_reasons,
         )
         if repeat_stop_reasons:
             _stop_movement_repeat(ui)
         if isinstance(step_result, _RewindRequest):
-            operation_count = (
-                len(replay_context.operations) if replay_context is not None else None
-            )
+            assert replay_context is not None, "Loop contact requires recorded inputs"
+            operation_count = len(replay_context.operations)
             rewind_turn = max(0, game_start_turn - d.LOOP_TURNS)
-            if replay_context is not None and operation_count is not None:
-                rewind_operation = replay_context.turn_to_operation.get(
-                    rewind_turn, 0
-                )
-                replay_context.rewind_targets[operation_count] = rewind_operation
+            rewind_operation = replay_context.turn_to_operation.get(rewind_turn, 0)
+            replay_context.rewind_targets[operation_count] = rewind_operation
             transition_message = trp(
                 "-- Time folds back to the beginning of the recorded past.", 9
             )
@@ -2038,13 +2021,12 @@ def run_game(
             )
             # Rewind contacts still reach the normal turn-end LP decrement.
             player.lp += d.movement_lp_cost(player)
-            if replay_context is not None and operation_count is not None:
-                for recorded_turn in tuple(replay_context.turn_to_operation):
-                    if recorded_turn > rewind_turn:
-                        del replay_context.turn_to_operation[recorded_turn]
-                replay_context.turn_to_operation[rewind_turn] = operation_count
-                game_start_turn = rewind_turn
-                has_rewound = True
+            for recorded_turn in tuple(replay_context.turn_to_operation):
+                if recorded_turn > rewind_turn:
+                    del replay_context.turn_to_operation[recorded_turn]
+            replay_context.turn_to_operation[rewind_turn] = operation_count
+            game_start_turn = rewind_turn
+            has_rewound = True
             event_message: Optional[Tuple[int, str]] = (5, rewind_message)
         else:
             event_message = step_result
@@ -2123,11 +2105,11 @@ def run_game(
                     for operation_count in tuple(replay_context.rewind_targets):
                         if operation_count > retained_turns:
                             del replay_context.rewind_targets[operation_count]
-                    replay_context.vortex_maps[:] = [
-                        (operation_index, map_state)
-                        for operation_index, map_state in replay_context.vortex_maps
-                        if operation_index < retained_turns
-                    ]
+                    replay_context.rogue_checks = {
+                        index: checks
+                        for index, checks in replay_context.rogue_checks.items()
+                        if index < retained_turns
+                    }
                     game_start_turn = target_game_turn
                     history.extend(
                         [None]

@@ -1,6 +1,5 @@
 """State and result types shared by the game loop and replay code."""
 
-from collections import Counter
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
@@ -41,14 +40,9 @@ class Floor:
             self.decor = [[d.DECOR_NONE] * len(row) for row in self.field]
 
 
-HistoryEntry = Optional[
-    Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]
-]
-
-
 @dataclass
 class ReplayContext:
-    """Inputs and map snapshots needed to reconstruct rewindable game state."""
+    """Seed and player inputs needed to reconstruct rewindable game state."""
 
     stage_num: int
     seed: int
@@ -58,9 +52,8 @@ class ReplayContext:
         default_factory=lambda: {0: 0}
     )
     rewind_targets: Dict[int, int] = dataclass_field(default_factory=dict)
-    vortex_maps: List[Tuple[int, List[List[List[int]]]]] = dataclass_field(
-        default_factory=list
-    )
+    # Non-turn Rogue checks, indexed by the next committed operation.
+    rogue_checks: Dict[int, List[d.Point]] = dataclass_field(default_factory=dict)
 
 
 @dataclass(frozen=True)
