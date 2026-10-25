@@ -330,7 +330,7 @@ def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
     player.members.append(d.PartyMember(player.x, player.y, "Healer"))
     assert barrier_lp_damage(player) == 15
     assert d.caltrop_lp_damage(player) == 1
-    assert d.movement_lp_cost(player) == pytest.approx(1 / 3)
+    assert d.movement_lp_cost(player) == pytest.approx(1 / 2)
 
 
 def test_rogue_detects_shooting_lane_and_respects_blockers():
@@ -702,7 +702,7 @@ def test_seed_reproduces_layout_and_groups():
     assert signature() != first
 
 
-def test_deep_roster_preserves_population_and_scales_party_sizes_by_floor():
+def test_deep_roster_counts_and_party_sizes_by_floor():
     deep_rosters = d.STAGE5_ROSTER[1:]
     actual_counts = Counter(
         (char, rank)
@@ -719,24 +719,25 @@ def test_deep_roster_preserves_population_and_scales_party_sizes_by_floor():
     expected_counts[("w", 1)] -= 1
     expected_counts[("w", 2)] += 2
     expected_counts[("A", 1)] += 4
+    expected_counts[("b", 2)] += 3
     assert actual_counts == expected_counts
     current_fixed_total = sum(
         count for roster in d.STAGE5_ROSTER for _, count, _ in roster
     ) + d.STAGE5_FLOORS
     previous_fixed_total = (
         sum(count for _, count, _ in d.STAGE5_ROSTER[0])
-        - 1
+        - 2
         + 3 * sum(count for _, count, _ in d.STAGE5_DEEP_ROSTER)
         + 2
         + 4
     )
-    assert current_fixed_total == previous_fixed_total + 5
+    assert current_fixed_total == previous_fixed_total + 9
     assert [
         sum(count for char, count, _ in roster if char == "A")
         for roster in d.STAGE5_ROSTER
     ] == [3, 2, 3, 2, 3]
     assert [sum(count for _, count, _ in roster) for roster in deep_rosters] == [
-        34, 34, 34, 35
+        34, 36, 34, 36
     ]
     assert [
         sum(count for char, count, rank in roster if char == "w" and rank == 2)

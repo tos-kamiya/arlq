@@ -19,7 +19,7 @@ This file records implementation details for maintenance. `src/arlq/defs.py` is 
 | Member | Current ability |
 | --- | --- |
 | Bard | Triples experience after party sharing. |
-| Healer | Reduces movement LP cost to one third and defeat LP cost to 2. |
+| Healer | Reduces movement LP cost to one half and defeat LP cost to 2. |
 | Rogue | Doubles the interval between Marksman shots. Identifies adjacent Mimics, Golems (`g`), Caltrop Plants (`X`), and Rare Erebus (`E`) in cardinal cells. Stops movement before pits, Marksman firing lanes, and Rare Erebus; a second press proceeds. |
 | Knight | Triples player attack and multiplies shared experience by 0.75. |
 | Dangeon Scholar | Reveals and enables hidden stairs and walks through walls created by Golems. Those walls still block Marksman arrows. |
@@ -39,6 +39,7 @@ This file records implementation details for maintenance. `src/arlq/defs.py` is 
 | 5 | 33 | 30 | 22 | 12 | 3 |
 
 - Stage 5 roster leaders and counts live in `STAGE5_ROSTER`. The deep-floor roster is spread over floors 2–5. Every floor also receives its detached-room `b`, `c`, or `A`.
+- Fixed Bison (`b`) leader counts by floor are 10, 9, 9, 9, and 9.
 - Floor 2 has no Wyrms (`w`), including as party additions. Its support pool excludes `w` and Marksmen (`k`); floors 3–5 use `a`, `f`, `b`, and `e` at twice the weight of `w` and `k`. Floor 1 party additions are `a` only.
 - Golems (`g`) spawn alone. Marksmen (`k`) spawn alone on floors 2–5. Golems and Marksmen may be placed near walls or in narrow passages.
 - Wyrms (`w`, `W`) raise barriers in their eight neighboring cells when unoccupied. The final floor boss party has one `W` and zero to two rank-2 escorts; neither `W'` nor `V'` is used there.
