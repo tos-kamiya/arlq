@@ -388,7 +388,12 @@ class PygletUI:
         self._menu_non_ascii_font_result: Optional[Tuple[str, float]] = None
 
         self.batch = pyglet.graphics.Batch()
+        self._tile_group = pyglet.graphics.Group(order=-1)
         self._drawables: list = []
+        self._drawable_cache = {}
+        self._frame_drawable_cache = None
+        self._drawable_use_counts = None
+        self._reused_drawable_ids = set()
 
         self._closed = False
         self._key_queue: list = []
@@ -691,9 +696,19 @@ class PygletUI:
     def _clear_drawables(self):
         if self._menu_active:
             self._menu_text_records = []
-        for obj in self._drawables:
-            obj.delete()
+        for signature in list(self._drawable_cache):
+            if not self._retain_drawable(signature):
+                for drawable in self._drawable_cache.pop(signature):
+                    drawable.delete()
+        self._frame_drawable_cache = {}
+        self._drawable_use_counts = {}
+        self._reused_drawable_ids = set()
         self._drawables = []
+
+    def _retain_drawable(self, signature):
+        # Keep grid cells in their original vertex order: adjacent rectangles
+        # overlap by one pixel. Other shapes and text retain insertion order.
+        return signature[0] == 'tile'
 
     def _redraw_menu_text(self) -> None:
         """Rebuild the active menu at the saved display scale after resizing."""
@@ -704,16 +719,38 @@ class PygletUI:
         self._flip()
 
     def _draw_object(self, signature, factory):
-        """Create and track a drawable; sprite mode can retain matching objects."""
-        drawable = factory()
+        """Reuse matching objects; tile colors are updated by the caller."""
+        if getattr(self, '_frame_drawable_cache', None) is None:
+            drawable = factory()
+            self._drawables.append(drawable)
+            return drawable
+        index = self._drawable_use_counts.get(signature, 0)
+        self._drawable_use_counts[signature] = index + 1
+        old_objects = self._drawable_cache.get(signature, ())
+        if index < len(old_objects):
+            drawable = old_objects[index]
+            self._reused_drawable_ids.add(id(drawable))
+        else:
+            drawable = factory()
+        self._frame_drawable_cache.setdefault(signature, []).append(drawable)
         self._drawables.append(drawable)
         return drawable
 
     def _set_drawable_attribute(self, drawable, name, value):
-        setattr(drawable, name, value)
+        if drawable is not None and id(drawable) not in getattr(self, '_reused_drawable_ids', ()):
+            setattr(drawable, name, value)
 
     def _finish_drawables(self):
-        """Hook for renderers that keep drawables between frames."""
+        if self._frame_drawable_cache is None:
+            return
+        for signature, old_objects in self._drawable_cache.items():
+            retained = len(self._frame_drawable_cache.get(signature, ()))
+            for drawable in old_objects[retained:]:
+                drawable.delete()
+        self._drawable_cache = self._frame_drawable_cache
+        self._frame_drawable_cache = None
+        self._drawable_use_counts = None
+        self._reused_drawable_ids = set()
 
     def _draw_text(
         self,
@@ -861,6 +898,23 @@ class PygletUI:
 
     def _draw_tile(self, x: int, y: int, tile_color: Tuple[int, int, int], field, discovered_at):
         """Fill one field cell; `field` and `discovered_at` let subclasses look at neighbors."""
+        # Sprite mode uses complete signatures instead of mutable tile colors.
+        if not self._retain_drawable(('rectangle',)):
+            left = self._field_col_x(x)
+            width = self._field_col_width(x) + 1
+            height = self.cell_size_y + 1
+            bottom = self.window_height - y * self.cell_size_y - height
+            color = self._display_color(tile_color)
+            drawable = self._draw_object(
+                ('tile', left, bottom, width, height, self.window_height),
+                lambda: pyglet.shapes.Rectangle(
+                    left, bottom, width, height, color=color, batch=self.batch,
+                    group=self._tile_group,
+                ),
+            )
+            if drawable.color[:3] != color[:3]:
+                drawable.color = color
+            return
         self._draw_rect(
             self._field_col_x(x),
             y * self.cell_size_y,
@@ -1117,6 +1171,10 @@ class PygletUI:
 
         # Draw entities (monster and treasures)
         player_attack = d.current_player_attack(player, stage_num)
+        party_tones = (
+            ui_display.monster_party_tones(entities, known_types, player_attack)
+            if stage_num in (5, 6) else None
+        )
 
         def paint(glyph: ui_display.FieldGlyph) -> None:
             if glyph.tone == "member":
@@ -1148,6 +1206,7 @@ class PygletUI:
                 debug_show_entities=debug_show_entities,
                 stage_num=stage_num,
                 party_entities=entities,
+                party_tones=party_tones,
             ):
                 paint(glyph)
 

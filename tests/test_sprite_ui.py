@@ -921,6 +921,60 @@ def test_culled_cached_objects_are_removed_and_created_on_return(sprite_ui):
     assert ui._drawables == [objects[1]]
 
 
+@pytest.mark.parametrize('ui_type', [PygletUI, SpriteUI])
+def test_shared_drawable_cache_retains_duplicates_and_deletes_stale_objects(ui_type):
+    ui = ui_type.__new__(ui_type)
+    ui._menu_active = False
+    ui._drawable_cache = {}
+    ui._frame_drawable_cache = None
+    ui._sprite_cells = {}
+    created = []
+
+    def create():
+        obj = SimpleNamespace(deleted=False)
+        obj.delete = lambda: setattr(obj, 'deleted', True)
+        created.append(obj)
+        return obj
+
+    ui._clear_drawables()
+    first = ui._draw_object(('tile',), create)
+    second = ui._draw_object(('tile',), create)
+    ui._finish_drawables()
+    assert first is not second
+
+    ui._clear_drawables()
+    assert ui._draw_object(('tile',), create) is first
+    ui._finish_drawables()
+    assert not first.deleted and second.deleted
+
+    ui._clear_drawables()
+    ui._finish_drawables()
+    assert first.deleted and ui._drawable_cache == {}
+    assert len(created) == 2
+
+
+def test_pyglet_tile_color_changes_keep_the_same_background_object(monkeypatch):
+    ui = PygletUI.__new__(PygletUI)
+    ui._menu_active = False
+    ui._drawable_cache = {}
+    ui._tile_group = None
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.window_height = 500
+    ui.batch = None
+    ui.map_mode = False
+    monkeypatch.setattr('arlq.pyglet_funcs.pyglet.shapes.Rectangle',
+                        lambda *args, **kwargs: SimpleNamespace(**kwargs, delete=lambda: None))
+    objects = []
+    for color in ((20, 20, 20), (100, 100, 100), (20, 20, 20)):
+        ui._clear_drawables()
+        ui._draw_tile(1, 1, color, [], lambda x, y: True)
+        ui._finish_drawables()
+        obj, = ui._drawables
+        assert obj.color == color
+        objects.append(obj)
+    assert objects[0] is objects[1] is objects[2]
+
+
 def test_visible_disc_is_kept_when_body_is_offscreen(sprite_ui):
     ui = sprite_ui
     ui.window_width = 100

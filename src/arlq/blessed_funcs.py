@@ -280,6 +280,10 @@ class BlessedUI:
                     put(x, y, char, "red", bold=True, bg=cell_background(x, y))
 
         player_attack = d.current_player_attack(player, stage_num)
+        party_tones = (
+            ui_display.monster_party_tones(entities, known_types, player_attack)
+            if stage_num in (5, 6) else None
+        )
 
         def paint(glyph: ui_display.FieldGlyph) -> None:
             color = None if glyph.tone in ("companion", "member", "default", "stair") else glyph.tone
@@ -313,6 +317,7 @@ class BlessedUI:
                 debug_show_entities=debug_show_entities,
                 stage_num=stage_num,
                 party_entities=entities,
+                party_tones=party_tones,
             ):
                 paint(glyph)
 

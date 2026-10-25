@@ -419,10 +419,6 @@ class SpriteUI(PygletUI):
         # Cells where a character sprite was drawn this frame; a rank mark in
         # the next cell belongs to that sprite.
         self._sprite_cells = {}
-        self._drawable_cache = {}
-        self._frame_drawable_cache = None
-        self._drawable_use_counts = None
-        self._reused_drawable_ids = set()
         self._disc_image = ground_disc_image()
         self._disc_halves = (ground_disc_image('lower-left'), ground_disc_image('upper-right'))
         self._disc_group = pyglet.graphics.Group(order=1)
@@ -1396,35 +1392,15 @@ class SpriteUI(PygletUI):
             self._set_drawable_attribute(badge, 'color', badge_color)
 
     def _clear_drawables(self):
-        if self._menu_active:
-            self._menu_text_records = []
-        # Keep last frame's objects available for exact matches. They remain
-        # attached to the batch until _finish_drawables removes stale ones.
-        self._frame_drawable_cache = {}
-        self._drawable_use_counts = {}
-        self._reused_drawable_ids = set()
-        self._drawables = []
+        super()._clear_drawables()
         self._sprite_cells.clear()
         self._player_cell = None
         self._fallen_rock_draws = ()
         self._field_text_cells = frozenset()
         self._floor_cells = {}
 
-    def _draw_object(self, signature, factory):
-        """Reuse a drawable when its complete render description is unchanged."""
-        if getattr(self, '_frame_drawable_cache', None) is None:
-            return super()._draw_object(signature, factory)
-        index = self._drawable_use_counts.get(signature, 0)
-        self._drawable_use_counts[signature] = index + 1
-        old_objects = self._drawable_cache.get(signature, ())
-        if index < len(old_objects):
-            drawable = old_objects[index]
-            self._reused_drawable_ids.add(id(drawable))
-        else:
-            drawable = factory()
-        self._frame_drawable_cache.setdefault(signature, []).append(drawable)
-        self._drawables.append(drawable)
-        return drawable
+    def _retain_drawable(self, signature):
+        return True
 
     def _finish_drawables(self):
         if self._frame_drawable_cache is None:
@@ -1435,18 +1411,7 @@ class SpriteUI(PygletUI):
                 self._draw_terrain(pos, d.DECOR_FALLEN_ROCKS, 'wall')
         if self._floor_cells:
             self._draw_floor_tiles()
-        for signature, old_objects in self._drawable_cache.items():
-            retained = len(self._frame_drawable_cache.get(signature, ()))
-            for drawable in old_objects[retained:]:
-                drawable.delete()
-        self._drawable_cache = self._frame_drawable_cache
-        self._frame_drawable_cache = None
-        self._drawable_use_counts = None
-        self._reused_drawable_ids = set()
-
-    def _set_drawable_attribute(self, drawable, name, value):
-        if drawable is not None and id(drawable) not in getattr(self, '_reused_drawable_ids', ()):
-            setattr(drawable, name, value)
+        super()._finish_drawables()
 
     def _progress_mark_group(self):
         return self._text_overlay_group

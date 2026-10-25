@@ -19,14 +19,11 @@ def monster_party(current: Floor, first: d.Monster) -> list[d.Monster]:
 
 
 def monster_party_entities(
-    entities: list[d.Entity], first: d.Monster
+    entities: list[d.Entity], first: d.Monster,
+    *, positions: dict[d.Point, d.Monster] | None = None,
 ) -> list[d.Monster]:
     """Return the active vertically connected party containing ``first``."""
-    candidates = {
-        (entity.x, entity.y): entity
-        for entity in entities
-        if isinstance(entity, d.Monster) and entity.active and not entity.tribe.is_elf
-    }
+    candidates = monster_positions(entities) if positions is None else positions
     party = []
     pending = [first]
     visited = set()
@@ -44,6 +41,14 @@ def monster_party_entities(
     return party
 
 
+def monster_positions(entities: list[d.Entity]) -> dict[d.Point, d.Monster]:
+    return {
+        (entity.x, entity.y): entity
+        for entity in entities
+        if isinstance(entity, d.Monster) and entity.active and not entity.tribe.is_elf
+    }
+
+
 def special_monster(entity: d.Monster) -> bool:
     # Unlocking the objective is not a combat ability; W can accompany V'.
     return bool(
@@ -54,11 +59,12 @@ def special_monster(entity: d.Monster) -> bool:
 def normalize_parties(current: Floor) -> None:
     """Enforce party limits after spawning or rearranging; retain W and V'."""
     _separate_golems(current)
+    positions = monster_positions(current.entities)
     checked = set()
     for entity in list(current.entities):
         if not isinstance(entity, d.Monster) or not entity.active or entity in checked:
             continue
-        party = monster_party(current, entity)
+        party = monster_party_entities(current.entities, entity, positions=positions)
         checked.update(party)
         party.sort(
             key=lambda monster: (
@@ -77,11 +83,28 @@ def normalize_parties(current: Floor) -> None:
             is_special = special_monster(monster)
             if kept >= d.MONSTER_PARTY_LIMIT or (special and is_special):
                 current.entities.remove(monster)
+                positions = monster_positions(current.entities)
             else:
                 kept += 1
                 special |= is_special
     _separate_diagonal_monsters(current)
     _sync_wyrm_barriers(current)
+
+
+def _neighbor_pairs(monsters: list[d.Monster], offsets: tuple[d.Point, ...]):
+    """Visit adjacent pairs in entity order, preserving relocation choices."""
+    positions: dict[d.Point, list[int]] = {}
+    for index, monster in enumerate(monsters):
+        positions.setdefault((monster.x, monster.y), []).append(index)
+    for index, first in enumerate(monsters):
+        neighbors = sorted(
+            other
+            for dx, dy in offsets
+            for other in positions.get((first.x + dx, first.y + dy), ())
+            if other > index
+        )
+        for other in neighbors:
+            yield first, monsters[other]
 
 
 def _separate_golems(current: Floor) -> None:
@@ -97,10 +120,10 @@ def _separate_golems(current: Floor) -> None:
         conflict = next(
             (
                 (first, second)
-                for index, first in enumerate(monsters)
-                for second in monsters[index + 1 :]
+                for first, second in _neighbor_pairs(
+                    monsters, ((0, -1), (1, 0), (0, 1), (-1, 0))
+                )
                 if (first.tribe.char == "g" or second.tribe.char == "g")
-                and abs(first.x - second.x) + abs(first.y - second.y) == 1
             ),
             None,
         )
@@ -150,22 +173,19 @@ def _separate_diagonal_monsters(current: Floor) -> None:
             and not entity.tribe.is_elf
         ]
         mover = None
-        for index, first in enumerate(monsters):
-            for second in monsters[index + 1 :]:
-                if abs(first.x - second.x) != 1 or abs(first.y - second.y) != 1:
-                    continue
-                first_is_boss = (first.tribe.char == "W" and first.empowered == 1) or (
-                    first.tribe.char == "V" and first.empowered == 2
-                )
-                second_is_boss = (
-                    second.tribe.char == "W" and second.empowered == 1
-                ) or (second.tribe.char == "V" and second.empowered == 2)
-                if first_is_boss and second_is_boss:
-                    continue
-                mover = second if not second_is_boss else first
-                break
-            if mover is not None:
-                break
+        for first, second in _neighbor_pairs(
+            monsters, ((-1, -1), (1, -1), (-1, 1), (1, 1))
+        ):
+            first_is_boss = (first.tribe.char == "W" and first.empowered == 1) or (
+                first.tribe.char == "V" and first.empowered == 2
+            )
+            second_is_boss = (
+                second.tribe.char == "W" and second.empowered == 1
+            ) or (second.tribe.char == "V" and second.empowered == 2)
+            if first_is_boss and second_is_boss:
+                continue
+            mover = second if not second_is_boss else first
+            break
         if mover is None:
             return
 

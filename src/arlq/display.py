@@ -289,6 +289,29 @@ def preview_entity_glyphs(
     return glyphs
 
 
+def monster_party_tones(
+    entities: List[d.Entity], known_types: Set[str], player_attack: int,
+) -> dict[d.Monster, str]:
+    """Calculate each party's display tone once per rendered floor."""
+    from .stage5 import monster_party_entities, monster_positions
+
+    positions = monster_positions(entities)
+    tones: dict[d.Monster, str] = {}
+    for entity in positions.values():
+        if entity in tones:
+            continue
+        party = monster_party_entities(entities, entity, positions=positions)
+        known = all(d.monster_type_key(member) in known_types for member in party)
+        tone = (
+            "yellow" if not known else
+            "blue" if sum(d.monster_level(member) for member in party) <= player_attack
+            else "red"
+        )
+        for member in party:
+            tones[member] = tone
+    return tones
+
+
 def revealed_entity_glyphs(
     entity: d.Entity,
     known_types: Set[str],
@@ -299,6 +322,7 @@ def revealed_entity_glyphs(
     debug_show_entities: bool = False,
     stage_num: int = 0,
     party_entities: Optional[List[d.Entity]] = None,
+    party_tones: Optional[dict[d.Monster, str]] = None,
 ) -> List[FieldGlyph]:
     """Glyphs for an entity inside the explored map.
 
@@ -349,6 +373,8 @@ def revealed_entity_glyphs(
             tone = "default"
         elif stage2_high_elf:
             tone = "red"
+        elif stage_num in (5, 6) and party_tones is not None and entity in party_tones:
+            tone = party_tones[entity]
         else:
             party = [entity]
             if stage_num in (5, 6) and party_entities is not None:

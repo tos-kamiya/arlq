@@ -32,6 +32,46 @@ def monster(x, y, char, rank=1):
     return d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[char], rank)
 
 
+@pytest.mark.parametrize('seed', [123, 456, 789])
+def test_indexed_neighbors_preserve_generation_and_random_state(monkeypatch, seed):
+    def snapshot():
+        engine.rand.set_seed(seed)
+        floors, _ = stage5.build()
+        return (
+            [(floor.field, [
+                (type(e).__name__, e.x, e.y,
+                 getattr(getattr(e, 'tribe', None), 'char', None),
+                 getattr(e, 'empowered', None))
+                for e in floor.entities
+            ]) for floor in floors],
+            engine.rand._value,
+        )
+
+    indexed = snapshot()
+
+    def exhaustive_pairs(monsters, offsets):
+        for index, first in enumerate(monsters):
+            for second in monsters[index + 1:]:
+                if (second.x - first.x, second.y - first.y) in offsets:
+                    yield first, second
+
+    monkeypatch.setattr(stage5, '_neighbor_pairs', exhaustive_pairs)
+    assert snapshot() == indexed
+
+
+@pytest.mark.parametrize('known', [set(), {'a'}, {'a', 'D'}, {'a', 'D', 'M'}])
+@pytest.mark.parametrize('attack', [1, 100])
+def test_shared_party_tones_match_individual_glyphs(known, attack):
+    entities = [monster(3, 3, 'a'), monster(3, 4, 'D'), monster(8, 8, 'M')]
+    tones = display.monster_party_tones(entities, known, attack)
+    for entity in entities:
+        kwargs = {'stage_num': 5, 'party_entities': entities}
+        expected = display.revealed_entity_glyphs(entity, known, False, attack, None, **kwargs)
+        assert display.revealed_entity_glyphs(
+            entity, known, False, attack, None, party_tones=tones, **kwargs
+        ) == expected
+
+
 def step(current, player, direction=(1, 0), checkpoint=(2, 2)):
     return engine._step(
         direction,
