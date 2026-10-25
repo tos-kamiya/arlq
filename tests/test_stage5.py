@@ -204,11 +204,10 @@ def test_stage5_member_progress_shows_candidates_before_they_depart():
     ] == ["B", "H", "R", "K", "D", "G"]
 
 
-def test_departed_member_respawns_near_departure_after_long_delay():
+def test_departed_member_does_not_respawn_after_long_delay():
     current, player = state(("Bard", "Healer"))
     lower, _ = state()
     player.joined_members.update(("Bard", "Healer"))
-    departed = player.members[0]
     recruit = d.PartyMember(3, 2, "Rogue", origin_floor=1)
     current.entities.append(recruit)
 
@@ -227,45 +226,42 @@ def test_departed_member_respawns_near_departure_after_long_delay():
         isinstance(entity, d.PartyMember) and entity.role == "Bard"
         for entity in current.entities
     )
-    assert player.member_respawns["Bard"] == (
-        1,
-        departed.x,
-        departed.y,
-        40 + d.STAGE5_MEMBER_RESPAWN_TURNS,
-    )
-    assert display.stage5_member_progress_marks(player)[0] == ("B2", True)
+    assert "Bard" not in player.member_respawns
+    assert display.stage5_member_progress_marks(player)[0] == ("B-", False)
 
     stage5.process_member_respawns(
         [lower, current], player, 39 + d.STAGE5_MEMBER_RESPAWN_TURNS
     )
-    assert "Bard" in player.member_respawns
+    assert "Bard" not in player.member_respawns
     stage5.process_member_respawns(
         [lower, current], player, 40 + d.STAGE5_MEMBER_RESPAWN_TURNS
     )
-    respawned = next(
-        entity
-        for entity in current.entities
-        if isinstance(entity, d.PartyMember) and entity.role == "Bard"
+    assert not any(
+        isinstance(entity, d.PartyMember) and entity.role == "Bard"
+        for floor in (lower, current)
+        for entity in floor.entities
     )
-    assert abs(respawned.x - departed.x) + abs(respawned.y - departed.y) <= 1
-    assert "Bard" not in player.member_respawns
 
 
-def test_stage5_does_not_replace_two_members_when_a_third_candidate_is_met():
+def test_stage5_replaces_oldest_member_without_respawning_them():
     current, player = state(("Bard", "Healer"))
     companion = d.Companion(2, 2, d.CHAR_TO_TRIBE["n"])
     player.companion = companion
     recruit = d.PartyMember(3, 2, "Rogue")
     current.entities.append(recruit)
-    members_before = list(player.members)
-    joined_before = set(player.joined_members)
+    player.joined_members.update(("Bard", "Healer"))
 
     step(current, player)
 
-    assert player.members == members_before
-    assert recruit in current.entities
-    assert player.joined_members == joined_before
+    assert [member.role for member in player.members] == ["Healer", "Rogue"]
+    assert recruit not in current.entities
+    assert player.joined_members == {"Bard", "Healer", "Rogue"}
     assert not player.member_respawns
+    assert not any(
+        isinstance(entity, d.PartyMember) and entity.role == "Bard"
+        for entity in current.entities
+    )
+    assert display.stage5_member_progress_marks(player)[0] == ("B-", False)
     assert player.companion is companion
 
 

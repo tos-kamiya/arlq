@@ -239,18 +239,14 @@ def recruit(
     )
     if departed is not None:
         player.seen_members.add(departed.role)
+        player.known_member_floors.pop(departed.role, None)
     current.entities.remove(member)
     player.member_respawns.pop(member.role, None)
     player.members.append(member)
     if departed is not None and recycle_departed:
         if respawn_delay > 0:
-            player.member_respawns[departed.role] = (
-                floor_index,
-                departed.x,
-                departed.y,
-                turn + respawn_delay,
-            )
-            player.known_member_floors[departed.role] = floor_index + 1
+            # Stage 5 departures are permanent; only Stage 6 recycles them.
+            player.member_respawns.pop(departed.role, None)
         else:
             target = current
             if (
