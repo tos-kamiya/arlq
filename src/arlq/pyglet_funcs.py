@@ -1222,7 +1222,7 @@ class PygletUI:
 
         # Stage 3 followers persist across floor changes and are rendered
         # independently of the temporary companion slot.
-        for fx, fy, ffloor, fchar in getattr(player, "persistent_followers", []):
+        for fx, fy, ffloor, fchar in player.persistent_followers:
             if not floor_view and ffloor == player.current_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
                 self._draw_follower((fx, fy), fchar)
 

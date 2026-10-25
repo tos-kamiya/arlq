@@ -327,7 +327,7 @@ class BlessedUI:
             ):
                 paint(glyph)
 
-        for fx, fy, ffloor, fchar in getattr(player, "persistent_followers", []):
+        for fx, fy, ffloor, fchar in player.persistent_followers:
             if (
                 not floor_view
                 and ffloor == player.current_floor
