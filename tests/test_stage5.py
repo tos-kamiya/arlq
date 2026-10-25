@@ -363,12 +363,14 @@ def test_rogue_mimic_identification_requires_adjacency_and_activation():
     assert "M" in player.known_monsters
 
 
-def test_qualified_boss_win_rearranges_final_floor_and_unlocks_separate_treasure():
+def test_boss_party_vortex_is_local_and_boss_unlocks_separate_treasure():
     floors, player = stage5.build()
     current = floors[-1]
     boss = next(
         e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W"
     )
+    party = stage5.monster_party(current, boss)
+    vortex = next(e for e in party if e.tribe.char == "V")
     origin = (boss.x, boss.y)
     boss_zone = stage5.tile_at(origin)
     player.members.append(d.PartyMember(player.x, player.y, "Knight"))
@@ -376,6 +378,15 @@ def test_qualified_boss_win_rearranges_final_floor_and_unlocks_separate_treasure
     player.x, player.y = boss.x, boss.y
     for floor_data in floors:
         floor_data.seen = [[1] * d.FIELD_WIDTH for _ in floor_data.field]
+    far_floor_cell = max(
+        (
+            (x, y)
+            for y, row in enumerate(current.field)
+            for x, cell in enumerate(row)
+            if cell == d.CHAR_FLOOR
+        ),
+        key=lambda point: abs(point[0] - vortex.x) + abs(point[1] - vortex.y),
+    )
     floor_index = [len(floors) - 1]
     engine._step(
         (0, 0),
@@ -389,8 +400,7 @@ def test_qualified_boss_win_rearranges_final_floor_and_unlocks_separate_treasure
         stage_num=5,
     )
     assert player.boss_defeated and not player.stage_won
-    assert current.seen[0][0] == 1  # Wall locations remain explored.
-    assert current.seen[current.up[1]][current.up[0]] == 1
+    assert current.seen[far_floor_cell[1]][far_floor_cell[0]] == 1
     assert any(
         current.seen[y][x] == 0
         for y, row in enumerate(current.field)

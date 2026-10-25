@@ -1158,35 +1158,23 @@ def _resolve_party_contact(
     d.apply_feed(player, feed)
     if any(monster.tribe.char == "M" for monster in party):
         player.x, player.y = _find_escape_place(current)
-    if boss is not None:
-        if stage_num == 5:
-            _vortex_rearrange(
-                current,
-                player,
-                floor[0],
-                (boss.x, boss.y),
-                floors=floors,
-                whole_floor=True,
-                include_treasures=False,
-                stage_num=stage_num,
-            )
-        else:
-            # Other multi-floor stages retain the rescue member spawned by
-            # their boss encounter.
-            candidates = sorted(
-                (
-                    (x, y)
-                    for y, row in enumerate(current.field)
-                    for x, cell in enumerate(row)
-                    if cell == d.CHAR_FLOOR
-                    and (x, y) != (player.x, player.y)
-                    and not any((other.x, other.y) == (x, y) for other in current.entities)
-                ),
-                key=lambda point: (abs(point[0] - boss.x) + abs(point[1] - boss.y), point),
-            )
-            current.entities.append(
-                d.PartyMember(*candidates[0], "Noble", origin_floor=floor[0])
-            )
+    if boss is not None and stage_num != 5:
+        # Other multi-floor stages retain the rescue member spawned by their
+        # boss encounter. Stage 5's ordinary V applies its own local effect.
+        candidates = sorted(
+            (
+                (x, y)
+                for y, row in enumerate(current.field)
+                for x, cell in enumerate(row)
+                if cell == d.CHAR_FLOOR
+                and (x, y) != (player.x, player.y)
+                and not any((other.x, other.y) == (x, y) for other in current.entities)
+            ),
+            key=lambda point: (abs(point[0] - boss.x) + abs(point[1] - boss.y), point),
+        )
+        current.entities.append(
+            d.PartyMember(*candidates[0], "Noble", origin_floor=floor[0])
+        )
     stage5.normalize_parties(
         current,
         d.STAGE5_PARTY_LIMIT if stage_num == 5 else d.MONSTER_PARTY_LIMIT,

@@ -7,7 +7,7 @@ This file records implementation details for maintenance. `src/arlq/defs.py` is 
 - Stage 5 starts at level 1 and has five seeded floors. Each floor has a detached terminal room containing one additional monster chosen from `b`, `c`, and `A`. Floors 3–5 can also have short wall spurs.
 - Two ordinary stair pairs connect each adjacent floor pair. Dangeon Scholar reveals one additional hidden pair per connection. Stairs avoid the detached room where possible.
 - Floors 2–5 receive two barriers each; the final floor also has barriers on 5% of eligible open cells. Its boss party contains one ordinary `W`, one ordinary `V`, and one random empowered escort. A dormant Mimic imitates `W`, and a treasure chest is in another room section. Combat is decided by comparing player attack with the combined strength of the monster party, including the boss.
-- Defeating `W` repositions the remaining monsters on floor 5 and clears explored floor and barrier cells. Wall and stair knowledge remains. Taking the unlocked chest wins the stage.
+- Defeating `W` unlocks the chest. The ordinary `V` in its party applies its local rearrangement effect when defeated. Taking the chest wins the stage.
 - Stage 5 has no elves. Caltrop Plants (`X`) are in the floor 2–4 roster; defeating one scatters caltrops around the player using the shared spread pattern. Pits drop the player to the next floor.
 
 ## Members

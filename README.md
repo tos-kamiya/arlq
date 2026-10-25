@@ -277,7 +277,7 @@ Run `--stage 5` for a seed-generated, five-floor dungeon starting at level 1. Fo
 
 Vertically adjacent monsters form parties of up to three and fight together; horizontal adjacency does not connect them. Party strength and experience are summed, and LP reward uses the highest value in the party. Experience is shared among you and your recruited members, then modified by their abilities.
 
-Floor 5's boss party always contains one `W`, one ordinary `V`, and one other empowered escort. A Mimic imitating the boss also appears. Defeating `W` rearranges the remaining monsters and clears explored floor and barrier cells; wall and stair positions remain known. As with other monster parties, the player wins when their attack is at least the party's combined strength. Take the unlocked treasure chest, placed in another room, to win. Defeat respawns the active party with the player. Stage 5 also features Golems (`g`), Erebus (`e`), Rare Erebus (`E`), and Caltrop Plants (`X`); the plants scatter caltrops when defeated, and pits drop you to the next floor.
+Floor 5's boss party always contains one `W`, one ordinary `V`, and one other empowered escort. A Mimic imitating the boss also appears. Defeating `W` unlocks the treasure chest in another room; the ordinary `V` applies its usual local rearrangement effect when defeated. As with other monster parties, the player wins when their attack is at least the party's combined strength. Take the unlocked chest to win. Defeat respawns the active party with the player. Stage 5 also features Golems (`g`), Erebus (`e`), Rare Erebus (`E`), and Caltrop Plants (`X`); the plants scatter caltrops when defeated, and pits drop you to the next floor.
 
 ### Stage 6 (member-ability trial)
 
