@@ -336,14 +336,14 @@ def reveal_mimics(current: Floor, player: d.Player) -> None:
 
 
 def reveal_rogue_traps(current: Floor, player: d.Player) -> None:
-    """Identify adjacent Golems and Caltrop Plants for a Rogue."""
+    """Identify adjacent Golems, Caltrop Plants, and Rare Erebus for a Rogue."""
     if not d.has_member(player, "Rogue"):
         return
     for entity in current.entities:
         if (
             isinstance(entity, d.Monster)
             and entity.active
-            and entity.tribe.char in ("g", "X")
+            and entity.tribe.char in ("g", "X", "E")
             and abs(player.x - entity.x) + abs(player.y - entity.y) == 1
         ):
             player.known_monsters.add(d.monster_type_key(entity))
