@@ -111,6 +111,7 @@ class BlessedUI:
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
         overshoot_markers: Optional[Set[d.Point]] = None,
+        d_gates: Optional[dict[d.Point, str]] = None,
     ) -> str:
         output = [self.term.home + self.term.clear]
         reveal_disguises = debug_show_entities or monochrome
@@ -216,6 +217,17 @@ class BlessedUI:
                     )
                     background = cell_background(x, y)
                     put(x, y, display_cell if discovered else " ", color, bg=background)
+
+        if d.has_member(player, "Dangeon Scholar"):
+            for (x, y), direction in (d_gates or {}).items():
+                put(
+                    x,
+                    y,
+                    direction,
+                    "green",
+                    bold=True,
+                    bg=cell_background(x, y),
+                )
 
         if not floor_view:
             for x, y in rewind_markers:
@@ -458,6 +470,7 @@ class BlessedUI:
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
         overshoot_markers: Optional[Set[d.Point]] = None,
+        d_gates: Optional[dict[d.Point, str]] = None,
         decor: Optional[List[List[str]]] = None,
     ):
         # `decor` (decorations no rule reads) is not drawn in the terminal.
@@ -468,6 +481,7 @@ class BlessedUI:
             debug_show_entities, checkpoint, self.map_mode, dim_types,
             stage_num, stage_roster, floor_view, floor_label, reachable_cells,
             overshoot_markers,
+            d_gates,
         )
         status_args = (
             player,

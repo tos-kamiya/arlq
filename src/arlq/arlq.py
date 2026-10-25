@@ -613,7 +613,7 @@ def move_player(
     if cell in passable_cells:
         player.x, player.y = nx, ny
         return None
-    if cell == d.CHAR_GOLEM_WALL and (nx, ny) in phase_walls:
+    if cell in d.WALL_CHARS and (nx, ny) in phase_walls:
         player.x, player.y = nx, ny
         return None
 

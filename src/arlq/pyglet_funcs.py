@@ -982,6 +982,7 @@ class PygletUI:
         reachable_cells: Optional[Set[d.Point]] = None,
         overshoot_markers: Optional[Set[d.Point]] = None,
         decor: Optional[List[List[str]]] = None,
+        d_gates: Optional[dict[d.Point, str]] = None,
     ):
         """
         Renders the game stage (`decor`, the decorations no rule reads, is
@@ -999,14 +1000,21 @@ class PygletUI:
         def discovered_at(x: int, y: int) -> bool:
             return bool(torched[y][x] or show_entities)
 
+        open_d_gates = (
+            set(d_gates or {})
+            if d.has_member(player, "Dangeon Scholar")
+            else set()
+        )
+
         for y, row in enumerate(field):
             for x in self._field_draw_columns(len(row)):
                 cell = row[x]
+                is_wall = cell in d.WALL_CHARS and (x, y) not in open_d_gates
                 discovered = discovered_at(x, y)
                 if cur_torched[y][x]:
-                    tile_color = VISIBLE_WALL if cell in d.WALL_CHARS else VISIBLE_FLOOR
+                    tile_color = VISIBLE_WALL if is_wall else VISIBLE_FLOOR
                 elif discovered:
-                    tile_color = WALL if cell in d.WALL_CHARS else FLOOR
+                    tile_color = WALL if is_wall else FLOOR
                 else:
                     tile_color = FOG
                 if cell == d.CHAR_CALTROP and discovered:
@@ -1027,6 +1035,10 @@ class PygletUI:
                     self._draw_field_text((x, y), d.CHAR_BARRIER, COLOR_MAP[CI_RED], bold=True)
                 elif discovered and cell == d.CHAR_COLLAPSE:
                     self._draw_pit((x, y))
+
+        if d.has_member(player, "Dangeon Scholar"):
+            for (x, y), direction in (d_gates or {}).items():
+                self._draw_field_text((x, y), direction, COLOR_MAP[CI_GREEN], bold=True)
 
         if not floor_view:
             for x, y in overshoot_markers or set():

@@ -155,6 +155,8 @@ def _move_player(
         if d.has_member(player, "Dangeon Scholar")
         else set()
     )
+    if d.has_member(player, "Dangeon Scholar"):
+        phase_walls.update(current.d_gates)
     wall_result = move_player(
         direction,
         current.field,

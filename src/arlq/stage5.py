@@ -687,6 +687,25 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             down_stairs=[down] if index < d.STAGE5_FLOORS - 1 else [],
             room_components=room_components,
         )
+        if len(room_components) == 2 and len(room_components[1]) == 1:
+            detached = next(iter(room_components[1]))
+            connected = room_components[0]
+            gate_candidates = []
+            for neighbor, direction in (
+                ((detached[0] - 1, detached[1]), ">"),
+                ((detached[0] + 1, detached[1]), "<"),
+            ):
+                if neighbor not in connected:
+                    continue
+                gate = (
+                    max(neighbor[0], detached[0]) * (d.TILE_WIDTH + 1),
+                    detached[1] * (d.TILE_HEIGHT + 1) + d.TILE_HEIGHT // 2 + 1,
+                )
+                if field[gate[1]][gate[0]] in d.WALL_CHARS:
+                    gate_candidates.append((gate, direction))
+            if gate_candidates:
+                gate, direction = rand.choice(gate_candidates)
+                current.d_gates[gate] = direction
         _place_detached_room_monster(current, room_components)
         member_roles = list(d.STAGE5_MEMBER_FLOORS[index])
         if index == 0:
