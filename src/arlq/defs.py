@@ -11,19 +11,20 @@ FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5, 6)
 PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
+STAGE5_PARTY_LIMIT = 3
 BARD_EXP_MULTIPLIER = 3
 KNIGHT_EXP_MULTIPLIER = 0.75
 HEALER_MOVE_COST = 1 / 2
 HEALER_RESPAWN_COST = 2
 STAGE5_START_LEVEL = 1
 STAGE5_FLOORS = 5
-# Weights for parties of 1, 2, 3, 4, and 5 monsters, by floor.
+# Weights for parties of 1, 2, and 3 monsters, by floor; larger sizes are disabled.
 STAGE5_PARTY_SIZE_WEIGHTS = (
-    (70, 22, 7, 1, 0),
-    (50, 30, 15, 4, 1),
-    (40, 30, 20, 8, 2),
-    (34, 30, 24, 10, 2),
-    (33, 30, 22, 12, 3),
+    (78, 21, 1, 0, 0),
+    (60, 30, 10, 0, 0),
+    (50, 30, 20, 0, 0),
+    (46, 30, 24, 0, 0),
+    (45, 30, 25, 0, 0),
 )
 # Each roster entry (character, count, rank) supplies party leaders.
 # The deep-floor roster is spread across four floors to reduce crowding.
@@ -45,32 +46,32 @@ STAGE5_DEEP_ROSTER = (
 )
 STAGE5_ROSTER = (
     (
-        ("a", 24, 1), ("A", 3, 1), ("b", 10, 1), ("c", 5, 1),
+        ("a", 24, 1), ("A", 2, 1), ("b", 9, 1), ("c", 5, 1),
         ("d", 4, 1), ("e", 1, 1), ("f", 2, 1), ("g", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 9, 2), ("c", 3, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 8, 2), ("c", 3, 2),
         ("C", 2, 1), ("d", 6, 2), ("f", 2, 2), ("g", 3, 1),
         ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 3, 1), ("b", 9, 2), ("c", 4, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 8, 2), ("c", 4, 2),
         ("C", 2, 1), ("d", 6, 2), ("f", 1, 2), ("g", 3, 1),
         ("k", 2, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 9, 2), ("c", 5, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 8, 2), ("c", 5, 2),
         ("C", 1, 1), ("d", 6, 2), ("f", 1, 2), ("g", 3, 1),
         ("k", 1, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 3, 1), ("b", 9, 2), ("c", 6, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 8, 2), ("c", 6, 2),
         ("C", 1, 1), ("d", 6, 2), ("f", 2, 2), ("g", 3, 1),
         ("k", 1, 1), ("w", 2, 2),
     ),
 )
-STAGE5_BOSS_PARTY = (("W", 1),)
-STAGE5_BOSS_ESCORTS = tuple("aAbcCdefkwXE")
+STAGE5_BOSS_PARTY = (("W", 1), ("V", 1))
+STAGE5_BOSS_ESCORTS = tuple("abdefkw")
 _STAGE5_DEEP_SUPPORT_POOL = (
     ("a", 1), ("a", 1),
     ("f", 1), ("f", 1),

@@ -1095,20 +1095,11 @@ def _resolve_party_contact(
     boss = next(
         (monster for monster in party if monster.tribe.char in ("F", "W")), None
     )
-    boss_qualified = (
-        d.has_member(player, "Knight")
-        or (
-            player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
-            and player.item_taken_from in ("c", "C")
-        )
-    )
     for monster in party:
         player.known_monsters.add(d.monster_type_key(monster))
     if player.item == d.ITEM_SWORD_CURSED:
         player.lp -= d.CURSED_SWORD_LP_COST
-    won = d.current_player_attack(player, stage_num) >= strength and not (
-        stage_num == 5 and boss is not None and not boss_qualified
-    )
+    won = d.current_player_attack(player, stage_num) >= strength
     if trace is not None:
         for monster in party:
             trace.record_contact(
@@ -1196,7 +1187,10 @@ def _resolve_party_contact(
             current.entities.append(
                 d.PartyMember(*candidates[0], "Noble", origin_floor=floor[0])
             )
-    stage5.normalize_parties(current)
+    stage5.normalize_parties(
+        current,
+        d.STAGE5_PARTY_LIMIT if stage_num == 5 else d.MONSTER_PARTY_LIMIT,
+    )
     player.last_contact_monster = contact_key
     return _ContactResult(None)
 
@@ -1758,7 +1752,10 @@ def _process_multi_floor_turn(
         if stage_num == 5:
             stage5.process_member_respawns(floors, player, turn, floor[0])
         for floor_data in floors:
-            stage5.normalize_parties(floor_data)
+            stage5.normalize_parties(
+                floor_data,
+                d.STAGE5_PARTY_LIMIT if stage_num == 5 else d.MONSTER_PARTY_LIMIT,
+            )
         stage5.sync_members(player, previous, direction)
         stage5.reveal_mimics(floors[floor[0]], player)
         stage5.reveal_rogue_traps(floors[floor[0]], player)

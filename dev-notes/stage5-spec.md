@@ -6,9 +6,9 @@ This file records implementation details for maintenance. `src/arlq/defs.py` is 
 
 - Stage 5 starts at level 1 and has five seeded floors. Each floor has a detached terminal room containing one additional monster chosen from `b`, `c`, and `A`. Floors 3–5 can also have short wall spurs.
 - Two ordinary stair pairs connect each adjacent floor pair. Dangeon Scholar reveals one additional hidden pair per connection. Stairs avoid the detached room where possible.
-- Floors 2–5 receive two barriers each; the final floor also has barriers on 5% of eligible open cells. It contains one ordinary `W`, up to two random empowered escorts, a dormant Mimic that imitates `W`, and a treasure chest in another room section. A Knight or a sword from `c`/`C` is required to defeat `W`.
+- Floors 2–5 receive two barriers each; the final floor also has barriers on 5% of eligible open cells. Its boss party contains one ordinary `W`, one ordinary `V`, and one random empowered escort. A dormant Mimic imitates `W`, and a treasure chest is in another room section. Combat is decided by comparing player attack with the combined strength of the monster party, including the boss.
 - Defeating `W` repositions the remaining monsters on floor 5 and clears explored floor and barrier cells. Wall and stair knowledge remains. Taking the unlocked chest wins the stage.
-- Stage 5 has no elves. Caltrop Plants (`X`) are in the floor 2–4 roster and can also appear as boss escorts; defeating one scatters caltrops around the player using the shared spread pattern. Pits drop the player to the next floor.
+- Stage 5 has no elves. Caltrop Plants (`X`) are in the floor 2–4 roster; defeating one scatters caltrops around the player using the shared spread pattern. Pits drop the player to the next floor.
 
 ## Members
 
@@ -27,22 +27,22 @@ This file records implementation details for maintenance. `src/arlq/defs.py` is 
 
 ## Monster parties and placement
 
-- Vertically adjacent monsters form a party, up to five members. Horizontal and diagonal adjacency do not connect parties. A party fights as one encounter; strength and experience are summed, and LP reward uses the highest individual value.
-- Party size uses `STAGE5_PARTY_SIZE_WEIGHTS` (weights for parties of one through five monsters):
+- Vertically adjacent monsters form a party, up to three members. Horizontal and diagonal adjacency do not connect parties. A party fights as one encounter; strength and experience are summed, and LP reward uses the highest individual value.
+- Party size uses `STAGE5_PARTY_SIZE_WEIGHTS` (weights for parties of one through three monsters):
 
-| Floor | 1 | 2 | 3 | 4 | 5 |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | 70 | 22 | 7 | 1 | 0 |
-| 2 | 50 | 30 | 15 | 4 | 1 |
-| 3 | 40 | 30 | 20 | 8 | 2 |
-| 4 | 34 | 30 | 24 | 10 | 2 |
-| 5 | 33 | 30 | 22 | 12 | 3 |
+| Floor | 1 | 2 | 3 |
+| --- | ---: | ---: | ---: |
+| 1 | 78 | 21 | 1 |
+| 2 | 60 | 30 | 10 |
+| 3 | 50 | 30 | 20 |
+| 4 | 46 | 30 | 24 |
+| 5 | 45 | 30 | 25 |
 
 - Stage 5 roster leaders and counts live in `STAGE5_ROSTER`. The deep-floor roster is spread over floors 2–5. Every floor also receives its detached-room `b`, `c`, or `A`.
-- Fixed Bison (`b`) leader counts by floor are 10, 9, 9, 9, and 9.
+- Fixed Bison (`b`) leader counts by floor are 9, 8, 8, 8, and 8.
 - Floor 2 has no Wyrms (`w`), including as party additions. Its support pool excludes `w` and Marksmen (`k`); floors 3–5 use `a`, `f`, `b`, and `e` at twice the weight of `w` and `k`. Floor 1 party additions are `a` only.
 - Golems (`g`) spawn alone. Marksmen (`k`) spawn alone on floors 2–5. Golems and Marksmen may be placed near walls or in narrow passages.
-- Wyrms (`w`, `W`) raise barriers in their eight neighboring cells when unoccupied. The final floor boss party has one `W` and zero to two rank-2 escorts; neither `W'` nor `V'` is used there.
+- Wyrms (`w`, `W`) raise barriers in their eight neighboring cells when unoccupied. The final floor boss party has one `W`, one rank-1 `V`, and one other rank-2 escort; neither `W'` nor `V'` is used there.
 
 ## Main implementation modules
 

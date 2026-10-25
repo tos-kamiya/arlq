@@ -50,14 +50,16 @@ def monster_positions(entities: list[d.Entity]) -> dict[d.Point, d.Monster]:
 
 
 def special_monster(entity: d.Monster) -> bool:
-    # Unlocking the objective is not a combat ability; W can accompany V'.
+    # Unlocking the objective is not a combat ability; W can accompany V.
     return bool(
         entity.tribe.item or entity.tribe.effect not in (None, d.EFFECT_UNLOCK_TREASURE)
     )
 
 
-def normalize_parties(current: Floor) -> None:
-    """Enforce party limits after spawning or rearranging; retain W and V'."""
+def normalize_parties(
+    current: Floor, party_limit: int = d.MONSTER_PARTY_LIMIT
+) -> None:
+    """Enforce party limits after spawning or rearranging; retain W and V."""
     _separate_golems(current)
     positions = monster_positions(current.entities)
     checked = set()
@@ -71,7 +73,7 @@ def normalize_parties(current: Floor) -> None:
                 0
                 if monster.tribe.char == "W"
                 else 1
-                if monster.tribe.char == "V" and monster.empowered == 2
+                if monster.tribe.char == "V" and monster.empowered in (1, 2)
                 else 2,
                 monster.y,
                 monster.x,
@@ -81,7 +83,7 @@ def normalize_parties(current: Floor) -> None:
         special = False
         for monster in party:
             is_special = special_monster(monster)
-            if kept >= d.MONSTER_PARTY_LIMIT or (special and is_special):
+            if kept >= party_limit or (special and is_special):
                 current.entities.remove(monster)
                 positions = monster_positions(current.entities)
             else:
@@ -134,7 +136,7 @@ def _separate_golems(current: Floor) -> None:
         other = second if golem is first else first
         other_is_fixed = isinstance(other, d.Collapse) or (
             (other.tribe.char == "W" and other.empowered == 1)
-            or (other.tribe.char == "V" and other.empowered == 2)
+            or (other.tribe.char == "V" and other.empowered in (1, 2))
         )
         mover = golem if other_is_fixed or other.tribe.char == "g" else other
 
@@ -177,11 +179,11 @@ def _separate_diagonal_monsters(current: Floor) -> None:
             monsters, ((-1, -1), (1, -1), (-1, 1), (1, 1))
         ):
             first_is_boss = (first.tribe.char == "W" and first.empowered == 1) or (
-                first.tribe.char == "V" and first.empowered == 2
+                first.tribe.char == "V" and first.empowered in (1, 2)
             )
             second_is_boss = (
                 second.tribe.char == "W" and second.empowered == 1
-            ) or (second.tribe.char == "V" and second.empowered == 2)
+            ) or (second.tribe.char == "V" and second.empowered in (1, 2))
             if first_is_boss and second_is_boss:
                 continue
             mover = second if not second_is_boss else first
@@ -799,10 +801,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             )
         if index == d.STAGE5_FLOORS - 1:
             boss_party = list(d.STAGE5_BOSS_PARTY)
-            boss_party.extend(
-                (rand.choice(d.STAGE5_BOSS_ESCORTS), 2)
-                for _ in range(rand.randrange(3))
-            )
+            boss_party.append((rand.choice(d.STAGE5_BOSS_ESCORTS), 2))
             _place_party(current, boss_party, index)
             mimic = d.Monster(
                 *rand.choice(_open_points(current)),
@@ -854,7 +853,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         floors[-1], d.STAGE5_FINAL_FLOOR_BARRIER_PERCENT
     )
     for current in floors:
-        normalize_parties(current)
+        normalize_parties(current, d.STAGE5_PARTY_LIMIT)
     player = d.Player(*floors[0].up, d.STAGE5_START_LEVEL, d.LP_INIT)
     player.rescue_stage = True
     player.treasure_stage = True

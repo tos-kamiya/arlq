@@ -167,8 +167,10 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
         for floor in floors
         for e in floor.entities
     )
-    escorts = [e for e in party if e is not boss]
-    assert len(escorts) <= 2
+    vortex = next(e for e in party if e.tribe.char == "V")
+    assert vortex.empowered == 1
+    escorts = [e for e in party if e not in (boss, vortex)]
+    assert len(escorts) == 1
     assert all(
         e.empowered == 2 and e.tribe.char not in {"V", "W", "g"} for e in escorts
     )
@@ -752,11 +754,12 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
     )
     support_weights = Counter(char for char, _ in d.STAGE5_SUPPORT_POOLS[2])
     assert support_weights == Counter({"a": 2, "f": 2, "b": 2, "e": 2, "w": 1, "k": 1})
-    assert d.STAGE5_PARTY_SIZE_WEIGHTS[1:] == (
-        (50, 30, 15, 4, 1),
-        (40, 30, 20, 8, 2),
-        (34, 30, 24, 10, 2),
-        (33, 30, 22, 12, 3),
+    assert d.STAGE5_PARTY_SIZE_WEIGHTS == (
+        (78, 21, 1, 0, 0),
+        (60, 30, 10, 0, 0),
+        (50, 30, 20, 0, 0),
+        (46, 30, 24, 0, 0),
+        (45, 30, 25, 0, 0),
     )
     assert all(sum(weights) == 100 for weights in d.STAGE5_PARTY_SIZE_WEIGHTS)
     assert next(entry[1] for entry in d.STAGE5_ROSTER[0] if entry[0] == "c") == 5
