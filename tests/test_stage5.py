@@ -523,6 +523,49 @@ def test_rogue_warning_stops_repeat_and_requires_fresh_press_without_lp_cost(
     assert ui.stops >= 2
 
 
+@pytest.mark.parametrize("roles", [(), ("Healer",)])
+def test_loop_replay_preserves_lp_including_earlier_rewinds(monkeypatch, roles):
+    from arlq.arlq import GameConfig
+    from arlq.stage_replay import replay_to_operation
+    from arlq.stage_types import ReplayContext
+
+    def build(*_):
+        current, player = state(roles)
+        current.entities = [d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"])]
+        return [current], player
+
+    monkeypatch.setattr(stage5, "build", build)
+    replay = ReplayContext(5, 123, GameConfig(), operations=[(1, 0), (1, 0)])
+    replay.rewind_targets[2] = 1
+    _, first, *_ = replay_to_operation(replay, 1)
+    _, restored, *_ = replay_to_operation(replay, 2)
+    assert first.lp == pytest.approx(90 - d.movement_lp_cost(first))
+    assert restored.lp == pytest.approx(first.lp)
+    assert (restored.x, restored.y) == (first.x, first.y)
+
+
+@pytest.mark.parametrize("roles", [(), ("Healer",)])
+def test_live_loop_rewind_preserves_target_lp(monkeypatch, roles):
+    from types import SimpleNamespace
+
+    frames = []
+
+    def build(*_):
+        current, player = state(roles)
+        current.entities = [d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"])]
+        return [current], player
+
+    monkeypatch.setattr(stage5, "build", build)
+    moves = iter([(1, 0), (1, 0), None])
+    ui = SimpleNamespace(
+        draw_stage=lambda **kwargs: frames.append(kwargs["player"].lp),
+        input_direction=moves.__next__,
+        map_mode=False,
+    )
+    engine.run_game(ui, "test", stage_num=5)
+    assert frames[:3] == pytest.approx([90, 90 - (1 / 3 if roles else 1), 90])
+
+
 def test_candidate_glyph_is_known_on_first_sighting():
     _, player = state()
     candidate = d.PartyMember(3, 2, "Bard")

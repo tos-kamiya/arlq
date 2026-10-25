@@ -69,8 +69,9 @@ def replay_to_operation(
                     operation_count=index + 1,
                     loop_floor_index=result.floor_index,
                 )
+            else:
+                player.lp -= d.movement_lp_cost(player)
             turn += 1
-            player.lp -= 1
         return floors, player, floor[0], checkpoint[0], queue
     finally:
         replay.vortex_maps = previous_vortex_maps

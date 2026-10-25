@@ -269,7 +269,7 @@ Run `--stage 5` to explore four floors starting at level 1. The seed determines 
 | Marker / profession | Ability |
 | --- | --- |
 | `B` Bard | Triple the shared experience gain. |
-| `H` Healer | Reduce movement LP consumption to one-third and defeat's LP cost to 2. |
+| `H` Healer | Reduce movement LP consumption to one-third and defeat's LP cost to 2. Rewinds restore LP using the same reduced consumption. |
 | `R` Rogue | Stop movement and key repeat before entering a pit, a firing lane, or a rare Erebus (`E`); press again to proceed. Identify adjacent Mimics as `M`, and reveal Golems (`g`) and Caltrop Plants (`X`) in cardinally adjacent cells. |
 | `K` Knight | Triple the player's attack power and halve shared experience. |
 | `D` Dangeon Scholar | Reveal and use an extra stairway on each floor connection, marked `^` and `v` in green. On Stage 5, open the isolated room's original graph passage, marked `.` in green without the wall background. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |

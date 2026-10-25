@@ -2039,7 +2039,7 @@ def run_game(
                 loop_floor_index=step_result.floor_index,
             )
             # Rewind contacts still reach the normal turn-end LP decrement.
-            player.lp += 1
+            player.lp += d.movement_lp_cost(player)
             if replay_context is not None and operation_count is not None:
                 for recorded_turn in tuple(replay_context.turn_to_operation):
                     if recorded_turn > rewind_turn:
