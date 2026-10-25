@@ -16,17 +16,19 @@ KNIGHT_EXP_MULTIPLIER = 0.5
 HEALER_MOVE_COST = 1 / 3
 HEALER_RESPAWN_COST = 2
 STAGE5_START_LEVEL = 1
-STAGE5_FLOORS = 4
+STAGE5_FLOORS = 5
 # Weights for parties of 1, 2, 3, 4, and 5 monsters, by floor.
 STAGE5_PARTY_SIZE_WEIGHTS = (
     (70, 22, 7, 1, 0),
     (50, 30, 15, 4, 1),
     (40, 30, 20, 8, 2),
-    (30, 30, 22, 13, 5),
+    (34, 30, 24, 10, 2),
+    (33, 30, 22, 12, 3),
 )
 # Each roster entry (character, count, rank) supplies party leaders.
-# Floors 2-3 share a roster; floor 4 uses that roster plus empowered wyrms.
-# Additional members come from the floor's ordinary support pool below.
+# The deep-floor roster is spread across four floors to reduce crowding.
+# One fewer leader offsets the extra detached-room monster on the fifth floor;
+# floor 5 also has the empowered wyrms.
 STAGE5_DEEP_ROSTER = (
     ("a", 4, 2),
     ("A", 2, 1),
@@ -41,46 +43,50 @@ STAGE5_DEEP_ROSTER = (
     ("X", 1, 1),
     ("E", 1, 1),
 )
-STAGE5_FINAL_FLOOR_ROSTER = STAGE5_DEEP_ROSTER + (("w", 2, 2),)
 STAGE5_ROSTER = (
-    (("a", 24, 1), ("A", 2, 1), ("b", 9, 1), ("c", 5, 1), ("d", 4, 1), ("e", 1, 1), ("f", 2, 1), ("g", 1, 1)),
-    STAGE5_DEEP_ROSTER,
-    STAGE5_DEEP_ROSTER,
-    STAGE5_FINAL_FLOOR_ROSTER,
+    (
+        ("a", 24, 1), ("A", 2, 1), ("b", 9, 1), ("c", 5, 1),
+        ("d", 4, 1), ("e", 1, 1), ("f", 2, 1), ("g", 1, 1),
+    ),
+    (
+        ("a", 3, 2), ("A", 1, 1), ("b", 8, 2), ("c", 3, 2),
+        ("C", 2, 1), ("d", 6, 2), ("f", 2, 2), ("g", 3, 1),
+        ("k", 2, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
+    ),
+    (
+        ("a", 3, 2), ("A", 2, 1), ("b", 7, 2), ("c", 4, 2),
+        ("C", 2, 1), ("d", 6, 2), ("f", 1, 2), ("g", 3, 1),
+        ("k", 2, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
+    ),
+    (
+        ("a", 3, 2), ("A", 1, 1), ("b", 9, 2), ("c", 5, 2),
+        ("C", 1, 1), ("d", 6, 2), ("f", 1, 2), ("g", 3, 1),
+        ("k", 1, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
+    ),
+    (
+        ("a", 3, 2), ("A", 2, 1), ("b", 8, 2), ("c", 6, 2),
+        ("C", 1, 1), ("d", 6, 2), ("f", 2, 2), ("g", 3, 1),
+        ("k", 1, 1), ("w", 2, 2),
+    ),
 )
 STAGE5_BOSS_PARTY = (("W", 1),)
 STAGE5_BOSS_ESCORTS = tuple("aAbcCdefkwXE")
-STAGE5_SUPPORT_POOLS = (
-    (("a", 1),),
-    (
-        ("a", 1), ("a", 1),
-        ("f", 1), ("f", 1),
-        ("b", 1), ("b", 1),
-        ("e", 1), ("e", 1),
-        ("w", 1), ("k", 1),
-    ),
-    (
-        ("a", 1), ("a", 1),
-        ("f", 1), ("f", 1),
-        ("b", 1), ("b", 1),
-        ("e", 1), ("e", 1),
-        ("w", 1), ("k", 1),
-    ),
-    (
-        ("a", 1), ("a", 1),
-        ("f", 1), ("f", 1),
-        ("b", 1), ("b", 1),
-        ("e", 1), ("e", 1),
-        ("w", 1), ("k", 1),
-    ),
+_STAGE5_DEEP_SUPPORT_POOL = (
+    ("a", 1), ("a", 1),
+    ("f", 1), ("f", 1),
+    ("b", 1), ("b", 1),
+    ("e", 1), ("e", 1),
+    ("w", 1), ("k", 1),
 )
+STAGE5_SUPPORT_POOLS = ((("a", 1),),) + (_STAGE5_DEEP_SUPPORT_POOL,) * 4
 STAGE5_MEMBER_FLOORS = (
     ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar", "Guardian"),
     (),
     (),
     (),
+    (),
 )
-STAGE5_HAZARD_COUNTS = ((0, 0), (0, 3), (0, 5), (0, 0))
+STAGE5_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2), (0, 2))
 MEMBER_GLYPHS = {
     "Bard": "B", "Healer": "H", "Rogue": "R",
     "Knight": "K", "Dangeon Scholar": "D", "Guardian": "G", "Noble": "N",
@@ -509,6 +515,7 @@ class Player(Entity):
         self.known_elf_floors: Set[str] = set()
         self.known_member_floors: Dict[str, int] = {}
         self.joined_members: Set[str] = set()
+        self.seen_members: Set[str] = set()
         # role -> (floor index, last position, turn when the member returns)
         self.member_respawns: Dict[str, Tuple[int, int, int, int]] = {}
         # Shared progress for the elf stages, including Stage 3's W flag.

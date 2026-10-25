@@ -682,7 +682,7 @@ def _defeat_monster(
     d.grant_defeat_level(player, entity.tribe.effect)
     d.apply_feed(player, entity.tribe.feed)
 
-    if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD and stage_num != 5:
+    if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
         spread_caltrops(
             current.field,
             (player.x, player.y),
@@ -1834,7 +1834,7 @@ def run_game(
     if single_floor_stage:
         message: Tuple[int, str] = (-1, "")
     elif stage_num == 5:
-        message = (12, trp("-- Defeat the Wyrm on floor 4, then take the treasure.", 1))
+        message = (12, trp("-- Defeat the Wyrm on floor 5, then take the treasure.", 1))
     elif stage_num in d.ELF_STAGES:
         message = (
             5,

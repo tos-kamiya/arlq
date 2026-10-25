@@ -95,6 +95,7 @@ def rewind_to_history(
     known_elf_floors = set(player.known_elf_floors)
     known_member_floors = deepcopy(player.known_member_floors)
     joined_members = set(player.joined_members)
+    seen_members = set(player.seen_members)
     seen = deepcopy([floor_data.seen for floor_data in floors])
 
     if replay_context is not None:
@@ -146,7 +147,7 @@ def rewind_to_history(
     for floor_data, preserved_seen in zip(floors, seen, strict=True):
         floor_data.seen = preserved_seen
     player.__dict__.update(restored_player_state.__dict__)
-    # Monster/trap identification, elf floor locations, and known elf contacts
+    # Monster/trap identification, elf floor locations, and member discoveries
     # survive the rewind. Entity encounter state is restored by replay.
     player.known_monsters = known_monsters
     player.known_c_floors = known_c_floors
@@ -154,6 +155,7 @@ def rewind_to_history(
     player.known_elf_floors = known_elf_floors
     player.known_member_floors = known_member_floors
     player.joined_members = joined_members
+    player.seen_members = seen_members
 
     history.clear()
 

@@ -1,4 +1,4 @@
-"""Rules and generation checks for the four-floor Stage 5 dungeon."""
+"""Rules and generation checks for the five-floor Stage 5 dungeon."""
 
 from collections import Counter, deque
 
@@ -88,7 +88,7 @@ def step(current, player, direction=(1, 0), checkpoint=(2, 2)):
 
 def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
     floors, player = stage5.build()
-    assert len(floors) == 4 and player.rescue_stage and player.treasure_stage
+    assert len(floors) == 5 and player.rescue_stage and player.treasure_stage
     for floor in floors:
         assert len(floor.room_components) == 2
         detached = next(component for component in floor.room_components if len(component) == 1)
@@ -177,7 +177,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
             for entity in floor.entities
         )
         for floor in floors
-    ] == [1, 4, 4, 4]
+    ] == [1, 3, 3, 3, 3]
     assert not any(
         isinstance(entity, d.Monster)
         and entity.tribe.char == "g"
@@ -697,31 +697,54 @@ def test_seed_reproduces_layout_and_groups():
     assert signature() != first
 
 
-def test_deep_floors_share_monster_distribution_and_keep_party_size_weights():
+def test_deep_roster_preserves_population_and_scales_party_sizes_by_floor():
     deep_rosters = d.STAGE5_ROSTER[1:]
-    non_wyrm_rosters = [
-        tuple(entry for entry in roster if entry[0] != "w")
+    actual_counts = Counter(
+        (char, rank)
         for roster in deep_rosters
+        for char, count, rank in roster
+        for _ in range(count)
+    )
+    expected_counts = Counter(
+        {
+            (char, rank): count * 3
+            for char, count, rank in d.STAGE5_DEEP_ROSTER
+        }
+    )
+    expected_counts[("b", 2)] -= 1
+    expected_counts[("w", 2)] += 2
+    assert actual_counts == expected_counts
+    current_fixed_total = sum(
+        count for roster in d.STAGE5_ROSTER for _, count, _ in roster
+    ) + d.STAGE5_FLOORS
+    previous_fixed_total = (
+        sum(count for _, count, _ in d.STAGE5_ROSTER[0])
+        + 3 * sum(count for _, count, _ in d.STAGE5_DEEP_ROSTER)
+        + 2
+        + 4
+    )
+    assert current_fixed_total == previous_fixed_total
+    assert [sum(count for _, count, _ in roster) for roster in deep_rosters] == [
+        33, 33, 33, 34
     ]
-    assert non_wyrm_rosters == [
-        tuple(entry for entry in d.STAGE5_DEEP_ROSTER if entry[0] != "w")
-    ] * 3
     assert [
         sum(count for char, count, rank in roster if char == "w" and rank == 2)
         for roster in deep_rosters
-    ] == [0, 0, 2]
-    assert d.STAGE5_SUPPORT_POOLS[1:] == (d.STAGE5_SUPPORT_POOLS[1],) * 3
+    ] == [0, 0, 0, 2]
+    assert d.STAGE5_SUPPORT_POOLS[1:] == (d.STAGE5_SUPPORT_POOLS[1],) * 4
     support_weights = Counter(char for char, _ in d.STAGE5_SUPPORT_POOLS[1])
     assert support_weights == Counter({"a": 2, "f": 2, "b": 2, "e": 2, "w": 1, "k": 1})
     assert d.STAGE5_PARTY_SIZE_WEIGHTS[1:] == (
         (50, 30, 15, 4, 1),
         (40, 30, 20, 8, 2),
-        (30, 30, 22, 13, 5),
+        (34, 30, 24, 10, 2),
+        (33, 30, 22, 12, 3),
     )
     assert all(sum(weights) == 100 for weights in d.STAGE5_PARTY_SIZE_WEIGHTS)
     assert next(entry[1] for entry in d.STAGE5_ROSTER[0] if entry[0] == "c") == 5
-    assert all(
-        next(entry[1] for entry in roster if entry[0] == "c") == 6
-        and next(entry[1] for entry in roster if entry[0] == "C") == 2
-        for roster in deep_rosters
-    )
+    assert sum(
+        count for roster in deep_rosters for char, count, _ in roster if char == "c"
+    ) == 18
+    assert sum(
+        count for roster in deep_rosters for char, count, _ in roster if char == "C"
+    ) == 6

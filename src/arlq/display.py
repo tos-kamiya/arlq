@@ -175,11 +175,11 @@ def stage5_member_progress_marks(
     current_roles = {member.role for member in player.members}
     for role in roles:
         label = d.MEMBER_GLYPHS[role]
-        if role in player.joined_members and role not in current_roles:
-            respawn_floor = player.known_member_floors.get(role)
-            if respawn_floor is not None:
-                label += str(respawn_floor)
-        marks.append((label, role in player.joined_members))
+        if role not in current_roles:
+            known_floor = player.known_member_floors.get(role)
+            if known_floor is not None:
+                label += str(known_floor)
+        marks.append((label, role in player.seen_members))
     return marks
 
 

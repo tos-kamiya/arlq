@@ -226,9 +226,12 @@ def recruit(
     if len(player.members) == d.PARTY_LIMIT and player.members[0].role == "Noble":
         return trp("-- Noble cannot leave. No more members can join.", 5)
     player.joined_members.add(member.role)
+    player.seen_members.add(member.role)
     if member.origin_floor is not None:
         player.known_member_floors.setdefault(member.role, member.origin_floor + 1)
     departed = player.members.pop(0) if len(player.members) == d.PARTY_LIMIT else None
+    if departed is not None:
+        player.seen_members.add(departed.role)
     current.entities.remove(member)
     player.member_respawns.pop(member.role, None)
     player.members.append(member)

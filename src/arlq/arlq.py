@@ -576,6 +576,7 @@ def reveal_entities_in_fov(
         if not torched[entity.y][entity.x]:
             continue
         if player.rescue_stage and isinstance(entity, d.PartyMember):
+            player.seen_members.add(entity.role)
             player.known_member_floors.setdefault(entity.role, floor_index + 1)
         if player.companion is None or player.companion.tribe.char != "n":
             continue
@@ -854,7 +855,7 @@ def update_entities(
                 if effect == d.EFFECT_UNLOCK_TREASURE:
                     player.boss_defeated = True
                     unlock_treasure_for_defeat(m, entities)
-                elif effect == d.EFFECT_CALTROP_SPREAD and stage_num != 5:
+                elif effect == d.EFFECT_CALTROP_SPREAD:
                     spread_caltrops(field, (player.x, player.y), entities)
                 elif effect == d.EFFECT_ROCK_SPREAD:
                     for x, y in iterate_offsets(
