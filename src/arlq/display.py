@@ -113,7 +113,7 @@ def status_prefix(
     text += level_str + "  "
     text += item_str + "  "
     if player.rescue_stage:
-        text += f"ATK: {d.current_player_attack(player, stage_num):g}  "
+        text += f"ATK: {floor(d.current_player_attack(player, stage_num))}  "
     return text
 
 

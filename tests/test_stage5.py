@@ -321,7 +321,7 @@ def test_fractional_attack_hazards_and_status():
     step(current, player)
     assert player.lp == 87
     assert "LVL: 100" in display.status_prefix(player, 5, 0)
-    assert "ATK: 452.25" in display.status_prefix(player, 5, 0)
+    assert "ATK: 452" in display.status_prefix(player, 5, 0)
 
 
 def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
