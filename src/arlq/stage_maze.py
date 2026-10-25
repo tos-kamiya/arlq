@@ -41,8 +41,9 @@ def generate_floor_field(
     set[d.Point],
     set[d.Point],
     tuple[set[d.Point], ...],
+    tuple[d.Point, d.Point] | None,
 ]:
-    """Build a floor and return its isolated, filled, and split graph rooms."""
+    """Build a floor and return its isolated, filled, and split graph data."""
     all_rooms = {(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)}
     for _ in range(1000):
         field, generated_up, generated_down = create_field(
@@ -104,6 +105,7 @@ def generate_floor_field(
             continue
 
         room_components: tuple[set[d.Point], ...] = ()
+        split_edge: tuple[d.Point, d.Point] | None = None
         if split_room_graph:
             if detach_leaf_room:
                 degree = dict.fromkeys(connected_rooms, 0)
@@ -210,6 +212,14 @@ def generate_floor_field(
                 for x in range(left, left + d.TILE_WIDTH):
                     field[y][x] = d.CHAR_FLOOR
 
-        return field, up, down, island_rooms, filled_rooms, room_components
+        return (
+            field,
+            up,
+            down,
+            island_rooms,
+            filled_rooms,
+            room_components,
+            split_edge,
+        )
 
     raise RuntimeError("could not generate a connected room-graph floor")

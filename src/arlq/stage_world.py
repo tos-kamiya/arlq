@@ -509,6 +509,7 @@ def _build_floor(
         island_rooms,
         filled_rooms,
         room_components,
+        _,
     ) = generate_floor_field(
         up_point if up_point is not None else entry_point,
         down_point,

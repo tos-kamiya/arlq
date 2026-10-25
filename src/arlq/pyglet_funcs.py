@@ -1079,8 +1079,8 @@ class PygletUI:
                     self._draw_pit((x, y))
 
         if d.has_member(player, "Dangeon Scholar"):
-            for (x, y), direction in (d_gates or {}).items():
-                self._draw_field_text((x, y), direction, COLOR_MAP[CI_GREEN], bold=True)
+            for (x, y), glyph in (d_gates or {}).items():
+                self._draw_field_text((x, y), glyph, COLOR_MAP[CI_GREEN], bold=True)
 
         if not floor_view:
             for x, y in overshoot_markers or set():

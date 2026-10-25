@@ -219,11 +219,11 @@ class BlessedUI:
                     put(x, y, display_cell if discovered else " ", color, bg=background)
 
         if d.has_member(player, "Dangeon Scholar"):
-            for (x, y), direction in (d_gates or {}).items():
+            for (x, y), glyph in (d_gates or {}).items():
                 put(
                     x,
                     y,
-                    direction,
+                    glyph,
                     "green",
                     bold=True,
                     bg=cell_background(x, y),
