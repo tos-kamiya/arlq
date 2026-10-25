@@ -1,56 +1,51 @@
-# ステージ5 設計メモ
+# Stage 5 implementation notes
 
-このメモは現行実装の仕様を記録する。バランス調整が続いているため、出現数や抽選率はコードの定数を正とする。
+This file records implementation details for maintenance. `src/arlq/defs.py` is the source of truth for roster counts, party weights, and gameplay constants.
 
-## ステージの構成と目的
+## Stage layout and objective
 
-- `--stage 5`またはステージ選択から開始する。初期レベルは1、全4フロア。
-- 既存の迷路生成を使い、シードから地形と配置を生成する。フロアごとに壁で塞がれた部屋数が変わり、3・4階には短い壁の突起が加わる。
-- 各フロアで部屋グラフの端にあたる1区画を切り離し、その区画に`b`・`c`・`A`のうち1体をランダム配置する。この区画はプレイヤー開始位置および通常・Scholar階段の配置候補から除外する。
-- 1〜3階のフロア間には通常階段を2組、Scholar階段を1組配置する。Scholar階段はDangeon Scholarがいると緑色の`^`・`v`で表示され、利用できる。階段は可能な限り異なる区画に置くため、候補を複数回引き直す。
-- 2・3階にはまきびしをそれぞれ3・5個配置する。最終階の空き床にはバリアを5%散布する。`X`を倒してもステージ5ではまきびしを散布しない。
-- クリアには4階のボスを倒して解放される宝箱を取得する。宝箱はボスとは別の区画に配置する。Nobleの救出や1階への帰還はクリア条件ではない。
-- Rogueは落とし穴、Marksmanの射線、ミミックを見破る。上下左右に隣接したゴーレム`g`・カルトロッププラント`X`も識別する。警告が出た移動はターン・LPを消費せず、同じ方向を再入力すれば進める。
+- Stage 5 starts at level 1 and has five seeded floors. Each floor has a detached terminal room containing one additional monster chosen from `b`, `c`, and `A`. Floors 3–5 can also have short wall spurs.
+- Two ordinary stair pairs connect each adjacent floor pair. Dangeon Scholar reveals one additional hidden pair per connection. Stairs avoid the detached room where possible.
+- Floors 2–5 receive two barriers each; the final floor also has barriers on 5% of eligible open cells. It contains one ordinary `W`, up to two random empowered escorts, a dormant Mimic that imitates `W`, and a treasure chest in another room section. A Knight or a sword from `c`/`C` is required to defeat `W`.
+- Defeating `W` repositions the remaining monsters on floor 5 and clears explored floor and barrier cells. Wall and stair knowledge remains. Taking the unlocked chest wins the stage.
+- Stage 5 has no elves. Caltrop Plants (`X`) are in the floor 2–4 roster and can also appear as boss escorts; defeating one scatters caltrops around the player using the shared spread pattern. Pits drop the player to the next floor.
 
-## メンバー
+## Members
 
-- 6職業（Bard、Healer、Rogue、Knight、Dangeon Scholar、Guardian）からランダムに4名を選び、1・2階のどこかに配置する。視界に入ると職業が判明し、接触で加入する。
-- 人間メンバーはプレイヤー以外に最大2名。既存の同行者枠とは別枠で、同行者は各階に配置される。画面ではメンバーを文字で表示し、後ろに並べる。
-- 3人目の加入時には最も早く加入したメンバーが脱退する。脱退した場所の近く、同じフロアに195ターン後に再配置される。再加入前はステータス下部に再配置先のフロアを表示する。
-- 敗北時はメンバーもプレイヤーと一緒にリスポーンし、加入順は維持される。
+- Four of six member roles are selected and placed across floors 1 and 2. Seeing a candidate reveals their role; touching them recruits them.
+- At most two Stage 5 members join, in addition to the temporary companion. A third recruitment replaces the earliest joiner. Departed members do not respawn; their progress marker is dim and has a `-` suffix. Defeat respawns current members with the player.
+- Earlier and later joiners follow diagonally behind to the left and right. Member discovery and known candidate floors are shown in the lower HUD.
 
-| 職業 | 現行能力 |
+| Member | Current ability |
 | --- | --- |
-| Bard | 敵パーティー経験値の分配後の獲得量を3倍にする |
-| Healer | 移動のLP消費を通常の1/3にし、敗北時のLP消費を2にする |
-| Rogue | 落とし穴・Marksmanの射線・ミミックを識別し、隣接する`g`・`X`も識別する |
-| Knight | ステージ5・6で攻撃力を3倍にし、分配後の経験値を1/2にする |
-| Dangeon Scholar (`D`) | Scholar階段を表示して利用できる。ゴーレム撃破でできた壁を通り抜ける。壁はMarksmanの矢を遮る |
-| Guardian (`G`) | バリアの追加LPダメージを1/3にし、まきびしのダメージも1/3にする。移動LP消費は軽減しない |
+| Bard | Triples experience after party sharing. |
+| Healer | Reduces movement LP cost to one third and defeat LP cost to 2. |
+| Rogue | Doubles the interval between Marksman shots. Identifies adjacent Mimics, Golems (`g`), Caltrop Plants (`X`), and Rare Erebus (`E`) in cardinal cells. Stops movement before pits, Marksman firing lanes, and Rare Erebus; a second press proceeds. |
+| Knight | Triples player attack and multiplies shared experience by 0.75. |
+| Dangeon Scholar | Reveals and enables hidden stairs and walks through walls created by Golems. Those walls still block Marksman arrows. |
+| Guardian | Reduces barrier extra LP damage by half and caltrop damage to one third; movement LP cost is unchanged. |
 
-## 敵とパーティー
+## Monster parties and placement
 
-- モンスターの通常パーティーは縦方向（上下）の隣接だけで連結する。横・斜めの隣接は連結しない。最大5体。rank 2のリーダーも通常パーティーになり、強化ランクを理由に単独配置にはしない。現行のステージ5ロスターにはrank 3はいない。
-- 接触すると縦につながったパーティー全体と戦う。敵の戦闘力は各個体の戦闘力の合計。経験値はパーティー全体の合計をプレイヤーと加入メンバーの人数で分配し、Bard・Knightの倍率を適用する。LP報酬はパーティー内の最大値を使う。
-- パーティー内のアイテムまたは特殊効果を持つ敵は、合わせて最大1体。Noble救出を目的とする特殊効果はステージ5ボス構成に使わない。
-- パーティーサイズ（1〜5体）の抽選重みは階ごとに異なる。
+- Vertically adjacent monsters form a party, up to five members. Horizontal and diagonal adjacency do not connect parties. A party fights as one encounter; strength and experience are summed, and LP reward uses the highest individual value.
+- Party size uses `STAGE5_PARTY_SIZE_WEIGHTS` (weights for parties of one through five monsters):
 
-| フロア | 1体 | 2体 | 3体 | 4体 | 5体 |
+| Floor | 1 | 2 | 3 | 4 | 5 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | 70% | 22% | 7% | 1% | 0% |
-| 2 | 50% | 30% | 15% | 4% | 1% |
-| 3 | 40% | 30% | 20% | 8% | 2% |
-| 4 | 30% | 30% | 22% | 13% | 5% |
+| 1 | 70 | 22 | 7 | 1 | 0 |
+| 2 | 50 | 30 | 15 | 4 | 1 |
+| 3 | 40 | 30 | 20 | 8 | 2 |
+| 4 | 34 | 30 | 24 | 10 | 2 |
+| 5 | 33 | 30 | 22 | 12 | 3 |
 
-- 追加メンバー抽選は1階が`a`のみ。2〜4階は`a`・`f`・`b`・`e`を各2枠、`w`・`k`を各1枠とし、追加個体はrank 1で生成する。`k`の単独配置制約はリーダーとして出現するときに適用し、追加メンバーには適用しない。
-- 2〜4階の通常敵ロスターは基本的に共通。4階のみrank 2の`w`が2体追加される。`g`は1階に1体、2〜4階に各4体。`g`はrank 1で単独配置し、ほかの敵から離す。2階の`k`リーダーも単独で、ほかの敵から離す。`k`の撃破後リスポーン周期は全ステージで195ターン（通常の3倍）。
-- 4階のボスは通常の`W`が1体。`W'`は出現せず、`W`のパーティーにランダムなrank 2護衛が0〜2体加わることがある。ボス護衛候補は`a A b c C d e f k w X E`。ミミックも1体配置し、ボス撃破後に活動する。
-- ボス撃破後、4階に残った敵を再配置し、床とバリアの探索記録を消去する。壁と階段の位置はマップに残る。
-- キメラ`c`およびハイキメラ`C`の出現数は、以前の基準値の1.5倍（端数切り上げ）に調整済み。出現表の変更時は`src/arlq/defs.py`の`STAGE5_ROSTER`を参照する。
+- Stage 5 roster leaders and counts live in `STAGE5_ROSTER`. The deep-floor roster is spread over floors 2–5. Every floor also receives its detached-room `b`, `c`, or `A`.
+- Floor 2 has no Wyrms (`w`), including as party additions. Its support pool excludes `w` and Marksmen (`k`); floors 3–5 use `a`, `f`, `b`, and `e` at twice the weight of `w` and `k`. Floor 1 party additions are `a` only.
+- Golems (`g`) spawn alone. Marksmen (`k`) spawn alone on floors 2–5. Golems and Marksmen may be placed near walls or in narrow passages.
+- Wyrms (`w`, `W`) raise barriers in their eight neighboring cells when unoccupied. The final floor boss party has one `W` and zero to two rank-2 escorts; neither `W'` nor `V'` is used there.
 
-## 関連する実装
+## Main implementation modules
 
-- フロア生成、切り離し区画、敵・メンバー・階段の配置、パーティー連結・再配置: `src/arlq/stage5.py`
-- 出現数、抽選重み、メンバー能力、リスポーン周期: `src/arlq/defs.py`
-- 接触戦闘、階移動、ターン処理: `src/arlq/game_engine.py`
-- GUI・端末のステータス表示: `src/arlq/display.py`、各フロントエンド
+- `src/arlq/stage5.py`: floor generation, member placement, monster party placement, and party rearrangement.
+- `src/arlq/defs.py`: Stage 5 rosters, counts, party weights, and member/gameplay constants.
+- `src/arlq/game_engine.py`: combat, member recruitment, movement warnings, Marksman cooldown, and floor transitions.
+- `src/arlq/display.py` and the GUI/terminal frontends: member progress and field presentation.
