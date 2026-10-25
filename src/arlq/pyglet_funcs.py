@@ -926,14 +926,56 @@ class PygletUI:
         self._draw_text(pos, text, color, bold=bold,
                         x_offset=self._field_text_x_offset())
 
-    def _draw_rect(self, x: int, y: int, width: int, height: int, color: Tuple[int, int, int]):
+    def draw_rewind_transition(self, message: str) -> None:
+        """Show the Loop Companion transition before rebuilding the past."""
+        overlay_group = pyglet.graphics.Group(order=10000)
+        text_group = getattr(
+            self, "_text_overlay_group", pyglet.graphics.Group(order=10001)
+        )
+        self._draw_rect(
+            0,
+            0,
+            self.field_pixel_width,
+            self.field_height * self.cell_size_y,
+            (0, 0, 0, 190),
+            group=overlay_group,
+        )
+        message_width = self._text_width(message, bold=True)
+        x_offset = max(0, (self.field_pixel_width - message_width) // 2)
+        y_offset = round(self.font_size / 2)
+        self._draw_text(
+            (0, self.field_height / 2),
+            message,
+            COLOR_MAP["default"],
+            bold=True,
+            x_offset=x_offset,
+            group=text_group,
+            y_offset=y_offset,
+        )
+        self._flip()
+
+    def _draw_rect(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        color: Tuple[int, ...],
+        group=None,
+    ):
         y_bottom = self.window_height - y - height
         draw_color = self._display_color(color)
-        signature = ("rectangle", x, y_bottom, width, height, draw_color)
+        signature = ("rectangle", x, y_bottom, width, height, draw_color, id(group))
         self._draw_object(
             signature,
             lambda: pyglet.shapes.Rectangle(
-                x, y_bottom, width, height, color=draw_color, batch=self.batch
+                x,
+                y_bottom,
+                width,
+                height,
+                color=draw_color,
+                batch=self.batch,
+                group=group,
             ),
         )
 

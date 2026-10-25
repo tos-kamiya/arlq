@@ -494,6 +494,24 @@ class BlessedUI:
         self._last_stage = (stage_args, status_args)
         self._render_last_stage()
 
+    def draw_rewind_transition(self, message: str) -> None:
+        """Show the Loop Companion transition before rebuilding the past."""
+        self._wait_for_terminal_size()
+        width = max(0, d.FIELD_WIDTH - 3)
+        height = min(d.FIELD_HEIGHT, self.term.height)
+        dark_row = self._style(" " * width, bg="black")
+        output = []
+        output.extend(
+            self.term.move_xy(0, y) + dark_row for y in range(height)
+        )
+        message_width = self.term.length(message)
+        x = max(0, (width - message_width) // 2)
+        output.append(
+            self.term.move_xy(x, min(d.FIELD_HEIGHT // 2, self.term.height - 1))
+            + self._style(message, color="white", bold=True, bg="black")
+        )
+        print("".join(output) + self.term.normal, end="", flush=True)
+
     def input_direction(self) -> Optional[d.Point]:
         self.shift_direction = False
         while True:

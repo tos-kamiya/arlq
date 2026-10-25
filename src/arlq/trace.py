@@ -466,6 +466,13 @@ class ReplayUI:
             if self._draw_interval > 0:
                 time.sleep(self._draw_interval)
 
+    def draw_rewind_transition(self, message: str) -> None:
+        if self._final_state_only or self._draw_ui is None:
+            return
+        draw_transition = getattr(self._draw_ui, "draw_rewind_transition", None)
+        if draw_transition is not None:
+            draw_transition(message)
+
     def _draw_last_state(self) -> None:
         if (
             self._draw_ui is not None

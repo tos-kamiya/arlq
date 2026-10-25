@@ -1915,6 +1915,7 @@ def run_game(
             message=message[1],
             checkpoint=checkpoint[0],
             decor=display_floor.decor,
+            d_gates=display_floor.d_gates,
             reachable_cells=reachable_cells,
             overshoot_markers=(
                 trace.overshoot_rewind_markers(floor[0])
@@ -2020,6 +2021,12 @@ def run_game(
                     rewind_turn, 0
                 )
                 replay_context.rewind_targets[operation_count] = rewind_operation
+            transition_message = trp(
+                "-- Time folds back to the beginning of the recorded past.", 9
+            )
+            show_transition = getattr(ui, "draw_rewind_transition", None)
+            if show_transition is not None:
+                show_transition(transition_message)
             rewind_message = _rewind_to_history(
                 floors,
                 player,

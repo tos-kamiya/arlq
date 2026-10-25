@@ -1116,7 +1116,7 @@ class SpriteUI(PygletUI):
         )
         self.window.set_maximum_size(MAX_WINDOW_WIDTH, maximum_height)
 
-    def _draw_rect(self, x, y, width, height, color):
+    def _draw_rect(self, x, y, width, height, color, group=None):
         if (not self._menu_active and not self._drawing_hud
                 and not self._intersects_window(x, width)):
             return
@@ -1151,11 +1151,11 @@ class SpriteUI(PygletUI):
                     ),
                 )
                 return
-            return super()._draw_rect(x, y, width, height, color)
+            return super()._draw_rect(x, y, width, height, color, group=group)
         scene_batch = self.batch
         self.batch = self._text_batch
         try:
-            return super()._draw_rect(x, y, width, height, color)
+            return super()._draw_rect(x, y, width, height, color, group=group)
         finally:
             self.batch = scene_batch
 
