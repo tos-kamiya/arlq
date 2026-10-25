@@ -49,9 +49,9 @@ STAGE5_ROSTER = (
         ("d", 4, 1), ("e", 1, 1), ("f", 2, 1), ("g", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 1, 1), ("b", 8, 2), ("c", 3, 2),
+        ("a", 3, 2), ("A", 1, 1), ("b", 9, 2), ("c", 3, 2),
         ("C", 2, 1), ("d", 6, 2), ("f", 2, 2), ("g", 3, 1),
-        ("k", 2, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
+        ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
         ("a", 3, 2), ("A", 2, 1), ("b", 7, 2), ("c", 4, 2),
@@ -78,7 +78,16 @@ _STAGE5_DEEP_SUPPORT_POOL = (
     ("e", 1), ("e", 1),
     ("w", 1), ("k", 1),
 )
-STAGE5_SUPPORT_POOLS = ((("a", 1),),) + (_STAGE5_DEEP_SUPPORT_POOL,) * 4
+_STAGE5_FLOOR2_SUPPORT_POOL = (
+    ("a", 1), ("a", 1),
+    ("f", 1), ("f", 1),
+    ("b", 1), ("b", 1), ("b", 1),
+    ("e", 1), ("e", 1),
+    ("k", 1),
+)
+STAGE5_SUPPORT_POOLS = (
+    (("a", 1),), _STAGE5_FLOOR2_SUPPORT_POOL
+) + (_STAGE5_DEEP_SUPPORT_POOL,) * 3
 STAGE5_MEMBER_FLOORS = (
     ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar", "Guardian"),
     (),

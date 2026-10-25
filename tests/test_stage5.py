@@ -113,6 +113,10 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
         component for component in floors[0].room_components if len(component) == 1
     )
     current = floors[-1]
+    assert not any(
+        isinstance(entity, d.Monster) and entity.tribe.char == "w"
+        for entity in floors[1].entities
+    )
     members = {
         e.role for f in floors for e in f.entities if isinstance(e, d.PartyMember)
     }
@@ -711,7 +715,7 @@ def test_deep_roster_preserves_population_and_scales_party_sizes_by_floor():
             for char, count, rank in d.STAGE5_DEEP_ROSTER
         }
     )
-    expected_counts[("b", 2)] -= 1
+    expected_counts[("w", 1)] -= 1
     expected_counts[("w", 2)] += 2
     assert actual_counts == expected_counts
     current_fixed_total = sum(
@@ -731,8 +735,13 @@ def test_deep_roster_preserves_population_and_scales_party_sizes_by_floor():
         sum(count for char, count, rank in roster if char == "w" and rank == 2)
         for roster in deep_rosters
     ] == [0, 0, 0, 2]
-    assert d.STAGE5_SUPPORT_POOLS[1:] == (d.STAGE5_SUPPORT_POOLS[1],) * 4
-    support_weights = Counter(char for char, _ in d.STAGE5_SUPPORT_POOLS[1])
+    assert "w" not in {char for char, _ in d.STAGE5_SUPPORT_POOLS[1]}
+    assert d.STAGE5_SUPPORT_POOLS[2:] == (d.STAGE5_SUPPORT_POOLS[2],) * 3
+    floor2_support_weights = Counter(char for char, _ in d.STAGE5_SUPPORT_POOLS[1])
+    assert floor2_support_weights == Counter(
+        {"a": 2, "f": 2, "b": 3, "e": 2, "k": 1}
+    )
+    support_weights = Counter(char for char, _ in d.STAGE5_SUPPORT_POOLS[2])
     assert support_weights == Counter({"a": 2, "f": 2, "b": 2, "e": 2, "w": 1, "k": 1})
     assert d.STAGE5_PARTY_SIZE_WEIGHTS[1:] == (
         (50, 30, 15, 4, 1),
