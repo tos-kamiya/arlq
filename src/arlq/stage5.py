@@ -329,7 +329,7 @@ def reveal_mimics(current: Floor, player: d.Player) -> None:
             isinstance(entity, d.Monster)
             and entity.active
             and entity.tribe.char == "M"
-            and max(abs(player.x - entity.x), abs(player.y - entity.y)) <= 1
+            and abs(player.x - entity.x) + abs(player.y - entity.y) == 1
         ):
             player.known_monsters.add(d.monster_type_key(entity))
             current.seen[entity.y][entity.x] = 1
