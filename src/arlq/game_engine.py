@@ -330,7 +330,14 @@ def _marksman_shoot(
         was_hit = True
         if trace is not None:
             trace.record_damage("marksman")
-        entity.marksman_cooldown = d.MARKSMAN_COOLDOWN_TURNS
+        cooldown_multiplier = (
+            d.ROGUE_MARKSMAN_COOLDOWN_MULTIPLIER
+            if d.has_member(player, "Rogue")
+            else 1
+        )
+        entity.marksman_cooldown = (
+            d.MARKSMAN_COOLDOWN_TURNS * cooldown_multiplier
+        )
         player.known_monsters.add(d.monster_type_key(entity))
         mark = ((player.x - step_x, player.y - step_y), "-" if step_x else "|")
         marks = entity.arrow_marks
