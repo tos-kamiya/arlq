@@ -73,6 +73,7 @@ def reachable_known_cells(
     entities: List[d.Entity],
     player: d.Player,
     stage_num: int,
+    phase_walls: Optional[Set[d.Point]] = None,
 ) -> Set[d.Point]:
     """Find all known cells reachable before the player's LP reaches zero."""
     height = len(field)
@@ -109,11 +110,11 @@ def reachable_known_cells(
                 continue
 
             cell = field[ny][nx]
-            if cell == d.CHAR_GOLEM_WALL and d.has_member(
-                player, "Dangeon Scholar"
+            if (nx, ny) in (phase_walls or ()) or (
+                cell == d.CHAR_GOLEM_WALL and d.has_member(player, "Dangeon Scholar")
             ):
                 terrain_cost = d.movement_lp_cost(player)
-            elif cell == d.CHAR_FLOOR:
+            elif cell in (d.CHAR_FLOOR, d.CHAR_D_GATE, *d.HIDDEN_STAIRS_CHARS):
                 terrain_cost = d.movement_lp_cost(player)
             elif cell == d.CHAR_CALTROP:
                 terrain_cost = d.movement_lp_cost(player) + d.caltrop_lp_damage(player)
@@ -155,8 +156,12 @@ def _move_player(
         if d.has_member(player, "Dangeon Scholar")
         else set()
     )
-    if d.has_member(player, "Dangeon Scholar"):
-        phase_walls.update(current.d_gates)
+    phase_walls.update(
+        (x, y)
+        for y, row in enumerate(current.field)
+        for x, cell in enumerate(row)
+        if cell == d.CHAR_D_GATE
+    )
     wall_result = move_player(
         direction,
         current.field,
@@ -227,16 +232,19 @@ def _should_stop_movement_repeat(
 
     known_cell = bool(current.seen[ny][nx]) or show_all_entities
     cell = current.field[ny][nx]
+    next_position = (nx, ny)
+    passable_secret = cell == d.CHAR_D_GATE or (
+        cell == d.CHAR_GOLEM_WALL and d.has_member(player, "Dangeon Scholar")
+    )
     if known_cell and cell in (
         *d.WALL_CHARS,
+        d.CHAR_HIDDEN_D_GATE,
         d.CHAR_CALTROP,
         d.CHAR_BARRIER,
         d.CHAR_COLLAPSE,
         *d.STAIR_CHARS,
-    ) and not (cell == d.CHAR_GOLEM_WALL and d.has_member(player, "Dangeon Scholar")):
+    ) and not passable_secret:
         return True
-
-    next_position = (nx, ny)
     for entity in _visible_auto_stop_entities(
         current, player, show_all_entities, known_types or set(), stage_num
     ):
@@ -308,6 +316,7 @@ def _marksman_shoot(
             if current.field[y][x] in (
                 *d.WALL_CHARS,
                 *d.STAIR_CHARS,
+                d.CHAR_HIDDEN_D_GATE,
             ):
                 blocked = True
                 break
@@ -1217,7 +1226,6 @@ def _resolve_contact(
     entity = current.entities[hit]
 
     if isinstance(entity, d.PartyMember):
-        had_scholar = d.has_member(player, "Dangeon Scholar")
         result = stage5.recruit(
             current,
             player,
@@ -1231,9 +1239,6 @@ def _resolve_contact(
             ),
             replace_departed=True,
         )
-        has_scholar = d.has_member(player, "Dangeon Scholar")
-        if had_scholar != has_scholar:
-            stage5.set_scholar_stairs(floors, has_scholar)
         if trace is not None:
             trace.record_contact({"type": "member", "id": entity.role,
                                   "joined": entity in player.members})
@@ -1335,35 +1340,35 @@ def _handle_floor_transition(
     )
     down_stairs = current.down_stairs or ([current.down] if legacy_floors else [])
     up_stairs = current.up_stairs or ([current.up] if legacy_floors else [])
-    if d.has_member(player, "Dangeon Scholar"):
-        down_stairs = down_stairs + [
-            point
-            for point in current.scholar_down_stairs
-            if current.field[point[1]][point[0]] == d.CHAR_SCHOLAR_STAIRS_DOWN
-        ]
-        up_stairs = up_stairs + [
-            point
-            for point in current.scholar_up_stairs
-            if current.field[point[1]][point[0]] == d.CHAR_SCHOLAR_STAIRS_UP
-        ]
+    down_stairs += [
+        point for point in current.scholar_down_stairs
+        if current.field[point[1]][point[0]] == d.CHAR_SCHOLAR_STAIRS_DOWN
+    ]
+    up_stairs += [
+        point for point in current.scholar_up_stairs
+        if current.field[point[1]][point[0]] == d.CHAR_SCHOLAR_STAIRS_UP
+    ]
     floor_count = len(floors)
     if floor[0] < floor_count - 1 and point in down_stairs:
         stair_index = down_stairs.index(point)
+        secret_stair_index = (
+            current.scholar_down_stairs.index(point)
+            if point in current.scholar_down_stairs
+            else None
+        )
         floor[0] += 1
         destination_floor = floors[floor[0]]
         destination_stairs = list(
             destination_floor.up_stairs or [destination_floor.up]
         )
-        if d.has_member(player, "Dangeon Scholar"):
-            destination_stairs += [
-                point
-                for point in destination_floor.scholar_up_stairs
-                if destination_floor.field[point[1]][point[0]]
-                == d.CHAR_SCHOLAR_STAIRS_UP
-            ]
+        destination_stairs += destination_floor.scholar_up_stairs
         player.x, player.y = destination_stairs[
             min(stair_index, len(destination_stairs) - 1)
         ]
+        if secret_stair_index is not None:
+            x, y = destination_floor.scholar_up_stairs[secret_stair_index]
+            destination_floor.field[y][x] = d.CHAR_SCHOLAR_STAIRS_UP
+            destination_floor.seen[y][x] = 1
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [
             (player.x, player.y, floor[0], ch)
@@ -1374,21 +1379,24 @@ def _handle_floor_transition(
         )
     if floor[0] > 0 and point in up_stairs:
         stair_index = up_stairs.index(point)
+        secret_stair_index = (
+            current.scholar_up_stairs.index(point)
+            if point in current.scholar_up_stairs
+            else None
+        )
         floor[0] -= 1
         destination_floor = floors[floor[0]]
         destination_stairs = list(
             destination_floor.down_stairs or [destination_floor.down]
         )
-        if d.has_member(player, "Dangeon Scholar"):
-            destination_stairs += [
-                point
-                for point in destination_floor.scholar_down_stairs
-                if destination_floor.field[point[1]][point[0]]
-                == d.CHAR_SCHOLAR_STAIRS_DOWN
-            ]
+        destination_stairs += destination_floor.scholar_down_stairs
         player.x, player.y = destination_stairs[
             min(stair_index, len(destination_stairs) - 1)
         ]
+        if secret_stair_index is not None:
+            x, y = destination_floor.scholar_down_stairs[secret_stair_index]
+            destination_floor.field[y][x] = d.CHAR_SCHOLAR_STAIRS_DOWN
+            destination_floor.seen[y][x] = 1
         checkpoint[0] = (player.x, player.y)
         player.persistent_followers = [
             (player.x, player.y, floor[0], ch)
@@ -1414,16 +1422,6 @@ def _reveal_paired_stair_cells(
             ux, uy = upper_point
             lx, ly = lower_point
             if upper.seen[uy][ux] or lower.seen[ly][lx]:
-                upper.seen[uy][ux] = 1
-                lower.seen[ly][lx] = 1
-        if player is not None and d.has_member(player, "Dangeon Scholar"):
-            for upper_point, lower_point in zip(
-                upper.scholar_down_stairs,
-                lower.scholar_up_stairs,
-                strict=True,
-            ):
-                ux, uy = upper_point
-                lx, ly = lower_point
                 upper.seen[uy][ux] = 1
                 lower.seen[ly][lx] = 1
 
@@ -1563,7 +1561,10 @@ def _process_multi_floor_turn(
             x = collapse_contact.x + dx
             y = collapse_contact.y + dy
             if 0 <= y < len(current.field) and 0 <= x < len(current.field[y]):
-                if current.field[y][x] not in d.WALL_CHARS:
+                if current.field[y][x] not in (
+                    *d.WALL_CHARS,
+                    *d.HIDDEN_PASSAGE_CHARS,
+                ):
                     current.field[y][x] = d.CHAR_COLLAPSE
                     current.seen[y][x] = 1
                     # Rocks fallen through the pit lie on the floor below.
@@ -1875,9 +1876,8 @@ def run_game(
         if stage_num in (5, 6):
             stage5.reveal_mimics(current, player)
             stage5.reveal_rogue_traps(current, player)
-            stage5.set_scholar_stairs(
-                floors, d.has_member(player, "Dangeon Scholar")
-            )
+            if d.has_member(player, "Dangeon Scholar"):
+                stage5.reveal_scholar_features(current, cur)
         _reveal_paired_stair_cells(floors, player)
 
         message = tick_message(message)
@@ -1893,6 +1893,16 @@ def run_game(
                 current.entities,
                 player,
                 stage_num,
+                {
+                    (x, y)
+                    for y, row in enumerate(current.field)
+                    for x, cell in enumerate(row)
+                    if cell == d.CHAR_D_GATE
+                    or (
+                        d.has_member(player, "Dangeon Scholar")
+                        and cell == d.CHAR_GOLEM_WALL
+                    )
+                },
             )
         # Floor entities exclude the player for every stage. The terminal
         # renderer still discovers it through this render-only combined list.

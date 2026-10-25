@@ -296,22 +296,50 @@ def process_member_respawns(
 
 
 def set_scholar_stairs(floors: list[Floor], active: bool) -> None:
-    """Reveal or conceal the paired stairs known to the Dangeon Scholar."""
+    """Set every hidden stair marker; retained for stage setup utilities."""
     for current in floors:
         for point in current.scholar_up_stairs:
             x, y = point
             current.field[y][x] = (
-                d.CHAR_SCHOLAR_STAIRS_UP if active else d.CHAR_FLOOR
+                d.CHAR_SCHOLAR_STAIRS_UP
+                if active
+                else d.CHAR_HIDDEN_STAIRS_UP
             )
             if active:
                 current.seen[y][x] = 1
         for point in current.scholar_down_stairs:
             x, y = point
             current.field[y][x] = (
-                d.CHAR_SCHOLAR_STAIRS_DOWN if active else d.CHAR_FLOOR
+                d.CHAR_SCHOLAR_STAIRS_DOWN
+                if active
+                else d.CHAR_HIDDEN_STAIRS_DOWN
             )
             if active:
                 current.seen[y][x] = 1
+
+
+def reveal_scholar_features(current: Floor, visible: list[list[int]]) -> None:
+    """Persistently reveal Scholar secrets currently inside the player's FOV."""
+    for points, hidden, revealed in (
+        (
+            current.scholar_up_stairs,
+            d.CHAR_HIDDEN_STAIRS_UP,
+            d.CHAR_SCHOLAR_STAIRS_UP,
+        ),
+        (
+            current.scholar_down_stairs,
+            d.CHAR_HIDDEN_STAIRS_DOWN,
+            d.CHAR_SCHOLAR_STAIRS_DOWN,
+        ),
+    ):
+        for x, y in points:
+            if visible[y][x] and current.field[y][x] == hidden:
+                current.field[y][x] = revealed
+                current.seen[y][x] = 1
+    for x, y in current.d_gates:
+        if visible[y][x] and current.field[y][x] == d.CHAR_HIDDEN_D_GATE:
+            current.field[y][x] = d.CHAR_D_GATE
+            current.seen[y][x] = 1
 
 
 def sync_members(player: d.Player, previous: d.Point, direction: d.Point) -> None:
@@ -373,7 +401,8 @@ def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str 
             if (
                 0 <= pit_y < len(current.field)
                 and 0 <= pit_x < len(current.field[pit_y])
-                and current.field[pit_y][pit_x] not in d.WALL_CHARS
+                and current.field[pit_y][pit_x]
+                not in (*d.WALL_CHARS, *d.HIDDEN_PASSAGE_CHARS)
             ):
                 current.field[pit_y][pit_x] = d.CHAR_COLLAPSE
                 current.seen[pit_y][pit_x] = 1
@@ -410,7 +439,11 @@ def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str 
         sy = (dy > 0) - (dy < 0)
         for offset in range(1, abs(dx or dy)):
             point = (entity.x + sx * offset, entity.y + sy * offset)
-            if current.field[point[1]][point[0]] in (*d.WALL_CHARS, *d.STAIR_CHARS):
+            if current.field[point[1]][point[0]] in (
+                *d.WALL_CHARS,
+                *d.STAIR_CHARS,
+                d.CHAR_HIDDEN_D_GATE,
+            ):
                 break
             if any(
                 (other.x, other.y) == point
@@ -740,6 +773,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                     max(y1, y2) * (d.TILE_HEIGHT + 1),
                 )
             current.d_gates[gate] = "."
+            current.field[gate[1]][gate[0]] = d.CHAR_HIDDEN_D_GATE
         _place_detached_room_monster(current, room_components)
         member_roles = list(d.STAGE5_MEMBER_FLOORS[index])
         if index == 0:
@@ -919,7 +953,8 @@ def _reachable_floor_points(current: Floor, entry: d.Point) -> set[d.Point]:
                 point not in reachable
                 and 0 <= py < len(current.field)
                 and 0 <= px < len(current.field[py])
-                and current.field[py][px] not in d.WALL_CHARS
+                and current.field[py][px]
+                not in (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
             ):
                 reachable.add(point)
                 pending.append(point)
@@ -1041,3 +1076,6 @@ def _place_scholar_stairs(floors: list[Floor]) -> None:
         point = _choose_stair_point(candidates, used_sections)
         upper.scholar_down_stairs.append(point)
         lower.scholar_up_stairs.append(point)
+        x, y = point
+        upper.field[y][x] = d.CHAR_HIDDEN_STAIRS_DOWN
+        lower.field[y][x] = d.CHAR_HIDDEN_STAIRS_UP

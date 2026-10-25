@@ -165,7 +165,13 @@ class BlessedUI:
 
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
-                display_cell = d.CHAR_WALL if cell == d.CHAR_GOLEM_WALL else cell
+                display_cell = (
+                    d.CHAR_WALL
+                    if cell in (d.CHAR_GOLEM_WALL, d.CHAR_HIDDEN_D_GATE)
+                    else d.CHAR_FLOOR
+                    if cell in d.HIDDEN_STAIRS_CHARS
+                    else cell
+                )
                 discovered = bool(torched[y][x] or show_entities)
                 visible = bool(cur_torched[y][x])
                 if discovered and cell in d.SCHOLAR_STAIR_CHARS:
@@ -190,7 +196,7 @@ class BlessedUI:
                             y,
                             display_cell,
                             "green"
-                            if cell in d.WALL_CHARS
+                            if cell in (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
                             else "magenta"
                             if cell == d.CHAR_CALTROP
                             else "yellow"
@@ -199,7 +205,7 @@ class BlessedUI:
                             bg="blue" if (x, y) in highlighted_cells else None,
                         )
                     elif discovered:
-                        if cell in d.WALL_CHARS:
+                        if cell in (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE):
                             put(x, y, display_cell, "green", bg="blue" if (x, y) in highlighted_cells else None)
                         else:
                             put(x, y, display_cell, bg="blue" if (x, y) in highlighted_cells else None)
@@ -208,7 +214,7 @@ class BlessedUI:
                 else:
                     color = (
                         "green"
-                        if cell in d.WALL_CHARS
+                        if cell in (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
                         else "magenta"
                         if cell == d.CHAR_CALTROP
                         else "yellow"
@@ -218,8 +224,8 @@ class BlessedUI:
                     background = cell_background(x, y)
                     put(x, y, display_cell if discovered else " ", color, bg=background)
 
-        if d.has_member(player, "Dangeon Scholar"):
-            for (x, y), glyph in (d_gates or {}).items():
+        for (x, y), glyph in (d_gates or {}).items():
+            if field[y][x] == d.CHAR_D_GATE:
                 put(
                     x,
                     y,

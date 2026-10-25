@@ -272,7 +272,7 @@ Run `--stage 5` for a seed-generated, five-floor dungeon starting at level 1. Fo
 | `H` Healer | Reduce movement LP consumption to one-half and defeat's LP cost to 2. Rewinds restore LP using the same reduced consumption. |
 | `R` Rogue | Double the interval between Marksman shots. Identify Mimics (`M`), Golems (`g`), Caltrop Plants (`X`), and Rare Erebus (`E`) in the four cardinally adjacent cells. Before entering a pit, a Marksman firing lane, or a Rare Erebus, stop movement and key repeat; press again to proceed. |
 | `K` Knight | Triple the player's attack power and multiply shared experience by 0.75. |
-| `D` Dangeon Scholar | Reveal and use an extra stairway on each floor connection, marked `^` and `v` in green. On Stage 5, open the isolated room's original graph passage, marked `.` in green without the wall background. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |
+| `D` Dangeon Scholar | While D is with you, reveal hidden stairways (`^` and `v`) and Stage 5's hidden passage (`.`) when they enter your field of view. Revealed stairs and passages stay visible and usable after D leaves. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |
 | `G` Guardian | Halve the extra LP damage from barriers and reduce caltrop damage to one-third; movement cost is unchanged. |
 
 Vertically adjacent monsters form parties of up to five and fight together; horizontal adjacency does not connect them. Party strength and experience are summed, and LP reward uses the highest value in the party. Experience is shared among you and your recruited members, then modified by their abilities.

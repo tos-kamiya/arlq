@@ -97,6 +97,20 @@ def rewind_to_history(
     joined_members = set(player.joined_members)
     seen_members = set(player.seen_members)
     seen = deepcopy([floor_data.seen for floor_data in floors])
+    discovered_secrets = [
+        {
+            (x, y): cell
+            for y, row in enumerate(floor_data.field)
+            for x, cell in enumerate(row)
+            if cell
+            in (
+                d.CHAR_SCHOLAR_STAIRS_UP,
+                d.CHAR_SCHOLAR_STAIRS_DOWN,
+                d.CHAR_D_GATE,
+            )
+        }
+        for floor_data in floors
+    ]
 
     if replay_context is not None:
         if operation_count is None:
@@ -144,8 +158,12 @@ def rewind_to_history(
         queue.update(old_queue)
         floor[0], checkpoint[0] = old_floor, old_checkpoint
 
-    for floor_data, preserved_seen in zip(floors, seen, strict=True):
+    for floor_data, preserved_seen, preserved_secrets in zip(
+        floors, seen, discovered_secrets, strict=True
+    ):
         floor_data.seen = preserved_seen
+        for (x, y), cell in preserved_secrets.items():
+            floor_data.field[y][x] = cell
     player.__dict__.update(restored_player_state.__dict__)
     # Monster/trap identification, elf floor locations, and member discoveries
     # survive the rewind. Entity encounter state is restored by replay.

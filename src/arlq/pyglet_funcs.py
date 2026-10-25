@@ -1103,16 +1103,19 @@ class PygletUI:
         def discovered_at(x: int, y: int) -> bool:
             return bool(torched[y][x] or show_entities)
 
-        open_d_gates = (
-            set(d_gates or {})
-            if d.has_member(player, "Dangeon Scholar")
-            else set()
-        )
+        open_d_gates = {
+            (x, y)
+            for y, row in enumerate(field)
+            for x, cell in enumerate(row)
+            if cell == d.CHAR_D_GATE
+        }
 
         for y, row in enumerate(field):
             for x in self._field_draw_columns(len(row)):
                 cell = row[x]
-                is_wall = cell in d.WALL_CHARS and (x, y) not in open_d_gates
+                is_wall = (
+                    cell in d.WALL_CHARS or cell == d.CHAR_HIDDEN_D_GATE
+                ) and (x, y) not in open_d_gates
                 discovered = discovered_at(x, y)
                 if cur_torched[y][x]:
                     tile_color = VISIBLE_WALL if is_wall else VISIBLE_FLOOR
@@ -1139,8 +1142,8 @@ class PygletUI:
                 elif discovered and cell == d.CHAR_COLLAPSE:
                     self._draw_pit((x, y))
 
-        if d.has_member(player, "Dangeon Scholar"):
-            for (x, y), glyph in (d_gates or {}).items():
+        for (x, y), glyph in (d_gates or {}).items():
+            if field[y][x] == d.CHAR_D_GATE:
                 self._draw_field_text((x, y), glyph, COLOR_MAP[CI_GREEN], bold=True)
 
         if not floor_view:

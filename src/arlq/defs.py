@@ -114,8 +114,18 @@ WALL_CHARS: Tuple[str, str] = (CHAR_WALL, CHAR_GOLEM_WALL)
 CHAR_FLOOR: str = " "
 CHAR_STAIRS_UP: str = "^"
 CHAR_STAIRS_DOWN: str = "v"
+# Hidden terrain markers are rendered as ordinary floor or wall until found.
+CHAR_HIDDEN_STAIRS_UP: str = "u"
+CHAR_HIDDEN_STAIRS_DOWN: str = "w"
 CHAR_SCHOLAR_STAIRS_UP: str = "↑"
 CHAR_SCHOLAR_STAIRS_DOWN: str = "↓"
+CHAR_HIDDEN_D_GATE: str = "|"
+CHAR_D_GATE: str = "."
+HIDDEN_STAIRS_CHARS: Tuple[str, str] = (
+    CHAR_HIDDEN_STAIRS_UP,
+    CHAR_HIDDEN_STAIRS_DOWN,
+)
+HIDDEN_PASSAGE_CHARS: Tuple[str, str] = (CHAR_HIDDEN_D_GATE, CHAR_D_GATE)
 SCHOLAR_STAIR_CHARS: Tuple[str, str] = (
     CHAR_SCHOLAR_STAIRS_UP,
     CHAR_SCHOLAR_STAIRS_DOWN,
@@ -271,7 +281,11 @@ def collapse_placement_cells_valid(
         for x, y in collapse_footprint(point):
             if not (0 <= x < width and 0 <= y < height):
                 return False
-            if field[y][x] not in (CHAR_FLOOR, *WALL_CHARS):
+            if field[y][x] not in (
+                CHAR_FLOOR,
+                *WALL_CHARS,
+                *HIDDEN_PASSAGE_CHARS,
+            ):
                 return False
     return True
 
