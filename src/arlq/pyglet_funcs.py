@@ -936,6 +936,13 @@ class PygletUI:
             )
         self._draw_field_text(pos, "@", self._tone_color(foreground), bold=True)
 
+    def _draw_player_wall_break_glyph(self, player: d.Player) -> None:
+        glyph = ui_display.player_wall_break_glyph(player)
+        if glyph is not None:
+            self._draw_field_text(
+                (glyph.x, glyph.y), glyph.char, self._tone_color(glyph.tone), bold=glyph.bold
+            )
+
     def _draw_strength_entry(self, row: int, label: str, is_player: bool):
         """Draws one strength-column entry, right-aligned in the column."""
         text_width = self._text_width(label, bold=is_player)
@@ -1219,6 +1226,7 @@ class PygletUI:
         if not floor_view:
             for glyph in ui_display.member_glyphs(player):
                 paint(glyph)
+            self._draw_player_wall_break_glyph(player)
 
         # Draw the right-edge strength column: the stage's monster tribes and
         # the player, ranked strongest-first. A tinted background (full

@@ -214,6 +214,16 @@ def member_glyphs(player: d.Player) -> List[FieldGlyph]:
     ]
 
 
+def player_wall_break_glyph(player: d.Player) -> Optional[FieldGlyph]:
+    if (
+        player.x <= 0
+        or player.item not in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
+        or player.item_uses <= 0
+    ):
+        return None
+    return FieldGlyph(player.x - 1, player.y, "\\", "default", bold=True)
+
+
 def player_appearance(player: d.Player) -> Tuple[str, Optional[str]]:
     """Foreground and background tones for '@'.
 

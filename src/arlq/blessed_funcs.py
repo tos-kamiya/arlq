@@ -342,6 +342,16 @@ class BlessedUI:
         if not floor_view:
             for glyph in ui_display.member_glyphs(player):
                 paint(glyph)
+            wall_break_glyph = ui_display.player_wall_break_glyph(player)
+            if wall_break_glyph is not None:
+                put(
+                    wall_break_glyph.x,
+                    wall_break_glyph.y,
+                    wall_break_glyph.char,
+                    "white",
+                    bold=True,
+                    bg=cell_background(wall_break_glyph.x, wall_break_glyph.y),
+                )
 
         foreground, background = ui_display.player_appearance(player)
         if not floor_view:

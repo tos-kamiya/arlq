@@ -977,6 +977,9 @@ class SpriteUI(PygletUI):
                                 self._tone_color(background or 'default'), poison)
         self._draw_lp_gauge(pos, player, top)
 
+    def _draw_player_wall_break_glyph(self, player):
+        return
+
     def _status_shows_lp_gauge(self):
         # The gauge is drawn over the player instead (see _draw_lp_gauge).
         return '@' not in self._sprite_images
