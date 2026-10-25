@@ -71,7 +71,7 @@ STAGE5_ROSTER = (
     ),
 )
 STAGE5_BOSS_PARTY = (("W", 1), ("V", 1))
-STAGE5_BOSS_ESCORTS = tuple("abdefkw")
+STAGE5_BOSS_ESCORTS = tuple("afkw")
 _STAGE5_DEEP_SUPPORT_POOL = (
     ("a", 1), ("a", 1),
     ("f", 1), ("f", 1),

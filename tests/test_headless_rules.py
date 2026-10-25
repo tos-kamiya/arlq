@@ -111,6 +111,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "persistent_barriers",
         "room_components",
         "decor",
+        "d_gates",
     }
 
 
@@ -296,6 +297,7 @@ def test_game_loop_draws_with_keyword_arguments_only():
         "message",
         "checkpoint",
         "decor",
+        "d_gates",
         "reachable_cells",
         "overshoot_markers",
     }

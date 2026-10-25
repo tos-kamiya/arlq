@@ -163,8 +163,8 @@ def test_poison_turns_upper_right_of_player_disc_purple(sprite_ui, lp, tone):
     assert ui.outlines[0][3:] == (ui._tone_color(tone), ui._tone_color('magenta'))
 
 
-@pytest.mark.parametrize('level, outline', [(8, ('red', None)), (40, ('blue', 'yellow'))])
-def test_beatable_boss_disc_is_blue_with_yellow_upper_right(sprite_ui, level, outline):
+@pytest.mark.parametrize('level, outline', [(8, ('red', None)), (40, ('blue', None))])
+def test_boss_disc_color_reflects_attack_without_upper_right_marker(sprite_ui, level, outline):
     ui = sprite_ui
     boss = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['D'])
     for glyph in display.revealed_entity_glyphs(boss, {'D'}, False, level, None):

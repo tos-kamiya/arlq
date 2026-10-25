@@ -203,7 +203,7 @@ def test_stage5_member_progress_shows_candidates_before_they_depart():
     player.known_member_floors = {"Bard": 1, "Rogue": 2}
     assert [
         label for label, _ in display.stage5_member_progress_marks(player)
-    ] == ["B", "H", "R", "K", "D", "G"]
+    ] == ["B1", "H", "R2", "K", "D", "G"]
 
 
 def test_departed_member_does_not_respawn_after_long_delay():
@@ -425,25 +425,34 @@ def test_boss_party_vortex_is_local_and_boss_unlocks_separate_treasure():
     assert player.stage_won
 
 
-def test_stage5_boss_requires_knight_or_sword_from_chimera():
-    current, player = state(level=10000)
-    boss = monster(3, 2, "W")
-    current.entities = [boss]
+@pytest.mark.parametrize("attack_offset, won", [(-1, False), (0, True), (1, True)])
+def test_stage5_boss_uses_combined_party_strength_without_required_members_or_items(
+    attack_offset, won
+):
+    current, player = state()
+    party = [monster(3, 2, "W"), monster(3, 3, "V"), monster(3, 4, "a", 2)]
+    current.entities = party.copy()
+    player.level = sum(d.monster_level(entity) for entity in party) + attack_offset
     step(current, player)
-    assert not player.boss_defeated
-    assert boss in current.entities
+    assert player.boss_defeated == won
+    assert all((entity not in current.entities) == won for entity in party)
 
-    player.x, player.y = 2, 2
-    player.item = d.ITEM_SWORD_X1_5
-    player.item_taken_from = "a"
-    step(current, player)
-    assert not player.boss_defeated
 
-    player.x, player.y = 2, 2
-    player.item = d.ITEM_SWORD_X1_5
-    player.item_taken_from = "c"
-    step(current, player)
-    assert player.boss_defeated
+@pytest.mark.parametrize("seed", [0, 7, 9, 123])
+def test_generated_boss_retains_one_effect_free_empowered_escort(seed):
+    engine.rand.set_seed(seed)
+    floors, _ = stage5.build()
+    current = floors[-1]
+    boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W")
+    party = stage5.monster_party(current, boss)
+    assert len(party) == 3
+    assert sum(e.tribe.char == "V" and e.empowered == 1 for e in party) == 1
+    escort = next(e for e in party if e.tribe.char not in ("W", "V"))
+    assert escort.empowered == 2
+    assert not stage5.special_monster(escort)
+    for char in d.STAGE5_BOSS_ESCORTS:
+        tribe = d.CHAR_TO_MONSTER_TRIBE[char]
+        assert tribe.effect is None and tribe.item is None
 
 
 def test_treasure_is_optional_and_does_not_finish_stage():
@@ -535,7 +544,7 @@ def test_rogue_warning_stops_repeat_and_requires_fresh_press_without_lp_cost(
     ui = UI()
     engine.run_game(ui, "test", stage_num=5)
     assert ui.frames[:3] == [(0, 90, (2, 2))] * 3
-    assert player.lp == pytest.approx(89 + 2 / 3)
+    assert player.lp == pytest.approx(89.5)
     assert (player.x, player.y) == (3, 2)
     assert ui.stops >= 2
 
@@ -580,7 +589,7 @@ def test_live_loop_rewind_preserves_target_lp(monkeypatch, roles):
         map_mode=False,
     )
     engine.run_game(ui, "test", stage_num=5)
-    assert frames[:3] == pytest.approx([90, 90 - (1 / 3 if roles else 1), 90])
+    assert frames[:3] == pytest.approx([90, 90 - (1 / 2 if roles else 1), 90])
 
 
 def test_candidate_glyph_is_known_on_first_sighting():
@@ -726,34 +735,18 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
         for char, count, rank in roster
         for _ in range(count)
     )
-    expected_counts = Counter(
-        {
-            (char, rank): count * 3
-            for char, count, rank in d.STAGE5_DEEP_ROSTER
-        }
-    )
-    expected_counts[("w", 1)] -= 1
-    expected_counts[("w", 2)] += 2
-    expected_counts[("A", 1)] += 4
-    expected_counts[("b", 2)] += 3
-    assert actual_counts == expected_counts
-    current_fixed_total = sum(
-        count for roster in d.STAGE5_ROSTER for _, count, _ in roster
-    ) + d.STAGE5_FLOORS
-    previous_fixed_total = (
-        sum(count for _, count, _ in d.STAGE5_ROSTER[0])
-        - 2
-        + 3 * sum(count for _, count, _ in d.STAGE5_DEEP_ROSTER)
-        + 2
-        + 4
-    )
-    assert current_fixed_total == previous_fixed_total + 9
+    assert actual_counts == Counter({
+        ("a", 2): 12, ("A", 1): 8, ("b", 2): 32, ("c", 2): 18,
+        ("C", 1): 6, ("d", 2): 24, ("f", 2): 6, ("g", 1): 12,
+        ("k", 1): 6, ("w", 1): 2, ("w", 2): 2,
+        ("X", 1): 3, ("E", 1): 3,
+    })
     assert [
         sum(count for char, count, _ in roster if char == "A")
         for roster in d.STAGE5_ROSTER
-    ] == [3, 2, 3, 2, 3]
+    ] == [2, 2, 2, 2, 2]
     assert [sum(count for _, count, _ in roster) for roster in deep_rosters] == [
-        34, 36, 34, 36
+        33, 34, 33, 34
     ]
     assert [
         sum(count for char, count, rank in roster if char == "w" and rank == 2)
