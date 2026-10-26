@@ -315,37 +315,26 @@ def sync_members(player: d.Player, previous: d.Point, direction: d.Point) -> Non
         member.x, member.y = player.x, player.y
 
 
-def reveal_mimics(current: Floor, player: d.Player) -> None:
+def reveal_rogue_monsters(
+    current: Floor, player: d.Player, visible: list[list[int]]
+) -> None:
+    """Identify active Rogue targets that are in the player's field of view."""
     if not d.has_member(player, "Rogue"):
         return
     for entity in current.entities:
         if (
             isinstance(entity, d.Monster)
             and entity.active
-            and entity.tribe.char == "M"
-            and abs(player.x - entity.x) + abs(player.y - entity.y) == 1
+            and entity.tribe.char in ("E", "M", "g", "X")
+            and 0 <= entity.y < len(visible)
+            and 0 <= entity.x < len(visible[entity.y])
+            and visible[entity.y][entity.x]
         ):
             player.known_monsters.add(d.monster_type_key(entity))
-            current.seen[entity.y][entity.x] = 1
-
-
-def reveal_rogue_traps(current: Floor, player: d.Player) -> None:
-    """Identify adjacent Golems, Caltrop Plants, and Rare Erebus for a Rogue."""
-    if not d.has_member(player, "Rogue"):
-        return
-    for entity in current.entities:
-        if (
-            isinstance(entity, d.Monster)
-            and entity.active
-            and entity.tribe.char in ("g", "X", "E")
-            and abs(player.x - entity.x) + abs(player.y - entity.y) == 1
-        ):
-            player.known_monsters.add(d.monster_type_key(entity))
-            current.seen[entity.y][entity.x] = 1
 
 
 def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str | None:
-    """Inspect the destination using the same blockers as marksman arrows."""
+    """Check whether the destination is a pit or Rare Erebus."""
     x, y = destination
     if not (0 <= y < len(current.field) and 0 <= x < len(current.field[y])):
         return None
@@ -391,44 +380,6 @@ def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str 
         for entity in current.entities
     ):
         return None
-    for entity in current.entities:
-        if (
-            not isinstance(entity, d.Monster)
-            or not entity.active
-            or entity.tribe.char != "k"
-        ):
-            continue
-        dx, dy = x - entity.x, y - entity.y
-        if (dx == 0) == (dy == 0) or abs(dx or dy) <= 1:
-            continue
-        sx = (dx > 0) - (dx < 0)
-        sy = (dy > 0) - (dy < 0)
-        for offset in range(1, abs(dx or dy)):
-            point = (entity.x + sx * offset, entity.y + sy * offset)
-            if current.field[point[1]][point[0]] in (
-                *d.WALL_CHARS,
-                *d.STAIR_CHARS,
-                d.CHAR_HIDDEN_D_GATE,
-            ):
-                break
-            if any(
-                (other.x, other.y) == point
-                and (
-                    isinstance(other, (d.Companion, d.Treasure))
-                    or isinstance(other, d.Monster)
-                    and other.active
-                )
-                for other in current.entities
-            ):
-                break
-        else:
-            char = "-" if sx else "|"
-            entity.warning_arrow_marks[:] = [
-                mark for mark in entity.warning_arrow_marks if mark[0] != destination
-            ]
-            entity.warning_arrow_marks.append((destination, char))
-            current.seen[y][x] = 1
-            return char
     return None
 
 

@@ -316,32 +316,51 @@ def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
     assert d.movement_lp_cost(player) == pytest.approx(1 / 2)
 
 
-def test_rogue_detects_shooting_lane_and_respects_blockers():
+def test_rogue_does_not_preannounce_marksman_shooting_lane():
     current, player = state(("Rogue",))
     marksman = monster(7, 3, "k")
     current.entities.append(marksman)
-    assert stage5.rogue_danger(current, player, (3, 3)) == "-"
-    assert ((3, 3), "-") in marksman.warning_arrow_marks
+    assert stage5.rogue_danger(current, player, (3, 3)) is None
     current.field[3][5] = d.CHAR_WALL
     assert stage5.rogue_danger(current, player, (3, 3)) is None
-    current.field[3][5] = d.CHAR_FLOOR
-    current.entities.append(d.Companion(5, 3, d.CHAR_TO_TRIBE["n"]))
-    assert stage5.rogue_danger(current, player, (3, 3)) is None
 
 
-def test_rogue_mimic_identification_requires_adjacency_and_activation():
+def test_rogue_avoids_odd_marksman_shot_damage_but_shows_arrows():
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    marksman = monster(1, 2, "k")
+    current = Floor(
+        field, [marksman], [[0] * d.FIELD_WIDTH for _ in field],
+        (1, 1), (d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2), None,
+    )
+    player = d.Player(5, 2, 1, 90)
+    player.members.append(d.PartyMember(player.x, player.y, "Rogue"))
+
+    for player_x, expected_lp in ((5, 90), (6, 86), (7, 86)):
+        player.x = player_x
+        marksman.marksman_cooldown = 0
+        assert engine._marksman_shoot(current, player)
+        assert player.lp == expected_lp
+
+    assert marksman.marksman_shots_fired == 3
+    assert marksman.arrow_marks == [((4, 2), "-"), ((5, 2), "-"), ((6, 2), "-")]
+
+
+def test_rogue_identifies_active_mimics_and_traps_when_they_enter_fov():
     current, player = state(("Rogue",))
-    mimic = monster(4, 2, "M")
-    current.entities.append(mimic)
-    stage5.reveal_mimics(current, player)
-    assert "M" not in player.known_monsters
-    mimic.x = 3
-    mimic.active = False
-    stage5.reveal_mimics(current, player)
-    assert "M" not in player.known_monsters
-    mimic.active = True
-    stage5.reveal_mimics(current, player)
-    assert "M" in player.known_monsters
+    targets = [monster(x, 2, char) for x, char in zip((4, 5, 6, 7), "EMgX")]
+    current.entities.extend(targets)
+    visible = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    visible[2][4] = 1
+
+    stage5.reveal_rogue_monsters(current, player, visible)
+
+    assert player.known_monsters == {d.monster_type_key(targets[0])}
+    for target in targets[1:]:
+        visible[target.y][target.x] = 1
+    stage5.reveal_rogue_monsters(current, player, visible)
+    assert player.known_monsters == {
+        d.monster_type_key(target) for target in targets
+    }
 
 
 def test_boss_party_vortex_is_local_and_boss_unlocks_separate_treasure():
@@ -489,9 +508,7 @@ def test_pit_falls_to_next_floor_with_members():
     assert [(e.x, e.y) for e in player.members] == [(3, 2), (3, 2)]
 
 
-def test_rogue_warning_stops_repeat_and_requires_fresh_press_without_lp_cost(
-    monkeypatch,
-):
+def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):
     current, player = state(("Rogue", "Healer"))
     current.field[2][3] = d.CHAR_COLLAPSE
     lower, _ = state()
@@ -504,7 +521,7 @@ def test_rogue_warning_stops_repeat_and_requires_fresh_press_without_lp_cost(
 
         def __init__(self):
             self.frames = []
-            self.inputs = iter([False, True, False])
+            self.inputs = iter([False, None])
             self.stops = 0
 
         def draw_stage(self, **kwargs):
@@ -522,10 +539,11 @@ def test_rogue_warning_stops_repeat_and_requires_fresh_press_without_lp_cost(
 
     ui = UI()
     engine.run_game(ui, "test", stage_num=5)
-    assert ui.frames[:3] == [(0, 90, (2, 2))] * 3
+    assert ui.frames[:2] == [(0, 90, (2, 2)), (1, 89.5, (3, 2))]
     assert player.lp == pytest.approx(89.5)
     assert (player.x, player.y) == (3, 2)
-    assert ui.stops >= 2
+    assert player.current_floor == 1
+    assert ui.stops == 1
 
 
 @pytest.mark.parametrize("roles", [(), ("Healer",)])

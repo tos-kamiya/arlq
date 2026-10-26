@@ -252,7 +252,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | Display & Name | Description |
 | -------------- | ----------- |
 | `T` Mimic | Appears as a treasure chest after the stage boss is defeated. It has level 1; defeating it moves the player to a random position on the same floor. |
-| `?` / `O` Collapse | Entering its `?` cell reveals pits (`O`) in the four adjacent cells, except where a wall already exists. On the next move, entering a pit drops the player to the next floor. Defeating Collapse removes the `?`; it does not respawn. |
+| `?` / `O` Collapse | When a Rogue is in the party and its `?` cell enters the field of view, pits (`O`) open in the four adjacent cells, except where a wall already exists. Otherwise, entering its `?` cell opens the pits. On the next move, entering a pit drops the player to the next floor. Defeating Collapse removes the `?`; it does not respawn. |
 | `V` Vortex | Repositions nearby monsters, companions, and treasure chests when defeated. |
 
 #### Elves
@@ -270,7 +270,7 @@ Run `--stage 5` for a seed-generated, five-floor dungeon starting at level 1. Fo
 | --- | --- |
 | `B` Bard | Triple the shared experience gain. |
 | `H` Healer | Reduce movement LP consumption to one-half and defeat's LP cost to 2. Rewinds restore LP using the same reduced consumption. |
-| `R` Rogue | Double the interval between Marksman shots. Identify Mimics (`M`), Golems (`g`), Caltrop Plants (`X`), and Rare Erebus (`E`) in the four cardinally adjacent cells. Before entering a pit, a Marksman firing lane, or a Rare Erebus, stop movement and key repeat; press again to proceed. |
+| `R` Rogue | Identify Mimics (`M`), Golems (`g`), Caltrop Plants (`X`), and Rare Erebus (`E`) when they enter the field of view. Reveal a Collapse's pits when its `?` enters the field of view. Warn about pits and Rare Erebus while stopping key repeat; the current move still proceeds. For each Marksman, the first, third, and other odd-numbered shots are shown but deal no damage; even-numbered shots deal damage. |
 | `K` Knight | Triple the player's attack power and multiply shared experience by 0.75. |
 | `D` Dangeon Scholar | While D is with you, reveal hidden stairways (`^` and `v`) and Stage 5's hidden passage (`.`) within explored map areas. Secrets in areas already explored when D joins are revealed immediately. Revealed stairs and passages stay visible and usable after D leaves. Walk through walls raised by defeated Golems; Marksman arrows remain blocked by those walls. |
 | `G` Guardian | Halve the extra LP damage from barriers and reduce caltrop damage to one-third; movement cost is unchanged. |

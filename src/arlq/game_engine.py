@@ -284,11 +284,32 @@ def _apply_terrain_hazards(
     return event_message
 
 
+def _reveal_collapse_pits(
+    floors: List[Floor], floor_index: int, collapse: d.Collapse
+) -> None:
+    """Reveal pits around a Collapse and mark their lower-floor rocks."""
+    current = floors[floor_index]
+    x_center, y_center = collapse.x, collapse.y
+    current.seen[y_center][x_center] = 1
+    lower = floors[floor_index + 1] if floor_index + 1 < len(floors) else None
+    for dx, dy in d.COLLAPSE_FOOTPRINT_OFFSETS[1:]:
+        x, y = x_center + dx, y_center + dy
+        if (
+            0 <= y < len(current.field)
+            and 0 <= x < len(current.field[y])
+            and current.field[y][x] not in (*d.WALL_CHARS, *d.HIDDEN_PASSAGE_CHARS)
+        ):
+            current.field[y][x] = d.CHAR_COLLAPSE
+            current.seen[y][x] = 1
+            if lower is not None and lower.field[y][x] == d.CHAR_FLOOR:
+                lower.decor[y][x] = d.DECOR_FALLEN_ROCKS
+
+
 def _marksman_shoot(
     current: Floor, player: d.Player, trace: Optional[TraceRecorder] = None
 ) -> bool:
-    """Resolve Stage 4 marksmen after a player move and retain their arrow marks."""
-    was_hit = False
+    """Resolve eligible marksman shots and retain their visible arrow marks."""
+    was_shot = False
     for entity in current.entities:
         if (
             not isinstance(entity, d.Monster)
@@ -334,18 +355,17 @@ def _marksman_shoot(
         if blocked:
             continue
 
-        player.lp -= d.MARKSMAN_LP_DAMAGE
-        was_hit = True
-        if trace is not None:
-            trace.record_damage("marksman")
-        cooldown_multiplier = (
-            d.ROGUE_MARKSMAN_COOLDOWN_MULTIPLIER
-            if d.has_member(player, "Rogue")
-            else 1
+        entity.marksman_shots_fired += 1
+        no_damage = (
+            d.has_member(player, "Rogue")
+            and entity.marksman_shots_fired % 2 == 1
         )
-        entity.marksman_cooldown = (
-            d.MARKSMAN_COOLDOWN_TURNS * cooldown_multiplier
-        )
+        if not no_damage:
+            player.lp -= d.MARKSMAN_LP_DAMAGE
+            if trace is not None:
+                trace.record_damage("marksman")
+        was_shot = True
+        entity.marksman_cooldown = d.MARKSMAN_COOLDOWN_TURNS
         player.known_monsters.add(d.monster_type_key(entity))
         mark = ((player.x - step_x, player.y - step_y), "-" if step_x else "|")
         marks = entity.arrow_marks
@@ -354,7 +374,7 @@ def _marksman_shoot(
         arrow_limit = d.MARKSMAN_ARROW_LIMIT
         if len(marks) > arrow_limit:
             del marks[0]
-    return was_hit
+    return was_shot
 
 
 def _vortex_rearrange(
@@ -430,7 +450,6 @@ def _vortex_rearrange(
     for entity in movable:
         if isinstance(entity, d.Monster) and entity.tribe.char == "k":
             entity.arrow_marks.clear()
-            entity.warning_arrow_marks.clear()
     current.entities[:] = [
         entity for entity in current.entities if entity not in movable
     ]
@@ -650,7 +669,6 @@ def _defeat_monster(
                     current.persistent_barriers.add((x, y))
     if ch == "k":
         entity.arrow_marks.clear()
-        entity.warning_arrow_marks.clear()
     if ch == "M":
         entity.met = True
         entity.active = False
@@ -1502,23 +1520,7 @@ def _process_multi_floor_turn(
     ):
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("collapse_triggered")
-        current.seen[collapse_contact.y][collapse_contact.x] = 1
-        lower = floors[floor[0] + 1] if floor[0] + 1 < len(floors) else None
-        # Walking onto the Collapse reveals the four neighboring pits. Walls
-        # keep their terrain and cannot become pit cells.
-        for dx, dy in d.COLLAPSE_FOOTPRINT_OFFSETS[1:]:
-            x = collapse_contact.x + dx
-            y = collapse_contact.y + dy
-            if 0 <= y < len(current.field) and 0 <= x < len(current.field[y]):
-                if current.field[y][x] not in (
-                    *d.WALL_CHARS,
-                    *d.HIDDEN_PASSAGE_CHARS,
-                ):
-                    current.field[y][x] = d.CHAR_COLLAPSE
-                    current.seen[y][x] = 1
-                    # Rocks fallen through the pit lie on the floor below.
-                    if lower is not None and lower.field[y][x] == d.CHAR_FLOOR:
-                        lower.decor[y][x] = d.DECOR_FALLEN_ROCKS
+        _reveal_collapse_pits(floors, floor[0], collapse_contact)
 
     entered_pit = (
         not standing_on_collapse
@@ -1698,8 +1700,6 @@ def _process_multi_floor_turn(
                 d.STAGE5_PARTY_LIMIT if stage_num == 5 else d.MONSTER_PARTY_LIMIT,
             )
         stage5.sync_members(player, previous, direction)
-        stage5.reveal_mimics(floors[floor[0]], player)
-        stage5.reveal_rogue_traps(floors[floor[0]], player)
     return (MESSAGE_TICKS, event_message) if event_message else None
 
 
@@ -1721,9 +1721,17 @@ def observe_world(
     for y, row in enumerate(visible):
         for x, value in enumerate(row):
             current.seen[y][x] |= value
+    if stage_num in (5, 6) and d.has_member(player, "Rogue"):
+        for entity in current.entities:
+            if (
+                isinstance(entity, d.Collapse)
+                and 0 <= entity.y < len(visible)
+                and 0 <= entity.x < len(visible[entity.y])
+                and visible[entity.y][entity.x]
+            ):
+                _reveal_collapse_pits(floors, floor_index, entity)
     if stage_num in (5, 6):
-        stage5.reveal_mimics(current, player)
-        stage5.reveal_rogue_traps(current, player)
+        stage5.reveal_rogue_monsters(current, player, visible)
         if d.has_member(player, "Dangeon Scholar"):
             stage5.reveal_scholar_features(current, current.seen)
     _reveal_paired_stair_cells(floors, player)
@@ -1910,25 +1918,21 @@ def run_game(
 
         # A real movement always returns the display to the player's floor.
         view_floor = floor[0]
+        rogue_spotted_danger = False
         if stage_num in (5, 6) and d.has_member(player, "Rogue"):
             destination = (player.x + move[0], player.y + move[1])
-            warning = ((player.x, player.y), destination)
-            if player.rogue_warning != warning and stage5.rogue_danger(current, player, destination):
-                player.rogue_warning = warning
+            if stage5.rogue_danger(current, player, destination):
+                rogue_spotted_danger = True
                 if replay_context is not None:
                     replay_context.rogue_checks.setdefault(
                         len(replay_context.operations), []
                     ).append(destination)
                 _stop_movement_repeat(ui)
-                message = (5, trp("-- Rogue spotted danger. Press again to proceed.", 5))
-                continue
-            if player.rogue_warning == warning and getattr(ui, "input_was_repeat", False):
-                _stop_movement_repeat(ui)
-                continue
-        player.rogue_warning = None
+                message = (5, trp("-- Rogue spotted danger. Movement repeat stopped.", 5))
         repeat_stop_enabled = getattr(ui, "auto_repeat_stop_enabled", True)
         if (
             repeat_stop_enabled
+            and not rogue_spotted_danger
             and getattr(ui, "input_was_repeat", False)
             and _should_stop_movement_repeat(
                 move,

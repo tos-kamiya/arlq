@@ -26,8 +26,8 @@ def signature(player, entities, field, seen):
                 entity.revealed,
                 entity.met,
                 entity.marksman_cooldown,
+                entity.marksman_shots_fired,
                 entity.arrow_marks,
-                entity.warning_arrow_marks,
             )
         elif isinstance(entity, d.Companion):
             state += (entity.tribe.char, entity.revealed, entity.durability)

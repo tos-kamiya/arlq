@@ -169,7 +169,6 @@ LOOP_TURNS = 80
 OVERSHOOT_REWIND_TURNS = 5
 MARKSMAN_ARROW_LIMIT = 20
 MARKSMAN_COOLDOWN_TURNS = 2
-ROGUE_MARKSMAN_COOLDOWN_MULTIPLIER = 2
 STAGE3_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
 STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
     (1, 1),
@@ -446,8 +445,8 @@ class Monster(Entity):
         self.met: bool = False
         self.active: bool = True
         self.arrow_marks: List[Tuple[Point, str]] = []
-        self.warning_arrow_marks: List[Tuple[Point, str]] = []
         self.marksman_cooldown: int = 0
+        self.marksman_shots_fired: int = 0
 
 
 class Collapse(Monster):
@@ -529,7 +528,6 @@ class Player(Entity):
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
         self.members: List[PartyMember] = []
         self.facing: Point = (0, -1)
-        self.rogue_warning: Optional[Tuple[Point, Point]] = None
         self.rescue_stage = False
         self.treasure_stage = False
         self.noble_returned = False
