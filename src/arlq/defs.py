@@ -13,6 +13,8 @@ PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
 STAGE5_PARTY_LIMIT = 3
 JESTER_EXP_MULTIPLIER = 2
+KNIGHT_INITIAL_LEVEL = 50
+KNIGHT_EXPERIENCE_RATIO = 0.5
 STAGE6_EXPERIENCE_MEMBER_WEIGHTS = {
     "Jester": 0.5,
     "Healer": 0.5,
@@ -37,26 +39,26 @@ STAGE5_PARTY_SIZE_WEIGHTS = (
 STAGE5_ROSTER = (
     (
         ("a", 24, 1), ("A", 2, 1), ("b", 6, 1), ("B", 2, 1), ("c", 5, 1),
-        ("d", 4, 1), ("e", 1, 1), ("f", 2, 1), ("g", 1, 1),
+        ("d", 3, 1), ("e", 1, 1), ("f", 2, 1), ("g", 1, 1),
     ),
     (
         ("a", 3, 2), ("A", 2, 1), ("b", 5, 2), ("B", 2, 1), ("c", 3, 2),
-        ("C", 2, 1), ("d", 6, 2), ("f", 2, 2), ("g", 3, 1),
+        ("C", 2, 1), ("d", 5, 2), ("f", 2, 2), ("g", 3, 1),
         ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
         ("a", 3, 2), ("A", 2, 1), ("b", 5, 2), ("B", 2, 1), ("c", 4, 2),
-        ("C", 2, 1), ("d", 6, 2), ("f", 1, 2), ("g", 3, 1),
+        ("C", 2, 1), ("d", 5, 2), ("f", 1, 2), ("g", 3, 1),
         ("k", 2, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
         ("a", 3, 2), ("A", 2, 1), ("b", 5, 2), ("B", 2, 1), ("c", 5, 2),
-        ("C", 1, 1), ("d", 6, 2), ("f", 1, 2), ("g", 3, 1),
+        ("C", 1, 1), ("d", 5, 2), ("f", 1, 2), ("g", 3, 1),
         ("k", 1, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
         ("a", 3, 2), ("A", 2, 1), ("b", 5, 2), ("B", 2, 1), ("c", 6, 2),
-        ("C", 1, 1), ("d", 6, 2), ("f", 2, 2), ("g", 3, 1),
+        ("C", 1, 1), ("d", 5, 2), ("f", 2, 2), ("g", 3, 1),
         ("k", 1, 1), ("w", 2, 2),
     ),
 )
@@ -421,6 +423,7 @@ class PartyMember(Entity):
         super().__init__(x, y)
         self.role = role
         self.origin_floor = origin_floor
+        self.level: float = KNIGHT_INITIAL_LEVEL if role == "Knight" else 0
 
 
 class Monster(Entity):
@@ -1132,8 +1135,13 @@ def current_player_attack(player: Player, stage_num: int = 0) -> float:
     Player's current attack power: level and equipped item, plus permanent
     bonuses from the Collector's flag and the Javelin Elf follower. Bonuses
     apply in every stage, and this shared calculation keeps combat and display
-    consistent. `stage_num` is retained for existing callers.
+    consistent. In Stages 5 and 6, the Knight's level is added to the player's
+    attack instead of multiplying it.
     """
+    knight_level = next(
+        (member.level for member in player.members if member.role == "Knight"),
+        0,
+    ) if stage_num in (5, 6) else 0
     if player.rescue_stage:
         value = player.level
         if player.item == ITEM_SWORD_X1_5:
@@ -1142,11 +1150,7 @@ def current_player_attack(player: Player, stage_num: int = 0) -> float:
             value *= 3
         elif player.item == ITEM_POISONED:
             value = ceil(value / 3)
-        multiplier = (
-            2 if stage_num in (5, 6) and has_member(player, "Knight")
-            else 1.0 + int(has_member(player, "Knight"))
-        )
-        return value * multiplier
+        return value + knight_level
     if player.item == ITEM_SWORD_X1_5:
         value = player.level * 3 // 2
     elif player.item == ITEM_SWORD_CURSED:
@@ -1160,9 +1164,7 @@ def current_player_attack(player: Player, stage_num: int = 0) -> float:
         value = (value * 6 + 1) // 5
     if _javelin_follower_active(player):
         value = (value * 5 + 2) // 4
-    if stage_num in (5, 6) and has_member(player, "Knight"):
-        value *= 2
-    return value
+    return value + knight_level
 
 
 def get_stage_roster_tribes(stage_num: int) -> List[MonsterTribe]:

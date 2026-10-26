@@ -1116,7 +1116,7 @@ def _resolve_party_contact(
         return _ContactResult(trp("-- Your party lost and respawned together.", 5))
 
     old_level, old_lp = player.level, player.lp
-    experience = (
+    base_experience = (
         sum(
             10
             if monster.tribe.effect == d.EFFECT_SPECIAL_EXP
@@ -1126,8 +1126,8 @@ def _resolve_party_contact(
             for monster in party
         )
         / d.experience_share_count(player, stage_num)
-        * d.experience_multiplier(player)
     )
+    experience = base_experience * d.experience_multiplier(player)
     feed = max(monster.tribe.feed for monster in party)
     lp_overcharge = (
         d.BISON_LP_OVERCHARGE
@@ -1154,6 +1154,11 @@ def _resolve_party_contact(
     player.level = old_level + experience
     if any(monster.tribe.effect == d.EFFECT_LEVEL_REDUCE for monster in party):
         player.level = max(1, math.floor(player.level * 2 / 3))
+    knight = next(
+        (member for member in player.members if member.role == "Knight"), None
+    )
+    if knight is not None:
+        knight.level += base_experience * d.KNIGHT_EXPERIENCE_RATIO
     player.lp = old_lp
     d.apply_feed(player, feed, lp_overcharge)
     if any(monster.tribe.char == "M" for monster in party):

@@ -75,13 +75,13 @@ def level_item_labels(player: d.Player, stage_num: int) -> Tuple[str, str]:
     level_value = floor(player.level)
     if item == d.ITEM_SWORD_X1_5:
         level = f"LVL: {level_value} x1.5"
-        item_str = f"+{item}({player.item_taken_from})"
+        item_str = "c+"
     elif item == d.ITEM_SWORD_CURSED:
         level = f"LVL: {level_value} x3"
-        item_str = f"+{item}({player.item_taken_from})"
+        item_str = "C+"
     elif item == d.ITEM_POISONED:
         level = f"LVL: {level_value} /3"
-        item_str = f"+{item}({player.item_taken_from})"
+        item_str = "d-"
     elif item == d.ITEM_SPORES:
         level = f"LVL: {level_value}"
         item_str = f"+{item}({player.item_taken_from})"
@@ -112,6 +112,11 @@ def status_prefix(
         text += f"TURN: {game_start_turn} (OP: {turn})  "
     text += level_str + "  "
     text += item_str + "  "
+    knight = next(
+        (member for member in player.members if member.role == "Knight"), None
+    )
+    if knight is not None:
+        text += f"K: {floor(knight.level)}  "
     if player.rescue_stage:
         text += f"ATK: {floor(d.current_player_attack(player, stage_num))}  "
     return text
