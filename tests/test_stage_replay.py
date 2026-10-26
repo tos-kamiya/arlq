@@ -154,7 +154,7 @@ def test_live_and_replay_match_after_vortex_rearrangement(
 
 
 @pytest.mark.parametrize("stage_num", [5, 6])
-def test_repeated_rewinds_regenerate_rogue_checks_and_scholar_discoveries(
+def test_repeated_rewinds_replay_rogue_checks_and_scholar_discoveries(
     monkeypatch, stage_num
 ):
     def build(*_):
@@ -227,7 +227,7 @@ def test_repeated_rewinds_without_vortex_preserve_exploration(monkeypatch):
     assert len(context.rewind_targets) == 4
 
 
-def test_rewind_regenerates_exploration_gained_after_target_before_vortex(monkeypatch):
+def test_rewind_keeps_current_knowledge_after_vortex_erasure(monkeypatch):
     def build(*_):
         player = d.Player(2, 2, 10000, 120)
         player.rescue_stage = True
@@ -257,4 +257,48 @@ def test_rewind_regenerates_exploration_gained_after_target_before_vortex(monkey
     floors, player, *_ = stage_replay.replay_to_operation(context, 14)
     assert (player.x, player.y) == (2, 2)
     assert floors[0].seen[2][15]
+    assert not floors[0].seen[2][8]
     assert floors[0].field[3][12] == d.CHAR_D_GATE
+    assert "V" in player.known_monsters
+
+
+def test_replay_executes_operations_discarded_by_loop_contacts(monkeypatch):
+    def build(*_):
+        player = d.Player(2, 2, 10000, 120)
+        player.rescue_stage = True
+        field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+        entities = [
+            d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["V"]),
+            d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"]),
+        ]
+        return [
+            Floor(
+                field,
+                entities,
+                [[0] * len(row) for row in field],
+                (2, 2),
+                (70, 18),
+                None,
+            )
+        ], player
+
+    effects = []
+
+    def disturb_map(current, *_args, **_kwargs):
+        effects.append("V")
+        current.seen = [[0] * len(row) for row in current.field]
+
+    def respawn_loop(entities, *_args):
+        entities.append(d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        return 4, 2
+
+    monkeypatch.setattr(stage5, "build", build)
+    monkeypatch.setattr(engine, "_vortex_rearrange", disturb_map)
+    monkeypatch.setattr(stage_replay, "_spawn", respawn_loop)
+    context = ReplayContext(
+        5, 123, GameConfig(), operations=[(1, 0)] * 3, rewind_targets={2: 0}
+    )
+    _, player, *_ = stage_replay.replay_to_operation(context, 3)
+    assert effects == ["V", "V"]
+    assert (player.x, player.y) == (3, 2)
+    assert "V" in player.known_monsters

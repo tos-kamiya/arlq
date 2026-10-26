@@ -712,7 +712,7 @@ assert len({tribe.char for tribe in MONSTER_TRIBES}) == len(MONSTER_TRIBES), (
 COMPANION_TRIBES: List[CompanionTribe] = [
     _CT(
         "l"
-    ),  # Looping companion; contact always rewinds via _rewind_to_history, so no event_message here
+    ),  # Looping companion; contact always rewinds via _rewind, so no event_message here
     _CT("n", 10, event_message="-- Nomicon joined!", event_message_importance=3),
     _CT("o", 20, event_message="-- Ocular joined!", event_message_importance=3),
     _CT(

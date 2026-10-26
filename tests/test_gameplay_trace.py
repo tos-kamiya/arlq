@@ -1,7 +1,7 @@
 """Tests for gameplay traces, legacy low-level helpers, and replay tooling."""
 
 import json
-from collections import Counter, deque
+from collections import Counter
 from copy import deepcopy
 from types import SimpleNamespace
 
@@ -579,7 +579,6 @@ def process_engine_turn(trace, key, floors, player, stage_num, turn=1):
         floor,
         checkpoint,
         Counter(),
-        deque(),
         turn,
         stage_num=stage_num,
         trace=trace,
@@ -704,7 +703,7 @@ def test_stage3_elf_contact_granted_and_refused():
         trace = TraceRecorder(params={})
 
         trace.begin_turn("R")
-        _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), deque(), 1, trace=trace)
+        _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
         trace.commit_turn()
 
         assert trace.turns[-1]["contact"] == {"type": "monster", "id": char, "outcome": outcome}, char
@@ -723,7 +722,7 @@ def test_lifebringer_raises_permanent_lp_cap_and_restores_to_120():
     assert d.player_lp_max(player) == d.LP_MAX
 
     _step(
-        KEYS["R"], floors, player, floor, [(2, 2)], Counter(), deque(), 1,
+        KEYS["R"], floors, player, floor, [(2, 2)], Counter(), 1,
         trace=trace,
     )
     trace.commit_turn()
@@ -759,7 +758,7 @@ def test_stage3_repeat_elf_contact_is_refused():
     trace = TraceRecorder(params={})
 
     trace.begin_turn("R")
-    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), deque(), 1, trace=trace)
+    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
     trace.commit_turn()
 
     assert trace.turns[-1]["contact"] == {"type": "monster", "id": "H", "outcome": "refused"}
@@ -776,7 +775,7 @@ def test_stage3_monster_win_and_lose_expire_old_item():
     trace = TraceRecorder(params={})
 
     trace.begin_turn("R")
-    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), deque(), 1, trace=trace)
+    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
     trace.commit_turn()
 
     assert trace.turns[-1]["contact"] == {"type": "monster", "id": "W", "outcome": "win"}
@@ -792,7 +791,7 @@ def test_stage3_monster_win_and_lose_expire_old_item():
     trace2 = TraceRecorder(params={})
 
     trace2.begin_turn("R")
-    _step(KEYS["R"], floors2, player2, floor2, checkpoint2, Counter(), deque(), 1, trace=trace2)
+    _step(KEYS["R"], floors2, player2, floor2, checkpoint2, Counter(), 1, trace=trace2)
     trace2.commit_turn()
 
     assert trace2.turns[-1]["contact"]["outcome"] == "lose"
@@ -809,7 +808,7 @@ def test_stage3_stairs_contact_records_floor_transition():
     trace = TraceRecorder(params={})
 
     trace.begin_turn("R")
-    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), deque(), 1, trace=trace)
+    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
     trace.commit_turn()
 
     assert trace.turns[-1]["contact"] == {"type": "stairs", "from_floor": 0, "to_floor": 1}
@@ -826,7 +825,7 @@ def test_stage3_companion_departed_on_karma_limit():
     trace = TraceRecorder(params={})
 
     trace.begin_turn("U")
-    _step(KEYS["U"], floors, player, floor, checkpoint, Counter(), deque(), 1, trace=trace)
+    _step(KEYS["U"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
     trace.commit_turn()
 
     assert trace.turns[-1]["expired"] == [{"type": "companion_departed", "id": "p"}]

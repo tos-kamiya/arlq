@@ -1,6 +1,6 @@
 """Rules and generation checks for the five-floor Stage 5 dungeon."""
 
-from collections import Counter, deque
+from collections import Counter
 
 import pytest
 
@@ -80,7 +80,6 @@ def step(current, player, direction=(1, 0), checkpoint=(2, 2)):
         [0],
         [checkpoint],
         Counter(),
-        deque(),
         1,
         stage_num=5,
     )
@@ -377,7 +376,6 @@ def test_boss_party_vortex_is_local_and_boss_unlocks_separate_treasure():
         floor_index,
         [current.up],
         Counter(),
-        deque(),
         1,
         stage_num=5,
     )
@@ -483,7 +481,6 @@ def test_pit_falls_to_next_floor_with_members():
         floor_index,
         [(2, 2)],
         Counter(),
-        deque(),
         1,
         stage_num=5,
     )

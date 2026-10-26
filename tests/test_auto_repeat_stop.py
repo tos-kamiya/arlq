@@ -1,6 +1,6 @@
 """Tests for stopping held movement at known hazards and game events."""
 
-from collections import Counter, deque
+from collections import Counter
 
 import pytest
 
@@ -123,7 +123,6 @@ def run_step_for_repeat_reasons(player, floors, direction, stage_num=3):
         [0],
         [(player.x, player.y)],
         Counter(),
-        deque(),
         1,
         stage_num=stage_num,
         repeat_stop_reasons=reasons,
@@ -204,7 +203,6 @@ def test_falling_from_collapse_marks_repeat_stop_reason():
         floor_index,
         [(player.x, player.y)],
         Counter(),
-        deque(),
         1,
         repeat_stop_reasons=reasons,
     )
@@ -224,17 +222,16 @@ def test_falling_onto_same_position_collapse_drops_one_floor_per_turn():
     floor_index = [0]
     checkpoint = [(player.x, player.y)]
     queue = Counter()
-    history = deque()
 
     _process_multi_floor_turn(
-        (1, 0), floors, player, floor_index, checkpoint, queue, history, 1
+        (1, 0), floors, player, floor_index, checkpoint, queue, 1
     )
 
     assert floor_index == [1]
     assert (player.x, player.y) == (3, 2)
 
     _process_multi_floor_turn(
-        (1, 0), floors, player, floor_index, checkpoint, queue, history, 2
+        (1, 0), floors, player, floor_index, checkpoint, queue, 2
     )
 
     assert floor_index == [2]
@@ -258,7 +255,6 @@ def test_stair_transition_marks_repeat_stop_reason():
         [0],
         [(player.x, player.y)],
         Counter(),
-        deque(),
         1,
         repeat_stop_reasons=reasons,
     )
