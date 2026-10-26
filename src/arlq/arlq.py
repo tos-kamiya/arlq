@@ -636,7 +636,6 @@ def move_player(
             player.x, player.y = jump_x, jump_y
             player.karma += 1
             return WallEvent("pegasus_phase")
-        return WallEvent("blocked")
 
     if (
         player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
