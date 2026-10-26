@@ -744,7 +744,8 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             )
         if index == d.STAGE5_FLOORS - 1:
             boss_party = list(d.STAGE5_BOSS_PARTY)
-            boss_party.append((rand.choice(d.STAGE5_BOSS_ESCORTS), 2))
+            escort = rand.choice(d.STAGE5_BOSS_ESCORTS)
+            boss_party.append((escort, 1 if escort == "k" else 2))
             _place_party(current, boss_party, index)
             mimic = d.Monster(
                 *rand.choice(_open_points(current)),

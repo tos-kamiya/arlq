@@ -702,7 +702,11 @@ def _defeat_monster(
     if ch == "C":
         player.elf_stage_flags |= d.ELF_STAGE_C_FLAG
     d.grant_defeat_level(player, entity.tribe.effect)
-    d.apply_feed(player, entity.tribe.feed)
+    d.apply_feed(
+        player,
+        entity.tribe.feed,
+        d.BISON_LP_OVERCHARGE if entity.tribe.char == "B" else 0,
+    )
 
     if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
         spread_caltrops(
@@ -1125,6 +1129,11 @@ def _resolve_party_contact(
         * d.experience_multiplier(player)
     )
     feed = max(monster.tribe.feed for monster in party)
+    lp_overcharge = (
+        d.BISON_LP_OVERCHARGE
+        if any(monster.tribe.char == "B" for monster in party)
+        else 0
+    )
     # Resolve ordinary drops first, the unique item/effect last. All defeated
     # entities must be removed before V can rearrange the survivors.
     party.sort(key=lambda monster: stage5.special_monster(monster))
@@ -1146,7 +1155,7 @@ def _resolve_party_contact(
     if any(monster.tribe.effect == d.EFFECT_LEVEL_REDUCE for monster in party):
         player.level = max(1, math.floor(player.level * 2 / 3))
     player.lp = old_lp
-    d.apply_feed(player, feed)
+    d.apply_feed(player, feed, lp_overcharge)
     if any(monster.tribe.char == "M" for monster in party):
         player.x, player.y = _find_escape_place(current)
     if boss is not None and stage_num != 5:

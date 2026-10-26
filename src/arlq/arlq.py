@@ -877,7 +877,11 @@ def update_entities(
                         if field[y][x] == d.CHAR_FLOOR:
                             field[y][x] = d.CHAR_GOLEM_WALL
 
-                d.apply_feed(player, m.tribe.feed)
+                d.apply_feed(
+                    player,
+                    m.tribe.feed,
+                    d.BISON_LP_OVERCHARGE if m.tribe.char == "B" else 0,
+                )
 
                 player.karma += 1
 

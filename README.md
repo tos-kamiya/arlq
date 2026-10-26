@@ -176,6 +176,7 @@ reproduce the same layout.
 | **a** Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                                |
 | **A** Rare Amoeba   | Defeating it raises your level by 10 instead of the usual 1. |
 | **b** Bison         | The second weakest. Defeating it restores a large amount of LP. Hunt it when you're hungry.                                                                       |
+| **B** Buffalo      | Attack power 8. Defeating it restores 80 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **c** Chimera       | Moderately strong. It carries a sword. Taking it raises combat power to 1.5x and lets you break up to three walls.                                               |
 | **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to one third (rounded up) until replaced.        |
 | **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
@@ -184,7 +185,7 @@ reproduce the same layout.
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 also features empowered Bison (`b'`).
+Stage 2 also features empowered Bison (`b'`). About 20% of the Bison (`b`) population on each floor across the stages is replaced with Buffalo (`B`).
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -277,7 +278,7 @@ Run `--stage 5` for a seed-generated, five-floor dungeon starting at level 1. Fo
 
 Vertically adjacent monsters form parties of up to three and fight together; horizontal adjacency does not connect them. Party strength and experience are summed, and LP reward uses the highest value in the party. In Stage 5, experience is split among you and all recruited members. In Stage 6, the divisor counts you as 1, Jester/Healer/Guardian as 0.5 each, Knight as 1, and Rogue/Dangeon Scholar as 0. Jester then doubles your share.
 
-Floor 5's boss party always contains one `W`, one ordinary `V`, and one other empowered escort with no special effect or item. A Mimic imitating the boss also appears. Defeating `W` unlocks the treasure chest in another room; the ordinary `V` applies its usual local rearrangement effect when defeated. As with other monster parties, the player wins when their attack is at least the party's combined strength. Take the unlocked chest to win. Defeat respawns the active party with the player. Stage 5 also features Golems (`g`), Erebus (`e`), Rare Erebus (`E`), and Caltrop Plants (`X`); the plants scatter caltrops when defeated, and pits drop you to the next floor.
+Floor 5's boss party always contains one `W`, one ordinary `V`, and one other escort with no special effect or item. The escort is empowered except when it is a Marksman (`k`), which stays at its normal strength. A Mimic imitating the boss also appears. Defeating `W` unlocks the treasure chest in another room; the ordinary `V` applies its usual local rearrangement effect when defeated. As with other monster parties, the player wins when their attack is at least the party's combined strength. Take the unlocked chest to win. Defeat respawns the active party with the player. Stage 5 also features Golems (`g`), Erebus (`e`), Rare Erebus (`E`), and Caltrop Plants (`X`); the plants scatter caltrops when defeated, and pits drop you to the next floor.
 
 ### Stage 6 (member-ability trial)
 

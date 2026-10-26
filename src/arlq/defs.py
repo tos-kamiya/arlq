@@ -36,26 +36,26 @@ STAGE5_PARTY_SIZE_WEIGHTS = (
 # Each roster entry (character, count, rank) supplies party leaders.
 STAGE5_ROSTER = (
     (
-        ("a", 24, 1), ("A", 2, 1), ("b", 9, 1), ("c", 5, 1),
+        ("a", 24, 1), ("A", 2, 1), ("b", 7, 1), ("B", 2, 1), ("c", 5, 1),
         ("d", 4, 1), ("e", 1, 1), ("f", 2, 1), ("g", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 8, 2), ("c", 3, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 6, 2), ("B", 2, 1), ("c", 3, 2),
         ("C", 2, 1), ("d", 6, 2), ("f", 2, 2), ("g", 3, 1),
         ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 8, 2), ("c", 4, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 6, 2), ("B", 2, 1), ("c", 4, 2),
         ("C", 2, 1), ("d", 6, 2), ("f", 1, 2), ("g", 3, 1),
         ("k", 2, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 8, 2), ("c", 5, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 6, 2), ("B", 2, 1), ("c", 5, 2),
         ("C", 1, 1), ("d", 6, 2), ("f", 1, 2), ("g", 3, 1),
         ("k", 1, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 8, 2), ("c", 6, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 6, 2), ("B", 2, 1), ("c", 6, 2),
         ("C", 1, 1), ("d", 6, 2), ("f", 2, 2), ("g", 3, 1),
         ("k", 1, 1), ("w", 2, 2),
     ),
@@ -65,14 +65,14 @@ STAGE5_BOSS_ESCORTS = tuple("afkw")
 _STAGE5_DEEP_SUPPORT_POOL = (
     ("a", 1), ("a", 1),
     ("f", 1), ("f", 1),
-    ("b", 1), ("b", 1),
+    ("b", 1), ("B", 1),
     ("e", 1), ("e", 1),
     ("w", 1), ("k", 1),
 )
 _STAGE5_FLOOR2_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("a", 1),
     ("f", 1), ("f", 1),
-    ("b", 1), ("b", 1), ("b", 1),
+    ("b", 1), ("b", 1), ("B", 1),
     ("e", 1), ("e", 1),
 )
 STAGE5_SUPPORT_POOLS = (
@@ -141,6 +141,7 @@ VORTEX_FLOOR_DIAMETER_RATIO: float = 0.7
 LP_MAX: int = 100
 LP_MAX_LIFEBRINGER: int = 120
 LIFEBRINGER_LP_MAX_INCREASE: int = 5
+BISON_LP_OVERCHARGE: int = 5
 LP_OVERCHARGE_MAX: int = 120
 LP_INIT: int = LP_OVERCHARGE_MAX
 LP_RESPAWN_MIN: int = 20
@@ -152,7 +153,7 @@ MONSTER_RESPAWN_INTERVAL: int = 65
 MARKSMAN_RESPAWN_INTERVAL: int = 3 * MONSTER_RESPAWN_INTERVAL
 SWORD_USES: int = 3
 CURSED_SWORD_LP_COST: int = 10
-NO_RESPAWN_MONSTERS = {"a", "A", "b", "c", "C"}
+NO_RESPAWN_MONSTERS = {"a", "A", "b", "B", "c", "C"}
 # These monsters do not respawn after defeat in the current game engine.
 MONSTERS_EXCLUDED_FROM_RESPAWN = NO_RESPAWN_MONSTERS | {
     "W",
@@ -589,6 +590,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         "A", 2, MIN_FOOD, effect=EFFECT_SPECIAL_EXP, event_message="-- Level boosted!"
     ),  # Amoeba rare
     _MT("b", 5, 60, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
+    _MT("B", 8, 80, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Buffalo
     _MT(
         "c",
         10,
@@ -742,7 +744,8 @@ _SC = SpawnConfig
 SPAWN_CONFIGS_ST1 = [
     _SC(CHAR_TO_TRIBE["a"], 9),
     _SC(CHAR_TO_TRIBE["A"], 2),
-    _SC(CHAR_TO_TRIBE["b"], 5),
+    _SC(CHAR_TO_TRIBE["b"], 4),
+    _SC(CHAR_TO_TRIBE["B"], 1),
     _SC(CHAR_TO_TRIBE["c"], 1),
     _SC(CHAR_TO_TRIBE["d"], 2),
     _SC(CHAR_TO_TRIBE[CHAR_DRAGON], 1),
@@ -755,8 +758,9 @@ STAGE2_BOSS_BARRIER_COUNT: int = 5
 SPAWN_CONFIGS_ST2 = [
     _SC(CHAR_TO_TRIBE["a"], 20),
     _SC(CHAR_TO_TRIBE["A"], 3),
-    _SC(CHAR_TO_TRIBE["b"], 5),
+    _SC(CHAR_TO_TRIBE["b"], 4),
     _SC(CHAR_TO_TRIBE["b"], 2, empowered=2),
+    _SC(CHAR_TO_TRIBE["B"], 1),
     _SC(CHAR_TO_TRIBE["c"], 2),
     _SC(CHAR_TO_TRIBE["C"], 1),
     _SC(CHAR_TO_TRIBE["d"], 4),
@@ -784,7 +788,8 @@ STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 20, 1),
         ("A", 2, 1),
-        ("b", 10, 1),
+        ("b", 8, 1),
+        ("B", 2, 1),
         ("c", 1, 1),
         ("c", 1, 2),
         ("d", 3, 1),
@@ -798,8 +803,9 @@ STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 16, 1),
         ("A", 2, 1),
-        ("b", 4, 1),
-        ("b", 4, 2),
+        ("b", 3, 1),
+        ("b", 3, 2),
+        ("B", 2, 1),
         ("c", 1, 1),
         ("c", 1, 2),
         ("d", 3, 1),
@@ -814,7 +820,8 @@ STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("a", 12, 1),
         ("A", 2, 1),
         ("b", 2, 1),
-        ("b", 6, 2),
+        ("b", 4, 2),
+        ("B", 2, 1),
         ("d", 3, 1),
         ("d", 3, 2),
         ("l", 1, 1),
@@ -831,7 +838,8 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 20, 1),
         ("A", 1, 1),
-        ("b", 10, 1),
+        ("b", 8, 1),
+        ("B", 2, 1),
         ("c", 1, 1),
         ("d", 4, 1),
         ("d", 2, 2),
@@ -845,8 +853,9 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("a", 16, 1),
         ("X", 1, 1),
         ("A", 1, 1),
-        ("b", 4, 1),
-        ("b", 4, 2),
+        ("b", 3, 1),
+        ("b", 3, 2),
+        ("B", 2, 1),
         ("c", 1, 1),
         ("g", 2, 1),
         ("d", 6, 2),
@@ -862,7 +871,8 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("a", 12, 1),
         ("X", 1, 1),
         ("A", 1, 1),
-        ("b", 8, 2),
+        ("b", 6, 2),
+        ("B", 2, 1),
         ("c", 1, 1),
         ("g", 2, 1),
         ("d", 6, 2),
@@ -876,8 +886,9 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("a", 8, 1),
         ("X", 1, 1),
         ("A", 1, 1),
-        ("b", 4, 2),
-        ("b", 4, 3),
+        ("b", 3, 2),
+        ("b", 3, 3),
+        ("B", 2, 1),
         ("c", 1, 1),
         ("g", 2, 1),
         ("d", 4, 2),
@@ -892,7 +903,8 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 4, 1),
         ("A", 1, 1),
-        ("b", 8, 3),
+        ("b", 6, 3),
+        ("B", 2, 1),
         ("c", 1, 1),
         ("g", 2, 1),
         ("d", 2, 2),
@@ -1020,7 +1032,9 @@ def _get_stage5_roster_tribes() -> List[MonsterTribe]:
         variant for floor_pool in STAGE5_SUPPORT_POOLS for variant in floor_pool
     )
     variants.update(STAGE5_BOSS_PARTY)
-    variants.update((char, 2) for char in STAGE5_BOSS_ESCORTS)
+    variants.update(
+        (char, 1 if char == "k" else 2) for char in STAGE5_BOSS_ESCORTS
+    )
     variants.add(("M", 1))
     return sorted(
         (
@@ -1044,10 +1058,13 @@ def player_lp_max(player: Player) -> int:
     return min(player.lifebringer_lp_max, LP_MAX_LIFEBRINGER)
 
 
-def apply_feed(player: Player, feed: int) -> None:
+def apply_feed(player: Player, feed: int, lp_overcharge: int = 0) -> None:
     # Preserve temporary LP above the permanent cap until it is spent. Feeding
     # cannot refill the overcharge once LP has risen above that cap.
-    cap = min(LP_OVERCHARGE_MAX, max(player_lp_max(player), player.lp))
+    cap = min(
+        LP_OVERCHARGE_MAX,
+        max(player_lp_max(player) + lp_overcharge, player.lp),
+    )
     player.lp = max(1, min(cap, player.lp + feed))
 
 
