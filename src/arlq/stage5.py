@@ -845,10 +845,10 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
             d.PartyMember(*rand.choice(_open_points(upper)), role, origin_floor=0)
         )
 
-    for char, count in (("g", 1), ("a", 1), ("b", 3)):
+    for char, count in (("g", 1), ("a", 1), ("b", 9)):
         for _ in range(count):
             _place_party(upper, [(char, 1)])
-    for char, count in (("g", 1), ("k", 1), ("b", 3), ("d", 1)):
+    for char, count in (("g", 1), ("k", 1), ("b", 9), ("d", 1)):
         for _ in range(count):
             _place_party(lower, [(char, 1)], floor_index=1)
 

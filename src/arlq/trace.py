@@ -312,7 +312,8 @@ class TraceRecorder:
             or turn.get("expired")
             or turn.get("world")
             or turn.get("checkpoint")
-            or (turn.get("wall") or {}).get("result") == "sword_break"
+            or (turn.get("wall") or {}).get("result")
+            in ("sword_break", "golem_wall_break")
         )
 
     def record_quit(self) -> None:

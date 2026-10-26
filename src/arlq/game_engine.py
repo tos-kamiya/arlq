@@ -110,7 +110,7 @@ def reachable_known_cells(
 
             cell = field[ny][nx]
             if (nx, ny) in (phase_walls or ()) or (
-                cell == d.CHAR_GOLEM_WALL and d.has_member(player, "Dangeon Scholar")
+                cell == d.CHAR_GOLEM_WALL and d.has_member(player, "Rogue")
             ):
                 terrain_cost = d.movement_lp_cost(player)
             elif cell in (d.CHAR_FLOOR, d.CHAR_D_GATE, *d.HIDDEN_STAIRS_CHARS):
@@ -145,28 +145,19 @@ def _move_player(
     trace: Optional[TraceRecorder] = None,
 ) -> Optional[WallEvent]:
     """Apply one step of player movement, including sword-breaking and Pegasus jumps."""
-    phase_walls = (
-        {
-            (x, y)
-            for y, row in enumerate(current.field)
-            for x, cell in enumerate(row)
-            if cell == d.CHAR_GOLEM_WALL
-        }
-        if d.has_member(player, "Dangeon Scholar")
-        else set()
-    )
-    phase_walls.update(
+    phase_walls = {
         (x, y)
         for y, row in enumerate(current.field)
         for x, cell in enumerate(row)
         if cell == d.CHAR_D_GATE
-    )
+    }
     wall_result = move_player(
         direction,
         current.field,
         player,
         PLAYER_PASSABLE_CELLS,
         phase_walls=phase_walls,
+        break_golem_walls=d.has_member(player, "Rogue"),
     )
     if trace is not None and wall_result is not None:
         trace.record_wall(wall_result)
@@ -233,7 +224,7 @@ def _should_stop_movement_repeat(
     cell = current.field[ny][nx]
     next_position = (nx, ny)
     passable_secret = cell == d.CHAR_D_GATE or (
-        cell == d.CHAR_GOLEM_WALL and d.has_member(player, "Dangeon Scholar")
+        cell == d.CHAR_GOLEM_WALL and d.has_member(player, "Rogue")
     )
     if known_cell and cell in (
         *d.WALL_CHARS,
@@ -1852,10 +1843,6 @@ def run_game(
                     for y, row in enumerate(current.field)
                     for x, cell in enumerate(row)
                     if cell == d.CHAR_D_GATE
-                    or (
-                        d.has_member(player, "Dangeon Scholar")
-                        and cell == d.CHAR_GOLEM_WALL
-                    )
                 },
             )
         # Floor entities exclude the player for every stage. The terminal

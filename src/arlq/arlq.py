@@ -598,11 +598,12 @@ def move_player(
     player: d.Player,
     passable_cells: Container[str],
     phase_walls: Container[d.Point] = (),
+    break_golem_walls: bool = False,
 ) -> Optional[WallEvent]:
     """Move the player and return a traceable wall-interaction result.
 
     A normal step has no wall result. Blocked movement, a Pegasus phase, and
-    a sword-broken wall return the event recorded by the gameplay trace.
+    breaking a Golem or sword wall return a traceable event.
     """
     dx, dy = direction
     nx, ny = player.x + dx, player.y + dy
@@ -619,6 +620,10 @@ def move_player(
     if cell in d.WALL_CHARS and (nx, ny) in phase_walls:
         player.x, player.y = nx, ny
         return None
+    if cell == d.CHAR_GOLEM_WALL and break_golem_walls:
+        player.x, player.y = nx, ny
+        field[ny][nx] = d.CHAR_FLOOR
+        return WallEvent("golem_wall_break")
 
     if player.companion is not None and player.companion.tribe.char == d.CHAR_PEGASUS:
         jump_x = player.x + dx * d.PEGASUS_STEP_X
@@ -699,7 +704,11 @@ def update_entities(
     message = None
     previous = (player.x, player.y)
     wall_result = move_player(
-        move_direction, field, player, PLAYER_PASSABLE_CELLS
+        move_direction,
+        field,
+        player,
+        PLAYER_PASSABLE_CELLS,
+        break_golem_walls=d.has_member(player, "Rogue"),
     )
 
     if wall_result is not None:
