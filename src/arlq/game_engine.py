@@ -1121,7 +1121,7 @@ def _resolve_party_contact(
             else 1
             for monster in party
         )
-        / (len(player.members) + 1)
+        / d.experience_share_count(player, stage_num)
         * d.experience_multiplier(player)
     )
     feed = max(monster.tribe.feed for monster in party)

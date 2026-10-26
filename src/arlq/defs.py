@@ -12,8 +12,15 @@ PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5, 6)
 PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
 STAGE5_PARTY_LIMIT = 3
-BARD_EXP_MULTIPLIER = 3
-KNIGHT_EXP_MULTIPLIER = 0.75
+BARD_EXP_MULTIPLIER = 2
+STAGE6_EXPERIENCE_MEMBER_WEIGHTS = {
+    "Bard": 0.5,
+    "Healer": 0.5,
+    "Guardian": 0.5,
+    "Knight": 1.0,
+    "Rogue": 0.0,
+    "Dangeon Scholar": 0.0,
+}
 HEALER_MOVE_COST = 1 / 2
 HEALER_RESPAWN_COST = 2
 STAGE5_START_LEVEL = 1
@@ -1079,9 +1086,16 @@ def has_member(player: Player, role: str) -> bool:
 
 
 def experience_multiplier(player: Player) -> float:
-    return (BARD_EXP_MULTIPLIER if has_member(player, "Bard") else 1) * (
-        KNIGHT_EXP_MULTIPLIER if has_member(player, "Knight") else 1
-    )
+    return BARD_EXP_MULTIPLIER if has_member(player, "Bard") else 1
+
+
+def experience_share_count(player: Player, stage_num: int) -> float:
+    if stage_num == 6:
+        return 1 + sum(
+            STAGE6_EXPERIENCE_MEMBER_WEIGHTS.get(member.role, 0.0)
+            for member in player.members
+        )
+    return len(player.members) + 1
 
 
 def movement_lp_cost(player: Player) -> float:
@@ -1112,7 +1126,7 @@ def current_player_attack(player: Player, stage_num: int = 0) -> float:
         elif player.item == ITEM_POISONED:
             value = ceil(value / 3)
         multiplier = (
-            3 if stage_num in (5, 6) and has_member(player, "Knight")
+            2 if stage_num in (5, 6) and has_member(player, "Knight")
             else 1.0 + int(has_member(player, "Knight"))
         )
         return value * multiplier
@@ -1130,7 +1144,7 @@ def current_player_attack(player: Player, stage_num: int = 0) -> float:
     if _javelin_follower_active(player):
         value = (value * 5 + 2) // 4
     if stage_num in (5, 6) and has_member(player, "Knight"):
-        value *= 3
+        value *= 2
     return value
 
 

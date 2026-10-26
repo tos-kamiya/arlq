@@ -252,9 +252,9 @@ def test_stage5_replaces_oldest_member_without_respawning_them():
     "roles, gain",
     [
         ((), 2),
-        (("Bard",), 3),
-        (("Knight",), 0.75),
-        (("Bard", "Knight"), 1.5),
+        (("Bard",), 2),
+        (("Knight",), 1),
+        (("Bard", "Knight"), 4 / 3),
         (("Healer", "Rogue"), 2 / 3),
         (("Guardian",), 1),
     ],
@@ -291,10 +291,10 @@ def test_group_keeps_unique_item_even_when_contacting_ordinary_member():
 def test_fractional_attack_hazards_and_status():
     current, player = state(("Knight", "Dangeon Scholar"), level=100.5)
     assert d.current_player_attack(player) == pytest.approx(201)
-    assert d.current_player_attack(player, 5) == pytest.approx(301.5)
+    assert d.current_player_attack(player, 5) == pytest.approx(201)
     player.item = d.ITEM_SWORD_X1_5
     assert d.current_player_attack(player) == pytest.approx(301.5)
-    assert d.current_player_attack(player, 5) == pytest.approx(452.25)
+    assert d.current_player_attack(player, 5) == pytest.approx(301.5)
     assert barrier_lp_damage(player) == 30
     assert d.caltrop_lp_damage(player) == 3
     current.field[2][3] = d.CHAR_CALTROP
