@@ -125,7 +125,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
     }
     assert len(members) == 4
     assert members <= {
-        "Bard",
+        "Jester",
         "Healer",
         "Rogue",
         "Knight",
@@ -199,14 +199,14 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
 
 def test_stage5_member_progress_shows_candidates_before_they_depart():
     _, player = state()
-    player.known_member_floors = {"Bard": 1, "Rogue": 2}
+    player.known_member_floors = {"Jester": 1, "Rogue": 2}
     assert [
         label for label, _ in display.stage5_member_progress_marks(player)
-    ] == ["B1", "H", "R2", "K", "D", "G"]
+    ] == ["J1", "H", "R2", "K", "D", "G"]
 
 
 def test_stage6_recycles_departed_member_on_their_origin_floor():
-    current, player = state(("Bard", "Healer"))
+    current, player = state(("Jester", "Healer"))
     lower, _ = state()
     player.members[0].origin_floor = 0
     recruit = d.PartyMember(3, 2, "Rogue", origin_floor=1)
@@ -222,29 +222,29 @@ def test_stage6_recycles_departed_member_on_their_origin_floor():
 
     assert [member.role for member in player.members] == ["Healer", "Rogue"]
     assert any(
-        isinstance(entity, d.PartyMember) and entity.role == "Bard"
+        isinstance(entity, d.PartyMember) and entity.role == "Jester"
         for entity in lower.entities
     )
 
 
 def test_stage5_replaces_oldest_member_without_respawning_them():
-    current, player = state(("Bard", "Healer"))
+    current, player = state(("Jester", "Healer"))
     companion = d.Companion(2, 2, d.CHAR_TO_TRIBE["n"])
     player.companion = companion
     recruit = d.PartyMember(3, 2, "Rogue")
     current.entities.append(recruit)
-    player.joined_members.update(("Bard", "Healer"))
+    player.joined_members.update(("Jester", "Healer"))
 
     step(current, player)
 
     assert [member.role for member in player.members] == ["Healer", "Rogue"]
     assert recruit not in current.entities
-    assert player.joined_members == {"Bard", "Healer", "Rogue"}
+    assert player.joined_members == {"Jester", "Healer", "Rogue"}
     assert not any(
-        isinstance(entity, d.PartyMember) and entity.role == "Bard"
+        isinstance(entity, d.PartyMember) and entity.role == "Jester"
         for entity in current.entities
     )
-    assert display.stage5_member_progress_marks(player)[0] == ("B-", False)
+    assert display.stage5_member_progress_marks(player)[0] == ("J-", False)
     assert player.companion is companion
 
 
@@ -252,9 +252,9 @@ def test_stage5_replaces_oldest_member_without_respawning_them():
     "roles, gain",
     [
         ((), 2),
-        (("Bard",), 2),
+        (("Jester",), 2),
         (("Knight",), 1),
-        (("Bard", "Knight"), 4 / 3),
+        (("Jester", "Knight"), 4 / 3),
         (("Healer", "Rogue"), 2 / 3),
         (("Guardian",), 1),
     ],
@@ -478,10 +478,10 @@ def test_normalize_limits_and_protects_boss_pair():
 
 
 def test_followers_use_join_order_relative_to_direction():
-    _, player = state(("Bard", "Knight"))
+    _, player = state(("Jester", "Knight"))
     player.facing = (0, -1)
     assert [(g.x, g.y, g.char) for g in display.member_glyphs(player)] == [
-        (1, 3, "B"),
+        (1, 3, "J"),
         (3, 3, "K"),
     ]
     player.facing = (1, 0)
@@ -591,11 +591,11 @@ def test_live_loop_rewind_preserves_target_lp(monkeypatch, roles):
 
 def test_candidate_glyph_is_known_on_first_sighting():
     _, player = state()
-    candidate = d.PartyMember(3, 2, "Bard")
+    candidate = d.PartyMember(3, 2, "Jester")
     assert get_torched(player, d.TORCH_RADIUS)[candidate.y][candidate.x]
     assert (
         display.revealed_entity_glyphs(candidate, set(), False, 100, None)[0].char
-        == "B"
+        == "J"
     )
 
 

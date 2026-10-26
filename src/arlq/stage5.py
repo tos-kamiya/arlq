@@ -834,7 +834,7 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
         up_stairs=[down],
     )
     for role in (
-        "Bard",
+        "Jester",
         "Healer",
         "Rogue",
         "Knight",

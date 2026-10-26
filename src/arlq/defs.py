@@ -12,9 +12,9 @@ PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5, 6)
 PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
 STAGE5_PARTY_LIMIT = 3
-BARD_EXP_MULTIPLIER = 2
+JESTER_EXP_MULTIPLIER = 2
 STAGE6_EXPERIENCE_MEMBER_WEIGHTS = {
-    "Bard": 0.5,
+    "Jester": 0.5,
     "Healer": 0.5,
     "Guardian": 0.5,
     "Knight": 1.0,
@@ -79,7 +79,7 @@ STAGE5_SUPPORT_POOLS = (
     (("a", 1),), _STAGE5_FLOOR2_SUPPORT_POOL
 ) + (_STAGE5_DEEP_SUPPORT_POOL,) * 3
 STAGE5_MEMBER_FLOORS = (
-    ("Bard", "Healer", "Rogue", "Knight", "Dangeon Scholar", "Guardian"),
+    ("Jester", "Healer", "Rogue", "Knight", "Dangeon Scholar", "Guardian"),
     (),
     (),
     (),
@@ -87,7 +87,7 @@ STAGE5_MEMBER_FLOORS = (
 )
 STAGE5_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2), (0, 2))
 MEMBER_GLYPHS = {
-    "Bard": "B", "Healer": "H", "Rogue": "R",
+    "Jester": "J", "Healer": "H", "Rogue": "R",
     "Knight": "K", "Dangeon Scholar": "D", "Guardian": "G", "Noble": "N",
 }
 # Stages that feature elves and share the multi-floor progress state.
@@ -1086,7 +1086,7 @@ def has_member(player: Player, role: str) -> bool:
 
 
 def experience_multiplier(player: Player) -> float:
-    return BARD_EXP_MULTIPLIER if has_member(player, "Bard") else 1
+    return JESTER_EXP_MULTIPLIER if has_member(player, "Jester") else 1
 
 
 def experience_share_count(player: Player, stage_num: int) -> float:
