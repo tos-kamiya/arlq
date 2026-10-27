@@ -83,7 +83,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
-         'rock': 2.5, 'jester-light': 1.5, 'jester-medium': 1.5, 'jester-dark': 1.5}
+         'rock': 2.5, 'jester-light': 1.2, 'jester-medium': 1.2, 'jester-dark': 1.2}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters and the chest turn slightly toward screen left; the player and companions face front.
@@ -495,6 +495,7 @@ def player(x, y, sword=None):
                          rim=(0.85, 0.9, 1.0), rim_strength=0.8)
     # About three heads tall: a 0.34-tall head, a cylinder body about as
     # tall, and two legs below it ending in small boots.
+    body_start = set(bpy.data.objects)
     legs = material('Player steel greaves', (0.45, 0.52, 0.62), roughness=0.35, metallic=0.8,
                     rim=(0.6, 0.8, 1.0), rim_strength=0.6)
     for side in (-1, 1):
@@ -576,9 +577,14 @@ def player(x, y, sword=None):
     solid.offset = 0
     hem = [vertices[(rows - 1) * columns + c] for c in range(columns)]
     tube('Player cloak hem trim', hem, [0.018] * columns, iron, sides=6, smooth=True)
-    # Helmeted head, tilted back at the neck like the elves' so the visor
-    # faces up toward the 60-degree camera.
+    # Like the elves (`elf_figure()`), the body is stretched upward, as
+    # heights shrink to half in the 60-degree view, and the helmeted head is
+    # tilted back at the neck so the visor faces the camera.
     start = set(bpy.data.objects)
+    bpy.context.view_layer.update()
+    for obj in start - body_start:
+        obj.matrix_world = (Matrix.Translation((x, y, 0)) @ Matrix.Diagonal((1, 1, ELF_STRETCH, 1))
+                            @ Matrix.Translation((-x, -y, 0)) @ obj.matrix_world)
     block('Player head', (x, y - 0.04, 0.83), (0.34, 0.32, 0.34), helm, 0.10)
     # A dark iron faceplate with a glowing eye window, wider than a real
     # helm's slit so the face reads at sprite size, and a crest running front
@@ -590,7 +596,8 @@ def player(x, y, sword=None):
         cone('Player helm fin', (x + side * 0.15, y, 0.90),
              (x + side * 0.27, y + 0.11, 1.06), 0.055, 0, iron, 4, False)
     neck = Vector((x, y, 0.66))
-    transform_new(start, Matrix.Translation(neck) @ Matrix.Rotation(-0.35, 4, 'X')
+    transform_new(start, Matrix.Translation((0, 0, neck.z * (ELF_STRETCH - 1)))
+                  @ Matrix.Translation(neck) @ Matrix.Rotation(-0.6, 4, 'X')
                   @ Matrix.Translation(-neck))
 
 def chimera(x, y, cursed=False):
