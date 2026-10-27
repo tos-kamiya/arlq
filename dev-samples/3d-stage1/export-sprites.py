@@ -30,7 +30,12 @@ models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('M', 'mimic', (
            ('healer-light', 'healer-light', (0, 0)), ('healer-medium', 'healer-medium', (0, 0)),
            ('healer-dark', 'healer-dark', (0, 0)),
            ('rogue-light', 'rogue-light', (0, 0)), ('rogue-medium', 'rogue-medium', (0, 0)),
-           ('rogue-dark', 'rogue-dark', (0, 0))]
+           ('rogue-dark', 'rogue-dark', (0, 0)),
+           ('knight-light', 'knight-light', (0, 0)), ('knight-medium', 'knight-medium', (0, 0)),
+           ('knight-dark', 'knight-dark', (0, 0)),
+           ('guardian-light', 'guardian-light', (0, 0)),
+           ('guardian-medium', 'guardian-medium', (0, 0)),
+           ('guardian-dark', 'guardian-dark', (0, 0))]
 if '--only' in sys.argv:
     only = sys.argv[sys.argv.index('--only') + 1:]
     models = [model for model in models if model[0] in only]

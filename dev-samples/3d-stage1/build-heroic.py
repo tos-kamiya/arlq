@@ -46,7 +46,7 @@ scene.world = world
 SCREEN_PIXEL = 186 / 1.8 / 11 * 2.6 / 256
 CELL_W = SCREEN_PIXEL * 15
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
-GRID_COLS, GRID_ROWS = 14, 7
+GRID_COLS, GRID_ROWS = 14, 8
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
 # the companions and elves; the monsters added from Stage 2 on, the golem rock
 # and rank marks; then the Stage 5 Buffalo and party members.
@@ -64,7 +64,10 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('jester-dark', 'JESTER DARK'), ('healer-light', 'HEALER LIGHT'),
          ('healer-medium', 'HEALER MEDIUM'), ('healer-dark', 'HEALER DARK'),
          ('rogue-light', 'ROGUE LIGHT'), ('rogue-medium', 'ROGUE MEDIUM'),
-         ('rogue-dark', 'ROGUE DARK')]
+         ('rogue-dark', 'ROGUE DARK'), ('knight-light', 'KNIGHT LIGHT'),
+         ('knight-medium', 'KNIGHT MEDIUM'), ('knight-dark', 'KNIGHT DARK'),
+         ('guardian-light', 'GUARDIAN LIGHT'), ('guardian-medium', 'GUARDIAN MEDIUM'),
+         ('guardian-dark', 'GUARDIAN DARK')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -89,7 +92,9 @@ SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b':
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5, 'jester-light': 1.2, 'jester-medium': 1.2, 'jester-dark': 1.2,
          'healer-light': 1.2, 'healer-medium': 1.2, 'healer-dark': 1.2,
-         'rogue-light': 1.35, 'rogue-medium': 1.35, 'rogue-dark': 1.35}
+         'rogue-light': 1.35, 'rogue-medium': 1.35, 'rogue-dark': 1.35,
+         'knight-light': 1.70, 'knight-medium': 1.70, 'knight-dark': 1.70,
+         'guardian-light': 1.42, 'guardian-medium': 1.42, 'guardian-dark': 1.42}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters and the chest turn slightly toward screen left; the player and companions face front.
@@ -2223,6 +2228,299 @@ def rogue(x, y, tone):
             obj.matrix_world = unlean @ obj.matrix_world
 
 
+def heavy_armor_materials(tone):
+    """Materials shared by the Knight and the Guardian, so the two read as
+    one order: plate and shield in a plain iron grey, lighter than the
+    player's bluish steel, darker steel trim and boots, and red accents in
+    place of any emblem. Nothing glows, so neither blade nor shield is
+    mistaken for the player's blessed sword."""
+    # Only partly metallic: fully metallic plate mirrored the dark studio and
+    # the pink rim light; a near-white plate looked too white for iron.
+    plate = material('Heavy armor iron plate', (0.62, 0.61, 0.59), roughness=0.32,
+                     metallic=0.6, rim=(0.95, 0.95, 0.92), rim_strength=0.7)
+    trim = material('Heavy armor steel trim', (0.20, 0.20, 0.22), roughness=0.3, metallic=0.9,
+                    rim=(0.85, 0.85, 0.9), rim_strength=0.5)
+    red = material('Heavy armor red accent', (0.48, 0.02, 0.03), 0.0, 0.45,
+                   rim=(1.0, 0.5, 0.45), rim_strength=0.7, coat=0.3)
+    skin = material('Heavy armor skin ' + tone, MEMBER_SKINS[tone], 0.2, 0.4,
+                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    eye = material('Heavy armor eyes', (0.03, 0.02, 0.02), roughness=0.2, coat=1.0)
+    return plate, trim, red, skin, eye
+
+
+def limb(name, start, end, width, depth, mat, radius=0.05):
+    """A rounded block from `start` to `end`, `width` across and `depth` deep."""
+    start, end = Vector(start), Vector(end)
+    ahead = end - start
+    return block(name, tuple((start + end) / 2), (width, depth, ahead.length), mat, radius,
+                 ahead.to_track_quat('Z', 'Y').to_euler())
+
+
+def heavy_armor_figure(x, y, prefix, mats, legs, body, head, girth=1.0, boot=1.0):
+    """The armored members' figure, borrowed from the player's (`player()`):
+    legs from the given (hip, knee, ankle) per side ending in round boots
+    (`boot` scales them), an oval cylinder body with a red belt and plate
+    seams, round pauldrons edged in red, and the player's block helm, here
+    open in front so the face shows. No cloak and no visor fins, which are
+    the player's. `body(x, y, radius)` adds the arms and anything held;
+    `head(x, y)` adds to the helm. Returns nothing; like the player, the
+    body is stretched upward and the head tilted back.
+    """
+    plate, trim, red, skin, eye = mats
+    body_start = set(bpy.data.objects)
+    for hip, knee, ankle in legs:
+        tube(prefix + ' leg', [hip, knee, ankle], [0.085, 0.078, 0.07], plate, sides=16,
+             smooth=True)
+        sphere(prefix + ' boot', (ankle[0], ankle[1] - 0.03, 0.04),
+               (0.075 * boot, 0.09 * boot, 0.045 * boot), trim, 20)
+    flat = 0.72
+    radius = 0.24 * girth
+    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=radius, depth=0.36,
+                                        location=(x, y, 0.48))
+    torso = finish(bpy.context.object, plate, True, prefix + ' cylinder torso')
+    torso.scale.y = flat
+    for face in torso.data.polygons:
+        face.use_smooth = len(face.vertices) == 4
+    torso.data.use_auto_smooth = True
+    bevel = torso.modifiers.new('Rounded rims', 'BEVEL')
+    bevel.width = 0.06
+    bevel.segments = 5
+    bpy.ops.mesh.primitive_torus_add(major_radius=radius + 0.005, minor_radius=0.035,
+                                     location=(x, y, 0.36))
+    finish(bpy.context.object, red, True, prefix + ' red belt').scale.y = flat
+    for z in (0.48, 0.57):
+        bpy.ops.mesh.primitive_torus_add(major_radius=radius + 0.003, minor_radius=0.011,
+                                         location=(x, y, z))
+        finish(bpy.context.object, trim, True, prefix + ' plate seam').scale.y = flat
+    for side in (-1, 1):
+        shoulder = (x + side * (radius + 0.03), y - 0.05, 0.63)
+        # Darker than the plate, like the player's iron pauldrons.
+        sphere(prefix + ' pauldron', shoulder, (0.14, 0.14, 0.07), trim, 24)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.13, minor_radius=0.016,
+                                         location=(shoulder[0], shoulder[1], 0.605))
+        finish(bpy.context.object, red, True, prefix + ' pauldron red edge')
+    body(x, y, radius)
+    bpy.context.view_layer.update()
+    start = set(bpy.data.objects)
+    for obj in start - body_start:
+        obj.matrix_world = (Matrix.Translation((x, y, 0)) @ Matrix.Diagonal((1, 1, ELF_STRETCH, 1))
+                            @ Matrix.Translation((-x, -y, 0)) @ obj.matrix_world)
+    # The player's helm with the faceplate left out and an opening cut into
+    # its front, its inner walls dark steel; a round head, like the other
+    # characters', sits inside with its face just behind the helm's front,
+    # so the opening's edges shade it. (A face pressed onto the helm's flat
+    # front looked flat.)
+    helm = block(prefix + ' helm', (x, y - 0.04, 0.83), (0.34, 0.32, 0.34), plate, 0.10)
+    # Round the helm's edges first; beveled after the cut, the narrow frame
+    # beside the opening clamped the rounding away.
+    bpy.context.view_layer.objects.active = helm
+    bpy.ops.object.modifier_apply(modifier='Rounded edges')
+    # The opening stops just above the eyes, so the helm covers the brow.
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y - 0.14, 0.765))
+    cutter = bpy.context.object
+    cutter.scale = (0.29, 0.16, 0.18)
+    cutter.data.materials.append(trim)
+    cut = helm.modifiers.new('Face opening', 'BOOLEAN')
+    cut.object = cutter
+    cut.solver = 'EXACT'
+    cut.material_mode = 'TRANSFER'
+    bpy.context.view_layer.objects.active = helm
+    bpy.ops.object.modifier_move_to_index(modifier=cut.name, index=0)
+    bpy.ops.object.modifier_apply(modifier=cut.name)
+    bpy.data.objects.remove(cutter)
+    sphere(prefix + ' head', (x, y - 0.04, 0.80), (0.15, 0.15, 0.15), skin, 32)
+    for side in (-1, 1):
+        sphere(prefix + ' eye', (x + side * 0.06, y - 0.175, 0.815), (0.025, 0.012, 0.032), eye,
+               12)
+    head(x, y)
+    neck = Vector((x, y, 0.66))
+    transform_new(start, Matrix.Translation((0, 0, neck.z * (ELF_STRETCH - 1)))
+                  @ Matrix.Translation(neck) @ Matrix.Rotation(-0.6, 4, 'X')
+                  @ Matrix.Translation(-neck))
+
+
+def knight(x, y, tone):
+    """Knight (K), a Stage 5 member who adds its level, from 50 up, to the
+    player's attack. A tall, proud veteran in heavy iron plate, built like
+    the player but with no cloak and no shield: one great sword held
+    straight up in the right hand (screen left), the left fist on the hip. The
+    helm is open in front and carries a short red plume. Red accents (plume,
+    belt, pauldron edges, grip) are shared with the Guardian instead of an
+    emblem. `tone` picks one of `MEMBER_SKINS`.
+    """
+    mats = heavy_armor_materials(tone)
+    plate, trim, red = mats[:3]
+    blade = material('Knight great sword blade', (0.70, 0.71, 0.73), roughness=0.25,
+                     metallic=0.6, rim=(0.95, 0.97, 1.0), rim_strength=1.0)
+
+    def body(x, y, radius):
+        # Right arm (screen left) out to the side, the forearm up, holding
+        # the great sword straight up.
+        hand = Vector((x - 0.44, y - 0.12, 0.84))
+        elbow = (x - 0.44, y - 0.08, 0.62)
+        limb('Knight right upper arm', (x - radius - 0.03, y - 0.05, 0.60), elbow, 0.17, 0.18,
+             plate)
+        limb('Knight right forearm', elbow, hand, 0.16, 0.17, plate)
+        sphere('Knight right gauntlet', tuple(hand), (0.08, 0.08, 0.08), trim, 16)
+        ahead = Vector((0, 0, 1))
+        across = Vector((1, 0, 0))
+        guard = hand + ahead * 0.07
+        tube('Knight sword grip', [hand - ahead * 0.09, guard], [0.022, 0.022], red, sides=8)
+        sphere('Knight sword pommel', tuple(hand - ahead * 0.12), (0.035,) * 3, trim, 12)
+        tube('Knight sword guard', [guard + across * 0.13, guard - across * 0.13],
+             [0.025, 0.025], trim, sides=6)
+        # Thin across the view, broad facing the camera.
+        tube('Knight sword blade', [guard + ahead * 0.02, guard + ahead * 0.72,
+                                    guard + ahead * 0.85],
+             [(0.06, 0.014), (0.052, 0.014), 0], blade, sides=4)
+        # Left fist on the hip, the elbow out.
+        elbow = (x + 0.42, y - 0.02, 0.48)
+        limb('Knight left upper arm', (x + radius + 0.03, y - 0.05, 0.60), elbow, 0.17, 0.18,
+             plate)
+        limb('Knight left forearm', elbow, (x + radius + 0.01, y - 0.10, 0.40), 0.16, 0.17, plate)
+        sphere('Knight left gauntlet', (x + radius, y - 0.11, 0.39), (0.08, 0.075, 0.08), trim, 16)
+
+    def head(x, y):
+        # A short red plume from a steel socket on the crown, arcing back
+        # and falling toward screen right.
+        block('Knight plume socket', (x, y - 0.06, 1.005), (0.06, 0.10, 0.04), trim, 0.012)
+        root = Vector((x, y - 0.08, 1.02))
+        tube('Knight red plume', [root + Vector(offset) for offset in (
+            (0, 0, 0), (0.01, 0.07, 0.06), (0.05, 0.15, 0.05), (0.11, 0.20, -0.03),
+            (0.15, 0.21, -0.13), (0.165, 0.20, -0.22))],
+             [0.035, 0.06, 0.07, 0.065, 0.05, 0], red, sides=12, smooth=True, flat=0.8)
+
+    heavy_armor_figure(x, y, 'Knight', mats, [
+        ((x + side * 0.10, y, 0.36), (x + side * 0.11, y - 0.01, 0.18),
+         (x + side * 0.12, y - 0.01, 0.06)) for side in (-1, 1)], body, head, girth=1.05)
+
+
+def guardian(x, y, tone):
+    """Guardian (G), a Stage 5 member who halves the barriers' extra damage
+    and cuts caltrop damage to a third. Pictured as one shield of a Roman
+    testudo: built like the player in the Knight's iron plate and open helm
+    (without the plume), broad and low, crouched with the knees out behind a
+    great shield held in both hands. The shield is a flat board, wider than
+    the body, whose two ends bend back a little toward the body, like the
+    bracket "〔" seen from above; straight edges and corners so shields would
+    join without gaps. No weapon and no cloak. Heavy steel boots (proof
+    against caltrops). `tone` picks one of `MEMBER_SKINS`.
+    """
+    mats = heavy_armor_materials(tone)
+    plate, trim, red = mats[:3]
+
+    def body(x, y, radius):
+        # Both arms reach forward to the shield's grips.
+        for side in (-1, 1):
+            elbow = (x + side * (radius + 0.06), y - 0.18, 0.46)
+            limb('Guardian upper arm', (x + side * (radius + 0.03), y - 0.05, 0.60), elbow,
+                 0.18, 0.19, plate)
+            limb('Guardian forearm', elbow, (x + side * 0.16, y - 0.30, 0.44), 0.17, 0.18, plate)
+
+    heavy_armor_figure(x, y, 'Guardian', mats, [
+        ((x + side * 0.11, y, 0.36), (x + side * 0.19, y - 0.04, 0.20),
+         (x + side * 0.15, y, 0.06)) for side in (-1, 1)], body, lambda x, y: None,
+        girth=1.15, boot=1.4)
+    # The shield is built after the stretch, so it stays broad. Seen from
+    # above it is a flat board with both ends bent back toward the body;
+    # it faces straight ahead, leaned back a little toward the camera. Seen
+    # from the front it is a shogi piece upside down, kept squarish: a
+    # straight top, upright sides of even width, then two shallow slopes to
+    # a blunt point.
+    half_flat, end, bend, height = 0.36, 0.14, math.radians(40), 0.74
+    profile = [(-half_flat - end * math.cos(bend), end * math.sin(bend)), (-half_flat, 0.0),
+               (half_flat, 0.0), (half_flat + end * math.cos(bend), end * math.sin(bend))]
+    lengths = [(Vector(b) - Vector(a)).length for a, b in zip(profile, profile[1:])]
+    total = sum(lengths)
+    place = Matrix.Translation((x, y - 0.40, 0.50)) @ Matrix.Rotation(-0.15, 4, 'X')
+
+    def point(s, z, front=0.0):
+        """The point `s` along the profile from the right (screen left) end,
+        at height `z`, moved `front` out of the board's front face."""
+        for (a, b), length in zip(zip(profile, profile[1:]), lengths):
+            if s <= length + 1e-9 or b == profile[-1]:
+                a, b = Vector(a), Vector(b)
+                along = (b - a).normalized()
+                normal = Vector((along.y, -along.x))
+                flat_point = a + along * min(s, length) + normal * front
+                return place @ Vector((flat_point.x, flat_point.y, z))
+            s -= length
+
+    # The outline as (s, z) on the unbent board.
+    top, middle = height / 2, total / 2
+    point_height = middle * math.tan(0.22)
+    outline = [(0.0, top), (total, top), (total, -top + point_height), (middle, -top),
+               (0.0, -top + point_height)]
+    corners = [sum(lengths[:k]) for k in range(len(profile))]
+
+    def clip(polygon, low, high):
+        """The part of a convex (s, z) polygon between s = `low` and `high`."""
+        for keep, edge in ((lambda p: p[0] >= low, low), (lambda p: p[0] <= high, high)):
+            kept = []
+            for p, q in zip(polygon, polygon[1:] + polygon[:1]):
+                if keep(p):
+                    kept.append(p)
+                if keep(p) != keep(q):
+                    t = (edge - p[0]) / (q[0] - p[0])
+                    kept.append((edge, p[1] + t * (q[1] - p[1])))
+            polygon = kept
+        return polygon
+
+    def surface(name, polygons, mat, front):
+        """Flat faces for convex (s, z) polygons, split at the bends so each
+        piece lies on one flat part of the board."""
+        vertices, faces, index = [], [], {}
+        for polygon in polygons:
+            for low, high in zip(corners, corners[1:]):
+                face = []
+                for s, z in clip(polygon, low, high):
+                    key = (round(s, 6), round(z, 6))
+                    if key not in index:
+                        index[key] = len(vertices)
+                        vertices.append(tuple(point(s, z, front)))
+                    if index[key] not in face:
+                        face.append(index[key])
+                if len(face) >= 3:
+                    faces.append(tuple(face))
+        return mesh_object(name, vertices, faces, mat, False)
+
+    def inset(polygon, distance):
+        """A convex (s, z) polygon moved in by `distance` on every side."""
+        area = sum(p[0] * q[1] - q[0] * p[1] for p, q in zip(polygon, polygon[1:] + polygon[:1]))
+        sign = 1 if area > 0 else -1
+        lines = []
+        for p, q in zip(polygon, polygon[1:] + polygon[:1]):
+            ds, dz = q[0] - p[0], q[1] - p[1]
+            length = math.hypot(ds, dz)
+            lines.append(((p[0] - dz / length * sign * distance,
+                           p[1] + ds / length * sign * distance), (ds, dz)))
+        moved = []
+        for (p1, d1), (p2, d2) in zip(lines[-1:] + lines[:-1], lines):
+            t = (((p2[0] - p1[0]) * d2[1] - (p2[1] - p1[1]) * d2[0])
+                 / (d1[0] * d2[1] - d1[1] * d2[0]))
+            moved.append((p1[0] + t * d1[0], p1[1] + t * d1[1]))
+        return moved
+
+    board = surface('Guardian shield board', [outline], plate, 0.0)
+    solid = board.modifiers.new('Shield thickness', 'SOLIDIFY')
+    solid.thickness = 0.04
+    # Steel rim round the edge, following the bends.
+    rim = []
+    for p, q in zip(outline, outline[1:] + outline[:1]):
+        rim.append(p)
+        crossings = sorted((s for s in corners if min(p[0], q[0]) < s < max(p[0], q[0])),
+                           reverse=q[0] < p[0])
+        rim += [(s, p[1] + (s - p[0]) / (q[0] - p[0]) * (q[1] - p[1])) for s in crossings]
+    rim.append(outline[0])
+    tube('Guardian shield rim', [point(s, z) for s, z in rim], [0.03] * len(rim), trim, sides=6)
+    # A broad flat red band inside the rim, all the way round.
+    outer, inner = inset(outline, 0.035), inset(outline, 0.155)
+    count = len(outline)
+    surface('Guardian shield red band',
+            [[outer[k], outer[(k + 1) % count], inner[(k + 1) % count], inner[k]]
+             for k in range(count)], red, 0.012)
+
+
 def pegasus(x, y):
     """Pegasus companion: a small, slender fairy horse of glowing pearl,
     hovering with legs tucked under, on wide feathered wings large for its
@@ -2688,6 +2986,10 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             **{'healer-' + tone: (lambda tone: lambda x, y: healer(x, y, tone))(tone)
                for tone in MEMBER_SKINS},
             **{'rogue-' + tone: (lambda tone: lambda x, y: rogue(x, y, tone))(tone)
+               for tone in MEMBER_SKINS},
+            **{'knight-' + tone: (lambda tone: lambda x, y: knight(x, y, tone))(tone)
+               for tone in MEMBER_SKINS},
+            **{'guardian-' + tone: (lambda tone: lambda x, y: guardian(x, y, tone))(tone)
                for tone in MEMBER_SKINS}}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
