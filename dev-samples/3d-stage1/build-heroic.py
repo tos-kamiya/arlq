@@ -288,26 +288,31 @@ def amoeba(x, y, rare):
         cone_mat = material('Amoeba deep blue cones', (0.03, 0.30, 0.80), 0.55, 0.16,
                             rim=(0.5, 0.85, 1.0), rim_strength=1.2, coat=0.8)
         core = (0.55, 1.0, 0.95)
-    body = sphere('Membrane', (x, y, 0.40), (0.72, 0.65, 0.36), shell, 64)
+    # The plain amoeba's body is a size smaller than the rare one's; its
+    # nucleus and pupil keep the same size and only move with the body.
+    k = 1.0 if rare else 0.87
+    body = sphere('Membrane', (x, y, 0.40 * k), (0.72 * k, 0.65 * k, 0.36 * k), shell, 64)
     wobble = body.modifiers.new('Organic wobble', 'DISPLACE')
     texture = bpy.data.textures.new('Membrane wobble', 'CLOUDS')
     texture.noise_scale = 0.55
     wobble.texture = texture
-    wobble.strength = 0.05
+    wobble.strength = 0.05 * k
     wobble.mid_level = 0.5
     # Accepted obtuse cones (r 0.34, depth 0.25), pulled 0.06 into the body.
     for angle in range(0, 360, 60):
         r = math.radians(angle)
-        cone('Radial cone', (x + 0.64 * math.cos(r), y + 0.58 * math.sin(r), 0.32),
-             (x + 0.89 * math.cos(r), y + 0.83 * math.sin(r), 0.32), 0.34, 0, cone_mat)
+        cone('Radial cone', (x + 0.64 * k * math.cos(r), y + 0.58 * k * math.sin(r), 0.32 * k),
+             (x + 0.89 * k * math.cos(r), y + 0.83 * k * math.sin(r), 0.32 * k), 0.34 * k, 0,
+             cone_mat)
     # A glowing eye-like nucleus visible through the shell.
     glow = material('Nucleus glow', core, emission=core, strength=5.0)
-    sphere('Nucleus', (x, y - 0.12, 0.47), (0.24, 0.22, 0.18), glow)
-    sphere('Nucleus slit pupil', (x, y - 0.25, 0.56), (0.045, 0.05, 0.13), obsidian)
+    sphere('Nucleus', (x, y - 0.12 * k, 0.47 * k), (0.24, 0.22, 0.18), glow)
+    sphere('Nucleus slit pupil', (x, y - 0.25 * k, 0.56 * k), (0.045, 0.05, 0.13), obsidian)
     vacuole = material('Vacuole', (1, 1, 1), 0.3, 0.1,
                        emission=core, strength=1.5)
     for dx, dy, s in ((-0.36, 0.18, 0.08), (0.33, 0.24, 0.065), (0.12, 0.34, 0.05)):
-        sphere('Vacuole', (x + dx, y + dy, 0.52), (s, s, s * 0.8), vacuole, 24)
+        sphere('Vacuole', (x + dx * k, y + dy * k, 0.52 * k), (s * k, s * k, s * 0.8 * k),
+               vacuole, 24)
     if rare:
         crystal = material('Rare crown crystal', (1.0, 0.92, 0.65), 0.6, 0.05,
                            emission=(1.0, 0.65, 0.1), strength=2.0,
