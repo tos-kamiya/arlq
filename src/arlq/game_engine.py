@@ -52,6 +52,13 @@ ELF_REPEAT_MESSAGES = {
     "H": "-- Keep the protective amulet close to your skin.",
     "S": "-- The Sylvan Elf replenished your fairy nectar.",
 }
+STATUS_POPUP_TICKS = 2
+
+
+def _set_status_popup(player: d.Player, text: str) -> str:
+    player.status_popup = text
+    player.status_popup_ticks = STATUS_POPUP_TICKS
+    return text
 
 
 def _find_escape_place(current: Floor, far_from: Optional[d.Point] = None) -> d.Point:
@@ -258,17 +265,24 @@ def _apply_terrain_hazards(
 ) -> Optional[str]:
     """Apply barrier/caltrop damage for the player's current cell.
 
-    Returns an event message for the barrier case, or None otherwise (caltrop
-    damage never produces a message, matching the legacy stages).
+    Returns the barrier event message for turn processing. LP damage is also
+    summarized by a short popup near the player.
     """
     field = current.field
     event_message = None
+    old_lp = player.lp
     if apply_barrier_damage(field, player, previous):
+        damage = max(0, old_lp - player.lp)
+        _set_status_popup(player, f"LP-{damage:g}")
         event_message = trp("-- The barrier burns you.", 5)
         if trace is not None:
             trace.record_damage("barrier")
     if field[player.y][player.x] == d.CHAR_CALTROP:
+        old_lp = player.lp
         player.lp -= d.caltrop_lp_damage(player)
+        damage = max(0, old_lp - player.lp)
+        if damage:
+            _set_status_popup(player, f"LP-{damage:g}")
         field[player.y][player.x] = d.CHAR_FLOOR
         if trace is not None:
             trace.record_damage("caltrop")
@@ -914,12 +928,16 @@ def _resolve_monster_contact(
 ) -> _ContactResult:
     """Resolve contact with a monster, including early-ending elf encounters."""
     ch = entity.tribe.char
+    old_level = player.level
+    old_lp_max = d.player_lp_max(player)
     event_message = None
+    combat_won = False
     if not entity.tribe.is_elf:
         player.last_encounter_party = d.monster_variant_label(ch, entity.empowered)
     contact_key = (floor[0], entity.x, entity.y)
     if player.item == d.ITEM_SWORD_CURSED:
         player.lp -= d.CURSED_SWORD_LP_COST
+    old_lp = player.lp
 
     early_contact = _resolve_passive_or_repeat_contact(
         hit, entity, current, player, contact_key, trace, stage_num
@@ -1007,6 +1025,7 @@ def _resolve_monster_contact(
                 {"type": "item_expired", "item": old_source, "reason": "lost_on_defeat"}
             )
     elif not handled_elf:
+        combat_won = True
         if trace is not None:
             trace.record_contact(
                 {"type": "monster", "id": d.monster_type_key(entity), "outcome": "win"}
@@ -1054,6 +1073,35 @@ def _resolve_monster_contact(
             event_message = trp(
                 tribe_message, entity.tribe.event_message_importance
             )
+
+    popup = None
+    if handled_elf and ch == "L":
+        popup = "LP FULL"
+        if d.player_lp_max(player) > old_lp_max:
+            popup = f"LP FULL  MAX+{d.player_lp_max(player) - old_lp_max:g}"
+    elif combat_won:
+        if ch == "A":
+            popup = f"LVL+{player.level - old_level:g}"
+        elif ch in ("b", "B"):
+            gained_lp = max(0, player.lp - old_lp)
+            if gained_lp:
+                popup = f"LP+{gained_lp:g}"
+        elif ch == "c":
+            popup = "SWORD x1.5"
+        elif ch == "C":
+            popup = "CURSED x3"
+        elif ch == "e":
+            lost_lp = max(0, old_lp - player.lp)
+            if lost_lp:
+                popup = f"LP-{lost_lp:g}"
+        elif ch == "E":
+            lost_level = max(0, old_level - player.level)
+            if lost_level:
+                popup = f"LVL-{lost_level:g}"
+    if popup:
+        event_message = _set_status_popup(player, popup)
+    elif combat_won and ch in ("A", "b", "B", "c", "C", "e", "E"):
+        event_message = None
 
     return _ContactResult(event_message)
 
@@ -1180,6 +1228,28 @@ def _resolve_party_contact(
         d.STAGE5_PARTY_LIMIT if stage_num == 5 else d.MONSTER_PARTY_LIMIT,
     )
     player.last_contact_monster = contact_key
+    party_chars = {monster.tribe.char for monster in party}
+    popup = None
+    if "A" in party_chars and player.level > old_level:
+        popup = f"LVL+{player.level - old_level:g}"
+    elif "E" in party_chars:
+        lost_level = max(0, old_level - player.level)
+        if lost_level:
+            popup = f"LVL-{lost_level:g}"
+    elif "b" in party_chars or "B" in party_chars:
+        gained_lp = max(0, player.lp - old_lp)
+        if gained_lp:
+            popup = f"LP+{gained_lp:g}"
+    elif "C" in party_chars:
+        popup = "CURSED x3"
+    elif "c" in party_chars:
+        popup = "SWORD x1.5"
+    elif "e" in party_chars:
+        lost_lp = max(0, old_lp - player.lp)
+        if lost_lp:
+            popup = f"LP-{lost_lp:g}"
+    if popup:
+        return _ContactResult(_set_status_popup(player, popup))
     return _ContactResult(None)
 
 
@@ -1490,6 +1560,10 @@ def _process_multi_floor_turn(
     trace: Optional[TraceRecorder] = None,
     repeat_stop_reasons: Optional[Set[str]] = None,
 ) -> Optional[Tuple[int, str]] | _RewindRequest:
+    if player.status_popup_ticks > 0:
+        player.status_popup_ticks -= 1
+        if player.status_popup_ticks == 0:
+            player.status_popup = None
     current = floors[floor[0]]
 
     previous = (player.x, player.y)
@@ -1604,6 +1678,7 @@ def _process_multi_floor_turn(
         ).format(n=floor[0] + 1, total=len(floors))
         current = floors[floor[0]]
         collapse_transition = True
+    old_hazard_lp = player.lp
     hazard_message = _apply_terrain_hazards(
         current, player, previous, trace=trace
     )
@@ -1613,6 +1688,9 @@ def _process_multi_floor_turn(
         marksman_hit = _marksman_shoot(current, player, trace)
         if marksman_hit and repeat_stop_reasons is not None:
             repeat_stop_reasons.add("marksman_hit")
+    hazard_damage = max(0, old_hazard_lp - player.lp)
+    if hazard_damage:
+        _set_status_popup(player, f"LP-{hazard_damage:g}")
 
     hit = next(
         (
@@ -1880,7 +1958,11 @@ def run_game(
             show_entities=show_entities,
             debug_show_entities=debug_show_entities,
             stage_num=stage_num,
-            message=message[1],
+            message=(
+                None
+                if player.status_popup and player.status_popup_ticks > 0
+                else message[1]
+            ),
             checkpoint=checkpoint[0],
             decor=display_floor.decor,
             d_gates=display_floor.d_gates,
@@ -2011,7 +2093,9 @@ def run_game(
         # A stair contact can change the player's floor during _step(). Keep
         # the displayed floor in sync so the next frame shows the new floor.
         view_floor = floor[0]
-        if event_message is not None:
+        if player.status_popup and player.status_popup_ticks > 0:
+            message = (0, "")
+        elif event_message is not None:
             if prefer_event_message(
                 message[1] if message is not None else None, event_message[1]
             ) == event_message[1]:

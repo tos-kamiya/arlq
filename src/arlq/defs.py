@@ -541,6 +541,8 @@ class Player(Entity):
         # branch in game_engine._resolve_monster_contact().
         self.last_contact_monster: Optional[Tuple[int, int, int]] = None
         self.last_encounter_party: str = ""
+        self.status_popup: Optional[str] = None
+        self.status_popup_ticks: int = 0
         # Whether the player has already been turned away by an unrecognized
         # High Elf at least once (Stage 2's gatekeeper, or Stage 3's before
         # meeting two of I/J/K). The first refusal only shows a message; any

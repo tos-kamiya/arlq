@@ -363,6 +363,14 @@ class BlessedUI:
                 bold=True,
                 bg=player_background,
             )
+            if player.status_popup and player.status_popup_ticks > 0:
+                popup_width = self.term.length(player.status_popup)
+                if py > 0 and px + 1 + popup_width <= d.FIELD_WIDTH:
+                    put(px + 1, py - 1, player.status_popup, bold=True)
+                else:
+                    popup_x = max(0, px - popup_width)
+                    popup_y = min(py + 1, d.FIELD_HEIGHT - 1)
+                    put(popup_x, popup_y, player.status_popup, bold=True)
         if not floor_view and player.companion and px + 1 < d.FIELD_WIDTH:
             put(
                 px + 1,
@@ -448,7 +456,7 @@ class BlessedUI:
         y += 1
         x = 0
         party = player.last_encounter_party
-        if party:
+        if party and not (player.status_popup and player.status_popup_ticks > 0):
             party_panel = f"[{party}]  "
             available = max(0, self.term.width - x - 1)
             add(self.term.truncate(party_panel, available), color="cyan")
@@ -498,7 +506,11 @@ class BlessedUI:
             player,
             turn,
             stage_num,
-            message,
+            (
+                None
+                if player.status_popup and player.status_popup_ticks > 0
+                else message
+            ),
             extra_keys,
             game_start_turn,
         )
