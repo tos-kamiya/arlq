@@ -532,16 +532,19 @@ def player(x, y, sword=None):
     # Short sword in the right hand (screen left), held low and outward.
     hand = Vector((x - 0.30, y - 0.13, 0.34))
     if sword in ('c', 'C'):
-        # The chimera's longer, tapering sword, with its own hilt.
+        # The chimera's longer, tapering sword, with its own hilt. Held by
+        # the player it also shows the sword status, so it is drawn 1.3
+        # times as large as in the chimeras' jaws.
         steel, hilt = chimera_sword_materials(sword == 'C')
-        ahead = Vector((-0.34, -0.30, -0.10)).normalized()
-        across = ahead.cross(Vector((0, 0, 1))).normalized()
+        size = 1.3
+        ahead = Vector((-0.34, -0.30, -0.10)).normalized() * size
+        across = ahead.cross(Vector((0, 0, 1))).normalized() * size
         chimera_blade('Player chimera sword blade', hand + ahead * 0.05, hand + ahead * 0.58,
-                      0.075, steel)
+                      0.075 * size, steel)
         tube('Player chimera sword guard', [hand + across * 0.09, hand - across * 0.09],
-             [0.025, 0.025], hilt, sides=6)
+             [0.025 * size, 0.025 * size], hilt, sides=6)
         sphere('Player chimera sword pommel', tuple(hand - ahead * 0.10),
-               (0.035, 0.035, 0.035), hilt, 12)
+               (0.035 * size,) * 3, hilt, 12)
     else:
         tip = hand + Vector((-0.34, -0.30, -0.10)) * 0.8
         tube('Player sword blade', [hand + (tip - hand) * 0.12, tip * 0.94 + hand * 0.06, tip],
