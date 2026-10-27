@@ -2141,13 +2141,16 @@ def rogue(x, y, tone):
         bpy.ops.mesh.primitive_torus_add(major_radius=0.14, minor_radius=0.055, location=(x, y + 0.01, 0.88))
         finish(bpy.context.object, charcoal, True, 'Rogue cowl')
         sphere('Rogue pouch', (x + 0.14, y - 0.10, 0.52), (0.06, 0.05, 0.06), leather, 16)
-        # A small coil of rope at the side of the left hip.
-        coil = Vector((x + 0.25, y + 0.02, 0.50))
+        # A small coil of rope against the side of the left hip, hanging in
+        # tall ovals with its axis turned 75 degrees from the front, nearly
+        # sideways (the rings stand up, so their local Y is the height).
+        coil = Vector((x + 0.21, y - 0.03, 0.46))
         for k in range(3):
             bpy.ops.mesh.primitive_torus_add(major_radius=0.07 - 0.01 * k, minor_radius=0.018,
-                                             location=coil + Vector((0.008 * k, -0.01 * k, 0)),
-                                             rotation=(math.pi / 2, 0, 0.6))
-            finish(bpy.context.object, rope, True, 'Rogue rope coil')
+                                             location=coil + Vector((0.012 * k, -0.006 * k, 0)),
+                                             rotation=(math.pi / 2, 0, math.radians(75)))
+            ring = finish(bpy.context.object, rope, True, 'Rogue rope coil')
+            ring.scale = (1.0, 1.6, 1.0)
         # Right hand (screen left) raised beside the face, dangling the keys.
         tube('Rogue right sleeve', [(x - 0.17, y, 0.84), (x - 0.34, y - 0.02, 0.86),
                                     (x - 0.36, y - 0.10, 1.06)], [0.055, 0.065, 0.08], charcoal,
