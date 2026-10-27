@@ -86,7 +86,7 @@ it is large enough again.
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a five-floor boss and treasure dungeon; Stage 6 is a compact member-ability trial. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a four-floor boss and treasure dungeon; Stage 6 is a compact member-ability trial. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -263,22 +263,22 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | **L** Lifebringer Elf | Each meeting cures poison, raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then disappears and returns on a random floor at a later 65-turn respawn tick. |
 | **S** Sylvan Elf | Gives you fairy nectar. Companions recruited afterward, except `l`, stay with you 1.25 times longer. |
 
-### Stage 5 (five-floor boss and treasure dungeon)
+### Stage 5 (four-floor boss and treasure dungeon)
 
-Run `--stage 5` for a seed-generated, five-floor dungeon starting at level 1. Four of the six member candidates appear across floors 1 and 2; discovered candidates show their role and meeting floor in the HUD. Up to two can join, and a third replaces the earliest recruit, who does not return. Use their abilities to reach floor 5, defeat its Wyrm (`W`), and claim the treasure.
+Run `--stage 5` for a seed-generated, four-floor dungeon starting at level 1. Four of the six member candidates appear across floors 1 through 3; discovered candidates show their role and meeting floor in the HUD. Up to two can join, and a third replaces the earliest recruit, who does not return. Use their abilities to reach floor 4, defeat its Wyrm (`W`), and claim the treasure.
 
 | Marker / profession | Ability |
 | --- | --- |
-| `J` Jester | Double experience gained after sharing. |
+| `J` Jester | In Stage 5, multiply your experience after sharing by 1.5; in Stage 6, double it. |
 | `H` Healer | Reduce movement LP consumption to one-half and defeat's LP cost to 2. Rewinds restore LP using the same reduced consumption. |
 | `R` Rogue | Identify Mimics (`M`), Golems (`g`), Caltrop Plants (`X`), and Rare Erebus (`E`) when they enter the field of view. Reveal a Collapse's pits when its `?` enters the field of view. Break walls raised by defeated Golems by walking into them. Warn about pits and Rare Erebus while stopping key repeat; the current move still proceeds. For each Marksman, the first, third, and other odd-numbered shots are shown but deal no damage; even-numbered shots deal damage. |
 | `K` Knight | Starts at level 50 and gains half of the player's shared combat experience, before the Jester bonus. In Stages 5 and 6, add the Knight's level to the player's attack power after sword and other player bonuses. |
 | `D` Dangeon Scholar | While D is with you, reveal hidden stairways (`^` and `v`) and Stage 5's hidden passage (`.`) within explored map areas. Secrets in areas already explored when D joins are revealed immediately. Revealed stairs and passages stay visible and usable after D leaves. Marksman arrows are blocked by walls raised by defeated Golems. |
 | `G` Guardian | Halve the extra LP damage from barriers and reduce caltrop damage to one-third; movement cost is unchanged. |
 
-Vertically adjacent monsters form parties of up to three and fight together; horizontal adjacency does not connect them. Party strength and experience are summed, and LP reward uses the highest value in the party. In Stage 5, experience is split among you and all recruited members. In Stage 6, the divisor counts you as 1, Jester/Healer/Guardian as 0.5 each, Knight as 1, and Rogue/Dangeon Scholar as 0. Jester doubles only the player's share; the Knight's level gain is half of the player's shared experience before that bonus.
+Vertically adjacent monsters form parties of up to three and fight together; horizontal adjacency does not connect them. Party strength and experience are summed, and LP reward uses the highest value in the party. In Stage 5, the divisor counts you as 1, Jester as 0.25, Healer/Guardian as 0.5 each, Knight as 1, and Rogue/Dangeon Scholar as 0. In Stage 6, Jester counts as 0.5 and the other weights are the same. Jester multiplies only the player's share; the Knight's level gain is half of the player's shared experience before that bonus.
 
-Floor 5's boss party always contains one `W`, one ordinary `V`, and one other escort with no special effect or item. The escort is empowered except when it is a Marksman (`k`), which stays at its normal strength. A Mimic imitating the boss also appears. Defeating `W` unlocks the treasure chest in another room; the ordinary `V` applies its usual local rearrangement effect when defeated. As with other monster parties, the player wins when their attack is at least the party's combined strength. Take the unlocked chest to win. Defeat respawns the active party with the player. Stage 5 also features Golems (`g`), Erebus (`e`), Rare Erebus (`E`), and Caltrop Plants (`X`); the plants scatter caltrops when defeated, and pits drop you to the next floor.
+Floor 4's boss party always contains one `W`, one ordinary `V`, and one other escort with no special effect or item. The escort is chosen equally from empowered `f`, a normal Marksman (`k`), a normal Wyrm (`w`), and an empowered Wyrm (`w`). A Mimic imitating the boss also appears. Defeating `W` unlocks the treasure chest in another room; the ordinary `V` applies its usual local rearrangement effect when defeated. As with other monster parties, the player wins when their attack is at least the party's combined strength. Take the unlocked chest to win. Defeat respawns the active party with the player. Stage 5 also features `f` and empowered `f'` monsters, which grant 3 base experience when defeated; `f'` barriers occupy the four orthogonally adjacent cells. Golems (`g`), Erebus (`e`), Rare Erebus (`E`), and Caltrop Plants (`X`) also appear; the plants scatter caltrops when defeated, and pits drop you to the next floor.
 
 ### Stage 6 (member-ability trial)
 

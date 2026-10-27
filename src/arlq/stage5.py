@@ -463,7 +463,7 @@ def _place_detached_room_monsters(
 
 
 def _sync_wyrm_barriers(current: Floor) -> None:
-    """Keep non-persistent barrier rings centered on the surviving w/W."""
+    """Keep monster barriers centered on the surviving w/W and f' monsters."""
     occupied = {(entity.x, entity.y) for entity in current.entities}
     reserved = {
         current.up,
@@ -476,32 +476,26 @@ def _sync_wyrm_barriers(current: Floor) -> None:
     }
     ring_cells = set()
     for entity in current.entities:
-        if (
-            not isinstance(entity, d.Monster)
-            or not entity.active
-            or entity.tribe.char not in {"w", "W"}
-        ):
+        if not isinstance(entity, d.Monster) or not entity.active:
             continue
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
-                if not (dx or dy):
-                    continue
-                point = (entity.x + dx, entity.y + dy)
-                x, y = point
-                if (
-                    0 <= y < len(current.field)
-                    and 0 <= x < len(current.field[y])
-                    and point not in occupied
-                    and point not in reserved
-                    and (
-                        current.field[y][x] == d.CHAR_FLOOR
-                        or (
-                            current.field[y][x] == d.CHAR_BARRIER
-                            and point not in current.persistent_barriers
-                        )
+        offsets = _barrier_offsets(entity)
+        for dx, dy in offsets:
+            point = (entity.x + dx, entity.y + dy)
+            x, y = point
+            if (
+                0 <= y < len(current.field)
+                and 0 <= x < len(current.field[y])
+                and point not in occupied
+                and point not in reserved
+                and (
+                    current.field[y][x] == d.CHAR_FLOOR
+                    or (
+                        current.field[y][x] == d.CHAR_BARRIER
+                        and point not in current.persistent_barriers
                     )
-                ):
-                    ring_cells.add(point)
+                )
+            ):
+                ring_cells.add(point)
 
     for y, row in enumerate(current.field):
         for x, cell in enumerate(row):
@@ -515,6 +509,21 @@ def _sync_wyrm_barriers(current: Floor) -> None:
     for x, y in ring_cells:
         if current.field[y][x] == d.CHAR_FLOOR:
             current.field[y][x] = d.CHAR_BARRIER
+
+
+def _barrier_offsets(
+    entity: d.Monster, stage_num: int = 5
+) -> tuple[d.Point, ...]:
+    if entity.tribe.char in {"w", "W"}:
+        return tuple(
+            (dx, dy)
+            for dx in (-1, 0, 1)
+            for dy in (-1, 0, 1)
+            if dx or dy
+        )
+    if stage_num == 5 and entity.tribe.char == "f" and entity.empowered == 2:
+        return ((0, -1), (1, 0), (0, 1), (-1, 0))
+    return ()
 
 
 def _place_party(
@@ -652,7 +661,10 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     config = config or GameConfig()
     floors = []
     entry = None
-    pending_members: list[str] = []
+    member_roles = list(d.STAGE5_MEMBER_FLOORS[0])
+    while len(member_roles) > 4:
+        member_roles.pop(rand.randrange(len(member_roles)))
+    member_floors = [(role, rand.randrange(3)) for role in member_roles]
     filled_counts = list(d.STAGE4_FILLED_ROOM_COUNTS)
     filled_counts.remove(0)
     filled_counts_by_floor = [0]
@@ -718,17 +730,9 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             current.d_gates[gate] = "."
             current.field[gate[1]][gate[0]] = d.CHAR_HIDDEN_D_GATE
         _place_detached_room_monsters(current, room_components)
-        member_roles = list(d.STAGE5_MEMBER_FLOORS[index])
-        if index == 0:
-            for _ in range(len(member_roles) - 4):
-                member_roles.pop(rand.randrange(len(member_roles)))
-            for role in member_roles[:]:
-                if rand.randrange(2) == 1:
-                    member_roles.remove(role)
-                    pending_members.append(role)
-        elif index == 1:
-            member_roles.extend(pending_members)
-        for role in member_roles:
+        for role, member_floor in member_floors:
+            if member_floor != index:
+                continue
             current.entities.append(
                 d.PartyMember(
                     *rand.choice(_open_points(current)), role, origin_floor=index
@@ -744,8 +748,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             )
         if index == d.STAGE5_FLOORS - 1:
             boss_party = list(d.STAGE5_BOSS_PARTY)
-            escort = rand.choice(d.STAGE5_BOSS_ESCORTS)
-            boss_party.append((escort, 1 if escort == "k" else 2))
+            boss_party.append(rand.choice(d.STAGE5_BOSS_ESCORTS))
             _place_party(current, boss_party, index)
             mimic = d.Monster(
                 *rand.choice(_open_points(current)),

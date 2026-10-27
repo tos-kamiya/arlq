@@ -26,50 +26,42 @@ STAGE6_EXPERIENCE_MEMBER_WEIGHTS = {
 HEALER_MOVE_COST = 1 / 2
 HEALER_RESPAWN_COST = 2
 STAGE5_START_LEVEL = 1
-STAGE5_FLOORS = 5
+STAGE5_FLOORS = 4
 # Weights for parties of 1, 2, and 3 monsters, by floor; larger sizes are disabled.
 STAGE5_PARTY_SIZE_WEIGHTS = (
     (78, 21, 1, 0, 0),
     (60, 30, 10, 0, 0),
-    (50, 30, 20, 0, 0),
     (46, 30, 24, 0, 0),
     (45, 30, 25, 0, 0),
 )
 # Each roster entry (character, count, rank) supplies party leaders.
+# No f monsters appear on floor 1; empowered f' starts on floor 2.
 STAGE5_ROSTER = (
     (
-        ("a", 24, 1), ("A", 2, 1), ("b", 6, 1), ("B", 2, 1), ("c", 5, 1),
-        ("d", 3, 1), ("e", 1, 1), ("f", 2, 1), ("g", 1, 1),
+        ("a", 24, 1), ("A", 2, 1), ("b", 3, 1), ("B", 2, 1), ("c", 5, 1),
+        ("d", 3, 1), ("e", 1, 1), ("g", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 5, 2), ("B", 2, 1), ("c", 3, 2),
-        ("C", 2, 1), ("d", 5, 2), ("f", 2, 2), ("g", 3, 1),
+        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 1), ("c", 3, 2),
+        ("C", 2, 1), ("d", 3, 2), ("f", 1, 2), ("w", 1, 2), ("g", 3, 1),
         ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 5, 2), ("B", 2, 1), ("c", 4, 2),
-        ("C", 2, 1), ("d", 5, 2), ("f", 1, 2), ("g", 3, 1),
-        ("k", 2, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
+        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 1), ("c", 5, 2),
+        ("C", 1, 1), ("d", 3, 2), ("f", 1, 2), ("g", 3, 1),
+        ("k", 1, 1), ("w", 1, 2), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 5, 2), ("B", 2, 1), ("c", 5, 2),
-        ("C", 1, 1), ("d", 5, 2), ("f", 1, 2), ("g", 3, 1),
-        ("k", 1, 1), ("w", 1, 1), ("X", 1, 1), ("E", 1, 1),
-    ),
-    (
-        ("a", 3, 2), ("A", 2, 1), ("b", 5, 2), ("B", 2, 1), ("c", 6, 2),
-        ("C", 1, 1), ("d", 5, 2), ("f", 2, 2), ("g", 3, 1),
-        ("k", 1, 1), ("w", 2, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 1), ("c", 6, 2),
+        ("C", 1, 1), ("d", 2, 2), ("f", 1, 2), ("w", 3, 2), ("g", 3, 1),
+        ("k", 1, 1),
     ),
 )
 STAGE5_BOSS_PARTY = (("W", 1), ("V", 1))
-STAGE5_BOSS_ESCORTS = tuple("afkw")
+STAGE5_BOSS_ESCORTS = (("f", 2), ("k", 1), ("w", 1), ("w", 2))
 _STAGE5_DEEP_SUPPORT_POOL = (
-    ("a", 1), ("a", 1),
-    ("f", 1), ("f", 1),
-    ("b", 1), ("B", 1),
-    ("e", 1), ("e", 1),
-    ("w", 1), ("k", 1),
+    ("a", 1), ("a", 1), ("e", 1), ("e", 1),
+    ("b", 1), ("B", 1), ("w", 2), ("k", 1),
 )
 _STAGE5_FLOOR2_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("a", 1),
@@ -79,15 +71,14 @@ _STAGE5_FLOOR2_SUPPORT_POOL = (
 )
 STAGE5_SUPPORT_POOLS = (
     (("a", 1),), _STAGE5_FLOOR2_SUPPORT_POOL
-) + (_STAGE5_DEEP_SUPPORT_POOL,) * 3
+) + (_STAGE5_DEEP_SUPPORT_POOL,) * 2
 STAGE5_MEMBER_FLOORS = (
     ("Jester", "Healer", "Rogue", "Knight", "Dangeon Scholar", "Guardian"),
     (),
     (),
     (),
-    (),
 )
-STAGE5_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2), (0, 2))
+STAGE5_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
 MEMBER_GLYPHS = {
     "Jester": "J", "Healer": "H", "Rogue": "R",
     "Knight": "K", "Dangeon Scholar": "D", "Guardian": "G", "Noble": "N",
@@ -1035,9 +1026,7 @@ def _get_stage5_roster_tribes() -> List[MonsterTribe]:
         variant for floor_pool in STAGE5_SUPPORT_POOLS for variant in floor_pool
     )
     variants.update(STAGE5_BOSS_PARTY)
-    variants.update(
-        (char, 1 if char == "k" else 2) for char in STAGE5_BOSS_ESCORTS
-    )
+    variants.update(STAGE5_BOSS_ESCORTS)
     variants.add(("M", 1))
     return sorted(
         (
@@ -1105,14 +1094,17 @@ def has_member(player: Player, role: str) -> bool:
     return any(member.role == role for member in player.members)
 
 
-def experience_multiplier(player: Player) -> float:
-    return JESTER_EXP_MULTIPLIER if has_member(player, "Jester") else 1
+def experience_multiplier(player: Player, stage_num: int = 6) -> float:
+    if not has_member(player, "Jester"):
+        return 1
+    return 1.5 if stage_num == 5 else JESTER_EXP_MULTIPLIER
 
 
 def experience_share_count(player: Player, stage_num: int) -> float:
-    if stage_num == 6:
+    if stage_num in (5, 6):
         return 1 + sum(
-            STAGE6_EXPERIENCE_MEMBER_WEIGHTS.get(member.role, 0.0)
+            0.25 if stage_num == 5 and member.role == "Jester"
+            else STAGE6_EXPERIENCE_MEMBER_WEIGHTS.get(member.role, 0.0)
             for member in player.members
         )
     return len(player.members) + 1

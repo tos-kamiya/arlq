@@ -411,14 +411,12 @@ def _vortex_rearrange(
             )
         )
     ]
-    moved_wyrm_barrier_cells = {
+    moved_monster_barrier_cells = {
         (entity.x + dx, entity.y + dy)
         for entity in movable
-        if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}
-        for dx in (-1, 0, 1)
-        for dy in (-1, 0, 1)
-        if (dx or dy)
-        and 0 <= entity.y + dy < len(current.field)
+        if isinstance(entity, d.Monster)
+        for dx, dy in stage5._barrier_offsets(entity, stage_num)
+        if 0 <= entity.y + dy < len(current.field)
         and 0 <= entity.x + dx < len(current.field[0])
     }
     lower = (
@@ -561,7 +559,10 @@ def _vortex_rearrange(
 
     occupied = {(entity.x, entity.y) for entity in current.entities}
     for current_entity in current.entities:
-        if isinstance(current_entity, d.Monster) and current_entity.tribe.char in {"w", "W"}:
+        if (
+            isinstance(current_entity, d.Monster)
+            and stage5._barrier_offsets(current_entity, stage_num)
+        ):
             protected = current.collapse_landings | scholar_stairs | set().union(
                 *(
                     d.collapse_footprint((fixed.x, fixed.y))
@@ -569,30 +570,26 @@ def _vortex_rearrange(
                     if isinstance(fixed, d.Collapse)
                 )
             )
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    point = (current_entity.x + dx, current_entity.y + dy)
-                    x, y = point
-                    if (
-                        (dx or dy)
-                        and point in affected_points
-                        and current.field[y][x] == d.CHAR_FLOOR
-                        and point not in occupied
-                        and point not in protected
-                    ):
-                        current.field[y][x] = d.CHAR_BARRIER
+            for dx, dy in stage5._barrier_offsets(current_entity, stage_num):
+                point = (current_entity.x + dx, current_entity.y + dy)
+                x, y = point
+                if (
+                    point in affected_points
+                    and current.field[y][x] == d.CHAR_FLOOR
+                    and point not in occupied
+                    and point not in protected
+                ):
+                    current.field[y][x] = d.CHAR_BARRIER
 
-    current_wyrm_barrier_cells = {
+    current_monster_barrier_cells = {
         (entity.x + dx, entity.y + dy)
         for entity in current.entities
-        if isinstance(entity, d.Monster) and entity.tribe.char in {"w", "W"}
-        for dx in (-1, 0, 1)
-        for dy in (-1, 0, 1)
-        if (dx or dy)
-        and 0 <= entity.y + dy < len(current.field)
+        if isinstance(entity, d.Monster)
+        for dx, dy in stage5._barrier_offsets(entity, stage_num)
+        if 0 <= entity.y + dy < len(current.field)
         and 0 <= entity.x + dx < len(current.field[0])
     }
-    for x, y in moved_wyrm_barrier_cells - affected_points - current_wyrm_barrier_cells:
+    for x, y in moved_monster_barrier_cells - affected_points - current_monster_barrier_cells:
         if (
             current.field[y][x] == d.CHAR_BARRIER
             and (x, y) not in current.persistent_barriers
@@ -620,32 +617,28 @@ def _defeat_monster(
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
     ch = entity.tribe.char
-    if ch == "w":
-        other_wyrm_barrier_cells = {
+    if ch == "w" or (
+        stage_num == 5 and ch == "f" and entity.empowered == 2
+    ):
+        other_monster_barrier_cells = {
             (other.x + dx, other.y + dy)
             for other in current.entities
             if other is not entity
             and isinstance(other, d.Monster)
-            and other.tribe.char in {"w", "W"}
-            for dx in (-1, 0, 1)
-            for dy in (-1, 0, 1)
-            if (dx or dy)
-            and 0 <= other.y + dy < len(current.field)
+            for dx, dy in stage5._barrier_offsets(other, stage_num)
+            if 0 <= other.y + dy < len(current.field)
             and 0 <= other.x + dx < len(current.field[0])
         }
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
-                if not (dx or dy):
-                    continue
-                x, y = entity.x + dx, entity.y + dy
-                if (
-                    0 <= y < len(current.field)
-                    and 0 <= x < len(current.field[y])
-                    and (x, y) not in other_wyrm_barrier_cells
-                    and (x, y) not in current.persistent_barriers
-                    and current.field[y][x] == d.CHAR_BARRIER
-                ):
-                    current.field[y][x] = d.CHAR_FLOOR
+        for dx, dy in stage5._barrier_offsets(entity, stage_num):
+            x, y = entity.x + dx, entity.y + dy
+            if (
+                0 <= y < len(current.field)
+                and 0 <= x < len(current.field[y])
+                and (x, y) not in other_monster_barrier_cells
+                and (x, y) not in current.persistent_barriers
+                and current.field[y][x] == d.CHAR_BARRIER
+            ):
+                current.field[y][x] = d.CHAR_FLOOR
     elif ch == "W":
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
@@ -1122,12 +1115,14 @@ def _resolve_party_contact(
             if monster.tribe.effect == d.EFFECT_SPECIAL_EXP
             else 0
             if monster.tribe.effect == d.EFFECT_LEVEL_REDUCE
+            else 3
+            if monster.tribe.char == "f"
             else 1
             for monster in party
         )
         / d.experience_share_count(player, stage_num)
     )
-    experience = base_experience * d.experience_multiplier(player)
+    experience = base_experience * d.experience_multiplier(player, stage_num)
     feed = max(monster.tribe.feed for monster in party)
     lp_overcharge = (
         d.BISON_LP_OVERCHARGE

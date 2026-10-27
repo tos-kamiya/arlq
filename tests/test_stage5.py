@@ -1,4 +1,4 @@
-"""Rules and generation checks for the five-floor Stage 5 dungeon."""
+"""Rules and generation checks for the four-floor Stage 5 dungeon."""
 
 from collections import Counter
 
@@ -87,7 +87,7 @@ def step(current, player, direction=(1, 0), checkpoint=(2, 2)):
 
 def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
     floors, player = stage5.build()
-    assert len(floors) == 5 and player.rescue_stage and player.treasure_stage
+    assert len(floors) == 4 and player.rescue_stage and player.treasure_stage
     for floor in floors:
         assert len(floor.room_components) == 2
         detached = next(component for component in floor.room_components if len(component) == 1)
@@ -112,10 +112,6 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
         component for component in floors[0].room_components if len(component) == 1
     )
     current = floors[-1]
-    assert not any(
-        isinstance(entity, d.Monster) and entity.tribe.char == "w"
-        for entity in floors[1].entities
-    )
     assert sum(
         isinstance(entity, d.Monster) and entity.tribe.char == "k"
         for entity in floors[1].entities
@@ -134,18 +130,18 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
     }
     assert not any(
         isinstance(e, d.PartyMember)
-        for floor in floors[2:]
+        for floor in floors[3:]
         for e in floor.entities
     )
     assert {
         e.origin_floor
-        for floor in floors[:2]
+        for floor in floors[:3]
         for e in floor.entities
         if isinstance(e, d.PartyMember)
-    } <= {0, 1}
+    } <= {0, 1, 2}
     assert sum(
         isinstance(e, d.PartyMember)
-        for floor in floors[:2]
+        for floor in floors[:3]
         for e in floor.entities
     ) == 4
     assert not any(
@@ -171,7 +167,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
     escorts = [e for e in party if e not in (boss, vortex)]
     assert len(escorts) == 1
     assert all(
-        e.empowered == 2 and e.tribe.char not in {"V", "W", "g"} for e in escorts
+        (e.tribe.char, e.empowered) in d.STAGE5_BOSS_ESCORTS for e in escorts
     )
     mimics = [
         e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "M"
@@ -186,7 +182,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
             for entity in floor.entities
         )
         for floor in floors
-    ] == [1, 3, 3, 3, 3]
+    ] == [1, 3, 3, 3]
     assert not any(
         isinstance(entity, d.Monster)
         and entity.tribe.char == "g"
@@ -252,11 +248,11 @@ def test_stage5_replaces_oldest_member_without_respawning_them():
     "roles, gain",
     [
         ((), 2),
-        (("Jester",), 2),
+        (("Jester",), 2.4),
         (("Knight",), 1),
         (("Jester", "Knight"), 4 / 3),
-        (("Healer", "Rogue"), 2 / 3),
-        (("Guardian",), 1),
+        (("Healer", "Rogue"), 4 / 3),
+        (("Guardian",), 4 / 3),
     ],
 )
 def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain):
@@ -267,6 +263,18 @@ def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain):
     assert current.entities == []
     assert player.level == 100 + gain
     assert player.lp == min(d.LP_MAX, 10 + feed)
+
+
+
+def test_knight_growth_uses_shared_experience_before_jester_bonus():
+    current, player = state(("Jester", "Knight"), lp=10)
+    knight = player.members[1]
+    assert knight.level == 50
+    current.entities = [monster(3, 2, "b"), monster(3, 3, "a")]
+    step(current, player)
+    assert player.level == pytest.approx(100 + 2 / 2.25 * 1.5)
+    assert knight.level == pytest.approx(50 + 2 / 2.25 * 0.5)
+    assert d.current_player_attack(player, 5) == pytest.approx(player.level + knight.level)
 
 
 def test_group_strength_defeat_preserves_party_and_healer_penalty():
@@ -437,21 +445,26 @@ def test_stage5_boss_uses_combined_party_strength_without_required_members_or_it
     assert all((entity not in current.entities) == won for entity in party)
 
 
-@pytest.mark.parametrize("seed", [0, 7, 9, 123])
-def test_generated_boss_retains_one_effect_free_empowered_escort(seed):
-    engine.rand.set_seed(seed)
+@pytest.mark.parametrize("escort", d.STAGE5_BOSS_ESCORTS)
+def test_generated_boss_retains_each_escort(monkeypatch, escort):
+    engine.rand.set_seed(123)
+    original_choice = stage5.rand.choice
+
+    def choose(values):
+        if values is d.STAGE5_BOSS_ESCORTS:
+            return escort
+        return original_choice(values)
+
+    monkeypatch.setattr(stage5.rand, "choice", choose)
     floors, _ = stage5.build()
     current = floors[-1]
     boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W")
     party = stage5.monster_party(current, boss)
     assert len(party) == 3
     assert sum(e.tribe.char == "V" and e.empowered == 1 for e in party) == 1
-    escort = next(e for e in party if e.tribe.char not in ("W", "V"))
-    assert escort.empowered == 2
-    assert not stage5.special_monster(escort)
-    for char in d.STAGE5_BOSS_ESCORTS:
-        tribe = d.CHAR_TO_MONSTER_TRIBE[char]
-        assert tribe.effect is None and tribe.item is None
+    actual = next(e for e in party if e.tribe.char not in ("W", "V"))
+    assert (actual.tribe.char, actual.empowered) == escort
+    assert not stage5.special_monster(actual)
 
 
 def test_treasure_is_optional_and_does_not_finish_stage():
@@ -725,51 +738,27 @@ def test_seed_reproduces_layout_and_groups():
 
 
 def test_deep_roster_counts_and_party_sizes_by_floor():
-    deep_rosters = d.STAGE5_ROSTER[1:]
-    actual_counts = Counter(
-        (char, rank)
-        for roster in deep_rosters
-        for char, count, rank in roster
-        for _ in range(count)
-    )
-    assert actual_counts == Counter({
-        ("a", 2): 12, ("A", 1): 8, ("b", 2): 32, ("c", 2): 18,
-        ("C", 1): 6, ("d", 2): 24, ("f", 2): 6, ("g", 1): 12,
-        ("k", 1): 6, ("w", 1): 2, ("w", 2): 2,
-        ("X", 1): 3, ("E", 1): 3,
+    def counts(char, rank):
+        return [sum(count for ch, count, r in floor if ch == char and r == rank)
+                for floor in d.STAGE5_ROSTER]
+
+    assert counts("b", 1) == [3, 0, 0, 0]
+    assert counts("b", 2) == [0, 2, 2, 2]
+    assert counts("d", 1) == [3, 0, 0, 0]
+    assert counts("d", 2) == [0, 3, 3, 2]
+    assert counts("B", 1) == [2, 2, 2, 2]
+    assert counts("f", 2) == [0, 1, 1, 1]
+    assert counts("w", 2) == [0, 1, 1, 3]
+    assert Counter(d.STAGE5_SUPPORT_POOLS[1]) == Counter({
+        ("a", 1): 3, ("f", 1): 2, ("b", 1): 2,
+        ("B", 1): 1, ("e", 1): 2,
     })
-    assert [
-        sum(count for char, count, _ in roster if char == "A")
-        for roster in d.STAGE5_ROSTER
-    ] == [2, 2, 2, 2, 2]
-    assert [sum(count for _, count, _ in roster) for roster in deep_rosters] == [
-        33, 34, 33, 34
-    ]
-    assert [
-        sum(count for char, count, rank in roster if char == "w" and rank == 2)
-        for roster in deep_rosters
-    ] == [0, 0, 0, 2]
-    assert "w" not in {char for char, _ in d.STAGE5_SUPPORT_POOLS[1]}
-    assert "k" not in {char for char, _ in d.STAGE5_SUPPORT_POOLS[1]}
-    assert d.STAGE5_SUPPORT_POOLS[2:] == (d.STAGE5_SUPPORT_POOLS[2],) * 3
-    floor2_support_weights = Counter(char for char, _ in d.STAGE5_SUPPORT_POOLS[1])
-    assert floor2_support_weights == Counter(
-        {"a": 3, "f": 2, "b": 3, "e": 2}
-    )
-    support_weights = Counter(char for char, _ in d.STAGE5_SUPPORT_POOLS[2])
-    assert support_weights == Counter({"a": 2, "f": 2, "b": 2, "e": 2, "w": 1, "k": 1})
+    assert all(Counter(pool) == Counter({
+        ("a", 1): 2, ("e", 1): 2, ("b", 1): 1,
+        ("B", 1): 1, ("w", 2): 1, ("k", 1): 1,
+    }) for pool in d.STAGE5_SUPPORT_POOLS[2:])
     assert d.STAGE5_PARTY_SIZE_WEIGHTS == (
-        (78, 21, 1, 0, 0),
-        (60, 30, 10, 0, 0),
-        (50, 30, 20, 0, 0),
-        (46, 30, 24, 0, 0),
-        (45, 30, 25, 0, 0),
+        (78, 21, 1, 0, 0), (60, 30, 10, 0, 0),
+        (46, 30, 24, 0, 0), (45, 30, 25, 0, 0),
     )
-    assert all(sum(weights) == 100 for weights in d.STAGE5_PARTY_SIZE_WEIGHTS)
-    assert next(entry[1] for entry in d.STAGE5_ROSTER[0] if entry[0] == "c") == 5
-    assert sum(
-        count for roster in deep_rosters for char, count, _ in roster if char == "c"
-    ) == 18
-    assert sum(
-        count for roster in deep_rosters for char, count, _ in roster if char == "C"
-    ) == 6
+    assert d.STAGE5_BOSS_ESCORTS == (("f", 2), ("k", 1), ("w", 1), ("w", 2))
