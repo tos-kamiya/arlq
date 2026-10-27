@@ -10,6 +10,7 @@ from pathlib import Path
 import math
 import sys
 
+import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
@@ -45,7 +46,7 @@ scene.world = world
 SCREEN_PIXEL = 186 / 1.8 / 11 * 2.6 / 256
 CELL_W = SCREEN_PIXEL * 15
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
-GRID_COLS, GRID_ROWS = 14, 6
+GRID_COLS, GRID_ROWS = 14, 7
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
 # the companions and elves; the monsters added from Stage 2 on, the golem rock
 # and rank marks; then the Stage 5 Buffalo and party members.
@@ -60,7 +61,10 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('E', 'RARE EREBUS'), ('m', 'SPORE'), ('k', 'MARKSMAN'), ('V', 'VORTEX'),
          ("'", 'RANK 2'), ('"', 'RANK 3'), ('B', 'BUFFALO'),
          ('jester-light', 'JESTER LIGHT'), ('jester-medium', 'JESTER MEDIUM'),
-         ('jester-dark', 'JESTER DARK')]
+         ('jester-dark', 'JESTER DARK'), ('healer-light', 'HEALER LIGHT'),
+         ('healer-medium', 'HEALER MEDIUM'), ('healer-dark', 'HEALER DARK'),
+         ('rogue-light', 'ROGUE LIGHT'), ('rogue-medium', 'ROGUE MEDIUM'),
+         ('rogue-dark', 'ROGUE DARK')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -83,7 +87,9 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
-         'rock': 2.5, 'jester-light': 1.2, 'jester-medium': 1.2, 'jester-dark': 1.2}
+         'rock': 2.5, 'jester-light': 1.2, 'jester-medium': 1.2, 'jester-dark': 1.2,
+         'healer-light': 1.2, 'healer-medium': 1.2, 'healer-dark': 1.2,
+         'rogue-light': 1.35, 'rogue-medium': 1.35, 'rogue-dark': 1.35}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters and the chest turn slightly toward screen left; the player and companions face front.
@@ -1977,6 +1983,243 @@ def jester(x, y, tone):
                skirt_z=(0.40, 0.49, 0.58), ears=False)
 
 
+def healer(x, y, tone):
+    """Healer (H), a Stage 5 member: a temple healer of no real-world faith,
+    in a long cream robe with a turquoise stole and silver fittings (not the
+    Lifebringer's white and gold), a lowered hood and a thin silver circlet,
+    shoulder-length hair. One hand holds a staff topped by a silver ring
+    with a floating pale aqua drop crystal; the other is raised before the
+    chest, palm out, with a small healing light. The game's own emblem, a
+    drop inside a ring, is on the chest. The face reads as neither man nor
+    woman. `tone` picks one of `MEMBER_SKINS`.
+    """
+    robe = material('Healer cream robe', (0.86, 0.82, 0.72), 0.05, 0.6,
+                    rim=(1.0, 0.97, 0.9), rim_strength=0.7)
+    stole = material('Healer turquoise stole', (0.05, 0.40, 0.45), 0.05, 0.5,
+                     rim=(0.6, 0.95, 1.0), rim_strength=0.8)
+    silver = material('Healer silver', (0.80, 0.83, 0.88), roughness=0.25, metallic=0.9,
+                      rim=(0.85, 0.95, 1.0), rim_strength=0.8)
+    wood = material('Healer pale wood', (0.62, 0.48, 0.32), 0.0, 0.5,
+                    rim=(1.0, 0.9, 0.7), rim_strength=0.6)
+    glow = material('Healer aqua light', (0.30, 0.85, 1.0), 0.4, 0.1,
+                    emission=(0.20, 0.75, 1.0), strength=0.7,
+                    rim=(0.8, 1.0, 1.0), rim_strength=1.5)
+    skin = material('Healer skin ' + tone, MEMBER_SKINS[tone], 0.2, 0.4,
+                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    hair = material('Healer dark hair', (0.10, 0.06, 0.04), 0.1, 0.45,
+                    rim=(0.8, 0.7, 0.6), rim_strength=0.6, coat=0.3)
+    eye = material('Healer eyes', (0.03, 0.02, 0.02), roughness=0.2, coat=1.0)
+
+    def emblem(name, center, radius, drop_mat):
+        """The drop-in-a-ring emblem, facing the front (-Y)."""
+        bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=radius * 0.16,
+                                         location=center, rotation=(math.pi / 2, 0, 0))
+        finish(bpy.context.object, silver, True, name + ' ring')
+        cx, cy, cz = center
+        sphere(name + ' drop', (cx, cy, cz - radius * 0.2), (radius * 0.42,) * 3, drop_mat, 20)
+        cone(name + ' drop tip', (cx, cy, cz - radius * 0.05), (cx, cy, cz + radius * 0.62),
+             radius * 0.36, 0, drop_mat, 20, True)
+
+    def body(x, y):
+        # The lowered hood lies behind the neck; the stole hangs from a band
+        # round the neck down the front in two broad strips.
+        sphere('Healer lowered hood', (x, y + 0.11, 0.86), (0.18, 0.10, 0.08), robe, 24)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.12, minor_radius=0.03, location=(x, y, 0.87))
+        finish(bpy.context.object, stole, True, 'Healer stole collar')
+        for side in (-1, 1):
+            tube('Healer stole strip', [(x + side * 0.08, y - 0.11, 0.86),
+                                        (x + side * 0.08, y - 0.17, 0.60),
+                                        (x + side * 0.08, y - 0.24, 0.12)],
+                 [(0.045, 0.012)] * 3, stole, sides=8, smooth=True)
+        emblem('Healer chest emblem', (x, y - 0.175, 0.72), 0.05, silver)
+        # Staff in the right hand (screen left), its silver ring holding a
+        # floating drop crystal above the head.
+        shaft = (x - 0.30, y - 0.10)
+        tube('Healer staff', [(shaft[0], shaft[1], 0.0), (shaft[0], shaft[1], 0.70),
+                              (shaft[0], shaft[1], 1.40)], [0.024, 0.024, 0.022], wood,
+             sides=8, smooth=True)
+        emblem('Healer staff head', (shaft[0], shaft[1], 1.52), 0.12, glow)
+        tube('Healer right sleeve', [(x - 0.17, y, 0.84), (x - 0.27, y - 0.04, 0.74),
+                                     (x - 0.29, y - 0.09, 0.76)], [0.05, 0.065, 0.075], robe,
+             sides=12, smooth=True)
+        sphere('Healer right hand', (shaft[0], shaft[1], 0.77), (0.045, 0.045, 0.045), skin, 16)
+        # Left hand raised before the chest, palm out, with a soft light.
+        tube('Healer left sleeve', [(x + 0.17, y, 0.84), (x + 0.28, y - 0.04, 0.70),
+                                    (x + 0.22, y - 0.18, 0.82)], [0.05, 0.065, 0.075], robe,
+             sides=12, smooth=True)
+        sphere('Healer left hand', (x + 0.21, y - 0.23, 0.86), (0.045, 0.02, 0.055), skin, 16)
+        sphere('Healer healing light', (x + 0.21, y - 0.31, 0.90), (0.05, 0.05, 0.05), glow, 20)
+
+    def head(x, y):
+        # Shoulder-length hair under a thin silver circlet.
+        sphere('Healer hair cap', (x, y + 0.03, 1.08), (0.155, 0.145, 0.13), hair, 32)
+        for side in (-1, 1):
+            tube('Healer hair side', [(x + side * 0.12, y - 0.02, 1.06), (x + side * 0.14, y + 0.02, 0.96),
+                                      (x + side * 0.13, y + 0.04, 0.90)], [0.05, 0.05, 0.035], hair,
+                 sides=10, smooth=True)
+        tube('Healer hair back', [(x, y + 0.10, 1.06), (x, y + 0.14, 0.96), (x, y + 0.13, 0.90)],
+             [0.11, 0.10, 0.07], hair, sides=12, smooth=True)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.152, minor_radius=0.012,
+                                         location=(x, y + 0.01, 1.10))
+        finish(bpy.context.object, silver, True, 'Healer circlet')
+        sphere('Healer circlet stone', (x, y - 0.143, 1.10), (0.022, 0.012, 0.03), glow, 12)
+
+    elf_figure(x, y, 'Healer', robe, skin, eye, body, head, ears=False)
+
+
+def sphere_shell(name, center, scale, mat, keep, thickness=0.02, reshape=None):
+    """A thin shell of a sphere keeping only the faces whose unit-sphere
+    center passes `keep(center)`: hoods and cloths over the head.
+    `reshape(co)` can then move each unit-sphere vertex, returning a Vector."""
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, location=center)
+    obj = bpy.context.object
+    mesh = bmesh.new()
+    mesh.from_mesh(obj.data)
+    bmesh.ops.delete(mesh, geom=[face for face in mesh.faces
+                                 if not keep(face.calc_center_median())], context='FACES')
+    if reshape:
+        for vert in mesh.verts:
+            vert.co = reshape(vert.co.copy())
+    mesh.to_mesh(obj.data)
+    mesh.free()
+    obj.scale = scale
+    finish(obj, mat, True, name)
+    obj.modifiers.new('Shell thickness', 'SOLIDIFY').thickness = thickness
+    return obj
+
+
+def rogue(x, y, tone):
+    """Rogue (R), a Stage 5 member: a thief who gets by on sharp eyes and
+    tricks rather than force, so it carries no weapon. An assassin-like
+    charcoal robe in one piece: a hood of one cloth over the head hanging
+    down both sides over the ears, open in front, its dark lining shading
+    the uncovered face, folding into a cowl round the neck; wide sleeves
+    and a rope belt.
+    Crouched with the knees bent out and leaning a little forward, one hand
+    dangles a ring of keys and picks at face height, the other is held out
+    to say "wait" (it stops the party before danger). A small coil of rope
+    hangs at the hip. Reads as neither man nor woman. `tone` picks one of
+    `MEMBER_SKINS`.
+    """
+    charcoal = material('Rogue charcoal cloth', (0.11, 0.11, 0.12), 0.05, 0.6,
+                        rim=(0.6, 0.7, 0.9), rim_strength=0.6)
+    leather = material('Rogue brown leather', (0.22, 0.12, 0.05), 0.0, 0.5,
+                       rim=(1.0, 0.75, 0.5), rim_strength=0.8)
+    trousers = material('Rogue brown trousers', (0.26, 0.18, 0.12), 0.0, 0.6,
+                        rim=(0.9, 0.7, 0.5), rim_strength=0.6)
+    lining = material('Rogue hood lining', (0.02, 0.02, 0.025), roughness=0.8)
+    rope = material('Rogue hemp rope', (0.72, 0.56, 0.32), 0.0, 0.6,
+                    rim=(1.0, 0.9, 0.7), rim_strength=0.6)
+    brass = material('Rogue brass keys', (1.0, 0.78, 0.35), roughness=0.3, metallic=0.4,
+                     rim=(1.0, 0.9, 0.6), rim_strength=1.2)
+    skin = material('Rogue skin ' + tone, MEMBER_SKINS[tone], 0.2, 0.4,
+                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    eye = material('Rogue eyes', (0.02, 0.02, 0.02), roughness=0.15, coat=1.0)
+    legs, head_start = set(), set()
+
+    def body(x, y):
+        # A low crouch, knees bent out to the sides (bent forward, toward
+        # the camera, they looked thin and twisted), the left foot a little
+        # ahead; these stay upright while the rest of the figure leans.
+        start = set(bpy.data.objects)
+        for side, step in ((-1, 0.02), (1, -0.06)):
+            hip, knee = (x + side * 0.08, y, 0.42), (x + side * 0.16, y - 0.05 + step, 0.25)
+            ankle = (x + side * 0.11, y + step, 0.07)
+            tube('Rogue leg', [hip, knee, ankle], [0.085, 0.078, 0.068], trousers, sides=12,
+                 smooth=True)
+            tube('Rogue boot', [(ankle[0], ankle[1] + 0.03, 0.08), (ankle[0], ankle[1] - 0.06, 0.04),
+                                (ankle[0], ankle[1] - 0.11, 0.03)], [0.07, 0.065, 0.045], charcoal,
+                 sides=10, smooth=True)
+        legs.update(set(bpy.data.objects) - start)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.175, minor_radius=0.018, location=(x, y, 0.58))
+        finish(bpy.context.object, rope, True, 'Rogue rope belt')
+        for dx in (-0.02, 0.02):
+            tube('Rogue belt end', [(x + dx, y - 0.17, 0.57), (x + dx * 2, y - 0.19, 0.46),
+                                    (x + dx * 2.5, y - 0.20, 0.38)], [0.016, 0.015, 0.012], rope,
+                 sides=6, smooth=True)
+        # The hood folds into a cowl round the neck.
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.14, minor_radius=0.055, location=(x, y + 0.01, 0.88))
+        finish(bpy.context.object, charcoal, True, 'Rogue cowl')
+        sphere('Rogue pouch', (x + 0.14, y - 0.10, 0.52), (0.06, 0.05, 0.06), leather, 16)
+        # A small coil of rope at the side of the left hip.
+        coil = Vector((x + 0.25, y + 0.02, 0.50))
+        for k in range(3):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.07 - 0.01 * k, minor_radius=0.018,
+                                             location=coil + Vector((0.008 * k, -0.01 * k, 0)),
+                                             rotation=(math.pi / 2, 0, 0.6))
+            finish(bpy.context.object, rope, True, 'Rogue rope coil')
+        # Right hand (screen left) raised beside the face, dangling the keys.
+        tube('Rogue right sleeve', [(x - 0.17, y, 0.84), (x - 0.34, y - 0.02, 0.86),
+                                    (x - 0.36, y - 0.10, 1.06)], [0.055, 0.065, 0.08], charcoal,
+             sides=12, smooth=True)
+        sphere('Rogue right hand', (x - 0.36, y - 0.12, 1.10), (0.045, 0.045, 0.045), skin, 16)
+        ring = Vector((x - 0.36, y - 0.13, 1.00))
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.07, minor_radius=0.014, location=ring,
+                                         rotation=(math.pi / 2, 0, 0))
+        finish(bpy.context.object, brass, True, 'Rogue key ring')
+        for k, dx in enumerate((-0.05, 0.0, 0.05)):
+            top = ring + Vector((dx, -0.01, -0.06))
+            bottom = top + Vector((dx * 0.8, -0.01, -0.17 - 0.04 * (k % 2)))
+            tube('Rogue key', [top, bottom], [0.018, 0.018], brass, sides=6)
+            block('Rogue key bit', tuple(bottom + Vector((0.022, 0, 0.025))), (0.045, 0.012, 0.04),
+                  brass, 0.005)
+        # Left hand held out to the side at shoulder height, palm out: "wait".
+        tube('Rogue left sleeve', [(x + 0.17, y, 0.84), (x + 0.34, y - 0.04, 0.80),
+                                   (x + 0.42, y - 0.10, 0.92)], [0.055, 0.065, 0.08], charcoal,
+             sides=12, smooth=True)
+        sphere('Rogue left hand', (x + 0.44, y - 0.12, 0.96), (0.035, 0.05, 0.065), skin, 16)
+        head_start.update(bpy.data.objects)
+
+    def head(x, y):
+        # The hood is one cloth joined over the head and hanging straight
+        # down on both sides over the ears to the shoulders, open all down
+        # the front below a point on the brow; the crown comes to only a
+        # slight point at the back.
+        # A near-black lining shows at its edges and shades the face.
+        # (A round shell read as a helmet, a hem flared to the shoulders as
+        # long hair, and a tall point as a costume cone.)
+        def drape(co):
+            t = max(0.0, co.z - 0.2) / 0.8
+            co.y += 0.12 * t * t
+            co.z += 0.08 * t * t
+            # Draw the cloth at the brow point a little forward.
+            brow = max(0.0, 1 - abs(co.x) / 0.3) * max(0.0, 1 - abs(co.z - 0.45) / 0.35)
+            if co.y < 0:
+                co.y -= 0.12 * brow
+            if co.z < 0:
+                co.x *= 1 - 0.15 * co.z
+                co.z *= 2.3
+            return co
+
+        def front_open(c):
+            # The opening is a triangle pointing up to the middle of the
+            # brow, so the hood's edge slants down from there to each side.
+            return not (c.y < -0.3 and c.z < 0.48 - 0.7 * abs(c.x)) and c.z > -0.9
+
+        sphere_shell('Rogue hood', (x, y + 0.03, 1.06), (0.205, 0.20, 0.20), charcoal,
+                     front_open, reshape=drape)
+        sphere_shell('Rogue hood lining', (x, y + 0.03, 1.06), (0.19, 0.185, 0.19), lining,
+                     front_open, 0.005, reshape=drape)
+
+    upper = set(bpy.data.objects)
+    elf_figure(x, y, 'Rogue', charcoal, skin, eye, body, head, skirt=(0.23, 0.19, 0.16),
+               skirt_z=(0.32, 0.46, 0.58), ears=False)
+    # Lean the body forward over the bent knees, tilting the head back as
+    # much so the eyes still face the camera. (Turning the figure to show
+    # the lean in profile made it look like it was diving.)
+    bpy.context.view_layer.update()
+    figure = set(bpy.data.objects) - upper
+    hip = Vector((x, y, 0.42 * ELF_STRETCH))
+    lean = Matrix.Translation(hip) @ Matrix.Rotation(0.18, 4, 'X') @ Matrix.Translation(-hip)
+    neck = lean @ Vector((x, y, 0.90 * ELF_STRETCH))
+    unlean = Matrix.Translation(neck) @ Matrix.Rotation(-0.18, 4, 'X') @ Matrix.Translation(-neck)
+    for obj in figure:
+        if obj not in legs:
+            obj.matrix_world = lean @ obj.matrix_world
+        if obj not in head_start:
+            obj.matrix_world = unlean @ obj.matrix_world
+
+
 def pegasus(x, y):
     """Pegasus companion: a small, slender fairy horse of glowing pearl,
     hovering with legs tucked under, on wide feathered wings large for its
@@ -2438,6 +2681,10 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock,
             **{'jester-' + tone: (lambda tone: lambda x, y: jester(x, y, tone))(tone)
+               for tone in MEMBER_SKINS},
+            **{'healer-' + tone: (lambda tone: lambda x, y: healer(x, y, tone))(tone)
+               for tone in MEMBER_SKINS},
+            **{'rogue-' + tone: (lambda tone: lambda x, y: rogue(x, y, tone))(tone)
                for tone in MEMBER_SKINS}}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)

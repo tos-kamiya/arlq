@@ -26,7 +26,11 @@ models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('M', 'mimic', (
            ('L', 'lifebringer-elf', (0, 0)), ('S', 'sylvan-elf', (0, 0)),
            ('rock', 'golem-rock', (0, 0)),
            ('jester-light', 'jester-light', (0, 0)), ('jester-medium', 'jester-medium', (0, 0)),
-           ('jester-dark', 'jester-dark', (0, 0))]
+           ('jester-dark', 'jester-dark', (0, 0)),
+           ('healer-light', 'healer-light', (0, 0)), ('healer-medium', 'healer-medium', (0, 0)),
+           ('healer-dark', 'healer-dark', (0, 0)),
+           ('rogue-light', 'rogue-light', (0, 0)), ('rogue-medium', 'rogue-medium', (0, 0)),
+           ('rogue-dark', 'rogue-dark', (0, 0))]
 if '--only' in sys.argv:
     only = sys.argv[sys.argv.index('--only') + 1:]
     models = [model for model in models if model[0] in only]
