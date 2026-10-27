@@ -167,27 +167,32 @@ WALL_TINT = {VISIBLE_WALL: 2.4, WALL: 1.75}
 FLOOR_PARTS = ('a', 'b')
 FLOOR_TINTS = {VISIBLE_FLOOR: (78, 72, 66), FLOOR: (42, 39, 36)}
 FLOOR_CHECKER_SHADE = 0.88
-# Barrier cells show red flames burning on the ordinary floor, in place of
-# the red "=": a few translucent cone-shaped fires with wide roots rising from
-# spots in the lower half of the cell (two variants, laid out as a
-# checkerboard), glowing at their roots and added onto the floor, the tallest
-# reaching a little into the cell above. While the protective amulet makes
-# barriers harmless, the cells within one cell of the player (its own and the
-# eight around it) show only faint grey smoke of the same shape. Flames outside the current
-# view are darkened like the floor. Sizes are in cell widths/heights.
-FLAME_TEXELS = (48, 96)
-FLAME_HEIGHT = 1.3
-FLAME_BASE = 0.0
-FLAME_ALPHA = 0.9
-# Opacity of a flame's middle relative to its edges.
-FLAME_CORE_ALPHA = 0.55
-FLAME_EXPLORED_SHADE = 0.5
-# Fires of the second variant: (centre, root centre height as a fraction of
-# the lower half, half width, height, brightness); the fires further back are
-# dimmer. The first variant is its mirror image.
-_FLAME_FIRES = ((0.335, 0.377, 0.28, 0.48, 1.0), (0.716, 0.505, 0.26, 0.40, 1.0),
-                (0.269, 0.932, 0.23, 0.40, 0.6), (0.601, 1.313, 0.15, 0.27, 0.6))
-FLAME_FIRES = (tuple((1 - centre, *rest) for centre, *rest in _FLAME_FIRES), _FLAME_FIRES)
+# Barrier cells show a magic barrier on the ordinary floor, in place of the
+# red "=": a glowing orange plate laid over the cell and translucent sheets of
+# orange light rising from its edges, fading upward, with a few sparks drifting
+# inside (two variants with different shimmer and sparks, laid out as a
+# checkerboard), added onto the floor; the back sheet reaches a little into the
+# cell above. While the protective amulet makes barriers harmless, the cells
+# within one cell of the player (its own and the eight around it) show only
+# faint grey smoke of the same shape. Barriers outside the current view are
+# darkened like the floor. Sizes are in cell widths/heights.
+BARRIER_TEXELS = (48, 96)
+BARRIER_HEIGHT = 1.5
+BARRIER_BASE = 0.0
+BARRIER_ALPHA = 0.9
+BARRIER_EXPLORED_SHADE = 0.5
+# Gap between the plate and the cell's edges, and height of the light sheets.
+BARRIER_INSET = 0.1
+BARRIER_SHEET_HEIGHT = 0.55
+# Peak strength of the plate's inside and rim, the front and back sheets, and
+# the vertical seams where the sheets meet.
+BARRIER_PLATE = (0.22, 0.75)
+BARRIER_SHEETS = (0.55, 0.45)
+BARRIER_SEAM = 0.6
+# Per variant: shimmer phase and sparks as (across, height in sheet heights).
+BARRIER_SHIMMER = (0.0, 0.5)
+BARRIER_SPARKS = (((0.3, 0.45), (0.62, 0.8), (0.78, 0.3)),
+                  ((0.22, 0.7), (0.5, 0.35), (0.72, 0.6)))
 SMOKE_TINT = (150, 150, 156)
 SMOKE_OPACITY = 140
 # Rocks fallen through a pit (d.DECOR_FALLEN_ROCKS) are hidden where the
@@ -243,73 +248,79 @@ def pillar_image(side):
     return pyglet.image.ImageData(width, rows, 'RGBA', bytes(rgba), pitch=width * 4)
 
 
-def smoke_image(flame):
-    """A white copy of `flame` with the same shape, for the cooled smoke."""
-    width, height = flame.width, flame.height
-    rgba = bytearray(flame.get_data('RGBA', width * 4))
+def smoke_image(barrier):
+    """A white copy of `barrier` with the same shape, for the cooled smoke."""
+    width, height = barrier.width, barrier.height
+    rgba = bytearray(barrier.get_data('RGBA', width * 4))
     for offset in range(0, len(rgba), 4):
         rgba[offset:offset + 3] = b'\xff\xff\xff'
     return pyglet.image.ImageData(width, height, 'RGBA', bytes(rgba), pitch=width * 4)
 
 
-def flame_image(variant):
-    """A few fires rising from spots in the lower half of a cell.
+def barrier_image(variant):
+    """A magic barrier: a glowing plate on the floor with light rising from it.
 
-    Each fire is a cone seen at the sprites' 60-degree view: its round root
-    shows as an ellipse, widest and bright orange, and it narrows to a deep
-    red tip, with a soft glow around the root. Its body is translucent,
-    thinner inside than along its edges, so the floor shows through, and
-    overlapping fires add up so the one behind shows through. The image is
-    drawn additively from the cell's bottom; `variant` (0 or 1) places the
-    fires differently so neighbouring cells do not repeat.
+    Seen at the sprites' 60-degree view, the plate covers the cell inside a
+    small inset, bright along its rim. Sheets of light rise from its near
+    (front) and far (back) edges, and the side sheets show edge-on as bright
+    seams; the sheets fade upward and shimmer in faint vertical bands. Parts
+    combine like light so the back sheet shows through the front one. The
+    image is drawn additively from the cell's bottom; `variant` (0 or 1)
+    shifts the shimmer and sparks so neighbouring cells do not repeat.
     """
-    width, height = FLAME_TEXELS
-    lower_half = 0.5 / FLAME_HEIGHT  # the cell's middle, in image fractions
-    # Image heights per image width for a circle on the floor.
-    flatten = GROUND_DISC_FLATTEN * CELL_SIZE_X / (FLAME_HEIGHT * CELL_SIZE_Y)
-    fires = FLAME_FIRES[variant]
-    root, tip = (255, 160, 60), (230, 35, 15)
+    width, height = BARRIER_TEXELS
+    cell = 1 / BARRIER_HEIGHT  # one cell height, in image fractions
+    inset = BARRIER_INSET
+    near, far = inset * cell, (1 - inset) * cell
+    sheet = BARRIER_SHEET_HEIGHT * cell
+    phase = BARRIER_SHIMMER[variant]
+    sparks = BARRIER_SPARKS[variant]
+    plate_color, low, high = (255, 125, 30), (255, 150, 45), (255, 85, 10)
     rgba = bytearray()
     for row in range(height):
         v = (row + 0.5) / height
         for col in range(width):
             u = (col + 0.5) / width
-            # Fires combine like light: each lets the others show through.
-            clear, weight, along = 1.0, 0.0, 0.0
-            for centre, base, half, tall, bright in fires:
-                base *= lower_half
-                t = (v - base) / tall
-                ry = half * flatten
-                # A soft glow on the floor around the root.
-                glow = 0.35 * max(0.0, 1 - math.hypot((u - centre) / (half * 1.4),
-                                                      (v - base) / (ry * 1.4)))
-                value = glow
-                depth = 1.0
-                if t < 0 and v - base > -ry:
-                    # The near half of the root ellipse, thinner toward its rim.
-                    depth = math.sqrt(1 - ((v - base) / ry) ** 2)
-                    w = half * depth
-                    t = 0.0
-                elif 0 <= t < 1:
-                    # Above the root's centre, narrowing to the tip.
-                    w = half * (1 - t) ** 0.9
-                else:
-                    w = 0.0
-                if w > 0:
-                    across = abs(u - centre) / w
+            parts = []  # (strength, how far up the sheets, 0..1)
+            inside_u = inset <= u <= 1 - inset
+            # Distance to the plate's rim, in cell widths (v rescaled to cells).
+            rim = min(u - inset, 1 - inset - u, (v - near) / cell, (far - v) / cell)
+            if rim >= 0:
+                inner, edge = BARRIER_PLATE
+                parts.append((inner + (edge - inner) * max(0.0, 1 - rim / 0.06), 0.0))
+            elif rim > -0.05:
+                parts.append((BARRIER_PLATE[1] * (1 + rim / 0.05) ** 2, 0.0))
+            shimmer = 0.75 + 0.25 * math.sin(2 * math.pi * (u * 3 + phase))
+            for base, peak in ((near, BARRIER_SHEETS[0]), (far, BARRIER_SHEETS[1])):
+                t = (v - base) / sheet
+                if inside_u and 0 <= t < 1:
+                    parts.append((peak * shimmer * (1 - t) ** 1.6, t))
+            # Side sheets seen edge-on: thin seams from the front edge to the
+            # top of the back sheet.
+            t = (v - near) / (far - near + sheet)
+            if 0 <= t < 1:
+                for side in (inset, 1 - inset):
+                    across = abs(u - side) / 0.03
                     if across < 1:
-                        # Hotter near the root, fading softly toward the edges.
-                        core = FLAME_CORE_ALPHA + (1 - FLAME_CORE_ALPHA) * 0.5 * max(0.0, 1 - t / 0.25)
-                        body = depth * (core + (1 - core) * across ** 2)
-                        value = max(value, body * (1 - across ** 2) ** 0.8 * (1 - t) ** 0.6)
-                value *= bright
+                        top = max(0.0, (v - far) / sheet)
+                        parts.append((BARRIER_SEAM * (1 - across ** 2) * (1 - top) ** 1.6,
+                                      top))
+            for spark_u, spark_t in sparks:
+                d2 = ((u - spark_u) / 0.035) ** 2 + ((v - near - spark_t * sheet) / 0.02) ** 2
+                if d2 < 1:
+                    parts.append((0.8 * (1 - d2), spark_t))
+            clear, weight, along = 1.0, 0.0, 0.0
+            for value, t in parts:
                 clear *= 1 - min(1.0, value)
                 weight += value
-                along += value * max(t, 0.0)
+                along += value * t
             strength = 1 - clear
-            mix = min(1.0, along / weight / 0.7) if weight > 0 else 1.0
-            color = [round(a + (b - a) * mix) for a, b in zip(root, tip)]
-            rgba += bytes((*color, round(255 * min(1.0, FLAME_ALPHA * strength))))
+            if weight > 0 and along == 0:
+                color = plate_color
+            else:
+                mix = min(1.0, along / weight) if weight > 0 else 1.0
+                color = [round(a + (b - a) * mix) for a, b in zip(low, high)]
+            rgba += bytes((*color, round(255 * min(1.0, BARRIER_ALPHA * strength))))
     return pyglet.image.ImageData(width, height, 'RGBA', bytes(rgba), pitch=width * 4)
 
 
@@ -437,8 +448,8 @@ class SpriteUI(PygletUI):
                                 for char, filename in TERRAIN_FILES.items()
                                 if (assets / filename).is_file()}
         self._terrain_regions = {}
-        self._flame_images = [flame_image(variant) for variant in (0, 1)]
-        self._smoke_images = [smoke_image(flame) for flame in self._flame_images]
+        self._barrier_images = [barrier_image(variant) for variant in (0, 1)]
+        self._smoke_images = [smoke_image(barrier) for barrier in self._barrier_images]
         self._floor_group = pyglet.graphics.Group(order=-1)
         # Rows are painted north to south: a row's walls, then its characters,
         # so walls overlap characters to their north but not to their south.
@@ -721,26 +732,26 @@ class SpriteUI(PygletUI):
             self.draw_stage(decor=decor, **kwargs)
 
     def _draw_barrier(self, x, y, field, discovered_at):
-        """Thin red flames on the floor, or faint smoke near the player while harmless."""
+        """Orange magic light rising from the floor, or faint smoke near the player while harmless."""
         visible = self._cur_torched is not None and self._cur_torched[y][x]
         self._draw_floor(x, y, VISIBLE_FLOOR if visible else FLOOR, field, discovered_at)
         cooled = False
         if self._cooling_center is not None:
             cx, cy = self._cooling_center
             cooled = max(abs(x - cx), abs(y - cy)) <= 1
-        image = (self._smoke_images if cooled else self._flame_images)[(x + y) % 2]
-        bottom = self.window_height - (y + 1 - FLAME_BASE) * self.cell_size_y
+        image = (self._smoke_images if cooled else self._barrier_images)[(x + y) % 2]
+        bottom = self.window_height - (y + 1 - BARRIER_BASE) * self.cell_size_y
         group = self._row_group(y, 'pillar-back')
         blend_dest = pyglet.gl.GL_ONE_MINUS_SRC_ALPHA if cooled else pyglet.gl.GL_ONE
         scale_x = (self._field_col_width(x) + 1) / image.width
-        scale_y = FLAME_HEIGHT * self.cell_size_y / image.height
+        scale_y = BARRIER_HEIGHT * self.cell_size_y / image.height
         tint = (self._display_color(SMOKE_TINT) if cooled else self._display_color(
-            (round(255 * (1 if visible else FLAME_EXPLORED_SHADE)),) * 3
+            (round(255 * (1 if visible else BARRIER_EXPLORED_SHADE)),) * 3
         ))
         opacity = SMOKE_OPACITY if cooled else 255
         signature = ('sprite', id(image), self._field_col_x(x), bottom, scale_x, scale_y,
                      id(group), pyglet.gl.GL_SRC_ALPHA, blend_dest, tint, opacity)
-        flame = self._draw_bounded_object(
+        light = self._draw_bounded_object(
             self._field_col_x(x), image.width * scale_x, signature,
             lambda: pyglet.sprite.Sprite(
                 image, x=self._field_col_x(x), y=bottom,
@@ -748,10 +759,10 @@ class SpriteUI(PygletUI):
                 batch=self.batch, group=group,
             ),
         )
-        self._set_drawable_attribute(flame, 'scale_x', scale_x)
-        self._set_drawable_attribute(flame, 'scale_y', scale_y)
-        self._set_drawable_attribute(flame, 'color', tint)
-        self._set_drawable_attribute(flame, 'opacity', opacity)
+        self._set_drawable_attribute(light, 'scale_x', scale_x)
+        self._set_drawable_attribute(light, 'scale_y', scale_y)
+        self._set_drawable_attribute(light, 'color', tint)
+        self._set_drawable_attribute(light, 'opacity', opacity)
 
     def _draw_stairs(self, pos, char):
         if char in d.SCHOLAR_STAIR_CHARS:
@@ -1467,7 +1478,7 @@ class SpriteUI(PygletUI):
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
         if text == d.CHAR_BARRIER and self._floor_images is not None:
-            return  # shown by the flames themselves
+            return  # shown by the barrier light itself
         if text in self._mark_images and (x - 1, y) in self._sprite_cells:
             return self._draw_rank_mark((x - 1, y), text, color)
         self._field_text_cells = self._field_text_cells | {pos}

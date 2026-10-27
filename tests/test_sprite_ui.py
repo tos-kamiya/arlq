@@ -541,7 +541,7 @@ def _barrier_ui(monkeypatch, cooling_center):
     ui = SpriteUI.__new__(SpriteUI)
     image = lambda name: SimpleNamespace(name=name, width=48, height=96)
     ui._floor_images = [image('floor-a'), image('floor-b')]
-    ui._flame_images = [image('flame-a'), image('flame-b')]
+    ui._barrier_images = [image('barrier-a'), image('barrier-b')]
     ui._smoke_images = [image('smoke-a'), image('smoke-b')]
     ui._cooling_center = cooling_center
     ui._cur_torched = [[1] * 5 for _ in range(5)]
@@ -562,34 +562,38 @@ def _barrier_ui(monkeypatch, cooling_center):
 
 @pytest.mark.parametrize('center, pos, cooled', [
     (None, (2, 2), False), ((2, 2), (2, 2), True), ((2, 2), (3, 3), True), ((2, 2), (4, 2), False)])
-def test_barrier_burns_on_the_floor_and_only_smokes_near_a_protected_player(
+def test_barrier_glows_on_the_floor_and_only_smokes_near_a_protected_player(
         monkeypatch, center, pos, cooled):
     ui, field = _barrier_ui(monkeypatch, center)
     ui._draw_tile(*pos, sprite_funcs.VISIBLE_FLOOR, field, lambda x, y: True)
-    stone, flame = ui._drawables
+    stone, light = ui._drawables
     assert stone.image.name.startswith('floor')
-    assert flame.image.name.startswith('smoke' if cooled else 'flame')
+    assert light.image.name.startswith('smoke' if cooled else 'barrier')
     if cooled:
-        assert flame.color == sprite_funcs.SMOKE_TINT
-        assert flame.blend_dest != pyglet.gl.GL_ONE
+        assert light.color == sprite_funcs.SMOKE_TINT
+        assert light.blend_dest != pyglet.gl.GL_ONE
     else:
-        assert flame.blend_dest == pyglet.gl.GL_ONE  # additive glow
-    # Flames rise above the cell into the one to its north.
-    assert flame.scale_y * 96 > ui.cell_size_y
+        assert light.blend_dest == pyglet.gl.GL_ONE  # additive glow
+    # The light rises above the cell into the one to its north.
+    assert light.scale_y * 96 > ui.cell_size_y
 
 
-def test_flame_image_is_bright_at_the_root_and_clear_at_the_top():
-    image = sprite_funcs.flame_image(0)
-    width, height = sprite_funcs.FLAME_TEXELS
+def test_barrier_image_glows_from_the_floor_and_fades_upward():
+    image = sprite_funcs.barrier_image(0)
+    width, height = sprite_funcs.BARRIER_TEXELS
     data = image.get_data('RGBA', width * 4)
     alpha = lambda col, row: data[(row * width + col) * 4 + 3]
-    assert max(alpha(col, height // 8) for col in range(width)) > 120
-    # The body is translucent above the root.
-    assert max(alpha(col, height // 3) for col in range(width)) < 200
+    pixel = lambda col, row: data[(row * width + col) * 4:(row * width + col) * 4 + 3]
+    near = round(sprite_funcs.BARRIER_INSET / sprite_funcs.BARRIER_HEIGHT * height)
+    # The front sheet is bright where it leaves the floor and orange.
+    r, g, b = pixel(width // 2, near + 1)
+    assert alpha(width // 2, near + 1) > 120 and r > g > b
+    # The plate is translucent inside, and the sheets fade before the top.
+    assert alpha(width // 2, height // 3) < 200
     assert alpha(width // 2, height - 1) == 0 and alpha(0, 2) < 20
 
 
-def test_barrier_glyph_is_left_to_the_flames(sprite_ui):
+def test_barrier_glyph_is_left_to_the_barrier_light(sprite_ui):
     sprite_ui._floor_images = ['floor-a', 'floor-b']
     sprite_ui._draw_field_text((4, 5), d.CHAR_BARRIER, (220, 82, 82), True)
     assert not sprite_ui.text_calls and not sprite_ui._drawables
