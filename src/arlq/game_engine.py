@@ -55,8 +55,9 @@ ELF_REPEAT_MESSAGES = {
 STATUS_POPUP_TICKS = 2
 
 
-def _set_status_popup(player: d.Player, text: str) -> str:
+def _set_status_popup(player: d.Player, text: str, tone: str = "default") -> str:
     player.status_popup = text
+    player.status_popup_tone = tone
     player.status_popup_ticks = STATUS_POPUP_TICKS
     return text
 
@@ -277,7 +278,8 @@ def _apply_terrain_hazards(
     old_lp = player.lp
     if apply_barrier_damage(field, player, previous):
         damage = max(0, old_lp - player.lp)
-        _set_status_popup(player, f"LP-{damage:g}")
+        tone = "green" if d.has_member(player, "Guardian") else "default"
+        _set_status_popup(player, f"LP-{damage:g}", tone)
         event_message = trp("-- The barrier burns you.", 5)
         if trace is not None:
             trace.record_damage("barrier")
@@ -286,7 +288,8 @@ def _apply_terrain_hazards(
         player.lp -= d.caltrop_lp_damage(player)
         damage = max(0, old_lp - player.lp)
         if damage:
-            _set_status_popup(player, f"LP-{damage:g}")
+            tone = "green" if d.has_member(player, "Guardian") else "default"
+            _set_status_popup(player, f"LP-{damage:g}", tone)
         field[player.y][player.x] = d.CHAR_FLOOR
         if trace is not None:
             trace.record_damage("caltrop")
@@ -319,6 +322,7 @@ def _marksman_shoot(
 ) -> bool:
     """Resolve eligible marksman shots and retain their visible arrow marks."""
     was_shot = False
+    player.marksman_damage_prevented = False
     for entity in current.entities:
         if (
             not isinstance(entity, d.Monster)
@@ -369,7 +373,9 @@ def _marksman_shoot(
             d.has_member(player, "Rogue")
             and entity.marksman_shots_fired % 2 == 1
         )
-        if not no_damage:
+        if no_damage:
+            player.marksman_damage_prevented = True
+        else:
             player.lp -= d.MARKSMAN_LP_DAMAGE
             if trace is not None:
                 trace.record_damage("marksman")
@@ -1242,8 +1248,14 @@ def _resolve_party_contact(
         else None
     )
     popup = None
+    popup_tone = "default"
     if "A" in party_chars and player.level > old_level:
         popup = f"LVL+{_format_popup_amount(player.level - old_level)}"
+        if (
+            d.experience_share_count(player, stage_num) != 1
+            or d.experience_multiplier(player, stage_num) != 1
+        ):
+            popup_tone = "green"
     elif "E" in party_chars:
         lost_level = max(0, old_level - player.level)
         if lost_level:
@@ -1263,7 +1275,7 @@ def _resolve_party_contact(
     if boss_message is not None:
         return _ContactResult(boss_message)
     if popup:
-        return _ContactResult(_set_status_popup(player, popup))
+        return _ContactResult(_set_status_popup(player, popup, popup_tone))
     return _ContactResult(None)
 
 
@@ -1692,19 +1704,28 @@ def _process_multi_floor_turn(
         ).format(n=floor[0] + 1, total=len(floors))
         current = floors[floor[0]]
         collapse_transition = True
+    guardian_reduced_hazard = d.has_member(player, "Guardian") and (
+        current.field[player.y][player.x] in (d.CHAR_BARRIER, d.CHAR_CALTROP)
+    )
     old_hazard_lp = player.lp
     hazard_message = _apply_terrain_hazards(
         current, player, previous, trace=trace
     )
     if hazard_message is not None:
         event_message = hazard_message
+    player.marksman_damage_prevented = False
     if (player.x, player.y) != previous or collapse_transition:
         marksman_hit = _marksman_shoot(current, player, trace)
         if marksman_hit and repeat_stop_reasons is not None:
             repeat_stop_reasons.add("marksman_hit")
     hazard_damage = max(0, old_hazard_lp - player.lp)
-    if hazard_damage:
-        _set_status_popup(player, f"LP-{hazard_damage:g}")
+    if hazard_damage or player.marksman_damage_prevented:
+        tone = (
+            "green"
+            if guardian_reduced_hazard or player.marksman_damage_prevented
+            else "default"
+        )
+        _set_status_popup(player, f"LP-{hazard_damage:g}", tone)
 
     hit = next(
         (

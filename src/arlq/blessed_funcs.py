@@ -389,11 +389,23 @@ class BlessedUI:
             if player.status_popup and player.status_popup_ticks > 0:
                 popup_width = self.term.length(player.status_popup)
                 if py > 0 and px + 1 + popup_width <= d.FIELD_WIDTH:
-                    put(px + 1, py - 1, player.status_popup, bold=True)
+                    put(
+                        px + 1,
+                        py - 1,
+                        player.status_popup,
+                        player.status_popup_tone,
+                        bold=True,
+                    )
                 else:
                     popup_x = max(0, px - popup_width)
                     popup_y = min(py + 1, d.FIELD_HEIGHT - 1)
-                    put(popup_x, popup_y, player.status_popup, bold=True)
+                    put(
+                        popup_x,
+                        popup_y,
+                        player.status_popup,
+                        player.status_popup_tone,
+                        bold=True,
+                    )
         if not floor_view and player.companion and px + 1 < d.FIELD_WIDTH:
             put(
                 px + 1,

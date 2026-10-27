@@ -937,7 +937,9 @@ class PygletUI:
             )
         self._draw_field_text(pos, "@", self._tone_color(foreground), bold=True)
 
-    def _draw_player_status_popup(self, pos: d.Point, text: str) -> None:
+    def _draw_player_status_popup(
+        self, pos: d.Point, text: str, tone: str = "default"
+    ) -> None:
         text_width = self._text_width(text, bold=True)
         text_x_offset = self._field_text_x_offset()
         player_x = pos[0] * self.cell_size_x + text_x_offset
@@ -945,7 +947,7 @@ class PygletUI:
         right_y = pos[1] - 1
         if right_y >= 0 and right_x + text_width <= self.field_pixel_width:
             self._draw_text(
-                (pos[0] + 1, right_y), text, self._tone_color("default"),
+                (pos[0] + 1, right_y), text, self._tone_color(tone),
                 bold=True, x_offset=text_x_offset,
             )
             return
@@ -953,7 +955,7 @@ class PygletUI:
         left_y = min(pos[1] + 1, self.field_height - 1)
         left_x = max(0, player_x - text_width)
         self._draw_text(
-            (0, left_y), text, self._tone_color("default"), bold=True,
+            (0, left_y), text, self._tone_color(tone), bold=True,
             x_offset=left_x,
         )
 
@@ -1254,7 +1256,9 @@ class PygletUI:
                 paint(glyph)
             self._draw_player_wall_break_glyph(player)
             if player.status_popup and player.status_popup_ticks > 0:
-                self._draw_player_status_popup((px, py), player.status_popup)
+                self._draw_player_status_popup(
+                    (px, py), player.status_popup, player.status_popup_tone
+                )
 
         # Draw the right-edge strength column: the stage's monster tribes and
         # the player, ranked strongest-first. A tinted background (full
