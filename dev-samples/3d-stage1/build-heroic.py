@@ -48,7 +48,7 @@ CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
 GRID_COLS, GRID_ROWS = 14, 6
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
 # the companions and elves; the monsters added from Stage 2 on, the golem rock
-# and rank marks; then the Stage 5 Buffalo.
+# and rank marks; then the Stage 5 Buffalo and party members.
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
@@ -58,7 +58,9 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('C', 'RARE CHIMERA'), ('F', 'FIRE DRAKE'), ('X', 'CALTROP PLANT'), ('g', 'GOLEM'),
          ('rock', 'GOLEM ROCK'), ('w', 'WYRM'), ('W', 'DREAD WYRM'), ('e', 'EREBUS'),
          ('E', 'RARE EREBUS'), ('m', 'SPORE'), ('k', 'MARKSMAN'), ('V', 'VORTEX'),
-         ("'", 'RANK 2'), ('"', 'RANK 3'), ('B', 'BUFFALO')]
+         ("'", 'RANK 2'), ('"', 'RANK 3'), ('B', 'BUFFALO'),
+         ('jester-light', 'JESTER LIGHT'), ('jester-medium', 'JESTER MEDIUM'),
+         ('jester-dark', 'JESTER DARK')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -81,7 +83,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
-         'rock': 2.5}
+         'rock': 2.5, 'jester-light': 1.5, 'jester-medium': 1.5, 'jester-dark': 1.5}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters and the chest turn slightly toward screen left; the player and companions face front.
@@ -1817,6 +1819,157 @@ def sylvan_elf(x, y):
     elf_figure(x, y, 'Sylvan elf', robe, skin, eye, body, head)
 
 
+# Stage 5 party members come in three skin tones on one shared build.
+MEMBER_SKINS = {
+    'light': (0.96, 0.80, 0.66),
+    'medium': (0.66, 0.43, 0.26),
+    'dark': (0.33, 0.19, 0.11),
+}
+
+
+def diamond_material(name, first, second, size, diamond=True, **kwargs):
+    """`material()` whose base color is a harlequin pattern of `size`-wide
+    diamonds in the two colors, set on the front (X-Z) faces; with
+    `diamond=False`, a plain checkerboard of `size` squares."""
+    mat = material(name, first, **kwargs)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    coords = nodes.new('ShaderNodeTexCoord')
+    mapping = nodes.new('ShaderNodeMapping')
+    if diamond:
+        mapping.inputs['Rotation'].default_value = (0, math.radians(45), 0)
+    # Diamonds taller than wide, like a jester's motley.
+    mapping.inputs['Scale'].default_value = (1 / size, 1 / size, (0.7 if diamond else 1) / size)
+    checker = nodes.new('ShaderNodeTexChecker')
+    checker.inputs['Scale'].default_value = 1.0
+    checker.inputs['Color1'].default_value = (*first, 1)
+    checker.inputs['Color2'].default_value = (*second, 1)
+    links.new(coords.outputs['Object'], mapping.inputs['Vector'])
+    links.new(mapping.outputs['Vector'], checker.inputs['Vector'])
+    links.new(checker.outputs['Color'], nodes['Principled BSDF'].inputs['Base Color'])
+    return mat
+
+
+def jester(x, y, tone):
+    """Jester (J), a Stage 5 member: a court jester in wine-red and cream
+    motley trimmed with gold, a two-pointed cap with gold bells, a pointed
+    collar and an ivory masquerade mask, juggling three glowing gold balls
+    (the experience it brings) over the cap while balanced on one leg, the
+    other knee drawn up like an acrobat's. The mask
+    leaves no mouth or beard, so it reads as neither man nor woman. No
+    pointed ears, so it is not taken for an elf. `tone` picks one of
+    `MEMBER_SKINS`.
+    """
+    red, cream = (0.50, 0.03, 0.06), (0.92, 0.84, 0.66)
+    motley = diamond_material('Jester motley', red, cream, 0.11, transmission=0.05,
+                              roughness=0.55, rim=(1.0, 0.85, 0.7), rim_strength=0.8)
+    checks = diamond_material('Jester checkered shoes', (0.60, 0.03, 0.06), (0.95, 0.94, 0.92),
+                              0.05, diamond=False, roughness=0.45, coat=0.3,
+                              rim=(1.0, 0.9, 0.85), rim_strength=0.8)
+    wine = material('Jester wine velvet', red, 0.05, 0.6, rim=(1.0, 0.6, 0.6), rim_strength=0.8)
+    linen = material('Jester cream linen', cream, 0.05, 0.6, rim=(1.0, 0.95, 0.85),
+                     rim_strength=0.6)
+    gold = material('Jester gold', (1.0, 0.72, 0.22), roughness=0.25, metallic=0.9,
+                    rim=(1.0, 0.9, 0.6), rim_strength=0.8)
+    juggle = material('Jester juggling light', (1.0, 0.62, 0.08), 0.3, 0.15,
+                      emission=(1.0, 0.6, 0.08), strength=0.8,
+                      rim=(1.0, 0.85, 0.4), rim_strength=1.5)
+    skin_color = MEMBER_SKINS[tone]
+    skin = material('Jester skin ' + tone, skin_color, 0.2, 0.4,
+                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    # Ivory like porcelain, apart from the gold cap band above it.
+    mask = material('Jester mask', (0.95, 0.93, 0.88), 0.1, 0.3, coat=0.4,
+                    rim=(1.0, 1.0, 0.95), rim_strength=0.6)
+    eye = material('Jester eyes', (0.03, 0.02, 0.02), roughness=0.2, coat=1.0)
+
+    def body(x, y):
+        # Legs in tights, one per color: the right (screen left) stands
+        # nearly straight, the shin turned in a little; the left, in wine
+        # to stand out, is bent with the knee turned out and the foot just
+        # off the floor, toe pointing out, as in a juggler's caper. The shin
+        # does not kick back, which the 60-degree view would show as a foot
+        # flung upward. Large curled shoes in red and white checks, with bells.
+        for leg, color, hip, knee, ankle, ahead in (
+                ('right', linen, (-0.06, 0.0, 0.34), (-0.08, -0.01, 0.18), (-0.035, 0.0, 0.05),
+                 (-0.6, -0.8)),
+                ('left', wine, (0.07, 0.0, 0.36), (0.22, -0.14, 0.28), (0.10, -0.15, 0.11),
+                 (0.8, -0.6))):
+            points = [(x + px, y + py, pz) for px, py, pz in (hip, knee, ankle)]
+            tube('Jester %s leg' % leg, points, [0.078, 0.068, 0.056], color, sides=12, smooth=True)
+            ax, ay, az = ankle
+            fx, fy = ahead
+            toe = [(x + ax - fx * 0.05, y + ay - fy * 0.05, az + 0.01),
+                   (x + ax + fx * 0.09, y + ay + fy * 0.09, az - 0.01),
+                   (x + ax + fx * 0.21, y + ay + fy * 0.21, az + 0.02),
+                   (x + ax + fx * 0.25, y + ay + fy * 0.25, az + 0.10)]
+            tube('Jester %s shoe' % leg, toe, [0.075, 0.07, 0.04, 0], checks, sides=12,
+                 smooth=True)
+            sphere('Jester shoe bell', toe[-1], (0.025, 0.025, 0.025), gold, 12)
+        # Pointed collar: alternating wine and cream points round the neck,
+        # with gold bells on the front ones.
+        for k in range(10):
+            a = 2 * math.pi * k / 10 - math.pi / 2
+            base = Vector((x + 0.10 * math.cos(a), y + 0.09 * math.sin(a), 0.85))
+            tip = Vector((x + 0.22 * math.cos(a), y + 0.20 * math.sin(a), 0.75))
+            cone('Jester collar point', base, tip, 0.055, 0, wine if k % 2 else linen, 8, False)
+            if math.sin(a) < -0.3:
+                sphere('Jester collar bell', tuple(tip), (0.022, 0.022, 0.022), gold, 12)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.165, minor_radius=0.02, location=(x, y, 0.58))
+        finish(bpy.context.object, gold, True, 'Jester belt')
+        # Sleeves in opposite colors, both arms spread wide with the
+        # forearms raised and the palms up.
+        for side, sleeve in ((-1, linen), (1, wine)):
+            tube('Jester sleeve', [(x + side * 0.17, y, 0.84), (x + side * 0.38, y - 0.02, 0.74),
+                                   (x + side * 0.47, y - 0.06, 0.88)], [0.05, 0.05, 0.055], sleeve,
+                 sides=12, smooth=True)
+            sphere('Jester hand', (x + side * 0.49, y - 0.07, 0.93), (0.05, 0.045, 0.03), skin, 16)
+        # Five glowing balls in flight, arching from hand to hand high over
+        # the cap, clear of its bells.
+        for px, py, pz in ((-0.55, -0.08, 1.12), (-0.48, -0.05, 1.52), (0.0, -0.02, 1.86),
+                           (0.48, -0.05, 1.52), (0.55, -0.08, 1.12)):
+            sphere('Jester juggling ball', (x + px, y + py, pz), (0.06, 0.06, 0.06), juggle, 20)
+
+    def head(x, y):
+        # A masquerade mask: a flat ivory plate held off the face, covering
+        # the eyes and the bridge of the nose, its upper corners swept out
+        # past the head into pointed wings, edged in gold, with dark
+        # almond eyeholes. It curves less than the face, so it does not
+        # wrap round the head like a headband.
+        half = [(0.0, 0.040), (0.06, 0.045), (0.12, 0.060), (0.215, 0.115), (0.20, 0.060),
+                (0.16, 0.005), (0.12, -0.035), (0.07, -0.045), (0.03, -0.030), (0.0, -0.020)]
+        outline = half + [(-u, v) for u, v in reversed(half[1:-1])]
+
+        def on_mask(u, v, ahead=0.0):
+            return (x + u, y - 0.168 - ahead + 0.30 - math.sqrt(0.30 ** 2 - u * u), 1.035 + v)
+
+        verts = [on_mask(0.0, 0.01)] + [on_mask(u, v) for u, v in outline]
+        n = len(outline)
+        plate = mesh_object('Jester mask', verts,
+                            [(0, 1 + k, 1 + (k + 1) % n) for k in range(n)], mask, True)
+        plate.modifiers.new('Mask thickness', 'SOLIDIFY').thickness = 0.014
+        tube('Jester mask trim', [on_mask(u, v, 0.004) for u, v in outline + outline[:1]],
+             [0.008] * (n + 1), gold, sides=6, smooth=True)
+        for side in (-1, 1):
+            sphere('Jester mask eyehole', on_mask(side * 0.06, 0.005, 0.006),
+                   (0.034, 0.006, 0.018), eye, 12)
+        # A two-pointed cap: a crown over the head and two drooping horns of
+        # wine and cream, each ending in a gold bell.
+        sphere('Jester cap crown', (x, y + 0.03, 1.13), (0.155, 0.15, 0.10), motley, 32)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.15, minor_radius=0.022,
+                                         location=(x, y + 0.02, 1.11))
+        bpy.context.object.scale.y = 0.95
+        finish(bpy.context.object, gold, True, 'Jester cap band')
+        for side, color in ((-1, wine), (1, linen)):
+            horn = [(x + side * 0.06, y + 0.02, 1.15), (x + side * 0.18, y + 0.04, 1.27),
+                    (x + side * 0.31, y + 0.05, 1.27), (x + side * 0.38, y + 0.03, 1.15),
+                    (x + side * 0.39, y + 0.0, 1.05)]
+            tube('Jester cap horn', horn, [0.09, 0.07, 0.05, 0.03, 0.012], color, sides=14,
+                 smooth=True)
+            sphere('Jester cap bell', horn[-1], (0.04, 0.04, 0.04), gold, 16)
+
+    elf_figure(x, y, 'Jester', motley, skin, eye, body, head, skirt=(0.21, 0.19, 0.16),
+               skirt_z=(0.40, 0.49, 0.58), ears=False)
+
+
 def pegasus(x, y):
     """Pegasus companion: a small, slender fairy horse of glowing pearl,
     hovering with legs tucked under, on wide feathered wings large for its
@@ -2276,7 +2429,9 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             'g': golem, 'w': wyrm, 'W': lambda x, y: wyrm(x, y, True), 'V': vortex, 'k': marksman, 'm': spore, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
-            'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock}
+            'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock,
+            **{'jester-' + tone: (lambda tone: lambda x, y: jester(x, y, tone))(tone)
+               for tone in MEMBER_SKINS}}
 for char, name, x, y in ROW:
     start = set(bpy.data.objects)
     builders[char](x, y)
