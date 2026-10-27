@@ -127,14 +127,14 @@ GROUND_DISC_FALLOFF = 0.8
 GROUND_DISC_TEXELS = 64
 # The player's LP gauge, drawn just above its head like a fighting game's:
 # this fraction of its ground disc's width, this tall and this far above the
-# head (both in cell widths), on a dark backing framed in this color. The
-# whole gauge is drawn at LP_GAUGE_OPACITY so the field shows through.
+# head (both in cell widths), on a dark backing framed in this color.
+# The gauge is fully opaque so its values remain legible over any field.
 LP_GAUGE_WIDTH = 0.8
 LP_GAUGE_HEIGHT = 0.22
 LP_GAUGE_GAP = 0.52
-LP_GAUGE_BACKING = (0, 0, 0, 170)
+LP_GAUGE_BACKING = (0, 0, 0, 255)
 LP_GAUGE_FRAME = (235, 235, 235)
-LP_GAUGE_OPACITY = 0.6
+LP_GAUGE_OPACITY = 1.0
 # Companions stand inside a faint green pillar of light: an open cylinder on
 # the ground disc's ellipse, seen at the same 60-degree view. Radius and side
 # height in cell widths; peak opacity of the far wall (behind the sprite) and
@@ -999,8 +999,8 @@ class SpriteUI(PygletUI):
         left = round(cx - width / 2)
         top = max(frame, round(head_top - LP_GAUGE_GAP * unit) - height)
         fill = round(width * self._lp_gauge_ratio(player))
-        # Translucent, so no part lies over another: the frame is four
-        # strips, and the fill and the empty backing sit side by side.
+        # The frame is four strips, and the fill and empty backing sit side
+        # by side so the opaque gauge does not cover any part of itself.
         outer_w = width + 2 * frame
         for x, y, w, h, color in (
                 (left - frame, top - frame, outer_w, frame, LP_GAUGE_FRAME),

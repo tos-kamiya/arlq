@@ -940,15 +940,20 @@ class PygletUI:
     def _draw_player_status_popup(
         self, pos: d.Point, text: str, tone: str = "default"
     ) -> None:
-        text_width = self._text_width(text, bold=True)
+        popup_scale = self._status_font_scale() * MESSAGE_FONT_SIZE_SCALE
+        text_width = self._text_width(text, bold=True, size_scale=popup_scale)
         text_x_offset = self._field_text_x_offset()
+        popup_group = getattr(self, "_text_overlay_group", None)
+        popup_gap = max(1, round(self.cell_size_x * 0.2))
         player_x = pos[0] * self.cell_size_x + text_x_offset
         right_x = player_x + self.cell_size_x
-        right_y = pos[1] - 1
-        if right_y >= 0 and right_x + text_width <= self.field_pixel_width:
+        right_y = pos[1] - 1.25
+        if right_y >= 0 and right_x + popup_gap + text_width <= self.field_pixel_width:
             self._draw_text(
                 (pos[0] + 1, right_y), text, self._tone_color(tone),
-                bold=True, x_offset=text_x_offset,
+                bold=True, x_offset=text_x_offset + popup_gap,
+                size_scale=popup_scale,
+                group=popup_group,
             )
             return
 
@@ -956,7 +961,7 @@ class PygletUI:
         left_x = max(0, player_x - text_width)
         self._draw_text(
             (0, left_y), text, self._tone_color(tone), bold=True,
-            x_offset=left_x,
+            x_offset=left_x, size_scale=popup_scale, group=popup_group,
         )
 
     def _draw_player_wall_break_glyph(self, player: d.Player) -> None:
