@@ -176,7 +176,7 @@ reproduce the same layout.
 | **a** Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                                |
 | **A** Rare Amoeba   | Defeating it raises your level by 10 instead of the usual 1. |
 | **b** Bison         | The second weakest. Defeating it restores a large amount of LP. Hunt it when you're hungry.                                                                       |
-| **B** Buffalo      | Attack power 8. Defeating it restores 80 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
+| **B** Buffalo (Stage 5) | Attack power 8. Defeating it restores 80 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **c** Chimera       | Moderately strong. It carries a sword. Taking it raises combat power to 1.5x and lets you break up to three walls.                                               |
 | **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to one third (rounded up) until replaced.        |
 | **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
@@ -185,7 +185,7 @@ reproduce the same layout.
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 also features empowered Bison (`b'`). About 20% of the Bison (`b`) population on each floor across the stages is replaced with Buffalo (`B`).
+Stage 2 also features empowered Bison (`b'`). Stage 5 features Buffalo (`B`) alongside Bison (`b`).
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
