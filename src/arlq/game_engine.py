@@ -61,6 +61,10 @@ def _set_status_popup(player: d.Player, text: str) -> str:
     return text
 
 
+def _format_popup_amount(amount: float) -> str:
+    return f"{amount:.1f}".rstrip("0").rstrip(".")
+
+
 def _find_escape_place(current: Floor, far_from: Optional[d.Point] = None) -> d.Point:
     """Find an open destination outside a sealed island room."""
     return find_random_place(
@@ -1078,14 +1082,17 @@ def _resolve_monster_contact(
     if handled_elf and ch == "L":
         popup = "LP FULL"
         if d.player_lp_max(player) > old_lp_max:
-            popup = f"LP FULL  MAX+{d.player_lp_max(player) - old_lp_max:g}"
+            popup = (
+                f"LP FULL  MAX+"
+                f"{_format_popup_amount(d.player_lp_max(player) - old_lp_max)}"
+            )
     elif combat_won:
         if ch == "A":
-            popup = f"LVL+{player.level - old_level:g}"
+            popup = f"LVL+{_format_popup_amount(player.level - old_level)}"
         elif ch in ("b", "B"):
             gained_lp = max(0, player.lp - old_lp)
             if gained_lp:
-                popup = f"LP+{gained_lp:g}"
+                popup = f"LP+{_format_popup_amount(gained_lp)}"
         elif ch == "c":
             popup = "SWORD x1.5"
         elif ch == "C":
@@ -1236,7 +1243,7 @@ def _resolve_party_contact(
     )
     popup = None
     if "A" in party_chars and player.level > old_level:
-        popup = f"LVL+{player.level - old_level:g}"
+        popup = f"LVL+{_format_popup_amount(player.level - old_level)}"
     elif "E" in party_chars:
         lost_level = max(0, old_level - player.level)
         if lost_level:
@@ -1244,7 +1251,7 @@ def _resolve_party_contact(
     elif "b" in party_chars or "B" in party_chars:
         gained_lp = max(0, player.lp - old_lp)
         if gained_lp:
-            popup = f"LP+{gained_lp:g}"
+            popup = f"LP+{_format_popup_amount(gained_lp)}"
     elif "C" in party_chars:
         popup = "CURSED x3"
     elif "c" in party_chars:
