@@ -113,6 +113,7 @@ COLOR_MAP = {
     CI_CYAN: (92, 190, 196),
     "default": (226, 230, 238),
 }
+MEMBER_COLOR = (132, 138, 148)
 _TONE_INDEX = {
     "red": CI_RED,
     "green": CI_GREEN,
@@ -1204,7 +1205,7 @@ class PygletUI:
             if glyph.tone == "member":
                 # Text markers until dedicated human artwork is available;
                 # bypass sprite mappings such as H (High Elf).
-                self._draw_text((glyph.x, glyph.y), glyph.char, COLOR_MAP[CI_GREEN],
+                self._draw_text((glyph.x, glyph.y), glyph.char, MEMBER_COLOR,
                                 bold=True, x_offset=self._field_text_x_offset())
                 return
             self._draw_field_text(

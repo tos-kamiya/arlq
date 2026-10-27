@@ -200,13 +200,25 @@ class BlessedUI:
                             else "magenta"
                             if cell == d.CHAR_CALTROP
                             else "yellow"
-                            if cell == d.CHAR_COLLAPSE
+                            if cell in (
+                                d.CHAR_COLLAPSE,
+                                d.CHAR_STAIRS_UP,
+                                d.CHAR_STAIRS_DOWN,
+                            )
                             else None,
                             bg="blue" if (x, y) in highlighted_cells else None,
                         )
                     elif discovered:
                         if cell in (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE):
                             put(x, y, display_cell, "green", bg="blue" if (x, y) in highlighted_cells else None)
+                        elif cell in (d.CHAR_STAIRS_UP, d.CHAR_STAIRS_DOWN):
+                            put(
+                                x,
+                                y,
+                                display_cell,
+                                "yellow",
+                                bg="blue" if (x, y) in highlighted_cells else None,
+                            )
                         else:
                             put(x, y, display_cell, bg="blue" if (x, y) in highlighted_cells else None)
                     elif (x + y) % 2 == 1:
@@ -218,7 +230,11 @@ class BlessedUI:
                         else "magenta"
                         if cell == d.CHAR_CALTROP
                         else "yellow"
-                        if cell == d.CHAR_COLLAPSE
+                        if cell in (
+                            d.CHAR_COLLAPSE,
+                            d.CHAR_STAIRS_UP,
+                            d.CHAR_STAIRS_DOWN,
+                        )
                         else None
                     )
                     background = cell_background(x, y)
@@ -282,7 +298,14 @@ class BlessedUI:
         )
 
         def paint(glyph: ui_display.FieldGlyph) -> None:
-            color = None if glyph.tone in ("companion", "member", "default", "stair") else glyph.tone
+            is_member = glyph.tone == "member"
+            color = (
+                "white"
+                if is_member
+                else None
+                if glyph.tone in ("companion", "default", "stair")
+                else glyph.tone
+            )
             background = cell_background(glyph.x, glyph.y)
             put(
                 glyph.x,
@@ -290,7 +313,7 @@ class BlessedUI:
                 glyph.char,
                 visible_default_foreground(color, background),
                 bold=False if glyph.tone == "stair" else glyph.bold,
-                dim=glyph.dim,
+                dim=glyph.dim or is_member,
                 bg=background,
             )
 
