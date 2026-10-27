@@ -48,7 +48,7 @@ CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
 GRID_COLS, GRID_ROWS = 14, 6
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
 # the companions and elves; the monsters added from Stage 2 on, the golem rock
-# and rank marks.
+# and rank marks; then the Stage 5 Buffalo.
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
@@ -58,7 +58,7 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('C', 'RARE CHIMERA'), ('F', 'FIRE DRAKE'), ('X', 'CALTROP PLANT'), ('g', 'GOLEM'),
          ('rock', 'GOLEM ROCK'), ('w', 'WYRM'), ('W', 'DREAD WYRM'), ('e', 'EREBUS'),
          ('E', 'RARE EREBUS'), ('m', 'SPORE'), ('k', 'MARKSMAN'), ('V', 'VORTEX'),
-         ("'", 'RANK 2'), ('"', 'RANK 3')]
+         ("'", 'RANK 2'), ('"', 'RANK 3'), ('B', 'BUFFALO')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -78,7 +78,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # large each character appears; the boss dragon is built large, its wings
 # spreading past its cell. The amoebas, comodo dragon and Erebuses were
 # later shrunk to 0.9 of their first sizes.
-SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
+SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5}
@@ -327,9 +327,10 @@ def bison(x, y):
                     rim=(1.0, 0.95, 0.8), rim_strength=1.5)
     eye = material('Bison ember eyes', (1.0, 0.2, 0.05), emission=(1.0, 0.25, 0.05),
                    strength=25.0)
-    # Massive shoulder hump, tapering rump; head lowered for a charge. The
-    # body is built 0.9 as wide as at first (`slim`), so it is not too fat.
-    slim = 0.9
+    # Shoulder hump, tapering rump; head lowered for a charge. The body is
+    # built 0.78 as wide as at first (`slim`), lean beside the heavier
+    # Buffalo `B`.
+    slim = 0.78
     soften(loft('Bison torso', x, y,
                 [(along, w * slim, z, h) for along, w, z, h in
                  [(-0.42, 0.50, 0.50, 0.32), (-0.18, 0.60, 0.62, 0.42),
@@ -340,16 +341,16 @@ def bison(x, y):
     clumps = [(0, -0.28, 0.90, 0.25), (-0.22, -0.22, 0.84, 0.19), (0.22, -0.22, 0.84, 0.19),
               (0, -0.04, 0.86, 0.21), (0, -0.52, 0.76, 0.19)]
     for i, (dx, dy, z, r) in enumerate(clumps):
-        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r,
-                                              location=(x + dx * slim, y + dy, z),
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r * 0.85,
+                                              location=(x + dx * slim, y + dy, z * 0.95),
                                               rotation=(i * 0.7, i * 1.3, i * 0.4))
         clump = finish(bpy.context.object, mane, False, 'Bison mane clump')
         clump.scale = (1.0, 1.1, 0.8)
     soften(loft('Bison lowered head', x, y,
-                [(-0.92, 0.28, 0.34, 0.17), (-0.72, 0.40, 0.44, 0.25),
-                 (-0.52, 0.40, 0.52, 0.26)], hide), 0.04)
+                [(-0.92, 0.25, 0.34, 0.17), (-0.72, 0.34, 0.44, 0.24),
+                 (-0.52, 0.34, 0.52, 0.25)], hide), 0.04)
     soften(loft('Bison muzzle', x, y,
-                [(-0.98, 0.20, 0.30, 0.10), (-0.86, 0.25, 0.32, 0.13)], obsidian), 0.03)
+                [(-0.98, 0.18, 0.30, 0.10), (-0.86, 0.22, 0.32, 0.13)], obsidian), 0.03)
     for side in (-1, 1):
         # Horns sweep outward, then hook up and forward.
         # Half-size horns, so they are not mistaken for the chimeras' swords.
@@ -361,11 +362,49 @@ def bison(x, y):
              [0.065, 0.055, 0.04, 0.025, 0], horn, sides=10, smooth=True)
         sphere('Bison eye', (x + side * 0.20, y - 0.86, 0.50), (0.055, 0.04, 0.035), eye, 16)
         for dy in (-0.32, 0.50):
-            block('Bison hoof', (x + side * 0.40 * slim, y + dy, 0.13), (0.22, 0.28, 0.24),
+            block('Bison hoof', (x + side * 0.40 * slim, y + dy, 0.13), (0.17, 0.24, 0.24),
                   obsidian, 0.04)
     tube('Bison tail', [(x, y + 0.66, 0.55), (x + 0.06, y + 0.80, 0.48), (x + 0.10, y + 0.86, 0.30)],
          [0.05, 0.04, 0.07], mane, sides=6)
 
+
+def buffalo(x, y):
+    # A darker, browner resin than the Bison's amber, with near-black horns.
+    hide = material('Buffalo dark chestnut resin', (0.34, 0.13, 0.07), 0.45, 0.22,
+                    rim=(1.0, 0.6, 0.4), rim_strength=1.3, coat=0.6)
+    # Matte horn: a glossy coat mirrored the key light as a white band on
+    # the boss's top.
+    horn = material('Buffalo black horn', (0.035, 0.03, 0.028), 0.0, 0.6, coat=0.1,
+                    rim=(0.85, 0.8, 0.75), rim_strength=0.9)
+    eye = material('Buffalo pale gold eyes', (1.0, 0.75, 0.2), emission=(1.0, 0.75, 0.2),
+                   strength=12.0)
+    # Broad, level back without a hump; the head is held out ahead on a
+    # thick neck, unlike the Bison's lowered charge.
+    soften(loft('Buffalo torso', x, y,
+                [(-0.45, 0.46, 0.50, 0.28), (-0.20, 0.56, 0.52, 0.32),
+                 (0.10, 0.56, 0.52, 0.32), (0.42, 0.52, 0.50, 0.29),
+                 (0.66, 0.38, 0.47, 0.22)], hide), 0.09)
+    soften(loft('Buffalo head', x, y,
+                [(-1.00, 0.24, 0.46, 0.15), (-0.86, 0.32, 0.52, 0.20),
+                 (-0.66, 0.36, 0.58, 0.24), (-0.46, 0.40, 0.60, 0.26)], hide), 0.04)
+    soften(loft('Buffalo muzzle', x, y,
+                [(-1.12, 0.20, 0.42, 0.09), (-1.00, 0.25, 0.45, 0.12)], obsidian), 0.03)
+    # The horns' bases meet over the brow in a helmet-like boss: two
+    # mounded halves with a shallow dip between them.
+    for side in (-1, 1):
+        sphere('Buffalo boss', (x + side * 0.17, y - 0.78, 0.80), (0.24, 0.16, 0.13), horn, 24)
+    for side in (-1, 1):
+        # Thick horns droop outward from the boss, then hook up and forward.
+        horn_path = [(0.28, -0.78, 0.80), (0.48, -0.78, 0.74), (0.64, -0.77, 0.58),
+                     (0.72, -0.84, 0.44), (0.74, -0.96, 0.50), (0.70, -1.05, 0.64)]
+        tube('Buffalo horn', [(x + side * px, y + py, pz) for px, py, pz in horn_path],
+             [0.15, 0.13, 0.105, 0.08, 0.055, 0], horn, sides=10, smooth=True)
+        sphere('Buffalo eye', (x + side * 0.26, y - 0.92, 0.58), (0.055, 0.04, 0.035), eye, 16)
+        for dy in (-0.32, 0.46):
+            block('Buffalo hoof', (x + side * 0.40, y + dy, 0.13), (0.24, 0.30, 0.26),
+                  obsidian, 0.04)
+    tube('Buffalo tail', [(x, y + 0.66, 0.60), (x + 0.04, y + 0.82, 0.50), (x + 0.07, y + 0.88, 0.32)],
+         [0.04, 0.03, 0.06], hide, sides=6)
 
 def dragon(x, y):
     scales = material('Dragon cobalt scales', (0.05, 0.36, 0.92), 0.45, 0.2,
@@ -2222,7 +2261,7 @@ def label(value, pos, size):
 builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             '@C': lambda x, y: player(x, y, 'C'), '@K': lambda x, y: player(x, y, 'blessed'),
             'a': lambda x, y: amoeba(x, y, False),
-            'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'd': dragon,
+            'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'B': buffalo, 'd': dragon,
             'c': chimera, 'T': treasure, 'M': lambda x, y: treasure(x, y, True), 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
@@ -2236,7 +2275,7 @@ for char, name, x, y in ROW:
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = (MONSTER_YAW if char in 'aAbcdDCFgkmeEXTM' else WYRM_YAW if char in 'wW'
+    yaw = (MONSTER_YAW if char in 'aAbBcdDCFgkmeEXTM' else WYRM_YAW if char in 'wW'
            else PEGASUS_YAW if char == 'p' else 0)
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())

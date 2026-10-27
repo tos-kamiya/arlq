@@ -22,8 +22,7 @@ field[11][20] = d.CHAR_WALL
 decor = [[d.DECOR_NONE] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
 # Rocks a defeated Golem raised beside the golem: walls drawn as rubble.
 for rx, ry in ((35, 10), (38, 10), (35, 12)):
-    field[ry][rx] = d.CHAR_WALL
-    decor[ry][rx] = d.DECOR_GOLEM_ROCK
+    field[ry][rx] = d.CHAR_GOLEM_WALL
 # Rocks fallen from pits on the floor above: two on open floor, one under an
 # elf (hidden), and one explored outside the view.
 for fx, fy in ((30, 15), (31, 16), (32, 15), (1, 9)):
@@ -43,8 +42,8 @@ current = [[int(5 <= x <= 38 and 5 <= y <= 16) for x in range(d.FIELD_WIDTH)]
            for y in range(d.FIELD_HEIGHT)]
 player = d.Player(10, 8, level=8, lp=d.LP_INIT)
 entities = [d.Monster(13 + i * 3, 8, d.CHAR_TO_MONSTER_TRIBE[char])
-            for i, char in enumerate(('a', 'A', 'b', 'c', 'd', 'D', 'C'))]
-chest = d.Treasure(36, 8, 'D')
+            for i, char in enumerate(('a', 'A', 'b', 'B', 'c', 'd', 'D', 'C'))]
+chest = d.Treasure(37, 8, 'D')
 chest.unlocked = True
 entities.append(chest)
 # Companions in the room below, and Pegasus travelling with the player.
@@ -71,7 +70,7 @@ entities += [d.Monster(8, 11, d.CHAR_TO_MONSTER_TRIBE['e']),
              d.Monster(6, 11, d.CHAR_TO_MONSTER_TRIBE['X'])]
 entities.append(d.Collapse(35, 15))
 ui.draw_stage(turn=0, player=player, entities=entities, field=field,
-              cur_torched=current, torched=seen, known_types={'a', 'A', 'b', 'b2', 'b3', 'c', 'd', 'D', 'C', 'F', 'g', 'e', 'E', 'X'},
+              cur_torched=current, torched=seen, known_types={'a', 'A', 'b', 'B', 'b2', 'b3', 'c', 'd', 'D', 'C', 'F', 'g', 'e', 'E', 'X'},
               show_entities=False, stage_num=1, message='Sprites + text fallback (c)',
               decor=decor)
 ui.window.switch_to()
