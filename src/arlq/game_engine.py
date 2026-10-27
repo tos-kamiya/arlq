@@ -1229,6 +1229,11 @@ def _resolve_party_contact(
     )
     player.last_contact_monster = contact_key
     party_chars = {monster.tribe.char for monster in party}
+    boss_message = (
+        trp(boss.tribe.event_message, boss.tribe.event_message_importance)
+        if boss is not None and boss.tribe.event_message
+        else None
+    )
     popup = None
     if "A" in party_chars and player.level > old_level:
         popup = f"LVL+{player.level - old_level:g}"
@@ -1248,6 +1253,8 @@ def _resolve_party_contact(
         lost_lp = max(0, old_lp - player.lp)
         if lost_lp:
             popup = f"LP-{lost_lp:g}"
+    if boss_message is not None:
+        return _ContactResult(boss_message)
     if popup:
         return _ContactResult(_set_status_popup(player, popup))
     return _ContactResult(None)
