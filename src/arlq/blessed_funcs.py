@@ -303,7 +303,7 @@ class BlessedUI:
                 "white"
                 if is_member
                 else None
-                if glyph.tone in ("companion", "default", "stair")
+                if glyph.tone in ("companion", "member_waiting", "default", "stair")
                 else glyph.tone
             )
             background = cell_background(glyph.x, glyph.y)

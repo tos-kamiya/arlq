@@ -260,7 +260,9 @@ def preview_entity_glyphs(
     """Dim glyphs for an entity when the whole map is revealed."""
     known_types = known_types or set()
     if isinstance(entity, d.PartyMember):
-        return [FieldGlyph(entity.x, entity.y, d.MEMBER_GLYPHS[entity.role], "member", bold=True)]
+        return [FieldGlyph(
+            entity.x, entity.y, d.MEMBER_GLYPHS[entity.role], "member_waiting", bold=True
+        )]
     if isinstance(entity, d.Collapse):
         return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if (
@@ -348,7 +350,9 @@ def revealed_entity_glyphs(
     map is already shown, or a treasure that is still locked).
     """
     if isinstance(entity, d.PartyMember):
-        return [FieldGlyph(entity.x, entity.y, d.MEMBER_GLYPHS[entity.role], "member", bold=True)]
+        return [FieldGlyph(
+            entity.x, entity.y, d.MEMBER_GLYPHS[entity.role], "member_waiting", bold=True
+        )]
     if isinstance(entity, d.Collapse):
         return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
     if isinstance(entity, d.Companion):

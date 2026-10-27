@@ -939,16 +939,19 @@ class PygletUI:
 
     def _draw_player_status_popup(self, pos: d.Point, text: str) -> None:
         text_width = self._text_width(text, bold=True)
-        right_x = pos[0] * self.cell_size_x + self.cell_size_x
+        text_x_offset = self._field_text_x_offset()
+        player_x = pos[0] * self.cell_size_x + text_x_offset
+        right_x = player_x + self.cell_size_x
         right_y = pos[1] - 1
         if right_y >= 0 and right_x + text_width <= self.field_pixel_width:
             self._draw_text(
-                (pos[0] + 1, right_y), text, self._tone_color("default"), bold=True
+                (pos[0] + 1, right_y), text, self._tone_color("default"),
+                bold=True, x_offset=text_x_offset,
             )
             return
 
         left_y = min(pos[1] + 1, self.field_height - 1)
-        left_x = max(0, pos[0] * self.cell_size_x - text_width)
+        left_x = max(0, player_x - text_width)
         self._draw_text(
             (0, left_y), text, self._tone_color("default"), bold=True,
             x_offset=left_x,
@@ -1202,10 +1205,15 @@ class PygletUI:
         )
 
         def paint(glyph: ui_display.FieldGlyph) -> None:
-            if glyph.tone == "member":
+            if glyph.tone in ("member", "member_waiting"):
                 # Text markers until dedicated human artwork is available;
                 # bypass sprite mappings such as H (High Elf).
-                self._draw_text((glyph.x, glyph.y), glyph.char, MEMBER_COLOR,
+                color = (
+                    MEMBER_COLOR
+                    if glyph.tone == "member"
+                    else self._tone_color("default")
+                )
+                self._draw_text((glyph.x, glyph.y), glyph.char, color,
                                 bold=True, x_offset=self._field_text_x_offset())
                 return
             self._draw_field_text(
