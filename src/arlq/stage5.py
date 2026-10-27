@@ -665,13 +665,9 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     while len(member_roles) > 4:
         member_roles.pop(rand.randrange(len(member_roles)))
     member_floors = [(role, rand.randrange(3)) for role in member_roles]
-    filled_counts = list(d.STAGE4_FILLED_ROOM_COUNTS)
-    filled_counts.remove(0)
-    filled_counts_by_floor = [0]
-    while filled_counts and len(filled_counts_by_floor) < d.STAGE5_FLOORS:
-        filled_counts_by_floor.append(
-            filled_counts.pop(rand.randrange(len(filled_counts)))
-        )
+    filled_counts_by_floor = [0] + [
+        rand.choice((0, 1, 2)) for _ in range(d.STAGE5_FLOORS - 1)
+    ]
     for index in range(d.STAGE5_FLOORS):
         (
             field,
