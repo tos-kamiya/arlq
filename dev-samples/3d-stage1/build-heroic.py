@@ -3111,51 +3111,92 @@ def spore(x, y):
 
 
 def marksman(x, y):
-    """Stage 4 marksman (k): a stout little gnome in an iron helmet with
-    bushy white brows, gripping a longbow taller than himself at his side,
-    with a quiver of fletched arrows on his back.
+    """Stage 4 marksman (k): a burly ring-tailed lemur with a longbow taller
+    than itself at its side and a quiver of fletched arrows on its back.
+
+    It is one of the stronger monsters, so it is built like a strongman:
+    broad shoulders and chest, thick upper arms and a narrow waist over
+    short crouched legs. Its brown face has big black eyes with glowing amber
+    irises, and its grey, brown and black ringed tail curls up at screen right.
 
     Heights shrink to half in the 60-degree view, so the head is tilted back
     for the face to look up at the camera.
     """
-    tunic = material('Marksman leather tunic', (0.30, 0.16, 0.07), 0.0, 0.55,
-                     rim=(1.0, 0.75, 0.5), rim_strength=0.8)
-    iron = material('Marksman iron helmet', (0.30, 0.31, 0.34), roughness=0.35, metallic=0.8,
-                    rim=(0.8, 0.85, 1.0), rim_strength=0.8)
-    bronze = material('Marksman bronze trim', (0.55, 0.30, 0.12), roughness=0.3, metallic=0.9)
-    # Ashen blue skin marks him as a monster rather than a person.
-    skin = material('Marksman ashen blue skin', (0.36, 0.47, 0.62), 0.2, 0.4,
-                    rim=(0.75, 0.85, 1.0), rim_strength=0.6)
-    tuft = material('Marksman white tufts', (0.90, 0.90, 0.92), 0.1, 0.5,
-                    rim=(0.9, 0.95, 1.0), rim_strength=0.8)
-    eye = material('Marksman eyes', (0.02, 0.02, 0.03), roughness=0.2, coat=1.0)
+    fur = material('Marksman grey fur', (0.17, 0.17, 0.19), 0.0, 0.5,
+                   rim=(0.75, 0.85, 1.0), rim_strength=0.8)
+    # Warm brown fur on the face, belly, ears and tail bands; white there
+    # looked too stark and eerie.
+    pale = material('Marksman brown fur', (0.42, 0.24, 0.11), 0.0, 0.55,
+                    rim=(1.0, 0.8, 0.6), rim_strength=0.6)
+    black = material('Marksman black fur', (0.025, 0.025, 0.03), 0.0, 0.45,
+                     rim=(0.55, 0.65, 0.85), rim_strength=0.6)
+    # Plain black without the glowing rim, so the lid melts into the patch.
+    lid = material('Marksman eye lids', (0.025, 0.025, 0.03), 0.0, 0.45)
+    iris = material('Marksman amber eyes', (1.0, 0.55, 0.06), roughness=0.15,
+                    emission=(1.0, 0.5, 0.05), strength=1.2, coat=1.0)
+    leather = material('Marksman leather', (0.30, 0.16, 0.07), 0.0, 0.55,
+                       rim=(1.0, 0.75, 0.5), rim_strength=0.8)
     wood = material('Marksman arrow shafts', (0.62, 0.36, 0.14), 0.0, 0.4,
                     rim=(1.0, 0.8, 0.5), rim_strength=0.8, coat=0.4)
     bow = material('Marksman bone-white bow', (0.88, 0.85, 0.76), 0.1, 0.35,
                    rim=(1.0, 0.97, 0.9), rim_strength=0.8, coat=0.5)
     string = material('Marksman bowstring', (0.85, 0.82, 0.70), roughness=0.6)
     feather = material('Marksman pale fletching', (0.92, 0.90, 0.84), 0.1, 0.5)
-    boot = material('Marksman dark boots', (0.08, 0.06, 0.05), roughness=0.5)
-    # Squat body in a belted tunic, boots peeking out in front.
-    tube('Marksman tunic', [(x, y, 0.02), (x, y, 0.20), (x, y, 0.40), (x, y, 0.50)],
-         [0.25, 0.23, 0.20, 0.12], tunic, sides=32, smooth=True)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.225, minor_radius=0.025, location=(x, y, 0.24))
-    finish(bpy.context.object, boot, True, 'Marksman belt')
+    # Short crouched legs with black feet.
     for side in (-1, 1):
-        sphere('Marksman boot', (x + side * 0.10, y - 0.20, 0.05), (0.08, 0.11, 0.06), boot, 16)
+        tube('Marksman leg', [(x + side * 0.10, y, 0.22), (x + side * 0.18, y - 0.10, 0.14),
+                              (x + side * 0.14, y - 0.15, 0.04)], [0.08, 0.065, 0.05], fur,
+             sides=16, smooth=True)
+        sphere('Marksman foot', (x + side * 0.14, y - 0.20, 0.035), (0.07, 0.10, 0.04), black, 16)
+    # A narrow waist widening to a broad, deep chest; a brown belly, and a
+    # leather belt.
+    tube('Marksman torso', [(x, y, 0.14), (x, y, 0.24), (x, y, 0.36), (x, y, 0.46), (x, y, 0.54)],
+         [(0.14, 0.12), (0.12, 0.11), (0.20, 0.14), (0.25, 0.16), (0.15, 0.11)], fur,
+         sides=32, smooth=True)
+    sphere('Marksman belly', (x, y - 0.07, 0.27), (0.10, 0.07, 0.10), pale, 24)
+    for side in (-1, 1):
+        sphere('Marksman shoulder', (x + side * 0.25, y, 0.48), (0.12, 0.11, 0.10), fur, 24)
+    sphere('Marksman neck muscles', (x, y + 0.03, 0.53), (0.16, 0.10, 0.06), fur, 24)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.145, minor_radius=0.025, location=(x, y, 0.22))
+    bpy.context.object.scale.y = 0.13 / 0.145
+    finish(bpy.context.object, leather, True, 'Marksman belt')
     # Quiver on the back, its fletchings above the left shoulder.
-    tube('Marksman quiver', [(x + 0.10, y + 0.20, 0.18), (x + 0.16, y + 0.22, 0.58)],
-         [0.07, 0.08], tunic, sides=12, smooth=True)
-    for dx, dy in ((0.13, 0.20), (0.18, 0.24), (0.19, 0.18)):
-        tube('Marksman arrow', [(x + dx, y + dy, 0.55), (x + dx + 0.02, y + dy, 0.72)],
+    tube('Marksman quiver', [(x + 0.12, y + 0.22, 0.20), (x + 0.18, y + 0.24, 0.60)],
+         [0.07, 0.08], leather, sides=12, smooth=True)
+    for dx, dy in ((0.15, 0.22), (0.20, 0.26), (0.21, 0.20)):
+        tube('Marksman arrow', [(x + dx, y + dy, 0.57), (x + dx + 0.02, y + dy, 0.74)],
              [0.012, 0.012], wood, sides=6)
-        cone('Marksman fletching', (x + dx + 0.02, y + dy, 0.68), (x + dx + 0.03, y + dy, 0.80),
+        cone('Marksman fletching', (x + dx + 0.02, y + dy, 0.70), (x + dx + 0.03, y + dy, 0.82),
              0.04, 0.012, feather, 4, False)
-    # A huge bone-white longbow at his side (screen left), gripped at its
+    # A long ringed tail from the rump, sweeping out to screen right and
+    # curling up into a hook, in grey, brown and black bands: the body's
+    # grey and the brown alternate, each set off by a black ring.
+    controls = [Vector(p) for p in ((0.06, 0.16, 0.16), (0.26, 0.30, 0.16), (0.46, 0.34, 0.32),
+                                    (0.56, 0.32, 0.58), (0.56, 0.28, 0.86), (0.48, 0.24, 1.04),
+                                    (0.34, 0.22, 1.08), (0.26, 0.22, 0.96))]
+    controls = [controls[0]] + controls + [controls[-1]]
+    path = []
+    for i in range(1, len(controls) - 2):
+        p0, p1, p2, p3 = controls[i - 1:i + 3]
+        for k in range(4):
+            t = k / 4
+            path.append(0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t
+                               + (3 * p1 - p0 - 3 * p2 + p3) * t ** 3))
+    path.append(controls[-2])
+    path = [Vector((x, y, 0)) + p for p in path]
+    bands = 14
+    for band in range(bands):
+        lo, hi = band * (len(path) - 1) // bands, (band + 1) * (len(path) - 1) // bands
+        radii = [0.07 - 0.025 * i / (len(path) - 1) for i in range(lo, hi + 1)]
+        if band == bands - 1:
+            radii[-1] = 0
+        tube('Marksman tail band', path[lo:hi + 1], radii, (fur, black, pale, black)[band % 4],
+             sides=12, smooth=True)
+    # A huge bone-white longbow at its side (screen left), gripped at its
     # leather-wrapped middle at hand height; its upper tip towers far above
-    # his head and its lower tip sinks below the floor.
+    # its head and its lower tip sinks below the floor.
     length = 2.2
-    foot = Vector((x - 0.30, y - 0.10, 0.58 - length / 2))
+    foot = Vector((x - 0.36, y - 0.10, 0.58 - length / 2))
     limb = []
     for i in range(13):
         t = i / 12
@@ -3166,51 +3207,47 @@ def marksman(x, y):
          smooth=True)
     # A thick string, so it still shows at sprite size.
     tube('Marksman bowstring', [limb[0], limb[-1]], [0.015, 0.015], string, sides=8)
-    tube('Marksman bow grip', [limb[5], limb[7]], [0.052, 0.052], boot, sides=10, smooth=True)
-    # Right arm (screen left) out to the grip; left hand on the belt.
+    tube('Marksman bow grip', [limb[5], limb[7]], [0.052, 0.052], leather, sides=10,
+         smooth=True)
+    # Thick arms with bulging biceps and forearms. The right arm (screen
+    # left) reaches out to the grip, its elbow outward past the string so
+    # the upper arm passes just behind the string; the left fist rests on
+    # the hip, elbow out.
     hold = limb[6]
-    # The elbow sits outward past the string, a little back and below the
-    # shoulder, so the upper arm passes just behind the string instead of
-    # through it and the forearm rises to the grip.
-    tube('Marksman right arm', [(x - 0.18, y, 0.44), (x - 0.40, y + 0.06, 0.34), hold],
-         [0.06, 0.055, 0.05], tunic, sides=12, smooth=True)
-    sphere('Marksman right hand', tuple(hold), (0.055, 0.055, 0.055), skin, 16)
-    tube('Marksman left arm', [(x + 0.18, y, 0.44), (x + 0.26, y - 0.06, 0.32),
-                               (x + 0.15, y - 0.18, 0.26)], [0.06, 0.055, 0.05], tunic,
-         sides=12, smooth=True)
-    sphere('Marksman left hand', (x + 0.14, y - 0.19, 0.26), (0.055, 0.05, 0.05), skin, 16)
-    # Head with a big nose, bushy white brows and an iron helmet, tilted back.
+    shoulder, elbow = Vector((x - 0.26, y, 0.46)), Vector((x - 0.47, y + 0.06, 0.34))
+    tube('Marksman right arm', [shoulder, elbow, elbow.lerp(hold, 0.35), hold],
+         [0.08, 0.065, 0.08, 0.05], fur, sides=16, smooth=True)
+    sphere('Marksman right biceps', tuple(shoulder.lerp(elbow, 0.5) + Vector((0, -0.02, 0.01))),
+           (0.10, 0.085, 0.085), fur, 20)
+    sphere('Marksman right hand', tuple(hold), (0.06, 0.06, 0.06), black, 16)
+    shoulder, elbow, fist = (Vector((x + 0.26, y, 0.46)), Vector((x + 0.42, y + 0.02, 0.32)),
+                             Vector((x + 0.19, y - 0.10, 0.23)))
+    tube('Marksman left arm', [shoulder, elbow, elbow.lerp(fist, 0.35), fist],
+         [0.08, 0.065, 0.08, 0.05], fur, sides=16, smooth=True)
+    sphere('Marksman left biceps', tuple(shoulder.lerp(elbow, 0.5) + Vector((0, -0.02, 0.01))),
+           (0.10, 0.085, 0.085), fur, 20)
+    sphere('Marksman left fist', tuple(fist), (0.06, 0.06, 0.06), black, 16)
+    # Lemur head, tilted back: a grey crown, a brown face with a pointed
+    # muzzle and black nose, black patches round huge glowing amber eyes,
+    # and brown pointed ears.
     start = set(bpy.data.objects)
-    head = Vector((x, y, 0.66))
-    sphere('Marksman head', tuple(head), (0.17, 0.16, 0.17), skin, 32)
-    sphere('Marksman nose', (x, y - 0.17, 0.64), (0.05, 0.05, 0.045), skin, 16)
+    sphere('Marksman head', (x, y, 0.67), (0.15, 0.14, 0.14), fur, 32)
+    sphere('Marksman face', (x, y - 0.07, 0.65), (0.14, 0.09, 0.12), pale, 32)
+    cone('Marksman muzzle', (x, y - 0.12, 0.62), (x, y - 0.225, 0.605), 0.075, 0.035, pale, 24)
+    sphere('Marksman nose', (x, y - 0.23, 0.605), (0.038, 0.03, 0.03), black, 16)
     for side in (-1, 1):
-        sphere('Marksman eye', (x + side * 0.065, y - 0.145, 0.70), (0.024, 0.014, 0.03), eye, 12)
-        sphere('Marksman bushy brow', (x + side * 0.07, y - 0.15, 0.745), (0.045, 0.02, 0.018),
-               tuft, 12)
-    # An iron helmet: a domed bowl sitting above the brows, a bronze band
-    # round its rim and a short spike on top.
-    rim_z, ring, verts = 0.77, 40, []
-    for level in range(9):
-        phi = math.pi / 2 * level / 9
-        for k in range(ring):
-            a = 2 * math.pi * k / ring
-            verts.append((x + 0.195 * math.cos(phi) * math.cos(a),
-                          y + 0.01 + 0.19 * math.cos(phi) * math.sin(a),
-                          rim_z + 0.16 * math.sin(phi)))
-    verts.append((x, y + 0.01, rim_z + 0.16))
-    faces = [(l * ring + k, l * ring + (k + 1) % ring, (l + 1) * ring + (k + 1) % ring,
-              (l + 1) * ring + k) for l in range(8) for k in range(ring)]
-    faces += [(8 * ring + k, 8 * ring + (k + 1) % ring, 9 * ring) for k in range(ring)]
-    helmet = mesh_object('Marksman iron helmet', verts, faces, iron, True)
-    helmet.modifiers.new('Helmet thickness', 'SOLIDIFY').thickness = 0.015
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.195, minor_radius=0.026,
-                                     location=(x, y + 0.01, rim_z))
-    bpy.context.object.scale.y = 0.19 / 0.195
-    finish(bpy.context.object, bronze, True, 'Marksman helmet band')
-    cone('Marksman helmet spike', (x, y + 0.01, rim_z + 0.15), (x, y + 0.01, rim_z + 0.27),
-         0.04, 0, bronze, 12, True)
-    neck = Vector((x, y, 0.50))
+        ex = x + side * 0.065
+        sphere('Marksman eye patch', (ex, y - 0.128, 0.685), (0.068, 0.022, 0.068), black, 24)
+        # The eye is mostly the black patch. A black lid over the upper,
+        # inner part of the amber iris leaves only a glowing crescent below
+        # it, a narrowed glare into the distance.
+        sphere('Marksman eye', (ex, y - 0.141, 0.69), (0.034, 0.013, 0.034), iris, 24)
+        sphere('Marksman eye lid', (ex - side * 0.004, y - 0.147, 0.709), (0.036, 0.011, 0.029),
+               lid, 24)
+        ear = cone('Marksman ear', (x + side * 0.11, y, 0.72),
+                   (x + side * 0.21, y + 0.02, 0.82), 0.09, 0.012, pale, 16)
+        ear.scale.y = 0.5
+    neck = Vector((x, y, 0.52))
     transform_new(start, Matrix.Translation(neck) @ Matrix.Rotation(-0.45, 4, 'X')
                   @ Matrix.Translation(-neck))
 
