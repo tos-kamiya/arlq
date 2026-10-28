@@ -2318,19 +2318,25 @@ def dungeon_explorer(x, y, tone):
             tube('Dungeon Explorer rope coil', points, [0.019] * len(points), rope,
                  sides=8, smooth=True)
 
+        def sleeve(side, shoulder, elbow, wrist):
+            # Two straight tubes and a round elbow: one tube bent at the
+            # elbow turns its rings there and looks twisted.
+            tube('Dungeon Explorer ' + side + ' upper sleeve', [shoulder, elbow], [0.062, 0.055],
+                 shirt, sides=16, smooth=True)
+            sphere('Dungeon Explorer ' + side + ' elbow', elbow, (0.055, 0.055, 0.055), shirt, 16)
+            tube('Dungeon Explorer ' + side + ' lower sleeve', [elbow, wrist], [0.055, 0.045],
+                 shirt, sides=16, smooth=True)
+
         # Left hand (screen right) on the hip, elbow out.
-        tube('Dungeon Explorer left sleeve', [(x + 0.16, y - 0.01, 0.83), (x + 0.32, y, 0.67),
-                                              (x + 0.22, y - 0.07, 0.55)],
-             [0.062, 0.055, 0.045], shirt, sides=12, smooth=True)
+        sleeve('left', (x + 0.16, y - 0.01, 0.83), (x + 0.32, y, 0.67), (x + 0.22, y - 0.07, 0.55))
         sphere('Dungeon Explorer left hand', (x + 0.19, y - 0.09, 0.53),
                (0.045, 0.04, 0.05), skin, 16)
         # Right hand holds the ice axe upright beside the body, the spike
         # toward the floor and the head at shoulder height.
         spike, top = Vector((x - 0.29, y - 0.14, 0.38)), Vector((x - 0.39, y - 0.10, 0.92))
         hand = spike.lerp(top, 0.31)
-        tube('Dungeon Explorer right sleeve', [(x - 0.16, y - 0.01, 0.83), (x - 0.31, y - 0.03, 0.70),
-                                               hand + Vector((0.01, 0.02, 0.05))],
-             [0.062, 0.055, 0.045], shirt, sides=12, smooth=True)
+        sleeve('right', (x - 0.16, y - 0.01, 0.83), (x - 0.31, y - 0.03, 0.70),
+               hand + Vector((0.01, 0.02, 0.05)))
         sphere('Dungeon Explorer right hand', tuple(hand + Vector((0, -0.01, 0))),
                (0.045, 0.045, 0.05), skin, 16)
         tube('Dungeon Explorer ice axe shaft', [spike, top], [0.02, 0.018], shaft,
