@@ -1009,10 +1009,12 @@ def transform_new(start, matrix):
 def nomicon(x, y):
     leather = companion_green('Nomicon green resin cover')
     green = companion_green('Nomicon deep green corners', 0.5, trim=True)
-    page = material('Nomicon paper pages', (0.78, 0.78, 0.74), 0.1, 0.55,
-                    emission=(1.0, 1.0, 0.95), strength=0.03)
+    # Aged parchment without a glow, and dimmer runes: the open pages face
+    # the camera, and white glowing paper made the tome glare beside the
+    # other companions.
+    page = material('Nomicon paper pages', (0.56, 0.53, 0.44), 0.1, 0.6)
     rune = material('Nomicon cyan runes', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
-                    strength=3.0)
+                    strength=1.0)
     ribbon = material('Nomicon crimson ribbon', (0.75, 0.04, 0.08), 0.1, 0.4)
     start = set(bpy.data.objects)
     # An open tome built lying flat (spine along Y), then tilted toward the
