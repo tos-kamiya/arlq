@@ -430,10 +430,13 @@ def buffalo(x, y):
          [0.04, 0.03, 0.06], hide, sides=6)
 
 def dragon(x, y):
-    scales = material('Dragon cobalt scales', (0.05, 0.36, 0.92), 0.45, 0.2,
-                      rim=(0.4, 0.85, 1.0), rim_strength=1.5, coat=0.7)
-    belly = material('Dragon pale crest', (0.70, 0.92, 1.0), 0.4, 0.15,
-                     rim=(0.7, 1.0, 1.0), rim_strength=1.0)
+    # Deep cobalt like the wyrm's sapphire. The low body is seen mostly at a
+    # grazing angle, so a weak rim and coat keep the facets' shading, and
+    # rougher scales keep its flat back from mirroring the lights in white.
+    scales = material('Dragon cobalt scales', (0.015, 0.07, 0.32), 0.25, 0.4,
+                      rim=(0.4, 0.8, 1.0), rim_strength=0.6, coat=0.2)
+    belly = material('Dragon pale crest', (0.45, 0.65, 0.90), 0.3, 0.2,
+                     rim=(0.7, 0.9, 1.0), rim_strength=0.8)
     eye = material('Dragon gold eyes', (1.0, 0.8, 0.1), emission=(1.0, 0.75, 0.1),
                    strength=25.0)
     # One continuous body, snout to a sinuous tail, with softly rounded facets.
