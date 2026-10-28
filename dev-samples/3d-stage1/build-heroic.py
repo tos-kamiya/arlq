@@ -2645,14 +2645,14 @@ def guardian(x, y, tone):
     # it faces straight ahead, leaned back a little toward the camera. Seen
     # from the front it is a shogi piece upside down, kept squarish: a
     # straight top, upright sides of even width, then two shallow slopes to
-    # a blunt point. It is 1.2 times as wide as the arms' span, so it
-    # sticks out on both sides.
-    half_flat, end, bend, height = 0.36 * 1.2, 0.14 * 1.2, math.radians(40), 0.74
+    # a blunt point. It is a little wider than the arms' span, so it sticks
+    # out on both sides, and sits a little toward the left hand (screen right).
+    half_flat, end, bend, height = 0.36 * 0.96, 0.14 * 0.96, math.radians(40), 0.74
     profile = [(-half_flat - end * math.cos(bend), end * math.sin(bend)), (-half_flat, 0.0),
                (half_flat, 0.0), (half_flat + end * math.cos(bend), end * math.sin(bend))]
     lengths = [(Vector(b) - Vector(a)).length for a, b in zip(profile, profile[1:])]
     total = sum(lengths)
-    place = Matrix.Translation((x, y - 0.40, 0.50)) @ Matrix.Rotation(-0.15, 4, 'X')
+    place = Matrix.Translation((x + 0.08, y - 0.40, 0.50)) @ Matrix.Rotation(-0.15, 4, 'X')
 
     def point(s, z, front=0.0):
         """The point `s` along the profile from the right (screen left) end,
