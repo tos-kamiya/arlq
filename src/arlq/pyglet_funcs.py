@@ -2234,7 +2234,9 @@ class PygletUI:
 
         options = [tr("[q]uit")]
         for n in stage_numbers:
-            options.append(tr("stage [{n}]").format(n=n))
+            options.append(
+                tr("stage [{n}] (test stage)" if n == 6 else "stage [{n}]").format(n=n)
+            )
         options.append(tr("[s]ettings"))
 
         current_index = 1  # Initial selection: stage 1
