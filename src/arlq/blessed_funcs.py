@@ -82,6 +82,8 @@ class BlessedUI:
         dim: bool = False,
         bg: Optional[str] = None,
     ) -> str:
+        if color == "default":
+            color = None
         attr_name = f"{color}_on_{bg}" if color and bg else (f"on_{bg}" if bg else color)
         if dim:
             text = self.term.dim(text)
