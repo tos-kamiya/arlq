@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 6.0.1 - 2026-10-29
+
+- Allow swords to break undiscovered hidden passages into ordinary floor.
+- Keep Stage 5 monsters from appearing side by side, and prevent placement or
+  respawning on Collapse pits and their landing cells.
+- Prevent Stage 4 monsters from respawning on Collapse landing cells.
+
 ## 6.0.0 - 2026-10-29
 
 - Add Stage 5, a four-floor dungeon with recruitable party members, monster
