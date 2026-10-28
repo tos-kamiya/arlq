@@ -2115,17 +2115,18 @@ def rogue(x, y, tone):
     hangs at the hip. Reads as neither man nor woman. `tone` picks one of
     `MEMBER_SKINS`.
     """
-    charcoal = material('Rogue charcoal cloth', (0.11, 0.11, 0.12), 0.05, 0.6,
-                        rim=(0.6, 0.7, 0.9), rim_strength=0.6)
+    charcoal = material('Rogue charcoal cloth', (0.045, 0.05, 0.065), 0.05, 0.7,
+                        rim=(0.55, 0.65, 0.85), rim_strength=0.8)
     leather = material('Rogue brown leather', (0.22, 0.12, 0.05), 0.0, 0.5,
                        rim=(1.0, 0.75, 0.5), rim_strength=0.8)
-    trousers = material('Rogue brown trousers', (0.26, 0.18, 0.12), 0.0, 0.6,
-                        rim=(0.9, 0.7, 0.5), rim_strength=0.6)
+    trousers = material('Rogue dark trousers', (0.07, 0.065, 0.075), 0.0, 0.7,
+                        rim=(0.55, 0.6, 0.75), rim_strength=0.7)
     lining = material('Rogue hood lining', (0.02, 0.02, 0.025), roughness=0.8)
     rope = material('Rogue hemp rope', (0.72, 0.56, 0.32), 0.0, 0.6,
                     rim=(1.0, 0.9, 0.7), rim_strength=0.6)
-    brass = material('Rogue brass keys', (1.0, 0.78, 0.35), roughness=0.3, metallic=0.4,
-                     rim=(1.0, 0.9, 0.6), rim_strength=1.2)
+    brass = material('Rogue brass keys', (1.0, 0.78, 0.35), roughness=0.18, metallic=0.8,
+                     emission=(1.0, 0.65, 0.25), strength=0.16,
+                     rim=(1.0, 0.9, 0.6), rim_strength=1.6)
     skin = material('Rogue skin ' + tone, MEMBER_SKINS[tone], 0.2, 0.4,
                     rim=(1.0, 0.9, 0.8), rim_strength=0.6)
     eye = material('Rogue eyes', (0.02, 0.02, 0.02), roughness=0.15, coat=1.0)
@@ -2155,6 +2156,7 @@ def rogue(x, y, tone):
         bpy.ops.mesh.primitive_torus_add(major_radius=0.14, minor_radius=0.055, location=(x, y + 0.01, 0.88))
         finish(bpy.context.object, charcoal, True, 'Rogue cowl')
         sphere('Rogue pouch', (x + 0.14, y - 0.10, 0.52), (0.06, 0.05, 0.06), leather, 16)
+        sphere('Rogue pouch clasp', (x + 0.14, y - 0.151, 0.53), (0.018, 0.009, 0.018), brass, 12)
         # A small coil of rope against the side of the left hip, hanging in
         # tall ovals with its axis turned 75 degrees from the front, nearly
         # sideways (the rings stand up, so their local Y is the height).
@@ -2165,6 +2167,10 @@ def rogue(x, y, tone):
                                              rotation=(math.pi / 2, 0, math.radians(75)))
             ring = finish(bpy.context.object, rope, True, 'Rogue rope coil')
             ring.scale = (1.0, 1.6, 1.0)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.035, minor_radius=0.009,
+                                         location=(x + 0.21, y - 0.07, 0.56),
+                                         rotation=(math.pi / 2, 0, 0))
+        finish(bpy.context.object, brass, True, 'Rogue rope clip')
         # Right hand (screen left) raised beside the face, dangling the keys.
         tube('Rogue right sleeve', [(x - 0.17, y, 0.84), (x - 0.34, y - 0.02, 0.86),
                                     (x - 0.36, y - 0.10, 1.06)], [0.055, 0.065, 0.08], charcoal,
