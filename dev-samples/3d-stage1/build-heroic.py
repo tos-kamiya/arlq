@@ -564,7 +564,7 @@ def player(x, y, sword=None):
         # Broad pauldrons over the shoulders, and couters on the elbows.
         sphere('Player pauldron', (x + side * 0.27, y - 0.05, 0.63), (0.14, 0.14, 0.07), iron, 24)
         sphere('Player couter', (x + side * 0.275, y - 0.10, 0.46), (0.075, 0.07, 0.06), iron, 20)
-    # Short sword in the right hand (screen left), held low and outward.
+    # Sword in the right hand (screen left).
     hand = Vector((x - 0.30, y - 0.13, 0.34))
     if sword in ('c', 'C'):
         # The chimera's longer, tapering sword, with its own hilt. Held by
@@ -581,11 +581,28 @@ def player(x, y, sword=None):
         sphere('Player chimera sword pommel', tuple(hand - ahead * 0.10),
                (0.035 * size,) * 3, hilt, 12)
     else:
-        tip = hand + Vector((-0.34, -0.30, -0.10)) * 0.8
-        tube('Player sword blade', [hand + (tip - hand) * 0.12, tip * 0.94 + hand * 0.06, tip],
-             [(0.075, 0.016), (0.06, 0.014), 0], blade, sides=4)
-        tube('Player sword guard', [hand + Vector((0.07, -0.08, 0)),
-                                    hand + Vector((-0.08, 0.06, 0))],
+        # The player's own sword points up to screen left, unlike the
+        # chimeras' swords held low, so the states are told apart at a glance.
+        # Held at the fist, the bottom of the arm, with the guard moved a
+        # little along the blade so the fist grips the hilt, not the blade.
+        ahead = Vector((-0.75, 0.3, 0.25)).normalized()
+        hand = Vector((x - 0.29, y - 0.08, 0.34)) + ahead * 0.06
+        across = ahead.cross(Vector((0, -0.5, 0.87))).normalized()
+        tip = hand + ahead * 0.42
+        # Built by hand rather than with tube(), whose rings would turn the
+        # flat of this upright blade edge-on to the camera: the width runs
+        # along `across`, in the screen plane.
+        thick = across.cross(ahead)
+        vertices = []
+        for center, width, depth in ((hand + (tip - hand) * 0.12, 0.075, 0.016),
+                                     (tip * 0.94 + hand * 0.06, 0.06, 0.014)):
+            vertices += [tuple(center + across * width), tuple(center + thick * depth),
+                         tuple(center - across * width), tuple(center - thick * depth)]
+        vertices.append(tuple(tip))
+        faces = [(3, 2, 1, 0)] + [(k, (k + 1) % 4, (k + 1) % 4 + 4, k + 4) for k in range(4)]
+        faces += [(k + 4, (k + 1) % 4 + 4, 8) for k in range(4)]
+        mesh_object('Player sword blade', vertices, faces, blade, False)
+        tube('Player sword guard', [hand + across * 0.08, hand - across * 0.08],
              [0.025, 0.025], iron, sides=6)
     # Cloak: hugs the shoulders, drifts back and sideways toward the hem.
     columns, rows = 25, 8
