@@ -1300,7 +1300,6 @@ def _resolve_contact(
             entity,
             recycle_departed=stage_num == 6,
             floors=floors,
-            replace_departed=True,
         )
         if trace is not None:
             trace.record_contact({"type": "member", "id": entity.role,

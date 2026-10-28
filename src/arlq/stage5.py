@@ -2,7 +2,7 @@
 
 from . import defs as d
 from .arlq import GameConfig, create_field
-from .i18n import trp
+from .i18n import t, trp
 from .stage_maze import generate_floor_field, tile_at
 from .stage_types import Floor
 from .stage_world import (
@@ -221,19 +221,14 @@ def recruit(
     member: d.PartyMember,
     recycle_departed: bool = False,
     floors: list[Floor] | None = None,
-    replace_departed: bool = True,
 ) -> str:
-    if len(player.members) >= d.PARTY_LIMIT and not replace_departed:
-        return trp("-- Your party is full. No member joined.", 5)
-    if len(player.members) == d.PARTY_LIMIT and player.members[0].role == d.MEMBER_NOBLE:
-        return trp("-- Noble cannot leave. No more members can join.", 5)
     player.joined_members.add(member.role)
     player.seen_members.add(member.role)
     if member.origin_floor is not None:
         player.known_member_floors.setdefault(member.role, member.origin_floor + 1)
     departed = (
         player.members.pop(0)
-        if len(player.members) == d.PARTY_LIMIT and replace_departed
+        if len(player.members) == d.PARTY_LIMIT
         else None
     )
     if departed is not None:
@@ -258,9 +253,9 @@ def recruit(
         target.entities.append(departed)
     if departed is not None:
         return trp("-- {joined} joined; {departed} left the party.", 5).format(
-            joined=member.role, departed=departed.role
+            joined=t(member.role), departed=t(departed.role)
         )
-    return trp("-- {joined} joined your party.", 5).format(joined=member.role)
+    return trp("-- {joined} joined your party.", 5).format(joined=t(member.role))
 
 
 def set_scholar_stairs(floors: list[Floor], active: bool) -> None:
