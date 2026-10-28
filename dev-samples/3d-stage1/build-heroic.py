@@ -3281,8 +3281,8 @@ def golem(x, y):
 
 def golem_rock(x, y):
     """Rubble a defeated Golem leaves on a floor cell, which becomes a wall:
-    a low heap of the Golem's dark basalt and slate pieces, with a rune seam
-    whose amber light is fading. About one cell wide.
+    a low heap of the Golem's dark basalt and slate pieces, with broken rune
+    seams whose amber light is fading. About one cell wide.
     """
     basalt = material('Golem rock basalt', (0.10, 0.10, 0.12), 0.1, 0.55,
                       rim=(0.55, 0.65, 0.85), rim_strength=1.0, coat=0.2)
@@ -3301,6 +3301,10 @@ def golem_rock(x, y):
           (0.5, 0.2, 0.4))
     block('Golem rock rune seam', (x - 0.07, y - 0.15, 0.20), (0.12, 0.02, 0.025), rune, 0.005,
           (0.5, 0.2, 0.4))
+    # Two more broken rune seams, on the top chunk and the right one's front.
+    for pos, size, rotation in (((x + 0.03, y - 0.03, 0.40), (0.10, 0.02, 0.022), (0.9, 0.1, -0.5)),
+                                ((x + 0.17, y - 0.17, 0.12), (0.09, 0.02, 0.022), (0.3, 0.0, 0.6))):
+        block('Golem rock rune seam', pos, size, rune, 0.005, rotation)
 
 
 def rank_mark(x, y, count):
