@@ -2236,16 +2236,16 @@ def rogue(x, y, tone):
 
 def dungeon_explorer(x, y, tone):
     """Dungeon Explorer (D), a Stage 5 member: a caver who finds hidden
-    routes. Lightly dressed like a modern caving team: a red helmet with a
-    headlamp, a fitted sky blue shirt, navy trousers, knee pads and a bare
+    routes. Lightly dressed like a modern caving team: a yellow helmet with a
+    headlamp, a fitted light grey shirt, navy trousers, knee pads and a bare
     sit harness with a few carabiners. A coil of bright yellow rope is slung
-    over the right shoulder and across the chest, and the right hand holds an
-    ice axe beside the body, its head at shoulder height. The left hand rests
-    on the hip. No weapon besides the tool, no cape. `tone` picks one of
+    over the right shoulder and across the chest, and the right hand holds a
+    short ice axe beside the body, its head at shoulder height. The left hand
+    rests on the hip. No weapon besides the tool, no cape. `tone` picks one of
     `MEMBER_SKINS`.
     """
-    shirt = material('Dungeon Explorer sky blue shirt', (0.10, 0.36, 0.78), 0.0, 0.5,
-                     rim=(0.6, 0.85, 1.0), rim_strength=0.7)
+    shirt = material('Dungeon Explorer light grey shirt', (0.36, 0.37, 0.39), 0.0, 0.55,
+                     rim=(0.85, 0.87, 0.92), rim_strength=0.45)
     trousers = material('Dungeon Explorer navy trousers', (0.06, 0.08, 0.20), 0.0, 0.6,
                         rim=(0.6, 0.65, 0.8), rim_strength=0.5)
     pads = material('Dungeon Explorer knee pads', (0.42, 0.42, 0.44), 0.0, 0.45,
@@ -2254,8 +2254,8 @@ def dungeon_explorer(x, y, tone):
                        rim=(0.9, 0.72, 0.5), rim_strength=0.5)
     webbing = material('Dungeon Explorer harness webbing', (0.06, 0.06, 0.07), 0.0, 0.5,
                        rim=(0.6, 0.6, 0.65), rim_strength=0.4)
-    helmet = material('Dungeon Explorer red helmet', (0.72, 0.07, 0.04), 0.0, 0.25,
-                      rim=(1.0, 0.6, 0.5), rim_strength=0.7, coat=0.6)
+    helmet = material('Dungeon Explorer yellow helmet', (0.92, 0.70, 0.02), 0.0, 0.25,
+                      rim=(1.0, 0.92, 0.6), rim_strength=0.7, coat=0.6)
     rope = material('Dungeon Explorer yellow rope', (0.90, 0.68, 0.08), 0.0, 0.55,
                     rim=(1.0, 0.92, 0.6), rim_strength=0.6)
     steel = material('Dungeon Explorer steel', (0.62, 0.63, 0.66), roughness=0.3,
@@ -2326,8 +2326,8 @@ def dungeon_explorer(x, y, tone):
                (0.045, 0.04, 0.05), skin, 16)
         # Right hand holds the ice axe upright beside the body, the spike
         # toward the floor and the head at shoulder height.
-        spike, top = Vector((x - 0.27, y - 0.15, 0.24)), Vector((x - 0.40, y - 0.10, 0.98))
-        hand = spike.lerp(top, 0.42)
+        spike, top = Vector((x - 0.29, y - 0.14, 0.38)), Vector((x - 0.39, y - 0.10, 0.92))
+        hand = spike.lerp(top, 0.31)
         tube('Dungeon Explorer right sleeve', [(x - 0.16, y - 0.01, 0.83), (x - 0.31, y - 0.03, 0.70),
                                                hand + Vector((0.01, 0.02, 0.05))],
              [0.062, 0.055, 0.045], shirt, sides=12, smooth=True)
