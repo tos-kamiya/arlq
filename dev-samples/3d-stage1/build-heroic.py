@@ -2400,15 +2400,17 @@ def limb(name, start, end, width, depth, mat, radius=0.05):
                  ahead.to_track_quat('Z', 'Y').to_euler())
 
 
-def heavy_armor_figure(x, y, prefix, mats, legs, body, head, girth=1.0, boot=1.0):
+def heavy_armor_figure(x, y, prefix, mats, legs, body, head, girth=1.0, boot=1.0,
+                       head_scale=1.0):
     """The armored members' figure, borrowed from the player's (`player()`):
     legs from the given (hip, knee, ankle) per side ending in round boots
     (`boot` scales them), an oval cylinder body with a red belt and plate
     seams, round pauldrons edged in red, and the player's block helm, here
     open in front so the face shows. No cloak and no visor fins, which are
     the player's. `body(x, y, radius)` adds the arms and anything held;
-    `head(x, y)` adds to the helm. Returns nothing; like the player, the
-    body is stretched upward and the head tilted back.
+    `head(x, y)` adds to the helm, and `head_scale` scales the helm and
+    head about the neck. Returns nothing; like the player, the body is
+    stretched upward and the head tilted back.
     """
     plate, trim, red, skin, eye = mats
     body_start = set(bpy.data.objects)
@@ -2480,7 +2482,12 @@ def heavy_armor_figure(x, y, prefix, mats, legs, body, head, girth=1.0, boot=1.0
     neck = Vector((x, y, 0.66))
     transform_new(start, Matrix.Translation((0, 0, neck.z * (ELF_STRETCH - 1)))
                   @ Matrix.Translation(neck) @ Matrix.Rotation(-0.6, 4, 'X')
-                  @ Matrix.Translation(-neck))
+                  @ Matrix.Scale(head_scale, 4) @ Matrix.Translation(-neck))
+
+
+# The Knight is built larger than the player and the Guardian; its helm is
+# brought back to their size so only the body reads as larger.
+KNIGHT_HEAD_SCALE = 1.42 / 1.70
 
 
 def knight(x, y, tone):
@@ -2536,7 +2543,8 @@ def knight(x, y, tone):
 
     heavy_armor_figure(x, y, 'Knight', mats, [
         ((x + side * 0.10, y, 0.36), (x + side * 0.11, y - 0.01, 0.18),
-         (x + side * 0.12, y - 0.01, 0.06)) for side in (-1, 1)], body, head, girth=1.05)
+         (x + side * 0.12, y - 0.01, 0.06)) for side in (-1, 1)], body, head, girth=1.05,
+        head_scale=KNIGHT_HEAD_SCALE)
 
 
 def guardian(x, y, tone):
