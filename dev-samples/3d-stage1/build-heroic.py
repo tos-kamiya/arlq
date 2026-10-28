@@ -2119,13 +2119,15 @@ def sphere_shell(name, center, scale, mat, keep, thickness=0.02, reshape=None):
 
 def rogue(x, y, tone):
     """Rogue (R), a Stage 5 member: a thief who gets by on sharp eyes and
-    tricks rather than force, so it carries no weapon. An assassin-like
+    tricks rather than force, carrying only a knife for work and
+    self-defence. An assassin-like
     charcoal robe in one piece: a hood of one cloth over the head hanging
     down both sides over the ears, open in front, its dark lining shading
     the uncovered face, folding into a cowl round the neck; wide sleeves
     and a rope belt.
     Crouched with the knees bent out and leaning a little forward, one hand
-    dangles a ring of keys and picks at face height, the other is held out
+    holds the knife up at face height, its blade glowing the companions'
+    cyan as a magic tool that sees through traps; the other is held out
     to say "wait" (it stops the party before danger). A small coil of rope
     hangs at the hip. Reads as neither man nor woman. `tone` picks one of
     `MEMBER_SKINS`.
@@ -2139,9 +2141,15 @@ def rogue(x, y, tone):
     lining = material('Rogue hood lining', (0.02, 0.02, 0.025), roughness=0.8)
     rope = material('Rogue hemp rope', (0.72, 0.56, 0.32), 0.0, 0.6,
                     rim=(1.0, 0.9, 0.7), rim_strength=0.6)
-    brass = material('Rogue brass keys', (1.0, 0.78, 0.35), roughness=0.18, metallic=0.8,
+    brass = material('Rogue brass fittings', (1.0, 0.78, 0.35), roughness=0.18, metallic=0.8,
                      emission=(1.0, 0.65, 0.25), strength=0.16,
                      rim=(1.0, 0.9, 0.6), rim_strength=1.6)
+    # The same cyan glow as the Nomicon's runes and the Loop's ring.
+    blade = material('Rogue knife cyan blade', (0.55, 0.85, 1.0), roughness=0.15, metallic=0.4,
+                     emission=(0.1, 0.7, 1.0), strength=1.2,
+                     rim=(0.1, 0.75, 1.0), rim_strength=2.0)
+    rune = material('Rogue knife cyan rune', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
+                    strength=3.0)
     skin = material('Rogue skin ' + tone, MEMBER_SKINS[tone], 0.2, 0.4,
                     rim=(1.0, 0.9, 0.8), rim_strength=0.6)
     eye = material('Rogue eyes', (0.02, 0.02, 0.02), roughness=0.15, coat=1.0)
@@ -2186,21 +2194,30 @@ def rogue(x, y, tone):
                                          location=(x + 0.21, y - 0.07, 0.56),
                                          rotation=(math.pi / 2, 0, 0))
         finish(bpy.context.object, brass, True, 'Rogue rope clip')
-        # Right hand (screen left) raised beside the face, dangling the keys.
+        # Right hand (screen left) raised beside the face, holding the knife
+        # point up and a little outward.
         tube('Rogue right sleeve', [(x - 0.17, y, 0.84), (x - 0.34, y - 0.02, 0.86),
                                     (x - 0.36, y - 0.10, 1.06)], [0.055, 0.065, 0.08], charcoal,
              sides=12, smooth=True)
         sphere('Rogue right hand', (x - 0.36, y - 0.12, 1.10), (0.045, 0.045, 0.045), skin, 16)
-        ring = Vector((x - 0.36, y - 0.13, 1.00))
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.07, minor_radius=0.014, location=ring,
-                                         rotation=(math.pi / 2, 0, 0))
-        finish(bpy.context.object, brass, True, 'Rogue key ring')
-        for k, dx in enumerate((-0.05, 0.0, 0.05)):
-            top = ring + Vector((dx, -0.01, -0.06))
-            bottom = top + Vector((dx * 0.8, -0.01, -0.17 - 0.04 * (k % 2)))
-            tube('Rogue key', [top, bottom], [0.018, 0.018], brass, sides=6)
-            block('Rogue key bit', tuple(bottom + Vector((0.022, 0, 0.025))), (0.045, 0.012, 0.04),
-                  brass, 0.005)
+        # The blade leans out to screen left: upright, the 60-degree view
+        # foreshortened it to a stub.
+        ahead = Vector((-0.65, -0.05, 0.75)).normalized()
+        across = Vector((0.75, 0, 0.65)).normalized()
+        guard = Vector((x - 0.38, y - 0.13, 1.13))
+        grip = guard - ahead * 0.12
+        tube('Rogue knife grip', [grip, guard], [0.022, 0.022], leather, sides=8, smooth=True)
+        sphere('Rogue knife pommel gem', tuple(grip - ahead * 0.015), (0.03, 0.03, 0.03), rune, 16)
+        tube('Rogue knife guard', [guard - across * 0.05, guard + across * 0.05], [0.015, 0.015],
+             brass, sides=8, smooth=True)
+        # A broad working blade, flat toward the camera, with a glowing rune
+        # line down the middle.
+        tip = guard + ahead * 0.32
+        tube('Rogue knife blade', [guard, guard + ahead * 0.22, tip],
+             [(0.008, 0.036), (0.008, 0.034), 0], blade, sides=4)
+        tube('Rogue knife rune line', [guard + ahead * 0.03 - Vector((0, 0.008, 0)),
+                                       guard + ahead * 0.21 - Vector((0, 0.008, 0))],
+             [0.007, 0.005], rune, sides=6)
         # Left hand held out to the side at shoulder height, palm out: "wait".
         tube('Rogue left sleeve', [(x + 0.17, y, 0.84), (x + 0.34, y - 0.04, 0.80),
                                    (x + 0.42, y - 0.10, 0.92)], [0.055, 0.065, 0.08], charcoal,
