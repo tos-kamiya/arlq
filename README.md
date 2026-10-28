@@ -280,6 +280,8 @@ Stage 5 is a four-floor dungeon starting at level 1. The player fights with part
 | `D` Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Climb through an entrance and leave the pit on the next move. Discovered passages remain usable after D leaves; entrances still require D. |
 | `G` Guardian | Halves extra barrier damage and reduces caltrop damage to one-third. |
 
+An undiscovered hidden passage can also be broken with a sword, turning it into ordinary floor and consuming one wall break. Discovered passages can be crossed without using the sword.
+
 Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. Experience sharing counts the player and K as 1 each, H and G as 0.5 each, and R and D as 0. J counts as 0.25 in Stage 5 and 0.5 in Stage 6. J's multiplier applies to the player's share.
 
 #### Monsters

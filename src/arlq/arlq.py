@@ -640,7 +640,7 @@ def move_player(
     if (
         player.item in (d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED)
         and player.item_uses > 0
-        and cell in d.WALL_CHARS
+        and cell in (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
     ):
         player.x, player.y = nx, ny
         field[ny][nx] = d.CHAR_FLOOR

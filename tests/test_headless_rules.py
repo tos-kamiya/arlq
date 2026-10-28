@@ -2040,6 +2040,35 @@ def test_sword_breaks_wall_and_consumes_one_use():
     assert player.item_uses == 1
 
 
+@pytest.mark.parametrize("item", [d.ITEM_SWORD_X1_5, d.ITEM_SWORD_CURSED])
+def test_sword_breaks_hidden_passage_into_floor(item):
+    player = d.Player(2, 2, 10, 90)
+    player.item = item
+    player.item_uses = 2
+    floors, field = stage3_state(player, [])
+    field[2][3] = d.CHAR_HIDDEN_D_GATE
+
+    run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter())
+
+    assert (player.x, player.y) == (3, 2)
+    assert field[2][3] == d.CHAR_FLOOR
+    assert player.item_uses == 1
+
+
+def test_discovered_passage_does_not_consume_sword():
+    player = d.Player(2, 2, 10, 90)
+    player.item = d.ITEM_SWORD_X1_5
+    player.item_uses = 2
+    floors, field = stage3_state(player, [])
+    field[2][3] = d.CHAR_D_GATE
+
+    run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter())
+
+    assert (player.x, player.y) == (3, 2)
+    assert field[2][3] == d.CHAR_D_GATE
+    assert player.item_uses == 2
+
+
 def test_sword_breaking_its_last_wall_clears_all_equipment_state():
     player = d.Player(2, 2, 10, 90)
     player.item = d.ITEM_SWORD_CURSED
