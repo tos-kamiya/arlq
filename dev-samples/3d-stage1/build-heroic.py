@@ -101,16 +101,17 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Sprites are exported and drawn at one common scale, so these decide how
 # large each character appears; the boss dragon is built large, its wings
 # spreading past its cell. The amoebas, comodo dragon and Erebuses were
-# later shrunk to 0.9 of their first sizes.
+# later shrunk to 0.9 of their first sizes, and the Stage 5 members enlarged
+# to 1.05 times theirs, as they looked small on screen.
 SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
-         'rock': 2.5, 'jester-light': 1.2, 'jester-medium': 1.2, 'jester-dark': 1.2,
-         'healer-light': 1.2, 'healer-medium': 1.2, 'healer-dark': 1.2,
-         'rogue-light': 1.35, 'rogue-medium': 1.35, 'rogue-dark': 1.35,
-         'explorer-light': 1.42, 'explorer-medium': 1.42, 'explorer-dark': 1.42,
-         'knight-light': 1.70, 'knight-medium': 1.70, 'knight-dark': 1.70,
-         'guardian-light': 1.42, 'guardian-medium': 1.42, 'guardian-dark': 1.42}
+         'rock': 2.5, 'jester-light': 1.26, 'jester-medium': 1.26, 'jester-dark': 1.26,
+         'healer-light': 1.26, 'healer-medium': 1.26, 'healer-dark': 1.26,
+         'rogue-light': 1.42, 'rogue-medium': 1.42, 'rogue-dark': 1.42,
+         'explorer-light': 1.49, 'explorer-medium': 1.49, 'explorer-dark': 1.49,
+         'knight-light': 1.79, 'knight-medium': 1.79, 'knight-dark': 1.79,
+         'guardian-light': 1.49, 'guardian-medium': 1.49, 'guardian-dark': 1.49}
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters and the chest turn slightly toward screen left; the player and companions face front.
