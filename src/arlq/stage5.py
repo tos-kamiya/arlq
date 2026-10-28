@@ -225,7 +225,7 @@ def recruit(
 ) -> str:
     if len(player.members) >= d.PARTY_LIMIT and not replace_departed:
         return trp("-- Your party is full. No member joined.", 5)
-    if len(player.members) == d.PARTY_LIMIT and player.members[0].role == "Noble":
+    if len(player.members) == d.PARTY_LIMIT and player.members[0].role == d.MEMBER_NOBLE:
         return trp("-- Noble cannot leave. No more members can join.", 5)
     player.joined_members.add(member.role)
     player.seen_members.add(member.role)
@@ -319,7 +319,7 @@ def reveal_rogue_monsters(
     current: Floor, player: d.Player, visible: list[list[int]]
 ) -> None:
     """Identify active Rogue targets that are in the player's field of view."""
-    if not d.has_member(player, "Rogue"):
+    if not d.has_member(player, d.MEMBER_ROGUE):
         return
     for entity in current.entities:
         if (
@@ -832,14 +832,7 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
         None,
         up_stairs=[down],
     )
-    for role in (
-        "Jester",
-        "Healer",
-        "Rogue",
-        "Knight",
-        "Dungeon Explorer",
-        "Guardian",
-    ):
+    for role in d.STAGE5_MEMBER_FLOORS[0]:
         upper.entities.append(
             d.PartyMember(*rand.choice(_open_points(upper)), role, origin_floor=0)
         )

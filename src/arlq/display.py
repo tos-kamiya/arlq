@@ -113,7 +113,7 @@ def status_prefix(
     text += level_str + "  "
     text += item_str + "  "
     knight = next(
-        (member for member in player.members if member.role == "Knight"), None
+        (member for member in player.members if member.role == d.MEMBER_KNIGHT), None
     )
     if knight is not None:
         text += f"K: {floor(knight.level)}  "

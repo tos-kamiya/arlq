@@ -9,19 +9,29 @@ FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 # Stages available from the game's UI and command line.
 PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5, 6)
+MEMBER_JESTER = "Jester"
+MEMBER_HEALER = "Healer"
+MEMBER_ROGUE = "Rogue"
+MEMBER_KNIGHT = "Knight"
+MEMBER_DUNGEON_EXPLORER = "Dungeon Explorer"
+MEMBER_GUARDIAN = "Guardian"
+MEMBER_NOBLE = "Noble"
+
 PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
 STAGE5_PARTY_LIMIT = 3
 JESTER_EXP_MULTIPLIER = 2
+STAGE5_JESTER_EXP_MULTIPLIER = 1.5
+STAGE5_JESTER_EXPERIENCE_WEIGHT = 0.25
 KNIGHT_INITIAL_LEVEL = 50
 KNIGHT_EXPERIENCE_RATIO = 0.5
 STAGE6_EXPERIENCE_MEMBER_WEIGHTS = {
-    "Jester": 0.5,
-    "Healer": 0.5,
-    "Guardian": 0.5,
-    "Knight": 1.0,
-    "Rogue": 0.0,
-    "Dungeon Explorer": 0.0,
+    MEMBER_JESTER: 0.5,
+    MEMBER_HEALER: 0.5,
+    MEMBER_GUARDIAN: 0.5,
+    MEMBER_KNIGHT: 1.0,
+    MEMBER_ROGUE: 0.0,
+    MEMBER_DUNGEON_EXPLORER: 0.0,
 }
 HEALER_MOVE_COST = 1 / 2
 HEALER_RESPAWN_COST = 2
@@ -73,15 +83,15 @@ STAGE5_SUPPORT_POOLS = (
     (("a", 1),), _STAGE5_FLOOR2_SUPPORT_POOL
 ) + (_STAGE5_DEEP_SUPPORT_POOL,) * 2
 STAGE5_MEMBER_FLOORS = (
-    ("Jester", "Healer", "Rogue", "Knight", "Dungeon Explorer", "Guardian"),
+    (MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT, MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN),
     (),
     (),
     (),
 )
 STAGE5_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
 MEMBER_GLYPHS = {
-    "Jester": "J", "Healer": "H", "Rogue": "R",
-    "Knight": "K", "Dungeon Explorer": "D", "Guardian": "G", "Noble": "N",
+    MEMBER_JESTER: "J", MEMBER_HEALER: "H", MEMBER_ROGUE: "R",
+    MEMBER_KNIGHT: "K", MEMBER_DUNGEON_EXPLORER: "D", MEMBER_GUARDIAN: "G", MEMBER_NOBLE: "N",
 }
 # Stages that feature elves and share the multi-floor progress state.
 ELF_STAGES = frozenset({3, 4})
@@ -415,7 +425,7 @@ class PartyMember(Entity):
         super().__init__(x, y)
         self.role = role
         self.origin_floor = origin_floor
-        self.level: float = KNIGHT_INITIAL_LEVEL if role == "Knight" else 0
+        self.level: float = KNIGHT_INITIAL_LEVEL if role == MEMBER_KNIGHT else 0
 
 
 class Monster(Entity):
@@ -1067,7 +1077,7 @@ def apply_feed(player: Player, feed: int, lp_overcharge: int = 0) -> None:
 
 
 def apply_respawn_penalty(player: Player) -> None:
-    player.lp -= HEALER_RESPAWN_COST if has_member(player, "Healer") else LP_RESPAWN_COST
+    player.lp -= HEALER_RESPAWN_COST if has_member(player, MEMBER_HEALER) else LP_RESPAWN_COST
     player.lp = max(LP_RESPAWN_MIN, player.lp)
 
 
@@ -1101,15 +1111,15 @@ def has_member(player: Player, role: str) -> bool:
 
 
 def experience_multiplier(player: Player, stage_num: int = 6) -> float:
-    if not has_member(player, "Jester"):
+    if not has_member(player, MEMBER_JESTER):
         return 1
-    return 1.5 if stage_num == 5 else JESTER_EXP_MULTIPLIER
+    return STAGE5_JESTER_EXP_MULTIPLIER if stage_num == 5 else JESTER_EXP_MULTIPLIER
 
 
 def experience_share_count(player: Player, stage_num: int) -> float:
     if stage_num in (5, 6):
         return 1 + sum(
-            0.25 if stage_num == 5 and member.role == "Jester"
+            STAGE5_JESTER_EXPERIENCE_WEIGHT if stage_num == 5 and member.role == MEMBER_JESTER
             else STAGE6_EXPERIENCE_MEMBER_WEIGHTS.get(member.role, 0.0)
             for member in player.members
         )
@@ -1117,13 +1127,13 @@ def experience_share_count(player: Player, stage_num: int) -> float:
 
 
 def movement_lp_cost(player: Player) -> float:
-    return HEALER_MOVE_COST if has_member(player, "Healer") else 1
+    return HEALER_MOVE_COST if has_member(player, MEMBER_HEALER) else 1
 
 
 def caltrop_lp_damage(player: Player) -> float:
     return (
         CALTROP_LP_DAMAGE // 3
-        if has_member(player, "Guardian")
+        if has_member(player, MEMBER_GUARDIAN)
         else CALTROP_LP_DAMAGE
     )
 
@@ -1137,7 +1147,7 @@ def current_player_attack(player: Player, stage_num: int = 0) -> float:
     attack instead of multiplying it.
     """
     knight_level = next(
-        (member.level for member in player.members if member.role == "Knight"),
+        (member.level for member in player.members if member.role == MEMBER_KNIGHT),
         0,
     ) if stage_num in (5, 6) else 0
     if player.rescue_stage:

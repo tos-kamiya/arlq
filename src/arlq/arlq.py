@@ -664,7 +664,7 @@ def barrier_lp_damage(player: d.Player) -> int:
         )
         else d.BARRIER_LP_DAMAGE
     )
-    return damage // 2 if damage and d.has_member(player, "Guardian") else damage
+    return damage // 2 if damage and d.has_member(player, d.MEMBER_GUARDIAN) else damage
 
 
 def apply_barrier_damage(
@@ -707,7 +707,7 @@ def update_entities(
         field,
         player,
         PLAYER_PASSABLE_CELLS,
-        break_golem_walls=d.has_member(player, "Rogue"),
+        break_golem_walls=d.has_member(player, d.MEMBER_ROGUE),
     )
 
     if wall_result is not None:

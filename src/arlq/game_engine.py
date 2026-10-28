@@ -121,7 +121,7 @@ def reachable_known_cells(
 
             cell = field[ny][nx]
             if (nx, ny) in (phase_walls or ()) or (
-                cell == d.CHAR_GOLEM_WALL and d.has_member(player, "Rogue")
+                cell == d.CHAR_GOLEM_WALL and d.has_member(player, d.MEMBER_ROGUE)
             ):
                 terrain_cost = d.movement_lp_cost(player)
             elif cell in (d.CHAR_FLOOR, d.CHAR_D_GATE, *d.HIDDEN_STAIRS_CHARS):
@@ -168,7 +168,7 @@ def _move_player(
         player,
         PLAYER_PASSABLE_CELLS,
         phase_walls=phase_walls,
-        break_golem_walls=d.has_member(player, "Rogue"),
+        break_golem_walls=d.has_member(player, d.MEMBER_ROGUE),
     )
     if trace is not None and wall_result is not None:
         trace.record_wall(wall_result)
@@ -235,7 +235,7 @@ def _should_stop_movement_repeat(
     cell = current.field[ny][nx]
     next_position = (nx, ny)
     passable_secret = cell == d.CHAR_D_GATE or (
-        cell == d.CHAR_GOLEM_WALL and d.has_member(player, "Rogue")
+        cell == d.CHAR_GOLEM_WALL and d.has_member(player, d.MEMBER_ROGUE)
     )
     if known_cell and cell in (
         *d.WALL_CHARS,
@@ -277,7 +277,7 @@ def _apply_terrain_hazards(
     old_lp = player.lp
     if apply_barrier_damage(field, player, previous):
         damage = max(0, old_lp - player.lp)
-        tone = "green" if d.has_member(player, "Guardian") else "default"
+        tone = "green" if d.has_member(player, d.MEMBER_GUARDIAN) else "default"
         _set_status_popup(player, f"LP-{damage:g}", tone)
         event_message = trp("-- The barrier burns you.", 5)
         if trace is not None:
@@ -287,7 +287,7 @@ def _apply_terrain_hazards(
         player.lp -= d.caltrop_lp_damage(player)
         damage = max(0, old_lp - player.lp)
         if damage:
-            tone = "green" if d.has_member(player, "Guardian") else "default"
+            tone = "green" if d.has_member(player, d.MEMBER_GUARDIAN) else "default"
             _set_status_popup(player, f"LP-{damage:g}", tone)
         field[player.y][player.x] = d.CHAR_FLOOR
         if trace is not None:
@@ -369,7 +369,7 @@ def _marksman_shoot(
 
         entity.marksman_shots_fired += 1
         no_damage = (
-            d.has_member(player, "Rogue")
+            d.has_member(player, d.MEMBER_ROGUE)
             and entity.marksman_shots_fired % 2 == 1
         )
         if no_damage:
@@ -1208,7 +1208,7 @@ def _resolve_party_contact(
     if any(monster.tribe.effect == d.EFFECT_LEVEL_REDUCE for monster in party):
         player.level = max(1, math.floor(player.level * 2 / 3))
     knight = next(
-        (member for member in player.members if member.role == "Knight"), None
+        (member for member in player.members if member.role == d.MEMBER_KNIGHT), None
     )
     if knight is not None:
         knight.level += base_experience * d.KNIGHT_EXPERIENCE_RATIO
@@ -1231,7 +1231,7 @@ def _resolve_party_contact(
             key=lambda point: (abs(point[0] - boss.x) + abs(point[1] - boss.y), point),
         )
         current.entities.append(
-            d.PartyMember(*candidates[0], "Noble", origin_floor=floor[0])
+            d.PartyMember(*candidates[0], d.MEMBER_NOBLE, origin_floor=floor[0])
         )
     stage5.normalize_parties(
         current,
@@ -1401,7 +1401,7 @@ def _handle_floor_transition(
         and current.field[player.y][player.x] == d.CHAR_SCHOLAR_STAIRS_UP
         and floors[floor[0] - 1].field[player.y][player.x] == d.CHAR_COLLAPSE
     ):
-        if not d.has_member(player, "Dungeon Explorer"):
+        if not d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
             return None
         floor[0] -= 1
         player.just_climbed_pit = True
@@ -1728,7 +1728,7 @@ def _process_multi_floor_turn(
         ).format(n=floor[0] + 1, total=len(floors))
         current = floors[floor[0]]
         collapse_transition = True
-    guardian_reduced_hazard = d.has_member(player, "Guardian") and (
+    guardian_reduced_hazard = d.has_member(player, d.MEMBER_GUARDIAN) and (
         current.field[player.y][player.x] in (d.CHAR_BARRIER, d.CHAR_CALTROP)
     )
     old_hazard_lp = player.lp
@@ -1858,7 +1858,7 @@ def observe_world(
     for y, row in enumerate(visible):
         for x, value in enumerate(row):
             current.seen[y][x] |= value
-    if stage_num in (5, 6) and d.has_member(player, "Rogue"):
+    if stage_num in (5, 6) and d.has_member(player, d.MEMBER_ROGUE):
         for entity in current.entities:
             if (
                 isinstance(entity, d.Collapse)
@@ -1869,7 +1869,7 @@ def observe_world(
                 _reveal_collapse_pits(floors, floor_index, entity)
     if stage_num in (5, 6):
         stage5.reveal_rogue_monsters(current, player, visible)
-        if d.has_member(player, "Dungeon Explorer"):
+        if d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
             stage5.reveal_scholar_features(current, current.seen)
             if floor_index > 0:
                 upper = floors[floor_index - 1]
@@ -2069,7 +2069,7 @@ def run_game(
         # A real movement always returns the display to the player's floor.
         view_floor = floor[0]
         rogue_spotted_danger = False
-        if stage_num in (5, 6) and d.has_member(player, "Rogue"):
+        if stage_num in (5, 6) and d.has_member(player, d.MEMBER_ROGUE):
             destination = (player.x + move[0], player.y + move[1])
             if stage5.rogue_danger(current, player, destination):
                 rogue_spotted_danger = True

@@ -5,6 +5,9 @@ from .arlq import create_field
 from .utils import rand
 
 
+MAX_FLOOR_GENERATION_ATTEMPTS = 1000
+
+
 def tile_at(point: d.Point) -> d.Point:
     return point[0] // (d.TILE_WIDTH + 1), point[1] // (d.TILE_HEIGHT + 1)
 
@@ -45,7 +48,7 @@ def generate_floor_field(
 ]:
     """Build a floor and return its isolated, filled, and split graph data."""
     all_rooms = {(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)}
-    for _ in range(1000):
+    for _ in range(MAX_FLOOR_GENERATION_ATTEMPTS):
         field, generated_up, generated_down = create_field(
             corridor_h_width, corridor_v_width, d.CHAR_WALL
         )
