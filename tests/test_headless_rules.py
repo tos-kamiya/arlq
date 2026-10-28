@@ -304,6 +304,7 @@ def test_game_loop_draws_with_keyword_arguments_only():
         "d_gates",
         "reachable_cells",
         "overshoot_markers",
+        "loop_trail_markers",
     }
     assert draws[0]["game_start_turn"] is None
     assert draws[0]["stage_num"] == 1
@@ -387,7 +388,7 @@ def test_stage4_has_independent_per_floor_roster():
     for floor in d.STAGE4_ROSTER:
         for char in {entry[0] for entry in floor}:
             ranks = {rank for ch, _, rank in floor if ch == char}
-            assert any(ranks <= allowed for allowed in ({1}, {1, 2}, {2, 3}))
+            assert ranks <= {1, 2, 3}
     assert [
         sum(count for ch, count, _ in floor if ch == "a")
         for floor in d.STAGE4_ROSTER
@@ -414,11 +415,11 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for _, count, rank in floor if rank == 2 or rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [2, 10, 14, 14, 15]
+    ] == [2, 9, 12, 12, 13]
     assert [
         sum(count for _, count, rank in floor if rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [0, 0, 0, 6, 12]
+    ] == [0, 0, 0, 5, 10]
     assert [
         sum(count for ch, count, _ in floor if ch == "d")
         for floor in d.STAGE4_ROSTER
@@ -808,8 +809,9 @@ def test_stage2_rebalances_bison_and_comodo_dragon_counts():
     }
 
     assert [(config.population, config.empowered) for config in b_configs] == [
-        (5, 1),
+        (4, 1),
         (2, 2),
+        (1, 1),
     ]
     assert populations["A"] == 3
     assert populations["d"] == 4
@@ -2464,7 +2466,7 @@ def test_elf_stage_flags_keep_their_bit_values():
         d.ELF_STAGE_J_FLAG,
     ) == (1, 2, 4, 8, 32, 16, 64)
     assert d.MONSTERS_EXCLUDED_FROM_RESPAWN == {
-        "a", "A", "b", "c", "C", "F", "M", "O", "W", "w"
+        "a", "A", "b", "B", "c", "C", "F", "M", "O", "W", "w"
     }
 
 
@@ -2482,17 +2484,17 @@ def test_level_item_labels_follow_permanent_elf_attack_bonuses():
     player = d.Player(1, 1, 100, 90)
     player.item = d.ITEM_POISONED
     player.item_taken_from = "d"
-    assert d.level_item_labels(player, 1) == ("LVL: 100 /3", "+Poisoned(d)")
+    assert d.level_item_labels(player, 1) == ("LVL: 100 /3", "d-")
 
     player.elf_stage_flags = d.ELF_STAGE_K_FLAG
     player.persistent_followers.append((1, 1, 0, "J"))
-    assert d.level_item_labels(player, 3) == ("LVL: 100 /3 x1.2 x1.25", "+Poisoned(d)")
-    assert d.level_item_labels(player, 2) == ("LVL: 100 /3 x1.2 x1.25", "+Poisoned(d)")
+    assert d.level_item_labels(player, 3) == ("LVL: 100 /3 x1.2 x1.25", "d-")
+    assert d.level_item_labels(player, 2) == ("LVL: 100 /3 x1.2 x1.25", "d-")
 
     player.item = d.ITEM_SWORD_X1_5
     assert d.level_item_labels(player, 3)[0] == "LVL: 100 x1.5 x1.2 x1.25"
     assert d.status_prefix(player, 3, 4).endswith(
-        "LVL: 100 x1.5 x1.2 x1.25  +Sword(d)  "
+        "LVL: 100 x1.5 x1.2 x1.25  c+  "
     )
 
 

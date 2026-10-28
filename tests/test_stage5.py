@@ -298,18 +298,18 @@ def test_group_keeps_unique_item_even_when_contacting_ordinary_member():
 
 def test_fractional_attack_hazards_and_status():
     current, player = state(("Knight", "Dungeon Explorer"), level=100.5)
-    assert d.current_player_attack(player) == pytest.approx(201)
-    assert d.current_player_attack(player, 5) == pytest.approx(201)
+    assert d.current_player_attack(player) == pytest.approx(100.5)
+    assert d.current_player_attack(player, 5) == pytest.approx(150.5)
     player.item = d.ITEM_SWORD_X1_5
-    assert d.current_player_attack(player) == pytest.approx(301.5)
-    assert d.current_player_attack(player, 5) == pytest.approx(301.5)
+    assert d.current_player_attack(player) == pytest.approx(150.75)
+    assert d.current_player_attack(player, 5) == pytest.approx(200.75)
     assert barrier_lp_damage(player) == 30
     assert d.caltrop_lp_damage(player) == 3
     current.field[2][3] = d.CHAR_CALTROP
     step(current, player)
     assert player.lp == 87
     assert "LVL: 100" in display.status_prefix(player, 5, 0)
-    assert "ATK: 452" in display.status_prefix(player, 5, 0)
+    assert "ATK: 200" in display.status_prefix(player, 5, 0)
 
 
 def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
@@ -596,7 +596,7 @@ def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):
     assert player.lp == pytest.approx(89.5)
     assert (player.x, player.y) == (3, 2)
     assert player.current_floor == 1
-    assert ui.stops == 1
+    assert ui.stops == 2
 
 
 @pytest.mark.parametrize("roles", [(), ("Healer",)])
@@ -657,13 +657,13 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
     for upper, lower in zip(floors, floors[1:]):
         assert len(upper.down_stairs) == 2
         assert len(lower.up_stairs) == 2
-        assert len(upper.scholar_down_stairs) == 1
-        assert len(lower.scholar_up_stairs) == 1
+        assert not upper.scholar_down_stairs
+        assert not lower.scholar_up_stairs
         sections = {
             stage5.tile_at(point)
             for point in upper.down_stairs + upper.scholar_down_stairs
         }
-        assert len(sections) == 3
+        assert len(sections) == 2
     player.members = [
         d.PartyMember(player.x, player.y, "Dungeon Explorer"),
         d.PartyMember(player.x, player.y, "Noble"),

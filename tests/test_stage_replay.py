@@ -170,8 +170,8 @@ def test_repeated_rewinds_replay_rogue_checks_and_scholar_discoveries(
         current = Floor(
             field,
             [
-                d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["V"]),
-                d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"]),
+                d.Monster(3, 3, d.CHAR_TO_MONSTER_TRIBE["V"]),
+                d.Companion(4, 3, d.CHAR_TO_COMPANION_TRIBE["l"]),
             ],
             [[0] * len(row) for row in field],
             (2, 2),
@@ -179,7 +179,12 @@ def test_repeated_rewinds_replay_rogue_checks_and_scholar_discoveries(
             None,
         )
         current.d_gates[(3, 3)] = d.CHAR_D_GATE
-        return [current], player
+        upper_field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+        upper_field[3][2] = d.CHAR_COLLAPSE
+        upper = Floor(upper_field, [], [[0] * len(row) for row in upper_field],
+                      (2, 2), (70, 18), None)
+        current.field[3][2] = d.CHAR_FLOOR
+        return [upper, current], player
 
     def disturb_map(current, *_args, **_kwargs):
         engine.rand.randrange(100)
@@ -187,8 +192,8 @@ def test_repeated_rewinds_replay_rogue_checks_and_scholar_discoveries(
 
     def respawn_loop(entities, *_args):
         engine.rand.randrange(100)
-        entities.append(d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"]))
-        return 4, 2
+        entities.append(d.Companion(4, 3, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        return 4, 3
 
     monkeypatch.setattr(engine, "_vortex_rearrange", disturb_map)
     monkeypatch.setattr(stage_replay, "_spawn", respawn_loop)
@@ -196,11 +201,11 @@ def test_repeated_rewinds_replay_rogue_checks_and_scholar_discoveries(
         monkeypatch,
         build,
         stage_num,
-        [(0, 1), (1, 0), (1, 0), (1, 0), (1, 0), (1, 0), (1, 0)],
+        [(0, 1), (1, 0), (1, 0)] * 3,
         GameConfig(),
     )
     assert len(context.rewind_targets) == 3
-    assert context.rogue_checks == {0: [(2, 3)]}
+    assert context.rogue_checks == {0: [(2, 3)], 3: [(2, 3)], 6: [(2, 3)]}
 
 
 def test_repeated_rewinds_without_vortex_preserve_exploration(monkeypatch):
