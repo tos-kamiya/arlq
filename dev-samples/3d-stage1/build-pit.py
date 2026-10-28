@@ -50,8 +50,10 @@ ROCKS = ((-75, 1.12, 0.17), (-140, 1.08, 0.14), (-20, 1.10, 0.13),
 RUBBLE = 4
 # Rocks fallen onto the floor below a pit: (x as a fraction of the cell's
 # width from its centre, y as a fraction of its depth from the south edge,
-# size).
-FALLEN_ROCKS = ((0.10, 0.27, 0.085), (-0.13, 0.44, 0.15), (0.17, 0.58, 0.105))
+# size). About 1.5 times the first sizes, plus a small fourth rock, so the
+# cluster stands out on the floor.
+FALLEN_ROCKS = ((0.15, 0.26, 0.13), (-0.16, 0.44, 0.22), (0.20, 0.62, 0.16),
+                (-0.02, 0.20, 0.09))
 SHAFT_RINGS = 5
 # The top of the wall, just below the edge, is lighter rock.
 LIP_DEPTH = 0.07
