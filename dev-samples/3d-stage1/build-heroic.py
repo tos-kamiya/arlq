@@ -3030,9 +3030,19 @@ def golem(x, y):
                      rim=(0.65, 0.70, 0.90), rim_strength=0.8)
     rune = material('Golem amber runes', (1.0, 0.6, 0.1), emission=(1.0, 0.55, 0.08),
                     strength=6.0)
+
+    def stripe(part, side, length):
+        """A rune line down the outer side of a limb, like a tracksuit's
+        side stripe, so the golem does not read as an ape."""
+        bpy.context.view_layer.update()
+        offset = Vector((side * (part.dimensions.x / 2 + 0.005), 0, 0))
+        block('Golem side stripe', tuple(part.matrix_world @ offset), (0.02, 0.035, length),
+              rune, 0.006, part.rotation_euler)
+
     for side in (-1, 1):
-        block('Golem leg', (x + side * 0.20, y + 0.06, 0.17), (0.24, 0.26, 0.34), basalt, 0.03,
-              (0, 0, side * 0.08))
+        leg = block('Golem leg', (x + side * 0.20, y + 0.06, 0.17), (0.24, 0.26, 0.34), basalt,
+                    0.03, (0, 0, side * 0.08))
+        stripe(leg, side, 0.30)
         block('Golem foot', (x + side * 0.21, y - 0.02, 0.05), (0.28, 0.34, 0.10), slate, 0.02)
     block('Golem pelvis', (x, y + 0.04, 0.40), (0.50, 0.30, 0.16), slate, 0.03)
     upper = set(bpy.data.objects)
@@ -3043,18 +3053,22 @@ def golem(x, y):
                          (0.15, 0.78, 0.035, 0.24), (0, 0.78, 0.09, 0.09)):
         block('Golem rune', (x + dx, y - 0.205, dz), (w, 0.02, h), rune, 0.006)
     block('Golem head', (x, y - 0.06, 1.16), (0.30, 0.26, 0.24), slate, 0.04)
-    block('Golem brow', (x, y - 0.19, 1.22), (0.32, 0.06, 0.06), basalt, 0.015)
-    block('Golem eye slit', (x, y - 0.195, 1.15), (0.20, 0.02, 0.05), rune, 0.008)
+    # Two square eyes of different sizes at slightly different heights, like
+    # an old robot's. No brow ridge: it made the face read as an ape's.
+    for dx, z, size in ((-0.075, 1.165, 0.08), (0.075, 1.125, 0.055)):
+        block('Golem eye', (x + dx, y - 0.195, z), (size, 0.02, size), rune, 0.008)
     for side in (-1, 1):
         for i, (dx, dy, z, r) in enumerate(((0.48, 0.0, 1.02, 0.19), (0.36, 0.08, 1.10, 0.12))):
             bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r,
                                                   location=(x + side * dx, y + dy, z),
                                                   rotation=(i * 0.7 + side, 0.4, i * 0.3))
             finish(bpy.context.object, basalt, False, 'Golem shoulder boulder')
-        block('Golem upper arm', (x + side * 0.58, y, 0.80), (0.20, 0.22, 0.34), slate, 0.03,
-              (0, side * 0.15, 0))
-        block('Golem forearm', (x + side * 0.64, y - 0.04, 0.52), (0.22, 0.24, 0.30), basalt, 0.03,
-              (0, side * 0.05, 0))
+        upper_arm = block('Golem upper arm', (x + side * 0.58, y, 0.80), (0.20, 0.22, 0.34),
+                          slate, 0.03, (0, side * 0.15, 0))
+        stripe(upper_arm, side, 0.30)
+        forearm = block('Golem forearm', (x + side * 0.64, y - 0.04, 0.52), (0.22, 0.24, 0.30),
+                        basalt, 0.03, (0, side * 0.05, 0))
+        stripe(forearm, side, 0.26)
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.19,
                                               location=(x + side * 0.66, y - 0.08, 0.28),
                                               rotation=(0.5, side * 0.3, 0.2))
