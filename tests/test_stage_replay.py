@@ -162,7 +162,7 @@ def test_repeated_rewinds_replay_rogue_checks_and_scholar_discoveries(
         player = d.Player(2, 2, 10000, 120)
         player.rescue_stage = True
         player.members = [
-            d.PartyMember(2, 2, role) for role in ("Rogue", "Dangeon Scholar")
+            d.PartyMember(2, 2, role) for role in ("Rogue", "Dungeon Explorer")
         ]
         field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
         field[3][2] = d.CHAR_COLLAPSE
@@ -231,7 +231,7 @@ def test_rewind_keeps_current_knowledge_after_vortex_erasure(monkeypatch):
     def build(*_):
         player = d.Player(2, 2, 10000, 120)
         player.rescue_stage = True
-        player.members = [d.PartyMember(2, 2, "Dangeon Scholar")]
+        player.members = [d.PartyMember(2, 2, "Dungeon Explorer")]
         field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
         field[3][12] = d.CHAR_HIDDEN_D_GATE
         entities = [

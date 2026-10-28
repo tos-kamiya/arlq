@@ -993,7 +993,7 @@ class PygletUI:
         self._draw_field_text(pos, char, COLOR_MAP[CI_GREEN], bold=True)
 
     def _draw_stairs(self, pos: d.Point, char: str):
-        """Draw an ordinary stair or a Scholar stair marker."""
+        """Draw an ordinary stair or an Explorer stair marker."""
         is_scholar = char in d.SCHOLAR_STAIR_CHARS
         if char in d.SCHOLAR_STAIR_CHARS:
             char = (

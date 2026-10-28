@@ -125,7 +125,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
         "Healer",
         "Rogue",
         "Knight",
-        "Dangeon Scholar",
+        "Dungeon Explorer",
         "Guardian",
     }
     assert not any(
@@ -297,7 +297,7 @@ def test_group_keeps_unique_item_even_when_contacting_ordinary_member():
 
 
 def test_fractional_attack_hazards_and_status():
-    current, player = state(("Knight", "Dangeon Scholar"), level=100.5)
+    current, player = state(("Knight", "Dungeon Explorer"), level=100.5)
     assert d.current_player_attack(player) == pytest.approx(201)
     assert d.current_player_attack(player, 5) == pytest.approx(201)
     player.item = d.ITEM_SWORD_X1_5
@@ -645,7 +645,7 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
         }
         assert len(sections) == 3
     player.members = [
-        d.PartyMember(player.x, player.y, "Dangeon Scholar"),
+        d.PartyMember(player.x, player.y, "Dungeon Explorer"),
         d.PartyMember(player.x, player.y, "Noble"),
     ]
     stage5.set_scholar_stairs(floors, True)
@@ -692,7 +692,7 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
         stage5.sync_members(player, exit_point, (1, 0))
         assert floor_index[0] == index + 1
         assert [member.role for member in player.members] == [
-            "Dangeon Scholar",
+            "Dungeon Explorer",
             "Noble",
         ]
         assert all((e.x, e.y) == exit_point for e in player.members)

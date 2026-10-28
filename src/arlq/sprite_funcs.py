@@ -203,7 +203,7 @@ FALLEN_ROCK_BLOCKERS = (*d.WALL_CHARS, d.CHAR_COLLAPSE, *d.STAIR_CHARS)
 # wall part: near-white marble flights (up: rising north; down: descending
 # toward the viewer into a dark opening) and a shapeless hole with rocks lying
 # around it. Ordinary stair flights are gold and darkened outside the current
-# view; Scholar stairs use a colored text marker instead.
+# view; Explorer stairs use a colored text marker instead.
 TERRAIN_FILES = {d.CHAR_STAIRS_UP: 'stairs/stairs-up.png',
                  d.CHAR_STAIRS_DOWN: 'stairs/stairs-down.png',
                  d.CHAR_COLLAPSE: 'pit/pit.png',

@@ -721,7 +721,7 @@ def test_stairs_without_images_stay_yellow_text(sprite_ui):
 
 def test_scholar_stairs_use_green_direction_glyph_without_background(sprite_ui):
     sprite_ui._terrain_images = {d.CHAR_SCHOLAR_STAIRS_DOWN: object()}
-    sprite_ui._draw_rect = lambda *args: pytest.fail("Scholar stairs have no background")
+    sprite_ui._draw_rect = lambda *args: pytest.fail("Explorer stairs have no background")
     sprite_ui._draw_stairs((4, 5), d.CHAR_SCHOLAR_STAIRS_DOWN)
     assert sprite_ui.text_calls[0][1] == d.CHAR_STAIRS_DOWN
     assert sprite_ui.text_calls[0][2] == sprite_funcs.COLOR_MAP[sprite_funcs.CI_GREEN]

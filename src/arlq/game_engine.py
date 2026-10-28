@@ -1867,7 +1867,7 @@ def observe_world(
                 _reveal_collapse_pits(floors, floor_index, entity)
     if stage_num in (5, 6):
         stage5.reveal_rogue_monsters(current, player, visible)
-        if d.has_member(player, "Dangeon Scholar"):
+        if d.has_member(player, "Dungeon Explorer"):
             stage5.reveal_scholar_features(current, current.seen)
             if floor_index > 0:
                 upper = floors[floor_index - 1]

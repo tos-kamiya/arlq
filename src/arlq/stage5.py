@@ -287,7 +287,7 @@ def set_scholar_stairs(floors: list[Floor], active: bool) -> None:
 
 
 def reveal_scholar_features(current: Floor, known: list[list[int]]) -> None:
-    """Reveal Scholar secrets anywhere in the explored part of the floor."""
+    """Reveal Explorer secrets anywhere in the explored part of the floor."""
     for points, hidden, revealed in (
         (
             current.scholar_up_stairs,
@@ -837,7 +837,7 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
         "Healer",
         "Rogue",
         "Knight",
-        "Dangeon Scholar",
+        "Dungeon Explorer",
         "Guardian",
     ):
         upper.entities.append(

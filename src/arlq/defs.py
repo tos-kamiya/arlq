@@ -21,7 +21,7 @@ STAGE6_EXPERIENCE_MEMBER_WEIGHTS = {
     "Guardian": 0.5,
     "Knight": 1.0,
     "Rogue": 0.0,
-    "Dangeon Scholar": 0.0,
+    "Dungeon Explorer": 0.0,
 }
 HEALER_MOVE_COST = 1 / 2
 HEALER_RESPAWN_COST = 2
@@ -73,7 +73,7 @@ STAGE5_SUPPORT_POOLS = (
     (("a", 1),), _STAGE5_FLOOR2_SUPPORT_POOL
 ) + (_STAGE5_DEEP_SUPPORT_POOL,) * 2
 STAGE5_MEMBER_FLOORS = (
-    ("Jester", "Healer", "Rogue", "Knight", "Dangeon Scholar", "Guardian"),
+    ("Jester", "Healer", "Rogue", "Knight", "Dungeon Explorer", "Guardian"),
     (),
     (),
     (),
@@ -81,7 +81,7 @@ STAGE5_MEMBER_FLOORS = (
 STAGE5_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
 MEMBER_GLYPHS = {
     "Jester": "J", "Healer": "H", "Rogue": "R",
-    "Knight": "K", "Dangeon Scholar": "D", "Guardian": "G", "Noble": "N",
+    "Knight": "K", "Dungeon Explorer": "D", "Guardian": "G", "Noble": "N",
 }
 # Stages that feature elves and share the multi-floor progress state.
 ELF_STAGES = frozenset({3, 4})

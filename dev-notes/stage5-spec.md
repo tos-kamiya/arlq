@@ -5,7 +5,7 @@ This file records implementation details for maintenance. `src/arlq/defs.py` is 
 ## Stage layout and objective
 
 - Stage 5 starts at level 1 and has five seeded floors. Each floor has a detached terminal room containing one additional monster chosen from `b`, `c`, and `A`. Floors 3–5 can also have short wall spurs.
-- Two ordinary stair pairs connect each adjacent floor pair. Dangeon Scholar reveals one additional hidden pair per connection. Stairs avoid the detached room where possible.
+- Two ordinary stair pairs connect each adjacent floor pair. Dungeon Explorer reveals one additional hidden pair per connection. Stairs avoid the detached room where possible.
 - Floors 2–5 receive two barriers each; the final floor also has barriers on 5% of eligible open cells. Its boss party contains one ordinary `W`, one ordinary `V`, and one random empowered escort with no special effect or item. A dormant Mimic imitates `W`, and a treasure chest is in another room section. Combat is decided by comparing player attack with the combined strength of the monster party, including the boss.
 - Defeating `W` unlocks the chest. The ordinary `V` in its party applies its local rearrangement effect when defeated. Taking the chest wins the stage.
 - Stage 5 has no elves. Caltrop Plants (`X`) are in the floor 2–4 roster; defeating one scatters caltrops around the player using the shared spread pattern. Pits drop the player to the next floor.
@@ -22,7 +22,7 @@ This file records implementation details for maintenance. `src/arlq/defs.py` is 
 | Healer | Reduces movement LP cost to one half and defeat LP cost to 2. |
 | Rogue | Doubles the interval between Marksman shots. Identifies adjacent Mimics, Golems (`g`), Caltrop Plants (`X`), and Rare Erebus (`E`) in cardinal cells. Stops movement before pits, Marksman firing lanes, and Rare Erebus; a second press proceeds. |
 | Knight | Triples player attack and multiplies shared experience by 0.75. |
-| Dangeon Scholar | Reveals and enables hidden stairs and walks through walls created by Golems. Those walls still block Marksman arrows. |
+| Dungeon Explorer | Reveals and enables hidden stairs and walks through walls created by Golems. Those walls still block Marksman arrows. |
 | Guardian | Reduces barrier extra LP damage by half and caltrop damage to one third; movement LP cost is unchanged. |
 
 ## Monster parties and placement
