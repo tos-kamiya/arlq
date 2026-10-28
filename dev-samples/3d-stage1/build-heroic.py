@@ -2240,7 +2240,7 @@ def dungeon_explorer(x, y, tone):
     """Dungeon Explorer (D), a Stage 5 member: a caver who finds hidden
     routes. Lightly dressed like a modern caving team: a yellow helmet with a
     headlamp, a fitted light grey shirt, navy trousers, knee pads and a bare
-    sit harness with a few carabiners. A coil of bright yellow rope is slung
+    sit harness with a few carabiners. A coil of twisted hemp rope is slung
     over the right shoulder and across the chest, and the right hand holds a
     short ice axe beside the body, its head at shoulder height. The left hand
     rests on the hip. No weapon besides the tool, no cape. `tone` picks one of
@@ -2258,8 +2258,9 @@ def dungeon_explorer(x, y, tone):
                        rim=(0.6, 0.6, 0.65), rim_strength=0.4)
     helmet = material('Dungeon Explorer yellow helmet', (0.92, 0.70, 0.02), 0.0, 0.25,
                       rim=(1.0, 0.92, 0.6), rim_strength=0.7, coat=0.6)
-    rope = material('Dungeon Explorer yellow rope', (0.90, 0.68, 0.08), 0.0, 0.55,
-                    rim=(1.0, 0.92, 0.6), rim_strength=0.6)
+    # Matte hemp; a bright yellow, smooth rope read as nylon.
+    rope = material('Dungeon Explorer hemp rope', (0.50, 0.37, 0.19), 0.0, 0.85,
+                    rim=(0.95, 0.85, 0.65), rim_strength=0.3)
     steel = material('Dungeon Explorer steel', (0.62, 0.63, 0.66), roughness=0.3,
                      metallic=0.8, rim=(0.95, 0.95, 1.0), rim_strength=0.6)
     shaft = material('Dungeon Explorer ice axe shaft', (0.36, 0.20, 0.08), 0.0, 0.5,
@@ -2306,19 +2307,34 @@ def dungeon_explorer(x, y, tone):
 
         # A coil of rope over the right shoulder (screen left), crossing the
         # chest to the left hip. Three strands make it read as a coil rather
-        # than a sash.
+        # than a sash. Each strand is three plies twisted round each other,
+        # so it reads as a laid rope.
         center = Vector((x + 0.01, y, 0.69))
         along = Vector((0.165, 0, -0.19))
         across = along.cross(Vector((0, 1, 0))).normalized()
+        steps, pitch = 240, 0.06
         for k in (-1, 0, 1):
             points = []
-            for step in range(25):
-                t = 2 * math.pi * step / 24
+            for step in range(steps + 1):
+                t = 2 * math.pi * step / steps
                 points.append(center + along * math.cos(t)
                               + Vector((0, -(0.195 + 0.006 * k) * math.sin(t), 0))
                               + across * (0.026 * k))
-            tube('Dungeon Explorer rope coil', points, [0.019] * len(points), rope,
-                 sides=8, smooth=True)
+            length = 0.0
+            frames = []
+            for i, point in enumerate(points):
+                if i:
+                    length += (point - points[i - 1]).length
+                ahead = (points[min(i + 1, steps)] - points[max(i - 1, 0)]).normalized()
+                side = ahead.cross(Vector((0, 0, 1))).normalized()
+                frames.append((length, side, side.cross(ahead)))
+            for ply in range(3):
+                strands = []
+                for point, (s, side, up) in zip(points, frames):
+                    a = 2 * math.pi * (s / pitch + ply / 3)
+                    strands.append(point + (side * math.cos(a) + up * math.sin(a)) * 0.008)
+                tube('Dungeon Explorer rope ply', strands, [0.012] * len(strands), rope,
+                     sides=6, smooth=True)
 
         def sleeve(side, shoulder, elbow, wrist):
             # Two straight tubes and a round elbow: one tube bent at the
