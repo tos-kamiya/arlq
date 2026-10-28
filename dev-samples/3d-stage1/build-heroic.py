@@ -2578,8 +2578,9 @@ def guardian(x, y, tone):
     # it faces straight ahead, leaned back a little toward the camera. Seen
     # from the front it is a shogi piece upside down, kept squarish: a
     # straight top, upright sides of even width, then two shallow slopes to
-    # a blunt point.
-    half_flat, end, bend, height = 0.36, 0.14, math.radians(40), 0.74
+    # a blunt point. It is 1.2 times as wide as the arms' span, so it
+    # sticks out on both sides.
+    half_flat, end, bend, height = 0.36 * 1.2, 0.14 * 1.2, math.radians(40), 0.74
     profile = [(-half_flat - end * math.cos(bend), end * math.sin(bend)), (-half_flat, 0.0),
                (half_flat, 0.0), (half_flat + end * math.cos(bend), end * math.sin(bend))]
     lengths = [(Vector(b) - Vector(a)).length for a, b in zip(profile, profile[1:])]
