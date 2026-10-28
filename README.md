@@ -274,7 +274,7 @@ Run `--stage 5` for a seed-generated, four-floor dungeon starting at level 1. Fo
 | `H` Healer | Reduce movement LP consumption to one-half and defeat's LP cost to 2. Rewinds restore LP using the same reduced consumption. |
 | `R` Rogue | Identify Mimics (`M`), Golems (`g`), Caltrop Plants (`X`), and Rare Erebus (`E`) when they enter the field of view. Reveal a Collapse's pits when its `?` enters the field of view. Break walls raised by defeated Golems by walking into them. Warn about pits and Rare Erebus while stopping key repeat; the current move still proceeds. For each Marksman, the first, third, and other odd-numbered shots are shown but deal no damage; even-numbered shots deal damage. |
 | `K` Knight | Starts at level 50 and gains half of the player's shared combat experience, before the Jester bonus. In Stages 5 and 6, add the Knight's level to the player's attack power after sword and other player bonuses. |
-| `D` Dangeon Scholar | While D is with you, reveal hidden stairways (`^` and `v`) and Stage 5's hidden passage (`.`) within explored map areas. Secrets in areas already explored when D joins are revealed immediately. Revealed stairs and passages stay visible and usable after D leaves. Marksman arrows are blocked by walls raised by defeated Golems. |
+| `D` Dangeon Scholar | While D is with you, reveal green entrances (`^`) below open pits and Stage 5's hidden passage (`.`) within explored map areas. Enter an entrance to climb to the pit above; the next move can leave it without falling. Secrets in areas already explored when D joins are revealed immediately. Revealed entrances and passages stay visible and usable after D leaves. Marksman arrows are blocked by walls raised by defeated Golems. |
 | `G` Guardian | Halve the extra LP damage from barriers and reduce caltrop damage to one-third; movement cost is unchanged. |
 
 Vertically adjacent monsters form parties of up to three and fight together; horizontal adjacency does not connect them. Party strength and experience are summed, and LP reward uses the highest value in the party. In Stage 5, the divisor counts you as 1, Jester as 0.25, Healer/Guardian as 0.5 each, Knight as 1, and Rogue/Dangeon Scholar as 0. In Stage 6, Jester counts as 0.5 and the other weights are the same. Jester multiplies only the player's share; the Knight's level gain is half of the player's shared experience before that bonus.
@@ -283,7 +283,7 @@ Floor 4's boss party always contains one `W`, one ordinary `V`, and one other es
 
 ### Stage 6 (member-ability trial)
 
-Run `--stage 6` to try the Stage 5 members in a compact two-floor dungeon. All six recruitable candidates are on floor 1, and a dismissed candidate returns so you can rotate through the full roster. Each floor has a fixed isolated room to the right of the bottom-right tile, reached through a hidden passage; the floors also have a hidden stair connection. Golems, a Marksman, a Collapse, caltrops, and a barrier let you try the members' abilities. There is no rescue objective.
+Run `--stage 6` to try the Stage 5 members in a compact two-floor dungeon. All six recruitable candidates are on floor 1, and a dismissed candidate returns so you can rotate through the full roster. Each floor has a fixed isolated room to the right of the bottom-right tile, reached through a hidden passage; open pits can be climbed from the floor below with D. Golems, a Marksman, a Collapse, caltrops, and a barrier let you try the members' abilities. There is no rescue objective.
 
 ## Development commands
 

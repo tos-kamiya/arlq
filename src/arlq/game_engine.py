@@ -1396,6 +1396,21 @@ def _handle_floor_transition(
     checkpoint: List[d.Point],
 ) -> Optional[str]:
     point = (player.x, player.y)
+    if (
+        floor[0] > 0
+        and current.field[player.y][player.x] == d.CHAR_SCHOLAR_STAIRS_UP
+        and floors[floor[0] - 1].field[player.y][player.x] == d.CHAR_COLLAPSE
+    ):
+        floor[0] -= 1
+        player.just_climbed_pit = True
+        checkpoint[0] = point
+        player.persistent_followers = [
+            (player.x, player.y, floor[0], ch)
+            for _, _, _, ch in player.persistent_followers
+        ]
+        return trp("-- Ascended to floor {n}/{total}.", 1).format(
+            n=floor[0] + 1, total=len(floors)
+        )
     legacy_floors = not any(
         f.up_stairs or f.down_stairs or f.scholar_up_stairs or f.scholar_down_stairs
         for f in floors
@@ -1588,8 +1603,11 @@ def _process_multi_floor_turn(
     current = floors[floor[0]]
 
     previous = (player.x, player.y)
+    just_climbed_pit = player.just_climbed_pit
+    player.just_climbed_pit = False
     standing_on_collapse = (
         current.field[previous[1]][previous[0]] == d.CHAR_COLLAPSE
+        and not just_climbed_pit
     )
     wall_result = None
     if not standing_on_collapse:
@@ -1626,6 +1644,15 @@ def _process_multi_floor_turn(
         repeat_stop_reasons.add("collapse_transition")
 
     movement_destination = (player.x, player.y)
+    checkpoint_x, checkpoint_y = checkpoint[0]
+    if (
+        movement_destination != previous
+        and current.field[checkpoint_y][checkpoint_x] == d.CHAR_COLLAPSE
+        and current.field[player.y][player.x] != d.CHAR_COLLAPSE
+    ):
+        checkpoint[0] = movement_destination
+        if trace is not None:
+            trace.record_checkpoint("left_pit", movement_destination, floor[0])
 
     # l contact is a control-flow event, not an ordinary gameplay turn. Detect
     # it before terrain hazards, monster actions, follower movement, stairs,
@@ -1842,6 +1869,13 @@ def observe_world(
         stage5.reveal_rogue_monsters(current, player, visible)
         if d.has_member(player, "Dangeon Scholar"):
             stage5.reveal_scholar_features(current, current.seen)
+            if floor_index > 0:
+                upper = floors[floor_index - 1]
+                for y, row in enumerate(current.field):
+                    for x, cell in enumerate(row):
+                        if (current.seen[y][x] and cell == d.CHAR_FLOOR
+                                and upper.field[y][x] == d.CHAR_COLLAPSE):
+                            current.field[y][x] = d.CHAR_SCHOLAR_STAIRS_UP
     _reveal_paired_stair_cells(floors, player)
     return visible
 

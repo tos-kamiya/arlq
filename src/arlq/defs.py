@@ -528,6 +528,7 @@ class Player(Entity):
         self.elf_stage_flags: int = 0
         self.lifebringer_lp_max: int = LP_MAX
         self.current_floor: int = 0
+        self.just_climbed_pit: bool = False
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
         self.members: List[PartyMember] = []
         self.facing: Point = (0, -1)

@@ -791,7 +791,6 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         entry = down
     _place_collapses(floors)
     _place_additional_stairs(floors)
-    _place_scholar_stairs(floors)
     _place_final_floor_barriers(
         floors[-1], d.STAGE5_FINAL_FLOOR_BARRIER_PERCENT
     )
@@ -875,7 +874,6 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
     floors = [upper, lower]
     for current in floors:
         _add_trial_detached_room(current, config)
-    _place_scholar_stairs(floors)
     for current in floors:
         normalize_parties(current)
     player = d.Player(*upper.up, 30, d.LP_INIT)
