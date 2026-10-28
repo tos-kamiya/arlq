@@ -2883,61 +2883,72 @@ def caltrop_plant(x, y):
 
 
 def flame_cobra(x, y):
-    """A coiled cobra with a fiery hood in the Fire Drake's palette."""
+    """A coiled cobra with a fiery hood in the Fire Drake's palette, built
+    like the drake from flat-shaded octagonal tubes."""
     scales = material('Cobra crimson scales', (0.80, 0.08, 0.03), 0.45, 0.2,
                       rim=(1.0, 0.55, 0.2), rim_strength=1.6, coat=0.8)
     flame = material('Cobra orange flame', (0.95, 0.22, 0.03), 0.7, 0.2,
                      emission=(1.0, 0.25, 0.02), strength=0.3,
                      rim=(1.0, 0.75, 0.3), rim_strength=1.2)
     belly = material('Cobra molten belly', (1.0, 0.55, 0.08), 0.3, 0.2,
-                     emission=(1.0, 0.4, 0.05), strength=0.4)
-    eyes = material('Cobra eyes', (1.0, 0.9, 0.2), emission=(1.0, 0.85, 0.2), strength=6)
-    dark = material('Cobra pupils', (0.02, 0.02, 0.025), roughness=0.2)
+                     emission=(1.0, 0.4, 0.05), strength=0.4,
+                     rim=(1.0, 0.8, 0.4), rim_strength=0.8)
+    eye = material('Cobra yellow eyes', (1.0, 0.9, 0.2), emission=(1.0, 0.85, 0.2),
+                   strength=6.0)
+    # A coil of a turn and three quarters, closed in the middle and rising
+    # slightly toward it, from the tail tip outside to the neck at the back.
     points = []
-    for i in range(25):
-        t = i / 24
-        angle = 2 * math.pi * t
-        radius = 0.47 - 0.24 * t
+    for i in range(15):
+        t = i / 14
+        angle = math.pi + 3.5 * math.pi * t
+        radius = 0.50 - 0.38 * t
         points.append((x + radius * math.cos(angle),
-                       y + radius * 0.85 * math.sin(angle), 0.16))
-    points += [(x + 0.14, y + 0.03, 0.21), (x + 0.07, y + 0.02, 0.30),
-               (x + 0.02, y, 0.42), (x, y - 0.07, 0.55),
-               (x, y, 0.90), (x, y - 0.03, 1.17)]
-    radii = [0.02 + 0.15 * min(1, i / 6) for i in range(25)] + [0.17, 0.17, 0.17, 0.17, 0.15, 0.13]
-    # Sample a smooth curve through the coil and rising neck, rather than
-    # joining the control points with straight sections.
+                       y + radius * 0.85 * math.sin(angle), 0.10 + 0.10 * t))
+    points += [(x, y + 0.12, 0.34), (x, y + 0.04, 0.58), (x, y, 0.84), (x, y - 0.02, 1.08)]
+    radii = [0.01 + 0.14 * min(1, i / 5) for i in range(15)] + [0.15, 0.14, 0.13, 0.12]
+    # Sample a curve through the control points, coarse enough that the
+    # facets still show along the body.
     curve, widths = [], []
     for i in range(len(points) - 1):
         p0, p1 = Vector(points[max(0, i - 1)]), Vector(points[i])
         p2, p3 = Vector(points[i + 1]), Vector(points[min(len(points) - 1, i + 2)])
-        for step in range(4):
-            t = step / 4
+        for step in range(2):
+            t = step / 2
             curve.append(tuple(0.5 * (2 * p1 + (-p0 + p2) * t
                                       + (2*p0 - 5*p1 + 4*p2 - p3) * t*t
                                       + (-p0 + 3*p1 - 3*p2 + p3) * t*t*t)))
             widths.append(radii[i] * (1 - t) + radii[i + 1] * t)
     curve.append(points[-1])
     widths.append(radii[-1])
-    tube('Cobra coiled body', curve, widths, scales, sides=24, smooth=True)
-    # A broad hood, with pointed flame tongues rising from its edge.
-    hood_start = set(bpy.data.objects)
-    verts = [(x + dx, y + dy, z) for dx, dy, z in [
-        (0, -0.16, 0.35), (-0.42, -0.10, 0.73), (-0.43, -0.08, 1.12),
-        (-0.31, -0.08, 1.02), (-0.24, -0.06, 1.34), (0, -0.05, 1.08),
-        (0.24, -0.06, 1.34), (0.31, -0.08, 1.02), (0.43, -0.08, 1.12),
-        (0.42, -0.10, 0.73)]]
-    mesh_object('Cobra flame hood', verts, [(0, i, i + 1) for i in range(1, 9)], flame, False)
-    sphere('Cobra throat', (x, y - 0.22, 0.77), (0.14, 0.10, 0.38), belly, 24)
-    sphere('Cobra head', (x, y - 0.28, 1.15), (0.21, 0.17, 0.13), scales, 24)
-    sphere('Cobra muzzle', (x, y - 0.40, 1.10), (0.15, 0.13, 0.07), scales, 24)
+    tube('Cobra coiled body', curve, widths, scales, sides=8, flat=0.8, twist=math.pi / 8)
+    # A broad hood spreading like fire, with pointed flame tongues rising
+    # from its edge, close behind the neck and leaning back a little.
+    def hood(bx, bz):
+        return Vector((x + bx, y + 0.06 + 0.3 * (bz - 0.6), bz))
+
+    verts = [tuple(hood(bx, bz)) for bx, bz in [
+        (0, 0.35), (-0.42, 0.73), (-0.43, 1.12), (-0.31, 1.02), (-0.24, 1.34), (0, 1.08),
+        (0.24, 1.34), (0.31, 1.02), (0.43, 1.12), (0.42, 0.73)]]
+    membrane = mesh_object('Cobra flame hood', verts, [(0, i, i + 1) for i in range(1, 9)],
+                           flame, False)
+    solid = membrane.modifiers.new('Hood thickness', 'SOLIDIFY')
+    solid.thickness = 0.03
+    solid.offset = 0
+    tube('Cobra throat', [(x, y - 0.10, 0.56), (x, y - 0.13, 0.80), (x, y - 0.10, 1.02)],
+         [(0.09, 0.04), (0.11, 0.05), (0.08, 0.04)], belly, sides=6)
+    # Wedge head pointing forward, with a forked tongue.
+    tube('Cobra head', [(x, y - 0.02, 1.13), (x, y - 0.18, 1.16), (x, y - 0.32, 1.12),
+                        (x, y - 0.42, 1.07)],
+         [(0.12, 0.08), (0.16, 0.09), (0.11, 0.07), 0], scales, sides=8, twist=math.pi / 8)
     for side in (-1, 1):
-        sphere('Cobra eye', (x + side * 0.12, y - 0.40, 1.19), (0.055, 0.035, 0.045), eyes, 16)
-        sphere('Cobra pupil', (x + side * 0.12, y - 0.432, 1.20), (0.012, 0.012, 0.027), dark, 12)
-        tube('Cobra hood flame', [(x + side * 0.35, y - 0.12, 0.67),
-                                  (x + side * 0.45, y - 0.10, 0.95),
-                                  (x + side * 0.48, y - 0.08, 1.23)],
-             [0.055, 0.065, 0], belly, sides=8, smooth=True)
-    transform_new(hood_start, Matrix.Translation((0, 0.20, 0)))
+        sphere('Cobra eye', (x + side * 0.10, y - 0.26, 1.20), (0.04, 0.035, 0.028), eye, 16)
+        cone('Cobra tongue', (x, y - 0.40, 1.05), (x + side * 0.04, y - 0.56, 1.02),
+             0.015, 0, belly, 4, False)
+        # Molten flames licking up each side of the hood, just in front of it.
+        tube('Cobra hood flame', [hood(side * 0.35, 0.67) - Vector((0, 0.03, 0)),
+                                  hood(side * 0.45, 0.95) - Vector((0, 0.03, 0)),
+                                  hood(side * 0.48, 1.23) - Vector((0, 0.03, 0))],
+             [0.055, 0.065, 0], belly, sides=6)
 
 
 def spore(x, y):

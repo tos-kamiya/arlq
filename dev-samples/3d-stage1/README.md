@@ -180,7 +180,7 @@ PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-sprite-ui.py
 GUIは全画像を同じ倍率で描く（縮める前のアメーバの幅186ピクセルがマス幅の1.8倍、`sprite_funcs.py` の `SPRITE_REFERENCE_PIXELS`）。
 ドラゴンだけ表示倍率を変える処理はなく、モデルが大きいため画像も大きくなる。外側の輪郭は従来どおり4ピクセル、部位の境目は1.5ピクセルの薄い線にして、細部が多くても線がうるさくならないようにする。サンプル数は256。
 
-`f` はフレイムコブラ。とぐろを巻いて首を広げた蛇で、Fire Drake と同じ赤い鱗と橙色・黄色の炎を使う。強化版は共通の強化マークを重ねる。Fire Drake、Dragon、Comodo Dragon との同一倍率の比較は `heroic/flame-cobra-comparison.png`。
+`f` はフレイムコブラ。とぐろを巻いて首を広げた蛇で、Fire Drake と同じ赤い鱗と橙色・黄色の炎を使う。ほかのドラゴン類と質感を揃えるため、胴体と頭は Fire Drake と同じ8角形のフラットシェーディングのチューブで作り、目は小さな発光体にする。とぐろは1と4分の3巻きで中央を閉じ、フードは炎が広がる形の厚みのある板で、2本の高い炎の舌が立ち、両脇に溶けた炎の帯を添える。首のすぐ後ろに置き、少しだけ後ろへ傾ける。強化版は共通の強化マークを重ねる。Fire Drake、Dragon、Comodo Dragon との同一倍率の比較は `heroic/flame-cobra-comparison.png`。
 
 ### Dungeon Explorer
 
