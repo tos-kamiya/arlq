@@ -55,11 +55,10 @@ ELF_REPEAT_MESSAGES = {
 STATUS_POPUP_TICKS = 2
 
 
-def _set_status_popup(player: d.Player, text: str, tone: str = "default") -> str:
+def _set_status_popup(player: d.Player, text: str, tone: str = "default") -> None:
     player.status_popup = text
     player.status_popup_tone = tone
     player.status_popup_ticks = STATUS_POPUP_TICKS
-    return text
 
 
 def _format_popup_amount(amount: float) -> str:
@@ -1112,9 +1111,7 @@ def _resolve_monster_contact(
             if lost_level:
                 popup = f"LVL-{lost_level:g}"
     if popup:
-        event_message = _set_status_popup(player, popup)
-    elif combat_won and ch in ("A", "b", "B", "c", "C", "e", "E"):
-        event_message = None
+        _set_status_popup(player, popup)
 
     return _ContactResult(event_message)
 
@@ -1272,11 +1269,9 @@ def _resolve_party_contact(
         lost_lp = max(0, old_lp - player.lp)
         if lost_lp:
             popup = f"LP-{lost_lp:g}"
-    if boss_message is not None:
-        return _ContactResult(boss_message)
     if popup:
-        return _ContactResult(_set_status_popup(player, popup, popup_tone))
-    return _ContactResult(None)
+        _set_status_popup(player, popup, popup_tone)
+    return _ContactResult(boss_message)
 
 
 def _resolve_contact(
@@ -1993,11 +1988,7 @@ def run_game(
             show_entities=show_entities,
             debug_show_entities=debug_show_entities,
             stage_num=stage_num,
-            message=(
-                None
-                if player.status_popup and player.status_popup_ticks > 0
-                else message[1]
-            ),
+            message=message[1],
             checkpoint=checkpoint[0],
             decor=display_floor.decor,
             d_gates=display_floor.d_gates,
@@ -2128,9 +2119,7 @@ def run_game(
         # A stair contact can change the player's floor during _step(). Keep
         # the displayed floor in sync so the next frame shows the new floor.
         view_floor = floor[0]
-        if player.status_popup and player.status_popup_ticks > 0:
-            message = (0, "")
-        elif event_message is not None:
+        if event_message is not None:
             if prefer_event_message(
                 message[1] if message is not None else None, event_message[1]
             ) == event_message[1]:

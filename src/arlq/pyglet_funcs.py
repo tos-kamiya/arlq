@@ -1428,7 +1428,7 @@ class PygletUI:
 
         party = player.last_encounter_party
         message_x_offset = 0
-        if party and not (player.status_popup and player.status_popup_ticks > 0):
+        if party:
             party_prefix = f"[{party}]  "
             party_width = self._text_width(
                 party_prefix, size_scale=hud_scale * MESSAGE_FONT_SIZE_SCALE

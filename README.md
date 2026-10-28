@@ -48,7 +48,8 @@ Running `arlq` without options opens the graphical interface. Running
 connected gamepad's D-pad or left stick to move, and button 0 to select a
 stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
 After contacting an enemy, its party composition remains in brackets to the
-left of event messages.
+left of event messages. Temporary effect popups appear near the player while
+event messages remain in the bottom status area, so both can be visible at once.
 
 Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
 through `arlq --sprites`. Its window opens at about 16:9 and shows part of the

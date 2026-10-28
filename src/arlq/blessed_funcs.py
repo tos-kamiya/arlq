@@ -491,7 +491,7 @@ class BlessedUI:
         y += 1
         x = 0
         party = player.last_encounter_party
-        if party and not (player.status_popup and player.status_popup_ticks > 0):
+        if party:
             party_panel = f"[{party}]  "
             available = max(0, self.term.width - x - 1)
             add(self.term.truncate(party_panel, available), color="cyan")
@@ -541,11 +541,7 @@ class BlessedUI:
             player,
             turn,
             stage_num,
-            (
-                None
-                if player.status_popup and player.status_popup_ticks > 0
-                else message
-            ),
+            message,
             extra_keys,
             game_start_turn,
         )
