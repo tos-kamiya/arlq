@@ -205,7 +205,8 @@ SMOKE_TINT = (150, 150, 156)
 SMOKE_OPACITY = 140
 # Rocks fallen through a pit (d.DECOR_FALLEN_ROCKS) are hidden where the
 # cell has since become a wall, pit or stair, or a character stands there.
-FALLEN_ROCK_BLOCKERS = (*d.WALL_CHARS, d.CHAR_COLLAPSE, *d.STAIR_CHARS)
+FALLEN_ROCK_BLOCKERS = (*d.WALL_CHARS, d.CHAR_COLLAPSE,
+                        *(char for char in d.STAIR_CHARS if char != d.CHAR_SCHOLAR_STAIRS_UP))
 # Stairs and Collapse pits are drawn on the walls' canvas and placed like a
 # wall part: near-white marble flights (up: rising north; down: descending
 # toward the viewer into a dark opening) and a shapeless hole with rocks lying
@@ -774,6 +775,13 @@ class SpriteUI(PygletUI):
         self._set_drawable_attribute(light, 'opacity', opacity)
 
     def _draw_stairs(self, pos, char):
+        if char == d.CHAR_SCHOLAR_STAIRS_UP:
+            x, y = pos
+            self._draw_ground_disc(self._field_col_x(x) + self.cell_size_x / 2,
+                                   (y + 0.5) * self.cell_size_y,
+                                   GROUND_DISC_RADIUS * self._sprite_unit(),
+                                   COLOR_MAP[CI_GREEN])
+            return
         if char in d.SCHOLAR_STAIR_CHARS:
             return super()._draw_stairs(pos, char)
         if char not in self._terrain_images:

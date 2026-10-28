@@ -522,7 +522,7 @@ def test_pit_falls_to_next_floor_with_members():
 
 
 def test_climbing_pit_moves_checkpoint_after_leaving_pit():
-    upper, player = state(("Dangeon Scholar",))
+    upper, player = state(("Dungeon Explorer",))
     lower, _ = state()
     upper.field[2][3] = d.CHAR_COLLAPSE
     lower.field[2][3] = d.CHAR_SCHOLAR_STAIRS_UP
@@ -542,7 +542,7 @@ def test_climbing_pit_moves_checkpoint_after_leaving_pit():
 
 
 def test_pit_requires_scholar_but_discovered_passage_remains_usable():
-    upper, player = state(("Dangeon Scholar",))
+    upper, player = state(("Dungeon Explorer",))
     lower, _ = state()
     upper.field[2][3] = d.CHAR_COLLAPSE
     lower.field[2][3] = d.CHAR_SCHOLAR_STAIRS_UP
@@ -559,6 +559,18 @@ def test_pit_requires_scholar_but_discovered_passage_remains_usable():
     engine._step((1, 0), [upper, lower], player, floor_index, checkpoint,
                  Counter(), 1, stage_num=5)
     assert (player.x, player.y) == (4, 2)
+
+
+def test_explorer_climbs_pit_by_stepping_onto_marker():
+    upper, player = state(("Dungeon Explorer",))
+    lower, _ = state()
+    upper.field[2][3] = d.CHAR_COLLAPSE
+    lower.field[2][3] = d.CHAR_SCHOLAR_STAIRS_UP
+    floor_index = [1]
+    engine._step((1, 0), [upper, lower], player, floor_index, [(2, 2)],
+                 Counter(), 1, stage_num=5)
+    assert floor_index == [0]
+    assert (player.x, player.y) == (3, 2)
 
 
 def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):

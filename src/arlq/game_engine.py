@@ -1401,7 +1401,7 @@ def _handle_floor_transition(
         and current.field[player.y][player.x] == d.CHAR_SCHOLAR_STAIRS_UP
         and floors[floor[0] - 1].field[player.y][player.x] == d.CHAR_COLLAPSE
     ):
-        if not d.has_member(player, "Dangeon Scholar"):
+        if not d.has_member(player, "Dungeon Explorer"):
             return None
         floor[0] -= 1
         player.just_climbed_pit = True

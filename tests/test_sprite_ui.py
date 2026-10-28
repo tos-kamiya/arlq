@@ -751,6 +751,16 @@ def test_scholar_stairs_use_green_direction_glyph_without_background(sprite_ui):
     assert not sprite_ui._drawables
 
 
+def test_pit_up_marker_is_a_green_disc_and_allows_fallen_rocks(sprite_ui, monkeypatch):
+    discs = []
+    monkeypatch.setattr(sprite_ui, '_draw_ground_disc', lambda *args: discs.append(args))
+    sprite_ui._draw_stairs((4, 5), d.CHAR_SCHOLAR_STAIRS_UP)
+    assert len(discs) == 1
+    assert discs[0][3] == sprite_funcs.COLOR_MAP[sprite_funcs.CI_GREEN]
+    assert not sprite_ui.text_calls
+    assert d.CHAR_SCHOLAR_STAIRS_UP not in sprite_funcs.FALLEN_ROCK_BLOCKERS
+
+
 def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
     ui.cell_size_x, ui.cell_size_y = 13, 20
