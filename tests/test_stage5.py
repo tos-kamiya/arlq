@@ -753,6 +753,41 @@ def test_horizontal_adjacency_does_not_join_monster_parties():
     assert stage5.monster_party(current, horizontal) == [horizontal]
 
 
+def test_monster_placement_and_respawn_avoid_horizontal_neighbors():
+    current, _ = state()
+    current.field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in current.field]
+    for x, y in ((5, 5), (6, 5), (8, 5)):
+        current.field[y][x] = d.CHAR_FLOOR
+    current.entities = [monster(5, 5, "a")]
+
+    stage5._place_party(current, [("b", 1)])
+    assert (current.entities[-1].x, current.entities[-1].y) == (8, 5)
+    current.entities.pop()
+    assert stage5.respawn(current, "b", 1, 0, set()) == (8, 5)
+
+
+def test_open_points_exclude_unopened_collapse_footprint():
+    current, _ = state()
+    collapse = d.Collapse(5, 5)
+    current.entities = [collapse]
+    footprint = d.collapse_footprint((5, 5))
+
+    assert not footprint.intersection(stage5._open_points(current))
+    stage5._place_party(current, [("a", 1)])
+    assert (current.entities[-1].x, current.entities[-1].y) not in footprint
+    assert stage5.respawn(current, "b", 1, 0, set()) not in footprint
+
+
+def test_normalize_separates_horizontal_neighbors():
+    current, _ = state()
+    current.entities = [monster(5, 5, "a"), monster(6, 5, "b")]
+
+    stage5.normalize_parties(current)
+
+    first, second = current.entities
+    assert not (first.y == second.y and abs(first.x - second.x) == 1)
+
+
 def test_detached_terminal_room_receives_two_distinct_random_monsters():
     current, _ = state()
     monsters = stage5._place_detached_room_monsters(

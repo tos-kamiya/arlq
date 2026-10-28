@@ -478,7 +478,8 @@ def _vortex_rearrange(
         if whole_floor and stage_num in (5, 6):
             stage5.respawn(
                 current, char, empowered,
-                floor_index if origin_floor is None else origin_floor, avoid,
+                floor_index if origin_floor is None else origin_floor,
+                avoid | reserved_collapse_cells,
                 floor_index=floor_index,
             )
             return
@@ -488,6 +489,7 @@ def _vortex_rearrange(
             distance=2,
             avoid=lambda point: point not in affected_points
             or point in avoid
+            or point in reserved_collapse_cells
             or _inside_island(point, current.island),
         )
         spawn_at(
@@ -1530,6 +1532,7 @@ def _process_respawn_queue(
             else queued_floor
         )
         avoid = {(player.x, player.y)} if spawn_floor == floor[0] else set()
+        avoid.update(floors[spawn_floor].collapse_landings)
         if type_key[-1].isdigit():
             ch = type_key[:-1]
             empowered = int(type_key[-1])

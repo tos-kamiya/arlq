@@ -1326,6 +1326,27 @@ def test_marksman_respawns_on_a_195_turn_cycle_in_every_stage(stage_num):
     ) == 1
 
 
+@pytest.mark.parametrize("char", ["a", "k"])
+def test_stage4_respawn_avoids_collapse_landings(monkeypatch, char):
+    player = d.Player(2, 2, 10, 90)
+    floors, _ = stage3_state(player, [])
+    landing = {(5, 5), (5, 4), (6, 5), (5, 6), (4, 5)}
+    floors[0].collapse_landings.update(landing)
+    seen = []
+
+    def spawn(entities, field, ch, avoid, island, floor_index):
+        seen.append(set(avoid))
+        entities.append(d.Monster(10, 10, d.CHAR_TO_MONSTER_TRIBE[ch]))
+        return (10, 10)
+
+    monkeypatch.setattr(game_engine_module, "_spawn", spawn)
+    game_engine_module._process_respawn_queue(
+        floors, player, [0], Counter({(0, char): 1}), turn=0, stage_num=4
+    )
+
+    assert seen and landing <= seen[0]
+
+
 def test_legacy_non_respawning_monster_does_not_enter_respawn_queue():
     player = d.Player(2, 2, 100, 90)
     amoeba = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["a"])

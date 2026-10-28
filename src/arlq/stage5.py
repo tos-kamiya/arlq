@@ -164,7 +164,7 @@ def _separate_golems(current: Floor) -> None:
 
 
 def _separate_diagonal_monsters(current: Floor) -> None:
-    """Move non-boss monsters away from diagonal neighbors."""
+    """Move non-boss monsters away from horizontal and diagonal neighbors."""
     while True:
         monsters = [
             entity
@@ -176,7 +176,7 @@ def _separate_diagonal_monsters(current: Floor) -> None:
         ]
         mover = None
         for first, second in _neighbor_pairs(
-            monsters, ((-1, -1), (1, -1), (-1, 1), (1, 1))
+            monsters, ((-1, 0), (1, 0), (-1, -1), (1, -1), (-1, 1), (1, 1))
         ):
             first_is_boss = (first.tribe.char == "W" and first.empowered == 1) or (
                 first.tribe.char == "V" and first.empowered in (1, 2)
@@ -397,6 +397,9 @@ def _open_points(current: Floor) -> list[d.Point]:
         *current.scholar_up_stairs,
         *current.scholar_down_stairs,
     }
+    for entity in current.entities:
+        if isinstance(entity, d.Collapse):
+            reserved.update(d.collapse_footprint((entity.x, entity.y)))
     return [
         (x, y)
         for y, row in enumerate(current.field)
@@ -524,8 +527,8 @@ def _barrier_offsets(
 def _place_party(
     current: Floor, roster: list[tuple[str, int]], floor_index: int = 0
 ) -> None:
-    # Keep vertical parties distinct. Horizontal adjacency does not connect
-    # monsters into one party. Walls and narrow corridors may be blocked.
+    # Keep parties separate horizontally and vertically. Members of each
+    # party are placed vertically; walls and narrow corridors may be blocked.
     occupied = {(entity.x, entity.y) for entity in current.entities}
     monsters = {
         (entity.x, entity.y)
@@ -538,7 +541,7 @@ def _place_party(
         for point in candidates
         if all(
             (point[0] + dx, point[1] + dy) not in monsters
-            for dx, dy in ((0, -1), (0, 1))
+            for dx, dy in ((0, -1), (0, 1), (-1, 0), (1, 0))
         )
     }
     if floor_index == 1:
@@ -597,6 +600,13 @@ def respawn(
 ) -> d.Point:
     candidates = [point for point in _open_points(current) if point not in avoid]
     monsters = [entity for entity in current.entities if isinstance(entity, d.Monster)]
+    if isinstance(d.CHAR_TO_TRIBE[char], d.MonsterTribe):
+        monster_positions = {(entity.x, entity.y) for entity in monsters}
+        candidates = [
+            (x, y) for x, y in candidates
+            if (x - 1, y) not in monster_positions
+            and (x + 1, y) not in monster_positions
+        ]
     golem_positions = {
         (entity.x, entity.y) for entity in monsters if entity.tribe.char == "g"
     }
