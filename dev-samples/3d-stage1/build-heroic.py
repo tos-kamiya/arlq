@@ -435,14 +435,14 @@ def dragon(x, y):
                      rim=(0.7, 1.0, 1.0), rim_strength=1.0)
     eye = material('Dragon gold eyes', (1.0, 0.8, 0.1), emission=(1.0, 0.75, 0.1),
                    strength=25.0)
-    # One continuous faceted body, snout to a sinuous tail.
+    # One continuous body, snout to a sinuous tail, with softly rounded facets.
     spine = [(0.00, -1.00, 0.26), (0.00, -0.86, 0.30), (0.00, -0.68, 0.34), (0.02, -0.50, 0.33),
              (0.03, -0.28, 0.36), (0.01, 0.02, 0.37), (-0.05, 0.30, 0.33), (-0.15, 0.55, 0.27),
              (-0.14, 0.78, 0.21), (0.04, 0.96, 0.16), (0.26, 1.04, 0.12), (0.40, 1.04, 0.10)]
     radii = [(0.08, 0.05), (0.17, 0.10), (0.22, 0.14), (0.17, 0.12), (0.31, 0.19), (0.34, 0.21),
              (0.27, 0.17), (0.17, 0.12), (0.11, 0.08), (0.07, 0.05), (0.035, 0.03), 0]
-    tube('Dragon body', [(x + px, y + py, pz) for px, py, pz in spine], radii, scales,
-         sides=8, twist=math.pi / 8)
+    soften(tube('Dragon body', [(x + px, y + py, pz) for px, py, pz in spine], radii, scales,
+                sides=8, twist=math.pi / 8), 0.025)
     for side in (-1, 1):
         # Brow ridge over each glowing eye gives a scowl.
         cone('Dragon brow', (x + side * 0.08, y - 0.78, 0.45),
@@ -452,7 +452,8 @@ def dragon(x, y):
             hip = (x + side * 0.22, y + dy, 0.34)
             knee = (x + side * 0.55, y + dy + back * 0.3, 0.36)
             foot = (x + side * 0.66, y + dy + back, 0.08)
-            tube('Dragon splayed leg', [hip, knee, foot], [0.12, 0.09, 0.07], scales, sides=6)
+            soften(tube('Dragon splayed leg', [hip, knee, foot], [0.12, 0.09, 0.07],
+                        scales, sides=6), 0.018)
             sphere('Dragon foot', foot, (0.10, 0.12, 0.05), scales, 12, False)
     # A low crest along the spine, kept as a single smooth fin.
     crest = [(x + px, y + py, pz + rz) for (px, py, pz), r in zip(spine[3:9], radii[3:9])
