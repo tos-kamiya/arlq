@@ -1,4 +1,4 @@
-"""Render the companions (n, o, l, p) side by side from the saved heroic scene.
+"""Render the companions (n, o, l, p) side by side from the saved heroic others' scene.
 
 Run after build-heroic.py:
 blender --background --threads 4 --python dev-samples/3d-stage1/preview-companions.py
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent
 COMPANIONS = ['n', 'o', 'l', 'p']
 SPACING = 1.8
 
-bpy.ops.wm.open_mainfile(filepath=str(ROOT / 'heroic' / 'characters-angle60.blend'))
+bpy.ops.wm.open_mainfile(filepath=str(ROOT / 'heroic' / 'characters-others-angle60.blend'))
 scene = bpy.context.scene
 centers = scene['sprite_centers']
 shown = set()

@@ -2,19 +2,30 @@
 
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
 
+This builds the three scenes (monsters, Stage 5 members and the others; see
+heroic_groups.py) in parallel child processes and renders the group shot from
+them; `-- --save-only` skips the group shot, and `-- --group monsters` (or
+`members`, `others`) rebuilds just that one scene.
+
 Keeps the accepted silhouettes (attached obtuse cones, angular bison and
 dragon, two-head-tall legless player with a cloak) and adds glowing cores,
 rim light, sharper features and stronger poses.
 """
 from pathlib import Path
 import math
+import subprocess
 import sys
 
 import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from heroic_groups import GROUPS, blend_path, group_of
+
 OUT = Path(__file__).resolve().parent / 'heroic'
+GROUP = sys.argv[sys.argv.index('--group') + 1] if '--group' in sys.argv else None
+assert GROUP in (None, *GROUPS)
 OUT.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -3285,7 +3296,51 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
                for tone in MEMBER_SKINS},
             **{'guardian-' + tone: (lambda tone: lambda x, y: guardian(x, y, tone))(tone)
                for tone in MEMBER_SKINS}}
+def render_group_shot():
+    """Open the others' scene, bring in the other groups, and render them all."""
+    bpy.ops.wm.open_mainfile(filepath=str(blend_path('others')))
+    scene = bpy.context.scene
+    for group in ('monsters', 'members'):
+        with bpy.data.libraries.load(str(blend_path(group))) as (source, loaded):
+            loaded.collections = [name for name in source.collections
+                                  if name.startswith('Character ')]
+        for collection in loaded.collections:
+            scene.collection.children.link(collection)
+    # The preview's time goes mostly to Cycles treating every triangle of the
+    # softly glowing meshes as a light; glows still show without that, so turn
+    # it off for this group shot only (the saved scene, used for the sprites,
+    # keeps it). This about halves the render time.
+    for mat in bpy.data.materials:
+        mat.cycles.emission_sampling = 'NONE'
+    # The area lights sit near the origin and fall off toward the ends of
+    # this wide group shot; for the preview only, swap each for a sun from
+    # the same direction so every character is lit alike. The sun strength
+    # matches the area light's irradiance at the origin (power / (pi d^2)),
+    # and its angle matches the area light's apparent size.
+    for light in [obj for obj in scene.objects if obj.type == 'LIGHT']:
+        distance = light.location.length
+        sun = bpy.data.lights.new(light.name + ' sun', 'SUN')
+        sun.energy = light.data.energy / (math.pi * distance * distance)
+        sun.angle = 2 * math.atan(light.data.size / 2 / distance)
+        sun.color = light.data.color
+        light.data = sun
+    scene.render.filepath = str(OUT / 'preview-angle60.png')
+    bpy.ops.render.render(write_still=True)
+
+
+if GROUP is None:
+    # Build all the scenes at once, each in its own Blender.
+    children = [subprocess.Popen([bpy.app.binary_path, '--background', '--threads', '4',
+                                  '--python-exit-code', '1', '--python', __file__,
+                                  '--', '--group', group]) for group in GROUPS]
+    if any([child.wait() for child in children]):
+        sys.exit('Building a scene failed')
+    if '--save-only' not in sys.argv:
+        render_group_shot()
+    sys.exit(0)
 for char, name, x, y in ROW:
+    if group_of(char) != GROUP:
+        continue
     start = set(bpy.data.objects)
     builders[char](x, y)
     character = set(bpy.data.objects) - start
@@ -3358,25 +3413,4 @@ scene.render.resolution_x = 1600
 scene.render.resolution_y = round(1600 * grid_height / grid_width)
 scene.camera = camera
 scene['sprite_centers'] = {char: list(pos) for char, pos in CENTERS.items()}
-bpy.ops.wm.save_as_mainfile(filepath=str(OUT / 'characters-angle60.blend'))
-if '--save-only' not in sys.argv:
-    # The preview's time goes mostly to Cycles treating every triangle of the
-    # softly glowing meshes as a light; glows still show without that, so turn
-    # it off for this group shot only (the saved scene, used for the sprites,
-    # keeps it). This about halves the render time.
-    for mat in bpy.data.materials:
-        mat.cycles.emission_sampling = 'NONE'
-    # The area lights sit near the origin and fall off toward the ends of
-    # this wide group shot; for the preview only, swap each for a sun from
-    # the same direction so every character is lit alike. The sun strength
-    # matches the area light's irradiance at the origin (power / (pi d^2)),
-    # and its angle matches the area light's apparent size.
-    for light in [obj for obj in scene.objects if obj.type == 'LIGHT']:
-        distance = light.location.length
-        sun = bpy.data.lights.new(light.name + ' sun', 'SUN')
-        sun.energy = light.data.energy / (math.pi * distance * distance)
-        sun.angle = 2 * math.atan(light.data.size / 2 / distance)
-        sun.color = light.data.color
-        light.data = sun
-    scene.render.filepath = str(OUT / 'preview-angle60.png')
-    bpy.ops.render.render(write_still=True)
+bpy.ops.wm.save_as_mainfile(filepath=str(blend_path(GROUP)))

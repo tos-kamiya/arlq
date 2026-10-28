@@ -9,6 +9,9 @@ import bpy
 from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
+from heroic_groups import blend_path, group_of
+
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'characters'
 OUT.mkdir(parents=True, exist_ok=True)
 models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
@@ -43,7 +46,7 @@ if '--only' in sys.argv:
     only = sys.argv[sys.argv.index('--only') + 1:]
     models = [model for model in models if model[0] in only]
 for char, name, (x, y) in models:
-    bpy.ops.wm.open_mainfile(filepath=str(ROOT / 'heroic' / 'characters-angle60.blend'))
+    bpy.ops.wm.open_mainfile(filepath=str(blend_path(group_of(char))))
     scene = bpy.context.scene
     x, y = scene['sprite_centers'][char]
     selected = {obj for obj in scene.objects if obj.get('sprite')}

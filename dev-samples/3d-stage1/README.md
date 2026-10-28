@@ -84,7 +84,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.p
 PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-sprite-ui.py
 ```
 
-最初のコマンドは `heroic/characters-angle60.blend` からゲーム用のキャラクター画像を書き出し、透明な余白を切り詰める。
+最初のコマンドは `heroic/characters-*-angle60.blend`（3つのシーン、後述）からゲーム用のキャラクター画像を書き出し、透明な余白を切り詰める。
 2番目はコントローラーを使わないヘッドレス描画確認で、`preview-sprite-ui.png` を出力する。
 
 GUIは画像をmipmapで縮小して描く（縮小時のちらつきを抑えるため）。Blenderは完全に透明な画素をほぼ黒で書き出すため、そのままでは縮小した輪郭に黒いフチが出る。キャラクター・壁・床・階段・穴の画像を書き出したら、次のコマンドで透明な画素に輪郭の色を広げておく（不透明な画素は変えない）。
@@ -105,10 +105,20 @@ GUI側の1.8倍表示と強弱・状態の色表示は維持する。
 
 ## キャラクター素材の再生成
 
-現行のキャラクター画像は `heroic/characters-angle60.blend` から書き出す。
+現行のキャラクター画像は `heroic/` の3つのシーンから書き出す。
 モデルのシーンは `build-heroic.py` が生成し、`export-sprites.py` が
 `src/arlq/assets/characters/` の透過PNGを作る。
 旧モデル案やそのプレビューは現行の素材生成に使わない。
+
+シーンは、1つを直したときに全員を作り直さずに済むよう、次の3つに分ける（どのキャラクターがどこに入るかは `heroic_groups.py` で決める）。
+
+| シーン | 中身 |
+| --- | --- |
+| `characters-monsters-angle60.blend` | モンスター、宝箱（ミミックと並べるため）、ゴーレムの岩、強化の印 |
+| `characters-members-angle60.blend` | ステージ5のパーティーメンバー（肌の色3種類ずつ） |
+| `characters-others-angle60.blend` | プレイヤー、仲間、エルフ |
+
+`build-heroic.py` は3つのシーンを別々のBlenderで同時に作り（全体で約40秒）、そのあと全体プレビューを描く。`-- --save-only` を付けると全体プレビューを描かない。`-- --group monsters`（または `members`、`others`）を付けると、そのシーンだけを作り直す（モンスターで約25秒）。全体プレビューは、`others` のシーンを開いて、ほかの2つのシーンのキャラクターを読み込んで描く。並び（`ORDER`）は3つのシーンで共通なので、どのシーンでもキャラクターの位置は変わらない。
 
 ```bash
 blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
@@ -169,7 +179,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.p
 PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-sprite-ui.py
 ```
 
-1番目は `heroic/characters-angle60.blend` と比較画像 `heroic/preview-angle60.png` を出力する。リポジトリには、容量を抑えるため ImageMagick で JPEG に変換した `heroic/preview-angle60.jpg` を置く（`convert preview-angle60.png -quality 90 preview-angle60.jpg`）。
+1番目は3つのシーン `heroic/characters-*-angle60.blend` と比較画像 `heroic/preview-angle60.png` を出力する。リポジトリには、容量を抑えるため ImageMagick で JPEG に変換した `heroic/preview-angle60.jpg` を置く（`convert preview-angle60.png -quality 90 preview-angle60.jpg`）。
 2番目はゲーム用のキャラクター画像を書き出す。エルフ共通の部分（裾・胴・頭・耳・目、縦の伸ばしと頭の傾け）は `elf_figure()` にまとめ、エルフごとの部分を渡して作る。
 シーンの照明は原点（奥の列の中央）に向けて置いているため、書き出しでは照明をキャラクターの位置へ一緒に移し、どのキャラクターも同じ当たり方で撮る（以前は原点から遠いキャラクターほど光が横から当たっていた）。照明を揃えた際に白く飛んだオキュラーの虹彩とノミコンのページは、光の強さと色を調整し、オキュラーの角膜（瞳に映り込みが出た）は取り除いた。比較画像は、ゲームの実際のマスに相当するタイルを敷いた床（14×8マス、明暗2種類の市松）の上に、1マスおきに（市松の明るいマスに）キャラクターを並べる。マスの大きさは、スプライトの書き出し（2.6単位で256ピクセル）とGUIの拡大率（`SPRITE_REFERENCE_PIXELS` の186ピクセルを、キャラクターの基準幅13ピクセルから両側1ずつの余白を除いた11ピクセルの1.8倍に描く）から画面1ピクセルの大きさを求め、スプライト版のマス（幅15ピクセル、`SPRITE_CELL_SIZE_X`。高さ20ピクセル）に合わせて、幅 1.43 単位、奥行き 2.20 単位（高さ20ピクセルを60度の見下ろしの sin 60° で割り戻す）とする（`CELL_W`、`CELL_D`）。モデルはゲームでの大きさで作っているので、キャラクター同士やマスとの大きさの関係はゲーム内と同じになる。並びは奥からプレイヤー・ステージ1のモンスター・宝箱、仲間とエルフ、ステージ順のモンスター・ゴーレムの岩、ステージ5のメンバー（`ORDER`）。強化の印は比較画像に並べず、スプライト書き出し用に残す。名前は各キャラクターのマスの手前に書く。広い比較画像では、原点近くに置いた面光源の光が端のキャラクターまで届かず暗くなるため、比較画像に限って各面光源を同じ向きのサン（平行光）に置き換え、全員を同じ明るさで照らす。サンの強さは原点での明るさ（光源の強さ ÷ (π × 距離²)）、光の角度は元の光源の見かけの大きさに合わせる。保存するシーンとスプライトの照明は面光源のまま変えない。比較画像のレンダリング時間は画素数より、ほのかに光るメッシュの三角形をCyclesが一つ一つ光源として扱うことで決まっていたため、比較画像に限ってこの扱いを止めている（約2.7分から約1.3分）。`-- --only n o` のように文字を並べると、指定したキャラクターだけを書き出す。
 
