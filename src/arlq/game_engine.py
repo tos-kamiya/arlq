@@ -4,7 +4,7 @@ import heapq
 import math
 from collections import Counter
 from copy import deepcopy
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from . import defs as d
 from . import display as ui_display
@@ -1907,6 +1907,11 @@ def run_game(
     floor = [0]
     checkpoint = [floors[0].up]
     player.current_floor = 0
+    operation_path: List[Tuple[int, d.Point]] = [
+        (floor[0], (player.x, player.y))
+    ]
+    loop_trail_by_floor: Dict[int, Set[d.Point]] = {}
+    loop_trail_expires_at = 0
     if trace is not None:
         trace.set_start_state(player, floor[0])
     trace_seen_recorded = (
@@ -1998,6 +2003,11 @@ def run_game(
                 if trace is not None and not floor_view
                 else set()
             ),
+            loop_trail_markers=(
+                loop_trail_by_floor.get(floor[0], set())
+                if not floor_view and turn < loop_trail_expires_at
+                else set()
+            ),
             **stage_draw_options,
         )
 
@@ -2080,6 +2090,8 @@ def run_game(
             trace=trace,
             repeat_stop_reasons=repeat_stop_reasons,
         )
+        if replay_context is not None:
+            operation_path.append((floor[0], (player.x, player.y)))
         if repeat_stop_reasons:
             _stop_movement_repeat(ui)
         if isinstance(step_result, _RewindRequest):
@@ -2087,6 +2099,12 @@ def run_game(
             operation_count = len(replay_context.operations)
             rewind_turn = max(0, game_start_turn - d.LOOP_TURNS)
             rewind_operation = replay_context.turn_to_operation.get(rewind_turn, 0)
+            loop_trail_by_floor.clear()
+            loop_trail_expires_at = turn + d.LOOP_TRAIL_TURNS + 1
+            for trail_floor, position in operation_path[
+                rewind_operation + 1 : operation_count + 1
+            ]:
+                loop_trail_by_floor.setdefault(trail_floor, set()).add(position)
             replay_context.rewind_targets[operation_count] = rewind_operation
             transition_message = trp(
                 "-- Time folds back to the beginning of the recorded past.", 9
@@ -2104,6 +2122,7 @@ def run_game(
                 operation_count=operation_count,
                 loop_floor_index=step_result.floor_index,
             )
+            operation_path[operation_count] = (floor[0], (player.x, player.y))
             # Rewind contacts still reach the normal turn-end LP decrement.
             player.lp += d.movement_lp_cost(player)
             for recorded_turn in tuple(replay_context.turn_to_operation):
@@ -2175,6 +2194,7 @@ def run_game(
                     replay_context.operations[:] = replay_context.operations[
                         :retained_turns
                     ]
+                    operation_path[:] = operation_path[: retained_turns + 1]
                     for game_turn, operation_count in tuple(
                         replay_context.turn_to_operation.items()
                     ):

@@ -1111,6 +1111,7 @@ class PygletUI:
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
         overshoot_markers: Optional[Set[d.Point]] = None,
+        loop_trail_markers: Optional[Set[d.Point]] = None,
         decor: Optional[List[List[str]]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
     ):
@@ -1183,6 +1184,15 @@ class PygletUI:
                     and (x, y) != (px, py)
                 ):
                     self._draw_field_text((x, y), ".", (112, 120, 130))
+            for x, y in loop_trail_markers or set():
+                if (
+                    0 <= y < len(field)
+                    and 0 <= x < len(field[y])
+                    and torched[y][x]
+                    and field[y][x] == d.CHAR_FLOOR
+                    and (x, y) != (px, py)
+                ):
+                    self._draw_field_text((x, y), ".", COLOR_MAP[CI_CYAN])
 
         for entity in entities:
             if not isinstance(entity, d.Monster) or entity.tribe.char != "k":

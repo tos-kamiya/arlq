@@ -163,7 +163,7 @@ reproduce the same layout.
 
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
-| **l** Loop Companion | Appears in Stages 3–6. Rewinds up to 80 turns, or to the start if fewer turns have elapsed; explored maps, monster identities, and learned elf and member locations remain known. Map knowledge is carried over as it stands immediately before the rewind, including any areas erased by a Vortex. |
+| **l** Loop Companion | Appears in Stages 3–6. Rewinds up to 80 turns, or to the start if fewer turns have elapsed; explored maps, monster identities, and learned elf and member locations remain known. Map knowledge is carried over as it stands immediately before the rewind, including any areas erased by a Vortex. The path from the discarded future appears as cyan dots for 10 turns after the rewind. |
 | **n** Nomicon  | Reveals the type of every active monster and elf within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |
