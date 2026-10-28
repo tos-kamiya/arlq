@@ -215,7 +215,7 @@ def member_glyphs(player: d.Player) -> List[FieldGlyph]:
     return [
         FieldGlyph(player.x - dx + side * left_x,
                    player.y - dy + side * left_y,
-                   d.MEMBER_GLYPHS[member.role], "member", bold=True)
+                   d.MEMBER_GLYPHS[member.role], "member")
         for member, side in zip(player.members, (1, -1))
         if 0 <= player.x - dx + side * left_x < d.FIELD_WIDTH
         and 0 <= player.y - dy + side * left_y < d.FIELD_HEIGHT

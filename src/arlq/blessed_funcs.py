@@ -300,12 +300,11 @@ class BlessedUI:
         )
 
         def paint(glyph: ui_display.FieldGlyph) -> None:
-            is_member = glyph.tone == "member"
             color = (
-                "white"
-                if is_member
-                else None
-                if glyph.tone in ("companion", "member_waiting", "default", "stair")
+                None
+                if glyph.tone in (
+                    "companion", "member", "member_waiting", "default", "stair"
+                )
                 else glyph.tone
             )
             background = cell_background(glyph.x, glyph.y)
@@ -314,8 +313,8 @@ class BlessedUI:
                 glyph.y,
                 glyph.char,
                 visible_default_foreground(color, background),
-                bold=False if glyph.tone == "stair" else glyph.bold,
-                dim=glyph.dim or is_member,
+                bold=False if glyph.tone in ("stair", "member") else glyph.bold,
+                dim=glyph.dim,
                 bg=background,
             )
 
