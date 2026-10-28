@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 6.0.0 - 2026-10-29
+
+- Add Stage 5, a four-floor dungeon with recruitable party members, monster
+  parties, a Dread Wyrm boss, and treasure. Six professions offer distinct
+  combat, healing, exploration, and experience-sharing abilities.
+- Add Stage 6 as a two-floor test stage for trying all party member abilities,
+  with repeat recruitment and a dedicated label in the GUI stage menu.
+- Add Flame cobras and Buffalo, and update monster encounters, hazards, and
+  rewards for the new dungeon. Dungeon Explorers can reveal hidden passages
+  and climb pits; Rogues detect dangers and counter selected hazards.
+- Add party member sprites with varied skin tones, and refresh character and
+  terrain visuals, including Buffalo, Flame cobras, the Marksman, and barriers.
+- Show brief status popups and the movement trail after a Loop Companion
+  rewind, and improve sprite-view scrolling and party progress displays.
+- Localize Japanese party member names in recruitment and warning messages.
+
 ## 5.9.0 - 2026-10-22
 
 - Reduce poisoned attack power to one third, rounded up, and update the
