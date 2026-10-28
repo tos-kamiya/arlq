@@ -2370,20 +2370,47 @@ def dungeon_explorer(x, y, tone):
               (0.10, 0.03, 0.05), steel, 0.01, (0, math.radians(8), 0))
 
     def head(x, y):
-        # A rounded caving helmet whose rim runs just above the eyes in front
-        # and covers the back of the head, with a headlamp on its front.
-        def keep(c):
-            return c.z > -0.25 + 0.4 * max(0.0, -c.y)
-
-        shell = sphere_shell('Dungeon Explorer helmet', (x, y + 0.005, 1.05),
-                             (0.172, 0.172, 0.17), helmet, keep, 0.03)
+        # A hard-hat-like caving helmet: a dome cut by one plane, its rim
+        # just above the eyes in front and a little lower at the back, then
+        # a narrow brim all round that widens in front into a short peak
+        # bent slightly down. A headlamp sits on the front of the dome.
+        # Longer front to back than across, like a real helmet seen from above.
+        center, radii = Vector((x, y + 0.005, 1.05)), Vector((0.152, 0.185, 0.17))
+        # The rim plane on the unit sphere: z = rim_z - rim_tilt * y.
+        rim_z, rim_tilt = 0.13, 0.15
+        shell = sphere_shell('Dungeon Explorer helmet', tuple(center), tuple(radii), helmet,
+                             lambda c: c.z > -0.4, 0.03)
         shell.modifiers['Shell thickness'].offset = 1.0
-        block('Dungeon Explorer helmet peak', (x, y - 0.16, 1.085), (0.17, 0.05, 0.018),
-              helmet, 0.008, (math.radians(-12), 0, 0))
-        block('Dungeon Explorer headlamp housing', (x, y - 0.168, 1.15),
+        mesh = bmesh.new()
+        mesh.from_mesh(shell.data)
+        bmesh.ops.bisect_plane(mesh, geom=mesh.verts[:] + mesh.edges[:] + mesh.faces[:],
+                               plane_co=(0, 0, rim_z), plane_no=(0, rim_tilt, 1),
+                               clear_inner=True)
+        mesh.to_mesh(shell.data)
+        mesh.free()
+        inner, outer, count = [], [], 64
+        for k in range(count):
+            a = 2 * math.pi * k / count
+            # a = 0 faces front (-y).
+            unit_y = -math.cos(a)
+            unit_z = rim_z - rim_tilt * unit_y
+            ring = math.sqrt(1 - unit_z * unit_z)
+            rim = center + Vector((radii.x * ring * math.sin(a), radii.y * ring * unit_y,
+                                   radii.z * unit_z))
+            outward = Vector((math.sin(a), unit_y, 0))
+            # The peak spans about 70 degrees either side of the front.
+            turn = a if a <= math.pi else a - 2 * math.pi
+            width = 0.014 + 0.035 * max(0.0, math.cos(turn * 1.25)) ** 1.5
+            inner.append(tuple(rim + outward * 0.02))
+            outer.append(tuple(rim + outward * (0.02 + width) - Vector((0, 0, 0.15 * width))))
+        brim = mesh_object('Dungeon Explorer helmet brim', inner + outer,
+                           [(k, (k + 1) % count, count + (k + 1) % count, count + k)
+                            for k in range(count)], helmet, True)
+        brim.modifiers.new('Brim thickness', 'SOLIDIFY').thickness = 0.014
+        block('Dungeon Explorer headlamp housing', (x, y - 0.179, 1.15),
               (0.10, 0.045, 0.07), webbing, 0.015, (math.radians(-10), 0, 0))
         bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.03, depth=0.012,
-                                            location=(x, y - 0.194, 1.15),
+                                            location=(x, y - 0.205, 1.15),
                                             rotation=(math.pi / 2, 0, 0))
         finish(bpy.context.object, lamp, True, 'Dungeon Explorer headlamp lens')
 
