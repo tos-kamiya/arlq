@@ -46,6 +46,7 @@ SPRITE_FILES = {
     'o': 'ocular.png',
     'C': 'rare-chimera.png',
     'F': 'fire-drake.png',
+    'f': 'flame-cobra.png',
     'g': 'golem.png',
     'k': 'marksman.png',
     'V': 'vortex.png',

@@ -70,7 +70,7 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('explorer-medium', 'DUNGEON EXPLORER MEDIUM'),
          ('explorer-dark', 'DUNGEON EXPLORER DARK'),
          ('guardian-light', 'GUARDIAN LIGHT'), ('guardian-medium', 'GUARDIAN MEDIUM'),
-         ('guardian-dark', 'GUARDIAN DARK')]
+         ('guardian-dark', 'GUARDIAN DARK'), ('f', 'FLAME COBRA')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -92,7 +92,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # later shrunk to 0.9 of their first sizes.
 SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
+         'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5, 'jester-light': 1.2, 'jester-medium': 1.2, 'jester-dark': 1.2,
          'healer-light': 1.2, 'healer-medium': 1.2, 'healer-dark': 1.2,
          'rogue-light': 1.35, 'rogue-medium': 1.35, 'rogue-dark': 1.35,
@@ -2874,6 +2874,64 @@ def caltrop_plant(x, y):
 
 
 
+def flame_cobra(x, y):
+    """A coiled cobra with a fiery hood in the Fire Drake's palette."""
+    scales = material('Cobra crimson scales', (0.80, 0.08, 0.03), 0.45, 0.2,
+                      rim=(1.0, 0.55, 0.2), rim_strength=1.6, coat=0.8)
+    flame = material('Cobra orange flame', (0.95, 0.22, 0.03), 0.7, 0.2,
+                     emission=(1.0, 0.25, 0.02), strength=0.3,
+                     rim=(1.0, 0.75, 0.3), rim_strength=1.2)
+    belly = material('Cobra molten belly', (1.0, 0.55, 0.08), 0.3, 0.2,
+                     emission=(1.0, 0.4, 0.05), strength=0.4)
+    eyes = material('Cobra eyes', (1.0, 0.9, 0.2), emission=(1.0, 0.85, 0.2), strength=6)
+    dark = material('Cobra pupils', (0.02, 0.02, 0.025), roughness=0.2)
+    points = []
+    for i in range(25):
+        t = i / 24
+        angle = 2 * math.pi * t
+        radius = 0.47 - 0.24 * t
+        points.append((x + radius * math.cos(angle),
+                       y + radius * 0.85 * math.sin(angle), 0.16))
+    points += [(x + 0.14, y + 0.03, 0.21), (x + 0.07, y + 0.02, 0.30),
+               (x + 0.02, y, 0.42), (x, y - 0.07, 0.55),
+               (x, y, 0.90), (x, y - 0.03, 1.17)]
+    radii = [0.02 + 0.15 * min(1, i / 6) for i in range(25)] + [0.17, 0.17, 0.17, 0.17, 0.15, 0.13]
+    # Sample a smooth curve through the coil and rising neck, rather than
+    # joining the control points with straight sections.
+    curve, widths = [], []
+    for i in range(len(points) - 1):
+        p0, p1 = Vector(points[max(0, i - 1)]), Vector(points[i])
+        p2, p3 = Vector(points[i + 1]), Vector(points[min(len(points) - 1, i + 2)])
+        for step in range(4):
+            t = step / 4
+            curve.append(tuple(0.5 * (2 * p1 + (-p0 + p2) * t
+                                      + (2*p0 - 5*p1 + 4*p2 - p3) * t*t
+                                      + (-p0 + 3*p1 - 3*p2 + p3) * t*t*t)))
+            widths.append(radii[i] * (1 - t) + radii[i + 1] * t)
+    curve.append(points[-1])
+    widths.append(radii[-1])
+    tube('Cobra coiled body', curve, widths, scales, sides=24, smooth=True)
+    # A broad hood, with pointed flame tongues rising from its edge.
+    hood_start = set(bpy.data.objects)
+    verts = [(x + dx, y + dy, z) for dx, dy, z in [
+        (0, -0.16, 0.35), (-0.42, -0.10, 0.73), (-0.43, -0.08, 1.12),
+        (-0.31, -0.08, 1.02), (-0.24, -0.06, 1.34), (0, -0.05, 1.08),
+        (0.24, -0.06, 1.34), (0.31, -0.08, 1.02), (0.43, -0.08, 1.12),
+        (0.42, -0.10, 0.73)]]
+    mesh_object('Cobra flame hood', verts, [(0, i, i + 1) for i in range(1, 9)], flame, False)
+    sphere('Cobra throat', (x, y - 0.22, 0.77), (0.14, 0.10, 0.38), belly, 24)
+    sphere('Cobra head', (x, y - 0.28, 1.15), (0.21, 0.17, 0.13), scales, 24)
+    sphere('Cobra muzzle', (x, y - 0.40, 1.10), (0.15, 0.13, 0.07), scales, 24)
+    for side in (-1, 1):
+        sphere('Cobra eye', (x + side * 0.12, y - 0.40, 1.19), (0.055, 0.035, 0.045), eyes, 16)
+        sphere('Cobra pupil', (x + side * 0.12, y - 0.432, 1.20), (0.012, 0.012, 0.027), dark, 12)
+        tube('Cobra hood flame', [(x + side * 0.35, y - 0.12, 0.67),
+                                  (x + side * 0.45, y - 0.10, 0.95),
+                                  (x + side * 0.48, y - 0.08, 1.23)],
+             [0.055, 0.065, 0], belly, sides=8, smooth=True)
+    transform_new(hood_start, Matrix.Translation((0, 0.20, 0)))
+
+
 def spore(x, y):
     """Stage 4 spore monster (m): a stout mushroom with a dusky violet cap
     dotted with softly glowing spots, glowing spores drifting around it, and
@@ -3189,7 +3247,7 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             'c': chimera, 'T': treasure, 'M': lambda x, y: treasure(x, y, True), 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
-            'g': golem, 'w': wyrm, 'W': lambda x, y: wyrm(x, y, True), 'V': vortex, 'k': marksman, 'm': spore, 'e': lambda x, y: erebus(x, y, False),
+            'g': golem, 'w': wyrm, 'W': lambda x, y: wyrm(x, y, True), 'V': vortex, 'k': marksman, 'm': spore, 'f': flame_cobra, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock,
@@ -3211,7 +3269,7 @@ for char, name, x, y in ROW:
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = (MONSTER_YAW if char in 'aAbBcdDCFgkmeEXTM' else WYRM_YAW if char in 'wW'
+    yaw = (MONSTER_YAW if char in 'aAbBcdDCFfgkmeEXTM' else WYRM_YAW if char in 'wW'
            else PEGASUS_YAW if char == 'p' else 0)
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())

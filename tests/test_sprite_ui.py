@@ -108,6 +108,10 @@ def test_buffalo_has_bundled_sprite():
     assert SPRITE_FILES['B'] == 'buffalo.png'
 
 
+def test_flame_cobra_has_bundled_sprite():
+    assert SPRITE_FILES['f'] == 'flame-cobra.png'
+
+
 def test_unknown_mimic_uses_treasure_sprite(sprite_ui):
     entity = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['M'], mimic_boss_char='D')
     entity.active = True
