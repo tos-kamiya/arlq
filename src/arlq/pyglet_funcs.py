@@ -988,6 +988,10 @@ class PygletUI:
         """Draws a Stage 3 follower (such as the Javelin Elf) walking with the player."""
         self._draw_field_text(pos, char, COLOR_MAP["default"])
 
+    def _draw_member(self, glyph):
+        self._draw_text((glyph.x, glyph.y), glyph.char, self._tone_color("default"),
+                        bold=glyph.bold, x_offset=self._field_text_x_offset())
+
     def _draw_companion_slot(self, pos: d.Point, char: str):
         """Draws the companion travelling with the player, in the cell to its right."""
         self._draw_field_text(pos, char, COLOR_MAP[CI_GREEN], bold=True)
@@ -1222,12 +1226,7 @@ class PygletUI:
 
         def paint(glyph: ui_display.FieldGlyph) -> None:
             if glyph.tone in ("member", "member_waiting"):
-                # Text markers until dedicated human artwork is available;
-                # bypass sprite mappings such as H (High Elf).
-                color = self._tone_color("default")
-                self._draw_text((glyph.x, glyph.y), glyph.char, color,
-                                bold=glyph.bold,
-                                x_offset=self._field_text_x_offset())
+                self._draw_member(glyph)
                 return
             self._draw_field_text(
                 (glyph.x, glyph.y), glyph.char, self._tone_color(glyph.tone, glyph.dim), bold=glyph.bold

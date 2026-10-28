@@ -64,7 +64,8 @@ Shift+Left/Right scrolls the view without moving. The scroll range includes a
 one-cell margin at each edge.
 
 Characters with bundled sprites use transparent images once identified;
-unknown characters keep their text symbols. The player is shown holding a
+unknown characters keep their text symbols.
+Stage 5 party members have sprites with randomly selected skin tones. The player is shown holding a
 chimera's sword while carrying it, and its own blade glows blue after the
 Collector Elf's blessing. The LP gauge floats just above the player, like a
 fighting game's, instead of in the status row. Ground markers preserve strength

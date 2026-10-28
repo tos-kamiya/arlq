@@ -90,6 +90,24 @@ def test_bundled_sprites_cover_stage1_characters():
         assert (directory / filename).is_file()
 
 
+@pytest.mark.parametrize('char,name', sprite_funcs.MEMBER_SPRITES.items())
+def test_member_sprite_uses_stable_skin_without_pillar(sprite_ui, monkeypatch, char, name):
+    ui = sprite_ui
+    ui._member_skins = dict.fromkeys(sprite_funcs.MEMBER_SPRITES, 'medium')
+    pillars = []
+    monkeypatch.setattr(ui, '_draw_pillar', lambda *args: pillars.append(args))
+    for tone in ('member_waiting', 'member'):
+        ui._draw_member(display.FieldGlyph(4, 5, char, tone))
+    assert [obj.image for obj in ui._drawables] == [ui._sprite_images[f'{name}-medium']] * 2
+    assert not pillars
+    assert len(ui.outlines) == 1
+    assert ui.outlines[0][2] == pytest.approx(sprite_funcs.GROUND_DISC_RADIUS * ui.cell_size_x)
+
+
+def test_buffalo_has_bundled_sprite():
+    assert SPRITE_FILES['B'] == 'buffalo.png'
+
+
 def test_unknown_mimic_uses_treasure_sprite(sprite_ui):
     entity = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['M'], mimic_boss_char='D')
     entity.active = True
@@ -401,6 +419,7 @@ def test_follower_next_to_player_keeps_its_size(sprite_ui):
     ui._draw_follower((4, 5), 'J')
     assert ui._drawables[0].image is ui._sprite_images['J']
     assert ui._drawables[0].scale == pytest.approx(1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+    assert not ui.outlines
 
 
 def test_rank_mark_grows_with_an_enlarged_neighbor(sprite_ui):

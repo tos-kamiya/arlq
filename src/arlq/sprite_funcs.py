@@ -1,6 +1,7 @@
 """Pyglet frontend with character sprites and the original text fallback."""
 
 import math
+import random
 from functools import partial
 from pathlib import Path
 
@@ -69,6 +70,11 @@ SPRITE_FILES = {
     'player cursed sword': 'player-cursed-sword.png',
     'player blessed': 'player-blessed.png',
 }
+MEMBER_SPRITES = {'J': 'jester', 'H': 'healer', 'R': 'rogue',
+                  'K': 'knight', 'G': 'guardian', 'D': 'explorer'}
+MEMBER_SKINS = ('light', 'medium', 'dark')
+SPRITE_FILES.update({f'{name}-{skin}': f'{name}-{skin}.png'
+                     for name in MEMBER_SPRITES.values() for skin in MEMBER_SKINS})
 ROCK_SPRITE = 'golem rock'
 # Golem rubble outside the current view is darkened like explored walls.
 ROCK_EXPLORED_SHADE = 0.6
@@ -387,6 +393,7 @@ class SpriteUI(PygletUI):
     _stage_discovered_at = None
 
     def __init__(self, scale=None, key_repeat_interval=None):
+        self._member_skins = {char: random.choice(MEMBER_SKINS) for char in MEMBER_SPRITES}
         self._last_stage_draw = None
         self._resize_redraw_pending = False
         self._render_framebuffer = None
@@ -1476,6 +1483,15 @@ class SpriteUI(PygletUI):
             ),
         )
 
+    def _draw_member(self, glyph):
+        name = MEMBER_SPRITES.get(glyph.char)
+        key = f'{name}-{self._member_skins[glyph.char]}' if name else None
+        if key not in self._sprite_images:
+            return super()._draw_member(glyph)
+        color = self._tone_color('default')
+        self._draw_sprite((glyph.x, glyph.y), key, color,
+                          disc_scale=0.0 if glyph.tone == 'member' else 1.0)
+
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
         if text == d.CHAR_BARRIER and self._floor_images is not None:
@@ -1525,7 +1541,10 @@ class SpriteUI(PygletUI):
     def _draw_follower(self, pos, char):
         self._enlarge_neighbors = False
         try:
-            super()._draw_follower(pos, char)
+            if char == 'J' and char in self._sprite_images:
+                self._draw_sprite(pos, char, COLOR_MAP['default'], disc_scale=0.0)
+            else:
+                super()._draw_follower(pos, char)
         finally:
             self._enlarge_neighbors = True
 
@@ -1545,7 +1564,7 @@ class SpriteUI(PygletUI):
         px, py = self._player_cell
         return abs(pos[0] - px) + abs(pos[1] - py) == 1
 
-    def _draw_sprite(self, pos, text, color, upper_right_color=None, shade=1.0):
+    def _draw_sprite(self, pos, text, color, upper_right_color=None, shade=1.0, disc_scale=1.0):
         x, y = pos
         cx, cy = self._field_col_x(x) + self.cell_size_x / 2, (y + 0.5) * self.cell_size_y
         dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
@@ -1570,8 +1589,9 @@ class SpriteUI(PygletUI):
         # Keep the original semantic color (strength, poison, etc.) readable
         # as a glowing disc on the ground the character stands on.
         color = tuple(round(c * shade) for c in color)
-        self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self._sprite_unit(), color,
-                               upper_right_color)
+        if disc_scale:
+            self._draw_ground_disc(cx, cy, disc_scale * GROUND_DISC_RADIUS * self._sprite_unit(),
+                                   color, upper_right_color)
         return top
 
     def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0):
