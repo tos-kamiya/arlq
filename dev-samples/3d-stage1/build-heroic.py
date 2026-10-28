@@ -66,9 +66,9 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('rogue-light', 'ROGUE LIGHT'), ('rogue-medium', 'ROGUE MEDIUM'),
          ('rogue-dark', 'ROGUE DARK'), ('knight-light', 'KNIGHT LIGHT'),
          ('knight-medium', 'KNIGHT MEDIUM'), ('knight-dark', 'KNIGHT DARK'),
-         ('dangeon-light', 'DANGEON SCHOLAR LIGHT'),
-         ('dangeon-medium', 'DANGEON SCHOLAR MEDIUM'),
-         ('dangeon-dark', 'DANGEON SCHOLAR DARK'),
+         ('explorer-light', 'DUNGEON EXPLORER LIGHT'),
+         ('explorer-medium', 'DUNGEON EXPLORER MEDIUM'),
+         ('explorer-dark', 'DUNGEON EXPLORER DARK'),
          ('guardian-light', 'GUARDIAN LIGHT'), ('guardian-medium', 'GUARDIAN MEDIUM'),
          ('guardian-dark', 'GUARDIAN DARK')]
 # Characters stand on every other cell, like the light squares of a
@@ -96,7 +96,7 @@ SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b':
          'rock': 2.5, 'jester-light': 1.2, 'jester-medium': 1.2, 'jester-dark': 1.2,
          'healer-light': 1.2, 'healer-medium': 1.2, 'healer-dark': 1.2,
          'rogue-light': 1.35, 'rogue-medium': 1.35, 'rogue-dark': 1.35,
-         'dangeon-light': 1.42, 'dangeon-medium': 1.42, 'dangeon-dark': 1.42,
+         'explorer-light': 1.42, 'explorer-medium': 1.42, 'explorer-dark': 1.42,
          'knight-light': 1.70, 'knight-medium': 1.70, 'knight-dark': 1.70,
          'guardian-light': 1.42, 'guardian-medium': 1.42, 'guardian-dark': 1.42}
 # The pegasus companion turns further left, so its horse profile shows.
@@ -1339,9 +1339,11 @@ def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.1
     upward and the head tilted back for the face to look at the camera.
     """
     body_start = set(bpy.data.objects)
-    # Long robe flaring to the floor and the slim body above it.
-    tube(prefix + ' robe skirt', [(x, y, z) for z in skirt_z], list(skirt),
-         robe, sides=32, smooth=True)
+    # Long robe flaring to the floor and the slim body above it. Some
+    # characters, such as the trouser-wearing Explorer, omit the robe skirt.
+    if skirt is not None:
+        tube(prefix + ' robe skirt', [(x, y, z) for z in skirt_z], list(skirt),
+             robe, sides=32, smooth=True)
     tube(prefix + ' robe body', [(x, y, 0.56), (x, y, 0.72), (x, y, 0.86), (x, y, 0.90)],
          body_radii or [(rx * girth, ry * girth) for rx, ry in
                         ((0.16, 0.13), (0.19, 0.15), (0.17, 0.13), (0.08, 0.07))],
@@ -2232,213 +2234,136 @@ def rogue(x, y, tone):
             obj.matrix_world = unlean @ obj.matrix_world
 
 
-def dangeon_scholar(x, y, tone):
-    """Dangeon Scholar (D), a measured maze explorer who discovers hidden
-    routes. A brimmed field hat, a warm ochre coat and a large hand-drawn map
-    distinguish the scholar from the hooded Rogue. The upright legs and
-    slight forward lean borrow the Rogue's readable inspection pose, but the
-    scholar is standing calmly rather than crouching. A small brass compass
-    sits on the unfolded paper map and a warm lamp is fixed to the hat. The
-    sleeves stop just above the wrists. There are no weapons. `tone` selects
-    one of `MEMBER_SKINS`.
+def dungeon_explorer(x, y, tone):
+    """Dungeon Explorer (D), a Stage 5 member: a caver who finds hidden
+    routes. Lightly dressed like a modern caving team: a red helmet with a
+    headlamp, a fitted sky blue shirt, navy trousers, knee pads and a bare
+    sit harness with a few carabiners. A coil of bright yellow rope is slung
+    over the right shoulder and across the chest, and the right hand holds an
+    ice axe beside the body, its head at shoulder height. The left hand rests
+    on the hip. No weapon besides the tool, no cape. `tone` picks one of
+    `MEMBER_SKINS`.
     """
-    coat = material('Dangeon Scholar ochre field coat', (0.43, 0.19, 0.075), 0.0, 0.58,
-                    rim=(1.0, 0.69, 0.38), rim_strength=0.55)
-    leather = material('Dangeon Scholar dark brown leather', (0.16, 0.075, 0.035), 0.0, 0.55,
-                       rim=(0.75, 0.48, 0.27), rim_strength=0.45)
-    trousers = material('Dangeon Scholar taupe trousers', (0.30, 0.22, 0.15), 0.0, 0.65,
-                        rim=(0.72, 0.59, 0.43), rim_strength=0.35)
-    hat = material('Dangeon Scholar tan expedition hat', (0.43, 0.27, 0.13), 0.0, 0.62,
-                   rim=(0.9, 0.66, 0.38), rim_strength=0.4)
-    hatband = material('Dangeon Scholar dark hatband', (0.075, 0.065, 0.05), 0.0, 0.55,
-                       rim=(0.55, 0.45, 0.32), rim_strength=0.3)
-    parchment = material('Dangeon Scholar parchment', (0.89, 0.83, 0.69), 0.0, 0.9)
-    parchment_fold = material('Dangeon Scholar folded paper', (0.76, 0.69, 0.55), 0.0, 0.92)
-    ink = material('Dangeon Scholar map ink', (0.19, 0.105, 0.045), 0.0, 0.75)
-    brass = material('Dangeon Scholar brass instrument', (0.62, 0.37, 0.10), roughness=0.3,
-                     metallic=0.65, rim=(0.95, 0.67, 0.30), rim_strength=0.35)
-    lamp = material('Dangeon Scholar warm headlamp lens', (1.0, 0.73, 0.20), 0.15, 0.22,
-                    emission=(1.0, 0.58, 0.08), strength=0.8,
-                    rim=(1.0, 0.82, 0.34), rim_strength=0.8, coat=0.35)
-    skin = material('Dangeon Scholar skin ' + tone, MEMBER_SKINS[tone], 0.2, 0.4,
+    shirt = material('Dungeon Explorer sky blue shirt', (0.10, 0.36, 0.78), 0.0, 0.5,
+                     rim=(0.6, 0.85, 1.0), rim_strength=0.7)
+    trousers = material('Dungeon Explorer navy trousers', (0.06, 0.08, 0.20), 0.0, 0.6,
+                        rim=(0.6, 0.65, 0.8), rim_strength=0.5)
+    pads = material('Dungeon Explorer knee pads', (0.42, 0.42, 0.44), 0.0, 0.45,
+                    rim=(0.8, 0.8, 0.85), rim_strength=0.5)
+    leather = material('Dungeon Explorer brown boots', (0.30, 0.20, 0.11), 0.0, 0.55,
+                       rim=(0.9, 0.72, 0.5), rim_strength=0.5)
+    webbing = material('Dungeon Explorer harness webbing', (0.06, 0.06, 0.07), 0.0, 0.5,
+                       rim=(0.6, 0.6, 0.65), rim_strength=0.4)
+    helmet = material('Dungeon Explorer red helmet', (0.72, 0.07, 0.04), 0.0, 0.25,
+                      rim=(1.0, 0.6, 0.5), rim_strength=0.7, coat=0.6)
+    rope = material('Dungeon Explorer yellow rope', (0.90, 0.68, 0.08), 0.0, 0.55,
+                    rim=(1.0, 0.92, 0.6), rim_strength=0.6)
+    steel = material('Dungeon Explorer steel', (0.62, 0.63, 0.66), roughness=0.3,
+                     metallic=0.8, rim=(0.95, 0.95, 1.0), rim_strength=0.6)
+    shaft = material('Dungeon Explorer ice axe shaft', (0.36, 0.20, 0.08), 0.0, 0.5,
+                     rim=(0.95, 0.75, 0.5), rim_strength=0.5)
+    lamp = material('Dungeon Explorer headlamp lens', (1.0, 0.92, 0.70), 0.15, 0.2,
+                    emission=(1.0, 0.86, 0.55), strength=2.0,
+                    rim=(1.0, 0.95, 0.8), rim_strength=0.8, coat=0.4)
+    skin = material('Dungeon Explorer skin ' + tone, MEMBER_SKINS[tone], 0.2, 0.4,
                     rim=(1.0, 0.9, 0.8), rim_strength=0.6)
-    eye = material('Dangeon Scholar eyes', (0.025, 0.02, 0.015), roughness=0.2, coat=1.0)
-    legs = set()
+    eye = material('Dungeon Explorer eyes', (0.025, 0.02, 0.015), roughness=0.2, coat=1.0)
 
     def body(x, y):
-        start = set(bpy.data.objects)
-        # Mostly straight legs, with one foot taking a small step forward as
-        # the scholar leans in to inspect the map.
-        for side, step in ((-1, -0.025), (1, 0.055)):
-            hip = (x + side * 0.075, y, 0.42)
-            knee = (x + side * 0.085, y - step * 0.25, 0.24)
-            ankle = (x + side * 0.09, y - step, 0.065)
-            tube('Dangeon Scholar trouser leg', [hip, knee, ankle],
-                 [0.078, 0.068, 0.06], trousers, sides=12, smooth=True)
-            foot = (x + side * 0.09, y - step - 0.07, 0.045)
-            tube('Dangeon Scholar boot', [ankle, foot], [0.065, 0.045], leather,
+        # Straight legs a little apart, with knee pads over the trousers.
+        tube('Dungeon Explorer hips', [(x, y, 0.36), (x, y, 0.47), (x, y, 0.58)],
+             [(0.15, 0.12), (0.16, 0.125), (0.155, 0.125)], trousers, sides=24, smooth=True)
+        for side in (-1, 1):
+            hip, knee = (x + side * 0.08, y, 0.42), (x + side * 0.10, y - 0.01, 0.24)
+            ankle = (x + side * 0.11, y, 0.07)
+            tube('Dungeon Explorer leg', [hip, knee, ankle], [0.08, 0.07, 0.062], trousers,
                  sides=12, smooth=True)
-        legs.update(set(bpy.data.objects) - start)
+            sphere('Dungeon Explorer knee pad', (knee[0], knee[1] - 0.055, knee[2]),
+                   (0.06, 0.035, 0.065), pads, 16)
+            tube('Dungeon Explorer boot', [(ankle[0], ankle[1] + 0.03, 0.09),
+                                           (ankle[0], ankle[1] - 0.05, 0.05),
+                                           (ankle[0], ankle[1] - 0.11, 0.035)],
+                 [0.075, 0.07, 0.05], leather, sides=12, smooth=True)
+            # Leg loops of the harness.
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.085, minor_radius=0.014,
+                                             location=(x + side * 0.085, y, 0.37),
+                                             rotation=(0, side * math.radians(-12), 0))
+            finish(bpy.context.object, webbing, True, 'Dungeon Explorer leg loop')
+        # The waist belt of the harness, with carabiners on the left hip.
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.165, minor_radius=0.022,
+                                         location=(x, y, 0.52))
+        belt = finish(bpy.context.object, webbing, True, 'Dungeon Explorer harness belt')
+        belt.scale.y = 0.82
+        for k in range(3):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.03, minor_radius=0.007,
+                                             location=(x + 0.05 + 0.045 * k, y - 0.14 + 0.02 * k,
+                                                       0.46),
+                                             rotation=(math.pi / 2, 0, math.radians(15 * k)))
+            ring = finish(bpy.context.object, steel, True, 'Dungeon Explorer carabiner')
+            ring.scale = (0.75, 1.3, 1.0)
 
-        # Practical lapels and a narrow leather belt break up the coat front.
-        block('Dangeon Scholar belt', (x, y - 0.145, 0.49), (0.34, 0.025, 0.055),
-              leather, 0.012)
-        block('Dangeon Scholar belt buckle', (x, y - 0.164, 0.49), (0.055, 0.018, 0.045),
-              brass, 0.008)
-        for side in (-1, 1):
-            block('Dangeon Scholar coat lapel', (x + side * 0.075, y - 0.143, 0.77),
-                  (0.065, 0.024, 0.22), leather, 0.015,
-                  (0, side * math.radians(13), side * math.radians(7)))
+        # A coil of rope over the right shoulder (screen left), crossing the
+        # chest to the left hip. Three strands make it read as a coil rather
+        # than a sash.
+        center = Vector((x + 0.01, y, 0.69))
+        along = Vector((0.165, 0, -0.19))
+        across = along.cross(Vector((0, 1, 0))).normalized()
+        for k in (-1, 0, 1):
+            points = []
+            for step in range(25):
+                t = 2 * math.pi * step / 24
+                points.append(center + along * math.cos(t)
+                              + Vector((0, -(0.195 + 0.006 * k) * math.sin(t), 0))
+                              + across * (0.026 * k))
+            tube('Dungeon Explorer rope coil', points, [0.019] * len(points), rope,
+                 sides=8, smooth=True)
 
-        # Hold a broad open map at chest height. Its page and simple route
-        # marks face the camera so the prop survives the game's small scale.
-        map_y = y - 0.265
-        # The map is slightly narrower and shifted toward the character's
-        # left hand (screen right), which holds it while the right hand rests
-        # at the hip.
-        u_steps = tuple(index / 16 for index in range(17))
-        v_steps = tuple(index / 8 for index in range(9))
-        map_width = 0.69 * 0.9 * 0.8
-        map_left = x - 0.34 + 0.19
-
-        def map_x(u):
-            return map_left + map_width * u
-
-        def paper_edges(u):
-            # Both long edges sag between the hands, like a loose sheet held
-            # at its corners. The lower edge has an off-balance kink about a
-            # quarter of the way in from the right, matching the reference.
-            sag = 0.075 * 4 * u * (1 - u)
-            if u <= 0.75:
-                fold = max(0.0, min(1.0, (u - 0.52) / 0.23))
-            else:
-                fold = max(0.0, min(1.0, (0.91 - u) / 0.16))
-            lower = 0.55 - sag + 0.065 * fold
-            upper = 0.88 - sag
-            return lower, upper
-
-        def paper_point(px, pz, front=0.0):
-            u = max(0.0, min(1.0, (px - map_left) / map_width))
-            lower, upper = paper_edges(u)
-            v = max(0.0, min(1.0, (pz - lower) / (upper - lower)))
-            # The center of the sheet bows toward the viewer. Two softer
-            # diagonal creases break up the broad surface without making it
-            # look like a sharply folded fan.
-            bow = 0.026 * math.sin(math.pi * u) * (0.55 + 0.45 * math.sin(math.pi * v))
-            fold_left = 0.014 * math.exp(-((u - (0.22 + 0.28 * v)) / 0.075) ** 2)
-            fold_right = 0.012 * math.exp(-((u - (0.78 - 0.24 * v)) / 0.08) ** 2)
-            ripple = 0.004 * math.sin(3 * math.pi * u + 1.4 * math.pi * v) * math.sin(math.pi * v)
-            y_offset = -0.008 - bow + fold_left - fold_right + ripple
-            return (px, map_y + y_offset - front, pz)
-
-        def map_point(u, v, front=0.0):
-            lower, upper = paper_edges(u)
-            return paper_point(map_x(u), lower + (upper - lower) * v, front)
-
-        paper_vertices = []
-        for v in v_steps:
-            for u in u_steps:
-                px = map_left + map_width * u
-                lower, upper = paper_edges(u)
-                pz = lower + (upper - lower) * v
-                paper_vertices.append(paper_point(px, pz))
-        paper_faces = []
-        columns = len(u_steps)
-        for row in range(len(v_steps) - 1):
-            for col in range(columns - 1):
-                a = row * columns + col
-                paper_faces.append((a, a + 1, a + columns + 1, a + columns))
-        paper = mesh_object('Dangeon Scholar open paper map', paper_vertices, paper_faces,
-                            parchment, True)
-        paper.modifiers.new('Thin paper edge', 'SOLIDIFY').thickness = 0.002
-        for points in (
-                [(0.12, 0.82), (0.32, 0.54), (0.48, 0.10)],
-                [(0.58, 0.80), (0.79, 0.50), (0.91, 0.10)]):
-            tube('Dangeon Scholar map crease', [map_point(u, v, 0.006)
-                                                for u, v in points],
-                 [0.003, 0.004, 0.003], parchment_fold, sides=5, smooth=True)
-        # A few inked paths and room outlines suggest cartography without
-        # tiny lettering or a real-world emblem.
-        for points in (
-                [(0.12, 0.15), (0.28, 0.25), (0.30, 0.60), (0.44, 0.72)],
-                [(0.59, 0.18), (0.73, 0.31), (0.71, 0.62), (0.88, 0.79)],
-                [(0.22, 0.78), (0.32, 0.82), (0.38, 0.72)]):
-            points = [map_point(u, v, 0.008) for u, v in points]
-            tube('Dangeon Scholar map route', points, [0.004] * len(points), ink,
-                 sides=5, smooth=True)
-
-        # The character's left hand (screen right) supports the map. The
-        # right hand rests at the hip; a small compass marks the lower-right
-        # corner of the page.
-        for side in (-1, 1):
-            if side == 1:
-                hand = (x + 0.30, y - 0.31, 0.66)
-                elbow = (x + 0.31, y - 0.08, 0.70)
-            else:
-                hand = (x - 0.23, y - 0.20, 0.42)
-                elbow = (x - 0.32, y - 0.06, 0.63)
-            shoulder = (x + side * 0.16, y - 0.01, 0.83)
-            wrist = Vector(elbow).lerp(Vector(hand), 0.72)
-            tube('Dangeon Scholar coat sleeve', [shoulder, elbow, wrist],
-                 [0.07, 0.06, 0.042], coat, sides=12, smooth=True)
-            tube('Dangeon Scholar exposed wrist', [wrist, hand], [0.03, 0.035], skin,
-                 sides=10, smooth=True)
-            sphere('Dangeon Scholar hand', hand, (0.045, 0.035, 0.045), skin, 16)
-        compass = map_point(0.84, 0.18, 0.012)
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.045, minor_radius=0.009,
-                                         location=compass, rotation=(math.pi / 2, 0, 0))
-        finish(bpy.context.object, brass, True, 'Dangeon Scholar compass rim')
-        tube('Dangeon Scholar compass needle',
-             [(compass[0], compass[1] - 0.012, compass[2] - 0.027),
-              (compass[0], compass[1] - 0.012, compass[2] + 0.027)],
-             [0.005, 0.0], ink, sides=5)
-        # A small map tube and field pouch sit at the hip, clear of the coat.
-        block('Dangeon Scholar map tube', (x + 0.20, y + 0.02, 0.43),
-              (0.07, 0.07, 0.28), leather, 0.025, (0, math.radians(8), 0))
-        block('Dangeon Scholar field pouch', (x - 0.20, y - 0.04, 0.44),
-              (0.10, 0.09, 0.13), leather, 0.025)
-        sphere('Dangeon Scholar pouch clasp', (x - 0.20, y - 0.091, 0.46),
-               (0.018, 0.012, 0.018), brass, 12)
+        # Left hand (screen right) on the hip, elbow out.
+        tube('Dungeon Explorer left sleeve', [(x + 0.16, y - 0.01, 0.83), (x + 0.32, y, 0.67),
+                                              (x + 0.22, y - 0.07, 0.55)],
+             [0.062, 0.055, 0.045], shirt, sides=12, smooth=True)
+        sphere('Dungeon Explorer left hand', (x + 0.19, y - 0.09, 0.53),
+               (0.045, 0.04, 0.05), skin, 16)
+        # Right hand holds the ice axe upright beside the body, the spike
+        # toward the floor and the head at shoulder height.
+        spike, top = Vector((x - 0.27, y - 0.15, 0.24)), Vector((x - 0.40, y - 0.10, 0.98))
+        hand = spike.lerp(top, 0.42)
+        tube('Dungeon Explorer right sleeve', [(x - 0.16, y - 0.01, 0.83), (x - 0.31, y - 0.03, 0.70),
+                                               hand + Vector((0.01, 0.02, 0.05))],
+             [0.062, 0.055, 0.045], shirt, sides=12, smooth=True)
+        sphere('Dungeon Explorer right hand', tuple(hand + Vector((0, -0.01, 0))),
+               (0.045, 0.045, 0.05), skin, 16)
+        tube('Dungeon Explorer ice axe shaft', [spike, top], [0.02, 0.018], shaft,
+             sides=10, smooth=True)
+        cone('Dungeon Explorer ice axe spike', tuple(spike), tuple(spike + (spike - top) * 0.09),
+             0.02, 0.0, steel, 12)
+        # The pick curves down outward (screen left), the flat adze points
+        # in toward the body.
+        tube('Dungeon Explorer ice axe pick', [top + Vector((0.03, 0, 0)), top + Vector((-0.08, 0, -0.005)),
+                                               top + Vector((-0.17, 0, -0.06))],
+             [(0.024, 0.03), (0.016, 0.022), 0.0], steel, sides=8, smooth=True)
+        block('Dungeon Explorer ice axe adze', tuple(top + Vector((0.09, 0, 0.0))),
+              (0.10, 0.03, 0.05), steel, 0.01, (0, math.radians(8), 0))
 
     def head(x, y):
-        # Broad, low-crowned field hat with a dark band and a round lamp on
-        # the front. The silhouette follows the supplied expedition-hat
-        # reference, while staying distinct from the Rogue's hood.
-        sphere('Dangeon Scholar hat crown', (x, y + 0.01, 1.13),
-               (0.14, 0.14, 0.10), hat, 32)
-        bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=0.20, depth=0.035,
-                                            location=(x, y, 1.105))
-        brim = finish(bpy.context.object, hat, True, 'Dangeon Scholar hat brim')
-        brim.scale.y = 0.90
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.13, minor_radius=0.012,
-                                         location=(x, y + 0.005, 1.14))
-        finish(bpy.context.object, hatband, True, 'Dangeon Scholar hat band')
-        # Seat a low-profile lamp on the upper front edge of the brim, with
-        # its lens facing forward instead of hanging below the hat.
-        block('Dangeon Scholar headlamp housing', (x, y - 0.17, 1.16),
-              (0.16, 0.045, 0.08), hatband, 0.02)
-        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.045, depth=0.012,
-                                            location=(x, y - 0.203, 1.16),
-                                            rotation=(math.pi / 2, 0, 0))
-        finish(bpy.context.object, lamp, True, 'Dangeon Scholar headlamp lens')
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.046, minor_radius=0.008,
-                                         location=(x, y - 0.211, 1.16),
-                                         rotation=(math.pi / 2, 0, 0))
-        finish(bpy.context.object, brass, True, 'Dangeon Scholar headlamp rim')
+        # A rounded caving helmet whose rim runs just above the eyes in front
+        # and covers the back of the head, with a headlamp on its front.
+        def keep(c):
+            return c.z > -0.25 + 0.4 * max(0.0, -c.y)
 
-    figure_start = set(bpy.data.objects)
-    elf_figure(x, y, 'Dangeon Scholar', coat, skin, eye, body, head,
-               skirt=(0.23, 0.19, 0.16), skirt_z=(0.25, 0.40, 0.57), ears=False)
-    # Like the Rogue, the upper body leans toward the object being inspected
-    # while the legs stay planted. Use a gentler angle to keep the scholar's
-    # posture calm and upright.
-    bpy.context.view_layer.update()
-    figure = set(bpy.data.objects) - figure_start
-    hip = Vector((x, y, 0.42))
-    lean = Matrix.Translation(hip) @ Matrix.Rotation(0.11, 4, 'X') @ Matrix.Translation(-hip)
-    for obj in figure:
-        if obj not in legs:
-            obj.matrix_world = lean @ obj.matrix_world
+        shell = sphere_shell('Dungeon Explorer helmet', (x, y + 0.005, 1.05),
+                             (0.172, 0.172, 0.17), helmet, keep, 0.03)
+        shell.modifiers['Shell thickness'].offset = 1.0
+        block('Dungeon Explorer helmet peak', (x, y - 0.16, 1.085), (0.17, 0.05, 0.018),
+              helmet, 0.008, (math.radians(-12), 0, 0))
+        block('Dungeon Explorer headlamp housing', (x, y - 0.168, 1.15),
+              (0.10, 0.045, 0.07), webbing, 0.015, (math.radians(-10), 0, 0))
+        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.03, depth=0.012,
+                                            location=(x, y - 0.194, 1.15),
+                                            rotation=(math.pi / 2, 0, 0))
+        finish(bpy.context.object, lamp, True, 'Dungeon Explorer headlamp lens')
+
+    elf_figure(x, y, 'Dungeon Explorer', shirt, skin, eye, body, head, skirt=None, ears=False)
 
 
 def heavy_armor_materials(tone):
@@ -3200,7 +3125,7 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
                for tone in MEMBER_SKINS},
             **{'rogue-' + tone: (lambda tone: lambda x, y: rogue(x, y, tone))(tone)
                for tone in MEMBER_SKINS},
-            **{'dangeon-' + tone: (lambda tone: lambda x, y: dangeon_scholar(x, y, tone))(tone)
+            **{'explorer-' + tone: (lambda tone: lambda x, y: dungeon_explorer(x, y, tone))(tone)
                for tone in MEMBER_SKINS},
             **{'knight-' + tone: (lambda tone: lambda x, y: knight(x, y, tone))(tone)
                for tone in MEMBER_SKINS},
