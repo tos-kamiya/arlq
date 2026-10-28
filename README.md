@@ -60,7 +60,7 @@ The right-hand strength labels grow with the field up to the HUD text size;
 their text area narrows to match smaller letters.
 Changing the width adjusts the window height to fit the field
 and HUD. If the field is wider than the view, the camera follows the player;
-Shift+Left/Right scrolls the view without moving. The scroll range includes a
+Shift+Left/Right scrolls the view three cells at a time without moving. The scroll range includes a
 one-cell margin at each edge.
 
 Characters with bundled sprites use transparent images once identified;

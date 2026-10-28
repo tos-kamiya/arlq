@@ -103,6 +103,7 @@ MAX_WINDOW_WIDTH = 32767
 # A new (or rescaled) window is at most this wide relative to its height, so
 # the field is usually wider than the view and scrolls with the player.
 DEFAULT_WINDOW_ASPECT = 16 / 9
+HORIZONTAL_VIEW_SCROLL_CELLS = 3
 STRENGTH_TEXT_SCALE = 0.7
 # Field cells are wider than the text GUI's (13) so characters overflow
 # their cells less; sprites and their discs keep the CELL_SIZE_X-based size.
@@ -1358,7 +1359,8 @@ class SpriteUI(PygletUI):
         direction = -1 if symbol == pyglet.window.key.LEFT else 1
         self._horizontal_scroll_px = min(
             max_scroll,
-            max(min_scroll, self._horizontal_scroll_px + direction * self.cell_size_x),
+            max(min_scroll, self._horizontal_scroll_px
+                + direction * HORIZONTAL_VIEW_SCROLL_CELLS * self.cell_size_x),
         )
         self._camera_follow_player = False
         return (direction, 0)

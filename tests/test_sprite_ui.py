@@ -211,8 +211,11 @@ def test_shift_horizontal_view_scrolls_only_when_field_overflows():
     ui._camera_follow_player = True
 
     assert ui._handle_horizontal_view_key(pyglet.window.key.RIGHT) == (1, 0)
-    assert ui._horizontal_scroll_px == 30
+    assert ui._horizontal_scroll_px == 50
     assert not ui._camera_follow_player
+
+    ui._handle_horizontal_view_key(pyglet.window.key.LEFT)
+    assert ui._horizontal_scroll_px == 20
 
     ui._horizontal_scroll_px = 50
     ui._handle_horizontal_view_key(pyglet.window.key.RIGHT)
