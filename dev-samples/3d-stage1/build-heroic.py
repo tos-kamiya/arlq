@@ -2794,38 +2794,66 @@ def pegasus(x, y):
     tube('Pegasus tail', [(x, y + 0.42, 0.60), (x + 0.04, y + 0.58, 0.56), (x + 0.02, y + 0.72, 0.44),
                           (x - 0.04, y + 0.82, 0.28)], [0.07, 0.09, 0.07, 0], wisp, sides=10,
          smooth=True)
-    # Feathered wings, large for the body, raised up and swept back: a fan of
-    # long flight feathers with a shorter layer of coverts over their roots.
+    # Feathered wings, large for the body, raised up and swept back, shaped
+    # like a raptor's: a bony leading edge runs out from the shoulder to the
+    # wrist, broad secondaries hang from it toward the back, long primaries
+    # spread like fingers past the wrist, and two rows of short coverts
+    # overlap the roots.
+    def vane_width(f, cap=0.72):
+        if f <= cap:
+            return math.sin(math.pi / 2 * f / cap) ** 0.6
+        return math.sqrt(max(0.0, 1 - ((f - cap) / (1 - cap)) ** 2))
+
     for side in (-1, 1):
         shoulder = Vector((x + side * 0.14, y + 0.04, 0.76))
         out, up = Vector((side, 0, 0)), Vector((0, 0.6, 0.8)).normalized()
-        normal = out.cross(up)
-        layers = [(range(6), lambda k: 20 + k * 16, lambda k: 0.62 + 0.06 * min(k, 5 - k) + 0.04 * k,
-                   0.10, 0.0),
-                  (range(5), lambda k: 28 + k * 17, lambda k: 0.34, 0.09, 0.012)]
-        for keys, angle, length, width, lift in layers:
-            for k in keys:
-                a = math.radians(angle(k))
-                along = out * math.cos(a) + up * math.sin(a)
-                across = -out * math.sin(a) + up * math.cos(a)
-                root = shoulder + normal * (lift + 0.003 * k)
-                # Vane widening from the root, then closing in a round tip.
-                def vane_width(f, cap=0.72):
-                    if f <= cap:
-                        return math.sin(math.pi / 2 * f / cap) ** 0.6
-                    return math.sqrt(max(0.0, 1 - ((f - cap) / (1 - cap)) ** 2))
-                n, verts = 18, [tuple(root)]
-                for t in range(1, n + 1):
-                    f = t / n
-                    verts.append(tuple(root + along * (length(k) * f) + across * (width * vane_width(f))))
-                for t in range(n - 1, 0, -1):
-                    f = t / n
-                    verts.append(tuple(root + along * (length(k) * f)
-                                       - across * (width * 0.5 * vane_width(f))))
-                faces = [(0, i, i + 1) for i in range(1, len(verts) - 1)]
-                vane = mesh_object('Pegasus feather', verts, faces, feather, True)
-                vane.modifiers.new('Feather thickness', 'SOLIDIFY').thickness = 0.012
+        # Toward the camera on both wings, so later layers lie on top.
+        normal = out.cross(up) * side
 
+        def add_feather(p, q, angle, length, width, lift):
+            """A vane from (`p` out, `q` up) of the shoulder in the wing's
+            plane, pointing `angle` degrees from `out` toward `up`."""
+            a = math.radians(angle)
+            along = out * math.cos(a) + up * math.sin(a)
+            across = -out * math.sin(a) + up * math.cos(a)
+            root = shoulder + out * p + up * q + normal * lift
+            n, verts = 18, [tuple(root)]
+            for t in range(1, n + 1):
+                f = t / n
+                verts.append(tuple(root + along * (length * f) + across * (width * vane_width(f))))
+            for t in range(n - 1, 0, -1):
+                f = t / n
+                verts.append(tuple(root + along * (length * f)
+                                   - across * (width * 0.5 * vane_width(f))))
+            faces = [(0, i, i + 1) for i in range(1, len(verts) - 1)]
+            vane = mesh_object('Pegasus feather', verts, faces, feather, True)
+            vane.modifiers.new('Feather thickness', 'SOLIDIFY').thickness = 0.012
+
+        # The leading edge: shoulder, elbow, wrist and the end of the hand.
+        arm = [(0.0, 0.0), (0.20, 0.08), (0.38, 0.18), (0.50, 0.26)]
+
+        def on_arm(t):
+            """The point a fraction `t` along the leading edge."""
+            t *= len(arm) - 1
+            k = min(int(t), len(arm) - 2)
+            (p0, q0), (p1, q1) = arm[k], arm[k + 1]
+            return p0 + (p1 - p0) * (t - k), q0 + (q1 - q0) * (t - k)
+
+        # Primaries from the hand, splayed apart at their narrow tips.
+        for k in range(5):
+            p, q = on_arm(0.68 + 0.08 * k)
+            add_feather(p, q, 96 - 16 * k, 0.52 - 0.04 * k, 0.055, 0.003 * k)
+        # Secondaries along the arm, broad and overlapping, pointing up and
+        # a little back toward the body.
+        for k in range(7):
+            p, q = on_arm(0.04 + 0.105 * k)
+            add_feather(p, q, 106 - 2 * k, 0.32 + 0.02 * k, 0.11, 0.016 + 0.003 * k)
+        # Greater and lesser coverts over their roots.
+        for row, (count, length, width, lift) in enumerate(((7, 0.20, 0.10, 0.04),
+                                                            (6, 0.11, 0.09, 0.06))):
+            for k in range(count):
+                p, q = on_arm(0.04 + 0.80 * k / (count - 1))
+                add_feather(p, q, 106 - 3 * k, length, width, lift + 0.003 * k)
 
 def caltrop_plant(x, y):
     """Caltrop plant: a dandelion-like rosette and stem carrying a large
