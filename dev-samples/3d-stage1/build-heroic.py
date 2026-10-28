@@ -48,18 +48,17 @@ CELL_W = SCREEN_PIXEL * 15
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
 GRID_COLS, GRID_ROWS = 14, 8
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
-# the companions and elves; the monsters added from Stage 2 on, the golem rock
-# and rank marks; then the Stage 5 Buffalo and party members.
+# the companions and elves; monsters in stage order, then Stage 5 members.
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
          ('l', 'LOOP'), ('n', 'NOMICON'), ('o', 'OCULAR'), ('p', 'PEGASUS'),
          ('H', 'HIGH ELF'), ('I', 'ISOLATED ELF'), ('J', 'JAVELIN ELF'), ('K', 'COLLECTOR ELF'),
          ('L', 'LIFEBRINGER ELF'), ('S', 'SYLVAN ELF'),
-         ('C', 'RARE CHIMERA'), ('F', 'FIRE DRAKE'), ('X', 'CALTROP PLANT'), ('g', 'GOLEM'),
-         ('rock', 'GOLEM ROCK'), ('w', 'WYRM'), ('W', 'DREAD WYRM'), ('e', 'EREBUS'),
+         ('C', 'RARE CHIMERA'), ('F', 'FIRE DRAKE'), ('g', 'GOLEM'), ('rock', 'GOLEM ROCK'),
+         ('X', 'CALTROP PLANT'), ('e', 'EREBUS'), ('w', 'WYRM'), ('W', 'DREAD WYRM'),
          ('E', 'RARE EREBUS'), ('m', 'SPORE'), ('k', 'MARKSMAN'), ('V', 'VORTEX'),
-         ("'", 'RANK 2'), ('"', 'RANK 3'), ('B', 'BUFFALO'),
+         ('f', 'FLAME COBRA'), ('B', 'BUFFALO'),
          ('jester-light', 'JESTER LIGHT'), ('jester-medium', 'JESTER MEDIUM'),
          ('jester-dark', 'JESTER DARK'), ('healer-light', 'HEALER LIGHT'),
          ('healer-medium', 'HEALER MEDIUM'), ('healer-dark', 'HEALER DARK'),
@@ -70,7 +69,7 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('explorer-medium', 'DUNGEON EXPLORER MEDIUM'),
          ('explorer-dark', 'DUNGEON EXPLORER DARK'),
          ('guardian-light', 'GUARDIAN LIGHT'), ('guardian-medium', 'GUARDIAN MEDIUM'),
-         ('guardian-dark', 'GUARDIAN DARK'), ('f', 'FLAME COBRA')]
+         ('guardian-dark', 'GUARDIAN DARK')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -83,6 +82,8 @@ def cell_centre(col, row):
 
 
 ROW = [(char, name, *cell_centre(*slot)) for (char, name), slot in zip(ORDER, SLOTS)]
+# Rank marks remain available for sprite export, outside the preview grid.
+ROW += [("'", 'RANK 2', 50, 0), ('"', 'RANK 3', 55, 0)]
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba's first size, baked into the meshes.
@@ -3289,7 +3290,8 @@ for char, name, x, y in ROW:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-    label(name, (x, y - CELL_D / 2 + 0.12, 0.005), 0.12)
+    if char not in ("'", '"'):
+        label(name, (x, y - CELL_D / 2 + 0.12, 0.005), 0.12)
     collection = bpy.data.collections.new('Character ' + char + ' ' + name)
     scene.collection.children.link(collection)
     for obj in set(bpy.data.objects) - start:
@@ -3297,6 +3299,8 @@ for char, name, x, y in ROW:
             old.objects.unlink(obj)
         collection.objects.link(obj)
         obj['sprite'] = obj in character
+        if char in ("'", '"'):
+            obj.hide_render = True
 
 bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, -0.1))
 finish(bpy.context.object, dark, True, 'Backdrop')
@@ -3309,7 +3313,7 @@ for row in range(GRID_ROWS):
         cx, cy = cell_centre(col, row)
         block('Floor tile', (cx, cy, -0.05), (CELL_W - 0.04, CELL_D - 0.04, 0.1),
               tile if (col + row) % 2 == 0 else tile_dark, 0.02)
-label('ARLQ / STAGE 1-4 / HEROIC RESIN', (0, CELL_D / 2 + 0.5, 0.0), 0.2)
+label('ARLQ / STAGE 1-5 / HEROIC RESIN', (0, CELL_D / 2 + 0.5, 0.0), 0.2)
 # Warm key, cool fill, strong back rim lights for glossy edges.
 for name, pos, power, size, color in [
         ('Key', (-4, -6, 8), 1000, 5, (1.0, 0.93, 0.85)),
