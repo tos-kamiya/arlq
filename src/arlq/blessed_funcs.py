@@ -663,7 +663,10 @@ class BlessedUI:
                 return (*direction, False)
 
     def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
-        options = [tr("[q]uit")] + [tr("stage [{n}]").format(n=n) for n in stage_numbers]
+        options = [tr("[q]uit")] + [
+            tr("stage [{n}] (Training Room)" if n == 5 else "stage [{n}]").format(n=n)
+            for n in stage_numbers
+        ]
         current_index = 1
         while True:
             self._wait_for_terminal_size()

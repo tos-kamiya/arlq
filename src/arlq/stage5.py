@@ -296,12 +296,12 @@ def trial_dialogue_lines(text: str, width: int, *, on_left: bool = False) -> lis
 
 
 TRIAL_MEMBER_LINES = {
-    d.MEMBER_KNIGHT: "K: Two too many? I'll lend a hand.",
+    d.MEMBER_KNIGHT: "K: Two at once can be a lot. I can lend a hand.",
     d.MEMBER_ROGUE: "R: I can see through most traps.",
-    d.MEMBER_GUARDIAN: "G: My enchanted shield stops barriers and spikes.",
+    d.MEMBER_GUARDIAN: "G: My enchanted shield can protect against barriers and spikes.",
     d.MEMBER_HEALER: "H: Take a healer on a long journey.",
     d.MEMBER_DUNGEON_EXPLORER: "D: I know caves. I can climb out of pits.",
-    d.MEMBER_JESTER: "J: My dance earns you more experience!",
+    d.MEMBER_JESTER: "J: Here's a curious dance to help you gain experience.",
 }
 
 
