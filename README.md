@@ -267,7 +267,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 ### Stage 5 (member-ability trial)
 
-Stage 5 is a compact two-floor dungeon where you can try the Stage 6 party members' abilities. All six candidates appear on floor 1. As in Stage 6, a dismissed candidate cannot rejoin; start a new run to try other combinations. Each floor has a fixed isolated room to the right of the bottom-right tile in the 3×3 layout, reached through a hidden passage; with D, you can climb a pit from the floor below. Golems, a Marksman, a Collapse (`O`), caltrops, and a barrier are also present. There is no rescue objective.
+Stage 5 is a fixed training ground for trying party combat and all six Stage 6 party members. Follow the rooms and long corridor, optionally recruit members, and try their abilities; recruiting a third member replaces the earliest recruit. The Dungeon Explorer can reveal the hidden passage and climb out of the pit. Finish by defeating the Fire Drake (`F`) and taking its chest in the final room. Dismissed members cannot rejoin, so start a new run to try different combinations.
 
 ### Stage 6 (four-floor boss and treasure dungeon)
 

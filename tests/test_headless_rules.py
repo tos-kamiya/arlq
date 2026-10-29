@@ -109,6 +109,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "contact_reveal",
         "collapse_landings",
         "persistent_barriers",
+        "respawn_exclusions",
         "room_components",
         "decor",
         "d_gates",

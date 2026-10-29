@@ -30,6 +30,7 @@ class Floor:
     room_components: Tuple[set[d.Point], ...] = ()
     d_gates: Dict[d.Point, str] = dataclass_field(default_factory=dict)
     persistent_barriers: set[d.Point] = dataclass_field(default_factory=set)
+    respawn_exclusions: set[d.Point] = dataclass_field(default_factory=set)
     # Decorations (d.DECOR_*), one per cell and the same size as `field`.
     # No rule reads them; the sprite GUI draws them. They are written by turn
     # processing, so a rewind's replay rebuilds them along with `field`.

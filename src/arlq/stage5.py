@@ -377,6 +377,7 @@ def _open_points(current: Floor) -> list[d.Point]:
         current.up,
         current.down,
         *current.collapse_landings,
+        *current.respawn_exclusions,
         *current.scholar_up_stairs,
         *current.scholar_down_stairs,
     }
@@ -791,75 +792,214 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
 
 
 def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
-    """Build a compact two-floor area for trying every party member."""
-    config = config or GameConfig()
-    field, up, down = create_field(
-        config.corridor_h_width,
-        config.corridor_v_width,
-        d.CHAR_WALL,
-        tile_columns=3,
-    )
-    lower_field = [row.copy() for row in field]
-    field[down[1]][down[0]] = d.CHAR_STAIRS_DOWN
-    lower_field[down[1]][down[0]] = d.CHAR_STAIRS_UP
-    upper = Floor(
-        field,
-        [],
-        [[0] * len(field[0]) for _ in field],
-        up,
-        down,
-        None,
-        down_stairs=[down],
-    )
-    lower = Floor(
-        lower_field,
-        [],
-        [[0] * len(lower_field[0]) for _ in lower_field],
-        down,
-        down,
-        None,
-        up_stairs=[down],
-    )
-    for role in d.STAGE5_MEMBER_FLOORS[0]:
-        upper.entities.append(
-            d.PartyMember(*rand.choice(_open_points(upper)), role, origin_floor=0)
-        )
+    """Build the fixed two-floor training ground for Stage 5."""
+    upper_field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    lower_field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    y = 10
+    for corridor_y in range(y - 2, y + 3):
+        for x in range(1, d.FIELD_WIDTH - 1):
+            upper_field[corridor_y][x] = d.CHAR_FLOOR
+    # Short doorways separate the encounters into successive rooms.
+    for doorway in (9, 15, 23, 52, 69):
+        for corridor_y in (y - 2, y - 1, y + 1, y + 2):
+            upper_field[corridor_y][doorway] = d.CHAR_WALL
+    # Fold the healer's long empty walk into the existing screen dimensions.
+    for corridor_y in range(y - 2, y + 3):
+        for x in range(47, 52):
+            upper_field[corridor_y][x] = d.CHAR_WALL
+    for row, left, right in ((14, 4, 38), (16, 4, 36),
+                             (18, 4, 36), (20, 4, 44)):
+        for x in range(left, right + 1):
+            upper_field[row][x] = d.CHAR_FLOOR
+    for x, row in ((4, 15), (36, 17), (4, 19)):
+        upper_field[row][x] = d.CHAR_FLOOR
+    for corridor_y in range(y, 15):
+        upper_field[corridor_y][38] = d.CHAR_FLOOR
+    for corridor_y in range(y, 21):
+        upper_field[corridor_y][44] = d.CHAR_FLOOR
+    # D and J occupy the upper row, entered from the healer corridor.
+    for room_y in range(2, 7):
+        for x in range(8, 57):
+            upper_field[room_y][x] = d.CHAR_FLOOR
+    for room_y in (2, 3, 5, 6):
+        upper_field[room_y][30] = d.CHAR_WALL
+        for x in range(43, 48):
+            upper_field[room_y][x] = d.CHAR_WALL
+    for corridor_y in range(7, 10):
+        upper_field[corridor_y][52] = d.CHAR_FLOOR
+    for corridor_y in range(8, 13):
+        for x in range(53, d.FIELD_WIDTH - 1):
+            upper_field[corridor_y][x] = d.CHAR_WALL
+    for x in range(42, 48):
+        for lower_y in range(3, 6):
+            lower_field[lower_y][x] = d.CHAR_FLOOR
+    for x in range(19, 29):
+        for lower_y in range(y - 1, y + 3):
+            lower_field[lower_y][x] = d.CHAR_FLOOR
 
-    for char, count in (("g", 1), ("a", 1), ("b", 9)):
-        for _ in range(count):
-            _place_party(upper, [(char, 1)])
-    for char, count in (("g", 1), ("k", 1), ("b", 9), ("d", 1)):
-        for _ in range(count):
-            _place_party(lower, [(char, 1)], floor_index=1)
+    start = (1, y)
+    pit = (44, 4)
+    upper = Floor(upper_field, [], [[0] * d.FIELD_WIDTH for _ in upper_field],
+                  start, start, None, up_stairs=[start])
+    lower = Floor(lower_field, [], [[0] * d.FIELD_WIDTH for _ in lower_field],
+                  pit, pit, None)
+    upper.respawn_exclusions.update(
+        (x, corridor_y)
+        for corridor_y in range(13, d.FIELD_HEIGHT)
+        for x in range(d.FIELD_WIDTH)
+        if upper.field[corridor_y][x] == d.CHAR_FLOOR
+    )
+    practice_stair = (27, 10)
+    upper.field[10][27] = d.CHAR_STAIRS_DOWN
+    lower.field[10][27] = d.CHAR_STAIRS_UP
+    upper.down_stairs.append(practice_stair)
+    lower.up_stairs.append(practice_stair)
+    upper.field[4][47] = d.CHAR_HIDDEN_D_GATE
+    upper.d_gates[(47, 4)] = d.CHAR_D_GATE
+    for corridor_y in range(y - 2, y + 3):
+        for x in range(36, 39):
+            upper.field[corridor_y][x] = d.CHAR_BARRIER
+            upper.persistent_barriers.add((x, corridor_y))
+        for x in range(39, 42):
+            upper.field[corridor_y][x] = d.CHAR_CALTROP
 
-    occupied = {
-        (entity.x, entity.y)
-        for current in (upper, lower)
-        for entity in current.entities
-    }
-    collapse_points = [
-        point
-        for point in _open_points(upper)
-        if not d.collapse_footprint(point) & occupied
-        if d.collapse_placement_cells_valid(point, upper.field, lower.field)
-    ]
-    collapse_point = rand.choice(collapse_points)
-    upper.entities.append(d.Collapse(*collapse_point))
-    lower.collapse_landings.update(d.collapse_footprint(collapse_point))
-    for hazard, current in ((d.CHAR_CALTROP, upper), (d.CHAR_BARRIER, lower)):
-        x, y = rand.choice(_open_points(current))
-        current.field[y][x] = hazard
-        if hazard == d.CHAR_BARRIER:
-            current.persistent_barriers.add((x, y))
-
-    floors = [upper, lower]
-    for current in floors:
-        _add_trial_detached_room(current, config)
-    for current in floors:
-        normalize_parties(current, d.STAGE5_PARTY_LIMIT)
-    player = d.Player(*upper.up, 30, d.LP_INIT)
+    for x, role in (
+        (11, d.MEMBER_KNIGHT), (20, d.MEMBER_ROGUE),
+        (30, d.MEMBER_GUARDIAN),
+    ):
+        upper.entities.append(d.PartyMember(x, y, role, origin_floor=0))
+    upper.entities.append(d.PartyMember(50, 4, d.MEMBER_DUNGEON_EXPLORER, origin_floor=0))
+    upper.entities.append(d.PartyMember(28, 4, d.MEMBER_JESTER, origin_floor=0))
+    for x, monster_y, char in (
+        (4, y, "f"), (7, y, "f"), (7, y - 1, "f"),
+        (13, y, "f"), (13, y - 1, "f"),
+        (16, y - 2, "g"), (18, y + 2, "X"),
+        (21, y - 2, "E"),
+        (32, y, "b"), (34, y, "b"),
+        (54, 4, "b"),
+    ):
+        upper.entities.append(d.Monster(x, monster_y, d.CHAR_TO_MONSTER_TRIBE[char]))
+    for left in (14, 32):
+        positions = [(left + dx, monster_y) for monster_y in (2, 4, 6) for dx in (0, 2, 4)]
+        for x, monster_y in positions[:8]:
+            upper.entities.append(d.Monster(x, monster_y, d.CHAR_TO_MONSTER_TRIBE["A"]))
+    upper.entities.extend((d.Collapse(22, y), d.Collapse(*pit)))
+    lower.collapse_landings.update(d.collapse_footprint((22, y)))
+    lower.collapse_landings.update(d.collapse_footprint(pit))
+    player = d.Player(*start, 25, d.LP_INIT)
     player.rescue_stage = True
-    return floors, player
+    player.treasure_stage = True
+
+    def relocate(point: d.Point) -> d.Point:
+        x, old_y = point
+        if 2 <= old_y <= 6:
+            return x, old_y + 13
+        if 8 <= old_y <= 12:
+            return x, old_y - 7
+        if 13 <= old_y <= 20:
+            return x, old_y - 6
+        raise ValueError(f"unexpected training ground coordinate: {point}")
+
+    for current in (upper, lower):
+        original = current.field
+        current.field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+        for old_y, row in enumerate(original):
+            if old_y == 7:
+                continue
+            for x, cell in enumerate(row):
+                if cell != d.CHAR_WALL:
+                    new_x, new_y = relocate((x, old_y))
+                    current.field[new_y][new_x] = cell
+        for entity in current.entities:
+            entity.x, entity.y = relocate((entity.x, entity.y))
+        current.up = relocate(current.up)
+        current.down = relocate(current.down)
+        current.up_stairs = [relocate(point) for point in current.up_stairs]
+        current.down_stairs = [relocate(point) for point in current.down_stairs]
+        current.collapse_landings = {relocate(point) for point in current.collapse_landings}
+        current.persistent_barriers = {relocate(point) for point in current.persistent_barriers}
+        current.respawn_exclusions = {relocate(point) for point in current.respawn_exclusions}
+        current.d_gates = {relocate(point): value for point, value in current.d_gates.items()}
+    player.x, player.y = relocate(start)
+
+    # Enter H's room at the right of the middle row, then head left into
+    # the winding corridor. A wall keeps its two parallel legs separate.
+    for room_y in range(1, 6):
+        for x in range(44, d.FIELD_WIDTH - 1):
+            upper.field[room_y][x] = d.CHAR_WALL
+    for x in range(44, 53):
+        upper.field[3][x] = d.CHAR_FLOOR
+    for corridor_y in range(3, 11):
+        upper.field[corridor_y][52] = d.CHAR_FLOOR
+    for room_y in range(8, 13):
+        for x in range(42, 53):
+            upper.field[room_y][x] = d.CHAR_FLOOR
+    for x in range(38, 43):
+        upper.field[10][x] = d.CHAR_FLOOR
+    upper.field[7][38] = d.CHAR_WALL
+    upper.field[9][38] = d.CHAR_FLOOR
+    upper.field[10][37] = d.CHAR_WALL
+    upper.entities.insert(3, d.PartyMember(50, 10, d.MEMBER_HEALER, origin_floor=0))
+    upper.entities.extend(
+        d.Monster(x, 10, d.CHAR_TO_MONSTER_TRIBE["b"]) for x in (44, 47)
+    )
+
+    # The long corridor descends to the left side of the lower row.
+    for corridor_y in (1, 2, 4, 5, 6):
+        upper.field[corridor_y][44] = d.CHAR_WALL
+    for corridor_y in (7, 13, 14):
+        upper.field[corridor_y][44] = d.CHAR_WALL
+    for x in range(5, 45):
+        upper.field[14][x] = d.CHAR_WALL
+
+    # A doorway separates the final dragon and its chest from the Jester's room.
+    for room_y in range(15, 20):
+        for x in range(2, 8):
+            upper.field[room_y][x] = d.CHAR_FLOOR
+        if room_y != 17:
+            upper.field[room_y][12] = d.CHAR_WALL
+    upper.entities.append(d.Monster(6, 17, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_FIRE_DRAKE]))
+    upper.entities.append(d.Treasure(3, 17, "TF"))
+
+    # Reverse only the lower row: Explorer, Jester, then Fire Drake.
+    def lower_row_point(point: d.Point) -> d.Point:
+        x, point_y = point
+        return (64 - x, point_y) if point_y >= 15 else point
+
+    for current in (upper, lower):
+        for room_y in range(15, 20):
+            row = current.field[room_y]
+            current.field[room_y] = list(reversed(row[:65])) + row[65:]
+        for entity in current.entities:
+            entity.x, entity.y = lower_row_point((entity.x, entity.y))
+        current.up = lower_row_point(current.up)
+        current.down = lower_row_point(current.down)
+        current.collapse_landings = {lower_row_point(point) for point in current.collapse_landings}
+        current.d_gates = {lower_row_point(point): value for point, value in current.d_gates.items()}
+
+    # Remove empty columns on either side of the Jester's encounters.
+    def compact_lower_row(point: d.Point) -> d.Point:
+        x, point_y = point
+        if point_y < 15:
+            return point
+        return x - (4 if x >= 26 else 0) - (6 if x >= 46 else 0), point_y
+
+    for current in (upper, lower):
+        for room_y in range(15, 20):
+            row = current.field[room_y]
+            current.field[room_y] = (
+                row[:22] + row[26:40] + row[46:] + [d.CHAR_WALL] * 10
+            )
+        for entity in current.entities:
+            entity.x, entity.y = compact_lower_row((entity.x, entity.y))
+        current.up = compact_lower_row(current.up)
+        current.down = compact_lower_row(current.down)
+        current.collapse_landings = {compact_lower_row(point) for point in current.collapse_landings}
+        current.d_gates = {compact_lower_row(point): value for point, value in current.d_gates.items()}
+    for x in range(4, 8):
+        upper.field[15][x] = d.CHAR_FLOOR
+        upper.respawn_exclusions.add((x, 15))
+    return [upper, lower], player
 
 
 def _add_trial_detached_room(current: Floor, config: GameConfig) -> None:

@@ -1973,7 +1973,7 @@ def run_game(
     elif stage_num == 5:
         message = (
             12,
-            trp("-- Recruit members on both floors to try their abilities.", 1),
+            trp("-- Explore the training ground and claim the Fire Drake’s treasure.", 1),
         )
     while player.lp > 0:
         current = floors[floor[0]]
