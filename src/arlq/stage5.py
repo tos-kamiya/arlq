@@ -219,8 +219,6 @@ def recruit(
     current: Floor,
     player: d.Player,
     member: d.PartyMember,
-    recycle_departed: bool = False,
-    floors: list[Floor] | None = None,
 ) -> str:
     player.joined_members.add(member.role)
     player.seen_members.add(member.role)
@@ -236,21 +234,6 @@ def recruit(
         player.known_member_floors.pop(departed.role, None)
     current.entities.remove(member)
     player.members.append(member)
-    if departed is not None and recycle_departed:
-        target = current
-        if (
-            floors is not None
-            and departed.origin_floor is not None
-            and 0 <= departed.origin_floor < len(floors)
-        ):
-            target = floors[departed.origin_floor]
-        choices = [
-            point
-            for point in _open_points(target)
-            if target is not current or point != (player.x, player.y)
-        ]
-        departed.x, departed.y = rand.choice(choices)
-        target.entities.append(departed)
     if departed is not None:
         return trp("-- {joined} joined; {departed} left the party.", 5).format(
             joined=t(member.role), departed=t(departed.role)
@@ -519,7 +502,7 @@ def _barrier_offsets(
             for dy in (-1, 0, 1)
             if dx or dy
         )
-    if stage_num == 5 and entity.tribe.char == "f" and entity.empowered == 2:
+    if stage_num in (5, 6) and entity.tribe.char == "f" and entity.empowered == 2:
         return ((0, -1), (1, 0), (0, 1), (-1, 0))
     return ()
 
@@ -873,7 +856,7 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
     for current in floors:
         _add_trial_detached_room(current, config)
     for current in floors:
-        normalize_parties(current)
+        normalize_parties(current, d.STAGE5_PARTY_LIMIT)
     player = d.Player(*upper.up, 30, d.LP_INIT)
     player.rescue_stage = True
     return floors, player

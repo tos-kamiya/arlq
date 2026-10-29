@@ -19,14 +19,14 @@ MEMBER_NOBLE = "Noble"
 
 PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
-STAGE5_PARTY_LIMIT = 3
 JESTER_EXP_MULTIPLIER = 2
+STAGE5_PARTY_LIMIT = 3
 STAGE5_JESTER_EXP_MULTIPLIER = 1.5
 STAGE5_JESTER_EXPERIENCE_WEIGHT = 0.25
 KNIGHT_INITIAL_LEVEL = 50
 KNIGHT_EXPERIENCE_RATIO = 0.5
-STAGE6_EXPERIENCE_MEMBER_WEIGHTS = {
-    MEMBER_JESTER: 0.5,
+PARTY_EXPERIENCE_MEMBER_WEIGHTS = {
+    MEMBER_JESTER: STAGE5_JESTER_EXPERIENCE_WEIGHT,
     MEMBER_HEALER: 0.5,
     MEMBER_GUARDIAN: 0.5,
     MEMBER_KNIGHT: 1.0,
@@ -1113,14 +1113,13 @@ def has_member(player: Player, role: str) -> bool:
 def experience_multiplier(player: Player, stage_num: int = 6) -> float:
     if not has_member(player, MEMBER_JESTER):
         return 1
-    return STAGE5_JESTER_EXP_MULTIPLIER if stage_num == 5 else JESTER_EXP_MULTIPLIER
+    return STAGE5_JESTER_EXP_MULTIPLIER if stage_num in (5, 6) else JESTER_EXP_MULTIPLIER
 
 
 def experience_share_count(player: Player, stage_num: int) -> float:
     if stage_num in (5, 6):
         return 1 + sum(
-            STAGE5_JESTER_EXPERIENCE_WEIGHT if stage_num == 5 and member.role == MEMBER_JESTER
-            else STAGE6_EXPERIENCE_MEMBER_WEIGHTS.get(member.role, 0.0)
+            PARTY_EXPERIENCE_MEMBER_WEIGHTS.get(member.role, 0.0)
             for member in player.members
         )
     return len(player.members) + 1

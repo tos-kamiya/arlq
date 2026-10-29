@@ -72,7 +72,7 @@ def test_shared_party_tones_match_individual_glyphs(known, attack):
         ) == expected
 
 
-def step(current, player, direction=(1, 0), checkpoint=(2, 2)):
+def step(current, player, direction=(1, 0), checkpoint=(2, 2), stage_num=5):
     return engine._step(
         direction,
         [current],
@@ -81,7 +81,7 @@ def step(current, player, direction=(1, 0), checkpoint=(2, 2)):
         [checkpoint],
         Counter(),
         1,
-        stage_num=5,
+        stage_num=stage_num,
     )
 
 
@@ -201,25 +201,17 @@ def test_stage5_member_progress_shows_candidates_before_they_depart():
     ] == ["J1", "H", "R2", "K", "D", "G"]
 
 
-def test_stage6_recycles_departed_member_on_their_origin_floor():
+def test_stage6_departed_member_does_not_reappear():
     current, player = state(("Jester", "Healer"))
-    lower, _ = state()
-    player.members[0].origin_floor = 0
-    recruit = d.PartyMember(3, 2, "Rogue", origin_floor=1)
+    recruit = d.PartyMember(3, 2, "Rogue")
     current.entities.append(recruit)
 
-    stage5.recruit(
-        current,
-        player,
-        recruit,
-        recycle_departed=True,
-        floors=[lower, current],
-    )
+    step(current, player, stage_num=6)
 
     assert [member.role for member in player.members] == ["Healer", "Rogue"]
-    assert any(
+    assert not any(
         isinstance(entity, d.PartyMember) and entity.role == "Jester"
-        for entity in lower.entities
+        for entity in current.entities
     )
 
 
@@ -255,11 +247,12 @@ def test_stage5_replaces_oldest_member_without_respawning_them():
         (("Guardian",), 4 / 3),
     ],
 )
-def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain):
+@pytest.mark.parametrize("stage_num", [5, 6])
+def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain, stage_num):
     current, player = state(roles, lp=10)
     current.entities = [monster(3, 2, "b"), monster(3, 3, "a")]
     feed = max(e.tribe.feed for e in current.entities)
-    step(current, player)
+    step(current, player, stage_num=stage_num)
     assert current.entities == []
     assert player.level == 100 + gain
     assert player.lp == min(d.LP_MAX, 10 + feed)

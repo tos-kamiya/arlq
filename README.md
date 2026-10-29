@@ -273,7 +273,7 @@ Stage 5 is a four-floor dungeon starting at level 1. The player fights with part
 
 | Marker / profession | Ability |
 | --- | --- |
-| `J` Jester | Multiplies your shared experience by 1.5 in Stage 5 and by 2 in Stage 6. |
+| `J` Jester | Multiplies your shared experience by 1.5. |
 | `H` Healer | Halves movement LP cost and reduces the defeat cost to 2, including when rewinding. |
 | `R` Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | `K` Knight | Joins at level 50 and gains half your shared experience before the Jester bonus. Adds K's level to your attack power. |
@@ -284,7 +284,7 @@ An undiscovered hidden passage can also be broken with a sword, turning it into 
 
 Monsters are placed without horizontal adjacency; party members line up vertically.
 
-Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. Experience sharing counts the player and K as 1 each, H and G as 0.5 each, and R and D as 0. J counts as 0.25 in Stage 5 and 0.5 in Stage 6. J's multiplier applies to the player's share.
+Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. Experience sharing counts the player and K as 1 each, H and G as 0.5 each, and R and D as 0. J counts as 0.25. J's multiplier applies to the player's share.
 
 #### Monsters
 
@@ -296,7 +296,7 @@ The floor 4 boss party consists of `W`, `V`, and one escort; a Mimic also impers
 
 ### Stage 6 (member-ability trial)
 
-Stage 6 is a compact two-floor dungeon where you can try the Stage 5 party members' abilities. All six candidates appear on floor 1, and a dismissed candidate can rejoin, so you can try everyone. Each floor has a fixed isolated room to the right of the bottom-right tile in the 3×3 layout, reached through a hidden passage; with D, you can climb a pit from the floor below. Golems, a Marksman, a Collapse (`O`), caltrops, and a barrier are also present. There is no rescue objective.
+Stage 6 is a compact two-floor dungeon where you can try the Stage 5 party members' abilities. All six candidates appear on floor 1. As in Stage 5, a dismissed candidate cannot rejoin; start a new run to try other combinations. Each floor has a fixed isolated room to the right of the bottom-right tile in the 3×3 layout, reached through a hidden passage; with D, you can climb a pit from the floor below. Golems, a Marksman, a Collapse (`O`), caltrops, and a barrier are also present. There is no rescue objective.
 
 ## Development commands
 

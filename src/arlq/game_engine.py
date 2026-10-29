@@ -644,7 +644,7 @@ def _defeat_monster(
     """Apply the effects of successfully defeating `entity` in combat."""
     ch = entity.tribe.char
     if ch == "w" or (
-        stage_num == 5 and ch == "f" and entity.empowered == 2
+        stage_num in (5, 6) and ch == "f" and entity.empowered == 2
     ):
         other_monster_barrier_cells = {
             (other.x + dx, other.y + dy)
@@ -1219,7 +1219,7 @@ def _resolve_party_contact(
     d.apply_feed(player, feed, lp_overcharge)
     if any(monster.tribe.char == "M" for monster in party):
         player.x, player.y = _find_escape_place(current)
-    if boss is not None and stage_num != 5:
+    if boss is not None and stage_num not in (5, 6):
         # Other multi-floor stages retain the rescue member spawned by their
         # boss encounter. Stage 5's ordinary V applies its own local effect.
         candidates = sorted(
@@ -1238,7 +1238,7 @@ def _resolve_party_contact(
         )
     stage5.normalize_parties(
         current,
-        d.STAGE5_PARTY_LIMIT if stage_num == 5 else d.MONSTER_PARTY_LIMIT,
+        d.STAGE5_PARTY_LIMIT,
     )
     player.last_contact_monster = contact_key
     party_chars = {monster.tribe.char for monster in party}
@@ -1297,13 +1297,7 @@ def _resolve_contact(
     entity = current.entities[hit]
 
     if isinstance(entity, d.PartyMember):
-        result = stage5.recruit(
-            current,
-            player,
-            entity,
-            recycle_departed=stage_num == 6,
-            floors=floors,
-        )
+        result = stage5.recruit(current, player, entity)
         if trace is not None:
             trace.record_contact({"type": "member", "id": entity.role,
                                   "joined": entity in player.members})
@@ -1837,7 +1831,7 @@ def _process_multi_floor_turn(
         for floor_data in floors:
             stage5.normalize_parties(
                 floor_data,
-                d.STAGE5_PARTY_LIMIT if stage_num == 5 else d.MONSTER_PARTY_LIMIT,
+                d.STAGE5_PARTY_LIMIT,
             )
         stage5.sync_members(player, previous, direction)
     return (MESSAGE_TICKS, event_message) if event_message else None
