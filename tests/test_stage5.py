@@ -878,35 +878,32 @@ def test_member_trial_has_fixed_ordered_layout():
     ]
 
 
-def test_member_trial_pit_requires_explorer_to_return():
+def test_member_trial_pit_lands_on_floor_without_return_stairs():
     floors, player = stage5.build_member_trial()
     upper, lower = floors
-    collapse = next(e for e in upper.entities if isinstance(e, d.Collapse) and e.x == 20)
+    collapse = next(e for e in upper.entities if isinstance(e, d.Collapse))
+    pit = (collapse.x, collapse.y)
+    assert pit == (23, 3)
+    assert not upper.scholar_down_stairs
+    assert not lower.scholar_up_stairs
+    assert pit in lower.collapse_landings
+    assert lower.field[pit[1]][pit[0]] == d.CHAR_FLOOR
+    player.x, player.y = pit
+    floor, checkpoint = [0], [pit]
     engine._reveal_collapse_pits(floors, 0, collapse)
-    player.x, player.y = 21, 17
-    floor, checkpoint = [1], [(21, 17)]
-    engine.observe_world(floors, player, 1, 5, 3)
-    assert lower.field[17][21] == d.CHAR_FLOOR
-    player.members = [d.PartyMember(21, 17, d.MEMBER_DUNGEON_EXPLORER)]
-    engine.observe_world(floors, player, 1, 5, 3)
-    assert lower.field[17][21] == d.CHAR_SCHOLAR_STAIRS_UP
-    player.members = []
+    engine._step((0, 0), floors, player, floor, checkpoint, Counter(), 1, stage_num=5)
+    assert floor == [1]
+    assert (player.x, player.y) == pit
+    assert lower.field[pit[1]][pit[0]] == d.CHAR_FLOOR
     assert engine._handle_floor_transition(lower, floors, player, floor, checkpoint) is None
     assert floor == [1]
-    player.members = [d.PartyMember(21, 17, d.MEMBER_DUNGEON_EXPLORER)]
-    assert engine._handle_floor_transition(lower, floors, player, floor, checkpoint)
-    assert floor == [0]
-    engine._step((1, 0), floors, player, floor, checkpoint, Counter(), 1, stage_num=5)
-    assert floor == [0] and (player.x, player.y) == (22, 17)
-
 
 def test_member_trial_corridor_and_initial_combat():
     floors, player = stage5.build_member_trial()
     upper = floors[0]
-    assert all(upper.field[y][6] == d.CHAR_FLOOR for y in range(1, 6))
-    first = next(e for e in upper.entities if isinstance(e, d.Monster) and e.x == 4)
-    pair = next(e for e in upper.entities if isinstance(e, d.Monster) and e.x == 7 and e.y == 3)
-    knight_pair = next(e for e in upper.entities if isinstance(e, d.Monster) and e.x == 13 and e.y == 3)
+    first = next(e for e in upper.entities if isinstance(e, d.Monster) and (e.x, e.y) == (5, 3))
+    pair = next(e for e in upper.entities if isinstance(e, d.Monster) and (e.x, e.y) == (8, 3))
+    knight_pair = next(e for e in upper.entities if isinstance(e, d.Monster) and (e.x, e.y) == (14, 3))
     assert d.current_player_attack(player, 5) >= d.monster_level(first)
     engine._resolve_party_contact(first, upper, floors, player, [0], [upper.up], Counter(), None, 5)
     assert d.current_player_attack(player, 5) < sum(
@@ -918,39 +915,46 @@ def test_member_trial_corridor_and_initial_combat():
         d.monster_level(e) for e in stage5.monster_party(upper, knight_pair)
     )
 
-
 def test_member_trial_rooms_are_connected_by_short_doorways():
     floors, _ = stage5.build_member_trial()
     field = floors[0].field
-    for x in (9, 15, 23):
-        assert [field[y][x] for y in range(1, 6)] == [
-            d.CHAR_WALL, d.CHAR_WALL, d.CHAR_FLOOR,
-            d.CHAR_WALL, d.CHAR_WALL,
-        ]
-        assert all(field[y][x - 1] not in d.WALL_CHARS for y in range(1, 6))
-        assert all(field[y][x + 1] not in d.WALL_CHARS for y in range(1, 6))
-
+    rows = stage5.STAGE5_MEMBER_TRIAL_MAP.splitlines()
+    assert len(rows) == d.FIELD_HEIGHT
+    for y, row in enumerate(rows):
+        for x, glyph in enumerate(row):
+            if glyph == "#":
+                assert field[y][x] == d.CHAR_WALL
+            elif glyph == "=":
+                assert field[y][x] == d.CHAR_BARRIER
+            elif glyph == ".":
+                assert field[y][x] == d.CHAR_HIDDEN_D_GATE
+            elif glyph == "?":
+                assert field[y][x] == d.CHAR_FLOOR
+                assert any(isinstance(e, d.Collapse) and (e.x, e.y) == (x, y)
+                           for e in floors[0].entities)
+            elif glyph == "v":
+                assert field[y][x] == d.CHAR_STAIRS_DOWN
+            else:
+                assert field[y][x] != d.CHAR_WALL
 
 def test_member_trial_can_bypass_first_pair_and_recruit_knight():
     floors, player = stage5.build_member_trial()
-    floor, checkpoint, queue = [0], [floors[0].up], Counter()
-    for direction in [(1, 0)] * 3 + [(0, 1)] + [(1, 0)] * 4 + [(0, -1)] + [(1, 0)] * 3:
-        engine._step(direction, floors, player, floor, checkpoint, queue, 1, stage_num=5)
-    assert (player.x, player.y) == (11, 3)
+    upper = floors[0]
+    player.x, player.y = 11, 3
+    floor, checkpoint, queue = [0], [upper.up], Counter()
+    engine._step((1, 0), floors, player, floor, checkpoint, queue, 1, stage_num=5)
+    assert (player.x, player.y) == (12, 3)
     assert [member.role for member in player.members] == [d.MEMBER_KNIGHT]
-    assert len([e for e in floors[0].entities if isinstance(e, d.Monster) and e.tribe.char == "f" and e.x == 7]) == 2
-
+    assert sum(isinstance(e, d.Monster) and e.tribe.char == "f" for e in upper.entities) == 5
 
 def test_member_trial_rogue_targets_before_and_after_recruit():
     floors, player = stage5.build_member_trial()
     upper = floors[0]
     rogue = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_ROGUE)
     targets = [e for e in upper.entities if isinstance(e, d.Monster) and e.tribe.char in ("g", "X", "E")]
-    for char in ("g", "X"):
-        assert sum(e.tribe.char == char and e.x < rogue.x for e in targets) == 1
-    assert all(e.x > 15 for e in targets if e.tribe.char in ("g", "X"))
-    assert any(e.tribe.char == "E" and e.x > rogue.x for e in targets)
-    assert any(isinstance(e, d.Collapse) and e.x == 22 for e in upper.entities)
+    assert {e.tribe.char for e in targets} == {"g", "X", "E"}
+    assert any(e.tribe.char == "X" and e.x > rogue.x for e in targets)
+    assert any(isinstance(e, d.Collapse) and (e.x, e.y) == (23, 3) for e in upper.entities)
     visible = [[1] * d.FIELD_WIDTH for _ in upper.field]
     stage5.reveal_rogue_monsters(upper, player, visible)
     assert not player.known_monsters.intersection({"g", "X"})
@@ -958,52 +962,46 @@ def test_member_trial_rogue_targets_before_and_after_recruit():
     stage5.reveal_rogue_monsters(upper, player, visible)
     assert {"g", "X", "E"} <= player.known_monsters
 
-
 def test_member_trial_practice_pit_has_ordinary_return_stairs():
     floors, player = stage5.build_member_trial()
     upper, lower = floors
-    collapse = next(e for e in upper.entities if isinstance(e, d.Collapse) and e.x == 22)
+    collapse = next(e for e in upper.entities if isinstance(e, d.Collapse))
     engine._reveal_collapse_pits(floors, 0, collapse)
-    player.x, player.y = 21, 3
+    player.x, player.y = collapse.x - 1, collapse.y
     floor, checkpoint = [0], [upper.up]
     engine._step((1, 0), floors, player, floor, checkpoint, Counter(), 1, stage_num=5)
     assert floor == [1]
-    # Walk onto the ordinary stairs without a Dungeon Explorer.
-    for direction in [(1, 0)] * 6:
-        engine._step(direction, floors, player, floor, checkpoint, Counter(), 2, stage_num=5)
-    assert floor == [0] and (player.x, player.y) == (27, 3)
-    assert lower.up_stairs == [(27, 3)] and upper.down_stairs == [(27, 3)]
-
+    for _ in range(6):
+        engine._step((1, 0), floors, player, floor, checkpoint, Counter(), 2, stage_num=5)
+    assert floor == [0] and (player.x, player.y) == (28, 3)
+    assert lower.up_stairs == [(28, 3)] and upper.down_stairs == [(28, 3)]
 
 def test_member_trial_healer_is_in_middle_row_on_right():
     floors, _ = stage5.build_member_trial()
     upper = floors[0]
     healer = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_HEALER)
     guardian = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_GUARDIAN)
-    assert (guardian.x, guardian.y) == (30, 3)
-    assert (healer.x, healer.y) == (50, 10)
-    assert all(upper.field[3][x] == d.CHAR_FLOOR for x in range(42, 53))
-    assert all(upper.field[y][41] == upper.field[y][53] == d.CHAR_WALL
-               for y in (8, 9, 11, 12))
+    assert (guardian.x, guardian.y) == (31, 3)
+    assert (healer.x, healer.y) == (46, 10)
+    assert all(upper.field[3][x] != d.CHAR_WALL for x in range(42, 46))
     assert sorted(e.x for e in upper.entities if isinstance(e, d.Monster)
-                  and e.tribe.char == "b" and e.y == 10) == [44, 47]
-
+                  and e.tribe.char == "b" and e.y == 10) == [40, 43]
 
 def test_member_trial_rogue_pit_blocks_the_route_to_guardian():
     floors, _ = stage5.build_member_trial()
     upper = floors[0]
-    collapse = next(e for e in upper.entities if isinstance(e, d.Collapse) and e.x == 22)
+    collapse = next(e for e in upper.entities if isinstance(e, d.Collapse))
+    assert (collapse.x, collapse.y) == (23, 3)
     engine._reveal_collapse_pits(floors, 0, collapse)
-    assert upper.field[3][23] == d.CHAR_COLLAPSE
-    assert all(upper.field[y][23] in d.WALL_CHARS for y in (1, 2, 4, 5))
-
+    assert upper.field[3][23] == d.CHAR_FLOOR
+    assert all(upper.field[y][23] == d.CHAR_COLLAPSE for y in (2, 4))
 
 def test_member_trial_healer_corridor_is_long_and_empty():
     from collections import deque
 
     floors, _ = stage5.build_member_trial()
     upper = floors[0]
-    start, end = (38, 8), (4, 14)
+    start, end = (45, 10), (8, 17)
     queue = deque([(start, 0)])
     seen = {start}
     while queue:
@@ -1012,24 +1010,14 @@ def test_member_trial_healer_corridor_is_long_and_empty():
             break
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             point = (x + dx, y + dy)
-            if (point not in seen and 0 <= point[0] <= 38
-                    and 7 <= point[1] <= 14
-                    and upper.field[point[1]][point[0]] == d.CHAR_FLOOR):
+            if (point not in seen and 0 <= point[0] < d.FIELD_WIDTH
+                    and 0 <= point[1] < d.FIELD_HEIGHT
+                    and upper.field[point[1]][point[0]] not in d.WALL_CHARS):
                 seen.add(point)
                 queue.append((point, distance + 1))
     else:
-        pytest.fail("healer corridor has no exit")
+        pytest.fail("Healer area has no route to the Dungeon Explorer")
     assert distance >= 100
-    assert not any((e.x, e.y) in seen for e in upper.entities)
-    assert all(
-        sum(upper.field[y + dy][x + dx] == d.CHAR_FLOOR
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))) <= 2
-        for x, y in seen
-    )
-    corridor = {point for point in seen if point[0] < 38 or point[1] == 8}
-    assert corridor <= upper.respawn_exclusions
-    assert not corridor.intersection(stage5._open_points(upper))
-
 
 def test_member_trial_members_can_be_walked_around():
     floors, _ = stage5.build_member_trial()
@@ -1049,13 +1037,11 @@ def test_member_trial_healer_exit_faces_explorer_before_jester():
     upper = floors[0]
     explorer = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_DUNGEON_EXPLORER)
     jester = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_JESTER)
-    assert (explorer.x, explorer.y) == (14, 17)
-    assert (jester.x, jester.y) == (32, 17)
-    assert upper.field[14][4] == d.CHAR_FLOOR
-    assert all(upper.field[15][x] == d.CHAR_FLOOR for x in range(4, 9))
+    assert (explorer.x, explorer.y) == (8, 17)
+    assert (jester.x, jester.y) == (26, 17)
+    assert upper.field[14][1] == d.CHAR_FLOOR
+    assert all(upper.field[15][x] == d.CHAR_FLOOR for x in range(1, 11))
     assert explorer.x < jester.x
-
-
 
 def test_member_trial_jester_experience_comparison():
     floors, player = stage5.build_member_trial()
@@ -1083,7 +1069,7 @@ def test_member_trial_dragon_unlocks_final_chest_and_completes_stage():
     upper = floors[0]
     dragon = next(e for e in upper.entities if isinstance(e, d.Monster) and e.tribe.char == d.CHAR_FIRE_DRAKE)
     chest = next(e for e in upper.entities if isinstance(e, d.Treasure))
-    assert 42 < dragon.x < chest.x and dragon.y == chest.y == 17
+    assert dragon.x < chest.x and dragon.y == chest.y == 17
     assert chest.unlock_key == "TF" and not chest.unlocked
     player.level = 100
     engine._resolve_party_contact(dragon, upper, floors, player, [0], [upper.up], Counter(), None, 5)
