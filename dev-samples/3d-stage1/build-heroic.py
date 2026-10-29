@@ -355,11 +355,68 @@ def amoeba(x, y, rare):
                  0.12, 0, crystal, vertices=6, smooth=False)
 
 
+def animal_hide(name, color, rim, rim_strength, shaggy=False):
+    """Matte short-haired hide rather than resin: no transmission or coat, a
+    sheen for the fuzz of the hair, a fine bump stretched along the body
+    (head to tail runs along y) for its lie, darker along the back than the
+    belly, with soft mottling. `shaggy` is the long, curly hair of a mane."""
+    mat = material(name, color, roughness=0.95 if shaggy else 0.8, rim=rim,
+                   rim_strength=rim_strength)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes['Principled BSDF']
+    # A sheen in the hair's own color; a white one paled the whole hide.
+    bsdf.inputs['Sheen Weight'].default_value = 0.15 if shaggy else 0.12
+    bsdf.inputs['Sheen Roughness'].default_value = 0.4
+    bsdf.inputs['Sheen Tint'].default_value = (*color, 1)
+    bsdf.inputs['Specular IOR Level'].default_value = 0.3
+    position = nodes.new('ShaderNodeNewGeometry')
+    # Belly to back: lighter low on the body, darker on top; overall darker
+    # than the resin's color, as a matte surface scatters more light.
+    height = nodes.new('ShaderNodeSeparateXYZ')
+    shade = nodes.new('ShaderNodeMapRange')
+    shade.inputs['From Min'].default_value = 0.25
+    shade.inputs['From Max'].default_value = 0.85
+    shade.inputs['To Min'].default_value = 0.85
+    shade.inputs['To Max'].default_value = 0.45
+    mottle = nodes.new('ShaderNodeTexNoise')
+    mottle.inputs['Scale'].default_value = 4.0
+    mottle.inputs['Detail'].default_value = 3.0
+    patches = nodes.new('ShaderNodeMapRange')
+    patches.inputs['To Min'].default_value = 0.85
+    patches.inputs['To Max'].default_value = 1.12
+    light = nodes.new('ShaderNodeMath')
+    light.operation = 'MULTIPLY'
+    tint = nodes.new('ShaderNodeVectorMath')
+    tint.operation = 'SCALE'
+    tint.inputs[0].default_value = color
+    # The hair: noise squashed along the body into fine streaks, or round
+    # curls for a mane.
+    stretch = nodes.new('ShaderNodeMapping')
+    stretch.inputs['Scale'].default_value = (30, 30, 30) if shaggy else (45, 6, 45)
+    hair = nodes.new('ShaderNodeTexNoise')
+    hair.inputs['Scale'].default_value = 1.0
+    hair.inputs['Detail'].default_value = 4.0
+    bump = nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value = 0.5 if shaggy else 0.25
+    links.new(position.outputs['Position'], height.inputs[0])
+    links.new(height.outputs['Z'], shade.inputs['Value'])
+    links.new(position.outputs['Position'], mottle.inputs['Vector'])
+    links.new(mottle.outputs['Fac'], patches.inputs['Value'])
+    links.new(shade.outputs['Result'], light.inputs[0])
+    links.new(patches.outputs['Result'], light.inputs[1])
+    links.new(light.outputs[0], tint.inputs['Scale'])
+    links.new(tint.outputs['Vector'], bsdf.inputs['Base Color'])
+    links.new(position.outputs['Position'], stretch.inputs['Vector'])
+    links.new(stretch.outputs['Vector'], hair.inputs['Vector'])
+    links.new(hair.outputs['Fac'], bump.inputs['Height'])
+    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    return mat
+
+
 def bison(x, y):
-    hide = material('Bison amber resin', (0.90, 0.38, 0.08), 0.5, 0.22,
-                    rim=(1.0, 0.7, 0.35), rim_strength=1.2, coat=0.5)
-    mane = material('Bison smouldering mane', (0.16, 0.05, 0.02), 0.1, 0.5,
-                    rim=(1.0, 0.4, 0.1), rim_strength=1.5)
+    hide = animal_hide('Bison amber hide', (0.90, 0.38, 0.08), (1.0, 0.7, 0.35), 0.5)
+    mane = animal_hide('Bison shaggy mane', (0.16, 0.05, 0.02), (1.0, 0.4, 0.1), 0.6,
+                       shaggy=True)
     horn = material('Bison ivory horn', (0.95, 0.92, 0.82), 0.2, 0.15, coat=1.0,
                     rim=(1.0, 0.95, 0.8), rim_strength=1.5)
     eye = material('Bison ember eyes', (1.0, 0.2, 0.05), emission=(1.0, 0.25, 0.05),
@@ -407,8 +464,7 @@ def bison(x, y):
 
 def buffalo(x, y):
     # A darker, browner resin than the Bison's amber, with near-black horns.
-    hide = material('Buffalo dark chestnut resin', (0.34, 0.13, 0.07), 0.45, 0.22,
-                    rim=(1.0, 0.6, 0.4), rim_strength=1.3, coat=0.6)
+    hide = animal_hide('Buffalo dark chestnut hide', (0.34, 0.13, 0.07), (1.0, 0.6, 0.4), 0.6)
     # Matte horn: a glossy coat mirrored the key light as a white band on
     # the boss's top.
     horn = material('Buffalo black horn', (0.035, 0.03, 0.028), 0.0, 0.6, coat=0.1,
