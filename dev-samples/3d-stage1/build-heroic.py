@@ -1840,10 +1840,20 @@ def collector_elf(x, y):
     a light folding camp chair, in a deep teal robe, balding with side hair,
     with a watchmaker's loupe of stacked black-rimmed lenses over the left
     eye and hands folded on the belly (the rustless blade it gives is magic,
-    not held), with a vase and a bundle of blades beside the chair.
+    not held), with a vase and a bundle of blades beside the chair. The robe
+    is velvet with the High Elf's gold: a collar, buttons down the belly, and
+    trimmed cuffs and trouser hems.
     """
-    robe = material('Collector elf teal robe', (0.02, 0.30, 0.30), 0.1, 0.45,
-                    rim=(0.5, 1.0, 0.9), rim_strength=1.0, coat=0.3)
+    # Velvet rather than a glossy coat, which made the suit look like a
+    # tracksuit.
+    robe = material('Collector elf teal velvet robe', (0.02, 0.30, 0.30), 0.0, 0.6,
+                    rim=(0.5, 1.0, 0.9), rim_strength=1.0)
+    velvet = robe.node_tree.nodes['Principled BSDF']
+    velvet.inputs['Sheen Weight'].default_value = 0.6
+    velvet.inputs['Sheen Tint'].default_value = (0.45, 0.95, 0.85, 1)
+    # The same gold as the High Elf's.
+    gold = material('Collector elf gold', (1.0, 0.72, 0.22), roughness=0.25, metallic=0.8,
+                    emission=(1.0, 0.62, 0.15), strength=0.4)
     dark = material('Collector elf blackened loupe', (0.03, 0.03, 0.035), roughness=0.3,
                     metallic=0.6, rim=(0.7, 0.8, 0.9), rim_strength=0.6)
     wood = material('Collector elf pale chair wood', (0.70, 0.52, 0.30), 0.0, 0.5,
@@ -1899,6 +1909,30 @@ def collector_elf(x, y):
             sphere('Collector elf hand', (x + side * 0.04, y - 0.31, 0.62), (0.055, 0.05, 0.05), skin, 16)
         # A paunch sitting low and pushing forward.
         sphere('Collector elf belly', (x, y - 0.10, 0.60), (0.24, 0.20, 0.19), robe, 32)
+
+        def on_belly(dx, z, lift=0.012):
+            """A point just off the belly's front at `dx` across and height `z`."""
+            depth = math.sqrt(max(0.0, 1 - (dx / 0.24) ** 2 - ((z - 0.60) / 0.19) ** 2))
+            return (x + dx, y - 0.10 - 0.20 * depth - lift, z)
+
+        # Gold buttons down the belly, above and below the folded hands (a
+        # watch chain from them read as a stethoscope beside the cuffs).
+        buttons = [(x, y - 0.15, 0.84)] + [on_belly(0, z) for z in (0.76, 0.70, 0.52)]
+        for button in buttons:
+            sphere('Collector elf gold button', button, (0.024, 0.014, 0.024), gold, 12)
+        # A gold collar, and trimmed cuffs and trouser hems.
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.085, minor_radius=0.018,
+                                         location=(x, y, 0.88))
+        finish(bpy.context.object, gold, True, 'Collector elf gold collar')
+        for side in (-1, 1):
+            wrist = Vector((x + side * 0.12, y - 0.25, 0.63))
+            facing = Vector((-side * 0.18, -0.18, -0.06)).to_track_quat('Z', 'Y').to_euler()
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.078, minor_radius=0.016,
+                                             location=wrist, rotation=facing)
+            finish(bpy.context.object, gold, True, 'Collector elf gold cuff')
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.062, minor_radius=0.014,
+                                             location=(x + side * 0.13, y - 0.30, 0.11))
+            finish(bpy.context.object, gold, True, 'Collector elf gold trouser hem')
         # Collected pieces beside the chair: a vase and a bundle of blades.
         tube('Collector elf vase', [(x + 0.52, y - 0.05, 0.0), (x + 0.52, y - 0.05, 0.12),
                                     (x + 0.52, y - 0.05, 0.26), (x + 0.52, y - 0.05, 0.34)],
