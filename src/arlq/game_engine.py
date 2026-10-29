@@ -1965,7 +1965,7 @@ def run_game(
     if single_floor_stage:
         message: Tuple[int, str] = (-1, "")
     elif stage_num == 5:
-        message = (12, trp("-- Defeat the Wyrm on floor 5, then take the treasure.", 1))
+        message = (12, trp("-- Defeat the Wyrm on the final floor, then take the treasure.", 1))
     elif stage_num in d.ELF_STAGES:
         message = (
             5,
