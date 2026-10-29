@@ -65,14 +65,14 @@ def test_shared_party_tones_match_individual_glyphs(known, attack):
     entities = [monster(3, 3, 'a'), monster(3, 4, 'D'), monster(8, 8, 'M')]
     tones = display.monster_party_tones(entities, known, attack)
     for entity in entities:
-        kwargs = {'stage_num': 5, 'party_entities': entities}
+        kwargs = {'stage_num': 6, 'party_entities': entities}
         expected = display.revealed_entity_glyphs(entity, known, False, attack, None, **kwargs)
         assert display.revealed_entity_glyphs(
             entity, known, False, attack, None, party_tones=tones, **kwargs
         ) == expected
 
 
-def step(current, player, direction=(1, 0), checkpoint=(2, 2), stage_num=5):
+def step(current, player, direction=(1, 0), checkpoint=(2, 2), stage_num=6):
     return engine._step(
         direction,
         [current],
@@ -206,7 +206,7 @@ def test_stage6_departed_member_does_not_reappear():
     recruit = d.PartyMember(3, 2, "Rogue")
     current.entities.append(recruit)
 
-    step(current, player, stage_num=6)
+    step(current, player, stage_num=5)
 
     assert [member.role for member in player.members] == ["Healer", "Rogue"]
     assert not any(
@@ -410,7 +410,7 @@ def test_boss_party_vortex_is_local_and_boss_unlocks_separate_treasure():
         [current.up],
         Counter(),
         1,
-        stage_num=5,
+        stage_num=6,
     )
     assert player.boss_defeated and not player.stage_won
     assert current.seen[far_floor_cell[1]][far_floor_cell[0]] == 1
@@ -520,7 +520,7 @@ def test_pit_falls_to_next_floor_with_members():
         [(2, 2)],
         Counter(),
         1,
-        stage_num=5,
+        stage_num=6,
     )
     assert floor_index[0] == 1
     assert (player.x, player.y) == (3, 2)
@@ -542,7 +542,7 @@ def test_climbing_pit_moves_checkpoint_after_leaving_pit():
     assert checkpoint == [(3, 2)]
     assert player.just_climbed_pit
     engine._step((1, 0), [upper, lower], player, floor_index, checkpoint,
-                 Counter(), 1, stage_num=5)
+                 Counter(), 1, stage_num=6)
     assert (player.x, player.y) == (4, 2)
     assert checkpoint == [(4, 2)]
 
@@ -563,7 +563,7 @@ def test_pit_requires_scholar_but_discovered_passage_remains_usable():
     ) is None
     assert floor_index == [1]
     engine._step((1, 0), [upper, lower], player, floor_index, checkpoint,
-                 Counter(), 1, stage_num=5)
+                 Counter(), 1, stage_num=6)
     assert (player.x, player.y) == (4, 2)
 
 
@@ -574,7 +574,7 @@ def test_explorer_climbs_pit_by_stepping_onto_marker():
     lower.field[2][3] = d.CHAR_SCHOLAR_STAIRS_UP
     floor_index = [1]
     engine._step((1, 0), [upper, lower], player, floor_index, [(2, 2)],
-                 Counter(), 1, stage_num=5)
+                 Counter(), 1, stage_num=6)
     assert floor_index == [0]
     assert (player.x, player.y) == (3, 2)
 
@@ -609,7 +609,7 @@ def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):
             self.stops += 1
 
     ui = UI()
-    engine.run_game(ui, "test", stage_num=5)
+    engine.run_game(ui, "test", stage_num=6)
     assert ui.frames[:2] == [(0, 90, (2, 2)), (1, 89.5, (3, 2))]
     assert player.lp == pytest.approx(89.5)
     assert (player.x, player.y) == (3, 2)
@@ -629,7 +629,7 @@ def test_loop_replay_preserves_lp_including_earlier_rewinds(monkeypatch, roles):
         return [current], player
 
     monkeypatch.setattr(stage5, "build", build)
-    replay = ReplayContext(5, 123, GameConfig(), operations=[(1, 0), (1, 0)])
+    replay = ReplayContext(6, 123, GameConfig(), operations=[(1, 0), (1, 0)])
     replay.rewind_targets[2] = 1
     _, first, *_ = replay_to_operation(replay, 1)
     _, restored, *_ = replay_to_operation(replay, 2)
@@ -656,7 +656,7 @@ def test_live_loop_rewind_preserves_target_lp(monkeypatch, roles):
         input_direction=moves.__next__,
         map_mode=False,
     )
-    engine.run_game(ui, "test", stage_num=5)
+    engine.run_game(ui, "test", stage_num=6)
     assert frames[:3] == pytest.approx([90, 90 - (1 / 2 if roles else 1), 90])
 
 
@@ -704,7 +704,7 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
                 visited.add((nx, ny))
                 pending.append((nx, ny))
         assert (
-            engine._stage_draw_options(5, floors, index, False, True)["floor_label"]
+            engine._stage_draw_options(6, floors, index, False, True)["floor_label"]
             == f"{index + 1}/{len(floors)}"
         )
         if index == len(floors) - 1:

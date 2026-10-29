@@ -456,7 +456,7 @@ class BlessedUI:
                     dim=not achieved,
                 )
                 progress_x += len(label) + 1
-        elif stage_num == 5:
+        elif stage_num == 6:
             progress_x = 0
             for label, joined in ui_display.stage5_member_progress_marks(player):
                 put(

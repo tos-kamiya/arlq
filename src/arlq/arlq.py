@@ -570,7 +570,7 @@ def reveal_entities_in_fov(
     torch_radius: int = d.TORCH_RADIUS,
     floor_index: int = 0,
 ) -> None:
-    """Record visible Stage 5 members and reveal eligible monsters in the FOV."""
+    """Record visible party members and reveal eligible monsters in the FOV."""
     torched = get_torched(player, torch_radius)
     for entity in entities:
         if not (0 <= entity.y < d.FIELD_HEIGHT and 0 <= entity.x < d.FIELD_WIDTH):

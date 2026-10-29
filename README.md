@@ -65,7 +65,7 @@ one-cell margin at each edge.
 
 Characters with bundled sprites use transparent images once identified;
 unknown characters keep their text symbols.
-Stage 5 party members have sprites with randomly selected skin tones. The player is shown holding a
+Stage 6 party members have sprites with randomly selected skin tones. The player is shown holding a
 chimera's sword while carrying it, and its own blade glows blue after the
 Collector Elf's blessing. The LP gauge floats just above the player, like a
 fighting game's, instead of in the status row. Ground markers preserve strength
@@ -88,7 +88,7 @@ it is large enough again.
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a four-floor boss and treasure dungeon; Stage 6 is a compact member-ability trial. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a compact member-ability trial; Stage 6 is a four-floor boss and treasure dungeon. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -178,7 +178,7 @@ reproduce the same layout.
 | **a** Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                                |
 | **A** Rare Amoeba   | Defeating it raises your level by 10 instead of the usual 1. |
 | **b** Bison         | The second weakest. Defeating it restores a large amount of LP. Hunt it when you're hungry.                                                                       |
-| **B** Buffalo (Stage 5) | Attack power 8. Defeating it restores 80 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
+| **B** Buffalo (Stage 6) | Attack power 8. Defeating it restores 80 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **c** Chimera       | Moderately strong. It carries a sword. Taking it raises combat power to 1.5x and lets you break up to three walls.                                               |
 | **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to one third (rounded up) until replaced.        |
 | **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
@@ -187,7 +187,7 @@ reproduce the same layout.
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 also features empowered Bison (`b'`). Stage 5 features Buffalo (`B`) alongside Bison (`b`).
+Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`).
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -265,9 +265,13 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | **L** Lifebringer Elf | Each meeting cures poison, raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then disappears and returns on a random floor at a later 65-turn respawn tick. |
 | **S** Sylvan Elf | Gives you fairy nectar. Companions recruited afterward, except `l`, stay with you 1.25 times longer. |
 
-### Stage 5 (four-floor boss and treasure dungeon)
+### Stage 5 (member-ability trial)
 
-Stage 5 is a four-floor dungeon starting at level 1. The player fights with party members, and monsters also form parties. Find party members on floors 1–3, defeat the Dread Wyrm (`W`) on floor 4, and claim the treasure. Four of six candidates appear; the HUD shows discovered roles and floors. You can recruit up to two members; a third replaces the earliest recruit.
+Stage 5 is a compact two-floor dungeon where you can try the Stage 6 party members' abilities. All six candidates appear on floor 1. As in Stage 6, a dismissed candidate cannot rejoin; start a new run to try other combinations. Each floor has a fixed isolated room to the right of the bottom-right tile in the 3×3 layout, reached through a hidden passage; with D, you can climb a pit from the floor below. Golems, a Marksman, a Collapse (`O`), caltrops, and a barrier are also present. There is no rescue objective.
+
+### Stage 6 (four-floor boss and treasure dungeon)
+
+Stage 6 is a four-floor dungeon starting at level 1. The player fights with party members, and monsters also form parties. Find party members on floors 1–3, defeat the Dread Wyrm (`W`) on floor 4, and claim the treasure. Four of six candidates appear; the HUD shows discovered roles and floors. You can recruit up to two members; a third replaces the earliest recruit.
 
 #### Party members
 
@@ -293,10 +297,6 @@ Vertically adjacent monsters fight in parties of up to three, combining their st
 | `f` / `f'` Flame cobra | `f` has 25 attack power and its empowered form `f'` has 85. Defeating either grants 3 base experience. `f'` places barriers on available adjacent cells in the four cardinal directions. |
 
 The floor 4 boss party consists of `W`, `V`, and one escort; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
-
-### Stage 6 (member-ability trial)
-
-Stage 6 is a compact two-floor dungeon where you can try the Stage 5 party members' abilities. All six candidates appear on floor 1. As in Stage 5, a dismissed candidate cannot rejoin; start a new run to try other combinations. Each floor has a fixed isolated room to the right of the bottom-right tile in the 3×3 layout, reached through a hidden passage; with D, you can climb a pit from the floor below. Golems, a Marksman, a Collapse (`O`), caltrops, and a barrier are also present. There is no rescue objective.
 
 ## Development commands
 

@@ -633,7 +633,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         effect=EFFECT_ENERGY_DRAIN,
         event_message="-- Your energy was drained!",
     ),  # Erebus
-    _MT("f", 25, MIN_FOOD),  # Stage 5's early-game challenge
+    _MT("f", 25, MIN_FOOD),  # Stage 6's early-game challenge
     _MT(
         "E",
         30,

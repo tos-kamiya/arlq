@@ -68,9 +68,9 @@ def signature(player, entities, field, seen):
 
 
 def run_and_replay(monkeypatch, build, stage_num, moves, config):
-    if stage_num == 5:
+    if stage_num == 6:
         monkeypatch.setattr(stage5, "build", build)
-    elif stage_num == 6:
+    elif stage_num == 5:
         monkeypatch.setattr(stage5, "build_member_trial", build)
     else:
         monkeypatch.setattr(engine, "build", build)
@@ -112,7 +112,7 @@ def run_and_replay(monkeypatch, build, stage_num, moves, config):
     return context
 
 
-@pytest.mark.parametrize("stage_num", [4, 5])
+@pytest.mark.parametrize("stage_num", [4, 6])
 @pytest.mark.parametrize("torch_radius", [1, 4])
 def test_live_and_replay_match_after_vortex_rearrangement(
     monkeypatch, stage_num, torch_radius
@@ -120,14 +120,14 @@ def test_live_and_replay_match_after_vortex_rearrangement(
     def build(*_):
         engine.rand.randrange(100)
         player = d.Player(2, 2, 10000, 120)
-        player.rescue_stage = stage_num == 5
+        player.rescue_stage = stage_num == 6
         field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
         entities = [
             d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["V"]),
             d.Monster(8, 6, d.CHAR_TO_MONSTER_TRIBE["k"]),
             d.Companion(10, 5, d.CHAR_TO_COMPANION_TRIBE["n"]),
         ]
-        if stage_num == 5:
+        if stage_num == 6:
             entities.extend(
                 [
                     d.Monster(3, 3, d.CHAR_TO_MONSTER_TRIBE["W"]),
@@ -280,7 +280,7 @@ def test_rewind_restores_membership_but_keeps_discoveries(monkeypatch):
         [deepcopy(current)], restored, 0, (2, 2), Counter()
     ))
     monkeypatch.setattr(stage_replay, "_spawn", lambda *_: (3, 3))
-    context = ReplayContext(5, 123, GameConfig())
+    context = ReplayContext(6, 123, GameConfig())
     stage_replay.rewind([current], player, [0], [(2, 2)], Counter(), context,
                         operation_count=1)
     assert player.joined_members == set()
@@ -322,7 +322,7 @@ def test_replay_executes_operations_discarded_by_loop_contacts(monkeypatch):
     monkeypatch.setattr(engine, "_vortex_rearrange", disturb_map)
     monkeypatch.setattr(stage_replay, "_spawn", respawn_loop)
     context = ReplayContext(
-        5, 123, GameConfig(), operations=[(1, 0)] * 3, rewind_targets={2: 0}
+        6, 123, GameConfig(), operations=[(1, 0)] * 3, rewind_targets={2: 0}
     )
     _, player, *_ = stage_replay.replay_to_operation(context, 3)
     assert effects == ["V", "V"]

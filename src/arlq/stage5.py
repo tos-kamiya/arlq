@@ -1,4 +1,4 @@
-"""Stage 5 boss dungeon, member trial, and party rules."""
+"""Boss dungeon, member trial, and party rules."""
 
 from . import defs as d
 from .arlq import GameConfig, create_field
@@ -405,10 +405,10 @@ def _place_detached_room_monsters(
         (component for component in room_components if len(component) == 1), None
     )
     if detached is None:
-        raise ValueError("Stage 5 floor needs one detached terminal room")
+        raise ValueError("Stage 6 floor needs one detached terminal room")
     points = [point for point in _open_points(current) if tile_at(point) in detached]
     if len(points) < 2:
-        raise RuntimeError("detached Stage 5 room needs two open cells")
+        raise RuntimeError("detached Stage 6 room needs two open cells")
     existing_monsters = [
         entity for entity in current.entities if isinstance(entity, d.Monster)
     ]
@@ -427,7 +427,7 @@ def _place_detached_room_monsters(
         if max(abs(first[0] - second[0]), abs(first[1] - second[1])) > 1
     ]
     if not point_pairs:
-        raise RuntimeError("detached Stage 5 room needs two separated open cells")
+        raise RuntimeError("detached Stage 6 room needs two separated open cells")
     points = rand.choice(point_pairs)
     candidates = [("b", 1), ("b", 2), ("c", 1), ("A", 1)]
     roster = []
@@ -536,7 +536,7 @@ def _place_party(
             if isinstance(entity, d.Monster) and entity.tribe.char == "k"
         }
         if roster[0][0] == "k" and len(roster) != 1:
-            raise ValueError("Stage 5 floor-2 marksmen must spawn alone")
+            raise ValueError("Stage 6 floor-2 marksmen must spawn alone")
         if marksmen:
             candidates = {
                 point
@@ -570,7 +570,7 @@ def _place_party(
         # This component cannot fit the party; try another without requiring
         # any clearance from walls.
         candidates.difference_update(cells)
-    raise RuntimeError("could not place Stage 5 monster party")
+    raise RuntimeError("could not place Stage 6 monster party")
 
 
 def respawn(
@@ -791,7 +791,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
 
 
 def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
-    """Build a compact two-floor area for trying every Stage 5 member."""
+    """Build a compact two-floor area for trying every party member."""
     config = config or GameConfig()
     field, up, down = create_field(
         config.corridor_h_width,
@@ -863,7 +863,7 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
 
 
 def _add_trial_detached_room(current: Floor, config: GameConfig) -> None:
-    """Add a fixed isolated room to the right of Stage 6's bottom-right tile."""
+    """Add a fixed isolated room to the right of Stage 5's bottom-right tile."""
     active_tile_columns = 3
     tile_offset_x = (d.TILE_NUM_X - active_tile_columns) // 2
     room_x = tile_offset_x + active_tile_columns

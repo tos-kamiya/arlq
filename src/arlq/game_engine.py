@@ -1,4 +1,4 @@
-"""Shared game loop for Stages 1–5 and the internal Stage 6 test field."""
+"""Shared game loop for Stages 1–6."""
 
 import heapq
 import math
@@ -1063,7 +1063,7 @@ def _resolve_monster_contact(
             event_message = trp(
                 "-- You defeated the Mimic, but were sent somewhere else.", 5
             )
-        if ch == "W" and player.treasure_collected and stage_num != 5:
+        if ch == "W" and player.treasure_collected and stage_num != 6:
             event_message = trp(">> The King's request is complete! <<", 9)
         elif ch == d.CHAR_FIRE_DRAKE and entity.empowered == 2:
             if player.treasure_collected:
@@ -1221,7 +1221,7 @@ def _resolve_party_contact(
         player.x, player.y = _find_escape_place(current)
     if boss is not None and stage_num not in (5, 6):
         # Other multi-floor stages retain the rescue member spawned by their
-        # boss encounter. Stage 5's ordinary V applies its own local effect.
+        # boss encounter. Stage 6's ordinary V applies its own local effect.
         candidates = sorted(
             (
                 (x, y)
@@ -1917,9 +1917,9 @@ def run_game(
     single_floor_stage = stage_num in (1, 2)
     if single_floor_stage:
         floors, player = build_single_floor(config, stage_num)
-    elif stage_num == 5:
-        floors, player = stage5.build(config)
     elif stage_num == 6:
+        floors, player = stage5.build(config)
+    elif stage_num == 5:
         floors, player = stage5.build_member_trial(config)
     else:
         floors, player = build(
@@ -1958,7 +1958,7 @@ def run_game(
     turn = 0
     if single_floor_stage:
         message: Tuple[int, str] = (-1, "")
-    elif stage_num == 5:
+    elif stage_num == 6:
         message = (12, trp("-- Defeat the Wyrm on the final floor, then take the treasure.", 1))
     elif stage_num in d.ELF_STAGES:
         message = (
@@ -1970,7 +1970,7 @@ def run_game(
                 1,
             ),
         )
-    elif stage_num == 6:
+    elif stage_num == 5:
         message = (
             12,
             trp("-- Recruit members on both floors to try their abilities.", 1),

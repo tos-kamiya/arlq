@@ -1309,7 +1309,7 @@ class PygletUI:
                     group=self._progress_mark_group(),
                 )
                 progress_x += len(label) + 1
-        elif stage_num == 5:
+        elif stage_num == 6:
             progress_marks = ui_display.stage5_member_progress_marks(player)
             self._draw_progress_panel(progress_marks)
             overlay_font_scale = self._field_overlay_font_scale()
@@ -2235,7 +2235,7 @@ class PygletUI:
         options = [tr("[q]uit")]
         for n in stage_numbers:
             options.append(
-                tr("stage [{n}] (test stage)" if n == 6 else "stage [{n}]").format(n=n)
+                tr("stage [{n}] (Stage 6 tutorial)" if n == 5 else "stage [{n}]").format(n=n)
             )
         options.append(tr("[s]ettings"))
 

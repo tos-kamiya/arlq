@@ -21,9 +21,9 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
     from .game_engine import _step, observe_world
 
     rand.set_seed(replay.seed)
-    if replay.stage_num == 5:
+    if replay.stage_num == 6:
         floors, player = stage5.build(replay.config)
-    elif replay.stage_num == 6:
+    elif replay.stage_num == 5:
         floors, player = stage5.build_member_trial(replay.config)
     else:
         floors, player = build(
