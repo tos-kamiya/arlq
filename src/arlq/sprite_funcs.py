@@ -70,6 +70,8 @@ SPRITE_FILES = {
     'player sword': 'player-sword.png',
     'player cursed sword': 'player-cursed-sword.png',
     'player blessed': 'player-blessed.png',
+    # Not a glyph: the plastic toy chest drawn for 'T' in Stage 5.
+    'T-toy': 'treasure-toy.png',
 }
 MEMBER_SPRITES = {'J': 'jester', 'H': 'healer', 'R': 'rogue',
                   'K': 'knight', 'G': 'guardian', 'D': 'explorer'}
@@ -189,6 +191,8 @@ TERRAIN_THEMES = {
                  {VISIBLE_WALL: (250, 250, 246), WALL: (165, 166, 163)}),
 }
 STAGE_TERRAIN_THEMES = {5: 'training'}
+# Sprites swapped in a terrain theme: the training room's chest is a toy.
+THEME_SPRITES = {'training': {'T': 'T-toy'}}
 # Barrier cells show a magic barrier on the ordinary floor, in place of the
 # red "=": a glowing orange plate laid over the cell and translucent sheets of
 # orange light rising from its edges, fading upward, with a few sparks drifting
@@ -1676,6 +1680,9 @@ class SpriteUI(PygletUI):
         """Draw a character image with its feet at field pixel (cx, cy); returns
         the field pixel y of the top of the character in it."""
         images = self._gray_images if self.map_mode else self._sprite_images
+        swapped = THEME_SPRITES.get(self._terrain_theme, {}).get(text)
+        if swapped in images:
+            text = swapped
         picture = images[text]
         padding = max(1, round(self.scale))
         width = max(1, self._sprite_unit() - 2 * padding)

@@ -59,7 +59,8 @@ CELL_W = SCREEN_PIXEL * 15
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
 GRID_COLS, GRID_ROWS = 14, 8
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
-# the companions and elves; monsters in stage order, then Stage 5 members.
+# the companions and elves; monsters in stage order, then Stage 5 members and
+# the Stage 5 toy chest.
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
@@ -80,7 +81,8 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('explorer-medium', 'DUNGEON EXPLORER MEDIUM'),
          ('explorer-dark', 'DUNGEON EXPLORER DARK'),
          ('guardian-light', 'GUARDIAN LIGHT'), ('guardian-medium', 'GUARDIAN MEDIUM'),
-         ('guardian-dark', 'GUARDIAN DARK')]
+         ('guardian-dark', 'GUARDIAN DARK'),
+         ('T-toy', 'TOY CHEST')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -103,7 +105,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # spreading past its cell. The amoebas, comodo dragon and Erebuses were
 # later shrunk to 0.9 of their first sizes, and the Stage 5 members enlarged
 # to 1.05 times theirs, as they looked small on screen.
-SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'M': 1.66, 'D': 1.44,
+SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5, 'jester-light': 1.26, 'jester-medium': 1.26, 'jester-dark': 1.26,
@@ -723,12 +725,17 @@ def chimera(x, y, cursed=False):
                (0.035, 0.035, 0.03), snake_eye, 12)
 
 
-def treasure(x, y, mimic=False):
+def treasure(x, y, mimic=False, toy=False):
     """Treasure chest (T), or with `mimic` the revealed Mimic (M), a kind of
     golem: the chest's own shape in the golem's dark basalt and slate, its
     lid only slightly open on a black inside where two round amber lights
     glow, and an amber rune for the lock.
+
+    With `toy`, the toy chest of the Stage 5 training room (T-toy): the same
+    shape in glossy plastic with softer edges, its box and lid a brighter,
+    poppier red than the chest's, holding chunky plastic toy coins.
     """
+    soft = 2.0 if toy else 1.0  # edge rounding
     if mimic:
         # Rougher and with a weaker rim than the golem's own stone, as the
         # chest's broad smooth faces would otherwise shine pale grey.
@@ -745,6 +752,30 @@ def treasure(x, y, mimic=False):
         for side in (-1, 1):
             sphere('Mimic glowing eye', (x + side * 0.15, y - 0.16, 0.53), (0.05, 0.035, 0.035),
                    gem, 16)
+    elif toy:
+        wood = material('Toy chest bright red plastic', (0.80, 0.07, 0.03), 0.0, 0.28,
+                        rim=(1.0, 0.55, 0.4), rim_strength=0.4, coat=0.4)
+        gold = material('Toy chest yellow plastic', (1.0, 0.60, 0.07), 0.0, 0.3,
+                        rim=(1.0, 0.85, 0.45), rim_strength=0.3, coat=0.3)
+        light = material('Toy chest glow', (1.0, 0.8, 0.3), emission=(1.0, 0.72, 0.2),
+                         strength=1.5)
+        gem = material('Toy chest red button', (0.9, 0.04, 0.05), 0.0, 0.25,
+                       emission=(1.0, 0.1, 0.1), strength=0.4, coat=0.6)
+        face = material('Toy coin face', (1.0, 0.78, 0.22), 0.0, 0.3, coat=0.3)
+        block('Toy chest glow', (x, y, 0.47), (0.86, 0.54, 0.06), light, 0.02)
+        # Chunky plastic coins, each with a raised lighter face.
+        for i, (dx, dy) in enumerate(((-0.24, -0.08), (0.02, 0.10), (0.25, -0.03),
+                                      (-0.06, -0.15), (0.16, 0.12))):
+            tilt = (0.3 * (i - 2), 0.2 * (i - 1), 0)
+            for radius, depth, z, mat, name in ((0.085, 0.05, 0.52, gold, 'Toy coin'),
+                                                (0.06, 0.012, 0.548, face, 'Toy coin face')):
+                bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=radius, depth=depth,
+                                                    location=(x + dx, y + dy, z),
+                                                    rotation=tilt)
+                coin = finish(bpy.context.object, mat, True, name)
+                bevel = coin.modifiers.new('Rounded rim', 'BEVEL')
+                bevel.width = 0.012
+                bevel.segments = 2
     else:
         wood = material('Chest mahogany resin', (0.40, 0.09, 0.03), 0.12, 0.28,
                         rim=(1.0, 0.55, 0.25), rim_strength=0.8, coat=0.8)
@@ -761,7 +792,7 @@ def treasure(x, y, mimic=False):
                                                 location=(x + dx, y + dy, 0.515),
                                                 rotation=(0.3 * (i - 1.5), 0.2 * i, 0))
             finish(bpy.context.object, gold, True, 'Chest gold coin')
-    block('Chest box', (x, y, 0.27), (1.0, 0.66, 0.46), wood, 0.05)
+    block('Chest box', (x, y, 0.27), (1.0, 0.66, 0.46), wood, 0.05 * soft)
     # Rounded lid: a half cylinder along the box, flat underneath, so it
     # stays a half circle seen from the side when tilted open.
     def half_cylinder(name, dx, radius, length, mat):
@@ -778,7 +809,7 @@ def treasure(x, y, mimic=False):
 
     lid = half_cylinder('Chest rounded lid', 0, 0.33, 0.98, wood)
     bevel = lid.modifiers.new('Soft lid rims', 'BEVEL')
-    bevel.width = 0.03
+    bevel.width = 0.03 * soft
     bevel.segments = 3
     # Bands wrap only the outside: a hollow half ring over the lid, and a
     # plate on the box's front and back, so none crosses the opening.
@@ -804,7 +835,7 @@ def treasure(x, y, mimic=False):
         lid_parts.append(band_arc('Chest lid band', dx, 0.325, 0.35, 0.09, gold))
         for side in (-1, 1):
             block('Chest box band', (x + dx, y + side * 0.335, 0.27), (0.09, 0.03, 0.47), gold,
-                  0.012)
+                  0.012 * soft)
     bpy.context.view_layer.update()
     hinge = Matrix.Translation((x, y + 0.33, 0.50))
     # Both lids are open only a little, on the treasure's glow or the
@@ -812,11 +843,12 @@ def treasure(x, y, mimic=False):
     opening = hinge @ Matrix.Rotation(-0.50, 4, 'X') @ hinge.inverted()
     for part in lid_parts:
         part.matrix_world = opening @ part.matrix_world
-    block('Chest lock plate', (x, y - 0.34, 0.42), (0.20, 0.03, 0.24), gold, 0.03)
+    block('Chest lock plate', (x, y - 0.34, 0.42), (0.20, 0.03, 0.24), gold, 0.03 * soft)
     sphere('Chest ruby', (x, y - 0.365, 0.44), (0.065, 0.035, 0.075), gem, 16, False)
     for dx in (-0.48, 0.48):
         for dy in (-0.31, 0.31):
-            block('Chest corner cap', (x + dx, y + dy, 0.27), (0.08, 0.08, 0.48), gold, 0.02)
+            block('Chest corner cap', (x + dx, y + dy, 0.27), (0.08, 0.08, 0.48), gold,
+                  0.02 * soft)
 
 
 def great_dragon(x, y, fire=False):
@@ -3381,7 +3413,7 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             '@C': lambda x, y: player(x, y, 'C'), '@K': lambda x, y: player(x, y, 'blessed'),
             'a': lambda x, y: amoeba(x, y, False),
             'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'B': buffalo, 'd': dragon,
-            'c': chimera, 'T': treasure, 'M': lambda x, y: treasure(x, y, True), 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
+            'c': chimera, 'T': treasure, 'T-toy': lambda x, y: treasure(x, y, toy=True), 'M': lambda x, y: treasure(x, y, True), 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
             'g': golem, 'w': wyrm, 'W': lambda x, y: wyrm(x, y, True), 'V': vortex, 'k': marksman, 'm': spore, 'f': flame_cobra, 'e': lambda x, y: erebus(x, y, False),
@@ -3450,7 +3482,7 @@ for char, name, x, y in ROW:
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = (MONSTER_YAW if char in 'aAbBcdDCFfgkmeEXTM' else WYRM_YAW if char in 'wW'
+    yaw = (MONSTER_YAW if char in (*'aAbBcdDCFfgkmeEXTM', 'T-toy') else WYRM_YAW if char in 'wW'
            else PEGASUS_YAW if char == 'p' else 0)
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
