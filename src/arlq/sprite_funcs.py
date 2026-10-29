@@ -394,6 +394,7 @@ class SpriteUI(PygletUI):
     # The field being drawn, for stairs and pits that spread over neighbouring floor.
     _stage_field = None
     _stage_discovered_at = None
+    _show_pit_up_marker = True
 
     def __init__(self, scale=None, key_repeat_interval=None):
         self._member_skins = {char: random.choice(MEMBER_SKINS) for char in MEMBER_SPRITES}
@@ -577,6 +578,9 @@ class SpriteUI(PygletUI):
         self._known_types = kwargs.get('known_types') or set()
         self._cur_torched = kwargs.get('cur_torched')
         player = kwargs.get('player')
+        self._show_pit_up_marker = (
+            player is not None and d.has_member(player, d.MEMBER_DUNGEON_EXPLORER)
+        )
         if player is not None and not kwargs.get('floor_view'):
             player_pos = (player.x, player.y, player.current_floor)
             if (
@@ -777,6 +781,8 @@ class SpriteUI(PygletUI):
 
     def _draw_stairs(self, pos, char):
         if char == d.CHAR_SCHOLAR_STAIRS_UP:
+            if not self._show_pit_up_marker:
+                return
             x, y = pos
             self._draw_ground_disc(self._field_col_x(x) + self.cell_size_x / 2,
                                    (y + 0.5) * self.cell_size_y,

@@ -1,5 +1,6 @@
 """Live/replay parity for exploration, effects, and repeated Loop contacts."""
 
+from collections import Counter
 from copy import deepcopy
 from types import SimpleNamespace
 
@@ -265,6 +266,26 @@ def test_rewind_keeps_current_knowledge_after_vortex_erasure(monkeypatch):
     assert not floors[0].seen[2][8]
     assert floors[0].field[3][12] == d.CHAR_D_GATE
     assert "V" in player.known_monsters
+
+
+def test_rewind_restores_membership_but_keeps_discoveries(monkeypatch):
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    current = Floor(field, [], [[0] * len(row) for row in field], (2, 2), (3, 3), None)
+    player = d.Player(2, 2, 1, 120)
+    player.joined_members = {"Healer"}
+    player.seen_members = {"Healer"}
+    player.known_member_floors = {"Healer": 1}
+    restored = d.Player(2, 2, 1, 120)
+    monkeypatch.setattr(stage_replay, "replay_to_operation", lambda *_: (
+        [deepcopy(current)], restored, 0, (2, 2), Counter()
+    ))
+    monkeypatch.setattr(stage_replay, "_spawn", lambda *_: (3, 3))
+    context = ReplayContext(5, 123, GameConfig())
+    stage_replay.rewind([current], player, [0], [(2, 2)], Counter(), context,
+                        operation_count=1)
+    assert player.joined_members == set()
+    assert player.seen_members == {"Healer"}
+    assert player.known_member_floors == {"Healer": 1}
 
 
 def test_replay_executes_operations_discarded_by_loop_contacts(monkeypatch):

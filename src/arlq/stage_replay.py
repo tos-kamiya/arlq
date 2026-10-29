@@ -81,7 +81,6 @@ def rewind(
     elf_floors = deepcopy(player.elf_stage_floors)
     known_elf_floors = set(player.known_elf_floors)
     known_member_floors = deepcopy(player.known_member_floors)
-    joined_members = set(player.joined_members)
     seen_members = set(player.seen_members)
     seen = deepcopy([floor_data.seen for floor_data in floors])
     discovered_secrets = [
@@ -126,7 +125,6 @@ def rewind(
     player.elf_stage_floors = elf_floors
     player.known_elf_floors = known_elf_floors
     player.known_member_floors = known_member_floors
-    player.joined_members = joined_members
     player.seen_members = seen_members
 
     respawn_floor = floor[0] if loop_floor_index is None else loop_floor_index

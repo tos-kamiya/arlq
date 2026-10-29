@@ -353,6 +353,19 @@ def test_rogue_avoids_odd_marksman_shot_damage_but_shows_arrows():
     assert marksman.arrow_marks == [((4, 2), "-"), ((5, 2), "-"), ((6, 2), "-")]
 
 
+def test_waiting_member_blocks_marksman_shot():
+    current, player = state()
+    player.x, player.y = 5, 2
+    marksman = monster(1, 2, "k")
+    waiting = d.PartyMember(3, 2, "Healer")
+    current.entities.extend([marksman, waiting])
+    assert not engine._marksman_shoot(current, player)
+    assert player.lp == 90
+    current.entities.remove(waiting)
+    assert engine._marksman_shoot(current, player)
+    assert player.lp == 86
+
+
 def test_rogue_identifies_active_mimics_and_traps_when_they_enter_fov():
     current, player = state(("Rogue",))
     targets = [monster(x, 2, char) for x, char in zip((4, 5, 6, 7), "EMgX")]

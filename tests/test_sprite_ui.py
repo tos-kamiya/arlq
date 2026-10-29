@@ -763,6 +763,10 @@ def test_pit_up_marker_is_a_green_disc_and_allows_fallen_rocks(sprite_ui, monkey
     assert not sprite_ui.text_calls
     assert d.CHAR_SCHOLAR_STAIRS_UP not in sprite_funcs.FALLEN_ROCK_BLOCKERS
 
+    sprite_ui._show_pit_up_marker = False
+    sprite_ui._draw_stairs((4, 5), d.CHAR_SCHOLAR_STAIRS_UP)
+    assert len(discs) == 1
+
 
 def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)

@@ -356,6 +356,7 @@ def _marksman_shoot(
                 (other.x, other.y) == (x, y)
                 and (
                     isinstance(other, d.Companion)
+                    or isinstance(other, d.PartyMember)
                     or isinstance(other, d.Treasure)
                     or isinstance(other, d.Monster)
                     and other.active
