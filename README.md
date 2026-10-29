@@ -282,7 +282,7 @@ Stage 6 is a four-floor dungeon starting at level 1. The player fights with part
 | `R` Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | `K` Knight | Joins at level 50 and gains half your shared experience before the Jester bonus. Adds K's level to your attack power. |
 | `D` Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Climb through an entrance and leave the pit on the next move. Discovered passages remain usable after D leaves; entrances still require D, and their green discs in sprite mode are shown only while D is in the party. |
-| `G` Guardian | Halves extra barrier damage and reduces caltrop damage to one-third. |
+| `G` Guardian | Reduces extra barrier damage and caltrop damage to one-third. |
 
 An undiscovered hidden passage can also be broken with a sword, turning it into ordinary floor and consuming one wall break. Discovered passages can be crossed without using the sword.
 

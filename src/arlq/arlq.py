@@ -664,7 +664,7 @@ def barrier_lp_damage(player: d.Player) -> int:
         )
         else d.BARRIER_LP_DAMAGE
     )
-    return damage // 2 if damage and d.has_member(player, d.MEMBER_GUARDIAN) else damage
+    return damage // 3 if damage and d.has_member(player, d.MEMBER_GUARDIAN) else damage
 
 
 def apply_barrier_damage(

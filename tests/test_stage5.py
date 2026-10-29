@@ -307,12 +307,12 @@ def test_fractional_attack_hazards_and_status():
 
 def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
     _, player = state(("Guardian",))
-    assert barrier_lp_damage(player) == 15
+    assert barrier_lp_damage(player) == 10
     assert d.caltrop_lp_damage(player) == 1
     assert d.movement_lp_cost(player) == 1
 
     player.members.append(d.PartyMember(player.x, player.y, "Healer"))
-    assert barrier_lp_damage(player) == 15
+    assert barrier_lp_damage(player) == 10
     assert d.caltrop_lp_damage(player) == 1
     assert d.movement_lp_cost(player) == pytest.approx(1 / 2)
 
