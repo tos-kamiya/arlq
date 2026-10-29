@@ -1480,6 +1480,17 @@ class SpriteUI(PygletUI):
     def _draw_floor_label_panel(self, label, x, width):
         self._draw_text_panel('floor', x, width)
 
+    def _draw_dialogue_panel(self, x, y, width, height):
+        if width > 0 and height > 0:
+            self._draw_rect(
+                x,
+                y,
+                width,
+                height,
+                (0, 0, 0, TEXT_PANEL_ALPHA),
+                group=self._overlay_group,
+            )
+
     def _draw_text_panel(self, kind, x, width):
         padding = max(1, round(TEXT_PANEL_PADDING * self._menu_scale))
         left = max(0, x - padding)

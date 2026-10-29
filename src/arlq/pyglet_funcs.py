@@ -974,9 +974,27 @@ class PygletUI:
         x = max(0, text_x - width - gap) if on_left else right_x
         lines = line_formatter(text, 30, on_left=on_left)
         y = pos[1] - len(lines) - 0.25 if pos[1] >= len(lines) else min(pos[1] + 1, self.field_height - len(lines))
+        padding_x = max(2, round(self.cell_size_x * 0.2))
+        padding_y = max(2, round(self.cell_size_y * 0.12))
+        panel_x = max(0, x - padding_x)
+        panel_y = max(0, round(y * self.cell_size_y) - padding_y)
+        panel_right = min(self.field_pixel_width, x + width + padding_x)
+        panel_bottom = min(
+            self.field_height * self.cell_size_y,
+            round((y + len(lines)) * self.cell_size_y) + padding_y,
+        )
+        self._draw_dialogue_panel(
+            panel_x,
+            panel_y,
+            max(0, panel_right - panel_x),
+            max(0, panel_bottom - panel_y),
+        )
         for index, line in enumerate(lines):
             self._draw_text((0, y + index), line, COLOR_MAP[CI_YELLOW], x_offset=x,
                             size_scale=scale, group=getattr(self, "_text_overlay_group", None))
+
+    def _draw_dialogue_panel(self, x, y, width, height) -> None:
+        """Draw an optional background behind field dialogue."""
 
     def _draw_player_wall_break_glyph(self, player: d.Player) -> None:
         glyph = ui_display.player_wall_break_glyph(player)
