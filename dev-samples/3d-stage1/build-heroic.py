@@ -221,19 +221,23 @@ def block(name, pos, size, mat, radius, rotation=(0, 0, 0)):
     return obj
 
 
-def tube(name, points, radii, mat, sides=8, smooth=False, flat=1.0, twist=0.0):
+def tube(name, points, radii, mat, sides=8, smooth=False, flat=1.0, twist=0.0, up=None):
     """Loft rings along a polyline; radius 0 closes the end to a point.
 
     `flat` squashes the vertical axis of every ring, giving reptile bodies.
+    Each ring is oriented by `up` if given; otherwise by the vertical, or by
+    +Y where the path runs nearly vertical, which twists the rings where the
+    path turns between the two.
     """
     points = [Vector(p) for p in points]
     vertices, rings = [], []
     for i, (center, radius) in enumerate(zip(points, radii)):
         ahead = points[min(i + 1, len(points) - 1)] - points[max(i - 1, 0)]
         ahead.normalize()
-        up = Vector((0, 0, 1)) if abs(ahead.z) < 0.9 else Vector((0, 1, 0))
-        side = ahead.cross(up).normalized()
-        up = side.cross(ahead).normalized()
+        ring_up = (Vector(up) if up is not None else
+                   Vector((0, 0, 1)) if abs(ahead.z) < 0.9 else Vector((0, 1, 0)))
+        side = ahead.cross(ring_up).normalized()
+        ring_up = side.cross(ahead).normalized()
         if radius == 0:
             rings.append([len(vertices)])
             vertices.append(tuple(center))
@@ -243,7 +247,8 @@ def tube(name, points, radii, mat, sides=8, smooth=False, flat=1.0, twist=0.0):
             a = 2 * math.pi * k / sides + twist
             rx, rz = (radius, radius * flat) if isinstance(radius, (int, float)) else radius
             ring.append(len(vertices))
-            vertices.append(tuple(center + side * (rx * math.cos(a)) + up * (rz * math.sin(a))))
+            vertices.append(tuple(center + side * (rx * math.cos(a))
+                                  + ring_up * (rz * math.sin(a))))
         rings.append(ring)
     faces = []
     if len(rings[0]) > 1:
@@ -2997,9 +3002,12 @@ def pegasus(x, y):
     hovering with legs tucked under, on wide feathered wings large for its
     body, with a full mane and green resin hooves.
     """
-    pearl = material('Pegasus fairy pearl', (0.78, 0.84, 0.95), 0.3, 0.22,
+    # Opaque, with a softer rim and a light coat: thin parts (the lower legs,
+    # the neck) looked like glass when the pearl let light through or its
+    # coat mirrored the dark studio.
+    pearl = material('Pegasus fairy pearl', (0.78, 0.84, 0.95), 0.0, 0.4,
                      emission=(0.75, 0.9, 1.0), strength=0.04,
-                     rim=(0.6, 0.95, 1.0), rim_strength=1.4, coat=0.8)
+                     rim=(0.6, 0.95, 1.0), rim_strength=0.8, coat=0.2)
     wisp = companion_green('Pegasus deep green mane', 0.5, trim=True)
     feather = material('Pegasus feathers', (0.62, 0.95, 0.72), 0.5, 0.25,
                        emission=(0.5, 1.0, 0.65), strength=0.1,
@@ -3011,25 +3019,38 @@ def pegasus(x, y):
     body = [((0, -0.12, 0.58), 0.25), ((0, 0.02, 0.56), 0.26), ((0, 0.16, 0.55), 0.25),
             ((0, 0.30, 0.56), 0.23), ((0, -0.22, 0.70), 0.17), ((0, -0.28, 0.84), 0.16),
             ((0, -0.35, 0.95), 0.21), ((0, -0.47, 0.92), 0.15)]
-    hooves = []
+    # Horse legs stretched fore and aft as if galloping through the air, so
+    # the green hooves show past the body from above: from the body down,
+    # a muscular forearm (thigh behind), the knee (hock), a long slim cannon,
+    # the round fetlock, a short sloping pastern and a flared hoof. Forelegs
+    # reach forward past the chest and draw back a little below the knee;
+    # hind legs angle back at the hock.
+    legs = [  # (point, radius) from the body; the last point is the hoof's top
+        [((0.075, -0.15, 0.47), 0.10), ((0.08, -0.24, 0.40), 0.08), ((0.085, -0.32, 0.33), 0.062),
+         ((0.085, -0.33, 0.26), 0.045), ((0.085, -0.32, 0.19), 0.056),
+         ((0.085, -0.35, 0.14), 0.04)],
+        [((0.09, 0.28, 0.47), 0.11), ((0.09, 0.38, 0.41), 0.08), ((0.09, 0.46, 0.36), 0.06),
+         ((0.09, 0.54, 0.33), 0.045), ((0.09, 0.61, 0.31), 0.056),
+         ((0.09, 0.66, 0.27), 0.04)]]
     for side in (-1, 1):
-        # Slim legs stretched fore and aft as if galloping through the air, so
-        # the green hooves show past the body from above.
-        for hip, knee, foot in (((0.07, -0.13, 0.50), (0.08, -0.25, 0.37), (0.08, -0.34, 0.25)),
-                                ((0.09, 0.30, 0.45), (0.09, 0.44, 0.37), (0.09, 0.56, 0.31))):
-            # The hip sits inside the chest and a joint fills each bend, so the
-            # leg flows out of the body without a gap.
-            mid = tuple((a + b) / 2 for a, b in zip(hip, knee))
-            body += [((side * hip[0], hip[1], hip[2]), 0.15), ((side * mid[0], mid[1], mid[2]), 0.13),
-                     ((side * knee[0], knee[1], knee[2]), 0.12), ((side * foot[0], foot[1], foot[2]), 0.10)]
-            hooves.append((side * foot[0], foot[1] + (-0.03 if foot[1] < 0 else 0.03), foot[2] - 0.03))
+        for leg in legs:
+            # The top sits inside the body (a joint melts it in), so the leg
+            # flows out of it without a gap.
+            (hx, hy, hz), _ = leg[0]
+            body.append(((side * hx, hy, hz + 0.03), 0.15))
     metaball_mesh('Pegasus body', [((x + px, y + py, pz), r) for (px, py, pz), r in body],
                   pearl, 0.012)
-    for hx, hy, hz in hooves:
-        bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.055, depth=0.06,
-                                            location=(x + hx, y + hy, hz),
-                                            rotation=(0.8 if hy < 0 else -0.8, 0, 0))
-        finish(bpy.context.object, green, True, 'Pegasus green hoof')
+    for side in (-1, 1):
+        for leg in legs:
+            points = [(x + side * px, y + py, pz) for (px, py, pz), _ in leg]
+            # One ring orientation all along, as the cannons run nearly
+            # vertical; the default switches there and twists the leg.
+            tube('Pegasus leg', points, [r for _, r in leg], pearl, sides=12, smooth=True,
+                 up=(1, 0, 0))
+            # The hoof continues the pastern's slope, widening to the sole.
+            top, pastern = Vector(points[-1]), Vector(points[-1]) - Vector(points[-2])
+            cone('Pegasus green hoof', top, top + pastern.normalized() * 0.065, 0.045, 0.06,
+                 green, 16)
     for side in (-1, 1):
         sphere('Pegasus eye', (x + side * 0.08, y - 0.40, 0.98), (0.03, 0.03, 0.035), eye, 12)
         cone('Pegasus ear', (x + side * 0.055, y - 0.31, 1.04), (x + side * 0.075, y - 0.27, 1.15),
