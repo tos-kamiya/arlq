@@ -355,11 +355,12 @@ def amoeba(x, y, rare):
                  0.12, 0, crystal, vertices=6, smooth=False)
 
 
-def animal_hide(name, color, rim, rim_strength, shaggy=False):
+def animal_hide(name, color, rim, rim_strength, shaggy=False, light=1.0):
     """Matte short-haired hide rather than resin: no transmission or coat, a
     sheen for the fuzz of the hair, a fine bump stretched along the body
     (head to tail runs along y) for its lie, darker along the back than the
-    belly, with soft mottling. `shaggy` is the long, curly hair of a mane."""
+    belly, with soft mottling. `shaggy` is the long, curly hair of a mane;
+    `light` brightens the whole hide."""
     mat = material(name, color, roughness=0.95 if shaggy else 0.8, rim=rim,
                    rim_strength=rim_strength)
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
@@ -376,8 +377,8 @@ def animal_hide(name, color, rim, rim_strength, shaggy=False):
     shade = nodes.new('ShaderNodeMapRange')
     shade.inputs['From Min'].default_value = 0.25
     shade.inputs['From Max'].default_value = 0.85
-    shade.inputs['To Min'].default_value = 0.85
-    shade.inputs['To Max'].default_value = 0.45
+    shade.inputs['To Min'].default_value = 0.85 * light
+    shade.inputs['To Max'].default_value = 0.45 * light
     mottle = nodes.new('ShaderNodeTexNoise')
     mottle.inputs['Scale'].default_value = 4.0
     mottle.inputs['Detail'].default_value = 3.0
@@ -711,19 +712,21 @@ def chimera(x, y, cursed=False):
     if cursed:
         # Rare chimera with the cursed sword: ash-grey lion, black mane with
         # ember edges, bone-white serpent, and a black blade glowing red.
-        hide = material('Rare chimera ash resin', (0.30, 0.32, 0.38), 0.45, 0.24,
-                        rim=(0.75, 0.80, 0.95), rim_strength=1.2, coat=0.6)
-        mane = material('Rare chimera black mane', (0.03, 0.02, 0.03), 0.1, 0.4,
-                        rim=(1.0, 0.18, 0.05), rim_strength=2.2)
+        # Brighter than the bison's hide, so the glossy serpent tail does not
+        # outshine the lion.
+        hide = animal_hide('Rare chimera ash hide', (0.30, 0.32, 0.38), (0.75, 0.80, 0.95), 0.6,
+                           light=1.4)
+        mane = animal_hide('Rare chimera black mane', (0.03, 0.02, 0.03), (1.0, 0.18, 0.05), 1.6,
+                           shaggy=True, light=1.4)
         snake = material('Rare chimera bone serpent', (0.92, 0.88, 0.78), 0.35, 0.2,
                          rim=(1.0, 0.95, 0.85), rim_strength=1.2, coat=0.8)
         snake_eye = material('Rare chimera snake eyes', (1.0, 0.1, 0.05),
                              emission=(1.0, 0.1, 0.05), strength=8.0)
     else:
-        hide = material('Chimera golden lion resin', (0.95, 0.66, 0.18), 0.5, 0.22,
-                        rim=(1.0, 0.85, 0.45), rim_strength=1.2, coat=0.6)
-        mane = material('Chimera crimson mane', (0.62, 0.05, 0.04), 0.15, 0.4,
-                        rim=(1.0, 0.25, 0.1), rim_strength=1.5)
+        hide = animal_hide('Chimera golden lion hide', (0.95, 0.66, 0.18), (1.0, 0.85, 0.45), 0.5,
+                           light=1.4)
+        mane = animal_hide('Chimera crimson mane', (0.62, 0.05, 0.04), (1.0, 0.25, 0.1), 0.6,
+                           shaggy=True, light=1.4)
         snake = material('Chimera serpent tail', (0.04, 0.80, 0.40), 0.4, 0.16,
                          emission=(0.05, 0.6, 0.3), strength=0.3,
                          rim=(0.6, 1.0, 0.6), rim_strength=1.8, coat=0.8)
