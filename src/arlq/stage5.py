@@ -186,6 +186,14 @@ def _separate_diagonal_monsters(current: Floor) -> None:
             ) or (second.tribe.char == "V" and second.empowered in (1, 2))
             if first_is_boss and second_is_boss:
                 continue
+            if (
+                first.tribe.char == second.tribe.char == "X"
+                and first.x in (42, 43)
+                and second.x in (42, 43)
+                and first.y in range(1, 6)
+                and second.y in range(1, 6)
+            ):
+                continue
             mover = second if not second_is_boss else first
             break
         if mover is None:
@@ -878,11 +886,11 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
     for corridor_y in range(8, 13):
         for x in range(53, d.FIELD_WIDTH - 1):
             upper_field[corridor_y][x] = d.CHAR_WALL
-    for x in range(42, 48):
-        for lower_y in range(3, 6):
+    for x in range(37, 49):
+        for lower_y in range(2, 7):
             lower_field[lower_y][x] = d.CHAR_FLOOR
     for x in range(19, 29):
-        for lower_y in range(y - 1, y + 3):
+        for lower_y in range(y - 2, y + 3):
             lower_field[lower_y][x] = d.CHAR_FLOOR
 
     start = (1, y)
@@ -973,28 +981,34 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
     # Enter H's room at the right of the middle row, then head left into
     # the winding corridor. A wall keeps its two parallel legs separate.
     for room_y in range(1, 6):
-        for x in range(44, d.FIELD_WIDTH - 1):
+        for x in range(41, d.FIELD_WIDTH - 1):
             upper.field[room_y][x] = d.CHAR_WALL
-    for x in range(44, 53):
+    upper.field[3][41] = d.CHAR_CALTROP
+    for x in range(42, 50):
         upper.field[3][x] = d.CHAR_FLOOR
     for corridor_y in range(3, 11):
-        upper.field[corridor_y][52] = d.CHAR_FLOOR
+        upper.field[corridor_y][49] = d.CHAR_FLOOR
     for room_y in range(8, 13):
-        for x in range(42, 53):
+        for x in range(39, 50):
             upper.field[room_y][x] = d.CHAR_FLOOR
+    for x in range(39, 42):
+        upper.field[8][x] = d.CHAR_FLOOR
     for x in range(38, 43):
         upper.field[10][x] = d.CHAR_FLOOR
+    upper.field[10][38] = d.CHAR_WALL
+    for x in range(41, 47):
+        upper.field[1][x] = d.CHAR_CALTROP
     upper.field[7][38] = d.CHAR_WALL
-    upper.field[9][38] = d.CHAR_FLOOR
+    upper.field[9][38] = d.CHAR_WALL
     upper.field[10][37] = d.CHAR_WALL
-    upper.entities.insert(3, d.PartyMember(50, 10, d.MEMBER_HEALER, origin_floor=0))
+    upper.entities.insert(3, d.PartyMember(47, 10, d.MEMBER_HEALER, origin_floor=0))
     upper.entities.extend(
-        d.Monster(x, 10, d.CHAR_TO_MONSTER_TRIBE["b"]) for x in (44, 47)
+        d.Monster(x, 10, d.CHAR_TO_MONSTER_TRIBE["b"]) for x in (41, 44)
     )
 
     # The long corridor descends to the left side of the lower row.
     for corridor_y in (1, 2, 4, 5, 6):
-        upper.field[corridor_y][44] = d.CHAR_WALL
+        upper.field[corridor_y][41] = d.CHAR_WALL
     for corridor_y in (7, 13, 14):
         upper.field[corridor_y][44] = d.CHAR_WALL
     for x in range(5, 45):
@@ -1047,6 +1061,46 @@ def build_member_trial(config: GameConfig | None = None) -> tuple[list[Floor], d
     for x in range(4, 8):
         upper.field[15][x] = d.CHAR_FLOOR
         upper.respawn_exclusions.add((x, 15))
+
+    # Extend Guardian's zone and replace its caltrop field with a centered X column.
+    upper.entities = [
+        entity for entity in upper.entities
+        if not isinstance(entity, d.Monster) or entity.tribe.char != "X"
+    ]
+    for monster_y, monster_x in zip(range(1, 6), (42, 43, 42, 43, 42)):
+        for x in range(39, 47):
+            upper.field[monster_y][x] = d.CHAR_FLOOR
+        upper.entities.append(
+            d.Monster(monster_x, monster_y, d.CHAR_TO_MONSTER_TRIBE["X"])
+        )
+
+    # Restore the winding corridor and shift the D/J/F row left by four.
+    for x in range(4, 37):
+        upper.field[12][x] = d.CHAR_FLOOR
+    for x in range(37, 39):
+        upper.field[12][x] = d.CHAR_WALL
+    upper.field[11][32] = d.CHAR_WALL
+    upper.field[11][36] = d.CHAR_FLOOR
+    for row_y in range(15, 20):
+        old_row = upper.field[row_y]
+        new_row = old_row[:]
+        for x in range(8, 53):
+            new_row[x - 4] = old_row[x]
+        for x in range(49, 53):
+            new_row[x] = d.CHAR_WALL
+        upper.field[row_y] = new_row
+    for entity in upper.entities:
+        if 15 <= entity.y <= 19 and 8 <= entity.x <= 52:
+            entity.x -= 4
+
+    def shift_lower_zone(point: d.Point) -> d.Point:
+        x, y = point
+        return (x - 4, y) if 15 <= y <= 19 and 8 <= x <= 52 else point
+
+    upper.collapse_landings = {shift_lower_zone(point) for point in upper.collapse_landings}
+    upper.respawn_exclusions = {shift_lower_zone(point) for point in upper.respawn_exclusions}
+    upper.persistent_barriers = {shift_lower_zone(point) for point in upper.persistent_barriers}
+    upper.d_gates = {shift_lower_zone(point): char for point, char in upper.d_gates.items()}
     return [upper, lower], player
 
 
