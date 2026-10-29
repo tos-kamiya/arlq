@@ -9,9 +9,14 @@ the band it rises into the cell to its north, so the GUI can stack them:
   wall-link-west.png   architrave and plinth reaching the west edge
   wall-link-east.png   the same toward the east edge
 The parts are near-white; the GUI tints them for visible/explored walls.
+
+With `-- --training` the same columns are written as training-*.png for the
+Stage 5 training room: brighter, and darkening far less toward its bright
+floor.
 """
 from pathlib import Path
 import math
+import sys
 
 import bpy
 from mathutils import Vector
@@ -34,7 +39,8 @@ CANVAS_W = CANVAS_UP * WIDTH / HEIGHT
 # The marble darkens toward the floor to stress the walls' height
 # (darken_toward_floor): FOOT_SHADE of its brightness at the floor, rising
 # as height ** HEIGHT_CURVE to full brightness at the abacus top.
-FOOT_SHADE = 0.12
+TRAINING = '--training' in sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else False
+FOOT_SHADE = 0.45 if TRAINING else 0.12
 HEIGHT_CURVE = 1.0
 
 
@@ -143,6 +149,8 @@ scene.cycles.use_denoising = False
 scene.cycles.sample_clamp_indirect = 2.0
 scene.view_settings.view_transform = 'Standard'
 scene.view_settings.look = 'Medium High Contrast'
+if TRAINING:
+    scene.view_settings.exposure = 0.5  # brighter, whiter marble
 scene.render.resolution_x, scene.render.resolution_y = WIDTH, HEIGHT
 scene.render.film_transparent = True
 world = bpy.data.worlds.new('Night studio')
@@ -216,5 +224,5 @@ for name, objects in parts.items():
     # Links meet their neighbours at the canvas edge; an outline there would
     # show as a seam, so only the column is outlined.
     scene.render.use_freestyle = name == 'column'
-    scene.render.filepath = str(OUT / ('wall-' + name + '.png'))
+    scene.render.filepath = str(OUT / (('training-' if TRAINING else 'wall-') + name + '.png'))
     bpy.ops.render.render(write_still=True)

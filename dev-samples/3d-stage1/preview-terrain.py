@@ -3,11 +3,13 @@ of marble columns, a golem rock, a pit, the rocks fallen from a pit on
 the floor above, and the up and down stairs, each drawn as in the game and
 labelled.
 
-    PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py
+    PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py [--stage N]
 
-Writes heroic/preview-terrain.jpg; needs ImageMagick's `convert`.
+Writes heroic/preview-terrain.jpg (with --stage, preview-terrain-stageN.jpg,
+drawn in that stage's terrain look); needs ImageMagick's `convert`.
 """
 from pathlib import Path
+import argparse
 from types import SimpleNamespace
 import subprocess
 import tempfile
@@ -20,7 +22,11 @@ pyglet.input = SimpleNamespace(get_controllers=lambda: [])
 from arlq import defs as d
 from arlq.sprite_funcs import SpriteUI
 
-OUT = Path(__file__).resolve().parent / 'heroic' / 'preview-terrain.jpg'
+parser = argparse.ArgumentParser()
+parser.add_argument('--stage', type=int)
+STAGE = parser.parse_args().stage
+OUT = Path(__file__).resolve().parent / 'heroic' / (
+    'preview-terrain.jpg' if STAGE is None else 'preview-terrain-stage%d.jpg' % STAGE)
 ROW = 4
 # (label, first column, last column) of each sample along ROW.
 SAMPLES = [('FLOOR A / B', 2, 3), ('WALL (COLUMNS)', 6, 8), ('GOLEM ROCK', 11, 11),
@@ -42,7 +48,7 @@ seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
 # The player stands outside the cropped area.
 player = d.Player(2, d.FIELD_HEIGHT - 2, level=8, lp=d.LP_INIT)
 ui.draw_stage(turn=0, player=player, entities=[], field=field, cur_torched=seen,
-              torched=seen, known_types=set(), show_entities=False, stage_num=1,
+              torched=seen, known_types=set(), show_entities=False, stage_num=STAGE or 1,
               message='', decor=decor)
 ui.window.switch_to()
 ui.window.clear()

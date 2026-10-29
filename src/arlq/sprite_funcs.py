@@ -176,6 +176,19 @@ WALL_TINT = {VISIBLE_WALL: 2.4, WALL: 1.75}
 FLOOR_PARTS = ('a', 'b')
 FLOOR_TINTS = {VISIBLE_FLOOR: (78, 72, 66), FLOOR: (42, 39, 36)}
 FLOOR_CHECKER_SHADE = 0.88
+# Terrain looks: file prefixes of the floor and wall parts, the floor tint and
+# checkerboard shade, and the wall tint, per visible/explored color. Stage 5's
+# training room lays mint foam mats (colors baked in, so the tint only darkens
+# explored cells) between whiter marble columns; other stages use the ruins.
+TERRAIN_THEMES = {
+    'ruins': ('floor-', 'wall-', FLOOR_TINTS, FLOOR_CHECKER_SHADE,
+              {color: tuple(min(255, round(c * scale)) for c in color)
+               for color, scale in WALL_TINT.items()}),
+    'training': ('training-', 'training-',
+                 {VISIBLE_FLOOR: (255, 255, 255), FLOOR: (150, 150, 150)}, 1,
+                 {VISIBLE_WALL: (250, 250, 246), WALL: (165, 166, 163)}),
+}
+STAGE_TERRAIN_THEMES = {5: 'training'}
 # Barrier cells show a magic barrier on the ordinary floor, in place of the
 # red "=": a glowing orange plate laid over the cell and translucent sheets of
 # orange light rising from its edges, fading upward, with a few sparks drifting
@@ -353,6 +366,17 @@ def ground_disc_image(half=None):
     return pyglet.image.ImageData(size, size, 'RGBA', bytes(rgba), pitch=size * 4)
 
 
+def gray_image(data):
+    """Grayscale copy of image data, keeping its alpha."""
+    rgba = bytearray(data.get_data('RGBA', data.width * 4))
+    for offset in range(0, len(rgba), 4):
+        r, g, b = rgba[offset:offset + 3]
+        gray = (299 * r + 587 * g + 114 * b) // 1000
+        rgba[offset:offset + 3] = bytes((gray, gray, gray))
+    return pyglet.image.ImageData(data.width, data.height, 'RGBA', bytes(rgba),
+                                  pitch=data.width * 4)
+
+
 def mipmapped(image):
     """Texture shrunk through mipmaps, so fine details do not flicker away.
 
@@ -394,6 +418,12 @@ class SpriteUI(PygletUI):
     # The field being drawn, for stairs and pits that spread over neighbouring floor.
     _stage_field = None
     _stage_discovered_at = None
+    # Terrain look of the stage being drawn (see TERRAIN_THEMES).
+    _theme_images = {}
+    _terrain_theme = 'ruins'
+    _floor_tints = FLOOR_TINTS
+    _floor_checker_shade = FLOOR_CHECKER_SHADE
+    _wall_tints = TERRAIN_THEMES['ruins'][4]
     _show_pit_up_marker = True
 
     def __init__(self, scale=None, key_repeat_interval=None):
@@ -422,20 +452,14 @@ class SpriteUI(PygletUI):
                 continue
             data = pyglet.image.load(str(path)).get_image_data()
             self._sprite_images[char] = mipmapped(data)
-            rgba = bytearray(data.get_data('RGBA', data.width * 4))
+            rgba = data.get_data('RGBA', data.width * 4)
             # Fully transparent rows above the character (rows run bottom
             # to top), so things drawn over its head sit on the head itself.
             row_bytes = data.width * 4
             opaque_rows = [y for y in range(data.height)
                            if any(rgba[y * row_bytes + 3:(y + 1) * row_bytes:4])]
             self._sprite_head_room[char] = data.height - 1 - max(opaque_rows, default=0)
-            for offset in range(0, len(rgba), 4):
-                r, g, b = rgba[offset:offset + 3]
-                gray = (299 * r + 587 * g + 114 * b) // 1000
-                rgba[offset:offset + 3] = bytes((gray, gray, gray))
-            self._gray_images[char] = mipmapped(pyglet.image.ImageData(
-                data.width, data.height, 'RGBA', bytes(rgba), pitch=data.width * 4
-            ))
+            self._gray_images[char] = mipmapped(gray_image(data))
         self._mark_images = {mark: mipmapped(pyglet.image.load(str(directory / filename)))
                              for mark, filename in MARK_FILES.items()
                              if (directory / filename).is_file()}
@@ -446,16 +470,26 @@ class SpriteUI(PygletUI):
         self._disc_halves = (ground_disc_image('lower-left'), ground_disc_image('upper-right'))
         self._disc_group = pyglet.graphics.Group(order=1)
         self._pillar_images = {side: pillar_image(side) for side in ('back', 'front')}
-        wall_directory = Path(__file__).parent / 'assets' / 'walls'
-        paths = [wall_directory / ('wall-' + part + '.png') for part in WALL_PARTS]
-        self._wall_images = ({part: mipmapped(pyglet.image.load(str(path)))
-                              for part, path in zip(WALL_PARTS, paths)}
-                             if all(path.is_file() for path in paths) else None)
-        floor_paths = [Path(__file__).parent / 'assets' / 'floor' / ('floor-' + part + '.png')
-                       for part in FLOOR_PARTS]
-        self._floor_images = ([mipmapped(pyglet.image.load(str(path))) for path in floor_paths]
-                              if all(path.is_file() for path in floor_paths) else None)
         assets = Path(__file__).parent / 'assets'
+        # Per theme: wall parts, floor images and their grayscale copies for
+        # the map display. A theme whose images are missing uses the ruins'.
+        self._theme_images = {}
+        for theme, (floor_prefix, wall_prefix, *_) in TERRAIN_THEMES.items():
+            paths = [assets / 'walls' / (wall_prefix + part + '.png') for part in WALL_PARTS]
+            walls = ({part: mipmapped(pyglet.image.load(str(path)))
+                      for part, path in zip(WALL_PARTS, paths)}
+                     if all(path.is_file() for path in paths) else None)
+            floor_paths = [assets / 'floor' / (floor_prefix + part + '.png')
+                           for part in FLOOR_PARTS]
+            floors = grays = None
+            if all(path.is_file() for path in floor_paths):
+                data = [pyglet.image.load(str(path)).get_image_data() for path in floor_paths]
+                floors = [mipmapped(image) for image in data]
+                grays = [mipmapped(gray_image(image)) for image in data]
+            ruins = self._theme_images.get('ruins', (None, None, None))
+            self._theme_images[theme] = (walls or ruins[0], floors or ruins[1],
+                                         grays if floors else ruins[2])
+        self._set_terrain_theme('ruins')
         self._terrain_images = {char: mipmapped(pyglet.image.load(str(assets / filename)))
                                 for char, filename in TERRAIN_FILES.items()
                                 if (assets / filename).is_file()}
@@ -473,13 +507,25 @@ class SpriteUI(PygletUI):
         self._text_overlay_group = pyglet.graphics.Group(order=10001)
         self._sidebar_bg_group = pyglet.graphics.Group(order=9998)
         self._sidebar_group = pyglet.graphics.Group(order=9999)
-        self._floor_tiles = None
-        self._floor_cell_tiles = {}
         self._floor_cells = {}
-        self._create_floor_tiles()
+        self._theme_floor_tiles = {}
+        for theme in TERRAIN_THEMES:
+            self._set_terrain_theme(theme)
+            self._create_floor_tiles()
+            self._theme_floor_tiles[theme] = (self._floor_tiles, self._floor_cell_tiles)
+        self._set_terrain_theme('ruins')
+
+    def _set_terrain_theme(self, theme):
+        self._terrain_theme = theme
+        self._wall_images, self._floor_images, self._gray_floor_images = self._theme_images[theme]
+        _, _, self._floor_tints, self._floor_checker_shade, self._wall_tints = (
+            TERRAIN_THEMES[theme])
+        self._floor_tiles, self._floor_cell_tiles = getattr(
+            self, '_theme_floor_tiles', {}).get(theme, (None, {}))
 
     def _create_floor_tiles(self):
         """Bake colored 2x2 floors into one nearest-filtered texture atlas."""
+        self._floor_tiles, self._floor_cell_tiles = None, {}
         if self._floor_images is None:
             return
         gl = pyglet.gl
@@ -520,13 +566,14 @@ class SpriteUI(PygletUI):
             # cells are opaque, while missing cells are never copied.
             gl.glColorMask(True, True, True, False)
             for row, map_mode in enumerate((False, True)):
-                for col, (tile_color, tint) in enumerate(FLOOR_TINTS.items()):
+                for col, (tile_color, tint) in enumerate(self._floor_tints.items()):
                     left, bottom = col * width, row * height
                     for y in range(2):
                         for x in range(2):
                             odd = (x + y) % 2
-                            image = self._floor_images[odd]
-                            shade = FLOOR_CHECKER_SHADE if odd else 1
+                            image = (self._gray_floor_images if map_mode
+                                     else self._floor_images)[odd]
+                            shade = self._floor_checker_shade if odd else 1
                             color = tuple(round(c * shade) for c in tint)
                             if map_mode:
                                 value = round(color[0] * .299 + color[1] * .587 + color[2] * .114)
@@ -574,6 +621,9 @@ class SpriteUI(PygletUI):
             self.cell_size_x, self.window_width - self.strength_column_width,
         )
         self._last_stage_draw = (decor, kwargs.copy())
+        theme = STAGE_TERRAIN_THEMES.get(kwargs.get('stage_num'), 'ruins')
+        if theme != self._terrain_theme and theme in self._theme_images:
+            self._set_terrain_theme(theme)
         self._decor = decor
         self._known_types = kwargs.get('known_types') or set()
         self._cur_torched = kwargs.get('cur_torched')
@@ -894,7 +944,7 @@ class SpriteUI(PygletUI):
                     and field[wy][wx] != d.CHAR_GOLEM_WALL)
 
         if self._wall_images is not None:
-            tint = tuple(min(255, round(c * WALL_TINT[tile_color])) for c in tile_color)
+            tint = self._wall_tints[tile_color]
             height = (1 + WALL_OVERHANG) * self.cell_size_y
             for part, show in (('link-west', wall_at(x - 1, y)),
                                ('link-east', wall_at(x + 1, y)), ('column', True)):
@@ -941,8 +991,8 @@ class SpriteUI(PygletUI):
             return super()._draw_tile(x, y, tile_color, field, discovered_at)
         odd = (x + y) % 2
         image = self._floor_images[odd]
-        shade = FLOOR_CHECKER_SHADE if odd else 1
-        tint = tuple(round(c * shade) for c in FLOOR_TINTS[tile_color])
+        shade = self._floor_checker_shade if odd else 1
+        tint = tuple(round(c * shade) for c in self._floor_tints[tile_color])
         left = self._field_col_x(x)
         bottom = self.window_height - (y + 1) * self.cell_size_y
         scale_x = (self._field_col_width(x) + 1) / image.width
