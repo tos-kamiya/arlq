@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from . import defs as d
 from . import display as ui_display
 from . import stage5
+from . import stage56
+from . import stage6
 from .arlq import (
     MESSAGE_TICKS,
     PLAYER_PASSABLE_CELLS,
@@ -439,7 +441,7 @@ def _vortex_rearrange(
         (entity.x + dx, entity.y + dy)
         for entity in movable
         if isinstance(entity, d.Monster)
-        for dx, dy in stage5._barrier_offsets(entity, stage_num)
+        for dx, dy in stage56._barrier_offsets(entity, stage_num)
         if 0 <= entity.y + dy < len(current.field)
         and 0 <= entity.x + dx < len(current.field[0])
     }
@@ -477,7 +479,7 @@ def _vortex_rearrange(
 
     def relocate(char: str, origin_floor: Optional[int], empowered: int = 1) -> None:
         if whole_floor and stage_num in (5, 6):
-            stage5.respawn(
+            stage56.respawn(
                 current, char, empowered,
                 floor_index if origin_floor is None else origin_floor,
                 avoid | reserved_collapse_cells,
@@ -587,7 +589,7 @@ def _vortex_rearrange(
     for current_entity in current.entities:
         if (
             isinstance(current_entity, d.Monster)
-            and stage5._barrier_offsets(current_entity, stage_num)
+            and stage56._barrier_offsets(current_entity, stage_num)
         ):
             protected = current.collapse_landings | scholar_stairs | set().union(
                 *(
@@ -596,7 +598,7 @@ def _vortex_rearrange(
                     if isinstance(fixed, d.Collapse)
                 )
             )
-            for dx, dy in stage5._barrier_offsets(current_entity, stage_num):
+            for dx, dy in stage56._barrier_offsets(current_entity, stage_num):
                 point = (current_entity.x + dx, current_entity.y + dy)
                 x, y = point
                 if (
@@ -611,7 +613,7 @@ def _vortex_rearrange(
         (entity.x + dx, entity.y + dy)
         for entity in current.entities
         if isinstance(entity, d.Monster)
-        for dx, dy in stage5._barrier_offsets(entity, stage_num)
+        for dx, dy in stage56._barrier_offsets(entity, stage_num)
         if 0 <= entity.y + dy < len(current.field)
         and 0 <= entity.x + dx < len(current.field[0])
     }
@@ -651,11 +653,11 @@ def _defeat_monster(
             for other in current.entities
             if other is not entity
             and isinstance(other, d.Monster)
-            for dx, dy in stage5._barrier_offsets(other, stage_num)
+            for dx, dy in stage56._barrier_offsets(other, stage_num)
             if 0 <= other.y + dy < len(current.field)
             and 0 <= other.x + dx < len(current.field[0])
         }
-        for dx, dy in stage5._barrier_offsets(entity, stage_num):
+        for dx, dy in stage56._barrier_offsets(entity, stage_num):
             x, y = entity.x + dx, entity.y + dy
             if (
                 0 <= y < len(current.field)
@@ -1130,7 +1132,7 @@ def _resolve_party_contact(
     trace: Optional[TraceRecorder],
     stage_num: int,
 ) -> _ContactResult:
-    party = stage5.monster_party(current, entity)
+    party = stage56.monster_party(current, entity)
     enemy_party = [monster for monster in party if not monster.tribe.is_elf]
     composition = "".join(
         d.monster_variant_label(monster.tribe.char, monster.empowered)
@@ -1192,7 +1194,7 @@ def _resolve_party_contact(
     )
     # Resolve ordinary drops first, the unique item/effect last. All defeated
     # entities must be removed before V can rearrange the survivors.
-    party.sort(key=lambda monster: stage5.special_monster(monster))
+    party.sort(key=lambda monster: stage56.special_monster(monster))
     for monster in party:
         current.entities.remove(monster)
     for monster in party:
@@ -1236,7 +1238,7 @@ def _resolve_party_contact(
         current.entities.append(
             d.PartyMember(*candidates[0], d.MEMBER_NOBLE, origin_floor=floor[0])
         )
-    stage5.normalize_parties(
+    stage56.normalize_parties(
         current,
         d.STAGE5_PARTY_LIMIT,
     )
@@ -1297,7 +1299,7 @@ def _resolve_contact(
     entity = current.entities[hit]
 
     if isinstance(entity, d.PartyMember):
-        result = stage5.recruit(current, player, entity)
+        result = stage56.recruit(current, player, entity)
         if trace is not None:
             trace.record_contact({"type": "member", "id": entity.role,
                                   "joined": entity in player.members})
@@ -1544,7 +1546,7 @@ def _process_respawn_queue(
         )
         previous_entity_count = len(floors[spawn_floor].entities)
         if stage_num in (5, 6):
-            x, y = stage5.respawn(
+            x, y = stage56.respawn(
                 floors[spawn_floor], ch, empowered, spawn_floor, avoid,
                 floor_index=spawn_floor,
             )
@@ -1829,11 +1831,11 @@ def _process_multi_floor_turn(
     )
     if stage_num in (5, 6):
         for floor_data in floors:
-            stage5.normalize_parties(
+            stage56.normalize_parties(
                 floor_data,
                 d.STAGE5_PARTY_LIMIT,
             )
-        stage5.sync_members(player, previous, direction)
+        stage56.sync_members(player, previous, direction)
     if (
         stage_num == 5
         and floor[0] == floor_before
@@ -1876,9 +1878,9 @@ def observe_world(
             ):
                 _reveal_collapse_pits(floors, floor_index, entity)
     if stage_num in (5, 6):
-        stage5.reveal_rogue_monsters(current, player, visible)
+        stage56.reveal_rogue_monsters(current, player, visible)
         if d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
-            stage5.reveal_scholar_features(current, current.seen)
+            stage56.reveal_scholar_features(current, current.seen)
             if floor_index > 0:
                 upper = floors[floor_index - 1]
                 for y, row in enumerate(current.field):
@@ -1929,7 +1931,7 @@ def run_game(
     if single_floor_stage:
         floors, player = build_single_floor(config, stage_num)
     elif stage_num == 6:
-        floors, player = stage5.build(config)
+        floors, player = stage6.build(config)
     elif stage_num == 5:
         floors, player = stage5.build_member_trial(config)
     else:
@@ -2082,7 +2084,7 @@ def run_game(
         rogue_spotted_danger = False
         if stage_num in (5, 6) and d.has_member(player, d.MEMBER_ROGUE):
             destination = (player.x + move[0], player.y + move[1])
-            if stage5.rogue_danger(current, player, destination):
+            if stage56.rogue_danger(current, player, destination):
                 rogue_spotted_danger = True
                 if replay_context is not None:
                     replay_context.rogue_checks.setdefault(

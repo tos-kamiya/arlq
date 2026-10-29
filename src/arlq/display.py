@@ -313,7 +313,7 @@ def monster_party_tones(
     entities: List[d.Entity], known_types: Set[str], player_attack: int,
 ) -> dict[d.Monster, str]:
     """Calculate each party's display tone once per rendered floor."""
-    from .stage5 import monster_party_entities, monster_positions
+    from .stage56 import monster_party_entities, monster_positions
 
     positions = monster_positions(entities)
     tones: dict[d.Monster, str] = {}
@@ -400,7 +400,7 @@ def revealed_entity_glyphs(
         else:
             party = [entity]
             if stage_num in (5, 6) and party_entities is not None:
-                from .stage5 import monster_party_entities
+                from .stage56 import monster_party_entities
 
                 party = monster_party_entities(party_entities, entity)
             party_known = all(

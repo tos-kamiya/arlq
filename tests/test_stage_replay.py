@@ -8,7 +8,7 @@ import pytest
 
 from arlq import defs as d
 from arlq import game_engine as engine
-from arlq import stage5, stage_replay
+from arlq import stage5, stage6, stage_replay
 from arlq.arlq import GameConfig
 from arlq.stage_types import Floor, ReplayContext
 
@@ -69,7 +69,7 @@ def signature(player, entities, field, seen):
 
 def run_and_replay(monkeypatch, build, stage_num, moves, config):
     if stage_num == 6:
-        monkeypatch.setattr(stage5, "build", build)
+        monkeypatch.setattr(stage6, "build", build)
     elif stage_num == 5:
         monkeypatch.setattr(stage5, "build_member_trial", build)
     else:
@@ -318,7 +318,7 @@ def test_replay_executes_operations_discarded_by_loop_contacts(monkeypatch):
         entities.append(d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"]))
         return 4, 2
 
-    monkeypatch.setattr(stage5, "build", build)
+    monkeypatch.setattr(stage6, "build", build)
     monkeypatch.setattr(engine, "_vortex_rearrange", disturb_map)
     monkeypatch.setattr(stage_replay, "_spawn", respawn_loop)
     context = ReplayContext(

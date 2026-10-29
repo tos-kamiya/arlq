@@ -6,6 +6,8 @@ from typing import List, Optional, Tuple
 
 from . import defs as d
 from . import stage5
+from . import stage56
+from . import stage6
 from .i18n import trp
 from .stage_types import Floor, ReplayContext, _RewindRequest
 from .stage_world import _spawn, build
@@ -22,7 +24,7 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
 
     rand.set_seed(replay.seed)
     if replay.stage_num == 6:
-        floors, player = stage5.build(replay.config)
+        floors, player = stage6.build(replay.config)
     elif replay.stage_num == 5:
         floors, player = stage5.build_member_trial(replay.config)
     else:
@@ -46,7 +48,7 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
     for index, direction in enumerate(replay.operations[:operation_count]):
         observe()
         for destination in replay.rogue_checks.get(index, ()):
-            stage5.rogue_danger(floors[floor[0]], player, destination)
+            stage56.rogue_danger(floors[floor[0]], player, destination)
             observe()
         result = _step(
             direction, floors, player, floor, checkpoint, queue, index,
