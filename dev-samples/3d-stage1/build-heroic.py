@@ -725,6 +725,48 @@ def chimera(x, y, cursed=False):
                (0.035, 0.035, 0.03), snake_eye, 12)
 
 
+def gilded_bronze(name):
+    """Blackened bronze in low relief with its raised ornament gilded: a
+    swirling pattern as bump, gold where it stands high and dark in the
+    recesses between."""
+    # Not fully metallic, so the faces turned from the lights do not mirror
+    # the dark studio and go black.
+    mat = material(name, (0.08, 0.06, 0.04), roughness=0.5, metallic=0.65,
+                   rim=(1.0, 0.8, 0.5), rim_strength=0.25)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes['Principled BSDF']
+    coords = nodes.new('ShaderNodeTexCoord')
+    pattern = nodes.new('ShaderNodeTexMagic')
+    pattern.turbulence_depth = 2
+    pattern.inputs['Scale'].default_value = 15.0
+    pattern.inputs['Distortion'].default_value = 2.2
+    gray = nodes.new('ShaderNodeRGBToBW')
+    bump = nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value = 0.3
+    bump.inputs['Distance'].default_value = 0.02
+    raised = nodes.new('ShaderNodeMapRange')
+    raised.inputs['From Min'].default_value = 0.45
+    raised.inputs['From Max'].default_value = 0.6
+    color = nodes.new('ShaderNodeMix')
+    color.data_type = 'RGBA'
+    # Color sockets by index: the float and vector ones share their names.
+    color.inputs[6].default_value = (0.30, 0.22, 0.14, 1)
+    color.inputs[7].default_value = (0.70, 0.47, 0.17, 1)
+    rough = nodes.new('ShaderNodeMapRange')
+    rough.inputs['To Min'].default_value = 0.6
+    rough.inputs['To Max'].default_value = 0.35
+    links.new(coords.outputs['Object'], pattern.inputs['Vector'])
+    links.new(pattern.outputs['Color'], gray.inputs['Color'])
+    links.new(gray.outputs['Val'], bump.inputs['Height'])
+    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    links.new(gray.outputs['Val'], raised.inputs['Value'])
+    links.new(raised.outputs['Result'], color.inputs['Factor'])
+    links.new(color.outputs[2], bsdf.inputs['Base Color'])
+    links.new(raised.outputs['Result'], rough.inputs['Value'])
+    links.new(rough.outputs['Result'], bsdf.inputs['Roughness'])
+    return mat
+
+
 def treasure(x, y, mimic=False, toy=False):
     """Treasure chest (T), or with `mimic` the revealed Mimic (M), a kind of
     golem: the chest's own shape in the golem's dark basalt and slate, its
@@ -734,7 +776,15 @@ def treasure(x, y, mimic=False, toy=False):
     With `toy`, the toy chest of the Stage 5 training room (T-toy): the same
     shape in glossy plastic with softer edges, its box and lid a brighter,
     poppier red than the chest's, holding chunky plastic toy coins.
+
+    The treasure chest itself is blackened bronze with gilded relief, on a
+    footed base: four wide flat gold straps over the lid and box, the end ones
+    reaching round onto the end faces, gold trims
+    along the edges with rivets on the lid's, a diamond lock plate under a
+    hasp, and a ring handle on each end.
     """
+    ornate = not (mimic or toy)
+    start = set(bpy.data.objects)
     soft = 2.0 if toy else 1.0  # edge rounding
     if mimic:
         # Rougher and with a weaker rim than the golem's own stone, as the
@@ -777,9 +827,8 @@ def treasure(x, y, mimic=False, toy=False):
                 bevel.width = 0.012
                 bevel.segments = 2
     else:
-        wood = material('Chest mahogany resin', (0.40, 0.09, 0.03), 0.12, 0.28,
-                        rim=(1.0, 0.55, 0.25), rim_strength=0.8, coat=0.8)
-        gold = material('Chest gold bands', (1.0, 0.68, 0.18), roughness=0.22, metallic=1.0)
+        wood = gilded_bronze('Chest gilded bronze')
+        gold = material('Chest antique gold', (0.88, 0.60, 0.22), roughness=0.3, metallic=1.0)
         light = material('Chest treasure glow', (1.0, 0.8, 0.3), emission=(1.0, 0.72, 0.2),
                          strength=3.0)
         gem = material('Chest ruby', (1.0, 0.08, 0.12), 0.8, 0.02,
@@ -828,14 +877,64 @@ def treasure(x, y, mimic=False, toy=False):
                       (o0, o1, i1, i0), (o0 + 1, i0 + 1, i1 + 1, o1 + 1)]
         last = 4 * segments
         faces += [(0, 2, 3, 1), (last, last + 1, last + 3, last + 2)]
-        return mesh_object(name, verts, faces, mat, True)
+        arc = mesh_object(name, verts, faces, mat, True)
+        if ornate:
+            # Flat plates: smooth only along the curve, sharp at the edges.
+            arc.data.use_auto_smooth = True
+            arc.data.auto_smooth_angle = math.radians(30)
+        return arc
 
     lid_parts = [lid]
-    for dx in (-0.36, 0.36):
-        lid_parts.append(band_arc('Chest lid band', dx, 0.325, 0.35, 0.09, gold))
+    # The ornate chest: wide flat straps, two at the ends reaching the end
+    # faces and two between, with the middle left open for the lock.
+    bands, band_width = ((-0.43, -0.18, 0.18, 0.43), 0.14) if ornate else ((-0.36, 0.36), 0.09)
+    # The ornate chest's gold plates are half as thick.
+    plate = 0.015 if ornate else 0.03
+    for dx in bands:
+        lid_parts.append(band_arc('Chest lid band', dx, 0.35 - plate * 0.83, 0.35, band_width,
+                                  gold))
+        # End straps on the box run on round the corner onto the end face.
+        end = ornate and abs(dx) > 0.4
+        box_dx, box_width = (dx + math.copysign(0.015, dx), band_width + 0.03) if end else (dx, band_width)
         for side in (-1, 1):
-            block('Chest box band', (x + dx, y + side * 0.335, 0.27), (0.09, 0.03, 0.47), gold,
-                  0.012 * soft)
+            block('Chest box band', (x + box_dx, y + side * (0.35 - plate / 2), 0.27),
+                  (box_width, plate, 0.47), gold, min(0.012 * soft, plate / 2))
+            if end:
+                block('Chest box band', (x + math.copysign(0.5 + plate / 2, dx), y + side * 0.28,
+                                         0.27), (plate, 0.14, 0.47), gold, plate / 2)
+    if ornate:
+        def rivet(pos, flat):
+            return sphere('Chest rivet', pos, tuple(0.012 if i == flat else 0.024
+                                                    for i in range(3)), gold, 16)
+        # Lid: trims around both half-circle ends and along the front edge,
+        # with rivets along them, and the hasp hanging from the front edge.
+        for dx in (-0.497, 0.497):
+            # The end straps continue as a flat half ring over each end face.
+            lid_parts.append(band_arc('Chest lid end plate', dx, 0.20, 0.35, 0.007, gold))
+            for a in (0.15, 0.3, 0.5, 0.7, 0.85):
+                a *= math.pi
+                lid_parts.append(sphere('Chest rivet', (x + dx * 1.02, y + 0.275 * math.cos(a),
+                                                        0.50 + 0.75 * 0.275 * math.sin(a)),
+                                        (0.012, 0.022, 0.022), gold, 16))
+        lid_parts.append(block('Chest lid edge trim', (x, y - 0.33, 0.515),
+                               (0.98, 0.04, 0.035), gold, 0.01))
+        for dx in (-0.305, 0.305):
+            lid_parts.append(rivet((x + dx, y - 0.352, 0.515), 1))
+        lid_parts.append(block('Chest hasp', (x, y - 0.345, 0.47), (0.07, 0.025, 0.14), gold,
+                               0.01))
+        # Box: trims along the top and bottom edges of every face, and a ring
+        # handle on each end.
+        for side in (-1, 1):
+            for z in (0.075, 0.475):
+                block('Chest rim trim', (x, y + side * (0.33 + plate / 2), z), (1.0, plate, 0.05),
+                      gold, plate / 2)
+                block('Chest rim trim', (x + side * (0.5 + plate / 2), y, z), (plate, 0.66, 0.05),
+                      gold, plate / 2)
+            block('Chest handle mount', (x + side * 0.53, y, 0.36), (0.02, 0.07, 0.05), gold, 0.008)
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.075, minor_radius=0.014,
+                                             location=(x + side * 0.545, y, 0.29),
+                                             rotation=(0, math.pi / 2, 0))
+            finish(bpy.context.object, gold, True, 'Chest ring handle')
     bpy.context.view_layer.update()
     hinge = Matrix.Translation((x, y + 0.33, 0.50))
     # Both lids are open only a little, on the treasure's glow or the
@@ -843,12 +942,33 @@ def treasure(x, y, mimic=False, toy=False):
     opening = hinge @ Matrix.Rotation(-0.50, 4, 'X') @ hinge.inverted()
     for part in lid_parts:
         part.matrix_world = opening @ part.matrix_world
-    block('Chest lock plate', (x, y - 0.34, 0.42), (0.20, 0.03, 0.24), gold, 0.03 * soft)
-    sphere('Chest ruby', (x, y - 0.365, 0.44), (0.065, 0.035, 0.075), gem, 16, False)
-    for dx in (-0.48, 0.48):
+    if ornate:
+        block('Chest lock plate', (x, y - 0.345, 0.32), (0.15, 0.03, 0.15), gold, 0.02,
+              (0, math.pi / 4, 0))
+        sphere('Chest ruby', (x, y - 0.367, 0.32), (0.05, 0.03, 0.05), gem, 16, False)
+    else:
+        block('Chest lock plate', (x, y - 0.34, 0.42), (0.20, 0.03, 0.24), gold, 0.03 * soft)
+        sphere('Chest ruby', (x, y - 0.365, 0.44), (0.065, 0.035, 0.075), gem, 16, False)
+    for dx in () if ornate else (-0.48, 0.48):
         for dy in (-0.31, 0.31):
             block('Chest corner cap', (x + dx, y + dy, 0.27), (0.08, 0.08, 0.48), gold,
                   0.02 * soft)
+    if ornate:
+        # Raise the chest onto a base whose corners stand as feet.
+        lift = Matrix.Translation((0, 0, 0.08))
+        bpy.context.view_layer.update()  # matrix_world of the newest parts
+        for obj in set(bpy.data.objects) - start:
+            obj.matrix_world = lift @ obj.matrix_world
+        block('Chest base', (x, y, 0.1), (1.08, 0.74, 0.05), wood, 0.01)
+        for side in (-1, 1):
+            block('Chest base trim', (x, y + side * 0.372, 0.115), (1.08, 0.012, 0.02), gold,
+                  0.004)
+            block('Chest base trim', (x + side * 0.542, y, 0.115), (0.012, 0.74, 0.02), gold,
+                  0.004)
+        # Feet flush with the base's faces, so the gaps between them show.
+        for dx in (-0.44, 0.44):
+            for dy in (-0.27, 0.27):
+                block('Chest foot', (x + dx, y + dy, 0.04), (0.2, 0.2, 0.08), wood, 0.01)
 
 
 def great_dragon(x, y, fire=False):
