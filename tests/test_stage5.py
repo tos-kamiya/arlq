@@ -1090,3 +1090,38 @@ def test_member_trial_dragon_unlocks_final_chest_and_completes_stage():
     assert chest.unlocked and player.boss_defeated
     engine._resolve_contact(upper.entities.index(chest), upper, floors, player, [0], [upper.up], Counter(), stage_num=5)
     assert player.stage_won
+
+
+def test_trial_dialogue_repeats_on_adjacent_moves_and_recruitment_is_separate():
+    current, player = state()
+    member = d.PartyMember(4, 2, d.MEMBER_KNIGHT)
+    current.entities.append(member)
+    floors, floor, checkpoint, queue = [current], [0], [(1, 1)], Counter()
+    reasons = set()
+    result = engine._step((1, 0), floors, player, floor, checkpoint, queue, 1,
+                          stage_num=5, repeat_stop_reasons=reasons)
+    assert result == (-2, stage5.TRIAL_MEMBER_LINES[d.MEMBER_KNIGHT])
+    assert "member_dialogue" in reasons
+    assert not player.members
+    engine._step((-1, 0), floors, player, floor, checkpoint, queue, 2,
+                 stage_num=5)
+    result = engine._step((1, 0), floors, player, floor, checkpoint, queue, 3,
+                          stage_num=5)
+    assert result and result[0] == -2
+    result = engine._step((1, 0), floors, player, floor, checkpoint, queue, 4,
+                          stage_num=5)
+    assert result and result[0] != -2
+    assert member in player.members
+
+
+def test_trial_dialogue_only_on_successful_stage_five_movement():
+    current, player = state()
+    current.entities.append(d.PartyMember(4, 2, d.MEMBER_ROGUE))
+    floors, floor, checkpoint, queue = [current], [0], [(1, 1)], Counter()
+    result = engine._step((1, 0), floors, player, floor, checkpoint, queue, 1,
+                          stage_num=6)
+    assert result is None or result[0] != -2
+    current.field[2][2] = d.CHAR_WALL
+    result = engine._step((-1, 0), floors, player, floor, checkpoint, queue, 2,
+                          stage_num=5)
+    assert result is None or result[0] != -2

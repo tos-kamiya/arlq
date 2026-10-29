@@ -963,6 +963,21 @@ class PygletUI:
             x_offset=left_x, size_scale=popup_scale, group=popup_group,
         )
 
+    def _draw_player_dialogue(self, pos, text, line_formatter) -> None:
+        scale = self._status_font_scale() * MESSAGE_FONT_SIZE_SCALE
+        lines = line_formatter(text, 30)
+        width = max(self._text_width(line, size_scale=scale) for line in lines)
+        gap = max(1, round(self.cell_size_x * 0.2))
+        text_x = pos[0] * self.cell_size_x + self._field_text_x_offset()
+        right_x = text_x + self.cell_size_x + gap
+        on_left = right_x + width > self.field_pixel_width
+        x = max(0, text_x - width - gap) if on_left else right_x
+        lines = line_formatter(text, 30, on_left=on_left)
+        y = pos[1] - len(lines) - 0.25 if pos[1] >= len(lines) else min(pos[1] + 1, self.field_height - len(lines))
+        for index, line in enumerate(lines):
+            self._draw_text((0, y + index), line, COLOR_MAP[CI_YELLOW], x_offset=x,
+                            size_scale=scale, group=getattr(self, "_text_overlay_group", None))
+
     def _draw_player_wall_break_glyph(self, player: d.Player) -> None:
         glyph = ui_display.player_wall_break_glyph(player)
         if glyph is not None:
@@ -1348,6 +1363,10 @@ class PygletUI:
         self.draw_status_bar(
             turn, player, stage_num, message, extra_keys, game_start_turn
         )
+        from .stage5 import TrialDialogue, trial_dialogue_lines
+
+        if isinstance(message, TrialDialogue) and not floor_view:
+            self._draw_player_dialogue((px, py), str(message), trial_dialogue_lines)
 
         self._flip()
 
@@ -1431,7 +1450,10 @@ class PygletUI:
             y_offset=top_row_y_offset,
         )
 
-        party = player.last_encounter_party
+        from .stage5 import TrialDialogue
+
+        dialogue = message if isinstance(message, TrialDialogue) else None
+        party = "" if dialogue else player.last_encounter_party
         message_x_offset = 0
         if party:
             party_prefix = f"[{party}]  "
@@ -1446,11 +1468,9 @@ class PygletUI:
                 y_offset=bottom_row_y_offset,
             )
             message_x_offset = party_width
-        if message:
+        if message and dialogue is None:
             self._draw_text(
-                (0, self.field_height),
-                message,
-                COLOR_MAP[CI_YELLOW],
+                (0, self.field_height), message, COLOR_MAP[CI_YELLOW],
                 x_offset=message_x_offset,
                 size_scale=hud_scale * MESSAGE_FONT_SIZE_SCALE,
                 y_offset=bottom_row_y_offset,

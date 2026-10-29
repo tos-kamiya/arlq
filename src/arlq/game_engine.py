@@ -1834,6 +1834,17 @@ def _process_multi_floor_turn(
                 d.STAGE5_PARTY_LIMIT,
             )
         stage5.sync_members(player, previous, direction)
+    if (
+        stage_num == 5
+        and floor[0] == floor_before
+        and (player.x, player.y) != previous
+        and (player.x, player.y) == movement_destination
+    ):
+        line = stage5.trial_member_line(floors[floor[0]], player)
+        if line is not None:
+            if repeat_stop_reasons is not None:
+                repeat_stop_reasons.add("member_dialogue")
+            return (-2, line)
     return (MESSAGE_TICKS, event_message) if event_message else None
 
 
@@ -2063,6 +2074,9 @@ def run_game(
             view_floor = max(0, min(len(floors) - 1, view_floor + move[1]))
             continue
 
+        # Dialogue remains visible through non-movement UI actions.
+        if message[0] == -2:
+            message = (-1, "")
         # A real movement always returns the display to the player's floor.
         view_floor = floor[0]
         rogue_spotted_danger = False
@@ -2109,7 +2123,7 @@ def run_game(
             )
 
         repeat_stop_reasons: Optional[Set[str]] = (
-            set() if repeat_stop_enabled else None
+            set() if repeat_stop_enabled or stage_num == 5 else None
         )
         step_result = _process_multi_floor_turn(
             move,
@@ -2125,7 +2139,9 @@ def run_game(
         )
         if replay_context is not None:
             operation_path.append((floor[0], (player.x, player.y)))
-        if repeat_stop_reasons:
+        if repeat_stop_reasons and (
+            repeat_stop_enabled or "member_dialogue" in repeat_stop_reasons
+        ):
             _stop_movement_repeat(ui)
         if isinstance(step_result, _RewindRequest):
             assert replay_context is not None, "Loop contact requires recorded inputs"
@@ -2172,7 +2188,7 @@ def run_game(
         # the displayed floor in sync so the next frame shows the new floor.
         view_floor = floor[0]
         if event_message is not None:
-            if prefer_event_message(
+            if event_message[0] == -2 or prefer_event_message(
                 message[1] if message is not None else None, event_message[1]
             ) == event_message[1]:
                 message = event_message

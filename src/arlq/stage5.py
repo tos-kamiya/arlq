@@ -215,6 +215,54 @@ def _separate_diagonal_monsters(current: Floor) -> None:
         current.entities.append(mover)
 
 
+class TrialDialogue(str):
+    """A tutorial line drawn in a small speech bubble."""
+
+
+def trial_dialogue_lines(text: str, width: int, *, on_left: bool = False) -> list[str]:
+    """Wrap dialogue into a one-line bubble or a two-line speech balloon."""
+    width = max(8, width)
+    words = text.split()
+    lines = [""]
+    for word in words:
+        candidate = f"{lines[-1]} {word}".strip()
+        if len(candidate) <= width or not lines[-1]:
+            lines[-1] = candidate
+        elif len(lines) == 1:
+            lines.append(word)
+        else:
+            lines[-1] += f" {word}"
+    if on_left:
+        if len(lines) == 1:
+            return [f"{lines[0]} >"]
+        return [lines[0] + " " + chr(92), lines[1] + " /"]
+    if len(lines) == 1:
+        return [f"< {lines[0]}"]
+    return [f"/ {lines[0]}", f"\\ {lines[1]}"]
+
+
+TRIAL_MEMBER_LINES = {
+    d.MEMBER_KNIGHT: "K: Two too many? I'll lend a hand.",
+    d.MEMBER_ROGUE: "R: I can see through most traps.",
+    d.MEMBER_GUARDIAN: "G: My enchanted shield stops barriers and spikes.",
+    d.MEMBER_HEALER: "H: Take a healer on a long journey.",
+    d.MEMBER_DUNGEON_EXPLORER: "D: I know caves. I can climb out of pits.",
+    d.MEMBER_JESTER: "J: My dance earns you more experience!",
+}
+
+
+def trial_member_line(current: Floor, player: d.Player) -> str | None:
+    for entity in current.entities:
+        if (
+            isinstance(entity, d.PartyMember)
+            and entity.role not in player.joined_members
+            and abs(entity.x - player.x) + abs(entity.y - player.y) == 1
+            and entity.role in TRIAL_MEMBER_LINES
+        ):
+            return TrialDialogue(t(TRIAL_MEMBER_LINES[entity.role]))
+    return None
+
+
 def recruit(
     current: Floor,
     player: d.Player,

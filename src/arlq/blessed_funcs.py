@@ -115,6 +115,7 @@ class BlessedUI:
         overshoot_markers: Optional[Set[d.Point]] = None,
         loop_trail_markers: Optional[Set[d.Point]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
+        message=None,
     ) -> str:
         output = [self.term.home + self.term.clear]
         reveal_disguises = debug_show_entities or monochrome
@@ -471,6 +472,18 @@ class BlessedUI:
         if floor_label:
             put(d.FIELD_WIDTH - len(floor_label) - 2, d.FIELD_HEIGHT - 1, floor_label)
 
+        from .stage5 import TrialDialogue, trial_dialogue_lines
+
+        if isinstance(message, TrialDialogue) and not floor_view:
+            width = 30
+            on_left = px + 1 + width > d.FIELD_WIDTH
+            lines = trial_dialogue_lines(str(message), width, on_left=on_left)
+            bubble_width = max(self.term.length(line) for line in lines)
+            bx = max(0, px - bubble_width) if on_left else px + 1
+            by = py - len(lines) if py >= len(lines) else min(py + 1, d.FIELD_HEIGHT - len(lines))
+            for index, line in enumerate(lines):
+                put(bx, by + index, line, "yellow", bold=True)
+
         return "".join(output) + self.term.normal
 
     def _draw_status_bar(
@@ -508,12 +521,15 @@ class BlessedUI:
 
         y += 1
         x = 0
-        party = player.last_encounter_party
+        from .stage5 import TrialDialogue
+
+        dialogue = message if isinstance(message, TrialDialogue) else None
+        party = "" if dialogue else player.last_encounter_party
         if party:
             party_panel = f"[{party}]  "
             available = max(0, self.term.width - x - 1)
             add(self.term.truncate(party_panel, available), color="cyan")
-        if message:
+        if message and dialogue is None:
             available = self.term.width - x - 1
             if available > 0:
                 add(self.term.truncate(message, available), color="yellow")
@@ -555,6 +571,7 @@ class BlessedUI:
             stage_num, stage_roster, floor_view, floor_label, reachable_cells,
             overshoot_markers, loop_trail_markers,
             d_gates,
+            message,
         )
         status_args = (
             player,
