@@ -775,20 +775,18 @@ def treasure(x, y, mimic=False, toy=False):
     like a starfish's arms, growing from the box's corners, and has a small
     three-fingered hand like a newt's on each end.
 
-    With `toy`, the toy chest of the Stage 5 training room (T-toy): the same
-    shape in glossy plastic with softer edges, its box and lid a brighter,
-    poppier red than the chest's, holding chunky plastic toy coins.
+    With `toy`, the toy chest of the Stage 5 training room (T-toy): the
+    mimic's shape without its legs and hands, with the chest's lock and hasp,
+    in painted tin like a tin toy, bright red with yellow straps, holding
+    chunky toy coins.
 
-    The treasure chest itself is blackened bronze with gilded relief, on a
-    footed base: four wide flat gold straps over the lid and box, the end ones
-    reaching round onto the end faces, gold trims
-    along the edges with rivets on the lid's, a diamond lock plate under a
-    hasp, and a ring handle on each end.
+    The treasure chest itself is blackened bronze with gilded relief: four
+    wide flat gold straps over the lid and box, the end ones reaching round
+    onto the end faces, gold trims along the edges with rivets on the lid's,
+    a diamond lock plate under a hasp, and a ring handle on each end.
     """
     ornate = not (mimic or toy)
-    strapped = not toy  # the chest's and the mimic's straps
     start = set(bpy.data.objects)
-    soft = 2.0 if toy else 1.0  # edge rounding
     if mimic:
         # Rougher and with a weaker rim than the golem's own stone, as the
         # chest's broad smooth faces would otherwise shine pale grey.
@@ -806,10 +804,11 @@ def treasure(x, y, mimic=False, toy=False):
             sphere('Mimic glowing eye', (x + side * 0.15, y - 0.16, 0.53), (0.05, 0.035, 0.035),
                    gem, 16)
     elif toy:
-        wood = material('Toy chest bright red plastic', (0.80, 0.07, 0.03), 0.0, 0.28,
-                        rim=(1.0, 0.55, 0.4), rim_strength=0.4, coat=0.4)
-        gold = material('Toy chest yellow plastic', (1.0, 0.60, 0.07), 0.0, 0.3,
-                        rim=(1.0, 0.85, 0.45), rim_strength=0.3, coat=0.3)
+        # Painted tin: a metal under a glossy coat of paint.
+        wood = material('Toy chest red painted tin', (0.80, 0.07, 0.03), 0.0, 0.35,
+                        rim=(1.0, 0.55, 0.4), rim_strength=0.3, metallic=0.6, coat=0.6)
+        gold = material('Toy chest yellow painted tin', (1.0, 0.60, 0.07), 0.0, 0.35,
+                        rim=(1.0, 0.85, 0.45), rim_strength=0.25, metallic=0.6, coat=0.6)
         light = material('Toy chest glow', (1.0, 0.8, 0.3), emission=(1.0, 0.72, 0.2),
                          strength=1.5)
         gem = material('Toy chest red button', (0.9, 0.04, 0.05), 0.0, 0.25,
@@ -844,7 +843,7 @@ def treasure(x, y, mimic=False, toy=False):
                                                 location=(x + dx, y + dy, 0.515),
                                                 rotation=(0.3 * (i - 1.5), 0.2 * i, 0))
             finish(bpy.context.object, gold, True, 'Chest gold coin')
-    block('Chest box', (x, y, 0.27), (1.0, 0.66, 0.46), wood, 0.05 * soft)
+    block('Chest box', (x, y, 0.27), (1.0, 0.66, 0.46), wood, 0.05)
     # Rounded lid: a half cylinder along the box, flat underneath, so it
     # stays a half circle seen from the side when tilted open.
     def half_cylinder(name, dx, radius, length, mat):
@@ -861,7 +860,7 @@ def treasure(x, y, mimic=False, toy=False):
 
     lid = half_cylinder('Chest rounded lid', 0, 0.33, 0.98, wood)
     bevel = lid.modifiers.new('Soft lid rims', 'BEVEL')
-    bevel.width = 0.03 * soft
+    bevel.width = 0.03
     bevel.segments = 3
     # Bands wrap only the outside: a hollow half ring over the lid, and a
     # plate on the box's front and back, so none crosses the opening.
@@ -881,40 +880,39 @@ def treasure(x, y, mimic=False, toy=False):
         last = 4 * segments
         faces += [(0, 2, 3, 1), (last, last + 1, last + 3, last + 2)]
         arc = mesh_object(name, verts, faces, mat, True)
-        if strapped:
-            # Flat plates: smooth only along the curve, sharp at the edges.
-            arc.data.use_auto_smooth = True
-            arc.data.auto_smooth_angle = math.radians(30)
+        # Flat plates: smooth only along the curve, sharp at the edges.
+        arc.data.use_auto_smooth = True
+        arc.data.auto_smooth_angle = math.radians(30)
         return arc
 
     lid_parts = [lid]
-    # The chest and the mimic: wide flat straps, two at the ends reaching the
-    # end faces and two between, with the middle left open for the lock.
-    bands, band_width = ((-0.43, -0.18, 0.18, 0.43), 0.14) if strapped else ((-0.36, 0.36), 0.09)
-    # Their plates are half as thick.
-    plate = 0.015 if strapped else 0.03
+    # Wide flat straps, two at the ends reaching the end faces and two
+    # between, with the middle left open for the lock.
+    bands, band_width = (-0.43, -0.18, 0.18, 0.43), 0.14
+    plate = 0.015
     for dx in bands:
         lid_parts.append(band_arc('Chest lid band', dx, 0.35 - plate * 0.83, 0.35, band_width,
                                   gold))
         # End straps on the box run on round the corner onto the end face.
-        end = strapped and abs(dx) > 0.4
+        end = abs(dx) > 0.4
         box_dx, box_width = (dx + math.copysign(0.015, dx), band_width + 0.03) if end else (dx, band_width)
         for side in (-1, 1):
             block('Chest box band', (x + box_dx, y + side * (0.35 - plate / 2), 0.27),
-                  (box_width, plate, 0.47), gold, min(0.012 * soft, plate / 2))
+                  (box_width, plate, 0.47), gold, plate / 2)
             if end:
                 block('Chest box band', (x + math.copysign(0.5 + plate / 2, dx), y + side * 0.28,
                                          0.27), (plate, 0.14, 0.47), gold, plate / 2)
-    if strapped:
-        # The end straps continue as a flat half ring over each end face.
-        for dx in (-0.497, 0.497):
-            lid_parts.append(band_arc('Chest lid end plate', dx, 0.20, 0.35, 0.007, gold))
+    # The end straps continue as a flat half ring over each end face.
+    for dx in (-0.497, 0.497):
+        lid_parts.append(band_arc('Chest lid end plate', dx, 0.20, 0.35, 0.007, gold))
+    if not mimic:
+        lid_parts.append(block('Chest hasp', (x, y - 0.345, 0.47), (0.07, 0.025, 0.14), gold,
+                               0.01))
     if ornate:
         def rivet(pos, flat):
             return sphere('Chest rivet', pos, tuple(0.012 if i == flat else 0.024
                                                     for i in range(3)), gold, 16)
-        # Lid: rivets along the end plates and a trim along the front edge,
-        # and the hasp hanging from it.
+        # Lid: rivets along the end plates and a trim along the front edge.
         for dx in (-0.497, 0.497):
             for a in (0.15, 0.3, 0.5, 0.7, 0.85):
                 a *= math.pi
@@ -925,8 +923,6 @@ def treasure(x, y, mimic=False, toy=False):
                                (0.98, 0.04, 0.035), gold, 0.01))
         for dx in (-0.305, 0.305):
             lid_parts.append(rivet((x + dx, y - 0.352, 0.515), 1))
-        lid_parts.append(block('Chest hasp', (x, y - 0.345, 0.47), (0.07, 0.025, 0.14), gold,
-                               0.01))
         # Box: trims along the top and bottom edges of every face, and a ring
         # handle on each end.
         for side in (-1, 1):
@@ -947,33 +943,10 @@ def treasure(x, y, mimic=False, toy=False):
     opening = hinge @ Matrix.Rotation(-0.50, 4, 'X') @ hinge.inverted()
     for part in lid_parts:
         part.matrix_world = opening @ part.matrix_world
-    if ornate:
+    if not mimic:  # the mimic has no lock
         block('Chest lock plate', (x, y - 0.345, 0.32), (0.15, 0.03, 0.15), gold, 0.02,
               (0, math.pi / 4, 0))
         sphere('Chest ruby', (x, y - 0.367, 0.32), (0.05, 0.03, 0.05), gem, 16, False)
-    elif toy:  # the mimic has no lock
-        block('Chest lock plate', (x, y - 0.34, 0.42), (0.20, 0.03, 0.24), gold, 0.03 * soft)
-        sphere('Chest ruby', (x, y - 0.365, 0.44), (0.065, 0.035, 0.075), gem, 16, False)
-    for dx in (-0.48, 0.48) if toy else ():
-        for dy in (-0.31, 0.31):
-            block('Chest corner cap', (x + dx, y + dy, 0.27), (0.08, 0.08, 0.48), gold,
-                  0.02 * soft)
-    if ornate:
-        # Raise the chest onto a base whose corners stand as feet.
-        lift = Matrix.Translation((0, 0, 0.08))
-        bpy.context.view_layer.update()  # matrix_world of the newest parts
-        for obj in set(bpy.data.objects) - start:
-            obj.matrix_world = lift @ obj.matrix_world
-        block('Chest base', (x, y, 0.1), (1.08, 0.74, 0.05), wood, 0.01)
-        for side in (-1, 1):
-            block('Chest base trim', (x, y + side * 0.372, 0.115), (1.08, 0.012, 0.02), gold,
-                  0.004)
-            block('Chest base trim', (x + side * 0.542, y, 0.115), (0.012, 0.74, 0.02), gold,
-                  0.004)
-        # Feet flush with the base's faces, so the gaps between them show.
-        for dx in (-0.44, 0.44):
-            for dy in (-0.27, 0.27):
-                block('Chest foot', (x + dx, y + dy, 0.04), (0.2, 0.2, 0.08), wood, 0.01)
     if mimic:
         # Raised on four legs like a starfish's arms: thick where they grow
         # from the box's bottom corners, arching out and down to sharp tips.
