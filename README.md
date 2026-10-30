@@ -175,7 +175,7 @@ In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 se
 
 ## Stage List
 
-### Stage 1
+### Stage 1: The First Dungeon
 
 | Display & Name      | Description                                                                                                                                                       |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -186,7 +186,7 @@ In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 se
 | **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to one third (rounded up) until replaced.        |
 | **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
 
-### Stage 2
+### Stage 2: Full-Size Dungeon
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
@@ -205,7 +205,7 @@ Queued respawns are processed every 65 turns. Rare Erebus (`E`) and the Vortex
 (`V`) can return on any Stage 4 floor. The Caltrop Plant (`X`), which appears
 in Stages 2, 3, and 4, also respawns on a random floor; Stage 2 has one floor.
 
-### Stage 3
+### Stage 3: Dungeon with Elves
 
 Stage 3 has three connected floors and four elves: `I`, `J`, `K`, and `H`.
 Empowered Bison, Chimeras, and Komodo Dragons (`b'`, `c'`, and `d'`) also
@@ -238,7 +238,7 @@ Entering a barrier (`=`) costs an extra 30 LP. The protective amulet removes
 this cost unless you are holding the cursed sword. Collector and Javelin
 bonuses stack with item modifiers, including swords and poison.
 
-### Stage 4
+### Stage 4: Deep Labyrinth
 
 Stage 4 has five connected floors and features elves, including some new ones. New monsters and traps also appear. The boss is the empowered Fire Drake (`F'`).
 
@@ -268,11 +268,11 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | **L** Lifebringer Elf | Each meeting cures poison, raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then disappears and returns on a random floor at a later 65-turn respawn tick. |
 | **S** Sylvan Elf | Gives you fairy nectar. Companions recruited afterward, except `l`, stay with you 1.25 times longer. |
 
-### Stage 5 (member-ability trial)
+### Stage 5: Training Ground
 
 Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of all six Stage 6 companions.
 
-### Stage 6 (four-floor boss and treasure dungeon)
+### Stage 6: Dungeon with a Party
 
 Stage 6 is a four-floor dungeon starting at level 1. The player fights with party members, and monsters also form parties. Find party members on floors 1–3, defeat the Dread Wyrm (`W`) on floor 4, and claim the treasure. Four of six candidates appear; the HUD shows discovered roles and floors. You can recruit up to two members; a third replaces the earliest recruit.
 
