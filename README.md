@@ -322,3 +322,5 @@ Combat shows `*` on the defeated side for 0.3 seconds before movement or respawn
 The combat `*` is blue when you win and red when you lose.
 
 In sprite mode, combat instead overlays a blue slash on victory or a red splash on defeat.
+
+Barrier damage also shows the defeat effect for 0.3 seconds after you enter the barrier cell.

@@ -271,8 +271,8 @@ def _apply_terrain_hazards(
 ) -> Optional[str]:
     """Apply barrier/caltrop damage for the player's current cell.
 
-    Returns the barrier event message for turn processing. LP damage is also
-    summarized by a short popup near the player.
+    LP damage is summarized by a short popup near the player.
+    Barrier damage does not emit a status message.
     """
     field = current.field
     event_message = None
@@ -281,7 +281,6 @@ def _apply_terrain_hazards(
         damage = max(0, old_lp - player.lp)
         tone = "green" if d.has_member(player, d.MEMBER_GUARDIAN) else "default"
         _set_status_popup(player, f"LP-{damage:g}", tone)
-        event_message = trp("-- The barrier burns you.", 5)
         if trace is not None:
             trace.record_damage("barrier")
     if field[player.y][player.x] == d.CHAR_CALTROP:
@@ -1597,6 +1596,7 @@ def _process_multi_floor_turn(
     trace: Optional[TraceRecorder] = None,
     repeat_stop_reasons: Optional[Set[str]] = None,
     combat_effect=None,
+    barrier_effect=None,
 ) -> Optional[Tuple[int, str]] | _RewindRequest:
     if player.status_popup_ticks > 0:
         player.status_popup_ticks -= 1
@@ -1737,6 +1737,10 @@ def _process_multi_floor_turn(
     )
     if hazard_message is not None:
         event_message = hazard_message
+    if (player.lp < old_hazard_lp
+            and current.field[player.y][player.x] == d.CHAR_BARRIER
+            and barrier_effect is not None):
+        barrier_effect()
     player.marksman_damage_prevented = False
     if (player.x, player.y) != previous or collapse_transition:
         marksman_hit = _marksman_shoot(current, player, trace)
@@ -2138,6 +2142,28 @@ def run_game(
         repeat_stop_reasons: Optional[Set[str]] = (
             set() if repeat_stop_enabled or stage_num == 5 else None
         )
+        def show_barrier_effect():
+            active = floors[floor[0]]
+            visible = observe_world(
+                floors, player, floor[0], stage_num, config.torch_radius
+            )
+            ui.draw_stage(
+                turn=turn, player=player, entities=[player, *active.entities],
+                field=active.field, cur_torched=visible, torched=active.seen,
+                known_types=player.known_monsters,
+                show_entities=debug_show_entities or getattr(ui, "map_mode", False),
+                debug_show_entities=debug_show_entities, stage_num=stage_num,
+                message=None,
+                checkpoint=checkpoint[0], decor=active.decor,
+                **_stage_draw_options(
+                    stage_num, floors, floor[0], single_floor_stage,
+                    show_floor_label=True,
+                ),
+            )
+            effect = getattr(ui, "draw_combat_effect", None)
+            if effect is not None:
+                effect((player.x, player.y), False)
+
         step_result = _process_multi_floor_turn(
             move,
             floors,
@@ -2150,6 +2176,7 @@ def run_game(
             trace=trace,
             repeat_stop_reasons=repeat_stop_reasons,
             combat_effect=getattr(ui, "draw_combat_effect", None),
+            barrier_effect=show_barrier_effect,
         )
         if replay_context is not None:
             operation_path.append((floor[0], (player.x, player.y)))

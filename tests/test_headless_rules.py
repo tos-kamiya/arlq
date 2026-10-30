@@ -2643,11 +2643,11 @@ def test_revealed_entity_glyphs_distinguish_unknown_known_and_empowered():
 
 
 @pytest.mark.parametrize("importance", [3, 7])
-def test_terrain_and_contact_messages_compete_by_priority(importance):
+def test_barrier_does_not_override_contact_message(importance):
     player = d.Player(2, 2, 100, 90)
     tribe = d.MonsterTribe("a", 1, 10, event_message="Contact message",
                            event_message_importance=importance)
     floors, field = stage3_state(player, [d.Monster(3, 2, tribe)])
     field[2][3] = d.CHAR_BARRIER
     result = _step((1, 0), floors, player, [0], [(2, 2)], Counter(), 1)
-    assert result[1] == ("Contact message" if importance == 7 else "-- The barrier burns you.")
+    assert result[1] == "Contact message"
