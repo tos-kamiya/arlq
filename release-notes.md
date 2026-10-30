@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 6.1.0 - 2026-10-30
+
+- Make Stage 5 a fixed-map member-ability training ground and Stage 6 the
+  four-floor boss and treasure dungeon.
+- Add companion dialogue bubbles and training-room terrain to Stage 5,
+  refine its layout, and support the same ASCII map markers on both floors.
+- Reduce Guardian barrier damage to one third and correct tutorial pit
+  landings and party rewind interactions.
+- Add brief blue victory and red defeat effects, with slash and splash
+  overlays in sprite mode; show the defeat effect after barrier damage.
+- Refresh creature, treasure, and unidentified-object sprites, and dim
+  unidentified sprites' ground discs.
+
 ## 6.0.1 - 2026-10-29
 
 - Allow swords to break undiscovered hidden passages into ordinary floor.
