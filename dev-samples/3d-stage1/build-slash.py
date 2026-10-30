@@ -32,6 +32,9 @@ OUT = Path(__file__).resolve().parent / 'heroic' / 'effect-slash.png'
 # toward 8:30, where the crescent ends.
 # The cut spans about 1.5 times a monster's width and slants gently.
 RADIUS = 1.0
+# The cylinder's axis stands this far in front of the monster, toward the
+# player, so the far half of the cut does not reach far behind the monster.
+NEAR = 0.6
 MIDDLE = 0.8
 RISE = 0.4
 END_ANGLE = math.radians(15)  # 2:30, counterclockwise from screen right
@@ -60,12 +63,12 @@ scene.world = world
 def path(t):
     """The cut's far half: t = 0 at 2:30 (high), 1 at 8:30 (low)."""
     angle = END_ANGLE + math.pi * t
-    return Vector((RADIUS * math.cos(angle), RADIUS * math.sin(angle),
+    return Vector((RADIUS * math.cos(angle), RADIUS * math.sin(angle) - NEAR,
                    MIDDLE + RISE * math.cos(angle - END_ANGLE)))
 
 
 vertices, uvs, faces = [], [], []
-centre = Vector((0, 0, MIDDLE))
+centre = Vector((0, -NEAR, MIDDLE))
 for i in range(STEPS + 1):
     t = i / STEPS
     outer = path(t)
