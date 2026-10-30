@@ -173,7 +173,7 @@ In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 se
 | **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |
 
-## Monster List
+## Stage List
 
 ### Stage 1
 
@@ -182,7 +182,6 @@ In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 se
 | **a** Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                                |
 | **A** Rare Amoeba   | Defeating it raises your level by 10 instead of the usual 1. |
 | **b** Bison         | The second weakest. Defeating it restores a large amount of LP. Hunt it when you're hungry.                                                                       |
-| **B** Buffalo (Stage 6) | Attack power 8. Defeating it restores 80 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **c** Chimera       | Moderately strong. It carries a sword. Taking it raises combat power to 1.5x and lets you break up to three walls.                                               |
 | **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to one third (rounded up) until replaced.        |
 | **D** Dragon        | Very strong; defeating it unlocks a treasure chest.                                                                                                               |
@@ -296,6 +295,7 @@ Vertically adjacent monsters fight in parties of up to three, combining their st
 
 | Marker / name | Description |
 | --- | --- |
+| `B` Buffalo | Attack power 8. Defeating it restores 80 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | `f` / `f'` Flame cobra | Defeating either grants 3 base experience. The empowered form `f'` places barriers on available adjacent cells in the four cardinal directions. |
 
 The floor 4 boss party consists of `W`, `V`, and one escort; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
