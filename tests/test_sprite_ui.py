@@ -78,6 +78,11 @@ def test_unknown_amoeba_does_not_disclose_model(sprite_ui, monkeypatch):
     # The symbol stands in a dimmed pillar of its text color.
     assert [args[-1] for args in pillars] == [
         tuple(round(c * sprite_funcs.UNKNOWN_PILLAR) for c in (244, 190, 78))]
+    # Its ground disc keeps the hue but is no brighter than a blue disc.
+    disc = sprite_ui.outlines[0][3]
+    blue = sprite_funcs.COLOR_MAP[sprite_funcs.CI_BLUE]
+    assert sprite_funcs._luminance(disc) == pytest.approx(sprite_funcs._luminance(blue), abs=1)
+    assert disc[0] > disc[1] > disc[2]
 
 
 

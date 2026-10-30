@@ -85,6 +85,9 @@ UNKNOWN_TINT = 0.4
 # Their pillar is dimmed to this fraction, so it does not outshine the
 # identified characters around it.
 UNKNOWN_PILLAR = 0.21
+# Their ground disc is darkened, if needed, to no brighter (by luminance) than
+# the blue disc of a beatable identified monster.
+UNKNOWN_DISC_REFERENCE = CI_BLUE
 MEMBER_SPRITES = {'J': 'jester', 'H': 'healer', 'R': 'rogue',
                   'K': 'knight', 'G': 'guardian', 'D': 'explorer'}
 MEMBER_SKINS = ('light', 'medium', 'dark')
@@ -258,6 +261,11 @@ TERRAIN_OVERHANG = {d.CHAR_STAIRS_UP: 0.5, d.CHAR_STAIRS_DOWN: 0.5,
 TERRAIN_EXPLORED_SHADE = 0.55
 # Opacity of the yellow ground disc that marks each stair.
 STAIR_DISC_OPACITY = 90
+
+
+def _luminance(color):
+    r, g, b = color
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
 def pillar_image(side):
@@ -1712,6 +1720,11 @@ class SpriteUI(PygletUI):
             color, upper_right_color = self._dim_color(blue) if dimmed else blue, color
         # Keep the original semantic color (strength, poison, etc.) readable
         # as a glowing disc on the ground the character stands on.
+        if text in UNKNOWN_SPRITES:
+            reference = COLOR_MAP[UNKNOWN_DISC_REFERENCE]
+            if dimmed:
+                reference = self._dim_color(reference)
+            shade *= min(1.0, _luminance(reference) / max(_luminance(color), 1))
         color = tuple(round(c * shade) for c in color)
         if disc_scale:
             self._draw_ground_disc(cx, cy, disc_scale * GROUND_DISC_RADIUS * self._sprite_unit(),
