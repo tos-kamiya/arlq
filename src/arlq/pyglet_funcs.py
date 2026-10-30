@@ -43,6 +43,7 @@ from pyglet.window import key as pgkey
 
 from .__about__ import __version__
 from . import defs as d
+from .settings import combat_effect_seconds, load_settings
 from . import display as ui_display
 from .arlq import barrier_lp_damage
 from .i18n import t as tr
@@ -224,11 +225,7 @@ def _settings_path() -> Path:
 
 
 def _load_settings() -> dict:
-    try:
-        value = json.loads(_settings_path().read_text(encoding="utf-8"))
-        return value if isinstance(value, dict) else {}
-    except (OSError, ValueError, TypeError, json.JSONDecodeError):
-        return {}
+    return load_settings(_settings_path())
 
 
 def load_ui_scale() -> float:
@@ -410,6 +407,7 @@ class PygletUI:
             if key_repeat_interval is None else key_repeat_interval
         )
         self.auto_repeat_stop_enabled = load_auto_repeat_stop_enabled()
+        self.combat_effect_seconds = combat_effect_seconds(_load_settings())
         (
             self.gamepad_help_button,
             self.gamepad_preview_button,
@@ -524,6 +522,17 @@ class PygletUI:
     def set_auto_repeat_stop_enabled(self, enabled: bool) -> None:
         self.auto_repeat_stop_enabled = bool(enabled)
         save_auto_repeat_stop_enabled(self.auto_repeat_stop_enabled)
+
+    def set_combat_effect_seconds(self, seconds: float) -> None:
+        self.combat_effect_seconds = combat_effect_seconds({"combat_effect_seconds": seconds})
+        path = _settings_path()
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            settings = _load_settings()
+            settings["combat_effect_seconds"] = self.combat_effect_seconds
+            path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+        except OSError:
+            pass
 
     def set_gamepad_bindings(
         self,
@@ -1052,6 +1061,9 @@ class PygletUI:
                         x_offset=self._field_text_x_offset())
 
     def draw_combat_effect(self, pos, won: bool) -> None:
+        seconds = getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
+        if seconds == 0:
+            return
         x, y = pos
         self._draw_rect(
             self._field_col_x(x), y * self.cell_size_y,
@@ -1063,7 +1075,7 @@ class PygletUI:
                         x_offset=self._field_text_x_offset(),
                         group=pyglet.graphics.Group(order=10002))
         self._flip()
-        time.sleep(d.COMBAT_EFFECT_SECONDS)
+        time.sleep(seconds)
 
     def draw_rewind_transition(self, message: str) -> None:
         """Show the Loop Companion transition before rebuilding the past."""
@@ -1948,11 +1960,14 @@ class PygletUI:
 
         repeat_index = KEY_REPEAT_CHOICES.index(self.key_repeat_interval) if self.key_repeat_interval in KEY_REPEAT_CHOICES else 0
         auto_repeat_stop_enabled = self.auto_repeat_stop_enabled
+        effect_index = d.COMBAT_EFFECT_SECONDS_CHOICES.index(
+            getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
+        )
         row = 0
         while True:
             controller_connected = self._gamepad_is_connected()
-            if not controller_connected and row == 3:
-                row = 2
+            if not controller_connected and row == 4:
+                row = 3
             self._clear_drawables()
             self._draw_text(
                 (8, 5),
@@ -1981,13 +1996,13 @@ class PygletUI:
             repeat_label = tr("Movement repeat interval")
             repeat_heading = f"{'>' if row == 1 else ' '} {repeat_label}"
             self._draw_text(
-                (8, 10),
+                (8, 9.5),
                 repeat_heading,
                 COLOR_MAP["default"],
                 bold=row == 1,
             )
             self._draw_text(
-                (8, 10),
+                (8, 9.5),
                 f"<  {tr('No repeat') if KEY_REPEAT_CHOICES[repeat_index] is None else format(KEY_REPEAT_CHOICES[repeat_index], '.1f') + 's'}  >",
                 COLOR_MAP["default"],
                 bold=row == 1,
@@ -1999,13 +2014,13 @@ class PygletUI:
             stop_label = tr("Automatic repeat stop")
             stop_heading = f"{'>' if row == 2 else ' '} {stop_label}"
             self._draw_text(
-                (8, 12),
+                (8, 11),
                 stop_heading,
                 COLOR_MAP["default"],
                 bold=row == 2,
             )
             self._draw_text(
-                (8, 12),
+                (8, 11),
                 f"<  {tr('On') if auto_repeat_stop_enabled else tr('Off')}  >",
                 COLOR_MAP["default"],
                 bold=row == 2,
@@ -2014,8 +2029,18 @@ class PygletUI:
                     bold=row == 2,
                 ) + self._menu_cell_size_x,
             )
+            effect_heading = f"{'>' if row == 3 else ' '} {tr('Combat effect duration')}"
+            self._draw_text(
+                (8, 12.5), effect_heading, COLOR_MAP["default"], bold=row == 3,
+            )
+            self._draw_text(
+                (8, 12.5), f"<  {d.COMBAT_EFFECT_SECONDS_CHOICES[effect_index]:.1f}s  >",
+                COLOR_MAP["default"], bold=row == 3,
+                x_offset=self._text_width(effect_heading, bold=row == 3)
+                + self._menu_cell_size_x,
+            )
             gamepad_label = tr("Gamepad button settings")
-            gamepad_heading = f"{'>' if row == 3 else ' '} {gamepad_label}"
+            gamepad_heading = f"{'>' if row == 4 else ' '} {gamepad_label}"
             gamepad_setting_color = (
                 COLOR_MAP["default"] if controller_connected else (112, 116, 124)
             )
@@ -2023,16 +2048,16 @@ class PygletUI:
                 (8, 14),
                 gamepad_heading,
                 gamepad_setting_color,
-                bold=row == 3 and controller_connected,
+                bold=row == 4 and controller_connected,
             )
             self._draw_text(
                 (8, 14),
                 "->",
                 gamepad_setting_color,
-                bold=row == 3 and controller_connected,
+                bold=row == 4 and controller_connected,
                 x_offset=self._text_width(
                     gamepad_heading,
-                    bold=row == 3,
+                    bold=row == 4,
                 ) + self._menu_cell_size_x,
             )
             help_color = (145, 150, 160)
@@ -2056,10 +2081,10 @@ class PygletUI:
                 if event is not None:
                     symbol, _ = event
                     if symbol == pgkey.UP:
-                        row = (row - 1) % (4 if controller_connected else 3)
+                        row = (row - 1) % (5 if controller_connected else 4)
                         break
                     if symbol == pgkey.DOWN:
-                        row = (row + 1) % (4 if controller_connected else 3)
+                        row = (row + 1) % (5 if controller_connected else 4)
                         break
                     if symbol == pgkey.LEFT:
                         if row == 0:
@@ -2068,6 +2093,8 @@ class PygletUI:
                             repeat_index = max(0, repeat_index - 1)
                         elif row == 2:
                             auto_repeat_stop_enabled = not auto_repeat_stop_enabled
+                        elif row == 3:
+                            effect_index = max(0, effect_index - 1)
                         break
                     if symbol == pgkey.RIGHT:
                         if row == 0:
@@ -2076,13 +2103,16 @@ class PygletUI:
                             repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
                         elif row == 2:
                             auto_repeat_stop_enabled = not auto_repeat_stop_enabled
-                        elif row == 3 and controller_connected:
+                        elif row == 3:
+                            effect_index = min(len(d.COMBAT_EFFECT_SECONDS_CHOICES) - 1, effect_index + 1)
+                        elif row == 4 and controller_connected:
                             self.gamepad_button_settings_menu()
                         break
                     if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
                         self.set_scale(UI_SCALE_CHOICES[current_index])
                         self.set_key_repeat_interval(KEY_REPEAT_CHOICES[repeat_index])
                         self.set_auto_repeat_stop_enabled(auto_repeat_stop_enabled)
+                        self.set_combat_effect_seconds(d.COMBAT_EFFECT_SECONDS_CHOICES[effect_index])
                         return
                     if symbol in (pgkey.ESCAPE, pgkey.Q):
                         return
@@ -2094,10 +2124,10 @@ class PygletUI:
                 if direction != getattr(self, "gamepad_previous_direction", None):
                     self.gamepad_previous_direction = direction
                     if direction == (0, -1):
-                        row = (row - 1) % (4 if controller_connected else 3)
+                        row = (row - 1) % (5 if controller_connected else 4)
                         break
                     if direction == (0, 1):
-                        row = (row + 1) % (4 if controller_connected else 3)
+                        row = (row + 1) % (5 if controller_connected else 4)
                         break
                     if direction == (-1, 0):
                         if row == 0:
@@ -2106,6 +2136,8 @@ class PygletUI:
                             repeat_index = max(0, repeat_index - 1)
                         elif row == 2:
                             auto_repeat_stop_enabled = not auto_repeat_stop_enabled
+                        elif row == 3:
+                            effect_index = max(0, effect_index - 1)
                         break
                     if direction == (1, 0):
                         if row == 0:
@@ -2114,13 +2146,16 @@ class PygletUI:
                             repeat_index = min(len(KEY_REPEAT_CHOICES) - 1, repeat_index + 1)
                         elif row == 2:
                             auto_repeat_stop_enabled = not auto_repeat_stop_enabled
-                        elif row == 3 and controller_connected:
+                        elif row == 3:
+                            effect_index = min(len(d.COMBAT_EFFECT_SECONDS_CHOICES) - 1, effect_index + 1)
+                        elif row == 4 and controller_connected:
                             self.gamepad_button_settings_menu()
                         break
                 if 0 in getattr(self, "_gamepad_pressed_buttons", ()):
                     self.set_scale(UI_SCALE_CHOICES[current_index])
                     self.set_key_repeat_interval(KEY_REPEAT_CHOICES[repeat_index])
                     self.set_auto_repeat_stop_enabled(auto_repeat_stop_enabled)
+                    self.set_combat_effect_seconds(d.COMBAT_EFFECT_SECONDS_CHOICES[effect_index])
                     return
                 if 1 in getattr(self, "_gamepad_pressed_buttons", ()):
                     return

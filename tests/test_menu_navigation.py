@@ -1,6 +1,8 @@
 """Keyboard navigation checks for the GUI menus."""
 
 import json
+
+import pytest
 from collections import deque
 
 from pyglet.window import key
@@ -79,4 +81,57 @@ def test_settings_can_disable_and_persist_automatic_repeat_stop(monkeypatch, tmp
     assert json.loads(settings_path.read_text()) == {
         "key_repeat_interval": None,
         "auto_repeat_stop_enabled": False,
+        "combat_effect_seconds": 0.3,
     }
+
+
+@pytest.mark.parametrize("seconds", defs.COMBAT_EFFECT_SECONDS_CHOICES)
+def test_settings_select_and_reload_combat_effect_duration(monkeypatch, tmp_path, seconds):
+    from arlq.settings import combat_effect_seconds, load_settings
+
+    path = tmp_path / "settings.json"
+    path.write_text(json.dumps({"scale": 1.5}))
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    events = [(key.DOWN, 0)] * 3 + [(key.LEFT, 0)] * 5
+    events += [(key.RIGHT, 0)] * round(seconds * 10) + [(key.RETURN, 0)]
+    ui = _menu_ui(monkeypatch, events)
+    ui.set_scale = lambda scale: None
+
+    ui.settings_menu()
+
+    assert ui.combat_effect_seconds == seconds
+    assert combat_effect_seconds(load_settings(path)) == seconds
+    assert load_settings(path)["scale"] == 1.5
+
+
+def test_cancel_combat_effect_duration_keeps_saved_value(monkeypatch, tmp_path):
+    path = tmp_path / "settings.json"
+    original = '{"combat_effect_seconds": 0.3}'
+    path.write_text(original)
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    ui = _menu_ui(monkeypatch, [(key.DOWN, 0)] * 3 + [(key.RIGHT, 0), (key.ESCAPE, 0)])
+    ui.combat_effect_seconds = 0.3
+
+    ui.settings_menu()
+
+    assert ui.combat_effect_seconds == 0.3
+    assert path.read_text() == original
+
+
+@pytest.mark.parametrize("value", [None, True, "0.1", -0.1, 0.6, 0.25, float("nan")])
+def test_invalid_combat_effect_duration_uses_default(value):
+    from arlq.settings import combat_effect_seconds
+
+    assert combat_effect_seconds({"combat_effect_seconds": value}) == 0.3
+
+
+def test_zero_duration_skips_effect_in_all_frontends():
+    from arlq.blessed_funcs import BlessedUI
+    from arlq.sprite_funcs import SpriteUI
+
+    for frontend in (PygletUI, SpriteUI, BlessedUI):
+        ui = frontend.__new__(frontend)
+        ui.combat_effect_seconds = 0
+        # No window or terminal is available; zero must return before rendering.
+        ui.draw_combat_effect((0, 0), True)
+        ui.draw_combat_effect((0, 0), False)

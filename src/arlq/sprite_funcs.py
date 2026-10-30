@@ -1079,6 +1079,9 @@ class SpriteUI(PygletUI):
         )
 
     def draw_combat_effect(self, pos, won: bool) -> None:
+        seconds = getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
+        if seconds == 0:
+            return
         name = "slash" if won else "splash"
         image = pyglet.image.load(str(
             Path(__file__).parent / "assets" / "effects" / f"{name}.png"
@@ -1100,7 +1103,7 @@ class SpriteUI(PygletUI):
         effect.scale = scale
         try:
             self._flip()
-            time.sleep(d.COMBAT_EFFECT_SECONDS)
+            time.sleep(seconds)
         finally:
             effect.delete()
 

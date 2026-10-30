@@ -1204,3 +1204,4 @@ from .display import (
 )
 
 COMBAT_EFFECT_SECONDS = 0.3
+COMBAT_EFFECT_SECONDS_CHOICES = tuple(n / 10 for n in range(6))

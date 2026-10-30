@@ -4,6 +4,7 @@ from typing import Any, List, Optional, Set, Tuple
 from blessed import Terminal
 
 from . import defs as d
+from .settings import combat_effect_seconds, load_settings
 from . import display as ui_display
 from .i18n import t as tr
 
@@ -27,6 +28,7 @@ def key_to_dir(key: str) -> Optional[d.Point]:
 
 class BlessedUI:
     def __init__(self, term: Terminal, dots: bool = False):
+        self.combat_effect_seconds = combat_effect_seconds(load_settings())
         self.term = term
         self.dots = dots
         self.map_mode = False
@@ -591,11 +593,14 @@ class BlessedUI:
         self._render_last_stage()
 
     def draw_combat_effect(self, pos, won: bool) -> None:
+        seconds = getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
+        if seconds == 0:
+            return
         print(self.term.move_xy(*pos) + self._style(
             "*", "blue" if won else "red", bold=True,
             bg=self._combat_cell_backgrounds.get(pos),
         ), end="", flush=True)
-        time.sleep(d.COMBAT_EFFECT_SECONDS)
+        time.sleep(seconds)
 
     def draw_rewind_transition(self, message: str) -> None:
         """Show the Loop Companion transition before rebuilding the past."""
