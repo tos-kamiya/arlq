@@ -324,3 +324,5 @@ The combat `*` is blue when you win and red when you lose.
 In sprite mode, combat instead overlays a blue slash on victory or a red splash on defeat.
 
 Barrier damage also shows the defeat effect for 0.3 seconds after you enter the barrier cell.
+
+Stage 5 leaves two wall columns to the right of its fixed map, followed by open floor that can receive respawning monsters.

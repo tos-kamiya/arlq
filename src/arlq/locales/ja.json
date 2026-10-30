@@ -111,7 +111,6 @@
     "Press any key to return": "いずれかのキーで戻る",
     "[q]uit": "[q] 終了",
     "stage [{n}]": "ステージ [{n}]",
-    "stage [{n}] (Training Room)": "ステージ [{n}]（トレーニングルーム）",
     "[s]ettings": "[s] 設定",
     "Please resize the terminal to at least 80x24.": "端末を 80x24 以上の大きさにしてください。",
     "Jester": "ジェスター(J)",

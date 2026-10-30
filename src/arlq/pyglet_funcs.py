@@ -2289,7 +2289,7 @@ class PygletUI:
         options = [tr("[q]uit")]
         for n in stage_numbers:
             options.append(
-                tr("stage [{n}] (Training Room)" if n == 5 else "stage [{n}]").format(n=n)
+                tr("stage [{n}]").format(n=n)
             )
         options.append(tr("[s]ettings"))
 

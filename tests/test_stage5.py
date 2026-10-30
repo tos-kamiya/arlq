@@ -1112,3 +1112,15 @@ def test_trial_dialogue_only_on_successful_stage_five_movement():
     result = engine._step((-1, 0), floors, player, floor, checkpoint, queue, 2,
                           stage_num=5)
     assert result is None or result[0] != -2
+
+
+def test_member_trial_right_margin_provides_respawn_floor():
+    floors, _ = stage5.build_member_trial()
+    for current, layout in zip(floors, (
+        stage5.STAGE5_MEMBER_TRIAL_MAP, stage5.STAGE5_MEMBER_TRIAL_LOWER_MAP,
+    )):
+        width = max(map(len, layout.splitlines()))
+        for row in current.field:
+            assert row[width:width + 2] == [d.CHAR_WALL] * 2
+            assert row[width + 2:] == [d.CHAR_FLOOR] * (d.FIELD_WIDTH - width - 2)
+        assert any(x >= width + 2 for x, y in stage56._open_points(current))

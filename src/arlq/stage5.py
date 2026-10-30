@@ -116,10 +116,15 @@ def build_member_trial(
     check_map(upper_rows, "Stage 5 floor 1")
     check_map(lower_rows, "Stage 5 floor 2")
 
-    def blank_field() -> list[list[str]]:
-        return [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    def blank_field(rows: list[str]) -> list[list[str]]:
+        wall_end = min(d.FIELD_WIDTH, max(map(len, rows)) + 2)
+        return [
+            [d.CHAR_WALL] * wall_end
+            + [d.CHAR_FLOOR] * (d.FIELD_WIDTH - wall_end)
+            for _ in range(d.FIELD_HEIGHT)
+        ]
 
-    upper_field = blank_field()
+    upper_field = blank_field(upper_rows)
     upper_seen = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
     upper_entities: list[d.Entity] = []
     upper_barriers: set[d.Point] = set()
@@ -165,7 +170,7 @@ def build_member_trial(
     if start is None or upper_stair is None or not upper_pits or not upper_gates:
         raise ValueError("Stage 5 floor 1 needs @, v, ?, and . markers")
 
-    lower_field = blank_field()
+    lower_field = blank_field(lower_rows)
     lower_seen = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
     lower_barriers: set[d.Point] = set()
     lower_gates: dict[d.Point, str] = {}
