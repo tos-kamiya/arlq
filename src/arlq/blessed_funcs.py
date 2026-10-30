@@ -1,3 +1,4 @@
+import time
 from typing import Any, List, Optional, Set, Tuple
 
 from blessed import Terminal
@@ -167,6 +168,11 @@ class BlessedUI:
             if color is None and background == "black":
                 return "white"
             return color
+
+        self._combat_cell_backgrounds = {
+            (x, y): None if render_monochrome else cell_background(x, y)
+            for y, row in enumerate(field) for x in range(len(row))
+        }
 
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
@@ -583,6 +589,13 @@ class BlessedUI:
         )
         self._last_stage = (stage_args, status_args)
         self._render_last_stage()
+
+    def draw_combat_effect(self, pos, won: bool) -> None:
+        print(self.term.move_xy(*pos) + self._style(
+            "*", "blue" if won else "red", bold=True,
+            bg=self._combat_cell_backgrounds.get(pos),
+        ), end="", flush=True)
+        time.sleep(d.COMBAT_EFFECT_SECONDS)
 
     def draw_rewind_transition(self, message: str) -> None:
         """Show the Loop Companion transition before rebuilding the past."""

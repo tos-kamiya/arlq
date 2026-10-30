@@ -1051,6 +1051,20 @@ class PygletUI:
         self._draw_text(pos, text, color, bold=bold,
                         x_offset=self._field_text_x_offset())
 
+    def draw_combat_effect(self, pos, won: bool) -> None:
+        x, y = pos
+        self._draw_rect(
+            self._field_col_x(x), y * self.cell_size_y,
+            self._field_col_width(x), self.cell_size_y,
+            self._combat_cell_colors.get(pos, VISIBLE_FLOOR),
+            group=pyglet.graphics.Group(order=10001),
+        )
+        self._draw_text(pos, "*", COLOR_MAP[CI_BLUE if won else CI_RED], bold=True,
+                        x_offset=self._field_text_x_offset(),
+                        group=pyglet.graphics.Group(order=10002))
+        self._flip()
+        time.sleep(d.COMBAT_EFFECT_SECONDS)
+
     def draw_rewind_transition(self, message: str) -> None:
         """Show the Loop Companion transition before rebuilding the past."""
         overlay_group = pyglet.graphics.Group(order=10000)
@@ -1164,6 +1178,7 @@ class PygletUI:
         reveal_disguises = debug_show_entities or self.map_mode
         self._clear_drawables()
         px, py = player.x, player.y
+        self._combat_cell_colors = {}
 
         def discovered_at(x: int, y: int) -> bool:
             return bool(torched[y][x] or show_entities)
@@ -1198,6 +1213,7 @@ class PygletUI:
                     tile_color = (67, 42, 45)
                 if reachable_cells and (x, y) in reachable_cells and not floor_view:
                     tile_color = REACHABLE_CELL_COLOR
+                self._combat_cell_colors[(x, y)] = tile_color
                 self._draw_tile(x, y, tile_color, field, discovered_at)
 
                 if discovered and cell in d.STAIR_CHARS:

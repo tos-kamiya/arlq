@@ -316,3 +316,7 @@ ChatGPT, Gemini, Claude, and Grok contributed to the design and implementation o
 ## License
 
 This project is licensed under the BSD-2 license.
+
+Combat shows `*` on the defeated side for 0.3 seconds before movement or respawning.
+
+The combat `*` is blue when you win and red when you lose.

@@ -1596,6 +1596,7 @@ def _process_multi_floor_turn(
     stage_num: int = 3,
     trace: Optional[TraceRecorder] = None,
     repeat_stop_reasons: Optional[Set[str]] = None,
+    combat_effect=None,
 ) -> Optional[Tuple[int, str]] | _RewindRequest:
     if player.status_popup_ticks > 0:
         player.status_popup_ticks -= 1
@@ -1761,6 +1762,16 @@ def _process_multi_floor_turn(
     if hit is not None:
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("entity_contact")
+        entity = current.entities[hit]
+        if (combat_effect is not None and isinstance(entity, d.Monster)
+                and not entity.tribe.is_elf
+                and (entity.tribe.char != "M" or entity.active)):
+            enemies = (stage56.monster_party(current, entity)
+                       if stage_num in (5, 6) else [entity])
+            won = d.current_player_attack(player, stage_num) >= sum(
+                d.monster_level(monster) for monster in enemies
+            )
+            combat_effect((entity.x, entity.y) if won else previous, won)
         contact = _resolve_contact(
             hit,
             current,
@@ -2138,6 +2149,7 @@ def run_game(
             stage_num=stage_num,
             trace=trace,
             repeat_stop_reasons=repeat_stop_reasons,
+            combat_effect=getattr(ui, "draw_combat_effect", None),
         )
         if replay_context is not None:
             operation_path.append((floor[0], (player.x, player.y)))

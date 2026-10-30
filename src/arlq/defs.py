@@ -1201,3 +1201,5 @@ from .display import (
     revealed_entity_glyphs as revealed_entity_glyphs,
     status_prefix as status_prefix,
 )
+
+COMBAT_EFFECT_SECONDS = 0.3
