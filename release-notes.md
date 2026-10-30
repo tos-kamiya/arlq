@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 6.1.1 - 2026-10-30
+
+- Add a saved combat and barrier damage effect duration setting, selectable
+  from 0 to 0.5 seconds in 0.1-second steps; selecting 0 skips the effects.
+  Apply the saved duration to graphical and terminal modes.
+- Tighten settings-menu item spacing while keeping the control hints separate.
+
 ## 6.1.0 - 2026-10-30
 
 - Make Stage 5 a fixed-map member-ability training ground and Stage 6 the
