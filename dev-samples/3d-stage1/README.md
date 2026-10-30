@@ -235,7 +235,7 @@ Rogue の服とズボンは青みのある黒に近い色にし、縁の光で�
 中身が何であっても同じ画像と大きさにして、正体が漏れないようにする。どの記号を出すかは従来どおり `display.py` が決める。
 
 - 記号: `build-heroic.py` の `unknown_mark()`。Inter Bold（SIL Open Font License。`/usr/share/fonts/opentype/inter/Inter-Bold.otf`）の輪郭を厚みのある立体にし、角を丸めてふっくらさせる（点が縦棒とつながってもよい）。フォントはメッシュに変換した後に消し、シーンに埋め込まない（参照も残さない）。フォントがない環境では Blender の組み込みフォントを太らせて使う。材質は3つ共通の明るい灰色の樹脂で、床から少し浮かせ（`UNKNOWN_FLOAT`）、カメラへ40度傾ける（`UNKNOWN_LEAN`）。`unknown-question.png`、`unknown-exclamation.png`、`unknown-ampersand.png` に書き出す。
-- 光の柱: 仲間と同じ柱（`_draw_pillar()`）を、記号の文字の色（`?` は黄、`!` は緑、`&` は白）で描く。記号の画像も、明るさをそろえたその色で4割だけ着色する（`sprite_funcs.py` の `UNKNOWN_TINT`）。
+- 光の柱: 仲間と同じ柱（`_draw_pillar()`）を、記号の文字の色（`?` は黄、`!` は緑、`&` は白）で描く。正体が判明したキャラクターより目立たないよう、柱の光は元の約2割（0.21）に弱める（`UNKNOWN_PILLAR`）。記号の画像も、明るさをそろえたその色で4割だけ着色する（`sprite_funcs.py` の `UNKNOWN_TINT`）。
 - `preview-unknowns.py` で、3つの記号と比較用の正体が判明した仲間を、ゲームと同じ描画で並べた `heroic/preview-unknowns.jpg` を出力できる。
 
 ```bash

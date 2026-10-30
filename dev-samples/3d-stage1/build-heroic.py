@@ -117,7 +117,7 @@ SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b':
          'explorer-light': 1.49, 'explorer-medium': 1.49, 'explorer-dark': 1.49,
          'knight-light': 1.79, 'knight-medium': 1.79, 'knight-dark': 1.79,
          'guardian-light': 1.49, 'guardian-medium': 1.49, 'guardian-dark': 1.49,
-         '?': 1.45, '!': 1.45, '&': 1.45}
+         '?': 1.3, '!': 1.3, '&': 1.3}
 # The unknown symbols float this high above the floor and lean back this many
 # degrees, so they read almost undistorted from the 60-degree camera.
 UNKNOWN_FLOAT = 0.2

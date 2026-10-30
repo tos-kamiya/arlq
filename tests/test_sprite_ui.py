@@ -75,8 +75,9 @@ def test_unknown_amoeba_does_not_disclose_model(sprite_ui, monkeypatch):
         sprite_ui._draw_field_text((glyph.x, glyph.y), glyph.char, (244, 190, 78))
     assert not sprite_ui.text_calls
     assert sprite_ui._drawables[0].image is sprite_ui._sprite_images['?']
-    # The symbol stands in a pillar of its text color.
-    assert [args[-1] for args in pillars] == [(244, 190, 78)]
+    # The symbol stands in a dimmed pillar of its text color.
+    assert [args[-1] for args in pillars] == [
+        tuple(round(c * sprite_funcs.UNKNOWN_PILLAR) for c in (244, 190, 78))]
 
 
 

@@ -81,6 +81,9 @@ SPRITE_FILES = {
 # near-white symbol takes on only this fraction of that color.
 UNKNOWN_SPRITES = ('?', '!', '&')
 UNKNOWN_TINT = 0.4
+# Their pillar is dimmed to this fraction, so it does not outshine the
+# identified characters around it.
+UNKNOWN_PILLAR = 0.21
 MEMBER_SPRITES = {'J': 'jester', 'H': 'healer', 'R': 'rogue',
                   'K': 'knight', 'G': 'guardian', 'D': 'explorer'}
 MEMBER_SKINS = ('light', 'medium', 'dark')
@@ -1670,7 +1673,8 @@ class SpriteUI(PygletUI):
             green = COLOR_MAP[CI_GREEN]
             self._draw_pillar(cx, cy, size, y, self._dim_color(green) if dimmed else green)
         elif text in UNKNOWN_SPRITES:
-            self._draw_pillar(cx, cy, size, y, tuple(round(c * shade) for c in color))
+            self._draw_pillar(cx, cy, size, y,
+                              tuple(round(c * shade * UNKNOWN_PILLAR) for c in color))
         tribe = d.CHAR_TO_MONSTER_TRIBE.get(text)
         if (upper_right_color is None and tribe is not None
                 and tribe.effect == d.EFFECT_UNLOCK_TREASURE
