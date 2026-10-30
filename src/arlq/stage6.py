@@ -275,7 +275,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     _place_final_floor_barriers(floors[-1], d.STAGE6_FINAL_FLOOR_BARRIER_PERCENT)
     for current in floors:
         normalize_parties(current, d.MEMBER_STAGE_MONSTER_PARTY_LIMIT)
-    player = d.Player(*floors[0].up, d.STAGE6_START_LEVEL, d.LP_INIT)
+    player = d.Player(*floors[0].up, 1, d.LP_INIT)
     player.rescue_stage = True
     player.treasure_stage = True
     return floors, player

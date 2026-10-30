@@ -35,68 +35,16 @@ PARTY_EXPERIENCE_MEMBER_WEIGHTS = {
 }
 HEALER_MOVE_COST = 1 / 2
 HEALER_RESPAWN_COST = 2
-STAGE6_START_LEVEL = 1
-STAGE6_FLOORS = 4
-# Weights for parties of 1, 2, and 3 monsters, by floor; larger sizes are disabled.
-STAGE6_PARTY_SIZE_WEIGHTS = (
-    (78, 21, 1, 0, 0),
-    (60, 30, 10, 0, 0),
-    (46, 30, 24, 0, 0),
-    (45, 30, 25, 0, 0),
-)
-# Each roster entry (character, count, rank) supplies party leaders.
-# No f monsters appear on floor 1; empowered f' starts on floor 2.
-STAGE6_ROSTER = (
-    (
-        ("a", 24, 1), ("A", 2, 1), ("b", 3, 1), ("B", 2, 1), ("c", 5, 1),
-        ("d", 3, 1), ("e", 1, 1), ("g", 1, 1),
-    ),
-    (
-        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 1), ("c", 3, 2),
-        ("C", 2, 1), ("d", 3, 2), ("f", 1, 2), ("w", 1, 2), ("g", 3, 1),
-        ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
-    ),
-    (
-        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 1), ("c", 5, 2),
-        ("C", 1, 1), ("d", 3, 2), ("f", 1, 2), ("g", 3, 1),
-        ("k", 1, 1), ("w", 1, 2), ("X", 1, 1), ("E", 1, 1),
-    ),
-    (
-        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 1), ("c", 6, 2),
-        ("C", 1, 1), ("d", 2, 2), ("f", 1, 2), ("w", 3, 2), ("g", 3, 1),
-        ("k", 1, 1),
-    ),
-)
-STAGE6_BOSS_PARTY = (("W", 1), ("V", 1))
-STAGE6_BOSS_ESCORTS = (("f", 2), ("k", 1), ("w", 1), ("w", 2))
-_STAGE6_DEEP_SUPPORT_POOL = (
-    ("a", 1), ("a", 1), ("e", 1), ("e", 1),
-    ("b", 1), ("B", 1), ("w", 2), ("k", 1),
-)
-_STAGE6_FLOOR2_SUPPORT_POOL = (
-    ("a", 1), ("a", 1), ("a", 1),
-    ("f", 1), ("f", 1),
-    ("b", 1), ("b", 1), ("B", 1),
-    ("e", 1), ("e", 1),
-)
-STAGE6_SUPPORT_POOLS = (
-    (("a", 1),), _STAGE6_FLOOR2_SUPPORT_POOL
-) + (_STAGE6_DEEP_SUPPORT_POOL,) * 2
 RECRUITABLE_MEMBER_ROLES = (
     MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT,
     MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN,
 )
-STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
 MEMBER_GLYPHS = {
     MEMBER_JESTER: "J", MEMBER_HEALER: "H", MEMBER_ROGUE: "R",
     MEMBER_KNIGHT: "K", MEMBER_DUNGEON_EXPLORER: "D", MEMBER_GUARDIAN: "G", MEMBER_NOBLE: "N",
 }
 # Stages that feature elves and share the multi-floor progress state.
 ELF_STAGES = frozenset({3, 4})
-# Stage 1 is a smaller, introductory map: it walls off this many tile
-# columns on each of the left and right edges (6 -> 4 wide), leaving
-# TILE_NUM_Y unchanged.
-STAGE1_COLUMN_MARGIN: int = 1
 CORRIDOR_V_WIDTH: int = 3
 CORRIDOR_H_WIDTH: int = 2
 CHAR_WALL: str = "#"
@@ -172,25 +120,11 @@ ELF_STAGE_S_FLAG: int = 32
 ELF_STAGE_J_FLAG: int = 64
 ELF_STAGE_L_FLAG: int = 128
 SYLVAN_COMPANION_DURATION_MULTIPLIER: float = 1.25
-STAGE4_FINAL_FLOOR_BARRIER_PERCENT = 10
-STAGE6_FINAL_FLOOR_BARRIER_PERCENT = 5
 LOOP_TURNS = 80
 LOOP_TRAIL_TURNS = 10
 OVERSHOOT_REWIND_TURNS = 5
 MARKSMAN_ARROW_LIMIT = 20
 MARKSMAN_COOLDOWN_TURNS = 2
-STAGE3_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
-STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
-    (1, 1),
-    (0, 1),
-    (0, 1),
-    (0, 1),
-    (0, 1),
-]
-# build() shuffles these counts across floors when no explicit layout is given.
-STAGE4_FILLED_ROOM_COUNTS: Tuple[int, ...] = (0, 1, 1, 2, 3)
-STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
-STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
 # Order of the elf-stage status-line marks. The stage boss and treasure "T"
 # are added separately.
 ELF_STAGE_PROGRESS: List[Tuple[str, int]] = [
@@ -749,6 +683,10 @@ CHAR_TO_COMPANION_TRIBE: Dict[str, CompanionTribe] = {
 _SC = SpawnConfig
 
 # Stage 1 spawn configurations.
+# Stage 1 is a smaller, introductory map: it walls off this many tile
+# columns on each of the left and right edges (6 -> 4 wide), leaving
+# TILE_NUM_Y unchanged.
+STAGE1_COLUMN_MARGIN: int = 1
 SPAWN_CONFIGS_ST1 = [
     _SC(CHAR_TO_TRIBE["a"], 9),
     _SC(CHAR_TO_TRIBE["A"], 2),
@@ -792,6 +730,8 @@ STAGE_TO_SPAWN_CONFIGS = [
 
 # Per-floor rosters for the multi-floor stages. Each entry is
 # (tribe character, population, empowered rank).
+STAGE3_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
+STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
 STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 20, 1),
@@ -842,6 +782,19 @@ STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
     ],
 ]
 
+STAGE3_FLOORS = len(STAGE3_ROSTER)
+
+STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
+    (1, 1),
+    (0, 1),
+    (0, 1),
+    (0, 1),
+    (0, 1),
+]
+# build() shuffles these counts across floors when no explicit layout is given.
+STAGE4_FILLED_ROOM_COUNTS: Tuple[int, ...] = (0, 1, 1, 2, 3)
+STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
+STAGE4_FINAL_FLOOR_BARRIER_PERCENT = 10
 STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 20, 1),
@@ -926,14 +879,64 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     ],
 ]
 
+STAGE4_FLOORS = len(STAGE4_ROSTER)
+
+# Stage 6 dungeon and monster-party settings.
+STAGE6_FLOORS = 4
+# Weights for parties of 1, 2, and 3 monsters, by floor; larger sizes are disabled.
+STAGE6_PARTY_SIZE_WEIGHTS = (
+    (78, 21, 1, 0, 0),
+    (60, 30, 10, 0, 0),
+    (46, 30, 24, 0, 0),
+    (45, 30, 25, 0, 0),
+)
+# Each roster entry (character, count, rank) supplies party leaders.
+# No f monsters appear on floor 1; empowered f' starts on floor 2.
+STAGE6_ROSTER = (
+    (
+        ("a", 24, 1), ("A", 2, 1), ("b", 3, 1), ("B", 2, 1), ("c", 5, 1),
+        ("d", 3, 1), ("e", 1, 1), ("g", 1, 1),
+    ),
+    (
+        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 1), ("c", 3, 2),
+        ("C", 2, 1), ("d", 3, 2), ("f", 1, 2), ("w", 1, 2), ("g", 3, 1),
+        ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
+    ),
+    (
+        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 1), ("c", 5, 2),
+        ("C", 1, 1), ("d", 3, 2), ("f", 1, 2), ("g", 3, 1),
+        ("k", 1, 1), ("w", 1, 2), ("X", 1, 1), ("E", 1, 1),
+    ),
+    (
+        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 1), ("c", 6, 2),
+        ("C", 1, 1), ("d", 2, 2), ("f", 1, 2), ("w", 3, 2), ("g", 3, 1),
+        ("k", 1, 1),
+    ),
+)
+STAGE6_BOSS_PARTY = (("W", 1), ("V", 1))
+STAGE6_BOSS_ESCORTS = (("f", 2), ("k", 1), ("w", 1), ("w", 2))
+_STAGE6_DEEP_SUPPORT_POOL = (
+    ("a", 1), ("a", 1), ("e", 1), ("e", 1),
+    ("b", 1), ("B", 1), ("w", 2), ("k", 1),
+)
+_STAGE6_FLOOR2_SUPPORT_POOL = (
+    ("a", 1), ("a", 1), ("a", 1),
+    ("f", 1), ("f", 1),
+    ("b", 1), ("b", 1), ("B", 1),
+    ("e", 1), ("e", 1),
+)
+STAGE6_SUPPORT_POOLS = (
+    (("a", 1),), _STAGE6_FLOOR2_SUPPORT_POOL
+) + (_STAGE6_DEEP_SUPPORT_POOL,) * 2
+STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
+STAGE6_FINAL_FLOOR_BARRIER_PERCENT = 5
+
 # Elves placed by the multi-floor builder instead of the static floor rosters.
 STAGE_RUNTIME_ELVES: Dict[int, Tuple[str, ...]] = {
     3: ("C", "I"),
     4: ("C", "I", "J", "K", "H", "S", "L"),
 }
 
-STAGE3_FLOORS = len(STAGE3_ROSTER)
-STAGE4_FLOORS = len(STAGE4_ROSTER)
 STAGE_BOSSES: Dict[int, Tuple[str, int]] = {
     3: ("W", 1),
     4: (CHAR_FIRE_DRAKE, 2),
