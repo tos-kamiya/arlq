@@ -269,7 +269,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 ### Stage 5 (member-ability trial)
 
-Stage 5 is a fixed training ground for trying party combat and all six Stage 6 party members. Follow the rooms and long corridor, optionally recruit members, and try their abilities; recruiting a third member replaces the earliest recruit. The Dungeon Explorer can reveal the hidden passage and climb out of the pit. Finish by defeating the Fire Drake (`F`) and taking its chest in the final room. Dismissed members cannot rejoin, so start a new run to try different combinations.
+Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of all six Stage 6 companions.
 
 ### Stage 6 (four-floor boss and treasure dungeon)
 
@@ -286,8 +286,6 @@ Stage 6 is a four-floor dungeon starting at level 1. The player fights with part
 | `D` Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Climb through an entrance and leave the pit on the next move. Discovered passages remain usable after D leaves; entrances still require D, and their green discs in sprite mode are shown only while D is in the party. |
 | `G` Guardian | Reduces extra barrier damage and caltrop damage to one-third. |
 
-An undiscovered hidden passage can also be broken with a sword, turning it into ordinary floor and consuming one wall break. Discovered passages can be crossed without using the sword.
-
 Monsters are placed without horizontal adjacency; party members line up vertically.
 
 Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. Experience sharing counts the player and K as 1 each, H and G as 0.5 each, and R and D as 0. J counts as 0.25. J's multiplier applies to the player's share.
@@ -296,7 +294,7 @@ Vertically adjacent monsters fight in parties of up to three, combining their st
 
 | Marker / name | Description |
 | --- | --- |
-| `f` / `f'` Flame cobra | `f` has 25 attack power and its empowered form `f'` has 85. Defeating either grants 3 base experience. `f'` places barriers on available adjacent cells in the four cardinal directions. |
+| `f` / `f'` Flame cobra | Defeating either grants 3 base experience. The empowered form `f'` places barriers on available adjacent cells in the four cardinal directions. |
 
 The floor 4 boss party consists of `W`, `V`, and one escort; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
