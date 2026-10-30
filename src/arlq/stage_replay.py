@@ -48,7 +48,7 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
     for index, direction in enumerate(replay.operations[:operation_count]):
         observe()
         for destination in replay.rogue_checks.get(index, ()):
-            stage56.rogue_danger(floors[floor[0]], player, destination)
+            stage56.rogue_danger(floors[floor[0]], destination)
             observe()
         result = _step(
             direction, floors, player, floor, checkpoint, queue, index,

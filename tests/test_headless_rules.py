@@ -110,6 +110,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "collapse_landings",
         "persistent_barriers",
         "respawn_exclusions",
+        "adjacent_monster_exemptions",
         "room_components",
         "decor",
         "d_gates",

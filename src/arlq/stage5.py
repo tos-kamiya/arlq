@@ -212,6 +212,12 @@ def build_member_trial(
         down_stairs=[upper_stair],
         d_gates=upper_gates,
         persistent_barriers=upper_barriers,
+        adjacent_monster_exemptions={
+            (x, y)
+            for y, row in enumerate(upper_rows)
+            for x, glyph in enumerate(row)
+            if glyph == "X"
+        },
     )
     lower = Floor(
         lower_field,
@@ -231,26 +237,3 @@ def build_member_trial(
     player.rescue_stage = True
     player.treasure_stage = True
     return [upper, lower], player
-
-
-def _add_trial_detached_room(current: Floor, config: GameConfig) -> None:
-    """Add a fixed isolated room to the right of Stage 5's bottom-right tile."""
-    active_tile_columns = 3
-    tile_offset_x = (d.TILE_NUM_X - active_tile_columns) // 2
-    room_x = tile_offset_x + active_tile_columns
-    room_y = d.TILE_NUM_Y - 1
-    left = room_x * (d.TILE_WIDTH + 1) + 1
-    top = room_y * (d.TILE_HEIGHT + 1) + 1
-    for y in range(top, top + d.TILE_HEIGHT):
-        for x in range(left, left + d.TILE_WIDTH):
-            current.field[y][x] = d.CHAR_FLOOR
-
-    gate = (
-        room_x * (d.TILE_WIDTH + 1),
-        room_y * (d.TILE_HEIGHT + 1)
-        + 1
-        + (d.TILE_HEIGHT + 1 - config.corridor_h_width) // 2
-        + config.corridor_h_width // 2,
-    )
-    current.field[gate[1]][gate[0]] = d.CHAR_HIDDEN_D_GATE
-    current.d_gates[gate] = d.CHAR_D_GATE

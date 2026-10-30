@@ -20,13 +20,13 @@ MEMBER_NOBLE = "Noble"
 PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
 JESTER_EXP_MULTIPLIER = 2
-STAGE5_PARTY_LIMIT = 3
-STAGE5_JESTER_EXP_MULTIPLIER = 1.5
-STAGE5_JESTER_EXPERIENCE_WEIGHT = 0.25
+MEMBER_STAGE_MONSTER_PARTY_LIMIT = 3
+MEMBER_STAGE_JESTER_EXP_MULTIPLIER = 1.5
+JESTER_EXPERIENCE_WEIGHT = 0.25
 KNIGHT_INITIAL_LEVEL = 50
 KNIGHT_EXPERIENCE_RATIO = 0.5
 PARTY_EXPERIENCE_MEMBER_WEIGHTS = {
-    MEMBER_JESTER: STAGE5_JESTER_EXPERIENCE_WEIGHT,
+    MEMBER_JESTER: JESTER_EXPERIENCE_WEIGHT,
     MEMBER_HEALER: 0.5,
     MEMBER_GUARDIAN: 0.5,
     MEMBER_KNIGHT: 1.0,
@@ -35,10 +35,10 @@ PARTY_EXPERIENCE_MEMBER_WEIGHTS = {
 }
 HEALER_MOVE_COST = 1 / 2
 HEALER_RESPAWN_COST = 2
-STAGE5_START_LEVEL = 1
-STAGE5_FLOORS = 4
+STAGE6_START_LEVEL = 1
+STAGE6_FLOORS = 4
 # Weights for parties of 1, 2, and 3 monsters, by floor; larger sizes are disabled.
-STAGE5_PARTY_SIZE_WEIGHTS = (
+STAGE6_PARTY_SIZE_WEIGHTS = (
     (78, 21, 1, 0, 0),
     (60, 30, 10, 0, 0),
     (46, 30, 24, 0, 0),
@@ -46,7 +46,7 @@ STAGE5_PARTY_SIZE_WEIGHTS = (
 )
 # Each roster entry (character, count, rank) supplies party leaders.
 # No f monsters appear on floor 1; empowered f' starts on floor 2.
-STAGE5_ROSTER = (
+STAGE6_ROSTER = (
     (
         ("a", 24, 1), ("A", 2, 1), ("b", 3, 1), ("B", 2, 1), ("c", 5, 1),
         ("d", 3, 1), ("e", 1, 1), ("g", 1, 1),
@@ -67,28 +67,26 @@ STAGE5_ROSTER = (
         ("k", 1, 1),
     ),
 )
-STAGE5_BOSS_PARTY = (("W", 1), ("V", 1))
-STAGE5_BOSS_ESCORTS = (("f", 2), ("k", 1), ("w", 1), ("w", 2))
-_STAGE5_DEEP_SUPPORT_POOL = (
+STAGE6_BOSS_PARTY = (("W", 1), ("V", 1))
+STAGE6_BOSS_ESCORTS = (("f", 2), ("k", 1), ("w", 1), ("w", 2))
+_STAGE6_DEEP_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("e", 1), ("e", 1),
     ("b", 1), ("B", 1), ("w", 2), ("k", 1),
 )
-_STAGE5_FLOOR2_SUPPORT_POOL = (
+_STAGE6_FLOOR2_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("a", 1),
     ("f", 1), ("f", 1),
     ("b", 1), ("b", 1), ("B", 1),
     ("e", 1), ("e", 1),
 )
-STAGE5_SUPPORT_POOLS = (
-    (("a", 1),), _STAGE5_FLOOR2_SUPPORT_POOL
-) + (_STAGE5_DEEP_SUPPORT_POOL,) * 2
-STAGE5_MEMBER_FLOORS = (
-    (MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT, MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN),
-    (),
-    (),
-    (),
+STAGE6_SUPPORT_POOLS = (
+    (("a", 1),), _STAGE6_FLOOR2_SUPPORT_POOL
+) + (_STAGE6_DEEP_SUPPORT_POOL,) * 2
+RECRUITABLE_MEMBER_ROLES = (
+    MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT,
+    MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN,
 )
-STAGE5_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
+STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
 MEMBER_GLYPHS = {
     MEMBER_JESTER: "J", MEMBER_HEALER: "H", MEMBER_ROGUE: "R",
     MEMBER_KNIGHT: "K", MEMBER_DUNGEON_EXPLORER: "D", MEMBER_GUARDIAN: "G", MEMBER_NOBLE: "N",
@@ -175,7 +173,7 @@ ELF_STAGE_J_FLAG: int = 64
 ELF_STAGE_L_FLAG: int = 128
 SYLVAN_COMPANION_DURATION_MULTIPLIER: float = 1.25
 STAGE4_FINAL_FLOOR_BARRIER_PERCENT = 10
-STAGE5_FINAL_FLOOR_BARRIER_PERCENT = 5
+STAGE6_FINAL_FLOOR_BARRIER_PERCENT = 5
 LOOP_TURNS = 80
 LOOP_TRAIL_TURNS = 10
 OVERSHOOT_REWIND_TURNS = 5
@@ -1032,17 +1030,17 @@ STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
 )
 
 
-def _get_stage5_roster_tribes() -> List[MonsterTribe]:
+def _get_member_stage_roster_tribes() -> List[MonsterTribe]:
     variants = {
         (char, rank)
-        for floor in STAGE5_ROSTER
+        for floor in STAGE6_ROSTER
         for char, _, rank in floor
     }
     variants.update(
-        variant for floor_pool in STAGE5_SUPPORT_POOLS for variant in floor_pool
+        variant for floor_pool in STAGE6_SUPPORT_POOLS for variant in floor_pool
     )
-    variants.update(STAGE5_BOSS_PARTY)
-    variants.update(STAGE5_BOSS_ESCORTS)
+    variants.update(STAGE6_BOSS_PARTY)
+    variants.update(STAGE6_BOSS_ESCORTS)
     variants.add(("M", 1))
     return sorted(
         (
@@ -1054,7 +1052,7 @@ def _get_stage5_roster_tribes() -> List[MonsterTribe]:
     )
 
 
-STAGE5_ROSTER_TRIBES: List[MonsterTribe] = _get_stage5_roster_tribes()
+MEMBER_STAGE_ROSTER_TRIBES: List[MonsterTribe] = _get_member_stage_roster_tribes()
 
 
 def _javelin_follower_active(player: Player) -> bool:
@@ -1113,7 +1111,7 @@ def has_member(player: Player, role: str) -> bool:
 def experience_multiplier(player: Player, stage_num: int = 6) -> float:
     if not has_member(player, MEMBER_JESTER):
         return 1
-    return STAGE5_JESTER_EXP_MULTIPLIER if stage_num in (5, 6) else JESTER_EXP_MULTIPLIER
+    return MEMBER_STAGE_JESTER_EXP_MULTIPLIER if stage_num in (5, 6) else JESTER_EXP_MULTIPLIER
 
 
 def experience_share_count(player: Player, stage_num: int) -> float:

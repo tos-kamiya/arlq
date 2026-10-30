@@ -126,33 +126,11 @@ def _separate_golems(current: Floor) -> None:
         first, second = conflict
         golem = first if first.tribe.char == "g" else second
         other = second if golem is first else first
-        other_is_fixed = isinstance(other, d.Collapse) or (
-            (other.tribe.char == "W" and other.empowered == 1)
-            or (other.tribe.char == "V" and other.empowered in (1, 2))
-        )
+        other_is_fixed = isinstance(other, d.Collapse) or _fixed_boss(other)
         mover = golem if other_is_fixed or other.tribe.char == "g" else other
 
-        current.entities.remove(mover)
-        other_monsters = [
-            entity
-            for entity in current.entities
-            if isinstance(entity, d.Monster)
-            and entity.active
-            and not entity.tribe.is_elf
-        ]
-        candidates = [
-            point
-            for point in _open_points(current)
-            if all(
-                abs(point[0] - entity.x) > 1 or abs(point[1] - entity.y) > 1
-                for entity in other_monsters
-            )
-        ]
-        if not candidates:
-            current.entities.append(mover)
+        if not _relocate_isolated_monster(current, mover, include_collapses=True):
             return
-        mover.x, mover.y = rand.choice(candidates)
-        current.entities.append(mover)
 
 
 def _separate_diagonal_monsters(current: Floor) -> None:
@@ -170,20 +148,14 @@ def _separate_diagonal_monsters(current: Floor) -> None:
         for first, second in _neighbor_pairs(
             monsters, ((-1, 0), (1, 0), (-1, -1), (1, -1), (-1, 1), (1, 1))
         ):
-            first_is_boss = (first.tribe.char == "W" and first.empowered == 1) or (
-                first.tribe.char == "V" and first.empowered in (1, 2)
-            )
-            second_is_boss = (second.tribe.char == "W" and second.empowered == 1) or (
-                second.tribe.char == "V" and second.empowered in (1, 2)
-            )
+            first_is_boss = _fixed_boss(first)
+            second_is_boss = _fixed_boss(second)
             if first_is_boss and second_is_boss:
                 continue
             if (
                 first.tribe.char == second.tribe.char == "X"
-                and first.x in (43, 44)
-                and second.x in (43, 44)
-                and first.y in range(1, 6)
-                and second.y in range(1, 6)
+                and (first.x, first.y) in current.adjacent_monster_exemptions
+                and (second.x, second.y) in current.adjacent_monster_exemptions
             ):
                 continue
             mover = second if not second_is_boss else first
@@ -191,28 +163,37 @@ def _separate_diagonal_monsters(current: Floor) -> None:
         if mover is None:
             return
 
-        current.entities.remove(mover)
-        other_monsters = [
-            entity
-            for entity in current.entities
-            if isinstance(entity, d.Monster)
-            and not isinstance(entity, d.Collapse)
-            and entity.active
-            and not entity.tribe.is_elf
-        ]
-        candidates = [
-            point
-            for point in _open_points(current)
-            if all(
-                abs(point[0] - other.x) > 1 or abs(point[1] - other.y) > 1
-                for other in other_monsters
-            )
-        ]
-        if not candidates:
-            current.entities.append(mover)
+        if not _relocate_isolated_monster(current, mover, include_collapses=False):
             return
+
+
+def _fixed_boss(monster: d.Monster) -> bool:
+    return (monster.tribe.char == "W" and monster.empowered == 1) or (
+        monster.tribe.char == "V" and monster.empowered in (1, 2)
+    )
+
+
+def _relocate_isolated_monster(
+    current: Floor, mover: d.Monster, *, include_collapses: bool
+) -> bool:
+    current.entities.remove(mover)
+    other_monsters = [
+        entity for entity in current.entities
+        if isinstance(entity, d.Monster)
+        and (include_collapses or not isinstance(entity, d.Collapse))
+        and entity.active and not entity.tribe.is_elf
+    ]
+    candidates = [
+        point for point in _open_points(current)
+        if all(
+            abs(point[0] - other.x) > 1 or abs(point[1] - other.y) > 1
+            for other in other_monsters
+        )
+    ]
+    if candidates:
         mover.x, mover.y = rand.choice(candidates)
-        current.entities.append(mover)
+    current.entities.append(mover)
+    return bool(candidates)
 
 
 def recruit(
@@ -303,7 +284,7 @@ def reveal_rogue_monsters(
             player.known_monsters.add(d.monster_type_key(entity))
 
 
-def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str | None:
+def rogue_danger(current: Floor, destination: d.Point) -> str | None:
     """Check whether the destination is a pit or Rare Erebus."""
     x, y = destination
     if not (0 <= y < len(current.field) and 0 <= x < len(current.field[y])):
@@ -341,16 +322,6 @@ def rogue_danger(current: Floor, player: d.Player, destination: d.Point) -> str 
         for entity in current.entities
     ):
         return "E"
-    if current.field[y][x] in (*d.WALL_CHARS, *d.STAIR_CHARS) or any(
-        (entity.x, entity.y) == destination
-        and (
-            isinstance(entity, (d.Companion, d.Treasure))
-            or isinstance(entity, d.Monster)
-            and entity.active
-        )
-        for entity in current.entities
-    ):
-        return None
     return None
 
 
@@ -391,14 +362,10 @@ def _sync_wyrm_barriers(current: Floor) -> None:
     for entity in current.entities:
         if not isinstance(entity, d.Monster) or not entity.active:
             continue
-        offsets = _barrier_offsets(entity)
-        for dx, dy in offsets:
-            point = (entity.x + dx, entity.y + dy)
+        for point in barrier_cells(current, entity):
             x, y = point
             if (
-                0 <= y < len(current.field)
-                and 0 <= x < len(current.field[y])
-                and point not in occupied
+                point not in occupied
                 and point not in reserved
                 and (
                     current.field[y][x] == d.CHAR_FLOOR
@@ -410,15 +377,11 @@ def _sync_wyrm_barriers(current: Floor) -> None:
             ):
                 ring_cells.add(point)
 
-    for y, row in enumerate(current.field):
-        for x, cell in enumerate(row):
-            point = (x, y)
-            if (
-                cell == d.CHAR_BARRIER
-                and point not in current.persistent_barriers
-                and point not in ring_cells
-            ):
-                current.field[y][x] = d.CHAR_FLOOR
+    existing_barriers = {
+        (x, y) for y, row in enumerate(current.field)
+        for x, cell in enumerate(row) if cell == d.CHAR_BARRIER
+    }
+    clear_monster_barriers(current, existing_barriers, ring_cells)
     for x, y in ring_cells:
         if current.field[y][x] == d.CHAR_FLOOR:
             current.field[y][x] = d.CHAR_BARRIER
@@ -430,6 +393,27 @@ def _barrier_offsets(entity: d.Monster, stage_num: int = 5) -> tuple[d.Point, ..
     if stage_num in (5, 6) and entity.tribe.char == "f" and entity.empowered == 2:
         return ((0, -1), (1, 0), (0, 1), (-1, 0))
     return ()
+
+
+def barrier_cells(
+    current: Floor, entity: d.Monster, stage_num: int = 5
+) -> tuple[d.Point, ...]:
+    """Monster barrier footprint clipped to the floor."""
+    return tuple(
+        (entity.x + dx, entity.y + dy)
+        for dx, dy in _barrier_offsets(entity, stage_num)
+        if 0 <= entity.y + dy < len(current.field)
+        and 0 <= entity.x + dx < len(current.field[entity.y + dy])
+    )
+
+
+def clear_monster_barriers(
+    current: Floor, cells: set[d.Point], protected: set[d.Point]
+) -> None:
+    """Remove transient barriers while retaining fixed and overlapping ones."""
+    for x, y in cells - protected - current.persistent_barriers:
+        if current.field[y][x] == d.CHAR_BARRIER:
+            current.field[y][x] = d.CHAR_FLOOR
 
 
 def respawn(

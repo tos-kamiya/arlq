@@ -36,6 +36,9 @@ class Floor:
     # processing, so a rewind's replay rebuilds them along with `field`.
     decor: Optional[List[List[str]]] = None
 
+    # Tutorial monsters allowed to remain horizontally or diagonally adjacent.
+    adjacent_monster_exemptions: set[d.Point] = dataclass_field(default_factory=set)
+
     def __post_init__(self) -> None:
         if self.decor is None:
             self.decor = [[d.DECOR_NONE] * len(row) for row in self.field]

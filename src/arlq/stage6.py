@@ -18,7 +18,7 @@ from .utils import rand
 
 
 def sample_party_size(floor_index: int) -> int:
-    weights = d.STAGE5_PARTY_SIZE_WEIGHTS[floor_index]
+    weights = d.STAGE6_PARTY_SIZE_WEIGHTS[floor_index]
     roll = rand.randrange(sum(weights))
     for size, weight in enumerate(weights, 1):
         if roll < weight:
@@ -145,14 +145,14 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     config = config or GameConfig()
     floors = []
     entry = None
-    member_roles = list(d.STAGE5_MEMBER_FLOORS[0])
+    member_roles = list(d.RECRUITABLE_MEMBER_ROLES)
     while len(member_roles) > 4:
         member_roles.pop(rand.randrange(len(member_roles)))
     member_floors = [(role, rand.randrange(3)) for role in member_roles]
     filled_counts_by_floor = [0] + [
-        rand.choice((0, 1, 2)) for _ in range(d.STAGE5_FLOORS - 1)
+        rand.choice((0, 1, 2)) for _ in range(d.STAGE6_FLOORS - 1)
     ]
-    for index in range(d.STAGE5_FLOORS):
+    for index in range(d.STAGE6_FLOORS):
         (
             field,
             up,
@@ -176,7 +176,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         _add_filled_room_wall_notches(field, filled_rooms)
         if index:
             field[up[1]][up[0]] = d.CHAR_STAIRS_UP
-        if index < d.STAGE5_FLOORS - 1:
+        if index < d.STAGE6_FLOORS - 1:
             field[down[1]][down[0]] = d.CHAR_STAIRS_DOWN
         current = Floor(
             field,
@@ -186,7 +186,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             down,
             None,
             up_stairs=[up] if index else [],
-            down_stairs=[down] if index < d.STAGE5_FLOORS - 1 else [],
+            down_stairs=[down] if index < d.STAGE6_FLOORS - 1 else [],
             room_components=room_components,
         )
         if split_edge is not None:
@@ -226,9 +226,9 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                     origin_floor=index,
                 )
             )
-        if index == d.STAGE5_FLOORS - 1:
-            boss_party = list(d.STAGE5_BOSS_PARTY)
-            boss_party.append(rand.choice(d.STAGE5_BOSS_ESCORTS))
+        if index == d.STAGE6_FLOORS - 1:
+            boss_party = list(d.STAGE6_BOSS_PARTY)
+            boss_party.append(rand.choice(d.STAGE6_BOSS_ESCORTS))
             _place_party(current, boss_party, index)
             mimic = d.Monster(
                 *rand.choice(_open_points(current)),
@@ -237,7 +237,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             )
             mimic.active = False
             current.entities.append(mimic)
-        for char, count, rank in d.STAGE5_ROSTER[index]:
+        for char, count, rank in d.STAGE6_ROSTER[index]:
             for _ in range(count):
                 party_size = (
                     1
@@ -245,11 +245,11 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                     else sample_party_size(index)
                 )
                 roster = [(char, rank)] + [
-                    rand.choice(d.STAGE5_SUPPORT_POOLS[index])
+                    rand.choice(d.STAGE6_SUPPORT_POOLS[index])
                     for _ in range(party_size - 1)
                 ]
                 _place_party(current, roster, index)
-        if index == d.STAGE5_FLOORS - 1:
+        if index == d.STAGE6_FLOORS - 1:
             boss = next(
                 entity
                 for entity in current.entities
@@ -261,7 +261,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             ]
             current.entities.append(d.Treasure(*rand.choice(treasure_points), "TW"))
         for char, count in zip(
-            (d.CHAR_CALTROP, d.CHAR_BARRIER), d.STAGE5_HAZARD_COUNTS[index]
+            (d.CHAR_CALTROP, d.CHAR_BARRIER), d.STAGE6_HAZARD_COUNTS[index]
         ):
             for _ in range(count):
                 x, y = rand.choice(_open_points(current))
@@ -272,10 +272,10 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         entry = down
     _place_collapses(floors)
     _place_additional_stairs(floors)
-    _place_final_floor_barriers(floors[-1], d.STAGE5_FINAL_FLOOR_BARRIER_PERCENT)
+    _place_final_floor_barriers(floors[-1], d.STAGE6_FINAL_FLOOR_BARRIER_PERCENT)
     for current in floors:
-        normalize_parties(current, d.STAGE5_PARTY_LIMIT)
-    player = d.Player(*floors[0].up, d.STAGE5_START_LEVEL, d.LP_INIT)
+        normalize_parties(current, d.MEMBER_STAGE_MONSTER_PARTY_LIMIT)
+    player = d.Player(*floors[0].up, d.STAGE6_START_LEVEL, d.LP_INIT)
     player.rescue_stage = True
     player.treasure_stage = True
     return floors, player

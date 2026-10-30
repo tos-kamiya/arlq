@@ -173,9 +173,7 @@ def stage5_member_progress_marks(
     player: d.Player,
 ) -> List[Tuple[str, bool]]:
     """Return member labels and whether they should use the bold style."""
-    roles = (
-        *d.STAGE5_MEMBER_FLOORS[0],
-    )
+    roles = d.RECRUITABLE_MEMBER_ROLES
     marks = []
     current_roles = {member.role for member in player.members}
     for role in roles:

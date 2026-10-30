@@ -167,7 +167,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
     escorts = [e for e in party if e not in (boss, vortex)]
     assert len(escorts) == 1
     assert all(
-        (e.tribe.char, e.empowered) in d.STAGE5_BOSS_ESCORTS for e in escorts
+        (e.tribe.char, e.empowered) in d.STAGE6_BOSS_ESCORTS for e in escorts
     )
     mimics = [
         e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "M"
@@ -321,9 +321,9 @@ def test_rogue_does_not_preannounce_marksman_shooting_lane():
     current, player = state(("Rogue",))
     marksman = monster(7, 3, "k")
     current.entities.append(marksman)
-    assert stage56.rogue_danger(current, player, (3, 3)) is None
+    assert stage56.rogue_danger(current, (3, 3)) is None
     current.field[3][5] = d.CHAR_WALL
-    assert stage56.rogue_danger(current, player, (3, 3)) is None
+    assert stage56.rogue_danger(current, (3, 3)) is None
 
 
 def test_rogue_avoids_odd_marksman_shot_damage_but_shows_arrows():
@@ -451,13 +451,13 @@ def test_stage5_boss_uses_combined_party_strength_without_required_members_or_it
     assert all((entity not in current.entities) == won for entity in party)
 
 
-@pytest.mark.parametrize("escort", d.STAGE5_BOSS_ESCORTS)
+@pytest.mark.parametrize("escort", d.STAGE6_BOSS_ESCORTS)
 def test_generated_boss_retains_each_escort(monkeypatch, escort):
     engine.rand.set_seed(123)
     original_choice = stage6.rand.choice
 
     def choose(values):
-        if values is d.STAGE5_BOSS_ESCORTS:
+        if values is d.STAGE6_BOSS_ESCORTS:
             return escort
         return original_choice(values)
 
@@ -833,7 +833,7 @@ def test_seed_reproduces_layout_and_groups():
 def test_deep_roster_counts_and_party_sizes_by_floor():
     def counts(char, rank):
         return [sum(count for ch, count, r in floor if ch == char and r == rank)
-                for floor in d.STAGE5_ROSTER]
+                for floor in d.STAGE6_ROSTER]
 
     assert counts("b", 1) == [3, 0, 0, 0]
     assert counts("b", 2) == [0, 2, 2, 2]
@@ -842,19 +842,19 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
     assert counts("B", 1) == [2, 2, 2, 2]
     assert counts("f", 2) == [0, 1, 1, 1]
     assert counts("w", 2) == [0, 1, 1, 3]
-    assert Counter(d.STAGE5_SUPPORT_POOLS[1]) == Counter({
+    assert Counter(d.STAGE6_SUPPORT_POOLS[1]) == Counter({
         ("a", 1): 3, ("f", 1): 2, ("b", 1): 2,
         ("B", 1): 1, ("e", 1): 2,
     })
     assert all(Counter(pool) == Counter({
         ("a", 1): 2, ("e", 1): 2, ("b", 1): 1,
         ("B", 1): 1, ("w", 2): 1, ("k", 1): 1,
-    }) for pool in d.STAGE5_SUPPORT_POOLS[2:])
-    assert d.STAGE5_PARTY_SIZE_WEIGHTS == (
+    }) for pool in d.STAGE6_SUPPORT_POOLS[2:])
+    assert d.STAGE6_PARTY_SIZE_WEIGHTS == (
         (78, 21, 1, 0, 0), (60, 30, 10, 0, 0),
         (46, 30, 24, 0, 0), (45, 30, 25, 0, 0),
     )
-    assert d.STAGE5_BOSS_ESCORTS == (("f", 2), ("k", 1), ("w", 1), ("w", 2))
+    assert d.STAGE6_BOSS_ESCORTS == (("f", 2), ("k", 1), ("w", 1), ("w", 2))
 
 
 def test_member_trial_has_fixed_ordered_layout():
@@ -1124,3 +1124,49 @@ def test_member_trial_right_margin_provides_respawn_floor():
             assert row[width:width + 2] == [d.CHAR_WALL] * 2
             assert row[width + 2:] == [d.CHAR_FLOOR] * (d.FIELD_WIDTH - width - 2)
         assert any(x >= width + 2 for x, y in stage56._open_points(current))
+
+
+@pytest.mark.parametrize("exempt", [False, True])
+def test_monster_adjacency_exceptions_are_explicit_floor_state(exempt):
+    current, _ = state()
+    current.entities = [monster(5, 5, "X"), monster(6, 5, "X")]
+    original_positions = [(entity.x, entity.y) for entity in current.entities]
+    if exempt:
+        current.adjacent_monster_exemptions.update(original_positions)
+
+    stage56.normalize_parties(current)
+
+    positions = [(entity.x, entity.y) for entity in current.entities]
+    assert (positions == original_positions) is exempt
+
+
+def test_tutorial_adjacency_exceptions_follow_monster_markers(monkeypatch):
+    rows = stage5.STAGE5_MEMBER_TRIAL_MAP.splitlines()
+    row = list(rows[1])
+    row[43], row[42] = " ", "X"
+    rows[1] = "".join(row)
+    monkeypatch.setattr(stage5, "STAGE5_MEMBER_TRIAL_MAP", "\n".join(rows))
+
+    floors, _ = stage5.build_member_trial()
+
+    assert (42, 1) in floors[0].adjacent_monster_exemptions
+    assert (43, 1) not in floors[0].adjacent_monster_exemptions
+
+
+def test_defeating_wyrm_preserves_overlapping_and_persistent_barriers():
+    current, player = state()
+    defeated = monster(3, 3, "w")
+    survivor = monster(5, 3, "w")
+    current.entities = [survivor]
+    footprint = set(stage56.barrier_cells(current, defeated, 6))
+    for x, y in footprint:
+        current.field[y][x] = d.CHAR_BARRIER
+    current.persistent_barriers.add((2, 2))
+
+    engine._defeat_monster(
+        defeated, current, player, [0], [(1, 1)], Counter(), stage_num=6,
+    )
+
+    remaining = {(x, y) for x, y in footprint
+                 if current.field[y][x] == d.CHAR_BARRIER}
+    assert remaining == {(2, 2), (4, 2), (4, 3), (4, 4)}

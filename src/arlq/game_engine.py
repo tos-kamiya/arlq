@@ -437,12 +437,10 @@ def _vortex_rearrange(
         )
     ]
     moved_monster_barrier_cells = {
-        (entity.x + dx, entity.y + dy)
+        point
         for entity in movable
         if isinstance(entity, d.Monster)
-        for dx, dy in stage56._barrier_offsets(entity, stage_num)
-        if 0 <= entity.y + dy < len(current.field)
-        and 0 <= entity.x + dx < len(current.field[0])
+        for point in stage56.barrier_cells(current, entity, stage_num)
     }
     lower = (
         floors[floor_index + 1]
@@ -597,8 +595,7 @@ def _vortex_rearrange(
                     if isinstance(fixed, d.Collapse)
                 )
             )
-            for dx, dy in stage56._barrier_offsets(current_entity, stage_num):
-                point = (current_entity.x + dx, current_entity.y + dy)
+            for point in stage56.barrier_cells(current, current_entity, stage_num):
                 x, y = point
                 if (
                     point in affected_points
@@ -609,19 +606,15 @@ def _vortex_rearrange(
                     current.field[y][x] = d.CHAR_BARRIER
 
     current_monster_barrier_cells = {
-        (entity.x + dx, entity.y + dy)
+        point
         for entity in current.entities
         if isinstance(entity, d.Monster)
-        for dx, dy in stage56._barrier_offsets(entity, stage_num)
-        if 0 <= entity.y + dy < len(current.field)
-        and 0 <= entity.x + dx < len(current.field[0])
+        for point in stage56.barrier_cells(current, entity, stage_num)
     }
-    for x, y in moved_monster_barrier_cells - affected_points - current_monster_barrier_cells:
-        if (
-            current.field[y][x] == d.CHAR_BARRIER
-            and (x, y) not in current.persistent_barriers
-        ):
-            current.field[y][x] = d.CHAR_FLOOR
+    stage56.clear_monster_barriers(
+        current, moved_monster_barrier_cells,
+        affected_points | current_monster_barrier_cells,
+    )
 
     for x, y in affected_points:
         if (
@@ -648,36 +641,19 @@ def _defeat_monster(
         stage_num in (5, 6) and ch == "f" and entity.empowered == 2
     ):
         other_monster_barrier_cells = {
-            (other.x + dx, other.y + dy)
+            point
             for other in current.entities
-            if other is not entity
-            and isinstance(other, d.Monster)
-            for dx, dy in stage56._barrier_offsets(other, stage_num)
-            if 0 <= other.y + dy < len(current.field)
-            and 0 <= other.x + dx < len(current.field[0])
+            if other is not entity and isinstance(other, d.Monster)
+            for point in stage56.barrier_cells(current, other, stage_num)
         }
-        for dx, dy in stage56._barrier_offsets(entity, stage_num):
-            x, y = entity.x + dx, entity.y + dy
-            if (
-                0 <= y < len(current.field)
-                and 0 <= x < len(current.field[y])
-                and (x, y) not in other_monster_barrier_cells
-                and (x, y) not in current.persistent_barriers
-                and current.field[y][x] == d.CHAR_BARRIER
-            ):
-                current.field[y][x] = d.CHAR_FLOOR
+        stage56.clear_monster_barriers(
+            current, set(stage56.barrier_cells(current, entity, stage_num)),
+            other_monster_barrier_cells,
+        )
     elif ch == "W":
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
-                if not (dx or dy):
-                    continue
-                x, y = entity.x + dx, entity.y + dy
-                if (
-                    0 <= y < len(current.field)
-                    and 0 <= x < len(current.field[y])
-                    and current.field[y][x] == d.CHAR_BARRIER
-                ):
-                    current.persistent_barriers.add((x, y))
+        for x, y in stage56.barrier_cells(current, entity, stage_num):
+            if current.field[y][x] == d.CHAR_BARRIER:
+                current.persistent_barriers.add((x, y))
     if ch == "k":
         entity.arrow_marks.clear()
     if ch == "M":
@@ -1239,7 +1215,7 @@ def _resolve_party_contact(
         )
     stage56.normalize_parties(
         current,
-        d.STAGE5_PARTY_LIMIT,
+        d.MEMBER_STAGE_MONSTER_PARTY_LIMIT,
     )
     player.last_contact_monster = contact_key
     party_chars = {monster.tribe.char for monster in party}
@@ -1848,7 +1824,7 @@ def _process_multi_floor_turn(
         for floor_data in floors:
             stage56.normalize_parties(
                 floor_data,
-                d.STAGE5_PARTY_LIMIT,
+                d.MEMBER_STAGE_MONSTER_PARTY_LIMIT,
             )
         stage56.sync_members(player, previous, direction)
     if (
@@ -1918,7 +1894,7 @@ def _stage_draw_options(
         return {}
     if stage_num in (5, 6):
         return {
-            "stage_roster": d.STAGE5_ROSTER_TRIBES,
+            "stage_roster": d.MEMBER_STAGE_ROSTER_TRIBES,
             "floor_label": f"{view_floor + 1}/{len(floors)}",
         }
     options: dict[str, Any] = {
@@ -2099,7 +2075,7 @@ def run_game(
         rogue_spotted_danger = False
         if stage_num in (5, 6) and d.has_member(player, d.MEMBER_ROGUE):
             destination = (player.x + move[0], player.y + move[1])
-            if stage56.rogue_danger(current, player, destination):
+            if stage56.rogue_danger(current, destination):
                 rogue_spotted_danger = True
                 if replay_context is not None:
                     replay_context.rogue_checks.setdefault(
