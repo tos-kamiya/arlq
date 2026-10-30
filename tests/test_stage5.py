@@ -986,7 +986,7 @@ def test_member_trial_healer_is_in_middle_row_on_right():
     assert (healer.x, healer.y) == (46, 10)
     assert all(upper.field[3][x] != d.CHAR_WALL for x in range(42, 46))
     assert sorted(e.x for e in upper.entities if isinstance(e, d.Monster)
-                  and e.tribe.char == "b" and e.y == 10) == [40, 43]
+                  and e.tribe.char == "b" and e.y == 10) == [41, 43]
 
 def test_member_trial_rogue_pit_blocks_the_route_to_guardian():
     floors, _ = stage5.build_member_trial()
@@ -1039,7 +1039,7 @@ def test_member_trial_healer_exit_faces_explorer_before_jester():
     explorer = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_DUNGEON_EXPLORER)
     jester = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_JESTER)
     assert (explorer.x, explorer.y) == (8, 17)
-    assert (jester.x, jester.y) == (26, 17)
+    assert (jester.x, jester.y) == (28, 17)
     assert upper.field[14][1] == d.CHAR_FLOOR
     assert all(upper.field[15][x] == d.CHAR_FLOOR for x in range(1, 11))
     assert explorer.x < jester.x
@@ -1051,14 +1051,14 @@ def test_member_trial_jester_experience_comparison():
     apples = [e for e in upper.entities if isinstance(e, d.Monster) and e.tribe.char == "A"]
     before = [e for e in apples if e.x < jester.x]
     after = [e for e in apples if e.x > jester.x]
-    assert len(before) == len(after) == 8
+    assert len(before) == len(after) == 9
     assert {e.y for e in before} == {15, 17, 19}
     assert {e.y for e in after} == {15, 17, 19}
     player.members = [d.PartyMember(0, 0, d.MEMBER_HEALER), d.PartyMember(0, 0, d.MEMBER_DUNGEON_EXPLORER)]
     level = player.level
     engine._resolve_party_contact(before[0], upper, floors, player, [0], [upper.up], Counter(), None, 5)
     assert player.level - level == pytest.approx(10 / 1.5)
-    assert sum(isinstance(e, d.Monster) and e.tribe.char == "A" and e.x > jester.x for e in upper.entities) == 8
+    assert sum(isinstance(e, d.Monster) and e.tribe.char == "A" and e.x > jester.x for e in upper.entities) == 9
     stage56.recruit(upper, player, jester)
     level = player.level
     engine._resolve_party_contact(after[0], upper, floors, player, [0], [upper.up], Counter(), None, 5)
@@ -1138,6 +1138,30 @@ def test_monster_adjacency_exceptions_are_explicit_floor_state(exempt):
 
     positions = [(entity.x, entity.y) for entity in current.entities]
     assert (positions == original_positions) is exempt
+
+
+@pytest.mark.parametrize("floor_index", [0, 1])
+def test_tutorial_maps_support_chimera_marker(monkeypatch, floor_index):
+    map_name = (
+        "STAGE5_MEMBER_TRIAL_MAP" if floor_index == 0
+        else "STAGE5_MEMBER_TRIAL_LOWER_MAP"
+    )
+    rows = getattr(stage5, map_name).splitlines()
+    row = list(rows[1])
+    row[20] = "c"
+    rows[1] = "".join(row)
+    monkeypatch.setattr(stage5, map_name, "\n".join(rows))
+
+    floors, _ = stage5.build_member_trial()
+
+    current = floors[floor_index]
+    assert current.field[1][20] == d.CHAR_FLOOR
+    assert any(
+        isinstance(entity, d.Monster)
+        and (entity.x, entity.y) == (20, 1)
+        and entity.tribe.char == "c"
+        for entity in current.entities
+    )
 
 
 def test_tutorial_adjacency_exceptions_follow_monster_markers(monkeypatch):

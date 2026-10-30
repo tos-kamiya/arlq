@@ -7,34 +7,34 @@ from .stage_types import Floor
 
 
 STAGE5_MEMBER_TRIAL_MAP = """##################################################
-#         #     #g    E #            ===   X     #
-#       f #   f #       #            ===    X    #
-# @  f  f   K f      R ?    v  G b b ===   X     #
-#         #     #       #            ===    X    #
-#         #     # X     #            ===   X     #
-################################################ #
+#         #     #g    E #           ===    X     #
+#       f #   f #  a    #           ===     X    #
+# @  f  f   K f      R ?    v  G  b ===    X     #
+#         #     #       #           ===     X    #
+#         #     # X    c#           ===    X     #
+# ############################################## #
 ################################################ #
 #                                                #
-# ####################################           #
-#                                    #  b  b  H  #
-#################################### #           #
-#                                    #           #
+# #####################################          #
+#                                   ###  b b  H  #
+################################### ###          #
+#                                   ###          #
 # ################################################
 # ################################################
-#          #####  A A A #     A A A #            #
-#          #####        #           #            #
-#   b   D  .  ?   A A A   J   A A A       F  T   #
-#          #####        #           #            #
-#          #####    A A #       A A #            #
+#          #######  A A A #    A A A  #          #
+#          #######        #           #          #
+#   b   D  .  ?     A A A   J  A A A     F   T   #
+#          #######        #           #          #
+#          #######  A A A #    A A A  #          #
 ##################################################
 ##################################################"""
 
 STAGE5_MEMBER_TRIAL_LOWER_MAP = """##################################################
-####################            ##################
-####################            ##################
-####################        ^   ##################
-####################            ##################
-####################            ##################
+###################             ##################
+###################             ##################
+###################         ^   ##################
+###################             ##################
+###################             ##################
 ##################################################
 ##################################################
 ##################################################
@@ -44,11 +44,11 @@ STAGE5_MEMBER_TRIAL_LOWER_MAP = """#############################################
 ##################################################
 ##################################################
 ##################################################
-###########       ################################
-###########       ################################
-###########       ################################
-###########       ################################
-###########       ################################
+##########         ###############################
+##########         ###############################
+##########         ###############################
+##########         ###############################
+##########         ###############################
 ##################################################
 ##################################################"""
 
@@ -124,77 +124,66 @@ def build_member_trial(
             for _ in range(d.FIELD_HEIGHT)
         ]
 
-    upper_field = blank_field(upper_rows)
-    upper_seen = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
-    upper_entities: list[d.Entity] = []
-    upper_barriers: set[d.Point] = set()
-    upper_gates: dict[d.Point, str] = {}
-    start = upper_stair = None
-    upper_pits: list[d.Point] = []
+    def parse_map(rows: list[str], floor_index: int):
+        field = blank_field(rows)
+        seen = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+        entities: list[d.Entity] = []
+        barriers: set[d.Point] = set()
+        gates: dict[d.Point, str] = {}
+        markers: dict[str, d.Point] = {}
+        pits: list[d.Point] = []
 
-    for y, row in enumerate(upper_rows):
-        for x, glyph in enumerate(row):
-            point = (x, y)
-            if glyph == d.CHAR_WALL:
-                continue
-            if glyph == "=":
-                upper_field[y][x] = d.CHAR_BARRIER
-                upper_barriers.add(point)
-                continue
-            if glyph == d.CHAR_CALTROP:
-                upper_field[y][x] = d.CHAR_CALTROP
-                continue
-            upper_field[y][x] = d.CHAR_FLOOR
-            if glyph == "@":
-                start = point
-            elif glyph == d.CHAR_STAIRS_DOWN:
-                upper_stair = point
-                upper_field[y][x] = d.CHAR_STAIRS_DOWN
-            elif glyph == ".":
-                upper_field[y][x] = d.CHAR_HIDDEN_D_GATE
-                upper_gates[point] = d.CHAR_D_GATE
-            elif glyph == "?":
-                upper_pits.append(point)
-                upper_entities.append(d.Collapse(x, y))
-            elif glyph in member_roles:
-                upper_entities.append(
-                    d.PartyMember(x, y, member_roles[glyph], origin_floor=0)
-                )
-            elif glyph == "T":
-                upper_entities.append(d.Treasure(x, y, "TF"))
-            elif glyph in d.CHAR_TO_MONSTER_TRIBE:
-                upper_entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[glyph]))
-            elif glyph != d.CHAR_FLOOR:
-                raise ValueError(f"Unsupported Stage 5 floor 1 glyph: {glyph!r}")
+        for y, row in enumerate(rows):
+            for x, glyph in enumerate(row):
+                point = (x, y)
+                if glyph == d.CHAR_WALL:
+                    continue
+                if glyph == "=":
+                    field[y][x] = d.CHAR_BARRIER
+                    barriers.add(point)
+                    continue
+                if glyph == d.CHAR_CALTROP:
+                    field[y][x] = d.CHAR_CALTROP
+                    continue
+                field[y][x] = d.CHAR_FLOOR
+                if glyph == "@":
+                    markers["@"] = point
+                elif glyph == d.CHAR_STAIRS_DOWN:
+                    markers[d.CHAR_STAIRS_DOWN] = point
+                    field[y][x] = d.CHAR_STAIRS_DOWN
+                elif glyph == d.CHAR_STAIRS_UP:
+                    markers[glyph] = point
+                    field[y][x] = glyph
+                elif glyph == ".":
+                    field[y][x] = d.CHAR_HIDDEN_D_GATE
+                    gates[point] = d.CHAR_D_GATE
+                elif glyph == "?":
+                    pits.append(point)
+                    entities.append(d.Collapse(x, y))
+                elif glyph in member_roles:
+                    entities.append(
+                        d.PartyMember(x, y, member_roles[glyph], origin_floor=floor_index)
+                    )
+                elif glyph == "T":
+                    entities.append(d.Treasure(x, y, "TF"))
+                elif glyph in d.CHAR_TO_MONSTER_TRIBE:
+                    entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[glyph]))
+                elif glyph != d.CHAR_FLOOR:
+                    raise ValueError(f"Unsupported Stage 5 floor {floor_index + 1} glyph: {glyph!r}")
+
+        return field, seen, entities, barriers, gates, markers, pits
+
+    (upper_field, upper_seen, upper_entities, upper_barriers, upper_gates,
+     upper_markers, upper_pits) = parse_map(upper_rows, 0)
+    start = upper_markers.get("@")
+    upper_stair = upper_markers.get(d.CHAR_STAIRS_DOWN)
 
     if start is None or upper_stair is None or not upper_pits or not upper_gates:
         raise ValueError("Stage 5 floor 1 needs @, v, ?, and . markers")
 
-    lower_field = blank_field(lower_rows)
-    lower_seen = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
-    lower_barriers: set[d.Point] = set()
-    lower_gates: dict[d.Point, str] = {}
-    lower_stair = None
-    for y, row in enumerate(lower_rows):
-        for x, glyph in enumerate(row):
-            point = (x, y)
-            if glyph == d.CHAR_WALL:
-                continue
-            if glyph == "=":
-                lower_field[y][x] = d.CHAR_BARRIER
-                lower_barriers.add(point)
-            elif glyph == d.CHAR_CALTROP:
-                lower_field[y][x] = d.CHAR_CALTROP
-            elif glyph == "^":
-                lower_stair = point
-                lower_field[y][x] = d.CHAR_STAIRS_UP
-            elif glyph == ".":
-                lower_field[y][x] = d.CHAR_HIDDEN_D_GATE
-                lower_gates[point] = d.CHAR_D_GATE
-            elif glyph == d.CHAR_FLOOR:
-                lower_field[y][x] = d.CHAR_FLOOR
-            else:
-                raise ValueError(f"Unsupported Stage 5 floor 2 glyph: {glyph!r}")
+    (lower_field, lower_seen, lower_entities, lower_barriers, lower_gates,
+     lower_markers, _) = parse_map(lower_rows, 1)
+    lower_stair = lower_markers.get(d.CHAR_STAIRS_UP)
 
     if lower_stair is None or any(
         lower_field[y][x] != d.CHAR_FLOOR for x, y in upper_pits
@@ -221,7 +210,7 @@ def build_member_trial(
     )
     lower = Floor(
         lower_field,
-        [],
+        lower_entities,
         lower_seen,
         upper_pits[0],
         lower_stair,
