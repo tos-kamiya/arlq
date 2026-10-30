@@ -164,6 +164,10 @@ In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 se
 * **Rare Monster Types and Empowered Monsters**  
   Rare variants have different effects: `A` (Rare Amoeba) grants extra levels, `C` (Rare Chimera) gives a cursed sword, and `E` (Rare Erebus) drains levels. Empowered monsters appear from Stage 2 onward. Rank 2 has the normal level × 3 + 10; rank 3 has three times the rank-2 level. Their rank marks (`b'` and `b"`) identify them as stronger, separate monster types.
 
+* **Party Members**
+
+  In Stages 5 and 6, you can recruit up to two party members whose abilities support combat and exploration.
+
 ## Companion List
 
 | Display & Name | Description                                                      |
@@ -257,9 +261,9 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 | Display & Name | Description |
 | -------------- | ----------- |
-| `T` Mimic | Appears as a treasure chest after the stage boss is defeated. It has level 1; defeating it moves the player to a random position on the same floor. |
-| `?` / `O` Collapse | When a Rogue is in the party and its `?` cell enters the field of view, pits (`O`) open in the four adjacent cells, except where a wall already exists. Otherwise, entering its `?` cell opens the pits. On the next move, entering a pit drops the player to the next floor. Defeating Collapse removes the `?`; it does not respawn. |
-| `V` Vortex | Repositions nearby monsters, companions, and treasure chests when defeated, and erases map memory in the affected area. Map memory lost to a Vortex is not restored by the Loop Companion's rewind. |
+| **T** Mimic | Appears as a treasure chest after the stage boss is defeated. It has level 1; defeating it moves the player to a random position on the same floor. |
+| **?** / **O** Collapse | When a Rogue is in the party and its `?` cell enters the field of view, pits (`O`) open in the four adjacent cells, except where a wall already exists. Otherwise, entering its `?` cell opens the pits. On the next move, entering a pit drops the player to the next floor. Defeating Collapse removes the `?`; it does not respawn. |
+| **V** Vortex | Repositions nearby monsters, companions, and treasure chests when defeated, and erases map memory in the affected area. Map memory lost to a Vortex is not restored by the Loop Companion's rewind. |
 
 #### Elves
 
@@ -270,7 +274,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 ### Stage 5: Training Ground
 
-Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of all six Stage 6 companions.
+Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of all six Stage 6 party members.
 
 ### Stage 6: Dungeon with a Party
 
@@ -278,14 +282,14 @@ Stage 6 is a four-floor dungeon starting at level 1. The player fights with part
 
 #### Party members
 
-| Marker / profession | Ability |
+| Display & Profession | Ability |
 | --- | --- |
-| `J` Jester | Multiplies your shared experience by 1.5. |
-| `H` Healer | Halves movement LP cost and reduces the defeat cost to 2, including when rewinding. |
-| `R` Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
-| `K` Knight | Joins at level 50 and gains half your shared experience before the Jester bonus. Adds K's level to your attack power. |
-| `D` Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Climb through an entrance and leave the pit on the next move. Discovered passages remain usable after D leaves; entrances still require D, and their green discs in sprite mode are shown only while D is in the party. |
-| `G` Guardian | Reduces extra barrier damage and caltrop damage to one-third. |
+| **J** Jester | Multiplies your shared experience by 1.5. |
+| **H** Healer | Halves movement LP cost and reduces the defeat cost to 2, including when rewinding. |
+| **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
+| **K** Knight | Joins at level 50 and gains half your shared experience before the Jester bonus. Adds K's level to your attack power. |
+| **D** Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Climb through an entrance and leave the pit on the next move. Discovered passages remain usable after D leaves; entrances still require D, and their green discs in sprite mode are shown only while D is in the party. |
+| **G** Guardian | Reduces extra barrier damage and caltrop damage to one-third. |
 
 Monsters are placed without horizontal adjacency; party members line up vertically.
 
@@ -293,10 +297,10 @@ Vertically adjacent monsters fight in parties of up to three, combining their st
 
 #### Monsters
 
-| Marker / name | Description |
+| Display & Name | Description |
 | --- | --- |
-| `B` Buffalo | Attack power 8. Defeating it restores 80 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
-| `f` / `f'` Flame cobra | Defeating either grants 3 base experience. The empowered form `f'` places barriers on available adjacent cells in the four cardinal directions. |
+| **B** Buffalo | Attack power 8. Defeating it restores 80 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
+| **f** / **f'** Flame cobra | Defeating either grants 3 base experience. The empowered form `f'` places barriers on available adjacent cells in the four cardinal directions. |
 
 The floor 4 boss party consists of `W`, `V`, and one escort; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
@@ -316,13 +320,3 @@ ChatGPT, Gemini, Claude, and Grok contributed to the design and implementation o
 ## License
 
 This project is licensed under the BSD-2 license.
-
-Combat shows `*` on the defeated side for 0.3 seconds before movement or respawning.
-
-The combat `*` is blue when you win and red when you lose.
-
-In sprite mode, combat instead overlays a blue slash on victory or a red splash on defeat.
-
-Barrier damage also shows the defeat effect for 0.3 seconds after you enter the barrier cell.
-
-Stage 5 leaves two wall columns to the right of its fixed map, followed by open floor that can receive respawning monsters.
