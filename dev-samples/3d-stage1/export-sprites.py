@@ -28,6 +28,8 @@ models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treas
            ('J', 'javelin-elf', (0, 0)), ('K', 'collector-elf', (0, 0)),
            ('L', 'lifebringer-elf', (0, 0)), ('S', 'sylvan-elf', (0, 0)),
            ('rock', 'golem-rock', (0, 0)),
+           ('?', 'unknown-question', (0, 0)), ('!', 'unknown-exclamation', (0, 0)),
+           ('&', 'unknown-ampersand', (0, 0)),
            ('jester-light', 'jester-light', (0, 0)), ('jester-medium', 'jester-medium', (0, 0)),
            ('jester-dark', 'jester-dark', (0, 0)),
            ('healer-light', 'healer-light', (0, 0)), ('healer-medium', 'healer-medium', (0, 0)),

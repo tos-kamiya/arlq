@@ -97,6 +97,9 @@ def cell_centre(col, row):
 ROW = [(char, name, *cell_centre(*slot)) for (char, name), slot in zip(ORDER, SLOTS)]
 # Rank marks remain available for sprite export, outside the preview grid.
 ROW += [("'", 'RANK 2', 50, 0), ('"', 'RANK 3', 55, 0)]
+# So are the symbols shown for unidentified monsters, companions and elves.
+ROW += [('?', 'UNKNOWN ?', 60, 0), ('!', 'UNKNOWN !', 65, 0), ('&', 'UNKNOWN &', 70, 0)]
+OFF_GRID = ("'", '"', '?', '!', '&')
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba's first size, baked into the meshes.
@@ -113,7 +116,16 @@ SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b':
          'rogue-light': 1.42, 'rogue-medium': 1.42, 'rogue-dark': 1.42,
          'explorer-light': 1.49, 'explorer-medium': 1.49, 'explorer-dark': 1.49,
          'knight-light': 1.79, 'knight-medium': 1.79, 'knight-dark': 1.79,
-         'guardian-light': 1.49, 'guardian-medium': 1.49, 'guardian-dark': 1.49}
+         'guardian-light': 1.49, 'guardian-medium': 1.49, 'guardian-dark': 1.49,
+         '?': 1.45, '!': 1.45, '&': 1.45}
+# The unknown symbols float this high above the floor and lean back this many
+# degrees, so they read almost undistorted from the 60-degree camera.
+UNKNOWN_FLOAT = 0.2
+UNKNOWN_LEAN = 40
+# Their font (SIL Open Font License; only its outlines go into the meshes, the
+# font file is neither packed nor bundled). Without it, Blender's built-in font
+# is used, emboldened, though its '?' has an unusual cut hook.
+UNKNOWN_FONT = Path('/usr/share/fonts/opentype/inter/Inter-Bold.otf')
 # The pegasus companion turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
 # Monsters and the chest turn slightly toward screen left; the player and companions face front.
@@ -3637,6 +3649,53 @@ def rank_mark(x, y, count):
                   @ Matrix.Translation((-x, -y, -0.35)))
 
 
+def unknown_mark(x, y, char):
+    """An unidentified monster '?', companion '!' or elf '&': the symbol itself,
+    a plump block of pale light floating a little above the floor.
+
+    The GUI stands it in a light pillar that alone carries the color (yellow,
+    green or white), so the symbol is the same near-white for all three.
+    """
+    glow = material('Unknown mark light', (0.5, 0.52, 0.55), 0.0, 0.3,
+                    emission=(1.0, 0.98, 0.92), strength=0.04,
+                    rim=(1.0, 1.0, 1.0), rim_strength=0.6, coat=0.3)
+    bpy.ops.object.text_add(location=(0, 0, 0))
+    obj = bpy.context.object
+    obj.name = 'Unknown mark ' + char
+    text = obj.data
+    text.body = char
+    text.align_x = 'CENTER'
+    text.size = 1.6
+    font = None
+    if UNKNOWN_FONT.is_file():
+        # The bevel grows the outline into plump strokes; the dots may touch.
+        font = text.font = bpy.data.fonts.load(str(UNKNOWN_FONT), check_existing=True)
+    else:
+        text.offset = 0.02  # embolden the built-in font's thin strokes
+    text.extrude = 0.09
+    text.bevel_depth = 0.045
+    text.bevel_resolution = 3
+    bpy.ops.object.convert(target='MESH')
+    # Drop the text data left by the conversion, so the saved scene keeps no
+    # reference to the font.
+    bpy.data.curves.remove(text)
+    if font is not None:
+        bpy.data.fonts.remove(font)
+    finish(obj, glow)
+    # Stand the symbol up facing the camera, its foot FLOAT above the floor,
+    # then lean it back so its face looks at the 60-degree camera.
+    corners = [Vector(corner) for corner in obj.bound_box]
+    low = min(c.y for c in corners)
+    left, right = min(c.x for c in corners), max(c.x for c in corners)
+    obj.matrix_world = (Matrix.Translation((x, y, UNKNOWN_FLOAT))
+                        @ Matrix.Rotation(math.radians(-UNKNOWN_LEAN), 4, 'X')
+                        @ Matrix.Rotation(math.radians(90), 4, 'X')
+                        @ Matrix.Translation((-(left + right) / 2, -low, 0)))
+    bpy.context.view_layer.update()
+    obj.data.transform(obj.matrix_world)
+    obj.matrix_world = Matrix.Identity(4)
+
+
 def label(value, pos, size):
     bpy.ops.object.text_add(location=pos)
     obj = bpy.context.object
@@ -3655,6 +3714,8 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             'c': chimera, 'T': treasure, 'T-toy': lambda x, y: treasure(x, y, toy=True), 'M': lambda x, y: treasure(x, y, True), 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
+            '?': lambda x, y: unknown_mark(x, y, '?'), '!': lambda x, y: unknown_mark(x, y, '!'),
+            '&': lambda x, y: unknown_mark(x, y, '&'),
             'g': golem, 'w': wyrm, 'W': lambda x, y: wyrm(x, y, True), 'V': vortex, 'k': marksman, 'm': spore, 'f': flame_cobra, 'e': lambda x, y: erebus(x, y, False),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
@@ -3734,7 +3795,7 @@ for char, name, x, y in ROW:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-    if char not in ("'", '"'):
+    if char not in OFF_GRID:
         label(name, (x, y - CELL_D / 2 + 0.12, 0.005), 0.12)
     collection = bpy.data.collections.new('Character ' + char + ' ' + name)
     scene.collection.children.link(collection)
@@ -3743,7 +3804,7 @@ for char, name, x, y in ROW:
             old.objects.unlink(obj)
         collection.objects.link(obj)
         obj['sprite'] = obj in character
-        if char in ("'", '"'):
+        if char in OFF_GRID:
             obj.hide_render = True
 
 bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, -0.1))

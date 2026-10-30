@@ -58,7 +58,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-stairs.py
 
 `src/arlq/assets/stairs/stairs-up.png` と `stairs-down.png` を出力する。
 
-崩落（Collapse）の穴（`O`）も、黄色の文字の代わりに、床に開いた不定形の穴と、その縁に転がる岩として描く。`build-pit.py` が壁と同じ60度のカメラで、元の大きさの1.2倍（`PIT_SCALE`）の穴を、1マスに左右0.25マスずつと北への0.25マスの張り出しを加えた範囲（450×500ピクセル）で `pit.png` に書き出す。大きくした穴が範囲に収まるよう、穴の中心はマスの中央より少し北に置く（`PIT_NORTH`）。GUIは階段と同じく、左右のはみ出しを隣のマスが探索済みの普通の床のときだけ描き、同じ着色（`TERRAIN_TINT`、`TERRAIN_EXPLORED_SHADE`）で敷石の上に重ねる。穴の縁は滑らかに膨らんだ不定形の輪郭で、すぐ下に明るい岩肌の縁（`LIP_DEPTH`）がある。穴の中はでこぼこの岩肌の縦穴で、底は真っ暗、落ちていく角張ったかけらが3つある。縁の周りには大きさの違う角張った岩（`ROCKS`）と小さな瓦礫（`RUBBLE`）が転がり、一部は穴にかかる。岩は底を平らに切った不揃いな多面体で、細かい凹凸のバンプを付ける。穴の外の地面はホールドアウトの透明な板で隠す。岩は青みのある灰色で書き出し、金色の着色で灰色の石に見えるようにする（`ROCK_COLOR`）。プレイヤーが穴の上に立てるよう、壁の層（キャラクターより奥）に描く。中央の `?`（崩落そのもの）は従来どおり文字。画像がない場合は黄色の `O` の文字で描く。
+崩落（Collapse）の穴（`O`）も、黄色の文字の代わりに、床に開いた不定形の穴と、その縁に転がる岩として描く。`build-pit.py` が壁と同じ60度のカメラで、元の大きさの1.2倍（`PIT_SCALE`）の穴を、1マスに左右0.25マスずつと北への0.25マスの張り出しを加えた範囲（450×500ピクセル）で `pit.png` に書き出す。大きくした穴が範囲に収まるよう、穴の中心はマスの中央より少し北に置く（`PIT_NORTH`）。GUIは階段と同じく、左右のはみ出しを隣のマスが探索済みの普通の床のときだけ描き、同じ着色（`TERRAIN_TINT`、`TERRAIN_EXPLORED_SHADE`）で敷石の上に重ねる。穴の縁は滑らかに膨らんだ不定形の輪郭で、すぐ下に明るい岩肌の縁（`LIP_DEPTH`）がある。穴の中はでこぼこの岩肌の縦穴で、底は真っ暗、落ちていく角張ったかけらが3つある。縁の周りには大きさの違う角張った岩（`ROCKS`）と小さな瓦礫（`RUBBLE`）が転がり、一部は穴にかかる。岩は底を平らに切った不揃いな多面体で、細かい凹凸のバンプを付ける。穴の外の地面はホールドアウトの透明な板で隠す。岩は青みのある灰色で書き出し、金色の着色で灰色の石に見えるようにする（`ROCK_COLOR`）。プレイヤーが穴の上に立てるよう、壁の層（キャラクターより奥）に描く。中央の `?`（崩落そのもの）は、ルールに合わせて未識別のモンスターと同じ `?` の記号（後述）で描く。画像がない場合は黄色の `O` の文字で描く。
 
 ```bash
 blender --background --threads 4 --python dev-samples/3d-stage1/build-pit.py
@@ -228,3 +228,19 @@ Rogue の服とズボンは青みのある黒に近い色にし、縁の光で�
 奥の面はキャラクターの後ろ、手前の面はキャラクターの上に加算合成で重ね、側面の縁ほど明るく、上へ行くほど薄くする。
 柱は仲間の画像がある場合だけ描き、色は仲間の緑（全体表示の薄表示では暗い緑、マップモードでは灰色）。足元の円盤は従来どおり。
 プレイヤーに同行中の仲間は、元のGUIではプレイヤーの右隣のマスに文字で描くが、スプライト版では画像がプレイヤーと重なるため、0.6倍の大きさでプレイヤーの右肩のあたりに浮かべ、小さな柱で囲む（`FAMILIAR_*`）。
+
+### 未識別の記号
+
+正体が判明していないモンスター（トラップと崩落を含む）の `?`、同行者の `!`、エルフの `&` は、物の形を持たせず、記号そのものを立体にして光の柱の中に立たせる。
+中身が何であっても同じ画像と大きさにして、正体が漏れないようにする。どの記号を出すかは従来どおり `display.py` が決める。
+
+- 記号: `build-heroic.py` の `unknown_mark()`。Inter Bold（SIL Open Font License。`/usr/share/fonts/opentype/inter/Inter-Bold.otf`）の輪郭を厚みのある立体にし、角を丸めてふっくらさせる（点が縦棒とつながってもよい）。フォントはメッシュに変換した後に消し、シーンに埋め込まない（参照も残さない）。フォントがない環境では Blender の組み込みフォントを太らせて使う。材質は3つ共通の明るい灰色の樹脂で、床から少し浮かせ（`UNKNOWN_FLOAT`）、カメラへ40度傾ける（`UNKNOWN_LEAN`）。`unknown-question.png`、`unknown-exclamation.png`、`unknown-ampersand.png` に書き出す。
+- 光の柱: 仲間と同じ柱（`_draw_pillar()`）を、記号の文字の色（`?` は黄、`!` は緑、`&` は白）で描く。記号の画像も、明るさをそろえたその色で4割だけ着色する（`sprite_funcs.py` の `UNKNOWN_TINT`）。
+- `preview-unknowns.py` で、3つの記号と比較用の正体が判明した仲間を、ゲームと同じ描画で並べた `heroic/preview-unknowns.jpg` を出力できる。
+
+```bash
+blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --group others
+blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only '?' '!' '&'
+.venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/characters/unknown-*.png
+PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-unknowns.py
+```

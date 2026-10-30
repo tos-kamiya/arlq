@@ -72,7 +72,15 @@ SPRITE_FILES = {
     'player blessed': 'player-blessed.png',
     # Not a glyph: the plastic toy chest drawn for 'T' in Stage 5.
     'T-toy': 'treasure-toy.png',
+    # Unidentified monsters (and traps), companions and elves.
+    '?': 'unknown-question.png',
+    '!': 'unknown-exclamation.png',
+    '&': 'unknown-ampersand.png',
 }
+# The unidentified symbols stand in a light pillar of their text color; the
+# near-white symbol takes on only this fraction of that color.
+UNKNOWN_SPRITES = ('?', '!', '&')
+UNKNOWN_TINT = 0.4
 MEMBER_SPRITES = {'J': 'jester', 'H': 'healer', 'R': 'rogue',
                   'K': 'knight', 'G': 'guardian', 'D': 'explorer'}
 MEMBER_SKINS = ('light', 'medium', 'dark')
@@ -92,7 +100,7 @@ TEXT_PANEL_PADDING = 4
 # step would meet, is drawn this much larger (its ground disc keeps its size).
 # Followers walking with the player keep their usual size.
 NEIGHBOR_SCALE = 1.3
-# Field text kept as text (such as "?" and "!") is raised by this fraction of
+# Field text kept as text (such as "+" and ".") is raised by this fraction of
 # a cell, so it stays within its cell above the flagstone joint.
 FIELD_TEXT_RAISE = 0.1
 # Width of the strength column's sprite area in field cells. Each entry keeps
@@ -1655,11 +1663,14 @@ class SpriteUI(PygletUI):
             # for dim neutral colors supplied by callers outside COLOR_MAP.
             dimmed = True
         size = NEIGHBOR_SCALE if self._neighbor_of_player(pos) else 1.0
-        top = self._place_sprite(text, cx, cy, size, y, 'sprite', dimmed, shade)
+        glow = color if text in UNKNOWN_SPRITES else None
+        top = self._place_sprite(text, cx, cy, size, y, 'sprite', dimmed, shade, glow)
         self._sprite_cells[pos] = size
         if text in d.CHAR_TO_COMPANION_TRIBE:
             green = COLOR_MAP[CI_GREEN]
             self._draw_pillar(cx, cy, size, y, self._dim_color(green) if dimmed else green)
+        elif text in UNKNOWN_SPRITES:
+            self._draw_pillar(cx, cy, size, y, tuple(round(c * shade) for c in color))
         tribe = d.CHAR_TO_MONSTER_TRIBE.get(text)
         if (upper_right_color is None and tribe is not None
                 and tribe.effect == d.EFFECT_UNLOCK_TREASURE
@@ -1676,9 +1687,12 @@ class SpriteUI(PygletUI):
                                    color, upper_right_color)
         return top
 
-    def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0):
+    def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0, glow=None):
         """Draw a character image with its feet at field pixel (cx, cy); returns
-        the field pixel y of the top of the character in it."""
+        the field pixel y of the top of the character in it.
+
+        With `glow`, the image is tinted slightly (UNKNOWN_TINT) toward that color.
+        """
         images = self._gray_images if self.map_mode else self._sprite_images
         swapped = THEME_SPRITES.get(self._terrain_theme, {}).get(text)
         if swapped in images:
@@ -1692,6 +1706,10 @@ class SpriteUI(PygletUI):
         group = self._row_group(row, layer)
         tint = ((128, 128, 128) if dimmed else
                 (round(255 * shade),) * 3 if shade < 1 else (255, 255, 255))
+        if glow is not None:
+            peak = max(max(glow), 1)
+            tint = tuple(round(t * (1 - UNKNOWN_TINT + UNKNOWN_TINT * g / peak))
+                         for t, g in zip(tint, glow))
         tint = self._display_color(tint)
         signature = ('sprite', id(picture), left, bottom, scale, scale, id(group), tint)
         sprite = self._draw_bounded_object(

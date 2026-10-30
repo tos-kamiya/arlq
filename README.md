@@ -63,8 +63,10 @@ and HUD. If the field is wider than the view, the camera follows the player;
 Shift+Left/Right scrolls the view three cells at a time without moving. The scroll range includes a
 one-cell margin at each edge.
 
-Characters with bundled sprites use transparent images once identified;
-unknown characters keep their text symbols.
+Characters with bundled sprites use transparent images once identified.
+Unidentified monsters (including traps and Collapses), companions and elves
+appear as 3D `?`, `!` and `&` symbols standing in yellow, green and white light
+pillars.
 Stage 6 party members have sprites with randomly selected skin tones. The player is shown holding a
 chimera's sword while carrying it, and its own blade glows blue after the
 Collector Elf's blessing. The LP gauge floats just above the player, like a

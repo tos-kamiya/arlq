@@ -57,7 +57,7 @@ def test_known_sprite_enlarges_around_cell_center_and_retains_color(sprite_ui):
     assert not ui.text_calls
 
 
-@pytest.mark.parametrize('char', ('?', '&', '$', '%'))
+@pytest.mark.parametrize('char', ('+', '$', '%'))
 def test_unavailable_glyph_uses_original_text(sprite_ui, char):
     sprite_ui._draw_field_text((4, 5), char, (220, 82, 82), True)
     assert sprite_ui.text_calls[0][1] == char
@@ -66,13 +66,18 @@ def test_unavailable_glyph_uses_original_text(sprite_ui, char):
     assert not sprite_ui._drawables
 
 
-def test_unknown_amoeba_does_not_disclose_model(sprite_ui):
+def test_unknown_amoeba_does_not_disclose_model(sprite_ui, monkeypatch):
+    pillars = []
+    monkeypatch.setattr(sprite_ui, '_draw_pillar', lambda *args: pillars.append(args))
     entity = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['a'])
     glyphs = display.revealed_entity_glyphs(entity, set(), False, 8, None)
     for glyph in glyphs:
         sprite_ui._draw_field_text((glyph.x, glyph.y), glyph.char, (244, 190, 78))
-    assert sprite_ui.text_calls[0][1] == '?'
-    assert not sprite_ui._drawables
+    assert not sprite_ui.text_calls
+    assert sprite_ui._drawables[0].image is sprite_ui._sprite_images['?']
+    # The symbol stands in a pillar of its text color.
+    assert [args[-1] for args in pillars] == [(244, 190, 78)]
+
 
 
 def test_map_uses_gray_texture_and_dim_sprite_remains_dim(sprite_ui):
