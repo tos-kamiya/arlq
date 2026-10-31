@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 6.1.2 - 2026-10-31
+
+- Show combat victory and defeat effects across all monsters or party members
+  in Stage 5 and 6 party encounters.
+
 ## 6.1.1 - 2026-10-30
 
 - Add a saved combat and barrier damage effect duration setting, selectable
