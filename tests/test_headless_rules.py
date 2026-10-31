@@ -10,6 +10,7 @@ from arlq import display
 from arlq import game_engine as game_engine_module
 from arlq import i18n
 from arlq import stage_replay as stage_replay_module
+from arlq import stage56
 from arlq import stage_world as stage_world_module
 from arlq.arlq import (
     GameConfig,
@@ -109,6 +110,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "contact_reveal",
         "collapse_landings",
         "persistent_barriers",
+        "broken_walls",
         "respawn_exclusions",
         "adjacent_monster_exemptions",
         "room_components",
@@ -736,7 +738,6 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
         down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
         island=None,
     )
-
     positions = iter([(30, 16), (30, 8), (30, 12), (40, 16)])
     monkeypatch.setattr(
         game_engine_module,
@@ -762,9 +763,12 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
     assert field[8][19] == d.CHAR_FLOOR
     assert field[8][9] == field[8][11] == d.CHAR_FLOOR
     assert field[8][29] == field[8][31] == d.CHAR_BARRIER
+    assert (29, 16) not in current.persistent_barriers
+    assert (31, 16) not in current.persistent_barriers
     assert field[16][29] == field[16][31] == d.CHAR_BARRIER
     assert field[16][9] == field[16][11] == d.CHAR_FLOOR
-    assert seen[8][9] == seen[8][11] == seen[8][29] == seen[8][31] == 0
+    assert seen[8][9] == seen[8][11] == 0
+    assert seen[8][29] == seen[8][31] == 0
     assert seen[16][29] == seen[16][31] == 0
     assert seen[16][9] == seen[16][11] == 0
     assert seen[4][4] == seen[4][5] == 1

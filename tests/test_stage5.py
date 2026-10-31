@@ -484,7 +484,7 @@ def test_treasure_is_optional_and_does_not_finish_stage():
 
 
 def test_normalize_limits_and_protects_boss_pair():
-    current, _ = state()
+    current, player = state()
     current.entities = [monster(2, y, "a") for y in range(2, 9)]
     boss, vortex = monster(10, 2, "W"), monster(10, 3, "V", 2)
     current.entities += [boss, vortex, monster(10, 4, "c")]
@@ -1114,6 +1114,25 @@ def test_trial_dialogue_only_on_successful_stage_five_movement():
     assert result is None or result[0] != -2
 
 
+def test_wyrm_barrier_does_not_appear_under_player_after_wall_break():
+    current, player = state()
+    player.item = d.ITEM_SWORD_X1_5
+    player.item_uses = 1
+    current.field[2][3] = d.CHAR_WALL
+    current.entities.append(monster(4, 2, "w"))
+
+    step(current, player)
+
+    assert (player.x, player.y) == (3, 2)
+    assert current.field[2][3] == d.CHAR_FLOOR
+
+    step(current, player, direction=(-1, 0))
+
+    assert (player.x, player.y) == (2, 2)
+    assert (3, 2) in current.broken_walls
+    assert current.field[2][3] == d.CHAR_FLOOR
+
+
 def test_member_trial_right_margin_provides_respawn_floor():
     floors, _ = stage5.build_member_trial()
     for current, layout in zip(floors, (
@@ -1138,6 +1157,31 @@ def test_monster_adjacency_exceptions_are_explicit_floor_state(exempt):
 
     positions = [(entity.x, entity.y) for entity in current.entities]
     assert (positions == original_positions) is exempt
+
+
+def test_dread_wyrm_barriers_become_persistent_when_defeated():
+    current, player = state()
+    dread_wyrm = monster(6, 6, "W")
+    wyrm = monster(12, 6, "w")
+    current.entities = [dread_wyrm, wyrm]
+
+    stage56.normalize_parties(current)
+    stage56.initialize_monster_barriers(current)
+
+    dread_cells = set(stage56.barrier_cells(current, dread_wyrm, 6))
+    wyrm_cells = set(stage56.barrier_cells(current, wyrm, 6))
+    assert dread_cells.isdisjoint(current.persistent_barriers)
+    assert all(current.field[y][x] == d.CHAR_BARRIER for x, y in dread_cells)
+    assert wyrm_cells.isdisjoint(current.persistent_barriers)
+    assert all(current.field[y][x] == d.CHAR_BARRIER for x, y in wyrm_cells)
+    current.entities.remove(dread_wyrm)
+
+    engine._defeat_monster(
+        dread_wyrm, current, player, [0], [(2, 2)], Counter(), stage_num=6
+    )
+
+    assert dread_cells <= current.persistent_barriers
+    assert wyrm_cells.isdisjoint(current.persistent_barriers)
 
 
 @pytest.mark.parametrize("floor_index", [0, 1])

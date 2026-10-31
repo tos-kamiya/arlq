@@ -1,6 +1,6 @@
 """Stage 6 dungeon generation."""
 
-from . import defs as d
+from . import defs as d, stage56
 from .arlq import GameConfig
 from .stage56 import (
     _open_points,
@@ -275,6 +275,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     _place_final_floor_barriers(floors[-1], d.STAGE6_FINAL_FLOOR_BARRIER_PERCENT)
     for current in floors:
         normalize_parties(current, d.MEMBER_STAGE_MONSTER_PARTY_LIMIT)
+        stage56.initialize_monster_barriers(current)
     player = d.Player(*floors[0].up, 1, d.LP_INIT)
     player.rescue_stage = True
     player.treasure_stage = True

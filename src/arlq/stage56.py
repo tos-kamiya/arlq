@@ -50,7 +50,9 @@ def special_monster(entity: d.Monster) -> bool:
     )
 
 
-def normalize_parties(current: Floor, party_limit: int = d.MONSTER_PARTY_LIMIT) -> None:
+def normalize_parties(
+    current: Floor, party_limit: int = d.MONSTER_PARTY_LIMIT
+) -> None:
     """Enforce party limits after spawning or rearranging; retain W and V."""
     _separate_golems(current)
     positions = monster_positions(current.entities)
@@ -82,7 +84,6 @@ def normalize_parties(current: Floor, party_limit: int = d.MONSTER_PARTY_LIMIT) 
                 kept += 1
                 special |= is_special
     _separate_diagonal_monsters(current)
-    _sync_wyrm_barriers(current)
 
 
 def _neighbor_pairs(monsters: list[d.Monster], offsets: tuple[d.Point, ...]):
@@ -346,8 +347,8 @@ def _open_points(current: Floor) -> list[d.Point]:
     ]
 
 
-def _sync_wyrm_barriers(current: Floor) -> None:
-    """Keep monster barriers centered on the surviving w/W and f' monsters."""
+def initialize_monster_barriers(current: Floor) -> None:
+    """Place the initial rings around barrier-bearing monsters on a floor."""
     occupied = {(entity.x, entity.y) for entity in current.entities}
     reserved = {
         current.up,
@@ -367,12 +368,10 @@ def _sync_wyrm_barriers(current: Floor) -> None:
             if (
                 point not in occupied
                 and point not in reserved
+                and point not in current.broken_walls
                 and (
                     current.field[y][x] == d.CHAR_FLOOR
-                    or (
-                        current.field[y][x] == d.CHAR_BARRIER
-                        and point not in current.persistent_barriers
-                    )
+                    or current.field[y][x] == d.CHAR_BARRIER
                 )
             ):
                 ring_cells.add(point)
@@ -385,6 +384,65 @@ def _sync_wyrm_barriers(current: Floor) -> None:
     for x, y in ring_cells:
         if current.field[y][x] == d.CHAR_FLOOR:
             current.field[y][x] = d.CHAR_BARRIER
+
+
+def place_monster_barriers(
+    current: Floor,
+    entity: d.Monster,
+    stage_num: int,
+    player_position: d.Point | None = None,
+) -> None:
+    """Place the barrier ring for one newly placed monster."""
+    if not entity.active or not _barrier_offsets(entity, stage_num):
+        return
+    occupied = {(other.x, other.y) for other in current.entities}
+    if player_position is not None:
+        occupied.add(player_position)
+    reserved = {
+        current.up,
+        current.down,
+        *current.up_stairs,
+        *current.down_stairs,
+        *current.scholar_up_stairs,
+        *current.scholar_down_stairs,
+        *current.collapse_landings,
+    }
+    for point in barrier_cells(current, entity, stage_num):
+        x, y = point
+        if (
+            point in occupied
+            or point in reserved
+            or point in current.broken_walls
+            or current.field[y][x] not in (d.CHAR_FLOOR, d.CHAR_BARRIER)
+        ):
+            continue
+        if current.field[y][x] == d.CHAR_FLOOR:
+            current.field[y][x] = d.CHAR_BARRIER
+
+
+def update_moved_monster_barriers(
+    current: Floor,
+    entity: d.Monster,
+    old_position: d.Point,
+    stage_num: int,
+    player_position: d.Point | None = None,
+) -> None:
+    """Move one monster's barrier ring, retaining overlaps and permanent cells."""
+    offsets = _barrier_offsets(entity, stage_num)
+    old_cells = {
+        (old_position[0] + dx, old_position[1] + dy)
+        for dx, dy in offsets
+        if 0 <= old_position[1] + dy < len(current.field)
+        and 0 <= old_position[0] + dx < len(current.field[old_position[1] + dy])
+    }
+    other_cells = {
+        point
+        for other in current.entities
+        if other is not entity and isinstance(other, d.Monster) and other.active
+        for point in barrier_cells(current, other, stage_num)
+    }
+    clear_monster_barriers(current, old_cells, other_cells)
+    place_monster_barriers(current, entity, stage_num, player_position)
 
 
 def _barrier_offsets(entity: d.Monster, stage_num: int = 5) -> tuple[d.Point, ...]:
