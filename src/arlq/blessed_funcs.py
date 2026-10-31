@@ -596,10 +596,14 @@ class BlessedUI:
         seconds = getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
         if seconds == 0:
             return
-        print(self.term.move_xy(*pos) + self._style(
-            "*", "blue" if won else "red", bold=True,
-            bg=self._combat_cell_backgrounds.get(pos),
-        ), end="", flush=True)
+        positions = [pos] if len(pos) == 2 and all(
+            isinstance(value, (int, float)) for value in pos
+        ) else pos
+        for point in positions:
+            print(self.term.move_xy(*point) + self._style(
+                "*", "blue" if won else "red", bold=True,
+                bg=self._combat_cell_backgrounds.get(point),
+            ), end="", flush=True)
         time.sleep(seconds)
 
     def draw_rewind_transition(self, message: str) -> None:

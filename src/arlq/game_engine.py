@@ -1819,7 +1819,20 @@ def _process_multi_floor_turn(
             won = d.current_player_attack(player, stage_num) >= sum(
                 d.monster_level(monster) for monster in enemies
             )
-            combat_effect((entity.x, entity.y) if won else previous, won)
+            if stage_num in (5, 6):
+                positions = (
+                    [(monster.x, monster.y) for monster in enemies]
+                    if won
+                    else [
+                        previous,
+                        *((glyph.x + previous[0] - player.x,
+                           glyph.y + previous[1] - player.y)
+                          for glyph in ui_display.member_glyphs(player)),
+                    ]
+                )
+                combat_effect(positions, won)
+            else:
+                combat_effect((entity.x, entity.y) if won else previous, won)
         contact = _resolve_contact(
             hit,
             current,

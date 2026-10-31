@@ -1064,16 +1064,19 @@ class PygletUI:
         seconds = getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
         if seconds == 0:
             return
-        x, y = pos
-        self._draw_rect(
-            self._field_col_x(x), y * self.cell_size_y,
-            self._field_col_width(x), self.cell_size_y,
-            self._combat_cell_colors.get(pos, VISIBLE_FLOOR),
-            group=pyglet.graphics.Group(order=10001),
-        )
-        self._draw_text(pos, "*", COLOR_MAP[CI_BLUE if won else CI_RED], bold=True,
-                        x_offset=self._field_text_x_offset(),
-                        group=pyglet.graphics.Group(order=10002))
+        positions = [pos] if len(pos) == 2 and all(
+            isinstance(value, (int, float)) for value in pos
+        ) else pos
+        for x, y in positions:
+            self._draw_rect(
+                self._field_col_x(x), y * self.cell_size_y,
+                self._field_col_width(x), self.cell_size_y,
+                self._combat_cell_colors.get((x, y), VISIBLE_FLOOR),
+                group=pyglet.graphics.Group(order=10001),
+            )
+            self._draw_text((x, y), "*", COLOR_MAP[CI_BLUE if won else CI_RED], bold=True,
+                            x_offset=self._field_text_x_offset(),
+                            group=pyglet.graphics.Group(order=10002))
         self._flip()
         time.sleep(seconds)
 

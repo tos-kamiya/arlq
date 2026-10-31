@@ -1082,6 +1082,9 @@ class SpriteUI(PygletUI):
         seconds = getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
         if seconds == 0:
             return
+        positions = [pos] if len(pos) == 2 and all(
+            isinstance(value, (int, float)) for value in pos
+        ) else pos
         name = "slash" if won else "splash"
         image = pyglet.image.load(str(
             Path(__file__).parent / "assets" / "effects" / f"{name}.png"
@@ -1090,22 +1093,26 @@ class SpriteUI(PygletUI):
         size = NEIGHBOR_SCALE if won else 1.0
         scale = (size * 1.8 * max(1, self._sprite_unit() - 2 * padding)
                  / SPRITE_REFERENCE_PIXELS)
-        cx = self._field_col_x(pos[0]) + self.cell_size_x / 2
-        cy = (pos[1] + 0.5) * self.cell_size_y
         blend = ({"blend_src": pyglet.gl.GL_SRC_ALPHA,
                   "blend_dest": pyglet.gl.GL_ONE} if won else {})
-        effect = pyglet.sprite.Sprite(
-            image, x=cx - image.width * scale / 2,
-            y=self.window_height - cy - (
-                image.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale,
-            batch=self.batch, group=pyglet.graphics.Group(order=100000), **blend,
-        )
-        effect.scale = scale
+        effects = []
+        for x, y in positions:
+            cx = self._field_col_x(x) + self.cell_size_x / 2
+            cy = (y + 0.5) * self.cell_size_y
+            effect = pyglet.sprite.Sprite(
+                image, x=cx - image.width * scale / 2,
+                y=self.window_height - cy - (
+                    image.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale,
+                batch=self.batch, group=pyglet.graphics.Group(order=100000), **blend,
+            )
+            effect.scale = scale
+            effects.append(effect)
         try:
             self._flip()
             time.sleep(seconds)
         finally:
-            effect.delete()
+            for effect in effects:
+                effect.delete()
 
     def _draw_player(self, pos, player):
         if '@' not in self._sprite_images:
