@@ -64,6 +64,13 @@ Shift+Left/Right scrolls the view three cells at a time without moving. The scro
 one-cell margin at each edge.
 
 Characters with bundled sprites use transparent images once identified.
+Hover over a field cell to enlarge its character in place to twice its usual
+size, with its name above its head. Unidentified characters show no name.
+At the dungeon's top edge, the name appears below the character instead.
+Japanese names include the character's glyph in parentheses; in English,
+Marksman and Komodo Dragon are shown as `Marksman(k)` and `Komodo Dragon(d)`.
+Moving to another cell restores the previous character. The mouse cursor
+appears when moved and hides after three seconds without movement.
 Unidentified monsters (including traps and Collapses), companions and elves
 appear as 3D `?`, `!` and `&` symbols standing in yellow, green and white light
 pillars.

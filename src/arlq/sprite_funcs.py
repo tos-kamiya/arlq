@@ -11,6 +11,7 @@ import pyglet
 from . import defs as d
 from . import display as ui_display
 from .arlq import barrier_lp_damage
+from .i18n import t as tr
 from .pyglet_funcs import (
     CELL_SIZE_X,
     CELL_SIZE_Y,
@@ -21,6 +22,7 @@ from .pyglet_funcs import (
     FLOOR,
     FONT_HEIGHT_RATIO,
     MAX_UI_SCALE,
+    MESSAGE_FONT_SIZE_SCALE,
     MIN_UI_SCALE,
     REACHABLE_CELL_COLOR,
     STRENGTH_COLUMN_PADDING,
@@ -94,6 +96,24 @@ MEMBER_SKINS = ('light', 'medium', 'dark')
 SPRITE_FILES.update({f'{name}-{skin}': f'{name}-{skin}.png'
                      for name in MEMBER_SPRITES.values() for skin in MEMBER_SKINS})
 ROCK_SPRITE = 'golem rock'
+SPRITE_NAMES = {
+    '@': 'Player', 'a': 'Amoeba', 'A': 'Rare Amoeba', 'b': 'Bison',
+    'B': 'Buffalo', 'c': 'Chimera', 'C': 'Rare Chimera', 'd': 'Komodo Dragon',
+    'D': 'Dragon', 'T': 'Treasure', 'M': 'Mimic', 'l': 'Looping Companion',
+    'n': 'Nomicon', 'o': 'Ocular', 'F': 'Fire Drake', 'f': 'Flame Cobra',
+    'g': 'Golem', 'k': 'Marksman', 'V': 'Vortex', 'w': 'Wyrm',
+    'W': 'Dread Wyrm', 'm': 'Spore', 'e': 'Erebus', 'E': 'Rare Erebus',
+    'X': 'Caltrop Plant', 'p': 'Pegasus', 'H': 'High Elf', 'I': 'Isolated Elf',
+    'J': 'Javelin Elf', 'K': 'Collector Elf', 'L': 'Lifebringer Elf',
+    'S': 'Sylvan Elf', '?': 'Unidentified Monster',
+    '!': 'Unidentified Companion', '&': 'Unidentified Elf',
+}
+SPRITE_NAMES.update(dict.fromkeys(
+    ('player sword', 'player cursed sword', 'player blessed'), 'Player'))
+SPRITE_NAMES.update({f'{name}-{skin}': role
+                     for role, char in d.MEMBER_GLYPHS.items()
+                     if (name := MEMBER_SPRITES.get(char))
+                     for skin in MEMBER_SKINS})
 # Golem rubble outside the current view is darkened like explored walls.
 ROCK_EXPLORED_SHADE = 0.6
 # An elf the player has met (drawn without bold as text) is shown with its
@@ -121,6 +141,8 @@ MAX_WINDOW_WIDTH = 32767
 # the field is usually wider than the view and scrolls with the player.
 DEFAULT_WINDOW_ASPECT = 16 / 9
 HORIZONTAL_VIEW_SCROLL_CELLS = 3
+HOVER_SCALE = 2.0
+MOUSE_CURSOR_SECONDS = 3.0
 STRENGTH_TEXT_SCALE = 0.7
 # Field cells are wider than the text GUI's (13) so characters overflow
 # their cells less; sprites and their discs keep the CELL_SIZE_X-based size.
@@ -460,7 +482,14 @@ class SpriteUI(PygletUI):
         self._composite_sprite = None
         self._render_target_size = None
         self._failed_render_target_size = None
+        self._mouse_position = None
+        self._mouse_visible_until = None
         super().__init__(scale, key_repeat_interval, resizable=True)
+        self.window.push_handlers(
+            on_mouse_motion=self._on_mouse_motion,
+            on_mouse_drag=self._on_mouse_drag,
+            on_mouse_leave=self._on_mouse_leave,
+        )
         self._text_batch = pyglet.graphics.Batch()
         self._hud_row_height = self._menu_cell_size_y
         self._drawing_hud = False
@@ -634,7 +663,14 @@ class SpriteUI(PygletUI):
                   'familiar-front', 'mark')
 
     def _row_group(self, y, layer):
-        order = 10 + len(self.ROW_LAYERS) * y + self.ROW_LAYERS.index(layer)
+        if layer == 'hover':
+            order = 9500
+        elif layer == 'hover-mark':
+            order = 9501
+        elif layer == 'hover-name':
+            order = 9502
+        else:
+            order = 10 + len(self.ROW_LAYERS) * y + self.ROW_LAYERS.index(layer)
         if order not in self._row_groups:
             self._row_groups[order] = pyglet.graphics.Group(order=order)
         return self._row_groups[order]
@@ -813,12 +849,46 @@ class SpriteUI(PygletUI):
 
     def _pump(self):
         super()._pump()
+        deadline = getattr(self, '_mouse_visible_until', None)
+        if deadline is not None and time.monotonic() >= deadline:
+            self.window.set_mouse_visible(False)
+            self._mouse_visible_until = None
         if not self._resize_redraw_pending or not self._stage_input_active:
             return
         self._resize_redraw_pending = False
         if self._last_stage_draw is not None:
             decor, kwargs = self._last_stage_draw
             self.draw_stage(decor=decor, **kwargs)
+
+    def _on_mouse_motion(self, x, y, dx, dy):
+        self._mouse_position = (x, y)
+        self._mouse_visible_until = time.monotonic() + MOUSE_CURSOR_SECONDS
+        self.window.set_mouse_visible(True)
+        self._resize_redraw_pending = True
+
+    def _on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        self._on_mouse_motion(x, y, dx, dy)
+
+    def _on_mouse_leave(self, x, y):
+        self._mouse_position = None
+        self._mouse_visible_until = None
+        self.window.set_mouse_visible(False)
+        self._resize_redraw_pending = True
+
+    def _hovered_cell(self):
+        mouse = getattr(self, '_mouse_position', None)
+        if mouse is None or self._menu_active:
+            return None
+        x, y = mouse
+        field_y = self.window_height - y
+        if not (0 <= x < self.field_pixel_width
+                and 0 <= field_y < self.field_height * self.cell_size_y):
+            return None
+        col = math.floor((x + getattr(self, '_horizontal_scroll_px', 0)) / self.cell_size_x)
+        row = math.floor(field_y / self.cell_size_y)
+        if 0 <= col < self.field_width:
+            return col, row
+        return None
 
     def _draw_barrier(self, x, y, field, discovered_at):
         """Orange magic light rising from the floor, or faint smoke near the player while harmless."""
@@ -1667,7 +1737,7 @@ class SpriteUI(PygletUI):
         left = (self._field_col_x(x) + 0.5 * self.cell_size_x + dx * self._sprite_unit()
                 - image.width * scale / 2)
         bottom = self.window_height - (y + 0.5 - dy) * self.cell_size_y - image.height * scale / 2
-        group = self._row_group(y, 'mark')
+        group = self._row_group(y, 'hover-mark' if pos == self._hovered_cell() else 'mark')
         # White like the strength column, not the strength color; only the
         # half-bright dimming of the glyph is kept.
         white = COLOR_MAP['default']
@@ -1718,8 +1788,14 @@ class SpriteUI(PygletUI):
             # for dim neutral colors supplied by callers outside COLOR_MAP.
             dimmed = True
         size = NEIGHBOR_SCALE if self._neighbor_of_player(pos) else 1.0
+        hovered = pos == self._hovered_cell()
+        if hovered:
+            size *= HOVER_SCALE
         glow = color if text in UNKNOWN_SPRITES else None
-        top = self._place_sprite(text, cx, cy, size, y, 'sprite', dimmed, shade, glow)
+        top = self._place_sprite(text, cx, cy, size, y,
+                                 'hover' if hovered else 'sprite', dimmed, shade, glow)
+        if hovered:
+            self._draw_hover_name(pos, text, top)
         self._sprite_cells[pos] = size
         if text in d.CHAR_TO_COMPANION_TRIBE:
             green = COLOR_MAP[CI_GREEN]
@@ -1747,6 +1823,38 @@ class SpriteUI(PygletUI):
             self._draw_ground_disc(cx, cy, disc_scale * GROUND_DISC_RADIUS * self._sprite_unit(),
                                    color, upper_right_color)
         return top
+
+    def _draw_hover_name(self, pos, text, head_top):
+        if text in UNKNOWN_SPRITES:
+            return
+        name = tr(SPRITE_NAMES[text]) if text in SPRITE_NAMES else text
+        size_scale = self._status_font_scale() * MESSAGE_FONT_SIZE_SCALE
+        font_size = self.font_size * size_scale
+        font_name = self.font_name
+        if not name.isascii():
+            font_name, ratio = self._non_ascii_font(self.font_size)
+            font_size *= ratio
+        cx = self._field_col_x(pos[0]) + self.cell_size_x / 2
+        bottom = self.window_height - head_top + LP_GAUGE_GAP * self._sprite_unit()
+        anchor_y = 'bottom'
+        # The first walkable row sits just below the dungeon's top wall.
+        if pos[1] <= 1:
+            bottom = (self.window_height - (pos[1] + 0.5) * self.cell_size_y
+                      - LP_GAUGE_GAP * self._sprite_unit())
+            anchor_y = 'top'
+        group = self._row_group(pos[1], 'hover-name')
+        color = (*self._display_color(COLOR_MAP['default']), 255)
+        signature = ('hover-name', name, font_name, font_size, cx, bottom,
+                     anchor_y, color, id(group))
+        self._draw_object(
+            signature,
+            lambda: pyglet.text.Label(
+                name, font_name=font_name, font_size=font_size,
+                weight='bold',
+                x=cx, y=bottom, anchor_x='center', anchor_y=anchor_y,
+                color=color, batch=self._text_batch, group=group,
+            ),
+        )
 
     def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0, glow=None):
         """Draw a character image with its feet at field pixel (cx, cy); returns

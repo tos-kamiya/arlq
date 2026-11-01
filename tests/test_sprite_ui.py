@@ -7,6 +7,7 @@ import pytest
 
 from arlq import defs as d
 from arlq import display, sprite_funcs
+from arlq import i18n
 from arlq.pyglet_funcs import PygletUI
 from arlq.sprite_funcs import SPRITE_FILES, SPRITE_REFERENCE_PIXELS, SpriteUI
 
@@ -23,6 +24,9 @@ def sprite_ui(monkeypatch):
     ui.scale = 1
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui._menu_cell_size_y = 20
+    ui._menu_font_size = 12
+    ui.font_size = 12
+    ui.font_name = 'Courier New'
     ui._menu_active = False
     ui.window_height = 500
     ui.batch = None
@@ -40,6 +44,8 @@ def sprite_ui(monkeypatch):
     monkeypatch.setattr(ui, '_draw_ground_disc', lambda *args: ui.outlines.append(args))
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.text.Label',
+                        lambda text, **kwargs: SimpleNamespace(text=text, **kwargs))
     return ui
 
 
@@ -55,6 +61,110 @@ def test_known_sprite_enlarges_around_cell_center_and_retains_color(sprite_ui):
     assert feet == pytest.approx(390)
     assert ui.outlines[0][3:] == (color, None)
     assert not ui.text_calls
+
+
+def test_hover_enlarges_sprite_with_fixed_feet_and_original_cell_hitbox(sprite_ui):
+    ui = sprite_ui
+    ui.field_pixel_width = 260
+    ui.field_width, ui.field_height = 79, 22
+    ui._horizontal_scroll_px = 26
+    ui._mouse_position = (33, 390)
+    assert ui._hovered_cell() == (4, 5)
+    ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
+    sprite = ui._drawables[0]
+    assert sprite.scale == pytest.approx(2 * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+    feet = sprite.y + (sprite.image.height / 2 - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * sprite.scale
+    assert feet == pytest.approx(390)
+    assert sprite.group.order > ui._row_group(21, 'wall').order
+    assert sprite.group.order > pyglet.graphics.Group(order=9000).order
+    assert ui._row_group(5, 'hover-mark').order > sprite.group.order
+    label = ui._drawables[1]
+    assert label.text == 'Bison'
+    assert label.anchor_x == 'center'
+    assert label.anchor_y == 'bottom'
+    assert label.font_size == pytest.approx(
+        ui.font_size * ui._status_font_scale() * sprite_funcs.MESSAGE_FONT_SIZE_SCALE)
+    assert label.font_name == ui.font_name
+    assert label.weight == 'bold'
+    head_top = sprite.y + sprite.image.height * sprite.scale
+    assert label.y == pytest.approx(head_top + sprite_funcs.LP_GAUGE_GAP * ui._sprite_unit())
+    assert label.group.order > sprite.group.order
+    ui._mouse_position = (39, 390)
+    assert ui._hovered_cell() == (5, 5)
+    ui._mouse_position = (260, 390)
+    assert ui._hovered_cell() is None
+    ui._mouse_position = (33, 50)
+    assert ui._hovered_cell() is None
+    ui._mouse_position = (33, 390)
+    ui._menu_active = True
+    assert ui._hovered_cell() is None
+
+
+@pytest.mark.parametrize('key,name', [
+    ('player sword', 'Player'),
+    ('k', 'Marksman(k)'),
+    ('d', 'Komodo Dragon(d)'),
+    ('knight-light', 'Knight'), ('explorer-dark', 'Dungeon Explorer'),
+])
+def test_hover_names_preserve_identity_and_member_roles(sprite_ui, key, name):
+    sprite_ui._draw_hover_name((4, 5), key, 100)
+    assert sprite_ui._drawables[0].text == name
+
+
+@pytest.mark.parametrize('key', sprite_funcs.UNKNOWN_SPRITES)
+def test_hover_unknown_character_has_no_name(sprite_ui, key):
+    sprite_ui._draw_hover_name((4, 5), key, 100)
+    assert not sprite_ui._drawables
+
+
+@pytest.mark.parametrize('row', [0, 1, 2, 5])
+def test_hover_name_is_below_only_at_dungeon_top(sprite_ui, row):
+    ui = sprite_ui
+    ui._draw_hover_name((4, row), 'b', -10)
+    label = ui._drawables[0]
+    if row <= 1:
+        assert label.anchor_y == 'top'
+        feet = ui.window_height - (row + 0.5) * ui.cell_size_y
+        assert label.y == pytest.approx(feet - sprite_funcs.LP_GAUGE_GAP * ui._sprite_unit())
+        assert 0 < label.y < ui.window_height
+    else:
+        assert label.anchor_y == 'bottom'
+
+
+@pytest.mark.parametrize('key,name', [
+    ('c', 'キメラ(c)'), ('k', '射手(k)'), ('@', 'プレイヤー(@)'),
+    ('d', 'コモドドラゴン(d)'),
+    ('player blessed', 'プレイヤー(@)'), ('knight-light', '騎士(K)'),
+    ('K', 'コレクターエルフ(K)'), ('D', 'ドラゴン(D)'),
+    ('explorer-dark', 'ダンジョン探検家(D)'),
+])
+def test_japanese_hover_names_include_glyph(sprite_ui, monkeypatch, key, name):
+    monkeypatch.setattr(i18n, '_lang', 'ja')
+    monkeypatch.setattr(sprite_ui, '_non_ascii_font', lambda size: ('sans-serif', 1.0))
+    sprite_ui._draw_hover_name((4, 5), key, 100)
+    assert sprite_ui._drawables[0].text == name
+
+
+def test_mouse_cursor_timeout_restarts_on_motion(sprite_ui, monkeypatch):
+    ui = sprite_ui
+    visible = []
+    ui.window = SimpleNamespace(set_mouse_visible=visible.append)
+    ui._stage_input_active = False
+    monkeypatch.setattr(PygletUI, '_pump', lambda self: None)
+    now = [10.0]
+    monkeypatch.setattr(sprite_funcs.time, 'monotonic', lambda: now[0])
+    ui._on_mouse_motion(20, 30, 1, 0)
+    now[0] = 12.0
+    ui._on_mouse_motion(21, 30, 1, 0)
+    now[0] = 14.0
+    ui._pump()
+    assert visible == [True, True]
+    now[0] = 15.0
+    ui._pump()
+    assert visible == [True, True, False]
+    assert ui._mouse_position == (21, 30)
+    ui._on_mouse_leave(21, 30)
+    assert ui._mouse_position is None
 
 
 @pytest.mark.parametrize('char', ('+', '$', '%'))
