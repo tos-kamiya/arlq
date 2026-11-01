@@ -1412,9 +1412,10 @@ def ocular(x, y):
     real yet made, a crafted thing."""
     sclera = material('Ocular pearl sclera', (0.95, 0.96, 1.0), 0.35, 0.12,
                       rim=(0.7, 0.9, 1.0), rim_strength=1.0, coat=1.0)
-    # Bright yellow-amber: glowing enough to stay yellow behind the cornea.
-    iris = material('Ocular amber iris', (1.0, 0.50, 0.04), 0.2, 0.15,
-                    emission=(1.0, 0.50, 0.04), strength=0.8, coat=0.6)
+    # The light orange the iris had before the cornea: behind the cornea the
+    # first colour turned redder and a yellower amber looked too yellow.
+    iris = material('Ocular amber iris', (1.0, 0.40, 0.03), 0.2, 0.15,
+                    emission=(1.0, 0.40, 0.03), strength=0.6, coat=0.6)
     # The gear's lines glow the companions' cyan (as the Nomicon's eyes).
     # Weaker than the Nomicon's: stronger glow burned out to white here.
     gear_line = material('Ocular cyan gear lines', (0.0, 0.5, 1.0), emission=(0.0, 0.55, 1.0),
