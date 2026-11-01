@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 6.1.3 - 2026-11-01
+
+- Mark hidden passages discovered by the Dungeon Explorer with green ground
+  light instead of text in sprite mode, matching pit entrance markers.
+
 ## 6.1.2 - 2026-10-31
 
 - Show combat victory and defeat effects across all monsters or party members
