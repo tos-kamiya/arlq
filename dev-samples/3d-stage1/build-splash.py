@@ -13,7 +13,7 @@ baked into the image.
 
     blender --background --threads 4 --python dev-samples/3d-stage1/build-splash.py
 
-Writes heroic/effect-splash.png.
+Writes src/arlq/assets/effects/splash.png, the image the GUI draws.
 """
 from pathlib import Path
 import math
@@ -21,7 +21,7 @@ import math
 import bpy
 from mathutils import Vector
 
-OUT = Path(__file__).resolve().parent / 'heroic' / 'effect-splash.png'
+OUT = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets' / 'effects' / 'splash.png'
 # The splash's centre (about the player's chest), and its drops: where each
 # starts and ends from the centre, and its radius at the root and the head; the droplet's
 # distance and radius. All in the plane facing the camera, scaled by SIZE.

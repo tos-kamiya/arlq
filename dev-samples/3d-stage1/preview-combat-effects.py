@@ -2,10 +2,10 @@
 one cell in front of (south of) a monster, for each of a few monsters:
 
 - top row, a win: the monster is beatable, and the slash crescent
-  (heroic/effect-slash.png from build-slash.py) is added over the monster's
+  (src/arlq/assets/effects/slash.png from build-slash.py) is added over the monster's
   cell at the monster's scale (enlarged as the player's neighbour);
 - bottom row, a defeat: the monster is too strong, and the blood splash
-  (heroic/effect-splash.png from build-splash.py) is drawn over the player's
+  (src/arlq/assets/effects/splash.png from build-splash.py) is drawn over the player's
   cell at the characters' scale.
 
 The player's LP gauge is left out, as it would cover the monster.
@@ -30,13 +30,14 @@ from arlq.sprite_funcs import SpriteUI
 
 HEROIC = Path(__file__).resolve().parent / 'heroic'
 OUT = HEROIC / 'preview-combat-effects.jpg'
+EFFECTS_DIR = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets' / 'effects'
 X, ROW = 5, 4
 LEFT, RIGHT, TOP, BOTTOM = X - 3, X + 3, ROW - 2, ROW + 2
 MONSTERS = [('BISON', 'b'), ('GOLEM', 'g'), ('CHIMERA', 'c')]
 # (label, player level, effect image, row of the cell it covers, its size,
 # drawn additively)
-EFFECTS = [('WIN', 60, 'effect-slash.png', ROW, sprite_funcs.NEIGHBOR_SCALE, True),
-           ('DEFEAT', 1, 'effect-splash.png', ROW + 1, 1.0, False)]
+EFFECTS = [('WIN', 60, 'slash.png', ROW, sprite_funcs.NEIGHBOR_SCALE, True),
+           ('DEFEAT', 1, 'splash.png', ROW + 1, 1.0, False)]
 
 ui = SpriteUI(scale=4)
 ui._draw_lp_gauge = lambda *args: None
@@ -86,7 +87,7 @@ def panel(work, label, level, image, row, size, additive, name, char):
 with tempfile.TemporaryDirectory() as work:
     rows = []
     for label, level, filename, row, size, additive in EFFECTS:
-        image = pyglet.image.load(str(HEROIC / filename))
+        image = pyglet.image.load(str(EFFECTS_DIR / filename))
         panels = [panel(work, label, level, image, row, size, additive, name, char)
                   for name, char in MONSTERS]
         rows.append(Path(work) / ('row-%s.png' % label))

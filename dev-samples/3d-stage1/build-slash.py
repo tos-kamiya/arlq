@@ -18,7 +18,7 @@ additively. The colors are baked into the image.
 
     blender --background --threads 4 --python dev-samples/3d-stage1/build-slash.py
 
-Writes heroic/effect-slash.png.
+Writes src/arlq/assets/effects/slash.png, the image the GUI draws.
 """
 from pathlib import Path
 import math
@@ -26,7 +26,7 @@ import math
 import bpy
 from mathutils import Vector
 
-OUT = Path(__file__).resolve().parent / 'heroic' / 'effect-slash.png'
+OUT = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets' / 'effects' / 'slash.png'
 # The cylinder's radius; the cut's height at the centre, and how far it
 # rises toward 2:30 (seen from above, the far side at 12) and falls
 # toward 8:30, where the crescent ends.
