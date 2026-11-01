@@ -2477,6 +2477,20 @@ def healer(x, y, tone):
         cone(name + ' drop tip', (cx, cy, cz - radius * 0.05), (cx, cy, cz + radius * 0.62),
              radius * 0.36, 0, drop_mat, 20, True)
 
+    def robe_sleeve(side, shoulder, elbow, wrist):
+        # Wide robe sleeves hanging with gravity: toward the wrist each
+        # section grows taller than wide and drops so its top stays along
+        # the arm while the cloth below hangs down, rather than flaring
+        # evenly all round.
+        shoulder, elbow, wrist = Vector(shoulder), Vector(elbow), Vector(wrist)
+        points = [shoulder, shoulder.lerp(elbow, 0.5), elbow, elbow.lerp(wrist, 0.55), wrist]
+        widths = [0.055, 0.062, 0.072, 0.082, 0.09]
+        heights = [0.055, 0.068, 0.095, 0.135, 0.17]
+        tube('Healer %s sleeve' % side,
+             [p - Vector((0, 0, 0.8 * (h - w))) for p, w, h in zip(points, widths, heights)],
+             list(zip(widths, heights)), robe, sides=16, smooth=True,
+             up=(0, 0, 1))
+
     def body(x, y):
         # The lowered hood lies behind the neck; the stole hangs from a band
         # round the neck down the front in two broad strips.
@@ -2491,19 +2505,19 @@ def healer(x, y, tone):
         emblem('Healer chest emblem', (x, y - 0.175, 0.72), 0.05, silver)
         # Staff in the right hand (screen left), its silver ring holding a
         # floating drop crystal above the head.
-        shaft = (x - 0.30, y - 0.10)
+        # Held a little out from the body so the right forearm runs sideways
+        # and its hanging sleeve shows, as the left one does.
+        shaft = (x - 0.36, y - 0.10)
         tube('Healer staff', [(shaft[0], shaft[1], 0.0), (shaft[0], shaft[1], 0.70),
                               (shaft[0], shaft[1], 1.40)], [0.024, 0.024, 0.022], wood,
              sides=8, smooth=True)
         emblem('Healer staff head', (shaft[0], shaft[1], 1.52), 0.12, glow)
-        tube('Healer right sleeve', [(x - 0.17, y, 0.84), (x - 0.27, y - 0.04, 0.74),
-                                     (x - 0.29, y - 0.09, 0.76)], [0.05, 0.065, 0.075], robe,
-             sides=12, smooth=True)
+        robe_sleeve('right', (x - 0.17, y, 0.84), (x - 0.24, y + 0.01, 0.70),
+                    (x - 0.32, y - 0.08, 0.77))
         sphere('Healer right hand', (shaft[0], shaft[1], 0.77), (0.045, 0.045, 0.045), skin, 16)
         # Left hand raised before the chest, palm out, with a soft light.
-        tube('Healer left sleeve', [(x + 0.17, y, 0.84), (x + 0.28, y - 0.04, 0.70),
-                                    (x + 0.22, y - 0.18, 0.82)], [0.05, 0.065, 0.075], robe,
-             sides=12, smooth=True)
+        robe_sleeve('left', (x + 0.17, y, 0.84), (x + 0.28, y - 0.04, 0.70),
+                    (x + 0.22, y - 0.18, 0.82))
         sphere('Healer left hand', (x + 0.21, y - 0.23, 0.86), (0.045, 0.02, 0.055), skin, 16)
         sphere('Healer healing light', (x + 0.21, y - 0.31, 0.90), (0.05, 0.05, 0.05), glow, 20)
 
