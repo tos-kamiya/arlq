@@ -310,6 +310,18 @@ def soften(obj, width, segments=3):
     return obj
 
 
+def triangle_facets(obj, levels=1):
+    """Finer faceting in triangles: subdivide the mesh once (which also
+    rounds it a little), split every face into triangles and shade them
+    flat, so the surface reads as many small triangular facets."""
+    subsurf = obj.modifiers.new('Finer facets', 'SUBSURF')
+    subsurf.levels = subsurf.render_levels = levels
+    obj.modifiers.new('Triangle facets', 'TRIANGULATE')
+    for face in obj.data.polygons:
+        face.use_smooth = False
+    return obj
+
+
 def cone(name, start, end, r1, r2, mat, vertices=32, smooth=True):
     delta = Vector(end) - Vector(start)
     bpy.ops.mesh.primitive_cone_add(vertices=vertices, radius1=r1, radius2=r2,
@@ -566,27 +578,30 @@ def dragon(x, y):
                      rim=(0.7, 0.9, 1.0), rim_strength=0.8)
     eye = material('Dragon gold eyes', (1.0, 0.8, 0.1), emission=(1.0, 0.75, 0.1),
                    strength=25.0)
-    # One continuous body, snout to a sinuous tail, with softly rounded
-    # facets (twelve round) kept so the wet skin does not turn it into a
-    # soft round toy.
+    # One continuous body, snout to a sinuous tail, in small triangular
+    # facets so the wet skin does not turn it into a soft round toy.
     spine = [(0.00, -1.00, 0.26), (0.00, -0.86, 0.30), (0.00, -0.68, 0.34), (0.02, -0.50, 0.33),
              (0.03, -0.28, 0.36), (0.01, 0.02, 0.37), (-0.05, 0.30, 0.33), (-0.15, 0.55, 0.27),
              (-0.14, 0.78, 0.21), (0.04, 0.96, 0.16), (0.26, 1.04, 0.12), (0.40, 1.04, 0.10)]
     radii = [(0.08, 0.05), (0.17, 0.10), (0.22, 0.14), (0.17, 0.12), (0.31, 0.19), (0.34, 0.21),
              (0.27, 0.17), (0.17, 0.12), (0.11, 0.08), (0.07, 0.05), (0.035, 0.03), 0]
-    soften(tube('Dragon body', [(x + px, y + py, pz) for px, py, pz in spine], radii, scales,
-                sides=12, twist=math.pi / 12), 0.025)
+    triangle_facets(tube('Dragon body', [(x + px, y + py, pz) for px, py, pz in spine], radii,
+                         scales, sides=8, twist=math.pi / 8))
     for side in (-1, 1):
         # Brow ridge over each glowing eye gives a scowl.
         cone('Dragon brow', (x + side * 0.08, y - 0.78, 0.45),
              (x + side * 0.24, y - 0.62, 0.50), 0.05, 0, belly, 5, False)
         sphere('Dragon eye', (x + side * 0.15, y - 0.76, 0.42), (0.05, 0.045, 0.035), eye, 16)
         for dy, back in ((-0.24, -0.16), (0.24, 0.12)):
-            hip = (x + side * 0.22, y + dy, 0.34)
-            knee = (x + side * 0.55, y + dy + back * 0.3, 0.36)
-            foot = (x + side * 0.66, y + dy + back, 0.08)
-            soften(tube('Dragon splayed leg', [hip, knee, foot], [0.12, 0.09, 0.07],
-                        scales, sides=10), 0.018)
+            # Rooted inside the body and splayed less than before; the
+            # extra points keep the subdivided leg from bowing into an arc.
+            hip = Vector((x + side * 0.12, y + dy, 0.34))
+            knee = Vector((x + side * 0.42, y + dy + back * 0.3, 0.36))
+            foot = Vector((x + side * 0.50, y + dy + back, 0.08))
+            triangle_facets(tube('Dragon splayed leg',
+                                 [hip, hip.lerp(knee, 0.5), knee, knee.lerp(foot, 0.5), foot],
+                                 [0.12, 0.105, 0.09, 0.08, 0.07], scales, sides=6))
+            foot = tuple(foot)
             sphere('Dragon foot', foot, (0.10, 0.12, 0.05), scales, 12, False)
     # A low crest along the spine, kept as a single smooth fin.
     crest = [(x + px, y + py, pz + rz) for (px, py, pz), r in zip(spine[3:9], radii[3:9])
@@ -3401,8 +3416,8 @@ def caltrop_plant(x, y):
 
 def flame_cobra(x, y):
     """A coiled cobra with a fiery hood in the Fire Drake's palette, its
-    body built from flat-shaded twelve-sided tubes, a little rounder than
-    the drake's octagons, but covered
+    body built from octagonal tubes like the drake's, subdivided once into
+    small flat triangular facets, and covered
     in wet amphibian skin with darker red spots."""
     scales = amphibian_skin('Cobra crimson skin', (0.80, 0.08, 0.03), (0.38, 0.035, 0.014),
                             spots=7.0, transmission=0.3, rim=(1.0, 0.55, 0.2),
@@ -3440,7 +3455,8 @@ def flame_cobra(x, y):
             widths.append(radii[i] * (1 - t) + radii[i + 1] * t)
     curve.append(points[-1])
     widths.append(radii[-1])
-    tube('Cobra coiled body', curve, widths, scales, sides=12, flat=0.8, twist=math.pi / 12)
+    triangle_facets(tube('Cobra coiled body', curve, widths, scales, sides=8, flat=0.8,
+                         twist=math.pi / 8))
     # A broad hood spreading like fire, with pointed flame tongues rising
     # from its edge, close behind the neck and leaning back a little.
     def hood(bx, bz):
@@ -3457,9 +3473,9 @@ def flame_cobra(x, y):
     tube('Cobra throat', [(x, y - 0.10, 0.56), (x, y - 0.13, 0.80), (x, y - 0.10, 1.02)],
          [(0.09, 0.04), (0.11, 0.05), (0.08, 0.04)], belly, sides=6)
     # Wedge head pointing forward, with a forked tongue.
-    tube('Cobra head', [(x, y - 0.02, 1.13), (x, y - 0.18, 1.16), (x, y - 0.32, 1.12),
+    triangle_facets(tube('Cobra head', [(x, y - 0.02, 1.13), (x, y - 0.18, 1.16), (x, y - 0.32, 1.12),
                         (x, y - 0.42, 1.07)],
-         [(0.12, 0.08), (0.16, 0.09), (0.11, 0.07), 0], scales, sides=12, twist=math.pi / 12)
+         [(0.12, 0.08), (0.16, 0.09), (0.11, 0.07), 0], scales, sides=8, twist=math.pi / 8))
     for side in (-1, 1):
         sphere('Cobra eye', (x + side * 0.10, y - 0.26, 1.20), (0.04, 0.035, 0.028), eye, 16)
         cone('Cobra tongue', (x, y - 0.40, 1.05), (x + side * 0.04, y - 0.56, 1.02),
