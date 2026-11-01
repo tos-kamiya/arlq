@@ -2571,11 +2571,15 @@ def rogue(x, y, tone):
 
 def dungeon_explorer(x, y, tone):
     """Dungeon Explorer (D), a Stage 5 member: a caver who finds hidden
-    routes. Lightly dressed like a modern caving team: a yellow helmet with a
-    headlamp, a fitted light grey shirt, navy trousers, knee pads and a bare
+    routes. Lightly dressed like a caving team, but the helmet is a khaki
+    pith helmet with a brown leather band, and the headlamp is a glowing
+    amber stone in a brass claw setting on its front (a magic light, not a
+    machine). A fitted light grey shirt, navy trousers, knee pads and a bare
     sit harness with a few carabiners. A coil of twisted hemp rope is slung
     over the right shoulder and across the chest, and the right hand holds a
-    short ice axe beside the body, its head at shoulder height. The left hand
+    short, modern technical ice axe (a slightly bent red anodised shaft,
+    a black head with a deeply curved, toothed pick, and a black wrist leash)
+    beside the body, its head at shoulder height. The left hand
     rests on the hip. No weapon besides the tool, no cape. `tone` picks one of
     `MEMBER_SKINS`.
     """
@@ -2589,18 +2593,29 @@ def dungeon_explorer(x, y, tone):
                        rim=(0.9, 0.72, 0.5), rim_strength=0.5)
     webbing = material('Dungeon Explorer harness webbing', (0.06, 0.06, 0.07), 0.0, 0.5,
                        rim=(0.6, 0.6, 0.65), rim_strength=0.4)
-    helmet = material('Dungeon Explorer yellow helmet', (0.92, 0.70, 0.02), 0.0, 0.25,
-                      rim=(1.0, 0.92, 0.6), rim_strength=0.7, coat=0.6)
+    # Woven cork-and-cloth khaki of a pith helmet: matte, lighter and greyer
+    # than the hemp rope so the two do not merge.
+    helmet = material('Dungeon Explorer khaki pith helmet', (0.60, 0.50, 0.33), 0.0, 0.8,
+                      rim=(1.0, 0.92, 0.75), rim_strength=0.45)
+    band = material('Dungeon Explorer helmet band', (0.20, 0.10, 0.045), 0.0, 0.45,
+                    rim=(0.95, 0.70, 0.45), rim_strength=0.5, coat=0.25)
+    vent = material('Dungeon Explorer helmet vent', (0.02, 0.018, 0.015), roughness=0.8)
+    brass = material('Dungeon Explorer brass', (0.78, 0.52, 0.20), roughness=0.35,
+                     metallic=1.0, rim=(1.0, 0.85, 0.55), rim_strength=0.5)
     # Matte hemp; a bright yellow, smooth rope read as nylon.
     rope = material('Dungeon Explorer hemp rope', (0.50, 0.37, 0.19), 0.0, 0.85,
                     rim=(0.95, 0.85, 0.65), rim_strength=0.3)
     steel = material('Dungeon Explorer steel', (0.62, 0.63, 0.66), roughness=0.3,
                      metallic=0.8, rim=(0.95, 0.95, 1.0), rim_strength=0.6)
-    shaft = material('Dungeon Explorer ice axe shaft', (0.36, 0.20, 0.08), 0.0, 0.5,
-                     rim=(0.95, 0.75, 0.5), rim_strength=0.5)
-    lamp = material('Dungeon Explorer headlamp lens', (1.0, 0.92, 0.70), 0.15, 0.2,
-                    emission=(1.0, 0.86, 0.55), strength=2.0,
-                    rim=(1.0, 0.95, 0.8), rim_strength=0.8, coat=0.4)
+    # A deliberately modern tool: glossy red anodised aluminium and black steel.
+    shaft = material('Dungeon Explorer ice axe shaft', (0.70, 0.04, 0.025), roughness=0.25,
+                     metallic=0.5, rim=(1.0, 0.6, 0.5), rim_strength=0.5, coat=0.5)
+    axe_head = material('Dungeon Explorer ice axe head', (0.05, 0.05, 0.055), roughness=0.35,
+                        metallic=0.8, rim=(0.8, 0.82, 0.9), rim_strength=0.6)
+    # Warm amber: green is the companions' colour, light blue the Rogue's knife.
+    lamp = material('Dungeon Explorer light stone', (1.0, 0.74, 0.32), 0.3, 0.15,
+                    emission=(1.0, 0.72, 0.30), strength=3.0,
+                    rim=(1.0, 0.92, 0.7), rim_strength=0.9, coat=0.8)
     skin = material('Dungeon Explorer skin ' + tone, MEMBER_SKINS[tone], 0.2, 0.4,
                     rim=(1.0, 0.9, 0.8), rim_strength=0.6)
     eye = material('Dungeon Explorer eyes', (0.025, 0.02, 0.015), roughness=0.2, coat=1.0)
@@ -2690,29 +2705,73 @@ def dungeon_explorer(x, y, tone):
                hand + Vector((0.01, 0.02, 0.05)))
         sphere('Dungeon Explorer right hand', tuple(hand + Vector((0, -0.01, 0))),
                (0.045, 0.045, 0.05), skin, 16)
-        tube('Dungeon Explorer ice axe shaft', [spike, top], [0.02, 0.018], shaft,
-             sides=10, smooth=True)
-        cone('Dungeon Explorer ice axe spike', tuple(spike), tuple(spike + (spike - top) * 0.09),
-             0.02, 0.0, steel, 12)
-        # The pick curves down outward (screen left), the flat adze points
-        # in toward the body.
-        tube('Dungeon Explorer ice axe pick', [top + Vector((0.03, 0, 0)), top + Vector((-0.08, 0, -0.005)),
-                                               top + Vector((-0.17, 0, -0.06))],
-             [(0.024, 0.03), (0.016, 0.022), 0.0], steel, sides=8, smooth=True)
-        block('Dungeon Explorer ice axe adze', tuple(top + Vector((0.09, 0, 0.0))),
-              (0.10, 0.03, 0.05), steel, 0.01, (0, math.radians(8), 0))
+        # The shaft bends gently outward (screen left) below the hand, like
+        # a technical axe; flattened front to back.
+        out = Vector((-1, 0, 0))
+        path = [spike.lerp(top, t) + out * (0.025 * math.sin(math.pi * t) * (1 - t))
+                for t in (0.0, 0.25, 0.5, 0.75, 1.0)]
+        tube('Dungeon Explorer ice axe shaft', path, [(0.022, 0.015)] * 4 + [(0.02, 0.015)],
+             shaft, sides=12, smooth=True)
+        cone('Dungeon Explorer ice axe spike', tuple(spike), tuple(spike + (spike - top) * 0.08),
+             0.018, 0.0, axe_head, 12)
+        # The head: a black pick curving deeply down and outward with teeth
+        # underneath, a short adze turned up toward the body.
+        block('Dungeon Explorer ice axe head', tuple(top + Vector((0, 0, 0.005))),
+              (0.07, 0.035, 0.06), axe_head, 0.012)
+        pick = [top + Vector(p) for p in ((0.0, 0, 0.01), (-0.07, 0, 0.005), (-0.14, 0, -0.03),
+                                          (-0.19, 0, -0.10), (-0.21, 0, -0.18))]
+        tube('Dungeon Explorer ice axe pick', pick,
+             [(0.022, 0.03), (0.02, 0.026), (0.016, 0.022), (0.012, 0.018), 0.0], axe_head,
+             sides=8, smooth=True)
+        for k, t in enumerate((0.45, 0.6, 0.75, 0.88)):
+            seg = min(int(t * 4), 3)
+            local = t * 4 - seg
+            at = pick[seg].lerp(pick[seg + 1], local)
+            inward = Vector((0.6, 0, -0.8)) if seg < 2 else Vector((0.9, 0, -0.3))
+            cone('Dungeon Explorer ice axe tooth', tuple(at + inward * 0.012),
+                 tuple(at + inward * 0.03), 0.009, 0.0, axe_head, 6, False)
+        block('Dungeon Explorer ice axe adze', tuple(top + Vector((0.075, 0, 0.02))),
+              (0.08, 0.04, 0.02), axe_head, 0.006, (0, math.radians(-18), 0))
+        # The leash: a thin black strap from under the head, hanging in a
+        # loose loop to the hand.
+        tube('Dungeon Explorer ice axe leash',
+             [top + Vector((0.015, -0.02, -0.04)), top.lerp(hand, 0.3) + Vector((0.07, -0.03, 0)),
+              top.lerp(hand, 0.65) + Vector((0.08, -0.03, 0)), hand + Vector((0.035, -0.02, 0.02))],
+             [(0.012, 0.004)] * 4, webbing, sides=6, smooth=True)
 
     def head(x, y):
-        # A hard-hat-like caving helmet: a dome cut by one plane, its rim
-        # just above the eyes in front and a little lower at the back, then
-        # a narrow brim all round that widens in front into a short peak
-        # bent slightly down. A headlamp sits on the front of the dome.
-        # Longer front to back than across, like a real helmet seen from above.
-        center, radii = Vector((x, y + 0.005, 1.05)), Vector((0.152, 0.185, 0.17))
-        # The rim plane on the unit sphere: z = rim_z - rim_tilt * y.
-        rim_z, rim_tilt = 0.13, 0.15
+        # A pith helmet: a tall dome tapering a little towards the crown,
+        # cut by one plane just above the eyes in front and a little lower
+        # at the back, a wide brim all round sloping down, longer front and
+        # back than at the sides, and a brown leather band round the foot of
+        # the dome. A small button on the crown and a brass-ringed vent on
+        # each side. The light stone sits on the front above the band.
+        center, radii = Vector((x, y + 0.005, 1.05)), Vector((0.158, 0.19, 0.215))
+        thick = 0.025
+        rim_z, rim_tilt = 0.13, 0.10
+
+        def taper(z):
+            return 1.0 - 0.16 * max(0.0, z - 0.3) ** 1.5
+
+        def unit_point(a, unit_z):
+            # a = 0 faces front (-y); unit_z is the height on the unit sphere.
+            ring = math.sqrt(max(0.0, 1 - unit_z * unit_z)) * taper(unit_z)
+            return Vector((ring * math.sin(a), -ring * math.cos(a), unit_z))
+
+        def on_cap(a, unit_z, lift=0.0):
+            unit = unit_point(a, unit_z)
+            point = center + Vector((radii.x * unit.x, radii.y * unit.y, radii.z * unit.z))
+            normal = Vector((unit.x / radii.x, unit.y / radii.y, unit.z / radii.z)).normalized()
+            return point + normal * (thick + lift), normal
+
+        def place(obj, normal):
+            obj.rotation_euler = normal.to_track_quat('Z', 'Y').to_euler()
+
+        def reshape(co):
+            return Vector((co.x * taper(co.z), co.y * taper(co.z), co.z))
+
         shell = sphere_shell('Dungeon Explorer helmet', tuple(center), tuple(radii), helmet,
-                             lambda c: c.z > -0.4, 0.03)
+                             lambda c: c.z > -0.4, thick, reshape)
         shell.modifiers['Shell thickness'].offset = 1.0
         mesh = bmesh.new()
         mesh.from_mesh(shell.data)
@@ -2721,31 +2780,65 @@ def dungeon_explorer(x, y, tone):
                                clear_inner=True)
         mesh.to_mesh(shell.data)
         mesh.free()
-        inner, outer, count = [], [], 64
+
+        def rim_height(a):
+            return rim_z + rim_tilt * math.cos(a)
+
+        # The brim: three rings from the foot of the dome outwards, drooping
+        # more towards the edge.
+        count, rings = 64, ([], [], [])
         for k in range(count):
             a = 2 * math.pi * k / count
-            # a = 0 faces front (-y).
-            unit_y = -math.cos(a)
-            unit_z = rim_z - rim_tilt * unit_y
-            ring = math.sqrt(1 - unit_z * unit_z)
-            rim = center + Vector((radii.x * ring * math.sin(a), radii.y * ring * unit_y,
-                                   radii.z * unit_z))
-            outward = Vector((math.sin(a), unit_y, 0))
-            # The peak spans about 70 degrees either side of the front.
-            turn = a if a <= math.pi else a - 2 * math.pi
-            width = 0.014 + 0.035 * max(0.0, math.cos(turn * 1.25)) ** 1.5
-            inner.append(tuple(rim + outward * 0.02))
-            outer.append(tuple(rim + outward * (0.02 + width) - Vector((0, 0, 0.15 * width))))
-        brim = mesh_object('Dungeon Explorer helmet brim', inner + outer,
-                           [(k, (k + 1) % count, count + (k + 1) % count, count + k)
-                            for k in range(count)], helmet, True)
-        brim.modifiers.new('Brim thickness', 'SOLIDIFY').thickness = 0.014
-        block('Dungeon Explorer headlamp housing', (x, y - 0.179, 1.15),
-              (0.10, 0.045, 0.07), webbing, 0.015, (math.radians(-10), 0, 0))
-        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.03, depth=0.012,
-                                            location=(x, y - 0.205, 1.15),
-                                            rotation=(math.pi / 2, 0, 0))
-        finish(bpy.context.object, lamp, True, 'Dungeon Explorer headlamp lens')
+            foot, _ = on_cap(a, rim_height(a), -0.5 * thick)
+            outward = Vector((math.sin(a), -math.cos(a), 0))
+            width = 0.05 + 0.03 * math.cos(a) ** 2
+            for ring, (out, drop) in zip(rings, ((0.0, 0.0), (0.5, 0.12), (1.0, 0.36))):
+                ring.append(tuple(foot + outward * width * out - Vector((0, 0, drop * width))))
+        faces = [(r * count + k, r * count + (k + 1) % count,
+                  (r + 1) * count + (k + 1) % count, (r + 1) * count + k)
+                 for r in range(2) for k in range(count)]
+        brim = mesh_object('Dungeon Explorer helmet brim', rings[0] + rings[1] + rings[2],
+                           faces, helmet, True)
+        brim.modifiers.new('Brim thickness', 'SOLIDIFY').thickness = 0.012
+
+        # The band: a strip on the dome just above the brim.
+        low, high = [], []
+        for k in range(count):
+            a = 2 * math.pi * k / count
+            low.append(tuple(on_cap(a, rim_height(a) + 0.02, 0.002)[0]))
+            high.append(tuple(on_cap(a, rim_height(a) + 0.14, 0.002)[0]))
+        strip = mesh_object('Dungeon Explorer helmet band', low + high,
+                            [(k, (k + 1) % count, count + (k + 1) % count, count + k)
+                             for k in range(count)], band, True)
+        strip.modifiers.new('Band thickness', 'SOLIDIFY').thickness = 0.006
+
+        top, normal = on_cap(0.0, 1.0)
+        place(sphere('Dungeon Explorer helmet button', tuple(top), (0.022, 0.022, 0.012),
+                     helmet, 16), normal)
+        for side in (-1, 1):
+            spot, normal = on_cap(side * math.pi / 2, 0.55)
+            for radius, depth, mat, name in ((0.016, 0.006, brass, 'vent ring'),
+                                             (0.009, 0.008, vent, 'vent')):
+                bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=radius, depth=depth,
+                                                    location=tuple(spot))
+                place(finish(bpy.context.object, mat, True, 'Dungeon Explorer helmet ' + name),
+                      normal)
+
+        # The light stone: a brass disc on the front of the dome above the
+        # band, holding a domed amber stone in four claws.
+        base, normal = on_cap(0.0, rim_height(0.0) + 0.27, 0.004)
+        rotation = normal.to_track_quat('Z', 'Y')
+        across, up = rotation @ Vector((1, 0, 0)), rotation @ Vector((0, 1, 0))
+        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.042, depth=0.012,
+                                            location=tuple(base))
+        place(finish(bpy.context.object, brass, True, 'Dungeon Explorer light setting'), normal)
+        place(sphere('Dungeon Explorer light stone', tuple(base + normal * 0.008),
+                     (0.027, 0.027, 0.017), lamp, 24), normal)
+        for k in range(4):
+            a = math.radians(45 + 90 * k)
+            spot = base + normal * 0.012 + (across * math.cos(a) + up * math.sin(a)) * 0.027
+            place(block('Dungeon Explorer light claw', tuple(spot), (0.009, 0.009, 0.02), brass,
+                        0.003), normal)
 
     elf_figure(x, y, 'Dungeon Explorer', shirt, skin, eye, body, head, skirt=None, ears=False)
 
