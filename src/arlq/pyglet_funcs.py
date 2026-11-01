@@ -1038,6 +1038,9 @@ class PygletUI:
         """Draws the companion travelling with the player, in the cell to its right."""
         self._draw_field_text(pos, char, COLOR_MAP[CI_GREEN], bold=True)
 
+    def _draw_d_gate(self, pos: d.Point, glyph: str):
+        self._draw_field_text(pos, glyph, COLOR_MAP[CI_GREEN], bold=True)
+
     def _draw_stairs(self, pos: d.Point, char: str):
         """Draw an ordinary stair or an Explorer stair marker."""
         is_scholar = char in d.SCHOLAR_STAIR_CHARS
@@ -1240,7 +1243,7 @@ class PygletUI:
 
         for (x, y), glyph in (d_gates or {}).items():
             if field[y][x] == d.CHAR_D_GATE:
-                self._draw_field_text((x, y), glyph, COLOR_MAP[CI_GREEN], bold=True)
+                self._draw_d_gate((x, y), glyph)
 
         if not floor_view:
             for x, y in overshoot_markers or set():

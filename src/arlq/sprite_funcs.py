@@ -853,6 +853,13 @@ class SpriteUI(PygletUI):
         self._set_drawable_attribute(light, 'color', tint)
         self._set_drawable_attribute(light, 'opacity', opacity)
 
+    def _draw_d_gate(self, pos, glyph):
+        x, y = pos
+        self._draw_ground_disc(self._field_col_x(x) + self.cell_size_x / 2,
+                               (y + 0.5) * self.cell_size_y,
+                               GROUND_DISC_RADIUS * self._sprite_unit(),
+                               COLOR_MAP[CI_GREEN])
+
     def _draw_stairs(self, pos, char):
         if char == d.CHAR_SCHOLAR_STAIRS_UP:
             if not self._show_pit_up_marker:

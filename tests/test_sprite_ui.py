@@ -779,6 +779,16 @@ def test_pit_up_marker_is_a_green_disc_and_allows_fallen_rocks(sprite_ui, monkey
     assert len(discs) == 1
 
 
+def test_discovered_passage_uses_same_light_as_pit_entrance_without_text(sprite_ui):
+    sprite_ui._draw_stairs((4, 5), d.CHAR_SCHOLAR_STAIRS_UP)
+    entrance_light = sprite_ui.outlines[-1]
+    sprite_ui._show_pit_up_marker = False
+    sprite_ui._draw_d_gate((4, 5), '.')
+    assert sprite_ui.outlines[-1] == entrance_light
+    assert len(sprite_ui.outlines) == 2
+    assert not sprite_ui.text_calls
+
+
 def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
     ui.cell_size_x, ui.cell_size_y = 13, 20
