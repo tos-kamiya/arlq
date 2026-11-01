@@ -242,16 +242,18 @@ def tube(name, points, radii, mat, sides=8, smooth=False, flat=1.0, twist=0.0, u
     """Loft rings along a polyline; radius 0 closes the end to a point.
 
     `flat` squashes the vertical axis of every ring, giving reptile bodies.
-    Each ring is oriented by `up` if given; otherwise by the vertical, or by
-    +Y where the path runs nearly vertical, which twists the rings where the
-    path turns between the two.
+    Each ring is oriented by `up` if given (one vector, or a list with one
+    per point); otherwise by the vertical, or by +Y where the path runs
+    nearly vertical, which twists the rings where the path turns between
+    the two.
     """
     points = [Vector(p) for p in points]
     vertices, rings = [], []
     for i, (center, radius) in enumerate(zip(points, radii)):
         ahead = points[min(i + 1, len(points) - 1)] - points[max(i - 1, 0)]
         ahead.normalize()
-        ring_up = (Vector(up) if up is not None else
+        ring_up = (Vector(up[i]) if isinstance(up, list) else
+                   Vector(up) if up is not None else
                    Vector((0, 0, 1)) if abs(ahead.z) < 0.9 else Vector((0, 1, 0)))
         side = ahead.cross(ring_up).normalized()
         ring_up = side.cross(ahead).normalized()
@@ -1368,81 +1370,83 @@ def ocular(x, y):
 
 
 
-def loop_watch(x, y):
-    """Loop companion: a floating green resin pocket watch whose glowing ring and
-    arrow on the dial suggest turning time back."""
-    green = companion_green('Loop green resin case')
-    trim = companion_green('Loop deep green bezel', 0.5, trim=True)
-    dial = material('Loop ivory dial', (0.92, 0.88, 0.76), 0.1, 0.3, coat=0.8)
-    ink = material('Loop blued steel hands', (0.04, 0.06, 0.16), roughness=0.3, metallic=0.6)
-    glow = material('Loop cyan time ring', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
-                    strength=3.0)
-    start = set(bpy.data.objects)
-    # Built with the dial facing +Z and 12 o'clock toward +Y, then turned to
-    # face the camera and lifted so it floats above its cell.
-    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=0.40, depth=0.12, location=(0, 0, 0))
-    case = finish(bpy.context.object, green, True, 'Loop watch case')
-    bevel = case.modifiers.new('Rounded back', 'BEVEL')
-    bevel.width = 0.04
-    bevel.segments = 4
-    case.data.use_auto_smooth = True
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.38, minor_radius=0.04, location=(0, 0, 0.06))
-    finish(bpy.context.object, trim, True, 'Loop watch bezel')
-    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=0.35, depth=0.02, location=(0, 0, 0.06))
-    finish(bpy.context.object, dial, True, 'Loop watch dial')
-    for hour in range(12):
-        a = math.pi / 2 - hour * math.pi / 6
-        long = hour % 3 == 0
-        block('Loop hour mark', (0.29 * math.cos(a), 0.29 * math.sin(a), 0.075),
-              (0.03, 0.08 if long else 0.05, 0.02), trim if long else ink, 0.006,
-              (0, 0, a - math.pi / 2))
-    # The time-loop ring inside the hour marks, with an arrowhead running
-    # counterclockwise, i.e. backward.
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.20, minor_radius=0.022,
-                                     location=(0, 0, 0.075))
-    finish(bpy.context.object, glow, True, 'Loop time ring')
-    a = math.radians(200)
-    tip = Vector((0.20 * math.cos(a), 0.20 * math.sin(a), 0.08))
-    heading = Vector((-math.sin(a), math.cos(a), 0))
-    side = Vector((heading.y, -heading.x, 0))
-    arrow = mesh_object('Loop rewind arrow', [tuple(tip + heading * 0.10),
-                                              tuple(tip + side * 0.075), tuple(tip - side * 0.075)],
-                        [(0, 1, 2)], glow, False)
-    arrow.modifiers.new('Arrow thickness', 'SOLIDIFY').thickness = 0.02
-    # Warped hands, as if time itself were bending. The hour hand points
-    # left: it rises, curls over to point down, then turns up again. The
-    # minute hand is its mirror image, a little larger, so the two read as
-    # an upturned moustache.
-    def hand(name, length, width, headings, steps):
-        points, pos = [], Vector((0, 0, 0.11))
-        for i in range(steps + 1):
-            points.append(pos.copy())
-            heading = headings(i / steps)
-            pos += Vector((math.cos(heading), math.sin(heading), 0.006)) * (length / steps)
-        tube(name, points, [(width * (1 - i / steps) ** 0.6 + 0.005, 0.008)
-                            for i in range(steps)] + [0], ink, sides=8, smooth=True)
+def loop_spiral(x, y):
+    """Loop companion: a calm whirl of time, the Vortex's upturned funnel
+    without its menace, like a party popper's streamers without the popper.
+    Twenty short, smooth ribbons of green companion resin in two greens
+    curl a little way round, up and out, at different heights (more of
+    them higher up, where the funnel is wider) and at different distances
+    from the axis, so together they fill out the funnel evenly rather than
+    only lining its surface. A simplified form of the
+    Vortex's lightning, three short kinked bolts of bright cyan light,
+    crackles out from the middle. The ribbons are long flat strips with
+    square-cut ends. No smoke, pebbles, jagged edges or dark colours."""
+    greens = [companion_green('Loop green resin ribbon'),
+              companion_green('Loop deep green resin ribbon', 0.5, trim=True)]
+    glow = material('Loop cyan lightning', (0.1, 0.75, 1.0), emission=(0.2, 0.85, 1.0),
+                    strength=4.0)
+    # The funnel is 0.6 times its first height (0.82).
+    base, height = 0.14, 0.82 * 0.6
 
-    def smoothstep(t):
-        t = min(1.0, max(0.0, t))
-        return t * t * (3 - 2 * t)
+    def funnel(t, a, reach):
+        r = (0.04 + 0.40 * t) * reach
+        return Vector((x + r * math.cos(a), y + r * math.sin(a), base + height * t))
 
-    def hour_heading(t):
-        return math.radians(145 + 125 * smoothstep((t - 0.2) / 0.3)
-                            - 165 * smoothstep((t - 0.55) / 0.35))
-
-    hand('Loop moustache hour hand', 0.42, 0.024, hour_heading, 40)
-    hand('Loop moustache minute hand', 0.42 * 1.15, 0.024 * 1.15,
-         lambda t: math.pi - hour_heading(t), 40)
-    sphere('Loop centre cap', (0, 0, 0.12), (0.035, 0.035, 0.02), green, 24)
-    # Crown and bow at 12 o'clock.
-    tube('Loop watch stem', [(0, 0.40, 0), (0, 0.47, 0)], [0.035, 0.035], green, sides=12,
-         smooth=True)
-    tube('Loop watch crown', [(0, 0.46, 0), (0, 0.53, 0)], [0.06, 0.06], trim, sides=16)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.09, minor_radius=0.022,
-                                     location=(0, 0.62, 0))
-    finish(bpy.context.object, trim, True, 'Loop watch bow')
-    face = Matrix.Translation((x, y, 0.62)) @ Matrix.Rotation(math.radians(30), 4, 'X')
-    transform_new(start, face)
+    # Like the streamers of a party popper without its cone: short ribbons
+    # curl up and out at different heights and distances from the axis.
+    # Each layer up the funnel holds ribbons in proportion to its girth, so
+    # they lie about as densely at the mouth as near the tip; within a
+    # layer their upper ends are spread evenly round the axis. Each layer is
+    # turned by its own angle (`layer_turns`), chosen so that no ribbon lies
+    # close beside one in the layer below at much the same distance from the
+    # axis (a steady 47 degrees per layer set two pairs side by side at the
+    # back). The positions follow these rules, not random numbers. Each
+    # ribbon turns only a little on its way
+    # up. Those in the top layer keep clear of the axis, below the lightning.
+    span, turns = 0.22, 0.17
+    reaches = (1.00, 0.62, 0.88, 0.55, 0.76, 0.95, 0.68)
+    layer_turns = (0, 102, 234, 20, 194)
+    ribbons = []
+    for layer, count in enumerate((1, 2, 4, 6, 7)):
+        t0 = layer * (1 - span) / 4
+        for k in range(count):
+            n = len(ribbons)
+            reach = reaches[n % len(reaches)]
+            if layer == 4:
+                reach = max(reach, 0.68)
+            ribbons.append((t0 + 0.02 * ((n * 5) % 3 - 1), span, reach,
+                            360 * k / count + layer_turns[layer], turns + 0.02 * ((n * 3) % 3 - 1)))
+    steps = 24
+    for i, (t0, span, reach, end, turns) in enumerate(ribbons):
+        a0 = math.radians(end) - 2 * math.pi * turns
+        points, radii, slopes = [], [], []
+        for k in range(steps + 1):
+            u = k / steps
+            t = t0 + span * u
+            a = a0 + 2 * math.pi * turns * u
+            points.append(funnel(t, a, reach))
+            # Its width runs up the funnel's slope (from the tip toward the
+            # mouth), so the strip lies along the funnel wall, wrapping round
+            # the axis, rather than standing upright.
+            slopes.append(funnel(t + 0.01, a, reach) - funnel(t, a, reach))
+            # A long flat strip, thin across and wide up the funnel wall, of
+            # even width with square-cut ends (a four-sided tube turned 45
+            # degrees, its corners at the strip's edges).
+            radii.append((0.014 * math.sqrt(2), 0.055 * math.sqrt(2)))
+        strip = tube('Loop time ribbon', points, radii, greens[i % 2], sides=4,
+                     twist=math.pi / 4, up=slopes)
+        soften(strip, 0.006)
+    # A simple form of the Vortex's lightning from the middle of the funnel:
+    # three short bolts with one kink each, laid nearly flat so their shape
+    # shows from above.
+    centre_z = base + height * 0.88
+    for start_angle in (0.5, 2.6, 4.4):
+        along = Vector((math.cos(start_angle), math.sin(start_angle), 0))
+        side = Vector((-along.y, along.x, 0))
+        centre = Vector((x, y, centre_z))
+        bolt = [centre, centre + along * 0.11 + side * 0.045 - Vector((0, 0, 0.02)),
+                centre + along * 0.20 - side * 0.01 - Vector((0, 0, 0.04))]
+        tube('Loop cyan lightning', bolt, [0.027, 0.023, 0], glow, sides=6)
 
 def metaball_mesh(name, elements, mat, resolution=0.01):
     """Melt (position, radius) metaballs into one smooth mesh object.
@@ -3958,7 +3962,7 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             '@C': lambda x, y: player(x, y, 'C'), '@K': lambda x, y: player(x, y, 'blessed'),
             'a': lambda x, y: amoeba(x, y, False),
             'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'B': buffalo, 'd': dragon,
-            'c': chimera, 'T': treasure, 'T-toy': lambda x, y: treasure(x, y, toy=True), 'M': lambda x, y: treasure(x, y, True), 'D': great_dragon, 'l': loop_watch, 'n': nomicon, 'o': ocular,
+            'c': chimera, 'T': treasure, 'T-toy': lambda x, y: treasure(x, y, toy=True), 'M': lambda x, y: treasure(x, y, True), 'D': great_dragon, 'l': loop_spiral, 'n': nomicon, 'o': ocular,
             'C': lambda x, y: chimera(x, y, True), 'F': lambda x, y: great_dragon(x, y, True),
             "'": lambda x, y: rank_mark(x, y, 1), '"': lambda x, y: rank_mark(x, y, 2),
             '?': lambda x, y: unknown_mark(x, y, '?'), '!': lambda x, y: unknown_mark(x, y, '!'),
