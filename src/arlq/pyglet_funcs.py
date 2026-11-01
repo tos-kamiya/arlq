@@ -1464,7 +1464,7 @@ class PygletUI:
         lp_width = self._text_width(lp_str, size_scale=hud_scale)
         x_offset = lp_text_x_offset + lp_width
 
-        extra = f"RATION: {player.rations}  " + (
+        extra = (f"RATION: {player.rations}  " if d.RATIONS_ENABLED else "") + (
             "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
         )
         if not self._status_shows_lp_gauge():

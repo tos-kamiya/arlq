@@ -2127,7 +2127,7 @@ def run_game(
         if player.lp <= 0:
             _stop_movement_repeat(ui)
             confirm = getattr(ui, "confirm_ration", None)
-            if not player.rations or confirm is None:
+            if not d.RATIONS_ENABLED or not player.rations or confirm is None:
                 break
             decision = confirm(player)
             if decision is None:

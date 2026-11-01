@@ -525,7 +525,8 @@ class BlessedUI:
         )
         add("#" * filled + "-" * (bar_len - filled), bar_color)
         add("]  ")
-        add(f"RATION: {player.rations}  ")
+        if d.RATIONS_ENABLED:
+            add(f"RATION: {player.rations}  ")
         add("/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit")
 
         y += 1

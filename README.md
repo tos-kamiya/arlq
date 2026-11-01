@@ -334,4 +334,4 @@ ChatGPT, Gemini, Claude, and Grok contributed to the design and implementation o
 
 This project is licensed under the BSD-2 license.
 
-Each stage starts with three emergency rations: hardtack, jerky, then hyorogan. After collapsing from hunger, choose whether to eat the next ration and continue in place with 100 LP. Use Left/Right and Enter, or press y/n directly. Rations cost no turns; consumed rations stay consumed after a Loop rewind. The status bar shows the remaining count, with food images in sprite mode. Selected options in stage selection, settings, and ration confirmation use a leading > and bold text. Esc or q quits from the ration confirmation screen.
+Selected options in stage selection and settings use a leading > and bold text.

@@ -12,6 +12,11 @@ from arlq.arlq import GameConfig
 from arlq import stage_replay
 
 
+@pytest.fixture(autouse=True)
+def enable_retained_ration_feature(monkeypatch):
+    monkeypatch.setattr(d, 'RATIONS_ENABLED', True)
+
+
 @pytest.mark.parametrize('decision,remaining,lp,commands', [
     (True, 2, 100, 0), (False, 3, 0, 1), (None, 3, 0, 0),
 ])
@@ -119,3 +124,31 @@ def test_all_three_rations_then_final_game_over(monkeypatch):
     game_engine.run_game(ui, '123', stage_num=1)
     assert prompts == ['hardtack', 'jerky', 'hyorogan']
     assert player.rations == 0
+
+
+def test_disabled_rations_end_game_without_prompt(monkeypatch):
+    monkeypatch.setattr(d, 'RATIONS_ENABLED', False)
+    player = d.Player(2, 2, 7, 0)
+    field = [[' '] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    floors = [Floor(field, [], [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)], (2, 2), (3, 3), None)]
+    monkeypatch.setattr(game_engine, 'build_single_floor', lambda *_: (floors, player))
+    def unexpected_prompt(*args):
+        pytest.fail('Disabled rations must not offer continuation')
+    ended = []
+    ui = SimpleNamespace(
+        draw_stage=lambda **kw: None, confirm_ration=unexpected_prompt,
+        input_game_over=lambda: ended.append(True),
+    )
+    game_engine.run_game(ui, '123', stage_num=1)
+    assert ended == [True]
+    assert player.lp == 0
+    assert player.rations == 3
+
+
+def test_disabled_rations_hide_sprite_images(monkeypatch):
+    from arlq.sprite_funcs import SpriteUI
+    monkeypatch.setattr(d, 'RATIONS_ENABLED', False)
+    monkeypatch.setattr(PygletUI, 'draw_status_bar', lambda *a, **kw: None)
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._draw_ration_image = lambda *a: pytest.fail('Disabled ration image displayed')
+    ui.draw_status_bar(0, d.Player(2, 2, 1, 100), 1, '', False)

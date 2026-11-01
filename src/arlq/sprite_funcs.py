@@ -1435,7 +1435,7 @@ class SpriteUI(PygletUI):
             result = super().draw_status_bar(
                 turn, player, stage_num, message, extra_keys, game_start_turn,
             )
-            if player is not None:
+            if d.RATIONS_ENABLED and player is not None:
                 size = self._status_row_height() * 1.6
                 for index, ration in enumerate(d.RATIONS):
                     self._draw_ration_image(
