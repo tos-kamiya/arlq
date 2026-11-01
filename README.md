@@ -46,7 +46,11 @@ arlq-cli
 Running `arlq` without options opens the graphical interface. Running
 `arlq-cli` without options starts the terminal interface. In the GUI, use a
 connected gamepad's D-pad or left stick to move, and button 0 to select a
-stage. Change gamepad button assignments in `Settings -> Gamepad button settings`.
+stage. The GUI stage selector arranges `[1]` through `[6]` in two columns and
+three rows; use arrow keys or the gamepad to navigate, or a number key to select
+directly. Change gamepad button assignments in `Settings -> Gamepad button settings`.
+The terminal stage selector uses the same two-column stage layout, with a blank
+line after Quit. Use arrow keys and Enter, or select a stage by number.
 After contacting an enemy, its party composition remains in brackets to the
 left of event messages. Temporary effect popups appear near the player while
 event messages remain in the bottom status area, so both can be visible at once.

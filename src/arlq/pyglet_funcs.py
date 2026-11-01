@@ -2329,13 +2329,24 @@ class PygletUI:
 
         options = [tr("[q]uit")]
         for n in stage_numbers:
-            options.append(
-                tr("stage [{n}]").format(n=n)
-            )
+            options.append(f"[{n}]")
         options.append(tr("[s]ettings"))
 
         current_index = 1  # Initial selection: stage 1
         settings_index = len(options) - 1
+        stage_rows = (len(stage_numbers) + 1) // 2
+        positions = [(0, 0)] + [
+            (i % 2, 1 + i // 2) for i in range(len(stage_numbers))
+        ] + [(0, stage_rows + 1)]
+
+        def move_selection(dx, dy):
+            col, row = positions[current_index]
+            if dy:
+                target_row = (row + dy) % (stage_rows + 2)
+                candidates = [i for i, (_, r) in enumerate(positions) if r == target_row]
+                return min(candidates, key=lambda i: abs(positions[i][0] - col))
+            target = (col + dx, row)
+            return positions.index(target) if target in positions else current_index
 
         while True:
             self._clear_drawables()
@@ -2350,14 +2361,16 @@ class PygletUI:
             base_y = 8
             for i, option in enumerate(options):
                 prefix = ">" if i == current_index else " "
+                col, row = positions[i]
+                display_row = row + (2 if i == settings_index else 1 if i else 0)
                 self._draw_text(
-                    (base_x, base_y + MENU_ROW_SPACING * i),
+                    (base_x + 10 * col, base_y + MENU_ROW_SPACING * display_row),
                     f"{prefix} {option}",
                     COLOR_MAP["default"],
                     bold=(i == current_index),
                 )
             self._draw_text(
-                (8, base_y + MENU_ROW_SPACING * (len(options) - 1) + 2),
+                (8, base_y + MENU_ROW_SPACING * (stage_rows + 3) + 2),
                 tr("[h]elp: controls (gamepad button unassigned)")
                 if getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
                 is None
@@ -2389,7 +2402,7 @@ class PygletUI:
                         self.settings_menu()
                         self._discard_queued_key(pgkey.ESCAPE)
                         break
-                    return current_index
+                    return stage_numbers[current_index - 1]
                 if (
                     getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
                     in getattr(self, "_gamepad_pressed_buttons", ())
@@ -2401,9 +2414,13 @@ class PygletUI:
                 if event is not None:
                     symbol, _ = event
                     if symbol == pgkey.UP:
-                        current_index = (current_index - 1) % len(options)
+                        current_index = move_selection(0, -1)
                     elif symbol == pgkey.DOWN:
-                        current_index = (current_index + 1) % len(options)
+                        current_index = move_selection(0, 1)
+                    elif symbol == pgkey.LEFT:
+                        current_index = move_selection(-1, 0)
+                    elif symbol == pgkey.RIGHT:
+                        current_index = move_selection(1, 0)
                     elif symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
                         if current_index == 0:
                             return 0
@@ -2411,7 +2428,7 @@ class PygletUI:
                             self.settings_menu()
                             self._discard_queued_key(pgkey.ESCAPE)
                             break
-                        return current_index
+                        return stage_numbers[current_index - 1]
                     elif symbol == pgkey.S:
                         self.settings_menu()
                         self._discard_queued_key(pgkey.ESCAPE)
@@ -2432,8 +2449,8 @@ class PygletUI:
                     direction = self._controller_direction(controller)
                     if direction != self.gamepad_previous_direction:
                         self.gamepad_previous_direction = direction
-                        if direction[1]:
-                            current_index = (current_index + direction[1]) % len(options)
+                        if direction != (0, 0):
+                            current_index = move_selection(*direction)
                             break
 
                 time.sleep(1 / 30)

@@ -685,11 +685,22 @@ class BlessedUI:
                 return (*direction, False)
 
     def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
-        options = [tr("[q]uit")] + [
-            tr("stage [{n}]").format(n=n)
-            for n in stage_numbers
+        options = [tr("[q]uit")] + [f"[{n}]" for n in stage_numbers]
+        stage_rows = (len(stage_numbers) + 1) // 2
+        positions = [(0, 0)] + [
+            (i % 2, 1 + i // 2) for i in range(len(stage_numbers))
         ]
         current_index = 1
+
+        def move_selection(dx, dy):
+            col, row = positions[current_index]
+            if dy:
+                target_row = (row + dy) % (stage_rows + 1)
+                candidates = [i for i, (_, r) in enumerate(positions) if r == target_row]
+                return min(candidates, key=lambda i: abs(positions[i][0] - col))
+            target = (col + dx, row)
+            return positions.index(target) if target in positions else current_index
+
         while True:
             self._wait_for_terminal_size()
             output = [self.term.home + self.term.clear]
@@ -697,16 +708,23 @@ class BlessedUI:
             for i, option in enumerate(options):
                 prefix = ">" if i == current_index else " "
                 text = f"{prefix} {option}"
-                output.append(self.term.move_xy(4, 4 + i) + (self.term.bold(text) if i == current_index else text))
+                col, row = positions[i]
+                display_row = row + (1 if i else 0)
+                output.append(self.term.move_xy(4 + 10 * col, 4 + display_row)
+                              + (self.term.bold(text) if i == current_index else text))
             print("".join(output) + self.term.normal, end="", flush=True)
 
             key = self._read_key()
             if key.name == "KEY_UP":
-                current_index = (current_index - 1) % len(options)
+                current_index = move_selection(0, -1)
             elif key.name == "KEY_DOWN":
-                current_index = (current_index + 1) % len(options)
+                current_index = move_selection(0, 1)
+            elif key.name == "KEY_LEFT":
+                current_index = move_selection(-1, 0)
+            elif key.name == "KEY_RIGHT":
+                current_index = move_selection(1, 0)
             elif str(key) in ("\n", "\r"):
-                return current_index
+                return stage_numbers[current_index - 1] if current_index else 0
             elif str(key).lower() == "q" or key.code == self.term.KEY_ESCAPE:
                 return 0
             elif str(key).isdigit() and int(str(key)) in stage_numbers:

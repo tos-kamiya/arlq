@@ -1,6 +1,7 @@
 """Keyboard navigation checks for the GUI menus."""
 
 import json
+from types import SimpleNamespace
 
 import pytest
 from collections import deque
@@ -9,6 +10,8 @@ from pyglet.window import key
 
 from arlq import defs
 from arlq.pyglet_funcs import PygletUI
+from arlq.blessed_funcs import BlessedUI
+from blessed.keyboard import Keystroke
 
 
 def _menu_ui(monkeypatch, events):
@@ -55,7 +58,7 @@ def test_escape_from_settings_returns_to_stage_selection(monkeypatch):
 
 def test_entering_settings_from_stage_list_and_escape_keeps_app_open(monkeypatch):
     """Arrow navigation and Enter reach Settings; Esc returns to the list."""
-    events = [(key.DOWN, 0)] * len(defs.PUBLIC_STAGE_NUMBERS)
+    events = [(key.DOWN, 0)] * ((len(defs.PUBLIC_STAGE_NUMBERS) + 1) // 2)
     events.extend([(key.RETURN, 0), (key.ESCAPE, 0), (key._1, 0)])
     ui = _menu_ui(monkeypatch, events)
 
@@ -64,6 +67,61 @@ def test_entering_settings_from_stage_list_and_escape_keeps_app_open(monkeypatch
     assert selected_stage == 1
     assert ui.quit_called is False
     assert ui._closed is False
+
+
+def test_stage_menu_places_six_stages_in_two_columns(monkeypatch):
+    ui = _menu_ui(monkeypatch, [(key.ESCAPE, 0)])
+    drawn = {}
+    ui._draw_text = lambda pos, text, *args, **kwargs: drawn.setdefault(text.strip(), pos)
+    assert ui.select_stage() == 0
+    for left, right in ((1, 2), (3, 4), (5, 6)):
+        left_pos = drawn['> [1]' if left == 1 else f'[{left}]']
+        right_pos = drawn[f'[{right}]']
+        assert left_pos[1] == right_pos[1]
+        assert left_pos[0] < right_pos[0]
+    assert drawn['> [1]'][1] < drawn['[3]'][1] < drawn['[5]'][1]
+
+
+@pytest.mark.parametrize('arrows,expected', [
+    ([key.RIGHT], 2), ([key.DOWN], 3),
+    ([key.RIGHT, key.DOWN, key.DOWN], 6),
+    ([key.DOWN, key.RIGHT, key.LEFT], 3),
+    ([key.LEFT], 1),
+])
+def test_stage_grid_arrow_navigation(monkeypatch, arrows, expected):
+    ui = _menu_ui(monkeypatch, [(symbol, 0) for symbol in arrows + [key.RETURN]])
+    assert ui.select_stage() == expected
+
+
+def test_stage_grid_gamepad_moves_right(monkeypatch):
+    ui = _menu_ui(monkeypatch, [None, (key.RETURN, 0)])
+    ui.controller = object()
+    ui.gamepad_previous_direction = None
+    ui._controller_direction = lambda controller: (1, 0)
+    assert ui.select_stage() == 2
+
+
+@pytest.mark.parametrize('arrows,expected', [
+    (['KEY_RIGHT'], 2), (['KEY_DOWN'], 3),
+    (['KEY_RIGHT', 'KEY_DOWN', 'KEY_DOWN'], 6),
+    (['KEY_DOWN', 'KEY_RIGHT', 'KEY_LEFT'], 3),
+    (['KEY_UP'], 0),
+])
+def test_terminal_stage_grid_layout_and_navigation(capsys, arrows, expected):
+    ui = BlessedUI.__new__(BlessedUI)
+    ui.term = SimpleNamespace(
+        home='', clear='', normal='', bold=lambda text: text, yellow=lambda text: text,
+        move_xy=lambda x, y: f'<{x},{y}>', KEY_ESCAPE=27,
+    )
+    ui._wait_for_terminal_size = lambda: None
+    events = deque([Keystroke('', name=name) for name in arrows] + [Keystroke('\n')])
+    ui._read_key = events.popleft
+    assert ui.select_stage() == expected
+    output = capsys.readouterr().out
+    for x, y, label in [(4, 6, '> [1]'), (14, 6, '  [2]'),
+                         (4, 7, '  [3]'), (14, 7, '  [4]'),
+                         (4, 8, '  [5]'), (14, 8, '  [6]')]:
+        assert f'<{x},{y}>{label}' in output
 
 
 def test_settings_can_disable_and_persist_automatic_repeat_stop(monkeypatch, tmp_path):
