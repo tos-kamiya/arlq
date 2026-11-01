@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 6.1.4 - 2026-11-01
+
+- Enlarge hovered field characters to twice their usual size in sprite mode,
+  keeping their feet fixed and drawing them and their rank marks above the
+  player's LP gauge. Restore their size when the pointer leaves the cell.
+- Show hovered characters' localized names above their heads, using the status
+  popup font and size; place names below characters at the dungeon's top edge
+  to avoid clipping. Keep unidentified characters' names hidden.
+- Include character glyphs in Japanese hover names, and show `Marksman(k)` and
+  `Komodo Dragon(d)` in English through the translation catalogs.
+- Show the mouse cursor in sprite mode for three seconds after its last
+  movement, extending the time whenever it moves again.
+- Round all LP and LVL changes in status popups to one decimal place, omitting
+  trailing `.0`, including damage and level loss. Keep gameplay values unchanged.
+
 ## 6.1.3 - 2026-11-01
 
 - Mark hidden passages discovered by the Dungeon Explorer with green ground
@@ -11,6 +26,14 @@
 
 - Show combat victory and defeat effects across all monsters or party members
   in Stage 5 and 6 party encounters.
+- Update monster barrier rings when monsters are placed, moved, or respawned
+  instead of recreating them each turn. Prevent new barriers beneath the player
+  and on broken walls, including during Vortex rearrangements.
+- Preserve overlapping and permanent barriers when barrier-bearing monsters
+  move, and retain the Dread Wyrm's barriers after its defeat.
+- Clarify party member descriptions and stage headings, add the Buffalo entry,
+  and explain the Vortex's effect on map memory in the English and Japanese
+  READMEs.
 
 ## 6.1.1 - 2026-10-30
 
