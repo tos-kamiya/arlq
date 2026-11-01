@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 6.1.6 - 2026-11-02
+
+- Offer to quit when F finds no reachable monsters, companions, elves, waiting
+  members, stairs, or Collapse pits within the remaining LP. Check unexplored
+  areas too, including hidden passages and exits beneath upper-floor pits when
+  accompanied by the Dungeon Explorer. Count untriggered Collapses but exclude
+  treasure chests and inactive Mimics.
+- Support the confirmation in GUI and terminal modes. Choosing yes quits as Q
+  does; choosing no returns to the normal F preview without consuming a turn
+  or revealing unexplored terrain.
+
 ## 6.1.5 - 2026-11-02
 
 - Arrange the stage selector in two columns of three stages, `[1]` through
