@@ -14,6 +14,8 @@ from heroic_groups import blend_path, group_of
 
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'characters'
 OUT.mkdir(parents=True, exist_ok=True)
+RATION_OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'rations'
+RATION_OUT.mkdir(parents=True, exist_ok=True)
 models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
           ('b', 'bison', (-2, -1.5)), ('d', 'comodo-dragon', (2, -1.5)),
           ('@', 'player', (0, 0)), ('@c', 'player-sword', (0, 0)),
@@ -43,7 +45,10 @@ models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treas
            ('knight-dark', 'knight-dark', (0, 0)),
            ('guardian-light', 'guardian-light', (0, 0)),
            ('guardian-medium', 'guardian-medium', (0, 0)),
-           ('guardian-dark', 'guardian-dark', (0, 0))]
+           ('guardian-dark', 'guardian-dark', (0, 0)),
+           ('ration-hyorogan', 'ration-hyorogan', (0, 0)),
+           ('ration-hardtack', 'ration-hardtack', (0, 0)),
+           ('ration-jerky', 'ration-jerky', (0, 0))]
 if '--only' in sys.argv:
     only = sys.argv[sys.argv.index('--only') + 1:]
     models = [model for model in models if model[0] in only]
@@ -95,7 +100,8 @@ for char, name, (x, y) in models:
     scene.cycles.samples = 256
     scene.render.image_settings.file_format = 'PNG'
     scene.render.image_settings.color_mode = 'RGBA'
-    path = OUT / (name + '.png')
+    # The Stage 6 emergency rations go in their own directory.
+    path = (RATION_OUT if char.startswith('ration-') else OUT) / (name + '.png')
     scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
     # Trim empty space using Blender itself; no extra imaging dependency.

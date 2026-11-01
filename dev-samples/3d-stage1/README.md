@@ -244,3 +244,19 @@ blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.p
 .venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/characters/unknown-*.png
 PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-unknowns.py
 ```
+
+### ステージ6の非常食
+
+LPが0以下になったときに50まで回復する非常食の画像を3種類用意する（ゲームへの組み込みはまだ）。画像はキャラクターと分けて `src/arlq/assets/rations/` に書き出す。全体プレビューには並べず（`OFF_GRID`）、`preview-rations.py` でプレイヤーと並べた `heroic/preview-rations.png` を出力し、JPEG（`preview-rations.jpg`）に変換する。どれも正面向き（向きの回転なし）で、他のキャラクターと同じ樹脂風の縁の光を弱めに付ける。
+
+- 兵糧丸（`ration-hyorogan`、`hyorogan()`）: 戦国時代の携帯食。参考は兵糧丸の写真 `shot2.png`（皿は除く）。手で丸めた、少しいびつでつやのない小さな団子を6個寄せ、1個を山の上に載せる。生地の色を変えて材料の違いを見せる（米粉の生成り、きなこの黄土色、そば粉の灰茶に黒い殻の粒、焼き色の薄茶、黒ごまの黒に白い粒）。表面は粒の点、粗い凹凸、弱いひびでぱさついた感じにする（`hyorogan_dough()`）。`SIZES` は1.4。
+- 乾パン（英語名 Hardtack。`ration-hardtack`、`hardtack()`）: 小さな四角いきつね色の乾パン（穴2つ）を床に積み、1枚を山に立てかけて面を見せる。脇にパステル色の金平糖を4粒置く（紫と緑は避ける）。`SIZES` は1.3。
+- 干し肉（`ration-jerky`、`jerky()`）: 参考は干し肉の写真 `shot1.png`（写真の野菜は除く）。太めで角を丸めた四角い棒を4本ほぼ平行に並べ、もう1本を斜めに載せる。棒はわずかに曲げ、片端を細くする。色は暗い赤茶色で、クリーム色の脂（さし）を多めに入れる（`jerky_meat()`）。写真と同じく肉の繊維は厚み方向に走らせ、肉と脂の層を縦の面にする。そのため脂は上面では棒に対して少し斜めの筋に、側面では縦の縞に見える。脂の縁は薄い赤にしてなじませ、繊維の凹凸は弱くする。模様は棒ごとの向きに合わせて回す。`SIZES` は1.45。
+
+```bash
+blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --group others
+blender --background --threads 4 --python dev-samples/3d-stage1/preview-rations.py
+(cd dev-samples/3d-stage1/heroic && convert preview-rations.png -quality 90 preview-rations.jpg && rm preview-rations.png)
+blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only ration-hyorogan ration-hardtack ration-jerky
+.venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/rations/*.png
+```

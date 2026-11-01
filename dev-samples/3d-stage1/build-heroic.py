@@ -99,7 +99,11 @@ ROW = [(char, name, *cell_centre(*slot)) for (char, name), slot in zip(ORDER, SL
 ROW += [("'", 'RANK 2', 50, 0), ('"', 'RANK 3', 55, 0)]
 # So are the symbols shown for unidentified monsters, companions and elves.
 ROW += [('?', 'UNKNOWN ?', 60, 0), ('!', 'UNKNOWN !', 65, 0), ('&', 'UNKNOWN &', 70, 0)]
-OFF_GRID = ("'", '"', '?', '!', '&')
+# And the Stage 6 emergency rations (see preview-rations.py).
+RATIONS = ('ration-hyorogan', 'ration-hardtack', 'ration-jerky')
+ROW += [('ration-hyorogan', 'HYOROGAN', 75, 0), ('ration-hardtack', 'HARDTACK', 80, 0),
+        ('ration-jerky', 'JERKY', 85, 0)]
+OFF_GRID = ("'", '"', '?', '!', '&', *RATIONS)
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba's first size, baked into the meshes.
@@ -117,7 +121,8 @@ SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b':
          'explorer-light': 1.49, 'explorer-medium': 1.49, 'explorer-dark': 1.49,
          'knight-light': 1.79, 'knight-medium': 1.79, 'knight-dark': 1.79,
          'guardian-light': 1.49, 'guardian-medium': 1.49, 'guardian-dark': 1.49,
-         '?': 1.3, '!': 1.3, '&': 1.3}
+         '?': 1.3, '!': 1.3, '&': 1.3,
+         'ration-hyorogan': 1.4, 'ration-hardtack': 1.3, 'ration-jerky': 1.45}
 # The unknown symbols float this high above the floor and lean back this many
 # degrees, so they read almost undistorted from the 60-degree camera.
 UNKNOWN_FLOAT = 0.2
@@ -3695,6 +3700,248 @@ def unknown_mark(x, y, char):
     obj.data.transform(obj.matrix_world)
     obj.matrix_world = Matrix.Identity(4)
 
+def textured(mat, scale, strength, kind='voronoi', stretch=(1, 1, 1)):
+    """Add a fine bump to `mat`: Voronoi cells for grains, or noise streaks
+    (squashed by `stretch`) for fibres. Returns the material."""
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    position = nodes.new('ShaderNodeNewGeometry')
+    mapping = nodes.new('ShaderNodeMapping')
+    mapping.inputs['Scale'].default_value = tuple(scale * s for s in stretch)
+    if kind == 'voronoi':
+        texture = nodes.new('ShaderNodeTexVoronoi')
+        texture.feature = 'SMOOTH_F1'
+        height = texture.outputs['Distance']
+    else:
+        texture = nodes.new('ShaderNodeTexNoise')
+        texture.inputs['Detail'].default_value = 4.0
+        height = texture.outputs['Fac']
+    texture.inputs['Scale'].default_value = 1.0
+    bump = nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value = strength
+    links.new(position.outputs['Position'], mapping.inputs['Vector'])
+    links.new(mapping.outputs['Vector'], texture.inputs['Vector'])
+    links.new(height, bump.inputs['Height'])
+    links.new(bump.outputs['Normal'], nodes['Principled BSDF'].inputs['Normal'])
+    return mat
+
+
+def hyorogan_dough(name, color, speck, speck_size):
+    """Matte, dry, crumbly dough of a hyorogan, dotted with `speck` grains
+    (sesame seeds, buckwheat hulls or flakes; `speck_size` is the share of
+    the surface they cover), with a rough lumpy bump and fine cracks."""
+    mat = material(name, color, 0.0, 0.85, rim=(1.0, 0.92, 0.8), rim_strength=0.25)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes['Principled BSDF']
+    bsdf.inputs['Specular IOR Level'].default_value = 0.3
+    position = nodes.new('ShaderNodeNewGeometry')
+    grains = nodes.new('ShaderNodeTexVoronoi')
+    grains.inputs['Scale'].default_value = 90.0
+    ramp = nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.interpolation = 'CONSTANT'
+    ramp.color_ramp.elements[0].position = 0.0
+    ramp.color_ramp.elements[0].color = (*speck, 1)
+    ramp.color_ramp.elements[1].position = speck_size
+    ramp.color_ramp.elements[1].color = (*color, 1)
+    lumps = nodes.new('ShaderNodeTexNoise')
+    lumps.inputs['Scale'].default_value = 60.0
+    lumps.inputs['Detail'].default_value = 6.0
+    lumps.inputs['Roughness'].default_value = 0.65
+    cracks = nodes.new('ShaderNodeTexVoronoi')
+    cracks.feature = 'DISTANCE_TO_EDGE'
+    cracks.inputs['Scale'].default_value = 9.0
+    edge = nodes.new('ShaderNodeMapRange')
+    edge.inputs['From Min'].default_value = 0.0
+    edge.inputs['From Max'].default_value = 0.04
+    add = nodes.new('ShaderNodeMath')
+    add.operation = 'MULTIPLY_ADD'
+    add.inputs[1].default_value = 0.15
+    bump = nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value = 0.8
+    bump.inputs['Distance'].default_value = 0.02
+    links.new(position.outputs['Position'], grains.inputs['Vector'])
+    links.new(grains.outputs['Distance'], ramp.inputs['Fac'])
+    links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
+    links.new(position.outputs['Position'], lumps.inputs['Vector'])
+    links.new(position.outputs['Position'], cracks.inputs['Vector'])
+    links.new(cracks.outputs['Distance'], edge.inputs['Value'])
+    links.new(edge.outputs['Result'], add.inputs[0])
+    links.new(lumps.outputs['Fac'], add.inputs[2])
+    links.new(add.outputs[0], bump.inputs['Height'])
+    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    return mat
+
+
+def hyorogan(x, y):
+    """Emergency ration: hyorogan, the dried pill-like ration of Japan's
+    Sengoku period. A small heap of hand-rolled, lumpy balls of differing
+    doughs: pale rice flour, yellow-brown kinako, grey-brown buckwheat with
+    dark hulls, toasted beige with pale flakes, and black sesame."""
+    from mathutils import noise
+    # (dx, dy, z, radius, color, speck, speck share)
+    balls = ((-0.13, 0.09, 0.0, 0.105, (0.02, 0.018, 0.016), (0.30, 0.28, 0.25), 0.28),
+             (0.11, 0.11, 0.0, 0.11, (0.42, 0.28, 0.11), (0.60, 0.45, 0.22), 0.15),
+             (-0.15, -0.11, 0.0, 0.105, (0.22, 0.17, 0.09), (0.05, 0.035, 0.02), 0.3),
+             (0.12, -0.10, 0.0, 0.10, (0.50, 0.41, 0.27), (0.68, 0.60, 0.45), 0.15),
+             (-0.01, -0.21, 0.0, 0.095, (0.34, 0.24, 0.11), (0.62, 0.52, 0.36), 0.2),
+             # Rice flour, resting on top of the heap.
+             (-0.01, 0.0, 0.13, 0.11, (0.52, 0.44, 0.31), (0.66, 0.58, 0.44), 0.12))
+    for i, (dx, dy, z, radius, color, speck, share) in enumerate(balls):
+        dough = hyorogan_dough('Hyorogan dough', color, speck, share)
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=1.0, location=(0, 0, 0))
+        ball = finish(bpy.context.object, dough, True, 'Hyorogan ball')
+        seed = Vector((i * 3.7, i * 1.3, i * 2.1))
+        for vertex in ball.data.vertices:
+            n = vertex.co.normalized()
+            # Hand-rolled: a broad uneven lumpiness and a few flat dents.
+            bulge = 0.12 * noise.noise(n * 1.3 + seed) + 0.04 * noise.noise(n * 4.0 + seed)
+            vertex.co = n * radius * (1 + bulge)
+            vertex.co.z *= 0.88
+        ball.data.update()
+        low = min(v.co.z for v in ball.data.vertices)
+        ball.location = (x + dx, y + dy, z - low - 0.005)
+        ball.rotation_euler = (0, 0, i * 1.1)
+
+
+def hardtack_biscuit(name, pos, rotation, mat):
+    """One hardtack biscuit: a small rounded slab with two docking holes."""
+    w, d, h = 0.20, 0.15, 0.055
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0))
+    obj = bpy.context.object
+    obj.scale = (w, d, h)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    finish(obj, mat, False, name)
+    for dx in (-0.045, 0.045):
+        bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.013, depth=0.05,
+                                            location=(dx, 0, h / 2))
+        cutter = bpy.context.object
+        cut = obj.modifiers.new('Docking hole', 'BOOLEAN')
+        cut.operation = 'DIFFERENCE'
+        cut.solver = 'EXACT'
+        cut.object = cutter
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.modifier_apply(modifier=cut.name)
+        bpy.data.objects.remove(cutter)
+    bevel = obj.modifiers.new('Rounded edges', 'BEVEL')
+    bevel.width = 0.012
+    bevel.segments = 3
+    bevel.limit_method = 'ANGLE'
+    bevel.harden_normals = True
+    obj.data.use_auto_smooth = True
+    for face in obj.data.polygons:
+        face.use_smooth = True
+    obj.rotation_euler = rotation
+    obj.location = pos
+    return obj
+
+
+def hardtack(x, y):
+    """Emergency ration: hardtack. A small heap of golden-brown square
+    biscuits pricked with two holes each, one propped up on the heap to
+    show its face, and a few pastel sugar stars (konpeito) beside them."""
+    baked = textured(material('Hardtack baked crust', (0.62, 0.38, 0.14), 0.0, 0.7,
+                              rim=(1.0, 0.85, 0.6), rim_strength=0.5, coat=0.05),
+                     40, 0.3, 'noise')
+    pale = textured(material('Hardtack pale crust', (0.74, 0.52, 0.24), 0.0, 0.7,
+                             rim=(1.0, 0.88, 0.65), rim_strength=0.5, coat=0.05),
+                    40, 0.3, 'noise')
+    start = set(bpy.data.objects)
+    h = 0.055
+    for i, (dx, dy, z, rx, ry, rz, mat) in enumerate((
+            (-0.13, 0.05, h / 2, 0, 0, 0.25, pale), (0.10, 0.07, h / 2, 0, 0, -0.15, baked),
+            (-0.02, -0.10, h / 2, 0, 0, 0.05, baked), (0.17, -0.12, h / 2, 0, 0, 0.55, pale),
+            (-0.04, 0.04, h * 1.5, 0.03, -0.04, -0.35, baked),
+            (0.07, -0.04, h * 1.55, -0.05, 0.02, 0.2, pale),
+            # Propped against the heap, its face toward the camera.
+            (0.00, -0.02, h * 2.9, -0.75, 0.05, 0.08, baked))):
+        hardtack_biscuit('Hardtack biscuit', (x + dx, y + dy, z), (rx, ry, rz), mat)
+    for i, (dx, dy, color) in enumerate(((-0.24, -0.12, (1.0, 0.55, 0.62)),
+                                         (-0.17, -0.20, (0.95, 0.95, 0.92)),
+                                         (0.26, 0.02, (1.0, 0.85, 0.3)),
+                                         (-0.27, 0.12, (0.55, 0.78, 1.0)))):
+        candy = material('Konpeito sugar', color, 0.2, 0.35, rim=(1.0, 1.0, 1.0),
+                         rim_strength=0.5, coat=0.4)
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.03,
+                                              location=(x + dx, y + dy, 0.03),
+                                              rotation=(i, 2 * i, 0.5 * i))
+        star = finish(bpy.context.object, candy, True, 'Konpeito')
+        # Push the twelve original vertices out into the candy's little horns.
+        for vertex in star.data.vertices[:12]:
+            vertex.co *= 1.7
+
+
+def jerky_meat(name, tone, yaw):
+    """Dried meat: dark red-brown with creamy streaks of marbling. The muscle
+    fibres run through the thickness (z), as in sliced jerky, so the layers
+    of meat and fat are upright sheets: they cross the top face as streaks
+    slanting a little across the stick (its length along `yaw`) and show as
+    upright bands on its sides."""
+    mat = material(name, tone, 0.0, 0.5, rim=(0.8, 0.5, 0.45), rim_strength=0.15, coat=0.2)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes['Principled BSDF']
+    position = nodes.new('ShaderNodeNewGeometry')
+    turn = nodes.new('ShaderNodeMapping')
+    turn.inputs['Rotation'].default_value = (0, 0, -yaw + 0.35)
+    stretch = nodes.new('ShaderNodeMapping')
+    stretch.inputs['Scale'].default_value = (4, 20, 1.5)
+    streaks = nodes.new('ShaderNodeTexNoise')
+    streaks.inputs['Scale'].default_value = 1.0
+    streaks.inputs['Detail'].default_value = 3.0
+    ramp = nodes.new('ShaderNodeValToRGB')
+    # Generous marbling: soft pink edges round creamy white streaks of fat.
+    ramp.color_ramp.elements[0].position = 0.55
+    ramp.color_ramp.elements[0].color = (*tone, 1)
+    ramp.color_ramp.elements[1].position = 0.63
+    ramp.color_ramp.elements[1].color = (0.92, 0.86, 0.76, 1)
+    edge = ramp.color_ramp.elements.new(0.59)
+    edge.color = (0.40, 0.17, 0.14, 1)
+    fibres = nodes.new('ShaderNodeMapping')
+    fibres.inputs['Scale'].default_value = (60, 60, 6)
+    grain = nodes.new('ShaderNodeTexNoise')
+    grain.inputs['Scale'].default_value = 1.0
+    grain.inputs['Detail'].default_value = 4.0
+    bump = nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value = 0.1
+    links.new(position.outputs['Position'], turn.inputs['Vector'])
+    links.new(turn.outputs['Vector'], stretch.inputs['Vector'])
+    links.new(stretch.outputs['Vector'], streaks.inputs['Vector'])
+    links.new(streaks.outputs['Fac'], ramp.inputs['Fac'])
+    links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
+    links.new(turn.outputs['Vector'], fibres.inputs['Vector'])
+    links.new(fibres.outputs['Vector'], grain.inputs['Vector'])
+    links.new(grain.outputs['Fac'], bump.inputs['Height'])
+    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    return mat
+
+
+def jerky(x, y):
+    """Emergency ration: dried meat. Several thick square-cut sticks of dark
+    red-brown jerky with pale marbling, lying nearly side by side, slightly
+    tapered and bent, with one more laid across them."""
+    # (dx, dy, z, yaw, half length, half width, half height, color)
+    sticks = ((-0.03, 0.16, 0.0, 0.16, 0.25, 0.050, 0.034, (0.060, 0.015, 0.016)),
+              (0.04, 0.04, 0.0, -0.06, 0.27, 0.055, 0.036, (0.070, 0.019, 0.018)),
+              (-0.05, -0.08, 0.0, 0.10, 0.23, 0.052, 0.033, (0.052, 0.013, 0.015)),
+              (0.05, -0.20, 0.0, -0.18, 0.22, 0.050, 0.035, (0.066, 0.017, 0.017)),
+              # Laid across the others.
+              (0.01, -0.02, 0.068, 0.62, 0.23, 0.052, 0.034, (0.063, 0.016, 0.017)))
+    for i, (dx, dy, z, yaw, length, width, height, tone) in enumerate(sticks):
+        meat = jerky_meat('Jerky dried meat', tone, yaw)
+        direction = Vector((math.cos(yaw), math.sin(yaw), 0))
+        side = Vector((-math.sin(yaw), math.cos(yaw), 0))
+        points, radii = [], []
+        for k in range(7):
+            t = -1 + 2 * k / 6
+            # A slight sideways bend and sag, narrowing toward one end.
+            bend = 0.015 * (1 - t * t) * (1 if i % 2 else -1)
+            sag = -0.012 * t * t if z > 0 else 0.0
+            points.append(Vector((x + dx, y + dy, z + height + sag)) + direction * (t * length)
+                          + side * bend)
+            taper = 1 - 0.12 * (t + 1) / 2 if i % 2 else 1 - 0.12 * (1 - t) / 2
+            radii.append((width * taper * math.sqrt(2), height * math.sqrt(2)))
+        stick = tube('Jerky stick', points, radii, meat, sides=4, twist=math.pi / 4,
+                     up=(0, 0, 1))
+        soften(stick, 0.018)
+
 
 def label(value, pos, size):
     bpy.ops.object.text_add(location=pos)
@@ -3720,6 +3967,7 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock,
+            'ration-hyorogan': hyorogan, 'ration-hardtack': hardtack, 'ration-jerky': jerky,
             **{'jester-' + tone: (lambda tone: lambda x, y: jester(x, y, tone))(tone)
                for tone in MEMBER_SKINS},
             **{'healer-' + tone: (lambda tone: lambda x, y: healer(x, y, tone))(tone)
