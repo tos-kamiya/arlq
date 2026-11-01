@@ -111,8 +111,10 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # large each character appears; the boss dragon is built large, its wings
 # spreading past its cell. The amoebas, comodo dragon and Erebuses were
 # later shrunk to 0.9 of their first sizes, and the Stage 5 members enlarged
-# to 1.05 times theirs, as they looked small on screen.
-SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.04, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
+# to 1.05 times theirs, as they looked small on screen. The comodo dragon
+# was then enlarged 1.2 times (1.04 to 1.25) after its triangle facets and
+# tucked-in legs made it look smaller.
+SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5, 'jester-light': 1.26, 'jester-medium': 1.26, 'jester-dark': 1.26,
@@ -585,13 +587,26 @@ def dragon(x, y):
              (-0.14, 0.78, 0.21), (0.04, 0.96, 0.16), (0.26, 1.04, 0.12), (0.40, 1.04, 0.10)]
     radii = [(0.08, 0.05), (0.17, 0.10), (0.22, 0.14), (0.17, 0.12), (0.31, 0.19), (0.34, 0.21),
              (0.27, 0.17), (0.17, 0.12), (0.11, 0.08), (0.07, 0.05), (0.035, 0.03), 0]
-    triangle_facets(tube('Dragon body', [(x + px, y + py, pz) for px, py, pz in spine], radii,
+    # The head (the first three spine points, the brows and where the eyes
+    # sit) is 1.1 times as large about the neck, so the face does not look
+    # weak beside the boss dragon's, and raised 15 degrees there so it does
+    # not lie flat on the ground like a crocodile's; the eyes keep their size.
+    head_scale, neck = 1.1, Vector(spine[3])
+    head_lift = Matrix.Rotation(-math.radians(15), 3, 'X')
+
+    def face(px, py, pz):
+        p = neck + head_lift @ ((Vector((px, py, pz)) - neck) * head_scale)
+        return (x + p.x, y + p.y, p.z)
+
+    spine = [face(*p) for p in spine[:3]] + [(x + px, y + py, pz) for px, py, pz in spine[3:]]
+    radii = [(a * head_scale, b * head_scale) for a, b in radii[:3]] + radii[3:]
+    triangle_facets(tube('Dragon body', spine, radii,
                          scales, sides=8, twist=math.pi / 8))
     for side in (-1, 1):
         # Brow ridge over each glowing eye gives a scowl.
-        cone('Dragon brow', (x + side * 0.08, y - 0.78, 0.45),
-             (x + side * 0.24, y - 0.62, 0.50), 0.05, 0, belly, 5, False)
-        sphere('Dragon eye', (x + side * 0.15, y - 0.76, 0.42), (0.05, 0.045, 0.035), eye, 16)
+        cone('Dragon brow', face(side * 0.08, -0.78, 0.45), face(side * 0.24, -0.62, 0.50),
+             0.05 * head_scale, 0, belly, 5, False)
+        sphere('Dragon eye', face(side * 0.15, -0.76, 0.42), (0.05, 0.045, 0.035), eye, 16)
         for dy, back in ((-0.24, -0.16), (0.24, 0.12)):
             # Rooted inside the body and splayed less than before; the
             # extra points keep the subdivided leg from bowing into an arc.
@@ -604,7 +619,7 @@ def dragon(x, y):
             foot = tuple(foot)
             sphere('Dragon foot', foot, (0.10, 0.12, 0.05), scales, 12, False)
     # A low crest along the spine, kept as a single smooth fin.
-    crest = [(x + px, y + py, pz + rz) for (px, py, pz), r in zip(spine[3:9], radii[3:9])
+    crest = [(px, py, pz + rz) for (px, py, pz), r in zip(spine[3:9], radii[3:9])
              for rz in [r[1] + 0.02]]
     tube('Dragon dorsal crest', crest, [(0.025, 0.05)] * len(crest), belly, sides=4)
 
