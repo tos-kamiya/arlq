@@ -943,7 +943,11 @@ def treasure(x, y, mimic=False, toy=False):
                         rim=(0.65, 0.70, 0.90), rim_strength=0.5)
         gem = material('Mimic amber rune', (1.0, 0.6, 0.1), emission=(1.0, 0.55, 0.08),
                        strength=6.0)
-        dark = material('Mimic black inside', (0.0, 0.0, 0.005), roughness=0.9)
+        # The eyes glow but light nothing, and the black inside reflects no
+        # light either, so it stays black instead of a grainy grey.
+        gem.cycles.emission_sampling = 'NONE'
+        dark = material('Mimic black inside', (0.0, 0.0, 0.005), roughness=1.0)
+        dark.node_tree.nodes['Principled BSDF'].inputs['Specular IOR Level'].default_value = 0.0
         block('Mimic black inside', (x, y, 0.47), (0.86, 0.54, 0.06), dark, 0.02)
         # Two round amber lights peering out from the dark, set toward the
         # front so they show under the lid's raised edge.
@@ -956,8 +960,11 @@ def treasure(x, y, mimic=False, toy=False):
                         rim=(1.0, 0.55, 0.4), rim_strength=0.3, metallic=0.6, coat=0.6)
         gold = material('Toy chest yellow painted tin', (1.0, 0.60, 0.07), 0.0, 0.35,
                         rim=(1.0, 0.85, 0.45), rim_strength=0.25, metallic=0.6, coat=0.6)
+        # A softer glow that does not light the painted tin around it, which
+        # it otherwise lit too brightly.
         light = material('Toy chest glow', (1.0, 0.8, 0.3), emission=(1.0, 0.72, 0.2),
-                         strength=1.5)
+                         strength=1.0)
+        light.cycles.emission_sampling = 'NONE'
         gem = material('Toy chest red button', (0.9, 0.04, 0.05), 0.0, 0.25,
                        emission=(1.0, 0.1, 0.1), strength=0.4, coat=0.6)
         face = material('Toy coin face', (1.0, 0.78, 0.22), 0.0, 0.3, coat=0.3)
