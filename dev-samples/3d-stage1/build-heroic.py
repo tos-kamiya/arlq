@@ -2229,8 +2229,12 @@ def jester(x, y, tone):
                  (-0.6, -0.8)),
                 ('left', wine, (0.07, 0.0, 0.36), (0.22, -0.14, 0.28), (0.10, -0.15, 0.11),
                  (0.8, -0.6))):
-            points = [(x + px, y + py, pz) for px, py, pz in (hip, knee, ankle)]
-            tube('Jester %s leg' % leg, points, [0.078, 0.068, 0.056], color, sides=12, smooth=True)
+            # Baggy hose: puffed at the thigh and the calf, gathered at the
+            # ankle above the shoe.
+            hip_, knee_, ankle_ = (Vector((x + px, y + py, pz)) for px, py, pz in (hip, knee, ankle))
+            points = [hip_, hip_.lerp(knee_, 0.5), knee_, knee_.lerp(ankle_, 0.5), ankle_]
+            tube('Jester %s leg' % leg, points, [0.051, 0.063, 0.054, 0.057, 0.035], color,
+                 sides=14, smooth=True)
             ax, ay, az = ankle
             fx, fy = ahead
             toe = [(x + ax - fx * 0.05, y + ay - fy * 0.05, az + 0.01),
@@ -2252,11 +2256,15 @@ def jester(x, y, tone):
         bpy.ops.mesh.primitive_torus_add(major_radius=0.165, minor_radius=0.02, location=(x, y, 0.58))
         finish(bpy.context.object, gold, True, 'Jester belt')
         # Sleeves in opposite colors, both arms spread wide with the
-        # forearms raised and the palms up.
+        # forearms raised and the palms up. Loose and puffed, gathered at
+        # the wrist.
         for side, sleeve in ((-1, linen), (1, wine)):
-            tube('Jester sleeve', [(x + side * 0.17, y, 0.84), (x + side * 0.38, y - 0.02, 0.74),
-                                   (x + side * 0.47, y - 0.06, 0.88)], [0.05, 0.05, 0.055], sleeve,
-                 sides=12, smooth=True)
+            shoulder = Vector((x + side * 0.17, y, 0.84))
+            elbow = Vector((x + side * 0.38, y - 0.02, 0.74))
+            wrist = Vector((x + side * 0.47, y - 0.06, 0.88))
+            tube('Jester sleeve', [shoulder, shoulder.lerp(elbow, 0.5), elbow,
+                                   elbow.lerp(wrist, 0.5), wrist],
+                 [0.06, 0.085, 0.075, 0.08, 0.045], sleeve, sides=14, smooth=True)
             sphere('Jester hand', (x + side * 0.49, y - 0.07, 0.93), (0.05, 0.045, 0.03), skin, 16)
         # Five glowing balls in flight, arching from hand to hand high over
         # the cap, clear of its bells.
@@ -2272,6 +2280,8 @@ def jester(x, y, tone):
         # wrap round the head like a headband.
         half = [(0.0, 0.040), (0.06, 0.045), (0.12, 0.060), (0.215, 0.115), (0.20, 0.060),
                 (0.16, 0.005), (0.12, -0.035), (0.07, -0.045), (0.03, -0.030), (0.0, -0.020)]
+        # Narrower wings: squeeze everything outside the eyeholes inward.
+        half = [(u if u <= 0.07 else 0.07 + (u - 0.07) * 0.75, v) for u, v in half]
         outline = half + [(-u, v) for u, v in reversed(half[1:-1])]
 
         def on_mask(u, v, ahead=0.0):
@@ -2298,7 +2308,7 @@ def jester(x, y, tone):
             horn = [(x + side * 0.06, y + 0.02, 1.15), (x + side * 0.18, y + 0.04, 1.27),
                     (x + side * 0.31, y + 0.05, 1.27), (x + side * 0.38, y + 0.03, 1.15),
                     (x + side * 0.39, y + 0.0, 1.05)]
-            tube('Jester cap horn', horn, [0.09, 0.07, 0.05, 0.03, 0.012], color, sides=14,
+            tube('Jester cap horn', horn, [0.11, 0.095, 0.075, 0.05, 0.02], color, sides=14,
                  smooth=True)
             sphere('Jester cap bell', horn[-1], (0.04, 0.04, 0.04), gold, 16)
 
