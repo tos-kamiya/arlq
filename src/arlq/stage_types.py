@@ -57,6 +57,7 @@ class ReplayContext:
         default_factory=lambda: {0: 0}
     )
     rewind_targets: Dict[int, int] = dataclass_field(default_factory=dict)
+    ration_uses: set[int] = dataclass_field(default_factory=set)
     # Non-turn Rogue checks, indexed by the next committed operation.
     rogue_checks: Dict[int, List[d.Point]] = dataclass_field(default_factory=dict)
 

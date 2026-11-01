@@ -436,3 +436,43 @@ def revealed_entity_glyphs(
                 FieldGlyph(entity.x, entity.y, d.CHAR_TREASURE, "yellow", bold=True)
             ]
     return []
+
+
+RATION_NAMES = {"hardtack": "Hardtack", "jerky": "Jerky", "hyorogan": "Hyorogan"}
+
+
+def ration_prompt(player: d.Player) -> str:
+    from .i18n import t as tr
+    name = tr(RATION_NAMES[
+        d.RATIONS[len(d.RATIONS) - player.rations]
+    ])
+    return tr("Collapsed from hunger! You had {ration}! Eat it and continue?").format(ration=name)
+
+
+def ration_options(yes: bool) -> List[Tuple[str, bool]]:
+    from .i18n import t as tr
+    return [
+        (f"{'>' if yes else ' '} {tr('Yes (y)')}", yes),
+        (f"{' ' if yes else '>'} {tr('No (n)')}", not yes),
+    ]
+
+
+def ration_choices(yes: bool) -> str:
+    return "    ".join(text for text, _ in ration_options(yes))
+
+
+def wrap_prompt(text, measure, width):
+    """Wrap Latin words and Japanese text using the frontend's text width."""
+    lines = [""]
+    for char in text:
+        if lines[-1] and measure(lines[-1] + char) > width:
+            split = lines[-1].rfind(" ")
+            if split > 0:
+                tail = lines[-1][split + 1:]
+                lines[-1] = lines[-1][:split]
+                lines.append(tail + char)
+            else:
+                lines.append(char)
+        else:
+            lines[-1] += char
+    return [line.strip() for line in lines]

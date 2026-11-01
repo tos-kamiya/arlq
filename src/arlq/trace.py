@@ -412,7 +412,7 @@ class ReplayUI:
         continue_play: bool = False,
         final_state_only: bool = False,
     ) -> None:
-        self._inputs: Deque[str] = deque(turn["input"] for turn in turns)
+        self._inputs: Deque[str] = deque(key for turn in turns for key in ([turn["input"], "RATION"] if turn.get("ration_used") else [turn["input"]]))
         self._stage = stage
         self._draw_ui = draw_ui
         self._draw_interval = draw_interval
@@ -521,6 +521,15 @@ class ReplayUI:
         if self._final_state_only:
             self._draw_last_state()
         return None
+
+    def confirm_ration(self, player):
+        if self._inputs and self._inputs[0] == "RATION":
+            self._inputs.popleft()
+            return True
+        if self._continue_play and self._draw_ui is not None:
+            confirm = getattr(self._draw_ui, "confirm_ration", None)
+            return confirm(player) if confirm is not None else False
+        return False
 
     def input_game_over(self) -> Optional[str]:
         # The game-over loop may be reached before all trace inputs are

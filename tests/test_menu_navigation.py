@@ -75,11 +75,11 @@ def test_stage_menu_places_six_stages_in_two_columns(monkeypatch):
     ui._draw_text = lambda pos, text, *args, **kwargs: drawn.setdefault(text.strip(), pos)
     assert ui.select_stage() == 0
     for left, right in ((1, 2), (3, 4), (5, 6)):
-        left_pos = drawn['> [1]' if left == 1 else f'[{left}]']
-        right_pos = drawn[f'[{right}]']
+        left_pos = drawn['> Stage 1' if left == 1 else f'Stage {left}']
+        right_pos = drawn[f'Stage {right}']
         assert left_pos[1] == right_pos[1]
         assert left_pos[0] < right_pos[0]
-    assert drawn['> [1]'][1] < drawn['[3]'][1] < drawn['[5]'][1]
+    assert drawn['> Stage 1'][1] < drawn['Stage 3'][1] < drawn['Stage 5'][1]
 
 
 @pytest.mark.parametrize('arrows,expected', [
@@ -118,9 +118,9 @@ def test_terminal_stage_grid_layout_and_navigation(capsys, arrows, expected):
     ui._read_key = events.popleft
     assert ui.select_stage() == expected
     output = capsys.readouterr().out
-    for x, y, label in [(4, 6, '> [1]'), (14, 6, '  [2]'),
-                         (4, 7, '  [3]'), (14, 7, '  [4]'),
-                         (4, 8, '  [5]'), (14, 8, '  [6]')]:
+    for x, y, label in [(4, 6, '> Stage 1'), (26, 6, '  Stage 2'),
+                         (4, 7, '  Stage 3'), (26, 7, '  Stage 4'),
+                         (4, 8, '  Stage 5'), (26, 8, '  Stage 6')]:
         assert f'<{x},{y}>{label}' in output
 
 

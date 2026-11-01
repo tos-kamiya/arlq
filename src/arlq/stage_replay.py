@@ -45,6 +45,9 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
             floors, player, floor[0], replay.stage_num, replay.config.torch_radius,
         )
 
+    if 0 in replay.ration_uses:
+        player.lp = d.RATION_LP
+        player.rations -= 1
     for index, direction in enumerate(replay.operations[:operation_count]):
         observe()
         for destination in replay.rogue_checks.get(index, ()):
@@ -61,6 +64,9 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
             )
         else:
             player.lp -= d.movement_lp_cost(player)
+        if index + 1 in replay.ration_uses:
+            player.lp = d.RATION_LP
+            player.rations -= 1
         player.current_floor = floor[0]
     observe()
     return floors, player, floor[0], checkpoint[0], queue
@@ -78,6 +84,7 @@ def rewind(
     loop_floor_index: Optional[int] = None,
 ) -> str:
     """Replay to the rewind target and carry over the player's current knowledge."""
+    remaining_rations = player.rations
     known_monsters = set(player.known_monsters)
     known_c_floors = set(player.known_c_floors)
     elf_floors = deepcopy(player.elf_stage_floors)
@@ -122,6 +129,7 @@ def rewind(
     player.__dict__.update(restored_player_state.__dict__)
     # Monster/trap identification, elf floor locations, and member discoveries
     # survive the rewind. Entity encounter state is restored by replay.
+    player.rations = remaining_rations
     player.known_monsters = known_monsters
     player.known_c_floors = known_c_floors
     player.elf_stage_floors = elf_floors

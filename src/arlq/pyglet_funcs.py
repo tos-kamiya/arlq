@@ -1464,7 +1464,9 @@ class PygletUI:
         lp_width = self._text_width(lp_str, size_scale=hud_scale)
         x_offset = lp_text_x_offset + lp_width
 
-        extra = "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
+        extra = f"RATION: {player.rations}  " + (
+            "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
+        )
         if not self._status_shows_lp_gauge():
             bar_width = 0
             item_x_offset = x_offset + round(10 * hud_scale)
@@ -1841,6 +1843,71 @@ class PygletUI:
 
             time.sleep(1 / 30)
 
+    def _draw_ration_image(self, ration, x, y, size, dim=False):
+        pass
+
+    def confirm_ration(self, player):
+        """Ask for an explicit continuation without consuming a game turn."""
+        self.stop_movement_repeat()
+        self._key_queue.clear()
+        yes = True
+        ration = d.RATIONS[len(d.RATIONS) - player.rations]
+        while True:
+            self._clear_drawables()
+            width = self.field_pixel_width
+            height = self.field_height * self.cell_size_y
+            self._draw_rect(0, 0, width, height, (0, 0, 0, 255))
+            self._draw_ration_image(ration, width / 2, height * .32, height * .18)
+            lines = ui_display.wrap_prompt(
+                ui_display.ration_prompt(player),
+                lambda value: self._text_width(value, bold=True), width * .9,
+            )
+            group = getattr(self, "_text_overlay_group", None)
+            for line_index, line in enumerate(lines):
+                self._draw_text(
+                    (0, self.field_height * .48 + line_index),
+                    line, COLOR_MAP["default"], bold=True, group=group,
+                    x_offset=max(0, (width - self._text_width(line, bold=True)) // 2),
+                )
+            options = ui_display.ration_options(yes)
+            gap = self._text_width("    ")
+            widths = [self._text_width(text, bold=selected) for text, selected in options]
+            x = max(0, (width - sum(widths) - gap) // 2)
+            for (text, selected), option_width in zip(options, widths):
+                self._draw_text(
+                    (0, self.field_height * .48 + len(lines) + 1), text, COLOR_MAP["default"],
+                    bold=selected, x_offset=x, group=group,
+                )
+                x += option_width + gap
+            self._draw_text(
+                (0, self.field_height * .48 + len(lines) + 4), tr("Esc / q: quit"), COLOR_MAP["default"],
+                x_offset=max(0, (width - self._text_width(tr("Esc / q: quit"))) // 2),
+                group=getattr(self, "_text_overlay_group", None),
+            )
+            self._flip()
+            while True:
+                self._pump()
+                if self._closed:
+                    return None
+                event = self._next_key_event()
+                if event is not None:
+                    symbol, _ = event
+                    if symbol == pgkey.Y:
+                        return True
+                    if symbol in (pgkey.ESCAPE, pgkey.Q):
+                        return None
+                    if symbol == pgkey.N:
+                        return False
+                    if symbol in (pgkey.ENTER, pgkey.RETURN):
+                        return yes
+                    if symbol in (pgkey.LEFT, pgkey.RIGHT):
+                        yes = symbol == pgkey.LEFT
+                        break
+                if getattr(self, "_resize_redraw_pending", False):
+                    self._resize_redraw_pending = False
+                    break
+                time.sleep(1 / 30)
+
     def input_game_over(self):
         """Wait for a game-over command or a shifted floor-view direction."""
         while True:
@@ -2054,13 +2121,13 @@ class PygletUI:
                 (8, 14),
                 gamepad_heading,
                 gamepad_setting_color,
-                bold=row == 4 and controller_connected,
+                bold=row == 4,
             )
             self._draw_text(
                 (8, 14),
                 "->",
                 gamepad_setting_color,
-                bold=row == 4 and controller_connected,
+                bold=row == 4,
                 x_offset=self._text_width(
                     gamepad_heading,
                     bold=row == 4,
@@ -2320,7 +2387,7 @@ class PygletUI:
         Displays a stage selection menu where the user can navigate with arrow keys or D-pad,
         and confirm with Enter (or gamepad button 0), or directly press numeric keys or Q/ESC.
 
-        The selected option is shown with a leading ">" and non-selected options with a blank.
+        The selected option has a leading ">" and is bold.
 
         Returns:
             int: The selected stage number (1, 2, ...), or 0 if "Quit" is chosen.
@@ -2329,7 +2396,7 @@ class PygletUI:
 
         options = [tr("[q]uit")]
         for n in stage_numbers:
-            options.append(f"[{n}]")
+            options.append(tr("Stage {number}").format(number=n))
         options.append(tr("[s]ettings"))
 
         current_index = 1  # Initial selection: stage 1
@@ -2360,12 +2427,12 @@ class PygletUI:
             base_x = 8
             base_y = 8
             for i, option in enumerate(options):
-                prefix = ">" if i == current_index else " "
+                text = f"{'>' if i == current_index else ' '} {option}"
                 col, row = positions[i]
                 display_row = row + (2 if i == settings_index else 1 if i else 0)
                 self._draw_text(
-                    (base_x + 10 * col, base_y + MENU_ROW_SPACING * display_row),
-                    f"{prefix} {option}",
+                    (base_x + 22 * col, base_y + MENU_ROW_SPACING * display_row),
+                    text,
                     COLOR_MAP["default"],
                     bold=(i == current_index),
                 )

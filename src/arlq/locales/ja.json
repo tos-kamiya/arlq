@@ -162,5 +162,13 @@
     "-- Your party lost and respawned together.": "-- 敗北！ パーティー全員でリスポーンした。",
     "-- Defeat the Wyrm on the final floor, then take the treasure.": "-- 最終フロアのウィルム(W)を倒し、宝箱を手に入れよう。",
     "-- Explore the training ground and claim the Fire Drake’s treasure.": "-- 訓練場を進み、ファイアドレイクの宝箱を手に入れよう。",
-    "-- Rogue spotted danger. Movement repeat stopped.": "-- ならず者(R)が危険を察知！ キーリピートを停止した。"
+    "-- Rogue spotted danger. Movement repeat stopped.": "-- ならず者(R)が危険を察知！ キーリピートを停止した。",
+    "Stage {number}": "ステージ{number}",
+    "Hardtack": "乾パン",
+    "Jerky": "干し肉",
+    "Hyorogan": "兵糧丸",
+    "Collapsed from hunger! You had {ration}! Eat it and continue?": "力尽きた！ {ration}を持っていた！ 食べて続けますか？",
+    "Yes (y)": "はい (y)",
+    "No (n)": "いいえ (n)",
+    "Esc / q: quit": "Esc / q: ゲーム終了"
 }

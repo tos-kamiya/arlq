@@ -2055,7 +2055,7 @@ def run_game(
             12,
             trp("-- Explore the training ground and claim the Fire Drake’s treasure.", 1),
         )
-    while player.lp > 0:
+    while True:
         current = floors[floor[0]]
         display_floor = floors[view_floor]
         cur = observe_world(floors, player, floor[0], stage_num, config.torch_radius)
@@ -2123,6 +2123,28 @@ def run_game(
             ),
             **stage_draw_options,
         )
+
+        if player.lp <= 0:
+            _stop_movement_repeat(ui)
+            confirm = getattr(ui, "confirm_ration", None)
+            if not player.rations or confirm is None:
+                break
+            decision = confirm(player)
+            if decision is None:
+                if trace is not None:
+                    trace.record_quit()
+                    trace.set_outcome("quit")
+                return
+            if not decision:
+                break
+            if trace is not None:
+                trace.turns[-1]["ration_used"] = True
+            player.rations -= 1
+            player.lp = d.RATION_LP
+            if replay_context is not None:
+                replay_context.ration_uses.add(len(replay_context.operations))
+            message = (-1, "")
+            continue
 
         move = ui.input_direction()
         if move is None:

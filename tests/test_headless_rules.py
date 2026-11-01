@@ -1470,6 +1470,7 @@ def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypat
 
 def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monkeypatch):
     player = d.Player(2, 2, 100, 90)
+    player.rations = 1
     player.known_monsters = {"a", "W"}
     player.known_c_floors = {2}
     player.elf_stage_flags |= d.STAGE3_W_FLAG
@@ -1517,6 +1518,7 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
     assert checkpoint == [(4, 5)]
     assert current_queue == Counter()
     assert current_floors[0].field[10][10] == " "
+    assert player.rations == 1
     assert current_floors[0].seen[1][1] == 9
     assert player.known_monsters == {"a", "W"}
     assert player.known_c_floors == {2}

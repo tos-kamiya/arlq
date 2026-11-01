@@ -525,6 +525,7 @@ class BlessedUI:
         )
         add("#" * filled + "-" * (bar_len - filled), bar_color)
         add("]  ")
+        add(f"RATION: {player.rations}  ")
         add("/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit")
 
         y += 1
@@ -655,6 +656,38 @@ class BlessedUI:
             return None
         return str(key).lower()
 
+    def confirm_ration(self, player):
+        yes = True
+        while True:
+            self._wait_for_terminal_size()
+            width = min(d.FIELD_WIDTH - 3, self.term.width)
+            middle = min(d.FIELD_HEIGHT, self.term.height) // 2
+            output = [self.term.home + self.term.clear]
+            lines = ui_display.wrap_prompt(ui_display.ration_prompt(player), self.term.length, width)
+            lines += ["", ui_display.ration_choices(yes), "", tr("Esc / q: quit")]
+            for offset, text in enumerate(lines):
+                x = max(0, (width - self.term.length(text)) // 2)
+                output.append(self.term.move_xy(x, middle - len(lines) // 2 + offset))
+                if offset == len(lines) - 3:
+                    output.append(self._style("    ", bg="black").join(
+                        self._style(label, color="white", bold=selected, bg="black")
+                        for label, selected in ui_display.ration_options(yes)
+                    ))
+                else:
+                    output.append(self._style(text, color="white", bold=True, bg="black"))
+            print("".join(output) + self.term.normal, end="", flush=True)
+            key = self._read_key()
+            if str(key).lower() == "y":
+                return True
+            if str(key).lower() == "q" or key.code == self.term.KEY_ESCAPE:
+                return None
+            if str(key).lower() == "n":
+                return False
+            if str(key) in ("\n", "\r"):
+                return yes
+            if key.name in ("KEY_LEFT", "KEY_RIGHT"):
+                yes = key.name == "KEY_LEFT"
+
     def input_game_over(self):
         """Wait for a game-over command or a shifted floor-view direction."""
         while True:
@@ -685,7 +718,7 @@ class BlessedUI:
                 return (*direction, False)
 
     def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
-        options = [tr("[q]uit")] + [f"[{n}]" for n in stage_numbers]
+        options = [tr("[q]uit")] + [tr("Stage {number}").format(number=n) for n in stage_numbers]
         stage_rows = (len(stage_numbers) + 1) // 2
         positions = [(0, 0)] + [
             (i % 2, 1 + i // 2) for i in range(len(stage_numbers))
@@ -706,11 +739,10 @@ class BlessedUI:
             output = [self.term.home + self.term.clear]
             output.append(self.term.move_xy(4, 2) + self.term.bold(self.term.yellow(tr("Stage Selection"))))
             for i, option in enumerate(options):
-                prefix = ">" if i == current_index else " "
-                text = f"{prefix} {option}"
+                text = f"{'>' if i == current_index else ' '} {option}"
                 col, row = positions[i]
                 display_row = row + (1 if i else 0)
-                output.append(self.term.move_xy(4 + 10 * col, 4 + display_row)
+                output.append(self.term.move_xy(4 + 22 * col, 4 + display_row)
                               + (self.term.bold(text) if i == current_index else text))
             print("".join(output) + self.term.normal, end="", flush=True)
 
