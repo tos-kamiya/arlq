@@ -1734,6 +1734,7 @@ class PygletUI:
                     symbol, modifiers = event
                 if symbol == pgkey.F:
                     self._keyboard_farthest_preview = not self._keyboard_farthest_preview
+                    self.escape_check_requested = True
                     return (0, 0)
                 if symbol == pgkey.M:
                     self.map_mode = True
@@ -1846,20 +1847,27 @@ class PygletUI:
     def _draw_ration_image(self, ration, x, y, size, dim=False):
         pass
 
+    def confirm_game_over(self):
+        return self._confirm_choice(None, tr("No reachable encounters or exits. End the game?"))
+
     def confirm_ration(self, player):
+        return self._confirm_choice(player)
+
+    def _confirm_choice(self, player, prompt=None):
         """Ask for an explicit continuation without consuming a game turn."""
         self.stop_movement_repeat()
         self._key_queue.clear()
-        yes = True
-        ration = d.RATIONS[len(d.RATIONS) - player.rations]
+        yes = prompt is None
+        ration = d.RATIONS[len(d.RATIONS) - player.rations] if player is not None else None
         while True:
             self._clear_drawables()
             width = self.field_pixel_width
             height = self.field_height * self.cell_size_y
             self._draw_rect(0, 0, width, height, (0, 0, 0, 255))
-            self._draw_ration_image(ration, width / 2, height * .32, height * .18)
+            if ration is not None:
+                self._draw_ration_image(ration, width / 2, height * .32, height * .18)
             lines = ui_display.wrap_prompt(
-                ui_display.ration_prompt(player),
+                prompt or ui_display.ration_prompt(player),
                 lambda value: self._text_width(value, bold=True), width * .9,
             )
             group = getattr(self, "_text_overlay_group", None)
@@ -1880,8 +1888,8 @@ class PygletUI:
                 )
                 x += option_width + gap
             self._draw_text(
-                (0, self.field_height * .48 + len(lines) + 4), tr("Esc / q: quit"), COLOR_MAP["default"],
-                x_offset=max(0, (width - self._text_width(tr("Esc / q: quit"))) // 2),
+                (0, self.field_height * .48 + len(lines) + 4), tr("Esc / q: cancel") if prompt else tr("Esc / q: quit"), COLOR_MAP["default"],
+                x_offset=max(0, (width - self._text_width(tr("Esc / q: cancel") if prompt else tr("Esc / q: quit"))) // 2),
                 group=getattr(self, "_text_overlay_group", None),
             )
             self._flip()

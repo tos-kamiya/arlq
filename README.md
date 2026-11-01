@@ -335,3 +335,5 @@ ChatGPT, Gemini, Claude, and Grok contributed to the design and implementation o
 This project is licensed under the BSD-2 license.
 
 Selected options in stage selection and settings use a leading > and bold text.
+
+Press F to preview reachable cells. If no encounter, stairs, or Collapse pit is reachable with the remaining LP, including through unexplored areas, you can choose to end the game. With an Explorer, cells directly beneath upper-floor pits also count as exits. Inactive Mimics are excluded; untriggered Collapses (?) count as reachable encounters. Accepting exits through the same path as Q. Declining returns to the normal F preview of explored areas without consuming a turn.

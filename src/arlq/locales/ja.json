@@ -170,5 +170,7 @@
     "Collapsed from hunger! You had {ration}! Eat it and continue?": "力尽きた！ {ration}を持っていた！ 食べて続けますか？",
     "Yes (y)": "はい (y)",
     "No (n)": "いいえ (n)",
+    "No reachable encounters or exits. End the game?": "到達できる相手や出口がありません。ゲームオーバーにしますか？",
+    "Esc / q: cancel": "Esc / q: キャンセル",
     "Esc / q: quit": "Esc / q: ゲーム終了"
 }

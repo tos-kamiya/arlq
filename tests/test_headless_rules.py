@@ -2673,3 +2673,115 @@ def test_barrier_popup_rounds_fractional_damage_without_changing_lp(monkeypatch,
     game_engine_module._apply_terrain_hazards(floors[0], player, (1, 2))
     assert player.status_popup == expected
     assert player.lp == pytest.approx(90 - damage)
+
+
+@pytest.mark.parametrize('accept', [True, False])
+def test_f_requests_game_over_only_when_no_targets(monkeypatch, accept):
+    field = [['#'] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    field[1][1] = field[1][2] = ' '
+    current = Floor(field, [], [[0] * d.FIELD_WIDTH for _ in field], (1, 1), (6, 1), None)
+    player = d.Player(1, 1, 1, 100)
+    monkeypatch.setattr(game_engine_module, 'build_single_floor', lambda *_: ([current], player))
+    draws, prompts = [], []
+    inputs = iter([(0, 0), None])
+    def read():
+        value = next(inputs)
+        ui.escape_check_requested = value is not None
+        return value
+    ui = SimpleNamespace(draw_stage=lambda **kw: draws.append(kw),
+                         input_direction=read, input_game_over=lambda: None,
+                         confirm_game_over=lambda: prompts.append(True) or accept)
+    from arlq.trace import TraceRecorder
+    trace = TraceRecorder(params={'stage': 1})
+    game_engine_module.run_game(ui, '123', stage_num=1, trace=trace)
+    assert prompts == [True]
+    assert trace.to_dict()['final']['outcome'] == 'quit'
+    assert trace.turns[-1]['input'] == 'Q'
+    assert player.lp == 100
+    assert all(not draw.get('extra_keys') for draw in draws)
+    if accept:
+        assert len(draws) == 1
+    if not accept:
+        assert ui.farthest_preview is True
+        assert (2, 1) in draws[-1]['reachable_cells']
+
+
+def test_reachable_encounter_is_terminal():
+    field = [list('#####'), list('#   #'), list('#####')]
+    player = d.Player(1, 1, 1, 100)
+    seen = [[1] * 5 for _ in field]
+    enemy = d.Monster(2, 1, d.CHAR_TO_MONSTER_TRIBE['a'])
+    reachable = game_engine_module.reachable_known_cells(
+        field, seen, seen, [enemy], player, 1, terminal_targets={(2, 1), (3, 1)},
+    )
+    assert (2, 1) in reachable
+    assert (3, 1) not in reachable
+
+
+@pytest.mark.parametrize('explorer', [True, False])
+def test_exit_check_searches_unexplored_cells_without_revealing_them(explorer):
+    field = [list('#######'), list('#  |  #'), list('#######')]
+    seen = [[0] * 7 for _ in field]
+    seen[1][1] = 1
+    player = d.Player(1, 1, 1, 100)
+    if explorer:
+        player.members.append(d.PartyMember(1, 1, d.MEMBER_DUNGEON_EXPLORER))
+    enemy = d.Monster(5, 1, d.CHAR_TO_MONSTER_TRIBE['a'])
+    targets = {(5, 1)}
+    preview = game_engine_module.reachable_known_cells(
+        field, seen, seen, [enemy], player, 6, terminal_targets=targets,
+    )
+    checked = game_engine_module.reachable_known_cells(
+        field, seen, seen, [enemy], player, 6, terminal_targets=targets,
+        include_unexplored=True,
+    )
+    assert preview == {(1, 1)}
+    assert ((5, 1) in checked) is explorer
+    assert seen[1] == [0, 1, 0, 0, 0, 0, 0]
+    assert field[1][3] == d.CHAR_HIDDEN_D_GATE
+
+
+def test_f_game_over_check_does_not_count_treasure(monkeypatch):
+    field = [['#'] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    field[1][1:4] = [' '] * 3
+    treasure = d.Treasure(3, 1, 'Ta')
+    current = Floor(field, [treasure], [[0] * d.FIELD_WIDTH for _ in field], (1, 1), (6, 1), None)
+    player = d.Player(1, 1, 1, 100)
+    monkeypatch.setattr(game_engine_module, 'build_single_floor', lambda *_: ([current], player))
+    prompts = []
+    inputs = iter([(0, 0), None])
+    def read():
+        value = next(inputs)
+        ui.escape_check_requested = value is not None
+        return value
+    ui = SimpleNamespace(draw_stage=lambda **kw: None, input_direction=read,
+                         confirm_game_over=lambda: prompts.append(True) or False)
+    game_engine_module.run_game(ui, '123', stage_num=1)
+    assert prompts == [True]
+
+
+@pytest.mark.parametrize('kind,expected_prompts', [
+    ('inactive_mimic', 1), ('active_mimic', 0), ('untriggered_collapse', 0),
+])
+def test_f_check_ignores_inactive_mimic_but_counts_untriggered_collapse(
+    monkeypatch, kind, expected_prompts,
+):
+    field = [['#'] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    field[1][1:4] = [' '] * 3
+    entity = (d.Collapse(3, 1) if kind == 'untriggered_collapse'
+              else d.Monster(3, 1, d.CHAR_TO_MONSTER_TRIBE['M']))
+    entity.active = kind != 'inactive_mimic'
+    current = Floor(field, [entity], [[0] * d.FIELD_WIDTH for _ in field], (1, 1), (6, 1), None)
+    player = d.Player(1, 1, 1, 100)
+    monkeypatch.setattr(game_engine_module, 'build_single_floor', lambda *_: ([current], player))
+    prompts = []
+    inputs = iter([(0, 0), None])
+    def read():
+        value = next(inputs)
+        ui.escape_check_requested = value is not None
+        return value
+    ui = SimpleNamespace(draw_stage=lambda **kw: None, input_direction=read,
+                         confirm_game_over=lambda: prompts.append(True) or False)
+    game_engine_module.run_game(ui, '123', stage_num=1)
+    assert len(prompts) == expected_prompts
+    assert field[1][3] == d.CHAR_FLOOR

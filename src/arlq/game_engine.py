@@ -86,15 +86,18 @@ def reachable_known_cells(
     player: d.Player,
     stage_num: int,
     phase_walls: Optional[Set[d.Point]] = None,
+    terminal_targets: Optional[Set[d.Point]] = None,
+    include_unexplored: bool = False,
 ) -> Set[d.Point]:
-    """Find all known cells reachable before the player's LP reaches zero."""
+    """Find reachable cells, optionally including unexplored terrain for exit checks."""
     height = len(field)
     width = len(field[0]) if field else 0
     if not width or not (0 <= player.x < width and 0 <= player.y < height):
         return set()
 
     known = [
-        [int(seen[y][x] or visible[y][x]) for x in range(width)] for y in range(height)
+        [int(include_unexplored or seen[y][x] or visible[y][x]) for x in range(width)]
+        for y in range(height)
     ]
     blocked = {
         (entity.x, entity.y)
@@ -114,19 +117,26 @@ def reachable_known_cells(
         point = (x, y)
         if cost != distances[point]:
             continue
+        if point != start and point in (terminal_targets or ()):
+            continue
         for dx, dy in neighbors:
             nx, ny = x + dx, y + dy
             if not (0 <= nx < width and 0 <= ny < height):
                 continue
-            if not known[ny][nx] or (nx, ny) in blocked:
+            if not known[ny][nx] or ((nx, ny) in blocked and (nx, ny) not in (terminal_targets or ())):
                 continue
 
             cell = field[ny][nx]
-            if (nx, ny) in (phase_walls or ()) or (
+            if (nx, ny) in (terminal_targets or ()):
+                terrain_cost = d.movement_lp_cost(player)
+            elif (nx, ny) in (phase_walls or ()) or (
                 cell == d.CHAR_GOLEM_WALL and d.has_member(player, d.MEMBER_ROGUE)
             ):
                 terrain_cost = d.movement_lp_cost(player)
             elif cell in (d.CHAR_FLOOR, d.CHAR_D_GATE, *d.HIDDEN_STAIRS_CHARS):
+                terrain_cost = d.movement_lp_cost(player)
+            elif (include_unexplored and cell == d.CHAR_HIDDEN_D_GATE
+                  and d.has_member(player, d.MEMBER_DUNGEON_EXPLORER)):
                 terrain_cost = d.movement_lp_cost(player)
             elif cell == d.CHAR_CALTROP:
                 terrain_cost = d.movement_lp_cost(player) + d.caltrop_lp_damage(player)
@@ -2154,6 +2164,39 @@ def run_game(
                     "unfinished" if getattr(ui, "ran_dry", False) else "quit"
                 )
             return
+        if getattr(ui, "escape_check_requested", False):
+            ui.escape_check_requested = False
+            active = floors[floor[0]]
+            targets = {(entity.x, entity.y) for entity in active.entities
+                       if isinstance(entity, (d.Monster, d.Companion, d.PartyMember))
+                       and not (isinstance(entity, d.Monster)
+                                and entity.tribe.char == "M" and not entity.active)}
+            explorer = d.has_member(player, d.MEMBER_DUNGEON_EXPLORER)
+            for y, row in enumerate(active.field):
+                for x, cell in enumerate(row):
+                    if cell in (d.CHAR_STAIRS_UP, d.CHAR_STAIRS_DOWN, d.CHAR_COLLAPSE):
+                        targets.add((x, y))
+                    if explorer and (cell in d.SCHOLAR_STAIR_CHARS or (
+                        floor[0] > 0 and cell == d.CHAR_FLOOR
+                        and floors[floor[0] - 1].field[y][x] == d.CHAR_COLLAPSE
+                    )):
+                        targets.add((x, y))
+            reachable = reachable_known_cells(
+                active.field, active.seen, cur, active.entities, player, stage_num,
+                terminal_targets=targets,
+                include_unexplored=True,
+            )
+            confirm = getattr(ui, "confirm_game_over", None)
+            if not targets.intersection(reachable) and confirm is not None:
+                if confirm() is True:
+                    _stop_movement_repeat(ui)
+                    if trace is not None:
+                        trace.record_quit()
+                        trace.set_outcome("quit")
+                    return
+                ui.farthest_preview = True
+                view_floor = floor[0]
+                continue
         if getattr(ui, "floor_view_reset_requested", False):
             view_floor = floor[0]
             ui.floor_view_reset_requested = False

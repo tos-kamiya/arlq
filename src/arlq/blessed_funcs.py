@@ -635,6 +635,7 @@ class BlessedUI:
             key_name = key.name or str(key)
             if key_name.lower() in ("f", "key_f") or str(key).lower() == "f":
                 self.farthest_preview = not self.farthest_preview
+                self.escape_check_requested = True
                 return (0, 0)
             if str(key).lower() == "m":
                 self.map_mode = True
@@ -657,15 +658,21 @@ class BlessedUI:
             return None
         return str(key).lower()
 
+    def confirm_game_over(self):
+        return self._confirm_choice(None, tr("No reachable encounters or exits. End the game?"))
+
     def confirm_ration(self, player):
-        yes = True
+        return self._confirm_choice(player)
+
+    def _confirm_choice(self, player, prompt=None):
+        yes = prompt is None
         while True:
             self._wait_for_terminal_size()
             width = min(d.FIELD_WIDTH - 3, self.term.width)
             middle = min(d.FIELD_HEIGHT, self.term.height) // 2
             output = [self.term.home + self.term.clear]
-            lines = ui_display.wrap_prompt(ui_display.ration_prompt(player), self.term.length, width)
-            lines += ["", ui_display.ration_choices(yes), "", tr("Esc / q: quit")]
+            lines = ui_display.wrap_prompt(prompt or ui_display.ration_prompt(player), self.term.length, width)
+            lines += ["", ui_display.ration_choices(yes), "", tr("Esc / q: cancel") if prompt else tr("Esc / q: quit")]
             for offset, text in enumerate(lines):
                 x = max(0, (width - self.term.length(text)) // 2)
                 output.append(self.term.move_xy(x, middle - len(lines) // 2 + offset))
