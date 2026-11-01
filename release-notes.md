@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 6.1.5 - 2026-11-02
+
+- Arrange the stage selector in two columns of three stages, `[1]` through
+  `[6]`, in both GUI and terminal modes. Navigate with arrow keys or the
+  gamepad, or select a stage directly by number.
+- Redraw several sprites in sprite mode:
+  - Loop: a calm whirl of green ribbons with small cyan sparks, replacing the
+    pocket watch.
+  - Dungeon Explorer: a khaki pith helmet with a glowing amber stone as its
+    headlamp, and a modern red-shafted ice axe.
+  - Jester: a fuller two-pointed cap, a narrower mask, and loose puffed
+    sleeves.
+  - Healer: wide robe sleeves that hang down.
+  - Komodo Dragon and Flame Cobra: wet, spotted amphibian skin in small
+    triangular facets. The Komodo Dragon is larger, with a bigger, raised head.
+  - Ocular: a clear cornea over an orange iris patterned with a cyan gear
+    outline, replacing the cyan light in the pupil.
+  - Toy chest (Stage 5): a softer glow inside.
+
 ## 6.1.4 - 2026-11-01
 
 - Enlarge hovered field characters to twice their usual size in sprite mode,
