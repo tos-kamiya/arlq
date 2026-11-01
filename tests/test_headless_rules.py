@@ -2656,3 +2656,18 @@ def test_barrier_does_not_override_contact_message(importance):
     field[2][3] = d.CHAR_BARRIER
     result = _step((1, 0), floors, player, [0], [(2, 2)], Counter(), 1)
     assert result[1] == "Contact message"
+
+
+@pytest.mark.parametrize('damage,expected', [(1 / 3, 'LP-0.3'), (2 / 3, 'LP-0.7'), (2, 'LP-2')])
+def test_barrier_popup_rounds_fractional_damage_without_changing_lp(monkeypatch, damage, expected):
+    player = d.Player(2, 2, 100, 90)
+    floors, _ = stage3_state(player, [])
+
+    def apply_damage(field, target, previous):
+        target.lp -= damage
+        return True
+
+    monkeypatch.setattr(game_engine_module, 'apply_barrier_damage', apply_damage)
+    game_engine_module._apply_terrain_hazards(floors[0], player, (1, 2))
+    assert player.status_popup == expected
+    assert player.lp == pytest.approx(90 - damage)

@@ -284,7 +284,7 @@ def _apply_terrain_hazards(
     if apply_barrier_damage(field, player, previous):
         damage = max(0, old_lp - player.lp)
         tone = "green" if d.has_member(player, d.MEMBER_GUARDIAN) else "default"
-        _set_status_popup(player, f"LP-{damage:g}", tone)
+        _set_status_popup(player, f"LP-{_format_popup_amount(damage)}", tone)
         if trace is not None:
             trace.record_damage("barrier")
     if field[player.y][player.x] == d.CHAR_CALTROP:
@@ -293,7 +293,7 @@ def _apply_terrain_hazards(
         damage = max(0, old_lp - player.lp)
         if damage:
             tone = "green" if d.has_member(player, d.MEMBER_GUARDIAN) else "default"
-            _set_status_popup(player, f"LP-{damage:g}", tone)
+            _set_status_popup(player, f"LP-{_format_popup_amount(damage)}", tone)
         field[player.y][player.x] = d.CHAR_FLOOR
         if trace is not None:
             trace.record_damage("caltrop")
@@ -1090,11 +1090,11 @@ def _resolve_monster_contact(
         elif ch == "e":
             lost_lp = max(0, old_lp - player.lp)
             if lost_lp:
-                popup = f"LP-{lost_lp:g}"
+                popup = f"LP-{_format_popup_amount(lost_lp)}"
         elif ch == "E":
             lost_level = max(0, old_level - player.level)
             if lost_level:
-                popup = f"LVL-{lost_level:g}"
+                popup = f"LVL-{_format_popup_amount(lost_level)}"
     if popup:
         _set_status_popup(player, popup)
 
@@ -1258,7 +1258,7 @@ def _resolve_party_contact(
     elif "E" in party_chars:
         lost_level = max(0, old_level - player.level)
         if lost_level:
-            popup = f"LVL-{lost_level:g}"
+            popup = f"LVL-{_format_popup_amount(lost_level)}"
     elif "b" in party_chars or "B" in party_chars:
         gained_lp = max(0, player.lp - old_lp)
         if gained_lp:
@@ -1270,7 +1270,7 @@ def _resolve_party_contact(
     elif "e" in party_chars:
         lost_lp = max(0, old_lp - player.lp)
         if lost_lp:
-            popup = f"LP-{lost_lp:g}"
+            popup = f"LP-{_format_popup_amount(lost_lp)}"
     if popup:
         _set_status_popup(player, popup, popup_tone)
     return _ContactResult(boss_message)
@@ -1797,7 +1797,7 @@ def _process_multi_floor_turn(
             if guardian_reduced_hazard or player.marksman_damage_prevented
             else "default"
         )
-        _set_status_popup(player, f"LP-{hazard_damage:g}", tone)
+        _set_status_popup(player, f"LP-{_format_popup_amount(hazard_damage)}", tone)
 
     hit = next(
         (

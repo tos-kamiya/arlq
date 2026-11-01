@@ -50,6 +50,8 @@ stage. Change gamepad button assignments in `Settings -> Gamepad button settings
 After contacting an enemy, its party composition remains in brackets to the
 left of event messages. Temporary effect popups appear near the player while
 event messages remain in the bottom status area, so both can be visible at once.
+LP and LVL changes in these popups are rounded to one decimal place, omitting
+trailing `.0`.
 
 Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
 through `arlq --sprites`. Its window opens at about 16:9 and shows part of the
