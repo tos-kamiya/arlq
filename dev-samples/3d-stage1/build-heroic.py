@@ -524,24 +524,58 @@ def buffalo(x, y):
     tube('Buffalo tail', [(x, y + 0.66, 0.60), (x + 0.04, y + 0.82, 0.50), (x + 0.07, y + 0.88, 0.32)],
          [0.04, 0.03, 0.06], hide, sides=6)
 
+def amphibian_skin(name, color, spot, spots=6.0, transmission=0.15, rim=None,
+                   rim_strength=0.0):
+    """Moist amphibian skin: smooth and wet-looking under a glossy coat, a
+    little light scattering beneath the surface, dark round spots like a
+    poison frog's or a salamander's (`spot` is a darker shade of `color`,
+    not black). No bumpy grain: on the flat facets it glittered like
+    sandpaper in the reflected lights."""
+    mat = material(name, color, transmission, 0.25, rim=rim, rim_strength=rim_strength,
+                   coat=1.0)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes['Principled BSDF']
+    bsdf.inputs['Coat Roughness'].default_value = 0.05
+    bsdf.inputs['Subsurface Weight'].default_value = 0.2
+    bsdf.inputs['Subsurface Radius'].default_value = (0.1, 0.05, 0.03)
+    coords = nodes.new('ShaderNodeTexCoord')
+    cells = nodes.new('ShaderNodeTexVoronoi')
+    cells.inputs['Scale'].default_value = spots
+    cells.inputs['Randomness'].default_value = 0.9
+    # Spots where the distance to a cell's centre is small, softly edged.
+    ramp = nodes.new('ShaderNodeMapRange')
+    ramp.inputs['From Min'].default_value = 0.22
+    ramp.inputs['From Max'].default_value = 0.30
+    mix = nodes.new('ShaderNodeMix')
+    mix.data_type = 'RGBA'
+    mix.inputs['A'].default_value = (*spot, 1)
+    mix.inputs['B'].default_value = (*color, 1)
+    links.new(coords.outputs['Object'], cells.inputs['Vector'])
+    links.new(cells.outputs['Distance'], ramp.inputs['Value'])
+    links.new(ramp.outputs['Result'], mix.inputs['Factor'])
+    links.new(mix.outputs['Result'], bsdf.inputs['Base Color'])
+    return mat
+
+
 def dragon(x, y):
-    # Deep cobalt like the wyrm's sapphire. The low body is seen mostly at a
-    # grazing angle, so a weak rim and coat keep the facets' shading, and
-    # rougher scales keep its flat back from mirroring the lights in white.
-    scales = material('Dragon cobalt scales', (0.015, 0.07, 0.32), 0.25, 0.4,
-                      rim=(0.4, 0.8, 1.0), rim_strength=0.6, coat=0.2)
+    # Deep cobalt like the wyrm's sapphire, but as wet amphibian skin with
+    # darker blue spots instead of dry scales.
+    scales = amphibian_skin('Dragon cobalt skin', (0.015, 0.07, 0.32), (0.006, 0.03, 0.15),
+                            rim=(0.4, 0.8, 1.0), rim_strength=0.6)
     belly = material('Dragon pale crest', (0.45, 0.65, 0.90), 0.3, 0.2,
                      rim=(0.7, 0.9, 1.0), rim_strength=0.8)
     eye = material('Dragon gold eyes', (1.0, 0.8, 0.1), emission=(1.0, 0.75, 0.1),
                    strength=25.0)
-    # One continuous body, snout to a sinuous tail, with softly rounded facets.
+    # One continuous body, snout to a sinuous tail, with softly rounded
+    # facets (twelve round) kept so the wet skin does not turn it into a
+    # soft round toy.
     spine = [(0.00, -1.00, 0.26), (0.00, -0.86, 0.30), (0.00, -0.68, 0.34), (0.02, -0.50, 0.33),
              (0.03, -0.28, 0.36), (0.01, 0.02, 0.37), (-0.05, 0.30, 0.33), (-0.15, 0.55, 0.27),
              (-0.14, 0.78, 0.21), (0.04, 0.96, 0.16), (0.26, 1.04, 0.12), (0.40, 1.04, 0.10)]
     radii = [(0.08, 0.05), (0.17, 0.10), (0.22, 0.14), (0.17, 0.12), (0.31, 0.19), (0.34, 0.21),
              (0.27, 0.17), (0.17, 0.12), (0.11, 0.08), (0.07, 0.05), (0.035, 0.03), 0]
     soften(tube('Dragon body', [(x + px, y + py, pz) for px, py, pz in spine], radii, scales,
-                sides=8, twist=math.pi / 8), 0.025)
+                sides=12, twist=math.pi / 12), 0.025)
     for side in (-1, 1):
         # Brow ridge over each glowing eye gives a scowl.
         cone('Dragon brow', (x + side * 0.08, y - 0.78, 0.45),
@@ -552,7 +586,7 @@ def dragon(x, y):
             knee = (x + side * 0.55, y + dy + back * 0.3, 0.36)
             foot = (x + side * 0.66, y + dy + back, 0.08)
             soften(tube('Dragon splayed leg', [hip, knee, foot], [0.12, 0.09, 0.07],
-                        scales, sides=6), 0.018)
+                        scales, sides=10), 0.018)
             sphere('Dragon foot', foot, (0.10, 0.12, 0.05), scales, 12, False)
     # A low crest along the spine, kept as a single smooth fin.
     crest = [(x + px, y + py, pz + rz) for (px, py, pz), r in zip(spine[3:9], radii[3:9])
@@ -3366,10 +3400,13 @@ def caltrop_plant(x, y):
 
 
 def flame_cobra(x, y):
-    """A coiled cobra with a fiery hood in the Fire Drake's palette, built
-    like the drake from flat-shaded octagonal tubes."""
-    scales = material('Cobra crimson scales', (0.80, 0.08, 0.03), 0.45, 0.2,
-                      rim=(1.0, 0.55, 0.2), rim_strength=1.6, coat=0.8)
+    """A coiled cobra with a fiery hood in the Fire Drake's palette, its
+    body built from flat-shaded twelve-sided tubes, a little rounder than
+    the drake's octagons, but covered
+    in wet amphibian skin with darker red spots."""
+    scales = amphibian_skin('Cobra crimson skin', (0.80, 0.08, 0.03), (0.38, 0.035, 0.014),
+                            spots=7.0, transmission=0.3, rim=(1.0, 0.55, 0.2),
+                            rim_strength=1.6)
     flame = material('Cobra orange flame', (0.95, 0.22, 0.03), 0.7, 0.2,
                      emission=(1.0, 0.25, 0.02), strength=0.3,
                      rim=(1.0, 0.75, 0.3), rim_strength=1.2)
@@ -3403,7 +3440,7 @@ def flame_cobra(x, y):
             widths.append(radii[i] * (1 - t) + radii[i + 1] * t)
     curve.append(points[-1])
     widths.append(radii[-1])
-    tube('Cobra coiled body', curve, widths, scales, sides=8, flat=0.8, twist=math.pi / 8)
+    tube('Cobra coiled body', curve, widths, scales, sides=12, flat=0.8, twist=math.pi / 12)
     # A broad hood spreading like fire, with pointed flame tongues rising
     # from its edge, close behind the neck and leaning back a little.
     def hood(bx, bz):
@@ -3422,7 +3459,7 @@ def flame_cobra(x, y):
     # Wedge head pointing forward, with a forked tongue.
     tube('Cobra head', [(x, y - 0.02, 1.13), (x, y - 0.18, 1.16), (x, y - 0.32, 1.12),
                         (x, y - 0.42, 1.07)],
-         [(0.12, 0.08), (0.16, 0.09), (0.11, 0.07), 0], scales, sides=8, twist=math.pi / 8)
+         [(0.12, 0.08), (0.16, 0.09), (0.11, 0.07), 0], scales, sides=12, twist=math.pi / 12)
     for side in (-1, 1):
         sphere('Cobra eye', (x + side * 0.10, y - 0.26, 1.20), (0.04, 0.035, 0.028), eye, 16)
         cone('Cobra tongue', (x, y - 0.40, 1.05), (x + side * 0.04, y - 0.56, 1.02),
