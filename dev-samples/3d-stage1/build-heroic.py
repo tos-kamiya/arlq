@@ -2569,6 +2569,9 @@ def rogue(x, y, tone):
             obj.matrix_world = unlean @ obj.matrix_world
 
 
+HELMET_PUSH = math.radians(4)  # how far the Dungeon Explorer's helmet is pushed back
+
+
 def dungeon_explorer(x, y, tone):
     """Dungeon Explorer (D), a Stage 5 member: a caver who finds hidden
     routes. Lightly dressed like a caving team, but the helmet is a khaki
@@ -2748,6 +2751,7 @@ def dungeon_explorer(x, y, tone):
         # each side. The light stone sits on the front above the band.
         center, radii = Vector((x, y + 0.005, 1.05)), Vector((0.158, 0.19, 0.215))
         thick = 0.025
+        start = set(bpy.data.objects)
         rim_z, rim_tilt = 0.13, 0.10
 
         def taper(z):
@@ -2839,6 +2843,13 @@ def dungeon_explorer(x, y, tone):
             spot = base + normal * 0.012 + (across * math.cos(a) + up * math.sin(a)) * 0.027
             place(block('Dungeon Explorer light claw', tuple(spot), (0.009, 0.009, 0.02), brass,
                         0.003), normal)
+        # Worn pushed back: tip the whole helmet up about the back of the
+        # rim so the eyes show under the front brim from the camera.
+        pivot = Vector((x, center.y + radii.y, center.z))
+        push = (Matrix.Translation(pivot) @ Matrix.Rotation(-HELMET_PUSH, 4, 'X')
+                @ Matrix.Translation(-pivot))
+        for obj in set(bpy.data.objects) - start:
+            obj.matrix_world = push @ obj.matrix_world
 
     elf_figure(x, y, 'Dungeon Explorer', shirt, skin, eye, body, head, skirt=None, ears=False)
 
