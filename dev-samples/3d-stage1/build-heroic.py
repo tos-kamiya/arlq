@@ -1390,23 +1390,82 @@ def nomicon(x, y):
 
 
 def ocular(x, y):
+    """Ocular companion (o): a floating eyeball in a gyroscope-like green
+    frame. A clear, glossy cornea bulges over a recessed amber iris; the
+    iris is patterned like a gear's outline (a gear outline drawn in glowing
+    cyan lines round the pupil on the one-coloured iris, a dark limbal ring at its edge) so the eye looks
+    real yet made, a crafted thing."""
     sclera = material('Ocular pearl sclera', (0.95, 0.96, 1.0), 0.35, 0.12,
                       rim=(0.7, 0.9, 1.0), rim_strength=1.0, coat=1.0)
-    iris = material('Ocular amber iris', (0.95, 0.32, 0.02), 0.2, 0.15,
-                    emission=(1.0, 0.35, 0.02), strength=0.35, coat=0.6)
+    # Bright yellow-amber: glowing enough to stay yellow behind the cornea.
+    iris = material('Ocular amber iris', (1.0, 0.50, 0.04), 0.2, 0.15,
+                    emission=(1.0, 0.50, 0.04), strength=0.8, coat=0.6)
+    # The gear's lines glow the companions' cyan (as the Nomicon's eyes).
+    # Weaker than the Nomicon's: stronger glow burned out to white here.
+    gear_line = material('Ocular cyan gear lines', (0.0, 0.5, 1.0), emission=(0.0, 0.55, 1.0),
+                         strength=0.9)
+    limbus = material('Ocular dark limbal ring', (0.22, 0.06, 0.01), roughness=0.5)
+    cornea = material('Ocular clear cornea', (1.0, 1.0, 1.0), 1.0, 0.02, coat=1.0)
     green = companion_green('Ocular deep green rings', 0.5, trim=True)
     pupil = material('Ocular matte pupil', (0.0, 0.0, 0.0), roughness=0.9)
-    glint = material('Ocular cyan pupil light', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
-                     strength=3.0)
     center = Vector((x, y, 0.62))
     # The eye looks straight at the camera, i.e. at the player.
     look = Vector((0, -math.cos(math.radians(60)), math.sin(math.radians(60))))
-    sphere('Ocular eyeball', tuple(center), (0.36, 0.36, 0.36), sclera, 48)
-    cone('Ocular iris', center + look * 0.30, center + look * 0.355, 0.20, 0.17, iris, 40)
-    cone('Ocular pupil', center + look * 0.35, center + look * 0.37, 0.085, 0.07, pupil, 32)
-    # The same cyan glow as the Nomicon's eyes and the Loop's ring, deep in the pupil.
-    cone('Ocular pupil light', center + look * 0.365, center + look * 0.38, 0.035, 0.028,
-         glint, 24)
+    across, up = Vector((1, 0, 0)), look.cross(Vector((1, 0, 0)))
+    radius = 0.36
+    # The cornea: a smaller sphere set forward along the gaze, kept where it
+    # stands out of the eyeball. It meets the eyeball at `depth` along the
+    # gaze, `iris_r` from the axis; the sclera is opened there for the iris.
+    bulge_r, bulge_at = 0.28, 0.11
+    depth = (radius ** 2 - bulge_r ** 2 + bulge_at ** 2) / (2 * bulge_at)
+    iris_r = math.sqrt(radius ** 2 - depth ** 2)
+    ball = sphere('Ocular eyeball', tuple(center), (radius, radius, radius), sclera, 48)
+    mesh = bmesh.new()
+    mesh.from_mesh(ball.data)
+    # Cut by a plane, not face by face, for a clean round opening.
+    bmesh.ops.bisect_plane(mesh, geom=mesh.verts[:] + mesh.edges[:] + mesh.faces[:],
+                           plane_co=tuple(look * (depth / radius)), plane_no=tuple(look),
+                           clear_outer=True)
+    mesh.to_mesh(ball.data)
+    mesh.free()
+    # The iris sits just behind the opening, a little recessed.
+    plane = depth - 0.012
+
+    def on_iris(r, a, ahead=0.0):
+        return center + look * (plane + ahead) + (across * math.cos(a) + up * math.sin(a)) * r
+
+    cone('Ocular iris', center + look * (plane - 0.02), center + look * plane,
+         iris_r + 0.01, iris_r, iris, 48)
+    # A gear outline of twelve trapezoid teeth, drawn only as a line on the
+    # one-coloured iris (a lighter fill inside made two irises).
+    gear = []
+    teeth, root, tip = 12, 0.125, 0.165
+    for k in range(teeth):
+        a = 2 * math.pi * k / teeth
+        step = 2 * math.pi / teeth
+        for frac, r in ((0.0, root), (0.18, tip), (0.47, tip), (0.65, root)):
+            gear.append(on_iris(r, a + frac * step, 0.002))
+    tube('Ocular iris gear edge', gear + gear[:1], [0.009] * (len(gear) + 1), gear_line,
+         sides=6, smooth=True)
+    tube('Ocular limbal ring', [on_iris(iris_r - 0.012, 2 * math.pi * k / 48, 0.002)
+                                for k in range(49)], [0.01] * 49, limbus, sides=6,
+         smooth=True)
+    cone('Ocular pupil', on_iris(0, 0, 0.003), on_iris(0, 0, 0.008), 0.07, 0.065, pupil, 32)
+    # The clear cornea over it all.
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=48, ring_count=24, radius=bulge_r,
+                                         location=tuple(center + look * bulge_at))
+    lens = bpy.context.object
+    mesh = bmesh.new()
+    mesh.from_mesh(lens.data)
+    # Tucked a little into the eyeball so no gap shows at the rim.
+    edge = depth - bulge_at - 0.01
+    bmesh.ops.bisect_plane(mesh, geom=mesh.verts[:] + mesh.edges[:] + mesh.faces[:],
+                           plane_co=tuple(look * edge), plane_no=tuple(look),
+                           clear_inner=True)
+    mesh.to_mesh(lens.data)
+    mesh.free()
+    finish(lens, cornea, True, 'Ocular cornea')
+    lens.modifiers.new('Cornea thickness', 'SOLIDIFY').thickness = 0.008
     # A gyroscope-like green frame: a ring around the eye and one tilted across it.
     for name, rotation in (('Ocular equator ring', (0.0, 0.0, 0.0)),
                            ('Ocular orbit ring', (math.radians(60), math.radians(25), 0.0))):
