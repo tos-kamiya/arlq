@@ -992,23 +992,14 @@ def run_game(
         remember_seed(stage_num, seed_value)
 
     stage_module = import_module(f".{GAME_ENGINE_MODULE}", package=__package__)
-    if stage_num in (1, 2, 4, 5, 6):
-        stage_module.run_game(
-            ui,
-            seed_str,
-            debug_show_entities=debug_show_entities,
-            trace=trace,
-            config=config,
-            stage_num=stage_num,
-        )
-    else:
-        stage_module.run_game(
-            ui,
-            seed_str,
-            debug_show_entities=debug_show_entities,
-            trace=trace,
-            config=config,
-        )
+    stage_module.run_game(
+        ui,
+        seed_str,
+        debug_show_entities=debug_show_entities,
+        trace=trace,
+        config=config,
+        stage_num=stage_num,
+    )
 
 
 def generate_seed_string(args):

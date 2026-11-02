@@ -195,13 +195,12 @@ def _visible_auto_stop_entities(
     player: d.Player,
     show_all_entities: bool,
     known_types: Set[str],
-    stage_num: int,
 ) -> List[d.Entity]:
     """Return entities currently represented on the player's map."""
     visible: List[d.Entity] = []
     height = len(current.field)
     width = len(current.field[0]) if current.field else 0
-    player_attack = d.current_player_attack(player, stage_num)
+    player_attack = d.current_player_attack(player)
     for entity in current.entities:
         x, y = entity.x, entity.y
         if (x, y) == (player.x, player.y) or not (0 <= x < width and 0 <= y < height):
@@ -219,7 +218,6 @@ def _visible_auto_stop_entities(
                 False,
                 player_attack,
                 None,
-                stage_num=stage_num,
             )
         else:
             glyphs = []
@@ -235,7 +233,6 @@ def _should_stop_movement_repeat(
     player: d.Player,
     show_all_entities: bool = False,
     known_types: Optional[Set[str]] = None,
-    stage_num: int = 0,
 ) -> bool:
     """Check visible terrain and entities before an automatic repeated step."""
     dx, dy = direction
@@ -261,7 +258,7 @@ def _should_stop_movement_repeat(
     ) and not passable_secret:
         return True
     for entity in _visible_auto_stop_entities(
-        current, player, show_all_entities, known_types or set(), stage_num
+        current, player, show_all_entities, known_types or set()
     ):
         # Stop only when this step would enter a visible entity's cell.
         if (entity.x, entity.y) == next_position:
@@ -983,7 +980,7 @@ def _resolve_monster_contact(
     if not handled_elf:
         player.karma += 1
 
-    if not handled_elf and d.current_player_attack(player, stage_num) < d.monster_level(entity):
+    if not handled_elf and d.current_player_attack(player) < d.monster_level(entity):
         assert ch != "M", "A Mimic must not defeat the player."
         # Losing still identifies the monster, including W. Treasure glyphs
         # remain gated separately by their unlock state in the renderer.
@@ -1052,7 +1049,7 @@ def _resolve_monster_contact(
             event_message = trp(
                 "-- You defeated the Mimic, but were sent somewhere else.", 5
             )
-        if ch == "W" and player.treasure_collected and stage_num != 6:
+        if ch == "W" and player.treasure_collected:
             event_message = trp(">> The King's request is complete! <<", 9)
         elif ch == d.CHAR_FIRE_DRAKE and entity.empowered == 2:
             if player.treasure_collected:
@@ -1137,7 +1134,7 @@ def _resolve_party_contact(
         player.known_monsters.add(d.monster_type_key(monster))
     if player.item == d.ITEM_SWORD_CURSED:
         player.lp -= d.CURSED_SWORD_LP_COST
-    won = d.current_player_attack(player, stage_num) >= strength
+    won = d.current_player_attack(player) >= strength
     if trace is not None:
         for monster in party:
             trace.record_contact(
@@ -1170,9 +1167,9 @@ def _resolve_party_contact(
             else 1
             for monster in party
         )
-        / d.experience_share_count(player, stage_num)
+        / d.experience_share_count(player)
     )
-    experience = base_experience * d.experience_multiplier(player, stage_num)
+    experience = base_experience * d.experience_multiplier(player)
     feed = max(monster.tribe.feed for monster in party)
     lp_overcharge = (
         d.BISON_LP_OVERCHARGE
@@ -1208,23 +1205,6 @@ def _resolve_party_contact(
     d.apply_feed(player, feed, lp_overcharge)
     if any(monster.tribe.char == "M" for monster in party):
         player.x, player.y = _find_escape_place(current)
-    if boss is not None and stage_num not in (5, 6):
-        # Other multi-floor stages retain the rescue member spawned by their
-        # boss encounter. Stage 6's ordinary V applies its own local effect.
-        candidates = sorted(
-            (
-                (x, y)
-                for y, row in enumerate(current.field)
-                for x, cell in enumerate(row)
-                if cell == d.CHAR_FLOOR
-                and (x, y) != (player.x, player.y)
-                and not any((other.x, other.y) == (x, y) for other in current.entities)
-            ),
-            key=lambda point: (abs(point[0] - boss.x) + abs(point[1] - boss.y), point),
-        )
-        current.entities.append(
-            d.PartyMember(*candidates[0], d.MEMBER_NOBLE, origin_floor=floor[0])
-        )
     barrier_source_positions = {
         id(monster): (monster, (monster.x, monster.y))
         for monster in current.entities
@@ -1258,8 +1238,8 @@ def _resolve_party_contact(
     if "A" in party_chars and player.level > old_level:
         popup = f"LVL+{_format_popup_amount(player.level - old_level)}"
         if (
-            d.experience_share_count(player, stage_num) != 1
-            or d.experience_multiplier(player, stage_num) != 1
+            d.experience_share_count(player) != 1
+            or d.experience_multiplier(player) != 1
         ):
             popup_tone = "green"
     elif "E" in party_chars:
@@ -1824,7 +1804,7 @@ def _process_multi_floor_turn(
                 and (entity.tribe.char != "M" or entity.active)):
             enemies = (stage56.monster_party(current, entity)
                        if stage_num in (5, 6) else [entity])
-            won = d.current_player_attack(player, stage_num) >= sum(
+            won = d.current_player_attack(player) >= sum(
                 d.monster_level(monster) for monster in enemies
             )
             if stage_num in (5, 6):
@@ -1909,7 +1889,7 @@ def _process_multi_floor_turn(
     _process_respawn_queue(
         floors, player, floor, queue, turn, trace=trace, stage_num=stage_num
     )
-    if stage_num in (5, 6):
+    if player.rescue_stage:
         stage56.sync_members(player, previous, direction)
     if (
         stage_num == 5
@@ -1931,7 +1911,7 @@ _step = _process_multi_floor_turn
 
 def observe_world(
     floors: List[Floor], player: d.Player, floor_index: int,
-    stage_num: int, torch_radius: int,
+    torch_radius: int,
 ) -> List[List[int]]:
     """Update exploration and discoveries before the next player input."""
     current = floors[floor_index]
@@ -1943,7 +1923,7 @@ def observe_world(
     for y, row in enumerate(visible):
         for x, value in enumerate(row):
             current.seen[y][x] |= value
-    if stage_num in (5, 6) and d.has_member(player, d.MEMBER_ROGUE):
+    if d.has_member(player, d.MEMBER_ROGUE):
         for entity in current.entities:
             if (
                 isinstance(entity, d.Collapse)
@@ -1952,17 +1932,16 @@ def observe_world(
                 and visible[entity.y][entity.x]
             ):
                 _reveal_collapse_pits(floors, floor_index, entity)
-    if stage_num in (5, 6):
-        stage56.reveal_rogue_monsters(current, player, visible)
-        if d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
-            stage56.reveal_scholar_features(current, current.seen)
-            if floor_index > 0:
-                upper = floors[floor_index - 1]
-                for y, row in enumerate(current.field):
-                    for x, cell in enumerate(row):
-                        if (current.seen[y][x] and cell == d.CHAR_FLOOR
-                                and upper.field[y][x] == d.CHAR_COLLAPSE):
-                            current.field[y][x] = d.CHAR_SCHOLAR_STAIRS_UP
+    stage56.reveal_rogue_monsters(current, player, visible)
+    if d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
+        stage56.reveal_scholar_features(current, current.seen)
+        if floor_index > 0:
+            upper = floors[floor_index - 1]
+            for y, row in enumerate(current.field):
+                for x, cell in enumerate(row):
+                    if (current.seen[y][x] and cell == d.CHAR_FLOOR
+                            and upper.field[y][x] == d.CHAR_COLLAPSE):
+                        current.field[y][x] = d.CHAR_SCHOLAR_STAIRS_UP
     _reveal_paired_stair_cells(floors, player)
     return visible
 
@@ -2020,7 +1999,7 @@ def run_game(
     player.treasure_collected = False
     replay_context = (
         ReplayContext(stage_num, initial_seed, config)
-        if stage_num in d.ELF_STAGES or stage_num in (5, 6)
+        if not single_floor_stage
         else None
     )
     game_start_turn = 0
@@ -2067,7 +2046,7 @@ def run_game(
     while True:
         current = floors[floor[0]]
         display_floor = floors[view_floor]
-        cur = observe_world(floors, player, floor[0], stage_num, config.torch_radius)
+        cur = observe_world(floors, player, floor[0], config.torch_radius)
 
         message = tick_message(message)
 
@@ -2212,7 +2191,7 @@ def run_game(
         # A real movement always returns the display to the player's floor.
         view_floor = floor[0]
         rogue_spotted_danger = False
-        if stage_num in (5, 6) and d.has_member(player, d.MEMBER_ROGUE):
+        if d.has_member(player, d.MEMBER_ROGUE):
             destination = (player.x + move[0], player.y + move[1])
             if stage56.rogue_danger(current, destination):
                 rogue_spotted_danger = True
@@ -2233,7 +2212,6 @@ def run_game(
                 player,
                 show_all_entities=show_entities,
                 known_types=known_types,
-                stage_num=stage_num,
             )
         ):
             _stop_movement_repeat(ui)
@@ -2260,7 +2238,7 @@ def run_game(
         def show_barrier_effect():
             active = floors[floor[0]]
             visible = observe_world(
-                floors, player, floor[0], stage_num, config.torch_radius
+                floors, player, floor[0], config.torch_radius
             )
             ui.draw_stage(
                 turn=turn, player=player, entities=[player, *active.entities],
@@ -2350,7 +2328,7 @@ def run_game(
                 message = event_message
 
         if trace is not None:
-            trace.set_player(player, stage_num, floor_index=floor[0])
+            trace.set_player(player, floor_index=floor[0])
             seen_added_count = sum(
                 1
                 for floor_data, previous_seen in zip(

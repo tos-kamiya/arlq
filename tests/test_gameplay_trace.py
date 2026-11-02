@@ -67,7 +67,7 @@ def test_recorder_fills_in_defaults_and_tracks_turn_numbers():
     player = d.Player(2, 2, 1, 90)
     trace.set_start_state(player, floor_index=0)
     trace.begin_turn("R")
-    trace.set_player(player, stage_num=1, floor_index=0)
+    trace.set_player(player, floor_index=0)
     trace.set_turn_end_lp(89)
     trace.commit_turn()
     trace.begin_turn("Q")  # a normal (non-quit) turn can still be turn-numbered
@@ -84,7 +84,7 @@ def test_recorder_fills_in_defaults_and_tracks_turn_numbers():
     assert trace.turns[0]["player"] == {
         "lp": 90,
         "level": 1,
-        "attack": d.current_player_attack(player, 1),
+        "attack": d.current_player_attack(player),
         "floor": 0,
         "position": [2, 2],
         "lp_after_turn": 89,
@@ -97,13 +97,13 @@ def test_recorder_tracks_rewind_relevant_changes_and_truncates_turns():
     player = d.Player(4, 5, 1, 90)
     trace.set_start_state(player, floor_index=2)
     trace.begin_turn("R")
-    trace.set_player(player, stage_num=1, floor_index=2)
+    trace.set_player(player, floor_index=2)
     trace.record_damage("barrier")
     trace.record_state_changes(2, ["b", "k"])
     trace.set_turn_end_lp(88)
     trace.commit_turn()
     trace.begin_turn("L")
-    trace.set_player(player, stage_num=1, floor_index=2)
+    trace.set_player(player, floor_index=2)
     trace.commit_turn()
 
     trace.truncate_after_turn(1)
@@ -118,7 +118,7 @@ def test_recorder_tracks_rewind_relevant_changes_and_truncates_turns():
 def record_assist_test_turn(trace, key, position, lp=90, floor=0, **events):
     player = d.Player(*position, 1, lp)
     trace.begin_turn(key)
-    trace.set_player(player, stage_num=1, floor_index=floor)
+    trace.set_player(player, floor_index=floor)
     trace.set_turn_end_lp(lp - 1)
     for name, value in events.items():
         if name == "contact":

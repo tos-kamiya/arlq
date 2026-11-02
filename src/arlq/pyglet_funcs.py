@@ -1285,7 +1285,7 @@ class PygletUI:
             self._draw_companion_slot((px + 1, py), player.companion.tribe.char)
 
         # Draw entities (monster and treasures)
-        player_attack = d.current_player_attack(player, stage_num)
+        player_attack = d.current_player_attack(player)
         party_tones = (
             ui_display.monster_party_tones(entities, known_types, player_attack)
             if stage_num in (5, 6) else None
@@ -1315,8 +1315,7 @@ class PygletUI:
                 entity, known_types, show_entities, player_attack, dim_types,
                 reveal_disguises=reveal_disguises,
                 debug_show_entities=debug_show_entities,
-                stage_num=stage_num,
-                party_entities=entities,
+                party_entities=entities if stage_num in (5, 6) else None,
                 party_tones=party_tones,
             ):
                 paint(glyph)
@@ -1350,7 +1349,7 @@ class PygletUI:
         tribes = stage_roster if stage_roster is not None else (
             d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
         )
-        ranking_attack = d.current_player_attack(player, stage_num)
+        ranking_attack = d.current_player_attack(player)
         self._strength_known_types = known_types
         for y, (strength_char, is_player) in enumerate(ui_display.build_strength_column(tribes, ranking_attack, self.field_height)):
             if strength_char is None:

@@ -60,14 +60,14 @@ class TraceRecorder:
         }
 
     def set_player(
-        self, player: d.Player, stage_num: int, floor_index: int = 0
+        self, player: d.Player, floor_index: int = 0
     ) -> None:
         if self._current is None:
             return
         self._current["player"] = {
             "lp": player.lp,
             "level": player.level,
-            "attack": d.current_player_attack(player, stage_num),
+            "attack": d.current_player_attack(player),
             "floor": floor_index,
             "position": [player.x, player.y],
         }

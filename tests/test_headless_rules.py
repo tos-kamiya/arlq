@@ -263,18 +263,19 @@ def test_game_config_from_args_does_not_mutate_gameplay_constants():
     assert (d.TORCH_RADIUS, d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH) == original
 
 
-def test_stage3_receives_the_per_run_game_config(monkeypatch):
+@pytest.mark.parametrize("stage_num", d.PUBLIC_STAGE_NUMBERS)
+def test_stage_receives_the_per_run_game_config(monkeypatch, stage_num):
     config = GameConfig(torch_radius=5, corridor_h_width=1, corridor_v_width=2)
     received = []
 
-    def fake_run_game(ui, seed_str, debug_show_entities, trace=None, config=None):
-        received.append((ui, seed_str, debug_show_entities, trace, config))
+    def fake_run_game(ui, seed_str, debug_show_entities, trace=None, config=None, stage_num=3):
+        received.append((ui, seed_str, debug_show_entities, trace, config, stage_num))
 
     monkeypatch.setattr(game_engine_module, "run_game", fake_run_game)
 
-    run_game("ui", "seed", 3, debug_show_entities=True, config=config)
+    run_game("ui", "seed", stage_num, debug_show_entities=True, config=config)
 
-    assert received == [("ui", "seed", True, None, config)]
+    assert received == [("ui", "seed", True, None, config, stage_num)]
 
 
 def test_game_loop_draws_with_keyword_arguments_only():
@@ -1404,7 +1405,7 @@ def test_stage2_high_elf_is_passive_red_monster_decoy(monkeypatch, stage_num):
     field = blank_field()
     entities = [player, high_elf]
     hidden_glyph = d.revealed_entity_glyphs(
-        high_elf, set(), False, 1, None, stage_num=stage_num
+        high_elf, set(), False, 1, None
     )
     assert hidden_glyph[0].char == "?"
     monkeypatch.setattr(
@@ -1421,7 +1422,7 @@ def test_stage2_high_elf_is_passive_red_monster_decoy(monkeypatch, stage_num):
     )
     assert high_elf.revealed
     revealed_glyph = d.revealed_entity_glyphs(
-        high_elf, set(), False, 1, None, stage_num=stage_num
+        high_elf, set(), False, 1, None
     )
     assert (revealed_glyph[0].char, revealed_glyph[0].tone) == ("H", "red")
     assert (player.x, player.y) == (3, 2)
@@ -2236,18 +2237,33 @@ def test_collector_and_javelin_elves_increase_elf_stage_attack():
     player.elf_stage_flags = d.ELF_STAGE_K_FLAG
     player.persistent_followers = [(2, 2, 0, "J")]
 
-    assert d.current_player_attack(player, 3) == 150
+    assert d.current_player_attack(player) == 150
 
 
-@pytest.mark.parametrize("stage_num", [0, 1, 2, 3, 4])
-def test_collector_and_javelin_bonuses_apply_in_every_stage(stage_num):
-    # Field colors and combat must agree on permanent elf attack bonuses.
+@pytest.mark.parametrize("rescue_stage", [False, True])
+def test_knight_attack_bonus_depends_on_membership(rescue_stage):
+    player = d.Player(2, 2, 100, 90)
+    player.rescue_stage = rescue_stage
+    knight = d.PartyMember(2, 2, d.MEMBER_KNIGHT)
+    knight.level = 12.5
+
+    assert d.current_player_attack(player) == 100
+    player.members.append(knight)
+    assert d.current_player_attack(player) == 112.5
+    player.members.remove(knight)
+    assert d.current_player_attack(player) == 100
+
+
+def test_knight_bonus_is_added_after_permanent_elf_bonuses():
     player = d.Player(2, 2, 100, 90)
     player.elf_stage_flags = d.ELF_STAGE_K_FLAG
     player.persistent_followers = [(2, 2, 0, "J")]
 
-    assert d.current_player_attack(player, stage_num) == 150
-    assert d.current_player_attack(player, 3) == 150
+    assert d.current_player_attack(player) == 150
+    knight = d.PartyMember(2, 2, d.MEMBER_KNIGHT)
+    knight.level = 12.5
+    player.members.append(knight)
+    assert d.current_player_attack(player) == 162.5
 
 
 @pytest.mark.parametrize(

@@ -19,7 +19,6 @@ MEMBER_NOBLE = "Noble"
 
 PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
-JESTER_EXP_MULTIPLIER = 2
 MEMBER_STAGE_MONSTER_PARTY_LIMIT = 3
 MEMBER_STAGE_JESTER_EXP_MULTIPLIER = 1.5
 JESTER_EXPERIENCE_WEIGHT = 0.25
@@ -1123,19 +1122,17 @@ def has_member(player: Player, role: str) -> bool:
     return any(member.role == role for member in player.members)
 
 
-def experience_multiplier(player: Player, stage_num: int = 6) -> float:
+def experience_multiplier(player: Player) -> float:
     if not has_member(player, MEMBER_JESTER):
         return 1
-    return MEMBER_STAGE_JESTER_EXP_MULTIPLIER if stage_num in (5, 6) else JESTER_EXP_MULTIPLIER
+    return MEMBER_STAGE_JESTER_EXP_MULTIPLIER
 
 
-def experience_share_count(player: Player, stage_num: int) -> float:
-    if stage_num in (5, 6):
-        return 1 + sum(
-            PARTY_EXPERIENCE_MEMBER_WEIGHTS.get(member.role, 0.0)
-            for member in player.members
-        )
-    return len(player.members) + 1
+def experience_share_count(player: Player) -> float:
+    return 1 + sum(
+        PARTY_EXPERIENCE_MEMBER_WEIGHTS.get(member.role, 0.0)
+        for member in player.members
+    )
 
 
 def movement_lp_cost(player: Player) -> float:
@@ -1150,18 +1147,18 @@ def caltrop_lp_damage(player: Player) -> float:
     )
 
 
-def current_player_attack(player: Player, stage_num: int = 0) -> float:
+def current_player_attack(player: Player) -> float:
     """
     Player's current attack power: level and equipped item, plus permanent
     bonuses from the Collector's flag and the Javelin Elf follower. Bonuses
     apply in every stage, and this shared calculation keeps combat and display
-    consistent. In Stages 5 and 6, the Knight's level is added to the player's
-    attack instead of multiplying it.
+    consistent. An accompanying Knight's level is added after equipment
+    and bonuses have been applied to the player's attack.
     """
     knight_level = next(
         (member.level for member in player.members if member.role == MEMBER_KNIGHT),
         0,
-    ) if stage_num in (5, 6) else 0
+    )
     if player.rescue_stage:
         value = player.level
         if player.item == ITEM_SWORD_X1_5:

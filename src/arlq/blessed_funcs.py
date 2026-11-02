@@ -319,7 +319,7 @@ class BlessedUI:
                 if (show_entities or torched[y][x]) and (x, y) != (px, py):
                     put(x, y, char, "red", bold=True, bg=cell_background(x, y))
 
-        player_attack = d.current_player_attack(player, stage_num)
+        player_attack = d.current_player_attack(player)
         party_tones = (
             ui_display.monster_party_tones(entities, known_types, player_attack)
             if stage_num in (5, 6) else None
@@ -360,8 +360,7 @@ class BlessedUI:
                 entity, known_types, show_entities, player_attack, dim_types,
                 reveal_disguises=reveal_disguises,
                 debug_show_entities=debug_show_entities,
-                stage_num=stage_num,
-                party_entities=entities,
+                party_entities=entities if stage_num in (5, 6) else None,
                 party_tones=party_tones,
             ):
                 paint(glyph)
@@ -445,7 +444,7 @@ class BlessedUI:
         tribes = stage_roster if stage_roster is not None else (
             d.get_stage_roster_tribes(stage_num) if stage_num in (1, 2) else []
         )
-        ranking_attack = d.current_player_attack(player, stage_num)
+        ranking_attack = d.current_player_attack(player)
         for y, (strength_char, is_player) in enumerate(ui_display.build_strength_column(tribes, ranking_attack, d.FIELD_HEIGHT)):
             if strength_char is None:
                 continue

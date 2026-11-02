@@ -32,6 +32,26 @@ def monster(x, y, char, rank=1):
     return d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[char], rank)
 
 
+@pytest.mark.parametrize('rogue', [False, True])
+@pytest.mark.parametrize('explorer', [False, True])
+def test_world_discoveries_depend_on_joined_members(rogue, explorer):
+    roles = []
+    if rogue:
+        roles.append(d.MEMBER_ROGUE)
+    if explorer:
+        roles.append(d.MEMBER_DUNGEON_EXPLORER)
+    current, player = state(roles)
+    current.entities = [monster(3, 2, 'X')]
+    current.field[3][2] = d.CHAR_HIDDEN_D_GATE
+    current.d_gates[(2, 3)] = d.CHAR_D_GATE
+
+    engine.observe_world([current], player, 0, d.TORCH_RADIUS)
+
+    assert ('X' in player.known_monsters) is rogue
+    expected = d.CHAR_D_GATE if explorer else d.CHAR_HIDDEN_D_GATE
+    assert current.field[3][2] == expected
+
+
 @pytest.mark.parametrize('seed', [123, 456, 789])
 def test_indexed_neighbors_preserve_generation_and_random_state(monkeypatch, seed):
     def snapshot():
@@ -65,11 +85,39 @@ def test_shared_party_tones_match_individual_glyphs(known, attack):
     entities = [monster(3, 3, 'a'), monster(3, 4, 'D'), monster(8, 8, 'M')]
     tones = display.monster_party_tones(entities, known, attack)
     for entity in entities:
-        kwargs = {'stage_num': 6, 'party_entities': entities}
+        kwargs = {'party_entities': entities}
         expected = display.revealed_entity_glyphs(entity, known, False, attack, None, **kwargs)
         assert display.revealed_entity_glyphs(
             entity, known, False, attack, None, party_tones=tones, **kwargs
         ) == expected
+
+
+@pytest.mark.parametrize(
+    ('mode', 'known', 'expected'),
+    [
+        ('individual', {'a', 'D'}, 'blue'),
+        ('entities', {'a', 'D'}, 'red'),
+        ('entities', {'a'}, 'yellow'),
+        ('tones', {'a', 'D'}, 'red'),
+        ('empty_tones', {'a', 'D'}, 'red'),
+    ],
+)
+def test_glyph_party_inputs_control_strength_coloring(mode, known, expected):
+    first = monster(3, 3, 'a')
+    entities = [first, monster(3, 4, 'D')]
+    attack = d.monster_level(first)
+    kwargs = {}
+    if mode in ('entities', 'empty_tones'):
+        kwargs['party_entities'] = entities
+    if mode == 'tones':
+        kwargs['party_tones'] = display.monster_party_tones(entities, known, attack)
+    elif mode == 'empty_tones':
+        kwargs['party_tones'] = {}
+
+    glyph = display.revealed_entity_glyphs(
+        first, known, False, attack, None, **kwargs,
+    )[0]
+    assert glyph.tone == expected
 
 
 def step(current, player, direction=(1, 0), checkpoint=(2, 2), stage_num=6):
@@ -267,7 +315,7 @@ def test_knight_growth_uses_shared_experience_before_jester_bonus():
     step(current, player)
     assert player.level == pytest.approx(100 + 2 / 2.25 * 1.5)
     assert knight.level == pytest.approx(50 + 2 / 2.25 * 0.5)
-    assert d.current_player_attack(player, 5) == pytest.approx(player.level + knight.level)
+    assert d.current_player_attack(player) == pytest.approx(player.level + knight.level)
 
 
 def test_group_strength_defeat_preserves_party_and_healer_penalty():
@@ -291,11 +339,9 @@ def test_group_keeps_unique_item_even_when_contacting_ordinary_member():
 
 def test_fractional_attack_hazards_and_status():
     current, player = state(("Knight", "Dungeon Explorer"), level=100.5)
-    assert d.current_player_attack(player) == pytest.approx(100.5)
-    assert d.current_player_attack(player, 5) == pytest.approx(150.5)
+    assert d.current_player_attack(player) == pytest.approx(150.5)
     player.item = d.ITEM_SWORD_X1_5
-    assert d.current_player_attack(player) == pytest.approx(150.75)
-    assert d.current_player_attack(player, 5) == pytest.approx(200.75)
+    assert d.current_player_attack(player) == pytest.approx(200.75)
     assert barrier_lp_damage(player) == 30
     assert d.caltrop_lp_damage(player) == 3
     current.field[2][3] = d.CHAR_CALTROP
@@ -905,14 +951,14 @@ def test_member_trial_corridor_and_initial_combat():
     first = next(e for e in upper.entities if isinstance(e, d.Monster) and (e.x, e.y) == (5, 3))
     pair = next(e for e in upper.entities if isinstance(e, d.Monster) and (e.x, e.y) == (8, 3))
     knight_pair = next(e for e in upper.entities if isinstance(e, d.Monster) and (e.x, e.y) == (14, 3))
-    assert d.current_player_attack(player, 5) >= d.monster_level(first)
+    assert d.current_player_attack(player) >= d.monster_level(first)
     engine._resolve_party_contact(first, upper, floors, player, [0], [upper.up], Counter(), None, 5)
-    assert d.current_player_attack(player, 5) < sum(
+    assert d.current_player_attack(player) < sum(
         d.monster_level(e) for e in stage56.monster_party(upper, pair)
     )
     knight = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_KNIGHT)
     stage56.recruit(upper, player, knight)
-    assert d.current_player_attack(player, 5) >= sum(
+    assert d.current_player_attack(player) >= sum(
         d.monster_level(e) for e in stage56.monster_party(upper, knight_pair)
     )
 

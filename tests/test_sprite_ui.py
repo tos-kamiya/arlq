@@ -550,7 +550,7 @@ def test_met_elf_sprite_and_disc_are_darker(sprite_ui, met):
     ui = sprite_ui
     elf = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['H'])
     elf.revealed, elf.met = True, met
-    for glyph in display.revealed_entity_glyphs(elf, {'H'}, False, 8, None, stage_num=3):
+    for glyph in display.revealed_entity_glyphs(elf, {'H'}, False, 8, None):
         ui._draw_field_text((glyph.x, glyph.y), glyph.char, ui._tone_color(glyph.tone), glyph.bold)
     sprite = ui._drawables[0]
     white = ui._tone_color('default')

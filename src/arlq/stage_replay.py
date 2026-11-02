@@ -96,7 +96,7 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
 
     def observe() -> None:
         observe_world(
-            floors, player, floor[0], replay.stage_num, replay.config.torch_radius,
+            floors, player, floor[0], replay.config.torch_radius,
         )
 
     if 0 in replay.ration_uses:

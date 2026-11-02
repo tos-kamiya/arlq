@@ -118,7 +118,7 @@ def status_prefix(
     if knight is not None:
         text += f"K: {floor(knight.level)}  "
     if player.rescue_stage:
-        text += f"ATK: {floor(d.current_player_attack(player, stage_num))}  "
+        text += f"ATK: {floor(d.current_player_attack(player))}  "
     return text
 
 
@@ -334,7 +334,6 @@ def revealed_entity_glyphs(
     dim_types: Optional[Set[str]],
     reveal_disguises: bool = False,
     debug_show_entities: bool = False,
-    stage_num: int = 0,
     party_entities: Optional[List[d.Entity]] = None,
     party_tones: Optional[dict[d.Monster, str]] = None,
 ) -> List[FieldGlyph]:
@@ -342,6 +341,7 @@ def revealed_entity_glyphs(
 
     Empty when the entity stays hidden (an unknown monster while the whole
     map is already shown, or a treasure that is still locked).
+    Party inputs enable group strength coloring; otherwise use individual strength.
     """
     if isinstance(entity, d.PartyMember):
         return [FieldGlyph(
@@ -388,11 +388,11 @@ def revealed_entity_glyphs(
             tone = "default"
         elif entity.tribe.passive:
             tone = "red"
-        elif stage_num in (5, 6) and party_tones is not None and entity in party_tones:
+        elif party_tones is not None and entity in party_tones:
             tone = party_tones[entity]
         else:
             party = [entity]
-            if stage_num in (5, 6) and party_entities is not None:
+            if party_entities is not None:
                 from .stage56 import monster_party_entities
 
                 party = monster_party_entities(party_entities, entity)
