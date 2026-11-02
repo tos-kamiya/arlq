@@ -293,6 +293,8 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 Stage 6 is a four-floor dungeon starting at level 1. The player fights with party members, and monsters also form parties. Find party members on floors 1–3, defeat the Dread Wyrm (`W`) on floor 4, and claim the treasure. Four of six candidates appear; the HUD shows discovered roles and floors. You can recruit up to two members; a third replaces the earliest recruit.
 
+On each floor, the six sections in alternating columns of the top and bottom rows receive parties first, excluding detached and wall-filled sections. Eligible sections are shuffled, and leaders are selected from the existing spawn totals in priority order: b′, b, B, then a (including a′). Any remaining parties are placed normally.
+
 #### Party members
 
 | Display & Profession | Ability |

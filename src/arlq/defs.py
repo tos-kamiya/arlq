@@ -887,6 +887,10 @@ STAGE4_FLOORS = len(STAGE4_ROSTER)
 
 # Stage 6 dungeon and monster-party settings.
 STAGE6_FLOORS = 4
+STAGE6_INITIAL_PARTY_ROOMS: Tuple[Point, ...] = (
+    (0, 0), (2, 0), (4, 0), (0, 2), (2, 2), (4, 2),
+)
+STAGE6_INITIAL_PARTY_PRIORITY = (("b", 2), ("b", 1), ("B", 1), ("a", 1), ("a", 2))
 # Weights for parties of 1, 2, and 3 monsters, by floor; larger sizes are disabled.
 STAGE6_PARTY_SIZE_WEIGHTS = (
     (78, 21, 1, 0, 0),

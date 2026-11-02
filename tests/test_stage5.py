@@ -1238,3 +1238,64 @@ def test_defeating_wyrm_preserves_overlapping_and_persistent_barriers():
     remaining = {(x, y) for x, y in footprint
                  if current.field[y][x] == d.CHAR_BARRIER}
     assert remaining == {(2, 2), (4, 2), (4, 3), (4, 4)}
+
+
+@pytest.mark.parametrize("floor_index", range(4))
+@pytest.mark.parametrize("detached", [None, (0, 0), (1, 1)])
+def test_initial_parties_use_distinct_candidate_rooms(floor_index, detached):
+    current, _ = state()
+    current.field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    current.entities = []
+    rooms = {(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)}
+    current.room_components = (rooms,) if detached is None else (rooms - {detached}, {detached})
+    placed = stage6._place_initial_parties(current, floor_index)
+    # Each leader is the first monster in its vertically connected party.
+    parties = []
+    remaining = list(current.entities)
+    while remaining:
+        leader = remaining[0]
+        party = stage56.monster_party(current, leader)
+        parties.append(leader)
+        remaining = [monster for monster in remaining if monster not in party]
+    selected = {stage6.tile_at((leader.x, leader.y)) for leader in parties}
+    count = 5 if detached in d.STAGE6_INITIAL_PARTY_ROOMS else 6
+    assert len(parties) == len(selected) == count
+    assert selected <= set(d.STAGE6_INITIAL_PARTY_ROOMS)
+    assert detached not in selected
+    actual = [(leader.tribe.char, leader.empowered) for leader in parties]
+    expected = ([('b', 1)] * 3 + [('B', 1)] * 2 + [('a', 1)] if floor_index == 0
+                else [('b', 2)] * 2 + [('B', 1)] * 2 + [('a', 2)] * 2)
+    assert actual == expected[:count]
+    assert Counter(actual) == Counter(placed)
+
+
+@pytest.mark.parametrize("seed", [0, 123, 789])
+def test_initial_parties_placement_excludes_sealed_rooms_and_preserves_roster(monkeypatch, seed):
+    calls = {}
+    original = stage6._place_party
+
+    def record(current, roster, floor_index=0, **kwargs):
+        calls.setdefault(floor_index, []).append((roster[0], kwargs.get("room")))
+        return original(current, roster, floor_index, **kwargs)
+
+    monkeypatch.setattr(stage6, "_place_party", record)
+    engine.rand.set_seed(seed)
+    floors, _ = stage6.build()
+    for index, current in enumerate(floors):
+        connected = set().union(*(
+            component for component in current.room_components if len(component) > 1
+        ))
+        eligible = set(d.STAGE6_INITIAL_PARTY_ROOMS) & connected
+        count = len(eligible)
+        initial = calls[index][:count]
+        selected = {room for _, room in initial}
+        assert len(selected) == count
+        assert selected <= eligible
+        assert all(char in ("a", "b", "B") for (char, _), _ in initial)
+        assert all(room is None for _, room in calls[index][count:])
+        actual = Counter(leader for leader, _ in calls[index] if leader[0] in ("a", "b", "B"))
+        expected = Counter({
+            (char, rank): amount for char, amount, rank in d.STAGE6_ROSTER[index]
+            if char in ("a", "b", "B")
+        })
+        assert actual == expected

@@ -80,7 +80,11 @@ def _place_detached_room_monsters(
 
 
 def _place_party(
-    current: Floor, roster: list[tuple[str, int]], floor_index: int = 0
+    current: Floor,
+    roster: list[tuple[str, int]],
+    floor_index: int = 0,
+    *,
+    room: d.Point | None = None,
 ) -> None:
     # Keep parties separate horizontally and vertically. Members of each
     # party are placed vertically; walls and narrow corridors may be blocked.
@@ -119,7 +123,12 @@ def _place_party(
                 )
             }
     while candidates:
-        seed = rand.choice(sorted(candidates))
+        seeds = sorted(
+            point for point in candidates if room is None or tile_at(point) == room
+        )
+        if not seeds:
+            break
+        seed = rand.choice(seeds)
         cells = [seed]
         while len(cells) < len(roster):
             frontier = sorted(
@@ -139,6 +148,40 @@ def _place_party(
         # any clearance from walls.
         candidates.difference_update(cells)
     raise RuntimeError("could not place Stage 6 monster party")
+
+
+def _party_roster(char: str, rank: int, floor_index: int) -> list[tuple[str, int]]:
+    size = (
+        1 if char == "g" or (floor_index > 0 and char == "k")
+        else sample_party_size(floor_index)
+    )
+    return [(char, rank)] + [
+        rand.choice(d.STAGE6_SUPPORT_POOLS[floor_index]) for _ in range(size - 1)
+    ]
+
+
+def _place_initial_parties(current: Floor, floor_index: int) -> dict[tuple[str, int], int]:
+    connected_rooms = set().union(
+        *(component for component in current.room_components if len(component) > 1)
+    )
+    rooms = [room for room in d.STAGE6_INITIAL_PARTY_ROOMS if room in connected_rooms]
+    shuffled = []
+    while rooms:
+        shuffled.append(rooms.pop(rand.randrange(len(rooms))))
+    leaders = [
+        (char, rank)
+        for char, rank in d.STAGE6_INITIAL_PARTY_PRIORITY
+        for roster_char, count, roster_rank in d.STAGE6_ROSTER[floor_index]
+        if (char, rank) == (roster_char, roster_rank)
+        for _ in range(count)
+    ]
+    placed = {}
+    for room, (char, rank) in zip(shuffled, leaders):
+        _place_party(
+            current, _party_roster(char, rank, floor_index), floor_index, room=room
+        )
+        placed[(char, rank)] = placed.get((char, rank), 0) + 1
+    return placed
 
 
 def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
@@ -209,6 +252,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 )
             current.d_gates[gate] = "."
             current.field[gate[1]][gate[0]] = d.CHAR_HIDDEN_D_GATE
+        initial_parties = _place_initial_parties(current, index)
         _place_detached_room_monsters(current, room_components)
         for role, member_floor in member_floors:
             if member_floor != index:
@@ -238,17 +282,8 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             mimic.active = False
             current.entities.append(mimic)
         for char, count, rank in d.STAGE6_ROSTER[index]:
-            for _ in range(count):
-                party_size = (
-                    1
-                    if char == "g" or (index > 0 and char == "k")
-                    else sample_party_size(index)
-                )
-                roster = [(char, rank)] + [
-                    rand.choice(d.STAGE6_SUPPORT_POOLS[index])
-                    for _ in range(party_size - 1)
-                ]
-                _place_party(current, roster, index)
+            for _ in range(count - initial_parties.get((char, rank), 0)):
+                _place_party(current, _party_roster(char, rank, index), index)
         if index == d.STAGE6_FLOORS - 1:
             boss = next(
                 entity
