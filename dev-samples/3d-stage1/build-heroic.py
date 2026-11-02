@@ -1504,11 +1504,10 @@ def ocular(x, y):
 def loop_spiral(x, y):
     """Loop companion: a calm whirl of time, the Vortex's upturned funnel
     without its menace, like a party popper's streamers without the popper.
-    Twenty short, smooth ribbons of green companion resin in two greens
-    curl a little way round, up and out, at different heights (more of
-    them higher up, where the funnel is wider) and at different distances
-    from the axis, so together they fill out the funnel evenly rather than
-    only lining its surface. A simplified form of the
+    Twenty-four short, smooth ribbons of green companion resin in two
+    greens follow one another up and out in four spiral arms wound
+    round the funnel, so the whirl still reads as one when small (rather
+    than as rings like the Ocular's eye). A simplified form of the
     Vortex's lightning, three short kinked bolts of bright cyan light,
     crackles out from the middle. The ribbons are long flat strips with
     square-cut ends. No smoke, pebbles, jagged edges or dark colours."""
@@ -1516,37 +1515,32 @@ def loop_spiral(x, y):
               companion_green('Loop deep green resin ribbon', 0.5, trim=True)]
     glow = material('Loop cyan lightning', (0.1, 0.75, 1.0), emission=(0.2, 0.85, 1.0),
                     strength=4.0)
-    # The funnel is 0.6 times its first height (0.82).
-    base, height = 0.14, 0.82 * 0.6
+    # The funnel is back at its first height (it was lowered to 0.6 times
+    # this, but a low funnel looked round from above, like the Ocular's eye
+    # when small); its narrowing toward the tip makes the outline a whirl.
+    base, height = 0.14, 0.82
 
     def funnel(t, a, reach):
         r = (0.04 + 0.40 * t) * reach
         return Vector((x + r * math.cos(a), y + r * math.sin(a), base + height * t))
 
-    # Like the streamers of a party popper without its cone: short ribbons
-    # curl up and out at different heights and distances from the axis.
-    # Each layer up the funnel holds ribbons in proportion to its girth, so
-    # they lie about as densely at the mouth as near the tip; within a
-    # layer their upper ends are spread evenly round the axis. Each layer is
-    # turned by its own angle (`layer_turns`), chosen so that no ribbon lies
-    # close beside one in the layer below at much the same distance from the
-    # axis (a steady 47 degrees per layer set two pairs side by side at the
-    # back). The positions follow these rules, not random numbers. Each
-    # ribbon turns only a little on its way
-    # up. Those in the top layer keep clear of the axis, below the lightning.
-    span, turns = 0.22, 0.17
-    reaches = (1.00, 0.62, 0.88, 0.55, 0.76, 0.95, 0.68)
-    layer_turns = (0, 102, 234, 20, 194)
+    # Like the streamers of a party popper without its cone, short ribbons
+    # curl up and out; they follow one another in four spiral arms, each
+    # winding round the axis as it climbs, so the whirl reads as a spiral
+    # rather than as rings. Along an arm the ribbons overlap a little and
+    # alternate the two greens, so the strips still show. They lie on the
+    # outer wall, slightly inside it toward the tip. The positions follow
+    # these rules, not random numbers.
+    arms, per_arm, span = 4, 6, 0.24
+    arm_turns = 0.42
     ribbons = []
-    for layer, count in enumerate((1, 2, 4, 6, 7)):
-        t0 = layer * (1 - span) / 4
-        for k in range(count):
-            n = len(ribbons)
-            reach = reaches[n % len(reaches)]
-            if layer == 4:
-                reach = max(reach, 0.68)
-            ribbons.append((t0 + 0.02 * ((n * 5) % 3 - 1), span, reach,
-                            360 * k / count + layer_turns[layer], turns + 0.02 * ((n * 3) % 3 - 1)))
+    for arm in range(arms):
+        for k in range(per_arm):
+            t0 = k * (1 - span) / (per_arm - 1)
+            start = 360 * arm / arms + 360 * arm_turns * t0
+            turns = arm_turns * span * 1.1
+            reach = 0.85 + 0.15 * t0
+            ribbons.append((t0, span, reach, start + 360 * turns, turns))
     steps = 24
     for i, (t0, span, reach, end, turns) in enumerate(ribbons):
         a0 = math.radians(end) - 2 * math.pi * turns
@@ -1563,7 +1557,7 @@ def loop_spiral(x, y):
             # A long flat strip, thin across and wide up the funnel wall, of
             # even width with square-cut ends (a four-sided tube turned 45
             # degrees, its corners at the strip's edges).
-            radii.append((0.014 * math.sqrt(2), 0.055 * math.sqrt(2)))
+            radii.append((0.014 * math.sqrt(2), 0.075 * math.sqrt(2)))
         strip = tube('Loop time ribbon', points, radii, greens[i % 2], sides=4,
                      twist=math.pi / 4, up=slopes)
         soften(strip, 0.006)
