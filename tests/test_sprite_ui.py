@@ -1267,3 +1267,90 @@ def test_lp_gauge_sits_over_player_head_scaled_to_its_disc(sprite_ui, lp, tone):
     # Its centre is the player's cell centre, and the status row drops it.
     assert fill.x + width / 2 == pytest.approx(ui._field_col_x(4) + ui.cell_size_x / 2, abs=1)
     assert not ui._status_shows_lp_gauge()
+
+
+def test_edge_floor_shade_fades_smoothly_from_the_outer_walls():
+    shade = sprite_funcs.edge_floor_shade
+    width, height = d.FIELD_WIDTH, d.FIELD_HEIGHT
+    middle_y = height / 2
+    side_edge, side_cells = sprite_funcs.EDGE_FLOOR_SIDE_FADE
+    end_edge, end_cells = sprite_funcs.EDGE_FLOOR_END_FADE
+    assert shade(1, middle_y, width, height) == pytest.approx(side_edge)
+    assert shade(width - 1, middle_y, width, height) == pytest.approx(side_edge)
+    assert shade(1 + side_cells, middle_y, width, height) == 1
+    assert shade(width / 2, 1, width, height) == pytest.approx(end_edge)
+    assert shade(width / 2, height - 1 - end_cells, width, height) == 1
+    # Monotonic and without large steps between neighboring texels.
+    samples = [shade(1 + i / 8, middle_y, width, height) for i in range(40)]
+    assert samples == sorted(samples)
+    assert max(b - a for a, b in zip(samples, samples[1:])) < 0.06
+    # Corners take the darker fade rather than multiplying both.
+    assert shade(1, 1, width, height) == pytest.approx(min(side_edge, end_edge))
+
+
+def edge_shade_ui(ui, scroll):
+    ui.field_width, ui.field_height = d.FIELD_WIDTH, d.FIELD_HEIGHT
+    ui.window_width = 26 * 30
+    ui._horizontal_scroll_px = scroll
+    ui._edge_shade_group = 'edge-shade'
+    texels = sprite_funcs.EDGE_FLOOR_TEXELS_PER_CELL
+    image = SimpleNamespace(width=d.FIELD_WIDTH * texels, height=d.FIELD_HEIGHT * texels)
+    image.get_region = lambda *region: SimpleNamespace(region=region, width=region[2],
+                                                       height=region[3])
+    ui._edge_shade_image = image
+    ui._fallen_rock_draws = ()
+    ui._sprite_cells, ui._field_text_cells, ui._player_cell = {}, frozenset(), None
+    ui._frame_drawable_cache = {}
+    ui._drawable_cache, ui._drawable_use_counts = {}, {}
+    ui._reused_drawable_ids = set()
+    return ui
+
+
+def test_edge_shade_strips_cover_each_fading_texel_once(cached_floor_ui):
+    ui = edge_shade_ui(cached_floor_ui, 0)
+    texels = sprite_funcs.EDGE_FLOOR_TEXELS_PER_CELL
+    width, height = d.FIELD_WIDTH * texels, d.FIELD_HEIGHT * texels
+    covered = {}
+    for col, row, w, h in ui._edge_shade_strips():
+        for y in range(row, row + h):
+            for x in range(col, col + w):
+                covered[x, y] = covered.get((x, y), 0) + 1
+    assert set(covered.values()) == {1}
+    shade = sprite_funcs.edge_floor_shade
+    for y in range(height):
+        for x in range(width):
+            if (x, y) not in covered:
+                assert shade((x + 0.5) / texels, (y + 0.5) / texels,
+                             d.FIELD_WIDTH, d.FIELD_HEIGHT) == 1
+
+
+def test_edge_shade_multiplies_only_visible_strips_once_floor_is_drawn(cached_floor_ui):
+    ui = edge_shade_ui(cached_floor_ui, 0)
+    ui._finish_drawables()
+    assert ui._drawables == []
+    ui = edge_shade_ui(ui, 0)
+    ui._draw_floor(4, 4, sprite_funcs.VISIBLE_FLOOR, None, None)
+    ui._finish_drawables()
+    strips = [obj for obj in ui._drawables if obj.group == 'edge-shade']
+    # At the left end: the left strip and the top/bottom strips, not the right one.
+    assert len(strips) == 3
+    assert all((obj.blend_src, obj.blend_dest) == (pyglet.gl.GL_DST_COLOR, pyglet.gl.GL_ZERO)
+               for obj in strips)
+    left = strips[0]
+    assert (left.x, left.image.region[0]) == (0, 0)
+    assert left.image.width * left.scale_x == pytest.approx(
+        (1 + sprite_funcs.EDGE_FLOOR_SIDE_FADE[1]) * ui.cell_size_x)
+    assert left.image.height * left.scale_y == d.FIELD_HEIGHT * ui.cell_size_y
+    assert left.y == ui.window_height - d.FIELD_HEIGHT * ui.cell_size_y
+
+    # In the middle of the field only the top and bottom strips remain.
+    ui = edge_shade_ui(ui, 26 * 30)
+    ui._drawables = []
+    ui._draw_floor(40, 4, sprite_funcs.VISIBLE_FLOOR, None, None)
+    ui._finish_drawables()
+    strips = [obj for obj in ui._drawables if obj.group == 'edge-shade']
+    assert len(strips) == 2
+    assert {obj.y for obj in strips} == {
+        ui.window_height - ui.cell_size_y * (1 + sprite_funcs.EDGE_FLOOR_END_FADE[1]),
+        ui.window_height - d.FIELD_HEIGHT * ui.cell_size_y,
+    }

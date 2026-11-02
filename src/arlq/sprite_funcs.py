@@ -215,6 +215,14 @@ WALL_TINT = {VISIBLE_WALL: 2.4, WALL: 1.75}
 FLOOR_PARTS = ('a', 'b')
 FLOOR_TINTS = {VISIBLE_FLOOR: (78, 72, 66), FLOOR: (42, 39, 36)}
 FLOOR_CHECKER_SHADE = 0.88
+# The floor fades darker toward the field's outer walls so the scrolled view's
+# left and right ends read as the end of the map: (shade at the wall's inner
+# face, cells until full brightness) for the sides and for the top and bottom.
+# Corners take the darker of the two. The fade is a smooth, linearly filtered
+# multiply layer over the floor, so walls and characters keep their colors.
+EDGE_FLOOR_SIDE_FADE = (0.5, 3.5)
+EDGE_FLOOR_END_FADE = (0.7, 1.5)
+EDGE_FLOOR_TEXELS_PER_CELL = 4
 # Terrain looks: file prefixes of the floor and wall parts, the floor tint and
 # checkerboard shade, and the wall tint, per visible/explored color. Stage 5's
 # training room lays mint foam mats (colors baked in, so the tint only darkens
@@ -423,6 +431,32 @@ def gray_image(data):
                                   pitch=data.width * 4)
 
 
+def edge_floor_shade(cx, cy, width, height):
+    """Floor shade at continuous field coordinates (in cells, origin top-left)."""
+    def fade(distance, fade_spec):
+        edge, cells = fade_spec
+        t = min(1.0, max(0.0, distance / cells))
+        return edge + (1 - edge) * t * t * (3 - 2 * t)
+    # The outer walls occupy the first and last cell of each axis.
+    side = fade(min(cx, width - cx) - 1, EDGE_FLOOR_SIDE_FADE)
+    end = fade(min(cy, height - cy) - 1, EDGE_FLOOR_END_FADE)
+    return min(side, end)
+
+
+def edge_floor_shade_data(width, height, texels=EDGE_FLOOR_TEXELS_PER_CELL):
+    """Top-down RGBA bytes of the field's edge shade, sampled at texel centers."""
+    # The shade is the minimum of a per-column and a per-row fade.
+    columns = [edge_floor_shade((col + 0.5) / texels, height / 2, width, height)
+               for col in range(width * texels)]
+    data = bytearray()
+    for row in range(height * texels):
+        row_shade = edge_floor_shade(width / 2, (row + 0.5) / texels, width, height)
+        for column_shade in columns:
+            value = round(255 * min(column_shade, row_shade))
+            data += bytes((value, value, value, 255))
+    return bytes(data)
+
+
 def mipmapped(image):
     """Texture shrunk through mipmaps, so fine details do not flicker away.
 
@@ -550,6 +584,9 @@ class SpriteUI(PygletUI):
         self._barrier_images = [barrier_image(variant) for variant in (0, 1)]
         self._smoke_images = [smoke_image(barrier) for barrier in self._barrier_images]
         self._floor_group = pyglet.graphics.Group(order=-1)
+        # Between the floor and the ground discs.
+        self._edge_shade_group = pyglet.graphics.Group(order=0)
+        self._edge_shade_image = None
         # Rows are painted north to south: a row's walls, then its characters,
         # so walls overlap characters to their north but not to their south.
         self._row_groups = {}
@@ -1085,6 +1122,7 @@ class SpriteUI(PygletUI):
         return decor[y][x]
 
     def _draw_floor(self, x, y, tile_color, field, discovered_at):
+        self._edge_shade_pending = True
         if getattr(self, '_floor_tiles', None) is not None:
             self._floor_cells[x, y] = tile_color
             return
@@ -1658,6 +1696,7 @@ class SpriteUI(PygletUI):
         self._fallen_rock_draws = ()
         self._field_text_cells = frozenset()
         self._floor_cells = {}
+        self._edge_shade_pending = False
 
     def _retain_drawable(self, signature):
         return True
@@ -1671,7 +1710,65 @@ class SpriteUI(PygletUI):
                 self._draw_terrain(pos, d.DECOR_FALLEN_ROCKS, 'wall')
         if self._floor_cells:
             self._draw_floor_tiles()
+        if getattr(self, '_edge_shade_pending', False):
+            self._edge_shade_pending = False
+            self._draw_edge_shade()
         super()._finish_drawables()
+
+    def _get_edge_shade_image(self):
+        if self._edge_shade_image is None:
+            width, height = self.field_width, self.field_height
+            texels = EDGE_FLOOR_TEXELS_PER_CELL
+            self._edge_shade_image = pyglet.image.ImageData(
+                width * texels, height * texels, 'RGBA',
+                edge_floor_shade_data(width, height), pitch=-width * texels * 4,
+            ).get_texture()
+        return self._edge_shade_image
+
+    def _edge_shade_strips(self):
+        """Texel rectangles (left, top, width, height) of the field that fade.
+
+        The side strips span the full height and the top/bottom strips only the
+        columns between them, so no texel is multiplied twice.
+        """
+        texels = EDGE_FLOOR_TEXELS_PER_CELL
+        width, height = self.field_width * texels, self.field_height * texels
+        side = min(width // 2, math.ceil((1 + EDGE_FLOOR_SIDE_FADE[1]) * texels))
+        end = min(height // 2, math.ceil((1 + EDGE_FLOOR_END_FADE[1]) * texels))
+        middle = width - 2 * side
+        return (
+            (0, 0, side, height),
+            (width - side, 0, side, height),
+            (side, 0, middle, end),
+            (side, height - end, middle, end),
+        )
+
+    def _draw_edge_shade(self):
+        """Multiply only the floor near the outer walls by the smooth edge fade."""
+        image = self._get_edge_shade_image()
+        texels = EDGE_FLOOR_TEXELS_PER_CELL
+        scale_x = self.cell_size_x / texels
+        scale_y = self.cell_size_y / texels
+        origin_x = self._field_col_x(0)
+        for col, row, width, height in self._edge_shade_strips():
+            if width <= 0 or height <= 0:
+                continue
+            left = origin_x + col * scale_x
+            bottom = self.window_height - (row + height) * scale_y
+            # Texture rows run bottom-up; the shade data was laid out top-down.
+            region = (col, image.height - row - height, width, height)
+            signature = ('edge-shade', id(image), region, left, bottom, scale_x, scale_y,
+                         id(self._edge_shade_group))
+            sprite = self._draw_bounded_object(
+                left, width * scale_x, signature,
+                lambda region=region, left=left, bottom=bottom: pyglet.sprite.Sprite(
+                    image.get_region(*region), x=left, y=bottom, batch=self.batch,
+                    group=self._edge_shade_group,
+                    blend_src=pyglet.gl.GL_DST_COLOR, blend_dest=pyglet.gl.GL_ZERO,
+                ),
+            )
+            self._set_drawable_attribute(sprite, 'scale_x', scale_x)
+            self._set_drawable_attribute(sprite, 'scale_y', scale_y)
 
     def _progress_mark_group(self):
         return self._text_overlay_group
