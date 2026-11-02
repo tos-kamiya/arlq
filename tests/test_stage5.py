@@ -5,7 +5,7 @@ from collections import Counter
 import pytest
 
 from arlq import defs as d
-from arlq import display, stage5, stage56, stage6
+from arlq import display, i18n, stage5, stage56, stage6
 from arlq import game_engine as engine
 from arlq.arlq import barrier_lp_damage, get_torched
 from arlq.stage_types import Floor
@@ -1079,7 +1079,9 @@ def test_member_trial_dragon_unlocks_final_chest_and_completes_stage():
     assert player.stage_won
 
 
-def test_trial_dialogue_repeats_on_adjacent_moves_and_recruitment_is_separate():
+@pytest.mark.parametrize('language', ['en', 'ja'])
+def test_trial_dialogue_repeats_on_adjacent_moves_and_recruitment_is_separate(monkeypatch, language):
+    monkeypatch.setattr(i18n, '_lang', language)
     current, player = state()
     member = d.PartyMember(4, 2, d.MEMBER_KNIGHT)
     current.entities.append(member)
@@ -1087,7 +1089,7 @@ def test_trial_dialogue_repeats_on_adjacent_moves_and_recruitment_is_separate():
     reasons = set()
     result = engine._step((1, 0), floors, player, floor, checkpoint, queue, 1,
                           stage_num=5, repeat_stop_reasons=reasons)
-    assert result == (-2, stage5.TRIAL_MEMBER_LINES[d.MEMBER_KNIGHT])
+    assert result == (-2, i18n.t(stage5.TRIAL_MEMBER_LINES[d.MEMBER_KNIGHT]))
     assert "member_dialogue" in reasons
     assert not player.members
     engine._step((-1, 0), floors, player, floor, checkpoint, queue, 2,

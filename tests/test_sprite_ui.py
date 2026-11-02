@@ -14,6 +14,7 @@ from arlq.sprite_funcs import SPRITE_FILES, SPRITE_REFERENCE_PIXELS, SpriteUI
 
 @pytest.fixture
 def sprite_ui(monkeypatch):
+    monkeypatch.setattr(i18n, '_lang', 'en')
     ui = SpriteUI.__new__(SpriteUI)
     ui._sprite_images = {char: SimpleNamespace(width=100, height=120) for char in SPRITE_FILES}
     ui._gray_images = dict.fromkeys(ui._sprite_images, SimpleNamespace(width=100, height=120))
@@ -27,6 +28,8 @@ def sprite_ui(monkeypatch):
     ui._menu_font_size = 12
     ui.font_size = 12
     ui.font_name = 'Courier New'
+    ui._non_ascii_font_result = (ui.font_name, 1.0)
+    ui._menu_non_ascii_font_result = (ui.font_name, 1.0)
     ui._menu_active = False
     ui.window_height = 500
     ui.batch = None

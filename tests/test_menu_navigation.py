@@ -8,10 +8,15 @@ from collections import deque
 
 from pyglet.window import key
 
-from arlq import defs
+from arlq import defs, i18n
 from arlq.pyglet_funcs import PygletUI
 from arlq.blessed_funcs import BlessedUI
 from blessed.keyboard import Keystroke
+
+
+@pytest.fixture(autouse=True)
+def english_menu_labels(monkeypatch):
+    monkeypatch.setattr(i18n, '_lang', 'en')
 
 
 def _menu_ui(monkeypatch, events):
