@@ -1412,8 +1412,12 @@ def nomicon(x, y):
 
 
 def ocular(x, y):
-    """Ocular companion (o): a floating eyeball in a gyroscope-like green
-    frame. A clear, glossy cornea bulges over a recessed amber iris; the
+    """Ocular companion (o): a floating eyeball framed by the outline of a
+    left eye in a deep green ring floating just in front of it: an almond,
+    rounded at the inner corner (the viewer's left) and pointed and lifted
+    at the outer corner, where the ring's fin flicks up and out. The whole
+    ball still shows.
+    A clear, glossy cornea bulges over a recessed amber iris; the
     iris is patterned like a gear's outline (a gear outline drawn in glowing
     cyan lines round the pupil on the one-coloured iris, a dark limbal ring at its edge) so the eye looks
     real yet made, a crafted thing."""
@@ -1442,6 +1446,37 @@ def ocular(x, y):
     bulge_r, bulge_at = 0.28, 0.11
     depth = (radius ** 2 - bulge_r ** 2 + bulge_at ** 2) / (2 * bulge_at)
     iris_r = math.sqrt(radius ** 2 - depth ** 2)
+    # A human eye's outline drawn on the ball (u across, v up): an almond
+    # rounded at the inner corner (u < 0, the viewer's left: the left eye of
+    # someone facing the player) and pointed and lifted at the outer one,
+    # its upper lid arching highest a little toward the inner corner. It is
+    # about 1.31 times as wide and 2.42 times as tall as the narrow almond first
+    # drawn, for a taller, anime-like eye, and moved up or down so that its
+    # middle (halfway between its top and bottom) is the ball's centre.
+    wide, tall = 1.2 * 1.3 * 0.8 * 1.05, 1.8 * 1.5 * 0.95 * 0.9 * 1.05
+    half_w, inner_v, outer_v = 0.33 * wide, -0.015, 0.05
+
+    def almond_v(u, upper):
+        t = max(-1.0, min(1.0, u / half_w))
+        base = inner_v + (outer_v - inner_v) * (t + 1) / 2
+        if upper:
+            return tall * (base + 0.15 * (1 - t * t) ** (0.55 if t < 0 else 0.9) * (1 - 0.15 * t))
+        return tall * (base - 0.10 * (1 - t * t) ** 0.7 * (1 + 0.15 * t))
+
+    samples = [-half_w + 2 * half_w * k / 200 for k in range(201)]
+    middle = (max(almond_v(u, True) for u in samples)
+              + min(almond_v(u, False) for u in samples)) / 2
+
+    def lid_v(u, upper):
+        return almond_v(u, upper) - middle
+
+    def eye_outline(n=64):
+        """The outline, clockwise from the inner corner."""
+        upper = [-half_w + 2 * half_w * k / n for k in range(n + 1)]
+        return ([(u, lid_v(u, True)) for u in upper]
+                + [(u, lid_v(u, False)) for u in reversed(upper[1:-1])])
+
+    before = set(bpy.data.objects)
     ball = sphere('Ocular eyeball', tuple(center), (radius, radius, radius), sclera, 48)
     mesh = bmesh.new()
     mesh.from_mesh(ball.data)
@@ -1489,16 +1524,41 @@ def ocular(x, y):
     mesh.free()
     finish(lens, cornea, True, 'Ocular cornea')
     lens.modifiers.new('Cornea thickness', 'SOLIDIFY').thickness = 0.008
-    # A gyroscope-like green frame: a ring around the eye and one tilted across it.
-    for name, rotation in (('Ocular equator ring', (0.0, 0.0, 0.0)),
-                           ('Ocular orbit ring', (math.radians(60), math.radians(25), 0.0))):
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.46, minor_radius=0.03,
-                                         location=tuple(center), rotation=rotation)
-        finish(bpy.context.object, green, True, name)
-    for side in (-1, 1):
-        cone('Ocular ring fin', center + Vector((side * 0.46, 0, 0)),
-             center + Vector((side * 0.62, 0, 0.10)), 0.06, 0, green, 4, False)
+    # The eyeball is shrunk to 0.85 times about its centre, so the green line
+    # mostly runs round it clear of its outline (when the line ran close beside the
+    # outline, crossing it at a shallow angle, the two seemed to waver).
+    bpy.context.view_layer.update()
+    shrink = (Matrix.Translation(center) @ Matrix.Scale(0.85, 4)
+              @ Matrix.Translation(-center))
+    for obj in set(bpy.data.objects) - before:
+        obj.matrix_world = shrink @ obj.matrix_world
+    # The deep green lines: the equator ring of its gyroscope-like first
+    # form, now following the outline on a flat face floating a little in
+    # front of the ball (on the ball itself, the line ran round its sides
+    # and looked thinner or doubled there), and one of its fins, now
+    # flicking up and out from the outer corner like a winged eyeliner.
+    # Far enough forward along the gaze to clear the ball wherever the line
+    # passes over it (the iris and cornea lie well inside the outline).
+    ring_ahead = 0.24
+    # The frame is turned 5 degrees anticlockwise on screen about the ball's
+    # centre.
+    turn = math.radians(5)
+    frame_across = across * math.cos(turn) + up * math.sin(turn)
+    frame_up = up * math.cos(turn) - across * math.sin(turn)
 
+    def on_ring(u, v, ahead=0.0):
+        return center + frame_across * u + frame_up * v + look * (ring_ahead + ahead)
+
+    rim = [on_ring(u, v) for u, v in eye_outline()]
+    # 1.2 times the first ring's thickness (0.03). Its cross-sections are
+    # turned by the frame's face, not the vertical, so they keep the same
+    # turn all the way round (turned by the vertical, the eight-sided line
+    # seemed to waver in width and shine).
+    tube('Ocular equator ring', rim + rim[:1], [0.036] * len(rim + rim[:1]), green, sides=16,
+         smooth=True, up=tuple(look))
+    outer = on_ring(half_w, lid_v(half_w, True))
+    cone('Ocular ring fin', outer - frame_across * 0.02,
+         outer + frame_across * 0.17 + frame_up * 0.09 - look * 0.03, 0.06, 0, green, 4, False)
 
 
 def loop_spiral(x, y):
