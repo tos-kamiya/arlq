@@ -2,7 +2,8 @@
 
 from collections import Counter
 from copy import deepcopy
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Set, Tuple
 
 from . import defs as d
 from . import stage5
@@ -15,6 +16,59 @@ from .utils import rand
 
 
 ReplayedState = Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]
+
+
+@dataclass
+class _RewindKnowledge:
+    """Discoveries carried across reconstruction; encounter state is excluded."""
+
+    known_monsters: Set[str]
+    known_c_floors: Set[int]
+    elf_floors: Dict[str, int]
+    known_elf_floors: Set[str]
+    known_member_floors: Dict[str, int]
+    seen_members: Set[str]
+    seen: List[List[List[int]]]
+    discovered_secrets: List[Dict[d.Point, str]]
+
+    @classmethod
+    def capture(cls, floors: List[Floor], player: d.Player) -> "_RewindKnowledge":
+        return cls(
+            known_monsters=set(player.known_monsters),
+            known_c_floors=set(player.known_c_floors),
+            elf_floors=deepcopy(player.elf_stage_floors),
+            known_elf_floors=set(player.known_elf_floors),
+            known_member_floors=deepcopy(player.known_member_floors),
+            seen_members=set(player.seen_members),
+            seen=deepcopy([floor_data.seen for floor_data in floors]),
+            discovered_secrets=[
+                {
+                    (x, y): cell
+                    for y, row in enumerate(floor_data.field)
+                    for x, cell in enumerate(row)
+                    if cell in (
+                        d.CHAR_SCHOLAR_STAIRS_UP,
+                        d.CHAR_SCHOLAR_STAIRS_DOWN,
+                        d.CHAR_D_GATE,
+                    )
+                }
+                for floor_data in floors
+            ],
+        )
+
+    def restore(self, floors: List[Floor], player: d.Player) -> None:
+        for floor_data, preserved_seen, preserved_secrets in zip(
+            floors, self.seen, self.discovered_secrets, strict=True
+        ):
+            floor_data.seen = preserved_seen
+            for (x, y), cell in preserved_secrets.items():
+                floor_data.field[y][x] = cell
+        player.known_monsters = self.known_monsters
+        player.known_c_floors = self.known_c_floors
+        player.elf_stage_floors = self.elf_floors
+        player.known_elf_floors = self.known_elf_floors
+        player.known_member_floors = self.known_member_floors
+        player.seen_members = self.seen_members
 
 
 def replay_to_operation(replay: ReplayContext, operation_count: int) -> ReplayedState:
@@ -85,27 +139,7 @@ def rewind(
 ) -> str:
     """Replay to the rewind target and carry over the player's current knowledge."""
     remaining_rations = player.rations
-    known_monsters = set(player.known_monsters)
-    known_c_floors = set(player.known_c_floors)
-    elf_floors = deepcopy(player.elf_stage_floors)
-    known_elf_floors = set(player.known_elf_floors)
-    known_member_floors = deepcopy(player.known_member_floors)
-    seen_members = set(player.seen_members)
-    seen = deepcopy([floor_data.seen for floor_data in floors])
-    discovered_secrets = [
-        {
-            (x, y): cell
-            for y, row in enumerate(floor_data.field)
-            for x, cell in enumerate(row)
-            if cell
-            in (
-                d.CHAR_SCHOLAR_STAIRS_UP,
-                d.CHAR_SCHOLAR_STAIRS_DOWN,
-                d.CHAR_D_GATE,
-            )
-        }
-        for floor_data in floors
-    ]
+    knowledge = _RewindKnowledge.capture(floors, player)
 
     target_count = replay_context.rewind_targets.get(
         operation_count, max(0, operation_count - d.LOOP_TURNS),
@@ -120,22 +154,9 @@ def rewind(
     queue.clear()
     queue.update(restored_queue)
 
-    for floor_data, preserved_seen, preserved_secrets in zip(
-        floors, seen, discovered_secrets, strict=True
-    ):
-        floor_data.seen = preserved_seen
-        for (x, y), cell in preserved_secrets.items():
-            floor_data.field[y][x] = cell
     player.__dict__.update(restored_player_state.__dict__)
-    # Monster/trap identification, elf floor locations, and member discoveries
-    # survive the rewind. Entity encounter state is restored by replay.
     player.rations = remaining_rations
-    player.known_monsters = known_monsters
-    player.known_c_floors = known_c_floors
-    player.elf_stage_floors = elf_floors
-    player.known_elf_floors = known_elf_floors
-    player.known_member_floors = known_member_floors
-    player.seen_members = seen_members
+    knowledge.restore(floors, player)
 
     respawn_floor = floor[0] if loop_floor_index is None else loop_floor_index
     loop_floor = floors[respawn_floor]

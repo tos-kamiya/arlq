@@ -2305,15 +2305,15 @@ def run_game(
         if isinstance(step_result, _RewindRequest):
             assert replay_context is not None, "Loop contact requires recorded inputs"
             operation_count = len(replay_context.operations)
-            rewind_turn = max(loop_anchor_turn, game_start_turn - d.LOOP_TURNS)
-            rewind_operation = replay_context.turn_to_operation.get(rewind_turn, 0)
+            rewind_turn, rewind_operation = replay_context.prepare_loop_rewind(
+                game_start_turn, loop_anchor_turn,
+            )
             loop_trail_by_floor.clear()
             loop_trail_expires_at = turn + d.LOOP_TRAIL_TURNS + 1
             for trail_floor, position in operation_path[
                 rewind_operation + 1 : operation_count + 1
             ]:
                 loop_trail_by_floor.setdefault(trail_floor, set()).add(position)
-            replay_context.rewind_targets[operation_count] = rewind_operation
             transition_message = trp(
                 "-- Time folds back to the beginning of the recorded past.", 9
             )
@@ -2333,10 +2333,7 @@ def run_game(
             operation_path[operation_count] = (floor[0], (player.x, player.y))
             # Rewind contacts still reach the normal turn-end LP decrement.
             player.lp += d.movement_lp_cost(player)
-            for recorded_turn in tuple(replay_context.turn_to_operation):
-                if recorded_turn > rewind_turn:
-                    del replay_context.turn_to_operation[recorded_turn]
-            replay_context.turn_to_operation[rewind_turn] = operation_count
+            replay_context.anchor_loop_rewind(rewind_turn)
             game_start_turn = rewind_turn
             # The turn mapping now points to this contact, preserving its
             # respawn and earlier rewinds when returning to the anchor again.

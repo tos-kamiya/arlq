@@ -61,6 +61,20 @@ class ReplayContext:
     # Non-turn Rogue checks, indexed by the next committed operation.
     rogue_checks: Dict[int, List[d.Point]] = dataclass_field(default_factory=dict)
 
+    def prepare_loop_rewind(self, game_turn: int, anchor_turn: int) -> Tuple[int, int]:
+        """Record the operation target before reconstructing a Loop rewind."""
+        rewind_turn = max(anchor_turn, game_turn - d.LOOP_TURNS)
+        rewind_operation = self.turn_to_operation.get(rewind_turn, 0)
+        self.rewind_targets[len(self.operations)] = rewind_operation
+        return rewind_turn, rewind_operation
+
+    def anchor_loop_rewind(self, rewind_turn: int) -> None:
+        """Map the restored turn to this contact, including its Loop respawn."""
+        for recorded_turn in tuple(self.turn_to_operation):
+            if recorded_turn > rewind_turn:
+                del self.turn_to_operation[recorded_turn]
+        self.turn_to_operation[rewind_turn] = len(self.operations)
+
 
 @dataclass(frozen=True)
 class _ContactResult:
