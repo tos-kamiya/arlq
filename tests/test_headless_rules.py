@@ -278,6 +278,39 @@ def test_stage_receives_the_per_run_game_config(monkeypatch, stage_num):
     assert received == [("ui", "seed", True, None, config, stage_num)]
 
 
+@pytest.mark.parametrize("language", ["en", "ja"])
+@pytest.mark.parametrize("stage_num", d.PUBLIC_STAGE_NUMBERS)
+def test_stage_start_message_translation_duration_and_importance(monkeypatch, language, stage_num):
+    i18n.set_language(language)
+    player = d.Player(2, 2, 1, d.LP_INIT)
+    current = Floor(
+        blank_field(), [], [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        (2, 2), (4, 4), None,
+    )
+    for module, name in (
+        (game_engine_module, "build_single_floor"),
+        (game_engine_module, "build"),
+        (game_engine_module.stage5, "build_member_trial"),
+        (game_engine_module.stage6, "build"),
+    ):
+        monkeypatch.setattr(module, name, lambda *_: ([current], player))
+    draws = []
+    moves = iter([(0, 0)] * 12 + [None])
+    ui = SimpleNamespace(
+        draw_stage=lambda **kwargs: draws.append(kwargs["message"]),
+        input_direction=moves.__next__,
+        input_alphabet=lambda: None,
+    )
+
+    game_engine_module.run_game(ui, "seed", stage_num=stage_num)
+
+    ticks, text = d.STAGE_START_MESSAGES[stage_num]
+    shown = [message for message in draws if message]
+    assert len(shown) == max(0, ticks)
+    assert all(message == i18n.t(text) and message.importance == 1 for message in shown)
+    assert draws[-1] == ""
+
+
 def test_game_loop_draws_with_keyword_arguments_only():
     draws = []
 

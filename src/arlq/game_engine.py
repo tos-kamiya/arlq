@@ -408,9 +408,7 @@ def _vortex_rearrange(
     floor_index: int,
     center: d.Point,
     floors: Optional[List[Floor]] = None,
-    whole_floor: bool = False,
     include_treasures: bool = True,
-    stage_num: int = 0,
 ) -> None:
     """Reposition entities and forget explored floor and barrier cells."""
     # Keep the horizontal reach while matching the FOV ellipse's proportions.
@@ -421,10 +419,6 @@ def _vortex_rearrange(
             center[0], center[1], radius, d.FOV_WIDTH_EXPANSION_RATIO
         )
     )
-    if whole_floor:
-        affected_points = {
-            (x, y) for y, row in enumerate(current.field) for x in range(len(row))
-        }
     movable = [
         entity
         for entity in current.entities
@@ -484,14 +478,6 @@ def _vortex_rearrange(
             current.field[y][x] = d.CHAR_FLOOR
 
     def relocate(char: str, origin_floor: Optional[int], empowered: int = 1) -> None:
-        if whole_floor and stage_num in (5, 6):
-            stage56.respawn(
-                current, char, empowered,
-                floor_index if origin_floor is None else origin_floor,
-                avoid | reserved_collapse_cells,
-                floor_index=floor_index,
-            )
-            return
         x, y = find_random_place(
             current.entities,
             current.field,
@@ -743,15 +729,12 @@ def _defeat_monster(
     elif entity.tribe.effect == d.EFFECT_VORTEX:
         _vortex_rearrange(
             current, player, floor[0], (entity.x, entity.y), floors=floors,
-            whole_floor=stage_num in (5, 6) and entity.empowered == 2,
-            stage_num=stage_num,
         )
 
     if (
         d.monster_level(entity) > 0
         and ch not in d.MONSTERS_EXCLUDED_FROM_RESPAWN
         and entity.tribe.effect != d.EFFECT_UNLOCK_TREASURE
-        and not (stage_num in (5, 6) and ch == "V" and entity.empowered == 2)
     ):
         type_key = ch if stage_num in (1, 2) else d.monster_type_key(entity)
         spawn_key = (floor[0], type_key)
@@ -2022,25 +2005,10 @@ def run_game(
     view_floor = 0
     queue: Counter[Tuple[int, str]] = Counter()
     turn = 0
-    if single_floor_stage:
-        message: Tuple[int, str] = (-1, "")
-    elif stage_num == 6:
-        message = (12, trp("-- Defeat the Wyrm on the final floor, then take the treasure.", 1))
-    elif stage_num in d.ELF_STAGES:
-        message = (
-            5,
-            trp(
-                "-- The King has ordered the Dread Wyrm (W) slain."
-                if stage_num == 3
-                else "-- The King has ordered the Strong Fire Drake (F') slain.",
-                1,
-            ),
-        )
-    elif stage_num == 5:
-        message = (
-            12,
-            trp("-- Explore the training ground and claim the Fire Drake’s treasure.", 1),
-        )
+    message_ticks, start_text = d.STAGE_START_MESSAGES[stage_num]
+    message: Tuple[int, str] = (
+        message_ticks, trp(start_text, 1) if start_text else "",
+    )
     while True:
         current = floors[floor[0]]
         display_floor = floors[view_floor]

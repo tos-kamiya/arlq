@@ -532,7 +532,7 @@ def test_treasure_is_optional_and_does_not_finish_stage():
 def test_normalize_limits_and_protects_boss_pair():
     current, player = state()
     current.entities = [monster(2, y, "a") for y in range(2, 9)]
-    boss, vortex = monster(10, 2, "W"), monster(10, 3, "V", 2)
+    boss, vortex = monster(10, 2, "W"), monster(10, 3, "V")
     current.entities += [boss, vortex, monster(10, 4, "c")]
     stage56.normalize_parties(current)
     assert boss in current.entities and vortex in current.entities

@@ -4,6 +4,7 @@ import ast
 import json
 from pathlib import Path
 
+from arlq import defs as d
 PACKAGE = Path(__file__).resolve().parents[1] / "src" / "arlq"
 CATALOG = PACKAGE / "locales" / "ja.json"
 
@@ -201,3 +202,8 @@ def test_tr_message_ids_exist_in_japanese_catalog():
     untranslated_ids = {"", "A", "B", "X", "Y"}
     missing = sorted(_tr_message_ids() - _catalog_keys() - untranslated_ids)
     assert missing == []
+
+
+def test_stage_start_messages_exist_in_japanese_catalog():
+    messages = {text for _, text in d.STAGE_START_MESSAGES.values() if text}
+    assert messages <= _catalog_keys()

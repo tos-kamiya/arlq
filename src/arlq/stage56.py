@@ -67,7 +67,7 @@ def normalize_parties(
                 0
                 if monster.tribe.char == "W"
                 else 1
-                if monster.tribe.char == "V" and monster.empowered in (1, 2)
+                if monster.tribe.char == "V" and monster.empowered == 1
                 else 2,
                 monster.y,
                 monster.x,
@@ -170,7 +170,7 @@ def _separate_diagonal_monsters(current: Floor) -> None:
 
 def _fixed_boss(monster: d.Monster) -> bool:
     return (monster.tribe.char == "W" and monster.empowered == 1) or (
-        monster.tribe.char == "V" and monster.empowered in (1, 2)
+        monster.tribe.char == "V" and monster.empowered == 1
     )
 
 

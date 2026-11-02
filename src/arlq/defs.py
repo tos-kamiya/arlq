@@ -953,6 +953,16 @@ STAGE_BOSSES: Dict[int, Tuple[str, int]] = {
     4: (CHAR_FIRE_DRAKE, 2),
 }
 
+# Display duration and untranslated text; empty stages have no opening message.
+STAGE_START_MESSAGES: Dict[int, Tuple[int, str]] = {
+    1: (-1, ""),
+    2: (-1, ""),
+    3: (5, "-- The King has ordered the Dread Wyrm (W) slain."),
+    4: (5, "-- The King has ordered the Strong Fire Drake (F') slain."),
+    5: (12, "-- Explore the training ground and claim the Fire Drake’s treasure."),
+    6: (12, "-- Defeat the Wyrm on the final floor, then take the treasure."),
+}
+
 
 def decode_stage_roster_entry(
     roster_char: str, empowered: int
