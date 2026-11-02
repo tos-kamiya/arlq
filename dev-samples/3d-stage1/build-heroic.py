@@ -113,12 +113,15 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # later shrunk to 0.9 of their first sizes, and the Stage 5 members enlarged
 # to 1.05 times theirs, as they looked small on screen. The comodo dragon
 # was then enlarged 1.2 times (1.04 to 1.25) after its triangle facets and
-# tucked-in legs made it look smaller.
+# tucked-in legs made it look smaller. The Healer (1.26 to 1.4) and the
+# Jester (1.26 to 1.3) were enlarged later still, as the Healer looked small
+# beside the Dungeon Explorer; the members' heads are kept one size
+# (MEMBER_HEAD_SIZE).
 SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
-         'rock': 2.5, 'jester-light': 1.26, 'jester-medium': 1.26, 'jester-dark': 1.26,
-         'healer-light': 1.26, 'healer-medium': 1.26, 'healer-dark': 1.26,
+         'rock': 2.5, 'jester-light': 1.3, 'jester-medium': 1.3, 'jester-dark': 1.3,
+         'healer-light': 1.4, 'healer-medium': 1.4, 'healer-dark': 1.4,
          'rogue-light': 1.42, 'rogue-medium': 1.42, 'rogue-dark': 1.42,
          'explorer-light': 1.49, 'explorer-medium': 1.49, 'explorer-dark': 1.49,
          'knight-light': 1.79, 'knight-medium': 1.79, 'knight-dark': 1.79,
@@ -1802,17 +1805,26 @@ def vortex(x, y):
               (size * 1.4, size, size), stone, size * 0.4, (a, a * 0.7, a * 1.3))
 
 ELF_STRETCH = 1.3
+# The Stage 5 members are built at different sizes, but all their heads
+# are drawn the size of the Dungeon Explorer's and the Guardian's (the
+# Knight's helm is brought to it by KNIGHT_HEAD_SCALE), scaled about the neck.
+MEMBER_HEAD_SIZE = 1.49
+
+
+def member_head_scale(char):
+    return MEMBER_HEAD_SIZE / SIZES[char]
 
 
 def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.14), torso=None,
-               skirt_z=(0.02, 0.30, 0.58), girth=1.0, ears=True, body_radii=None):
+               skirt_z=(0.02, 0.30, 0.58), girth=1.0, ears=True, body_radii=None,
+               head_scale=1.0):
     """Shared elf build: about three heads tall, slimmer and taller than the
     player, in a long robe, with pointed ears; `body(x, y)` and `head(x, y)`
     add each elf's own parts, and `torso` can dress the upper body apart
     from the robe. `skirt_z` raises the robe's hem (for a seated elf),
     `girth` widens the upper body, `body_radii` replaces its four (x, y)
-    radii from the waist to the neck, and `ears=False` leaves out the pointed
-    ears.
+    radii from the waist to the neck, `ears=False` leaves out the pointed
+    ears, and `head_scale` scales the head and all on it about the neck.
 
     Heights shrink to half in the 60-degree view, so the body is stretched
     upward and the head tilted back for the face to look at the camera.
@@ -1843,7 +1855,8 @@ def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.1
         obj.matrix_world = (Matrix.Translation((x, y, 0)) @ Matrix.Diagonal((1, 1, ELF_STRETCH, 1))
                             @ Matrix.Translation((-x, -y, 0)) @ obj.matrix_world)
     lift = Matrix.Translation((0, 0, neck.z * (ELF_STRETCH - 1)))
-    tilt = Matrix.Translation(neck) @ Matrix.Rotation(-0.6, 4, 'X') @ Matrix.Translation(-neck)
+    tilt = (Matrix.Translation(neck) @ Matrix.Rotation(-0.6, 4, 'X')
+            @ Matrix.Scale(head_scale, 4) @ Matrix.Translation(-neck))
     for obj in set(bpy.data.objects) - head_start:
         obj.matrix_world = lift @ tilt @ obj.matrix_world
 
@@ -2514,7 +2527,8 @@ def jester(x, y, tone):
             sphere('Jester cap bell', horn[-1], (0.04, 0.04, 0.04), gold, 16)
 
     elf_figure(x, y, 'Jester', motley, skin, eye, body, head, skirt=(0.21, 0.19, 0.16),
-               skirt_z=(0.40, 0.49, 0.58), ears=False)
+               skirt_z=(0.40, 0.49, 0.58), ears=False,
+               head_scale=member_head_scale('jester-' + tone))
 
 
 def healer(x, y, tone):
@@ -2612,7 +2626,8 @@ def healer(x, y, tone):
         finish(bpy.context.object, silver, True, 'Healer circlet')
         sphere('Healer circlet stone', (x, y - 0.143, 1.10), (0.022, 0.012, 0.03), glow, 12)
 
-    elf_figure(x, y, 'Healer', robe, skin, eye, body, head, ears=False)
+    elf_figure(x, y, 'Healer', robe, skin, eye, body, head, ears=False,
+               head_scale=member_head_scale('healer-' + tone))
 
 
 def sphere_shell(name, center, scale, mat, keep, thickness=0.02, reshape=None):
@@ -2777,7 +2792,8 @@ def rogue(x, y, tone):
 
     upper = set(bpy.data.objects)
     elf_figure(x, y, 'Rogue', charcoal, skin, eye, body, head, skirt=(0.23, 0.19, 0.16),
-               skirt_z=(0.32, 0.46, 0.58), ears=False)
+               skirt_z=(0.32, 0.46, 0.58), ears=False,
+               head_scale=member_head_scale('rogue-' + tone))
     # Lean the body forward over the bent knees, tilting the head back as
     # much so the eyes still face the camera. (Turning the figure to show
     # the lean in profile made it look like it was diving.)
