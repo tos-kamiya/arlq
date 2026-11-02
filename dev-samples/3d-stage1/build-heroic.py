@@ -116,8 +116,10 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # tucked-in legs made it look smaller. The Healer (1.26 to 1.4) and the
 # Jester (1.26 to 1.3) were enlarged later still, as the Healer looked small
 # beside the Dungeon Explorer; the members' heads are kept one size
-# (MEMBER_HEAD_SIZE).
-SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09, 'B': 1.13, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
+# (MEMBER_HEAD_SIZE). The bison and buffalo were then shrunk to 0.95 of
+# their sizes, as they looked too large, with their eyes enlarged by as
+# much (BOVINE_EYE) so these stay as large on screen.
+SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09 * 0.95, 'B': 1.13 * 0.95, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5, 'jester-light': 1.3, 'jester-medium': 1.3, 'jester-dark': 1.3,
@@ -455,6 +457,11 @@ def animal_hide(name, color, rim, rim_strength, shaggy=False, light=1.0):
     return mat
 
 
+# Makes up for the bison's and buffalo's 0.95 size, so their eyes, already
+# small on screen, keep their size.
+BOVINE_EYE = 1 / 0.95
+
+
 def bison(x, y):
     hide = animal_hide('Bison amber hide', (0.90, 0.38, 0.08), (1.0, 0.7, 0.35), 0.5)
     mane = animal_hide('Bison shaggy mane', (0.16, 0.05, 0.02), (1.0, 0.4, 0.1), 0.6,
@@ -496,7 +503,8 @@ def bison(x, y):
         tube('Bison horn', [root + (Vector((x + side * px, y + py, pz)) - root) * 0.5
                             for px, py, pz in horn_path],
              [0.065, 0.055, 0.04, 0.025, 0], horn, sides=10, smooth=True)
-        sphere('Bison eye', (x + side * 0.20, y - 0.86, 0.50), (0.055, 0.04, 0.035), eye, 16)
+        sphere('Bison eye', (x + side * 0.20, y - 0.86, 0.50),
+               tuple(r * BOVINE_EYE for r in (0.055, 0.04, 0.035)), eye, 16)
         for dy in (-0.32, 0.50):
             block('Bison hoof', (x + side * 0.40 * slim, y + dy, 0.13), (0.17, 0.24, 0.24),
                   obsidian, 0.04)
@@ -534,7 +542,8 @@ def buffalo(x, y):
                      (0.72, -0.84, 0.44), (0.74, -0.96, 0.50), (0.70, -1.05, 0.64)]
         tube('Buffalo horn', [(x + side * px, y + py, pz) for px, py, pz in horn_path],
              [0.15, 0.13, 0.105, 0.08, 0.055, 0], horn, sides=10, smooth=True)
-        sphere('Buffalo eye', (x + side * 0.26, y - 0.92, 0.58), (0.055, 0.04, 0.035), eye, 16)
+        sphere('Buffalo eye', (x + side * 0.26, y - 0.92, 0.58),
+               tuple(r * BOVINE_EYE for r in (0.055, 0.04, 0.035)), eye, 16)
         for dy in (-0.32, 0.46):
             block('Buffalo hoof', (x + side * 0.40, y + dy, 0.13), (0.24, 0.30, 0.26),
                   obsidian, 0.04)
