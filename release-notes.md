@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 6.2.1 - 2026-11-03
+
+- Restore the sprite GUI's previous window size after maximizing on
+  Ubuntu/Wayland by accepting window-manager resize dimensions without
+  requesting another size during the resize callback.
+- Keep the window height unchanged when resizing only its width, and update
+  the English and Japanese READMEs to describe this behavior.
+
 ## 6.2.0 - 2026-11-03
 
 - Spread the initial Stage 6 parties across fixed sections of the dungeon.
