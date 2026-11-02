@@ -2026,6 +2026,7 @@ def run_game(
         else None
     )
     game_start_turn = 0
+    loop_anchor_turn = 0
     has_rewound = False
     floor = [0]
     checkpoint = [floors[0].up]
@@ -2304,7 +2305,7 @@ def run_game(
         if isinstance(step_result, _RewindRequest):
             assert replay_context is not None, "Loop contact requires recorded inputs"
             operation_count = len(replay_context.operations)
-            rewind_turn = max(0, game_start_turn - d.LOOP_TURNS)
+            rewind_turn = max(loop_anchor_turn, game_start_turn - d.LOOP_TURNS)
             rewind_operation = replay_context.turn_to_operation.get(rewind_turn, 0)
             loop_trail_by_floor.clear()
             loop_trail_expires_at = turn + d.LOOP_TRAIL_TURNS + 1
@@ -2337,6 +2338,9 @@ def run_game(
                     del replay_context.turn_to_operation[recorded_turn]
             replay_context.turn_to_operation[rewind_turn] = operation_count
             game_start_turn = rewind_turn
+            # The turn mapping now points to this contact, preserving its
+            # respawn and earlier rewinds when returning to the anchor again.
+            loop_anchor_turn = rewind_turn
             has_rewound = True
             event_message: Optional[Tuple[int, str]] = (5, rewind_message)
         else:

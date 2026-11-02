@@ -233,6 +233,43 @@ def test_repeated_rewinds_without_vortex_preserve_exploration(monkeypatch):
     assert len(context.rewind_targets) == 4
 
 
+@pytest.mark.parametrize("delay", [0, 4])
+def test_cross_floor_rewinds_stop_at_latest_anchor(monkeypatch, delay):
+    monkeypatch.setattr(d, "LOOP_TURNS", 4)
+
+    def build(*_):
+        player = d.Player(2, 2, 10, 120)
+        floors = []
+        for index in range(2):
+            field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+            floors.append(Floor(
+                field,
+                [d.Companion(4 if index == 0 else 3, 2,
+                             d.CHAR_TO_COMPANION_TRIBE["l"])],
+                [[0] * len(row) for row in field],
+                (2, 2), (2, 3), None,
+            ))
+        return floors, player
+
+    def respawn_loop(entities, _field, _char, _avoid, _island, floor_index):
+        position = (4 if floor_index == 0 else 3, 2)
+        entities.append(d.Companion(*position, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        return position
+
+    monkeypatch.setattr(stage_replay, "_spawn", respawn_loop)
+    moves = [(1, 0), (-1, 0)] * 2 + [(1, 0)] * 2
+    moves += [(-1, 0), (1, 0)] * (delay // 2)
+    moves += [(0, 1), (1, 0)] * 2
+    context = run_and_replay(monkeypatch, build, 4, moves, GameConfig())
+    second_contact = 8 + delay
+    second_target = 6 if delay == 0 else 8
+    assert context.rewind_targets == {
+        6: 2,
+        second_contact: second_target,
+        second_contact + 2: second_contact,
+    }
+
+
 def test_rewind_keeps_current_knowledge_after_vortex_erasure(monkeypatch):
     def build(*_):
         player = d.Player(2, 2, 10000, 120)
