@@ -856,21 +856,33 @@ def chimera(x, y, cursed=False):
             foot = (x + side * 0.23, y + dy - 0.05, 0.06)
             tube('Chimera leg', [(x + side * 0.18, y + dy, 0.36), foot], [0.09, 0.07], hide, sides=6)
             sphere('Chimera paw', foot, (0.08, 0.09, 0.045), hide, 12, False)
-    # Thick serpent tail rearing over the back, hooded head facing forward.
-    tube('Chimera serpent tail', [(x, y + 0.30, 0.40), (x + 0.06, y + 0.56, 0.40),
-                                  (x - 0.06, y + 0.80, 0.52), (x - 0.28, y + 0.84, 0.76),
-                                  (x - 0.38, y + 0.66, 0.98), (x - 0.32, y + 0.46, 1.08)],
-         [0.09, 0.10, 0.11, 0.11, 0.10, 0.10], snake, sides=8, smooth=True)
-    sphere('Chimera snake hood', (x - 0.32, y + 0.46, 1.08), (0.22, 0.06, 0.17), snake, 24)
-    tube('Chimera snake head', [(x - 0.32, y + 0.42, 1.10), (x - 0.29, y + 0.24, 1.10),
-                                (x - 0.27, y + 0.10, 1.06)],
-         [(0.15, 0.08), (0.12, 0.07), 0], snake, sides=8)
-    tube('Chimera snake tongue', [(x - 0.27, y + 0.12, 1.05), (x - 0.26, y - 0.02, 1.02)],
+    # Thick serpent tail rearing over the back, hooded head facing forward,
+    # in small flat triangular facets like the comodo dragon and the flame
+    # cobra. Subdividing rounds the tubes in, so they are drawn 1.1 times
+    # as thick, and the head gets extra points so its snout keeps its length.
+    # The serpent grows from the top of the rump: from the rear end of the
+    # torso it looked to come out of the lion's bottom, and from the middle
+    # of the back too far forward (this is 60% of the way there). The
+    # hooded head is moved forward and up with it.
+    def head(px, py, pz):
+        return (x + px, y + py - 0.096, pz + 0.024)
+
+    triangle_facets(tube('Chimera serpent tail', [(x, y + 0.168, 0.448), (x + 0.048, y + 0.404, 0.532),
+                                                  (x - 0.054, y + 0.656, 0.64), (x - 0.268, y + 0.732, 0.832),
+                                                  head(-0.38, 0.66, 0.98), head(-0.32, 0.46, 1.08)],
+                         [0.10, 0.11, 0.12, 0.12, 0.11, 0.11], snake, sides=8,
+                         twist=math.pi / 8))
+    sphere('Chimera snake hood', head(-0.32, 0.46, 1.08), (0.22, 0.06, 0.17), snake, 24)
+    triangle_facets(tube('Chimera snake head', [head(-0.32, 0.44, 1.10), head(-0.32, 0.42, 1.10),
+                                                head(-0.29, 0.24, 1.10), head(-0.275, 0.13, 1.07),
+                                                head(-0.27, 0.08, 1.06)],
+                         [(0.12, 0.06), (0.165, 0.088), (0.132, 0.077), (0.08, 0.05), 0], snake,
+                         sides=8, twist=math.pi / 8))
+    tube('Chimera snake tongue', [head(-0.27, 0.12, 1.05), head(-0.26, -0.02, 1.02)],
          [0.014, 0.01], tongue, sides=4)
     for side in (-1, 1):
-        sphere('Chimera snake eye', (x - 0.29 + side * 0.08, y + 0.26, 1.16),
+        sphere('Chimera snake eye', head(-0.29 + side * 0.08, 0.26, 1.16),
                (0.035, 0.035, 0.03), snake_eye, 12)
-
 
 def gilded_bronze(name):
     """Blackened bronze in low relief with its raised ornament gilded: a
