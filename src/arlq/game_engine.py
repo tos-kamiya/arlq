@@ -1493,7 +1493,7 @@ def _process_respawn_queue(
         tribe = d.CHAR_TO_TRIBE[ch]
         spawn_floor = (
             rand.randrange(len(floors))
-            if getattr(tribe, "respawn_on_random_floor", False)
+            if isinstance(tribe, d.MonsterTribe) and tribe.respawn_on_random_floor
             else queued_floor
         )
         if stage_num in (5, 6) and spawn_floor not in barrier_source_positions:

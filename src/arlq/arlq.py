@@ -13,7 +13,7 @@ from .__about__ import __version__
 
 from .utils import rand
 from . import defs as d
-from .i18n import trp
+from .i18n import PrioritizedMessage, trp
 from .trace import (
     TraceRecorder,
 )
@@ -79,8 +79,8 @@ def prefer_event_message(
     if current is None:
         return candidate
 
-    current_importance = getattr(current, "importance", 0)
-    candidate_importance = getattr(candidate, "importance", 0)
+    current_importance = current.importance if isinstance(current, PrioritizedMessage) else 0
+    candidate_importance = candidate.importance if isinstance(candidate, PrioritizedMessage) else 0
     return candidate if candidate_importance >= current_importance else current
 
 

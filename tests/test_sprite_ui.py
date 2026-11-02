@@ -16,6 +16,7 @@ from arlq.sprite_funcs import SPRITE_FILES, SPRITE_REFERENCE_PIXELS, SpriteUI
 def sprite_ui(monkeypatch):
     monkeypatch.setattr(i18n, '_lang', 'en')
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui._sprite_images = {char: SimpleNamespace(width=100, height=120) for char in SPRITE_FILES}
     ui._gray_images = dict.fromkeys(ui._sprite_images, SimpleNamespace(width=100, height=120))
     ui._mark_images = {mark: SimpleNamespace(width=30, height=40) for mark in ("'", '"')}
@@ -269,6 +270,7 @@ def test_ground_disc_is_tinted_ellipse_fading_outward(monkeypatch):
     assert alpha(mid, mid) > alpha(mid + mid // 2, mid) > alpha(image.width - 1, mid)
     assert alpha(0, 0) == 0
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.window_height = 500
     ui.batch = None
     ui._disc_image, ui._disc_group = image, 'disc'
@@ -328,6 +330,7 @@ def test_treasure_disc_stays_yellow(sprite_ui):
 
 def test_shift_horizontal_view_scrolls_only_when_field_overflows():
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.field_pixel_width = 50
     ui._map_pixel_width = 100
     ui._horizontal_scroll_px = 20
@@ -353,6 +356,7 @@ def test_shift_horizontal_view_scrolls_only_when_field_overflows():
 
 def test_sprite_camera_centers_player_and_clamps_at_field_edges():
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.field_pixel_width = 40
     ui._map_pixel_width = 100
     ui.cell_size_x = 10
@@ -367,6 +371,7 @@ def test_sprite_camera_centers_player_and_clamps_at_field_edges():
 
 def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.field_width = 10
     ui.field_height = 2
     ui.window_width = 200
@@ -426,6 +431,7 @@ def test_sprite_maximize_restore_accepts_window_manager_size(
 
 def test_sprite_default_window_is_16_9_and_field_overflows():
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.field_width, ui.field_height = d.FIELD_WIDTH, d.FIELD_HEIGHT
     ui.scale = 1
     ui._hud_row_height = ui._menu_cell_size_y = 20
@@ -443,6 +449,7 @@ def test_sprite_default_window_is_16_9_and_field_overflows():
 
 def test_sprite_resize_constraints_allow_zoom_range():
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     size_constraints = []
     ui.window = SimpleNamespace(
         set_minimum_size=lambda width, height: size_constraints.append(
@@ -468,6 +475,7 @@ def test_sprite_resize_constraints_allow_zoom_range():
 )
 def test_shift_right_input_is_consumed_as_view_only(view_width, expected_move, monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.field_pixel_width = view_width
     ui._map_pixel_width = 100
     ui._horizontal_scroll_px = 0
@@ -593,6 +601,7 @@ def test_rank_mark_grows_with_an_enlarged_neighbor(sprite_ui):
 
 def _strength_column_ui(monkeypatch, known_types):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui._sprite_images = {char: SimpleNamespace(width=100, height=120) for char in SPRITE_FILES}
     ui._mark_images = {mark: SimpleNamespace(width=30, height=40) for mark in ("'", '"')}
     ui._known_types = known_types
@@ -639,6 +648,7 @@ def test_disc_halves_split_on_the_diagonal(monkeypatch):
     assert alpha(upper, 3 * q, 3 * q) > 0 and alpha(lower, 3 * q, 3 * q) == 0
     assert alpha(lower, q, q) > 0 and alpha(upper, q, q) == 0
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.window_height = 500
     ui.batch = None
     ui._disc_halves, ui._disc_group = (lower, upper), 'disc'
@@ -653,6 +663,7 @@ def test_disc_halves_split_on_the_diagonal(monkeypatch):
 
 def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui._wall_images = None  # plain-shape fallback when the parts are missing
     ui._floor_images = None
     ui.cell_size_x, ui.cell_size_y = 13, 20
@@ -684,6 +695,7 @@ def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
 
 def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui._wall_images = {part: SimpleNamespace(width=26, height=50) for part in sprite_funcs.WALL_PARTS}
     ui._floor_images = None
     ui._sprite_images = {sprite_funcs.ROCK_SPRITE: SimpleNamespace(width=95, height=103)}
@@ -716,6 +728,7 @@ def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
 
 def _barrier_ui(monkeypatch, cooling_center):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     image = lambda name: SimpleNamespace(name=name, width=48, height=96)
     ui._floor_images = [image('floor-a'), image('floor-b')]
     ui._barrier_images = [image('barrier-a'), image('barrier-b')]
@@ -778,6 +791,7 @@ def test_barrier_glyph_is_left_to_the_barrier_light(sprite_ui):
 
 def test_column_wall_links_only_toward_discovered_wall_neighbors(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui.window_height = 500
     ui.batch = None
@@ -806,6 +820,7 @@ def test_column_wall_links_only_toward_discovered_wall_neighbors(monkeypatch):
 
 def test_floor_is_a_checkerboard_of_two_tinted_stones(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui.window_height = 500
     ui.batch = None
@@ -832,6 +847,7 @@ def test_floor_is_a_checkerboard_of_two_tinted_stones(monkeypatch):
 @pytest.mark.parametrize('char, layer', ((d.CHAR_STAIRS_UP, 'column'), (d.CHAR_STAIRS_DOWN, 'wall')))
 def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, char, layer):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.scale = 1
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui.window_height = 500
@@ -882,6 +898,7 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     (' ', True, True), (' ', False, False), ('#', True, False), ('^', True, False)])
 def test_stairs_spread_only_over_explored_plain_floor(neighbour, discovered, spreads):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui._stage_field = [[neighbour, '^', ' ']]
     ui._stage_discovered_at = lambda x, y: discovered or x != 0
     assert ui._open_floor(0, 0) == spreads
@@ -931,6 +948,7 @@ def test_discovered_passage_uses_same_light_as_pit_entrance_without_text(sprite_
 
 def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui.window_height = 500
     ui.batch = None
@@ -979,6 +997,7 @@ def test_collapse_pit_without_image_stays_yellow_text(sprite_ui):
 ])
 def test_render_target_detail_is_independent_of_pixel_ratio(scale, pixel_ratio, expected):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui.scale = scale
     ui.window = SimpleNamespace(
         width=800, height=600,
@@ -1160,6 +1179,7 @@ def test_shared_drawable_cache_retains_duplicates_and_deletes_stale_objects(ui_t
 
 def test_pyglet_tile_color_changes_keep_the_same_background_object(monkeypatch):
     ui = PygletUI.__new__(PygletUI)
+    ui._initialize_state()
     ui._menu_active = False
     ui._drawable_cache = {}
     ui._tile_group = None
@@ -1229,6 +1249,7 @@ def test_offscreen_terrain_still_reads_neighbors(sprite_ui):
 
 def test_fallen_rocks_are_hidden_under_characters_and_text(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui._frame_drawable_cache = {}
     ui._drawable_cache = {}
     ui._floor_cells = {}
@@ -1255,6 +1276,7 @@ def test_fallen_rocks_are_hidden_under_characters_and_text(monkeypatch):
 )
 def test_player_sprite_shows_its_sword(item, k_blessed, sprite):
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui._sprite_images = dict.fromkeys(sprite_funcs.SPRITE_FILES)
     player = d.Player(1, 1, 10, d.LP_INIT)
     player.item = item

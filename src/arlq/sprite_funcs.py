@@ -506,6 +506,18 @@ class SpriteUI(PygletUI):
     _wall_tints = TERRAIN_THEMES['ruins'][4]
     _show_pit_up_marker = True
 
+    def _initialize_state(self):
+        super()._initialize_state()
+        self._mouse_position = None
+        self._mouse_visible_until = None
+        self._horizontal_scroll_px = 0
+        self._floor_tiles = None
+        self._edge_shade_pending = False
+        self._ration_images = None
+        self._sprite_images = {}
+        self._sprite_head_room = {}
+        self._theme_floor_tiles = {}
+
     def __init__(self, scale=None, key_repeat_interval=None):
         self._member_skins = {char: random.choice(MEMBER_SKINS) for char in MEMBER_SPRITES}
         self._last_stage_draw = None
@@ -516,8 +528,6 @@ class SpriteUI(PygletUI):
         self._composite_sprite = None
         self._render_target_size = None
         self._failed_render_target_size = None
-        self._mouse_position = None
-        self._mouse_visible_until = None
         super().__init__(scale, key_repeat_interval, resizable=True)
         self.window.push_handlers(
             on_mouse_motion=self._on_mouse_motion,
@@ -530,9 +540,7 @@ class SpriteUI(PygletUI):
         self.window.set_caption(self.window.caption.replace('Pyglet mix', 'Sprite mix'))
         self._update_minimum_window_size()
         directory = Path(__file__).parent / 'assets' / 'characters'
-        self._sprite_images = {}
         self._gray_images = {}
-        self._sprite_head_room = {}
         for char, filename in SPRITE_FILES.items():
             path = directory / filename
             if not path.is_file():
@@ -598,7 +606,6 @@ class SpriteUI(PygletUI):
         self._sidebar_bg_group = pyglet.graphics.Group(order=9998)
         self._sidebar_group = pyglet.graphics.Group(order=9999)
         self._floor_cells = {}
-        self._theme_floor_tiles = {}
         for theme in TERRAIN_THEMES:
             self._set_terrain_theme(theme)
             self._create_floor_tiles()
@@ -610,8 +617,7 @@ class SpriteUI(PygletUI):
         self._wall_images, self._floor_images, self._gray_floor_images = self._theme_images[theme]
         _, _, self._floor_tints, self._floor_checker_shade, self._wall_tints = (
             TERRAIN_THEMES[theme])
-        self._floor_tiles, self._floor_cell_tiles = getattr(
-            self, '_theme_floor_tiles', {}).get(theme, (None, {}))
+        self._floor_tiles, self._floor_cell_tiles = self._theme_floor_tiles.get(theme, (None, {}))
 
     def _create_floor_tiles(self):
         """Bake colored 2x2 floors into one nearest-filtered texture atlas."""
@@ -886,7 +892,7 @@ class SpriteUI(PygletUI):
 
     def _pump(self):
         super()._pump()
-        deadline = getattr(self, '_mouse_visible_until', None)
+        deadline = self._mouse_visible_until
         if deadline is not None and time.monotonic() >= deadline:
             self.window.set_mouse_visible(False)
             self._mouse_visible_until = None
@@ -913,7 +919,7 @@ class SpriteUI(PygletUI):
         self._resize_redraw_pending = True
 
     def _hovered_cell(self):
-        mouse = getattr(self, '_mouse_position', None)
+        mouse = self._mouse_position
         if mouse is None or self._menu_active:
             return None
         x, y = mouse
@@ -921,7 +927,7 @@ class SpriteUI(PygletUI):
         if not (0 <= x < self.field_pixel_width
                 and 0 <= field_y < self.field_height * self.cell_size_y):
             return None
-        col = math.floor((x + getattr(self, '_horizontal_scroll_px', 0)) / self.cell_size_x)
+        col = math.floor((x + self._horizontal_scroll_px) / self.cell_size_x)
         row = math.floor(field_y / self.cell_size_y)
         if 0 <= col < self.field_width:
             return col, row
@@ -1123,7 +1129,7 @@ class SpriteUI(PygletUI):
 
     def _draw_floor(self, x, y, tile_color, field, discovered_at):
         self._edge_shade_pending = True
-        if getattr(self, '_floor_tiles', None) is not None:
+        if self._floor_tiles is not None:
             self._floor_cells[x, y] = tile_color
             return
         if self._floor_images is None:
@@ -1194,7 +1200,7 @@ class SpriteUI(PygletUI):
         )
 
     def draw_combat_effect(self, pos, won: bool) -> None:
-        seconds = getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
+        seconds = self.combat_effect_seconds
         if seconds == 0:
             return
         positions = [pos] if len(pos) == 2 and all(
@@ -1331,7 +1337,9 @@ class SpriteUI(PygletUI):
         return self._menu_font_size / self.font_size
 
     def _strength_text_scale(self):
-        hud_font_size = getattr(self, '_menu_font_size', self.font_size)
+        hud_font_size = (
+            self.font_size if self._menu_font_size is None else self._menu_font_size
+        )
         return min(STRENGTH_TEXT_SCALE, hud_font_size / self.font_size)
 
     def _update_strength_column_width(self):
@@ -1449,7 +1457,7 @@ class SpriteUI(PygletUI):
         )
 
     def _draw_ration_image(self, ration, x, y, size, dim=False):
-        images = getattr(self, '_ration_images', None)
+        images = self._ration_images
         if images is None:
             self._ration_images = images = {
                 name: pyglet.image.load(str(Path(__file__).parent / 'assets' / 'rations' / f'ration-{name}.png'))
@@ -1544,9 +1552,9 @@ class SpriteUI(PygletUI):
 
     def _intersects_window(self, left, width):
         # The translucent sidebar still reveals the scene behind it.
-        window_width = getattr(self, 'window_width', None)
+        window_width = self.window_width
         # Linear enlargement can sample the adjacent render-target texel.
-        guard = getattr(self, 'scale', 1) / LOW_RESOLUTION_DETAIL_SCALE
+        guard = self.scale / LOW_RESOLUTION_DETAIL_SCALE
         return window_width is None or (left <= window_width + guard
                                         and left + width >= -guard)
 
@@ -1556,13 +1564,13 @@ class SpriteUI(PygletUI):
         return self._draw_object(signature, factory)
 
     def _field_draw_columns(self, width):
-        window_width = getattr(self, 'window_width', None)
+        window_width = self.window_width
         if window_width is None:
             return range(width)
-        scroll = getattr(self, '_horizontal_scroll_px', 0)
+        scroll = self._horizontal_scroll_px
         # Include terrain overhang, stair discs and the one-pixel seam overlap.
         margin = max(TERRAIN_SIDE, GROUND_DISC_RADIUS) * self.cell_size_x + 1
-        rock = getattr(self, '_sprite_images', {}).get(ROCK_SPRITE)
+        rock = self._sprite_images.get(ROCK_SPRITE)
         if rock is not None:
             padding = max(1, round(self.scale))
             rock_scale = 1.8 * max(1, self._sprite_unit() - 2 * padding) / SPRITE_REFERENCE_PIXELS
@@ -1572,12 +1580,12 @@ class SpriteUI(PygletUI):
         return range(max(0, first // 2 * 2), min(width, (stop + 1) // 2 * 2))
 
     def _field_col_x(self, col):
-        return col * self.cell_size_x - getattr(self, '_horizontal_scroll_px', 0)
+        return col * self.cell_size_x - self._horizontal_scroll_px
 
     def _field_text_x_offset(self):
         # Text is sized for a CELL_SIZE_X-wide cell; center it in the wider one.
         return ((self.cell_size_x - self._sprite_unit()) / 2
-                - getattr(self, '_horizontal_scroll_px', 0))
+                - self._horizontal_scroll_px)
 
     def _horizontal_scroll_bounds(self):
         if self.field_pixel_width >= self._map_pixel_width:
@@ -1693,7 +1701,7 @@ class SpriteUI(PygletUI):
                 self._draw_terrain(pos, d.DECOR_FALLEN_ROCKS, 'wall')
         if self._floor_cells:
             self._draw_floor_tiles()
-        if getattr(self, '_edge_shade_pending', False):
+        if self._edge_shade_pending:
             self._edge_shade_pending = False
             self._draw_edge_shade()
         super()._finish_drawables()
@@ -1825,7 +1833,7 @@ class SpriteUI(PygletUI):
             return self._draw_rank_mark((x - 1, y), text, color)
         self._field_text_cells = self._field_text_cells | {pos}
         if text not in self._sprite_images:
-            if getattr(self, 'window_width', None) is not None:
+            if self.window_width is not None:
                 left = x * self.cell_size_x + self._field_text_x_offset()
                 padding = self.cell_size_x
                 if not self._intersects_window(left - padding,
@@ -1999,7 +2007,7 @@ class SpriteUI(PygletUI):
         )
         self._set_drawable_attribute(sprite, 'scale', scale)
         self._set_drawable_attribute(sprite, 'color', tint)
-        head_room = getattr(self, '_sprite_head_room', {}).get(text, 0)
+        head_room = self._sprite_head_room.get(text, 0)
         return cy - (picture.height / 2 + SPRITE_GROUND_OFFSET_PIXELS - head_room) * scale
 
     def _draw_pillar(self, cx, cy, size, row, color, familiar=False):

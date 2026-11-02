@@ -350,12 +350,31 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 
 
 class PygletUI:
+    supports_horizontal_view = False
+
+    def _initialize_state(self) -> None:
+        """Initialize Python state before creating the window or loading settings."""
+        self.window_width = None
+        self.scale = 1
+        self._text_overlay_group = None
+        self._resize_redraw_pending = False
+        self._menu_font_size = None
+        self._menu_cell_size_x = CELL_SIZE_X
+        self._frame_drawable_cache = None
+        self._reused_drawable_ids = set()
+        self.controller = None
+        self.gamepad_previous_direction = None
+        self.gamepad_help_button = DEFAULT_GAMEPAD_HELP_BUTTON
+        self._gamepad_pressed_buttons = set()
+        self.combat_effect_seconds = d.COMBAT_EFFECT_SECONDS
+
     def __init__(
         self,
         scale: Optional[float] = None,
         key_repeat_interval: Optional[float] = None,
         resizable: bool = False,
     ) -> None:
+        self._initialize_state()
         # Field dimensions from defs
         self.field_width = d.FIELD_WIDTH
         self.field_height = d.FIELD_HEIGHT
@@ -388,9 +407,7 @@ class PygletUI:
         self._tile_group = pyglet.graphics.Group(order=-1)
         self._drawables: list = []
         self._drawable_cache = {}
-        self._frame_drawable_cache = None
         self._drawable_use_counts = None
-        self._reused_drawable_ids = set()
 
         self._closed = False
         self._key_queue: list = []
@@ -474,10 +491,8 @@ class PygletUI:
                 controller = None
         self.controller = controller
 
-        self.gamepad_previous_direction: Optional[Tuple[int, int]] = None
         self._next_gamepad_repeat_at = 0.0
         self._gamepad_held_buttons: Set[int] = set()
-        self._gamepad_pressed_buttons: Set[int] = set()
         self.map_mode = False
         self.shift_direction = False
 
@@ -555,7 +570,7 @@ class PygletUI:
         save_gamepad_bindings(help_button, preview_button, preview_mode)
 
     def _gamepad_is_connected(self) -> bool:
-        controller = getattr(self, "controller", None)
+        controller = self.controller
         if controller is None:
             return False
         device = getattr(controller, "device", None)
@@ -729,7 +744,7 @@ class PygletUI:
 
     def _draw_object(self, signature, factory):
         """Reuse matching objects; tile colors are updated by the caller."""
-        if getattr(self, '_frame_drawable_cache', None) is None:
+        if self._frame_drawable_cache is None:
             drawable = factory()
             self._drawables.append(drawable)
             return drawable
@@ -746,7 +761,7 @@ class PygletUI:
         return drawable
 
     def _set_drawable_attribute(self, drawable, name, value):
-        if drawable is not None and id(drawable) not in getattr(self, '_reused_drawable_ids', ()):
+        if drawable is not None and id(drawable) not in self._reused_drawable_ids:
             setattr(drawable, name, value)
 
     def _finish_drawables(self):
@@ -951,7 +966,7 @@ class PygletUI:
         popup_scale = self._status_font_scale() * MESSAGE_FONT_SIZE_SCALE
         text_width = self._text_width(text, bold=True, size_scale=popup_scale)
         text_x_offset = self._field_text_x_offset()
-        popup_group = getattr(self, "_text_overlay_group", None)
+        popup_group = self._text_overlay_group
         popup_gap = max(1, round(self.cell_size_x * 0.2))
         player_x = pos[0] * self.cell_size_x + text_x_offset
         right_x = player_x + self.cell_size_x
@@ -1000,7 +1015,7 @@ class PygletUI:
         )
         for index, line in enumerate(lines):
             self._draw_text((0, y + index), line, COLOR_MAP[CI_YELLOW], x_offset=x,
-                            size_scale=scale, group=getattr(self, "_text_overlay_group", None))
+                            size_scale=scale, group=self._text_overlay_group)
 
     def _draw_dialogue_panel(self, x, y, width, height) -> None:
         """Draw an optional background behind field dialogue."""
@@ -1064,7 +1079,7 @@ class PygletUI:
                         x_offset=self._field_text_x_offset())
 
     def draw_combat_effect(self, pos, won: bool) -> None:
-        seconds = getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
+        seconds = self.combat_effect_seconds
         if seconds == 0:
             return
         positions = [pos] if len(pos) == 2 and all(
@@ -1086,9 +1101,9 @@ class PygletUI:
     def draw_rewind_transition(self, message: str) -> None:
         """Show the Loop Companion transition before rebuilding the past."""
         overlay_group = pyglet.graphics.Group(order=10000)
-        text_group = getattr(
-            self, "_text_overlay_group", pyglet.graphics.Group(order=10001)
-        )
+        text_group = self._text_overlay_group
+        if text_group is None:
+            text_group = pyglet.graphics.Group(order=10001)
         self._draw_rect(
             0,
             0,
@@ -1472,9 +1487,7 @@ class PygletUI:
             item_width = self._text_width(extra, size_scale=hud_scale)
             item_gap = round(10 * hud_scale)
             available_bar_width = self.window_width - item_width - item_gap - x_offset
-            max_bar_width = 8 * getattr(
-                self, "_menu_cell_size_x", self.cell_size_x
-            )
+            max_bar_width = 8 * self._menu_cell_size_x
             bar_width = max(1, min(max_bar_width, available_bar_width))
             item_x_offset = x_offset + bar_width + item_gap
         else:
@@ -1695,7 +1708,7 @@ class PygletUI:
         """Require held movement controls to be released before repeating again."""
         self._held_direction = None
         self._next_repeat_at = 0.0
-        if getattr(self, "gamepad_previous_direction", None) not in (None, (0, 0)):
+        if self.gamepad_previous_direction not in (None, (0, 0)):
             self._next_gamepad_repeat_at = float("inf")
 
     def _input_direction(self) -> Optional[Tuple[int, int]]:
@@ -1712,10 +1725,7 @@ class PygletUI:
             if self._closed:
                 return None
 
-            if (
-                getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
-                in self._gamepad_pressed_buttons
-            ):
+            if self.gamepad_help_button in self._gamepad_pressed_buttons:
                 self.controls_menu()
                 return (0, 0)
 
@@ -1776,7 +1786,7 @@ class PygletUI:
                         return result
                 return self._held_direction
 
-            controller = getattr(self, "controller", None)
+            controller = self.controller
             if controller:
                 current_direction = self._controller_direction(controller)
 
@@ -1833,10 +1843,7 @@ class PygletUI:
                     return "h"
                 key_name = pgkey.symbol_string(symbol)
                 return key_name.lower()
-            if (
-                getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
-                in self._gamepad_pressed_buttons
-            ):
+            if self.gamepad_help_button in self._gamepad_pressed_buttons:
                 self.controls_menu()
                 return "h"
 
@@ -1868,7 +1875,7 @@ class PygletUI:
                 prompt or ui_display.ration_prompt(player),
                 lambda value: self._text_width(value, bold=True), width * .9,
             )
-            group = getattr(self, "_text_overlay_group", None)
+            group = self._text_overlay_group
             for line_index, line in enumerate(lines):
                 self._draw_text(
                     (0, self.field_height * .48 + line_index),
@@ -1888,7 +1895,7 @@ class PygletUI:
             self._draw_text(
                 (0, self.field_height * .48 + len(lines) + 4), tr("Esc / q: cancel") if prompt else tr("Esc / q: quit"), COLOR_MAP["default"],
                 x_offset=max(0, (width - self._text_width(tr("Esc / q: cancel") if prompt else tr("Esc / q: quit"))) // 2),
-                group=getattr(self, "_text_overlay_group", None),
+                group=self._text_overlay_group,
             )
             self._flip()
             while True:
@@ -1909,7 +1916,7 @@ class PygletUI:
                     if symbol in (pgkey.LEFT, pgkey.RIGHT):
                         yes = symbol == pgkey.LEFT
                         break
-                if getattr(self, "_resize_redraw_pending", False):
+                if self._resize_redraw_pending:
                     self._resize_redraw_pending = False
                     break
                 time.sleep(1 / 30)
@@ -1921,10 +1928,7 @@ class PygletUI:
             if self._closed:
                 return None
 
-            if (
-                getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
-                in self._gamepad_pressed_buttons
-            ):
+            if self.gamepad_help_button in self._gamepad_pressed_buttons:
                 self.controls_menu()
                 return (0, 0, False)
 
@@ -1995,7 +1999,7 @@ class PygletUI:
             ("S: show the seed", False),
             ("Q / Esc: quit the stage", False),
         )
-        if getattr(self, "supports_horizontal_view", False):
+        if self.supports_horizontal_view:
             controls = controls[:1] + (
                 ("When the field does not fit: Shift + Left/Right to scroll without moving", False),
             ) + controls[1:]
@@ -2021,10 +2025,8 @@ class PygletUI:
             if self._next_key_event() is not None:
                 return
             if (
-                getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
-                is not None
-                and getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
-                in self._gamepad_pressed_buttons
+                self.gamepad_help_button is not None
+                and self.gamepad_help_button in self._gamepad_pressed_buttons
             ):
                 return
             time.sleep(1 / 30)
@@ -2040,7 +2042,7 @@ class PygletUI:
         repeat_index = KEY_REPEAT_CHOICES.index(self.key_repeat_interval) if self.key_repeat_interval in KEY_REPEAT_CHOICES else 0
         auto_repeat_stop_enabled = self.auto_repeat_stop_enabled
         effect_index = d.COMBAT_EFFECT_SECONDS_CHOICES.index(
-            getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
+            self.combat_effect_seconds
         )
         row = 0
         while True:
@@ -2199,8 +2201,8 @@ class PygletUI:
                 # Use the same navigation and value changes for the gamepad
                 # as for the keyboard. Gamepad button 0 applies; button 1
                 # cancels.
-                direction = self._controller_direction(getattr(self, "controller", None))
-                if direction != getattr(self, "gamepad_previous_direction", None):
+                direction = self._controller_direction(self.controller)
+                if direction != self.gamepad_previous_direction:
                     self.gamepad_previous_direction = direction
                     if direction == (0, -1):
                         row = (row - 1) % (5 if controller_connected else 4)
@@ -2230,13 +2232,13 @@ class PygletUI:
                         elif row == 4 and controller_connected:
                             self.gamepad_button_settings_menu()
                         break
-                if 0 in getattr(self, "_gamepad_pressed_buttons", ()):
+                if 0 in self._gamepad_pressed_buttons:
                     self.set_scale(UI_SCALE_CHOICES[current_index])
                     self.set_key_repeat_interval(KEY_REPEAT_CHOICES[repeat_index])
                     self.set_auto_repeat_stop_enabled(auto_repeat_stop_enabled)
                     self.set_combat_effect_seconds(d.COMBAT_EFFECT_SECONDS_CHOICES[effect_index])
                     return
-                if 1 in getattr(self, "_gamepad_pressed_buttons", ()):
+                if 1 in self._gamepad_pressed_buttons:
                     return
 
     @_menu_method
@@ -2335,7 +2337,7 @@ class PygletUI:
                     if symbol in (pgkey.ESCAPE, pgkey.Q):
                         return
 
-                pressed_buttons = getattr(self, "_gamepad_pressed_buttons", ())
+                pressed_buttons = self._gamepad_pressed_buttons
                 assign_button = next(
                     (button for button in GAMEPAD_BUTTONS if button >= 2 and button in pressed_buttons),
                     None,
@@ -2349,10 +2351,8 @@ class PygletUI:
                             preview_button = assign_button
                     break
 
-                direction = self._controller_direction(
-                    getattr(self, "controller", None)
-                )
-                if direction != getattr(self, "gamepad_previous_direction", None):
+                direction = self._controller_direction(self.controller)
+                if direction != self.gamepad_previous_direction:
                     self.gamepad_previous_direction = direction
                     if direction == (0, -1):
                         row = (row - 1) % len(rows)
@@ -2445,12 +2445,9 @@ class PygletUI:
             self._draw_text(
                 (8, base_y + MENU_ROW_SPACING * (stage_rows + 3) + 2),
                 tr("[h]elp: controls (gamepad button unassigned)")
-                if getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
-                is None
+                if self.gamepad_help_button is None
                 else tr("[h]elp / {button}: controls").format(
-                    button=_gamepad_button_label(
-                        getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
-                    )
+                    button=_gamepad_button_label(self.gamepad_help_button)
                 ),
                 (145, 150, 160),
             )
@@ -2464,11 +2461,11 @@ class PygletUI:
                 # SpriteUI recalculates its cell and camera dimensions in the
                 # resize callback. Rebuild this menu as soon as that callback
                 # has run, rather than waiting for a key press to redraw it.
-                if getattr(self, "_resize_redraw_pending", False):
+                if self._resize_redraw_pending:
                     self._resize_redraw_pending = False
                     break
 
-                if 0 in getattr(self, "_gamepad_pressed_buttons", ()):
+                if 0 in self._gamepad_pressed_buttons:
                     if current_index == 0:
                         return 0
                     if current_index == settings_index:
@@ -2476,10 +2473,7 @@ class PygletUI:
                         self._discard_queued_key(pgkey.ESCAPE)
                         break
                     return stage_numbers[current_index - 1]
-                if (
-                    getattr(self, "gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
-                    in getattr(self, "_gamepad_pressed_buttons", ())
-                ):
+                if self.gamepad_help_button in self._gamepad_pressed_buttons:
                     self.controls_menu()
                     break
 
@@ -2517,7 +2511,7 @@ class PygletUI:
                             return n
                     break
 
-                controller = getattr(self, "controller", None)
+                controller = self.controller
                 if controller:
                     direction = self._controller_direction(controller)
                     if direction != self.gamepad_previous_direction:

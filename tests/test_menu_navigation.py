@@ -21,6 +21,7 @@ def english_menu_labels(monkeypatch):
 
 def _menu_ui(monkeypatch, events):
     ui = PygletUI.__new__(PygletUI)
+    ui._initialize_state()
     ui._closed = False
     ui._menu_active = False
     ui._menu_font_resize_pending = False

@@ -593,7 +593,7 @@ class BlessedUI:
         self._render_last_stage()
 
     def draw_combat_effect(self, pos, won: bool) -> None:
-        seconds = getattr(self, "combat_effect_seconds", d.COMBAT_EFFECT_SECONDS)
+        seconds = self.combat_effect_seconds
         if seconds == 0:
             return
         positions = [pos] if len(pos) == 2 and all(

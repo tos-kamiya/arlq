@@ -47,6 +47,7 @@ def test_collapse_requires_explicit_continuation(monkeypatch, decision, remainin
 ])
 def test_gui_ration_keys(symbols, expected):
     ui = PygletUI.__new__(PygletUI)
+    ui._initialize_state()
     ui._closed = False
     ui._key_queue = []
     ui.field_pixel_width = 800
@@ -81,6 +82,7 @@ def test_sprite_status_uses_player_argument_and_dims_consumed_food(monkeypatch):
     from arlq.sprite_funcs import SpriteUI
     monkeypatch.setattr(PygletUI, 'draw_status_bar', lambda *a, **kw: None)
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui._hud_row_height = 20
     ui.window_width = 800
     ui.field_height = 30
@@ -150,5 +152,6 @@ def test_disabled_rations_hide_sprite_images(monkeypatch):
     monkeypatch.setattr(d, 'RATIONS_ENABLED', False)
     monkeypatch.setattr(PygletUI, 'draw_status_bar', lambda *a, **kw: None)
     ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
     ui._draw_ration_image = lambda *a: pytest.fail('Disabled ration image displayed')
     ui.draw_status_bar(0, d.Player(2, 2, 1, 100), 1, '', False)

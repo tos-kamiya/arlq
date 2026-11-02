@@ -25,6 +25,7 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
     parser = argparse.ArgumentParser(
         description="A Rogue-Like game.",
     )
+    parser.set_defaults(sprites=False)
     general = parser.add_argument_group("General options")
     gui = None if terminal_only else parser.add_argument_group("GUI options")
     terminal = parser.add_argument_group("Terminal options")
@@ -147,7 +148,7 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
     )
 
     args = parser.parse_args()
-    if getattr(args, 'sprites', False) and args.terminal:
+    if args.sprites and args.terminal:
         parser.error('--sprites cannot be combined with --terminal')
 
     if args.rewind_index is not None:
