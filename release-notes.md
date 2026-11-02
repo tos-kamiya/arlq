@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 6.2.0 - 2026-11-03
+
+- Spread the initial Stage 6 parties across fixed sections of the dungeon.
+- Darken sprite-mode floors toward the outer walls and refresh creature and
+  party-member sprites, including a spiral-funnel Loop, an almond-framed Ocular
+  eye, a longbow for the Marksman, and a Romanesco-like Caltrop Plant head.
+  Adjust member and Bison/Buffalo sizes and refine the Chimera's serpent tail.
+- Make each Loop Companion rewind destination the new anchor. Subsequent
+  rewinds cannot return to an earlier point, even when using a Loop Companion
+  on another floor; later rewind destinations advance the anchor.
+- Shorten the Loop Companion row in the English and Japanese READMEs and move
+  details about anchors, retained knowledge, and trail markers below the table.
+
 ## 6.1.6 - 2026-11-02
 
 - Offer to quit when F finds no reachable monsters, companions, elves, waiting
