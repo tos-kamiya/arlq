@@ -397,6 +397,33 @@ def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
     assert ui._horizontal_scroll_px == pytest.approx(30)
 
 
+@pytest.mark.parametrize('maximized_height', [1080, 2160])
+@pytest.mark.parametrize('menu_active', [False, True])
+def test_sprite_maximize_restore_accepts_window_manager_size(
+    sprite_ui, maximized_height, menu_active,
+):
+    ui = sprite_ui
+    ui.field_width, ui.field_height = d.FIELD_WIDTH, d.FIELD_HEIGHT
+    ui._select_font_size = lambda: None
+    ui._redraw_menu_text = lambda: None
+    ui._set_scaled_dimensions()
+    original_size = ui.window_width, ui.window_height
+    original_scale = ui.scale
+    ui._menu_active = menu_active
+    size_requests = []
+    ui.window = SimpleNamespace(set_size=lambda *size: size_requests.append(size))
+
+    ui._on_window_resize(3840, maximized_height)
+    assert (ui.window_width, ui.window_height) == (3840, maximized_height)
+    # Some window managers report changed dimensions separately.
+    ui._on_window_resize(original_size[0], maximized_height)
+    ui._on_window_resize(*original_size)
+
+    assert (ui.window_width, ui.window_height) == original_size
+    assert ui.scale == pytest.approx(original_scale)
+    assert size_requests == []
+
+
 def test_sprite_default_window_is_16_9_and_field_overflows():
     ui = SpriteUI.__new__(SpriteUI)
     ui.field_width, ui.field_height = d.FIELD_WIDTH, d.FIELD_HEIGHT

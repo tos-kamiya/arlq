@@ -1490,7 +1490,6 @@ class SpriteUI(PygletUI):
         old_scroll_cells = self._horizontal_scroll_px / old_cell_width
         follow_player = self._camera_follow_player
         last_player_pos = self._last_camera_player_pos
-        width_changed = width != self.window_width
         height_changed = height != self.window_height
         hud_row_height = self._row_height_for_width(width)
         if height_changed:
@@ -1503,18 +1502,6 @@ class SpriteUI(PygletUI):
             self._camera_follow_player = follow_player
             self._last_camera_player_pos = last_player_pos
             self._horizontal_scroll_px = old_scroll_cells * self.cell_size_x
-            if self.window_height != height:
-                self.window.set_size(width, self.window_height)
-        elif width_changed:
-            self._hud_row_height = hud_row_height
-            resized_height = round(
-                self.field_height * self.cell_size_y + 2 * self._hud_row_height
-            )
-            self._set_resized_dimensions(
-                width, resized_height, hud_row_height, field_scale=self.scale
-            )
-            if resized_height != height:
-                self.window.set_size(width, resized_height)
         else:
             self.window_width = width
             self.window_height = height
@@ -1537,14 +1524,11 @@ class SpriteUI(PygletUI):
         if self._menu_active:
             self._redraw_menu_text()
 
-    def _set_resized_dimensions(self, width, height, hud_row_height, field_scale=None):
+    def _set_resized_dimensions(self, width, height, hud_row_height):
         field_pixel_height = height - 2 * hud_row_height
-        if field_scale is not None:
-            self.scale = self._valid_scale(field_scale)
-        else:
-            self.scale = self._valid_scale(
-                field_pixel_height / (self.field_height * CELL_SIZE_Y)
-            )
+        self.scale = self._valid_scale(
+            field_pixel_height / (self.field_height * CELL_SIZE_Y)
+        )
         self.cell_size_x = SPRITE_CELL_SIZE_X * self.scale
         self.cell_size_y = self.scale * CELL_SIZE_Y
         self.font_size = max(1, round(self.cell_size_y * FONT_HEIGHT_RATIO))
@@ -1555,9 +1539,9 @@ class SpriteUI(PygletUI):
         self._map_pixel_width = self.field_width * self.cell_size_x
         self.window_width = width
         self._hud_row_height = hud_row_height
-        self.window_height = round(
-            self.field_height * self.cell_size_y + 2 * self._hud_row_height
-        )
+        # Keep the WM's actual size even when the drawing scale is clamped.
+        # Requesting another size here can overwrite its restore geometry.
+        self.window_height = height
 
     def _intersects_window(self, left, width):
         # The translucent sidebar still reveals the scene behind it.
