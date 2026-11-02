@@ -1535,7 +1535,6 @@ class SpriteUI(PygletUI):
         self.strength_column_padding = max(
             1, round(STRENGTH_COLUMN_PADDING * self.scale)
         )
-        self._update_strength_column_width()
         self._map_pixel_width = self.field_width * self.cell_size_x
         self.window_width = width
         self._hud_row_height = hud_row_height
