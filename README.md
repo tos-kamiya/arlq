@@ -185,10 +185,12 @@ In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 se
 
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
-| **l** Loop Companion | Appears in Stages 3–6. Rewinds up to 80 turns, or to the start if fewer turns have elapsed; the destination becomes the new anchor, and subsequent rewinds cannot go earlier than that anchor, even when using a Loop Companion on another floor. Explored maps, monster identities, and learned elf and member locations remain known. Map knowledge is carried over as it stands immediately before the rewind, including any areas erased by a Vortex. The path from the discarded future appears as cyan dots for 10 turns after the rewind. |
+| **l** Loop Companion | Appears from Stage 3 onward. Rewinds up to 80 turns on contact, or to the start if fewer turns have elapsed. |
 | **n** Nomicon  | Reveals the type of every active monster and elf within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |
+
+Note on the Loop Companion: The destination becomes the new anchor, and subsequent rewinds cannot go earlier than that anchor, even when using a Loop Companion on another floor. Explored maps, monster identities, and learned elf and member locations remain known. Map knowledge is carried over as it stands immediately before the rewind, including any areas erased by a Vortex. The path from the discarded future appears as cyan dots for 10 turns after the rewind.
 
 ## Stage List
 
