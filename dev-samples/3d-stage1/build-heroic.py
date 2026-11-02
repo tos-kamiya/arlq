@@ -1433,7 +1433,11 @@ def ocular(x, y):
                          strength=0.9)
     limbus = material('Ocular dark limbal ring', (0.22, 0.06, 0.01), roughness=0.5)
     cornea = material('Ocular clear cornea', (1.0, 1.0, 1.0), 1.0, 0.02, coat=1.0)
-    green = companion_green('Ocular deep green rings', 0.5, trim=True)
+    # Halfway between the companions' deep trim green (too dim beside the
+    # others) and their bright resin green (too bright for these lines).
+    green = material('Ocular mid green rings', (0.115, 0.55, 0.25), 0.45, 0.15,
+                     emission=(0.11, 0.625, 0.25), strength=0.55, rim=(0.45, 1.0, 0.6),
+                     rim_strength=1.0, coat=0.8)
     pupil = material('Ocular matte pupil', (0.0, 0.0, 0.0), roughness=0.9)
     center = Vector((x, y, 0.62))
     # The eye looks straight at the camera, i.e. at the player.
@@ -1532,11 +1536,11 @@ def ocular(x, y):
               @ Matrix.Translation(-center))
     for obj in set(bpy.data.objects) - before:
         obj.matrix_world = shrink @ obj.matrix_world
-    # The deep green lines: the equator ring of its gyroscope-like first
-    # form, now following the outline on a flat face floating a little in
-    # front of the ball (on the ball itself, the line ran round its sides
-    # and looked thinner or doubled there), and one of its fins, now
-    # flicking up and out from the outer corner like a winged eyeliner.
+    # The green lines: the equator ring of its gyroscope-like first form,
+    # now following the outline on a flat face floating a little in front
+    # of the ball (on the ball itself, the line ran round its sides and
+    # looked thinner or doubled there), and one of its fins, now flicking
+    # up and out from the outer corner like a winged eyeliner.
     # Far enough forward along the gaze to clear the ball wherever the line
     # passes over it (the iris and cornea lie well inside the outline).
     ring_ahead = 0.24
