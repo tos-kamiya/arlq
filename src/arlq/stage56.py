@@ -389,11 +389,10 @@ def initialize_monster_barriers(current: Floor) -> None:
 def place_monster_barriers(
     current: Floor,
     entity: d.Monster,
-    stage_num: int,
     player_position: d.Point | None = None,
 ) -> None:
     """Place the barrier ring for one newly placed monster."""
-    if not entity.active or not _barrier_offsets(entity, stage_num):
+    if not entity.active or not _barrier_offsets(entity):
         return
     occupied = {(other.x, other.y) for other in current.entities}
     if player_position is not None:
@@ -407,7 +406,7 @@ def place_monster_barriers(
         *current.scholar_down_stairs,
         *current.collapse_landings,
     }
-    for point in barrier_cells(current, entity, stage_num):
+    for point in barrier_cells(current, entity):
         x, y = point
         if (
             point in occupied
@@ -424,11 +423,10 @@ def update_moved_monster_barriers(
     current: Floor,
     entity: d.Monster,
     old_position: d.Point,
-    stage_num: int,
     player_position: d.Point | None = None,
 ) -> None:
     """Move one monster's barrier ring, retaining overlaps and permanent cells."""
-    offsets = _barrier_offsets(entity, stage_num)
+    offsets = _barrier_offsets(entity)
     old_cells = {
         (old_position[0] + dx, old_position[1] + dy)
         for dx, dy in offsets
@@ -439,27 +437,25 @@ def update_moved_monster_barriers(
         point
         for other in current.entities
         if other is not entity and isinstance(other, d.Monster) and other.active
-        for point in barrier_cells(current, other, stage_num)
+        for point in barrier_cells(current, other)
     }
     clear_monster_barriers(current, old_cells, other_cells)
-    place_monster_barriers(current, entity, stage_num, player_position)
+    place_monster_barriers(current, entity, player_position)
 
 
-def _barrier_offsets(entity: d.Monster, stage_num: int = 5) -> tuple[d.Point, ...]:
+def _barrier_offsets(entity: d.Monster) -> tuple[d.Point, ...]:
     if entity.tribe.char in {"w", "W"}:
         return tuple((dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy)
-    if stage_num in (5, 6) and entity.tribe.char == "f" and entity.empowered == 2:
+    if entity.tribe.char == "f" and entity.empowered == 2:
         return ((0, -1), (1, 0), (0, 1), (-1, 0))
     return ()
 
 
-def barrier_cells(
-    current: Floor, entity: d.Monster, stage_num: int = 5
-) -> tuple[d.Point, ...]:
+def barrier_cells(current: Floor, entity: d.Monster) -> tuple[d.Point, ...]:
     """Monster barrier footprint clipped to the floor."""
     return tuple(
         (entity.x + dx, entity.y + dy)
-        for dx, dy in _barrier_offsets(entity, stage_num)
+        for dx, dy in _barrier_offsets(entity)
         if 0 <= entity.y + dy < len(current.field)
         and 0 <= entity.x + dx < len(current.field[entity.y + dy])
     )

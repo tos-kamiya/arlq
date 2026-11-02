@@ -1216,8 +1216,8 @@ def test_dread_wyrm_barriers_become_persistent_when_defeated():
     stage56.normalize_parties(current)
     stage56.initialize_monster_barriers(current)
 
-    dread_cells = set(stage56.barrier_cells(current, dread_wyrm, 6))
-    wyrm_cells = set(stage56.barrier_cells(current, wyrm, 6))
+    dread_cells = set(stage56.barrier_cells(current, dread_wyrm))
+    wyrm_cells = set(stage56.barrier_cells(current, wyrm))
     assert dread_cells.isdisjoint(current.persistent_barriers)
     assert all(current.field[y][x] == d.CHAR_BARRIER for x, y in dread_cells)
     assert wyrm_cells.isdisjoint(current.persistent_barriers)
@@ -1269,12 +1269,32 @@ def test_tutorial_adjacency_exceptions_follow_monster_markers(monkeypatch):
     assert (43, 1) not in floors[0].adjacent_monster_exemptions
 
 
+@pytest.mark.parametrize("stage_num", range(1, 7))
+def test_empowered_f_barriers_depend_on_rank_and_clear_on_defeat(stage_num):
+    current, player = state()
+    ordinary = monster(3, 3, "f")
+    empowered = monster(3, 3, "f", 2)
+    assert stage56.barrier_cells(current, ordinary) == ()
+    footprint = {(3, 2), (4, 3), (3, 4), (2, 3)}
+    assert set(stage56.barrier_cells(current, empowered)) == footprint
+    current.entities = [empowered]
+    stage56.place_monster_barriers(current, empowered)
+    assert all(current.field[y][x] == d.CHAR_BARRIER for x, y in footprint)
+    current.entities.remove(empowered)
+
+    engine._defeat_monster(
+        empowered, current, player, [0], [(1, 1)], Counter(), stage_num=stage_num,
+    )
+
+    assert all(current.field[y][x] == d.CHAR_FLOOR for x, y in footprint)
+
+
 def test_defeating_wyrm_preserves_overlapping_and_persistent_barriers():
     current, player = state()
     defeated = monster(3, 3, "w")
     survivor = monster(5, 3, "w")
     current.entities = [survivor]
-    footprint = set(stage56.barrier_cells(current, defeated, 6))
+    footprint = set(stage56.barrier_cells(current, defeated))
     for x, y in footprint:
         current.field[y][x] = d.CHAR_BARRIER
     current.persistent_barriers.add((2, 2))

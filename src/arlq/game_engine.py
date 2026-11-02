@@ -449,7 +449,7 @@ def _vortex_rearrange(
         point
         for entity in movable
         if isinstance(entity, d.Monster)
-        for point in stage56.barrier_cells(current, entity, stage_num)
+        for point in stage56.barrier_cells(current, entity)
     }
     lower = (
         floors[floor_index + 1]
@@ -595,7 +595,7 @@ def _vortex_rearrange(
     for current_entity in current.entities:
         if (
             isinstance(current_entity, d.Monster)
-            and stage56._barrier_offsets(current_entity, stage_num)
+            and stage56._barrier_offsets(current_entity)
         ):
             protected = current.collapse_landings | scholar_stairs | set().union(
                 *(
@@ -604,7 +604,7 @@ def _vortex_rearrange(
                     if isinstance(fixed, d.Collapse)
                 )
             )
-            for point in stage56.barrier_cells(current, current_entity, stage_num):
+            for point in stage56.barrier_cells(current, current_entity):
                 x, y = point
                 if (
                     point in affected_points
@@ -619,7 +619,7 @@ def _vortex_rearrange(
         point
         for entity in current.entities
         if isinstance(entity, d.Monster)
-        for point in stage56.barrier_cells(current, entity, stage_num)
+        for point in stage56.barrier_cells(current, entity)
     }
     stage56.clear_monster_barriers(
         current, moved_monster_barrier_cells,
@@ -647,21 +647,19 @@ def _defeat_monster(
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
     ch = entity.tribe.char
-    if ch == "w" or (
-        stage_num in (5, 6) and ch == "f" and entity.empowered == 2
-    ):
+    if ch == "w" or (ch == "f" and entity.empowered == 2):
         other_monster_barrier_cells = {
             point
             for other in current.entities
             if other is not entity and isinstance(other, d.Monster)
-            for point in stage56.barrier_cells(current, other, stage_num)
+            for point in stage56.barrier_cells(current, other)
         }
         stage56.clear_monster_barriers(
-            current, set(stage56.barrier_cells(current, entity, stage_num)),
+            current, set(stage56.barrier_cells(current, entity)),
             other_monster_barrier_cells,
         )
     elif ch == "W":
-        for x, y in stage56.barrier_cells(current, entity, stage_num):
+        for x, y in stage56.barrier_cells(current, entity):
             if current.field[y][x] == d.CHAR_BARRIER:
                 current.persistent_barriers.add((x, y))
     if ch == "k":
@@ -1209,7 +1207,7 @@ def _resolve_party_contact(
         id(monster): (monster, (monster.x, monster.y))
         for monster in current.entities
         if isinstance(monster, d.Monster)
-        and stage56._barrier_offsets(monster, stage_num)
+        and stage56._barrier_offsets(monster)
     }
     stage56.normalize_parties(
         current,
@@ -1223,7 +1221,7 @@ def _resolve_party_contact(
             and previous_source[1] != (monster.x, monster.y)
         ):
             stage56.update_moved_monster_barriers(
-                current, monster, previous_source[1], stage_num,
+                current, monster, previous_source[1],
                 (player.x, player.y),
             )
     player.last_contact_monster = contact_key
@@ -1520,7 +1518,7 @@ def _process_respawn_queue(
                 id(monster): (monster, (monster.x, monster.y))
                 for monster in floors[spawn_floor].entities
                 if isinstance(monster, d.Monster)
-                and stage56._barrier_offsets(monster, stage_num)
+                and stage56._barrier_offsets(monster)
             }
         avoid = {(player.x, player.y)} if spawn_floor == floor[0] else set()
         avoid.update(floors[spawn_floor].collapse_landings)
@@ -1567,7 +1565,7 @@ def _process_respawn_queue(
         if (
             stage_num in (5, 6)
             and isinstance(respawned, d.Monster)
-            and stage56._barrier_offsets(respawned, stage_num)
+            and stage56._barrier_offsets(respawned)
         ):
             respawned_barrier_sources.setdefault(spawn_floor, []).append(respawned)
         if trace is not None:
@@ -1605,13 +1603,13 @@ def _process_respawn_queue(
                     and previous_source[1] != (monster.x, monster.y)
                 ):
                     stage56.update_moved_monster_barriers(
-                        current, monster, previous_source[1], stage_num,
+                        current, monster, previous_source[1],
                         player_position,
                     )
             for entity in respawned_barrier_sources.get(changed_floor, ()):
                 if entity in current.entities:
                     stage56.place_monster_barriers(
-                        current, entity, stage_num, player_position
+                        current, entity, player_position
                     )
 
 
