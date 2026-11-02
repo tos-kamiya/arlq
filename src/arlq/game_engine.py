@@ -84,7 +84,6 @@ def reachable_known_cells(
     visible: List[List[int]],
     entities: List[d.Entity],
     player: d.Player,
-    stage_num: int,
     phase_walls: Optional[Set[d.Point]] = None,
     terminal_targets: Optional[Set[d.Point]] = None,
     include_unexplored: bool = False,
@@ -212,7 +211,6 @@ def _visible_auto_stop_entities(
                 entity,
                 reveal_disguises=True,
                 known_types=known_types,
-                stage_num=stage_num,
             )
         elif current.seen[y][x]:
             glyphs = ui_display.revealed_entity_glyphs(
@@ -772,17 +770,16 @@ def _resolve_passive_or_repeat_contact(
     player: d.Player,
     contact_key: Tuple[int, int, int],
     trace: Optional[TraceRecorder],
-    stage_num: int,
 ) -> Optional[_ContactResult]:
-    """Handle passive Stage 2 H and elves the player has already met."""
+    """Handle passive monsters and elves the player has already met."""
     ch = entity.tribe.char
-    if ch == "H" and stage_num == 2:
+    if entity.tribe.passive:
         entity.revealed = True
         player.known_monsters.add(d.monster_type_key(entity))
         player.last_contact_monster = contact_key
         if trace is not None:
             trace.record_contact(
-                {"type": "monster", "id": "H", "outcome": "passive"}
+                {"type": "monster", "id": ch, "outcome": "passive"}
             )
         return _ContactResult(
             trp("-- It looks powerful, but doesn't seem to intend to attack you.", 3)
@@ -936,7 +933,7 @@ def _resolve_monster_contact(
     old_lp_max = d.player_lp_max(player)
     event_message = None
     combat_won = False
-    if not entity.tribe.is_elf:
+    if not entity.tribe.is_elf and not entity.tribe.passive:
         player.last_encounter_party = d.monster_variant_label(ch, entity.empowered)
     contact_key = (floor[0], entity.x, entity.y)
     if player.item == d.ITEM_SWORD_CURSED:
@@ -944,7 +941,7 @@ def _resolve_monster_contact(
     old_lp = player.lp
 
     early_contact = _resolve_passive_or_repeat_contact(
-        hit, entity, current, player, contact_key, trace, stage_num
+        hit, entity, current, player, contact_key, trace
     )
     if early_contact is not None:
         return early_contact
@@ -1823,6 +1820,7 @@ def _process_multi_floor_turn(
         entity = current.entities[hit]
         if (combat_effect is not None and isinstance(entity, d.Monster)
                 and not entity.tribe.is_elf
+                and not entity.tribe.passive
                 and (entity.tribe.char != "M" or entity.active)):
             enemies = (stage56.monster_party(current, entity)
                        if stage_num in (5, 6) else [entity])
@@ -2083,7 +2081,6 @@ def run_game(
                 cur,
                 current.entities,
                 player,
-                stage_num,
                 {
                     (x, y)
                     for y, row in enumerate(current.field)
@@ -2183,7 +2180,7 @@ def run_game(
                     )):
                         targets.add((x, y))
             reachable = reachable_known_cells(
-                active.field, active.seen, cur, active.entities, player, stage_num,
+                active.field, active.seen, cur, active.entities, player,
                 terminal_targets=targets,
                 include_unexplored=True,
             )

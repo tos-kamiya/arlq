@@ -350,7 +350,6 @@ class BlessedUI:
                     entity,
                     reveal_disguises=reveal_disguises,
                     known_types=known_types,
-                    stage_num=stage_num,
                 ):
                     paint(glyph)
 

@@ -329,7 +329,6 @@ def test_reachable_cells_do_not_estimate_marksman_damage():
         visible,
         [player, marksman],
         player,
-        stage_num=4,
     )
 
     assert (6, 2) in reachable
@@ -1397,14 +1396,15 @@ def test_legacy_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(
     assert (player.x, player.y) == (10, 10)
 
 
-def test_stage2_high_elf_is_passive_red_monster_decoy(monkeypatch):
+@pytest.mark.parametrize("stage_num", [1, 2, 3, 4])
+def test_stage2_high_elf_is_passive_red_monster_decoy(monkeypatch, stage_num):
     """Stage 2's High Elf is identified on contact and never fights or respawns."""
     player = d.Player(2, 2, 1, 90)
-    high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
+    high_elf = d.Monster(3, 2, d.HIGH_ELF_DECOY)
     field = blank_field()
     entities = [player, high_elf]
     hidden_glyph = d.revealed_entity_glyphs(
-        high_elf, set(), False, 1, None, stage_num=2
+        high_elf, set(), False, 1, None, stage_num=stage_num
     )
     assert hidden_glyph[0].char == "?"
     monkeypatch.setattr(
@@ -1413,7 +1413,7 @@ def test_stage2_high_elf_is_passive_red_monster_decoy(monkeypatch):
     )
 
     result = update_entities(
-        KEYS["R"], field, player, entities, respawn_point=(2, 2), stage_num=2
+        KEYS["R"], field, player, entities, respawn_point=(2, 2), stage_num=stage_num
     )
     assert result.message == (
         8,
@@ -1421,7 +1421,7 @@ def test_stage2_high_elf_is_passive_red_monster_decoy(monkeypatch):
     )
     assert high_elf.revealed
     revealed_glyph = d.revealed_entity_glyphs(
-        high_elf, set(), False, 1, None, stage_num=2
+        high_elf, set(), False, 1, None, stage_num=stage_num
     )
     assert (revealed_glyph[0].char, revealed_glyph[0].tone) == ("H", "red")
     assert (player.x, player.y) == (3, 2)
@@ -1430,11 +1430,35 @@ def test_stage2_high_elf_is_passive_red_monster_decoy(monkeypatch):
     assert "H" in player.known_monsters
     assert result.events.contact == ContactEvent("monster", "H", outcome="passive")
 
-    update_entities(KEYS["L"], field, player, entities, stage_num=2)
-    result = update_entities(KEYS["R"], field, player, entities, stage_num=2)
+    update_entities(KEYS["L"], field, player, entities, stage_num=stage_num)
+    result = update_entities(KEYS["R"], field, player, entities, stage_num=stage_num)
     assert result.events.contact == ContactEvent("monster", "H", outcome="passive")
     assert (player.x, player.y) == (3, 2)
     assert high_elf in entities
+
+
+def test_high_elf_decoy_preview_uses_identity_and_preserves_red_tone():
+    decoy = d.Monster(3, 2, d.HIGH_ELF_DECOY)
+    elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
+    assert not decoy.tribe.is_elf
+    assert elf.tribe.is_elf
+    assert display.preview_entity_glyphs(decoy)[0].tone == "default"
+    assert display.preview_entity_glyphs(decoy, known_types={"H"})[0].tone == "red"
+    decoy.revealed = True
+    glyph = display.preview_entity_glyphs(decoy)[0]
+    assert (glyph.char, glyph.tone) == ("H", "red")
+    elf.revealed = True
+    assert display.preview_entity_glyphs(elf, known_types={"H"})[0].tone == "default"
+
+
+def test_stage2_spawns_a_monster_decoy_instead_of_an_elf():
+    floors, _ = stage_world_module.build_single_floor(GameConfig(), 2)
+    high_elf = next(
+        entity for entity in floors[0].entities
+        if isinstance(entity, d.Monster) and entity.tribe.char == "H"
+    )
+    assert high_elf.tribe is d.HIGH_ELF_DECOY
+    assert not isinstance(high_elf, d.Elf)
 
 
 def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypatch):
@@ -2712,7 +2736,7 @@ def test_reachable_encounter_is_terminal():
     seen = [[1] * 5 for _ in field]
     enemy = d.Monster(2, 1, d.CHAR_TO_MONSTER_TRIBE['a'])
     reachable = game_engine_module.reachable_known_cells(
-        field, seen, seen, [enemy], player, 1, terminal_targets={(2, 1), (3, 1)},
+        field, seen, seen, [enemy], player, terminal_targets={(2, 1), (3, 1)},
     )
     assert (2, 1) in reachable
     assert (3, 1) not in reachable
@@ -2729,10 +2753,10 @@ def test_exit_check_searches_unexplored_cells_without_revealing_them(explorer):
     enemy = d.Monster(5, 1, d.CHAR_TO_MONSTER_TRIBE['a'])
     targets = {(5, 1)}
     preview = game_engine_module.reachable_known_cells(
-        field, seen, seen, [enemy], player, 6, terminal_targets=targets,
+        field, seen, seen, [enemy], player, terminal_targets=targets,
     )
     checked = game_engine_module.reachable_known_cells(
-        field, seen, seen, [enemy], player, 6, terminal_targets=targets,
+        field, seen, seen, [enemy], player, terminal_targets=targets,
         include_unexplored=True,
     )
     assert preview == {(1, 1)}

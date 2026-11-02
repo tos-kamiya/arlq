@@ -773,12 +773,12 @@ def update_entities(
                 player.known_monsters.add(d.monster_type_key(m))
             contact_key = (0, m.x, m.y)
 
-            # Stage 2's H is a passive decoy: reveal it, but never fight,
+            # Passive decoys are revealed, but never fight,
             # remove, or respawn from it.
-            if m.tribe.char == "H" and stage_num == 2:
+            if m.tribe.passive:
                 m.revealed = True
                 player.known_monsters.add(d.monster_type_key(m))
-                events.contact = ContactEvent("monster", "H", outcome="passive")
+                events.contact = ContactEvent("monster", m.tribe.char, outcome="passive")
                 message = (
                     MESSAGE_TICKS,
                     trp(

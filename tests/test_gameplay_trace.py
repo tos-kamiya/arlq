@@ -612,13 +612,14 @@ def test_current_stage1_turn_records_boss_defeat_and_treasure_collection():
     assert player.treasure_collected
 
 
-def test_current_stage2_high_elf_is_passive_and_traced():
+@pytest.mark.parametrize("stage_num", [1, 2, 3, 4])
+def test_current_stage2_high_elf_is_passive_and_traced(stage_num):
     player = d.Player(2, 2, 1, 90)
-    high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
+    high_elf = d.Monster(3, 2, d.HIGH_ELF_DECOY)
     floors = [one_floor([high_elf])]
     trace = TraceRecorder(params={})
 
-    turn = process_engine_turn(trace, "R", floors, player, stage_num=2)
+    turn = process_engine_turn(trace, "R", floors, player, stage_num=stage_num)
 
     assert turn["contact"] == {"type": "monster", "id": "H", "outcome": "passive"}
     assert player.lp == 90
@@ -626,6 +627,25 @@ def test_current_stage2_high_elf_is_passive_and_traced():
     assert high_elf in floors[0].entities
     assert high_elf.revealed
     assert "H" in player.known_monsters
+
+
+def test_high_elf_decoy_contact_does_not_trigger_combat_effect():
+    player = d.Player(2, 2, 1, 90)
+    player.last_encounter_party = "a"
+    high_elf = d.Monster(3, 2, d.HIGH_ELF_DECOY)
+    floors = [one_floor([high_elf])]
+
+    def unexpected_combat(*_args):
+        pytest.fail("passive decoy must not trigger a combat effect")
+
+    game_engine_module._process_multi_floor_turn(
+        KEYS["R"], floors, player, [0], [(2, 2)], Counter(), 1,
+        stage_num=2, combat_effect=unexpected_combat,
+    )
+
+    assert high_elf in floors[0].entities
+    assert player.last_encounter_party == "a"
+    assert (player.x, player.y, player.lp) == (3, 2, 90)
 
 
 def test_current_stage1_turn_records_respawn_created_by_the_same_turn(monkeypatch):

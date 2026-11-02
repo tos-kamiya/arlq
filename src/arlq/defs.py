@@ -267,6 +267,7 @@ class MonsterTribe(Tribe):
         feed: Feed value (game-specific parameter).
         item: Item that can be dropped.
         effect: Additional effect (exclusive with companion).
+        passive: Reveal on contact without combat, removal, or respawn.
     """
 
     def __init__(
@@ -280,6 +281,7 @@ class MonsterTribe(Tribe):
         is_elf: bool = False,
         respawn_on_random_floor: bool = False,
         event_message_importance: int = 5,
+        passive: bool = False,
     ):
         super().__init__(char, event_message, event_message_importance)
         self.level: int = level
@@ -287,6 +289,7 @@ class MonsterTribe(Tribe):
         self.item: Optional[str] = item
         self.effect: Optional[str] = effect
         self.is_elf: bool = is_elf
+        self.passive: bool = passive
         self.respawn_on_random_floor: bool = respawn_on_random_floor
 
 
@@ -705,6 +708,7 @@ SPAWN_CONFIGS_ST1 = [
 
 # Stage 2 spawn configurations.
 STAGE2_BOSS_BARRIER_COUNT: int = 5
+HIGH_ELF_DECOY = MonsterTribe("H", level=0, feed=0, passive=True)
 SPAWN_CONFIGS_ST2 = [
     _SC(CHAR_TO_TRIBE["a"], 20),
     _SC(CHAR_TO_TRIBE["A"], 3),
@@ -717,7 +721,7 @@ SPAWN_CONFIGS_ST2 = [
     _SC(CHAR_TO_TRIBE[CHAR_FIRE_DRAKE], 1),
     _SC(CHAR_TO_TRIBE["e"], 1),
     _SC(CHAR_TO_TRIBE["g"], 1),
-    _SC(CHAR_TO_TRIBE["H"], 1),
+    _SC(HIGH_ELF_DECOY, 1),
     _SC(CHAR_TO_TRIBE["X"], 1),
     _SC(CHAR_TO_TRIBE["n"], 0.7),
     _SC(CHAR_TO_TRIBE["o"], 0.7),

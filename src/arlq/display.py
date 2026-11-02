@@ -253,7 +253,6 @@ def preview_entity_glyphs(
     entity: d.Entity,
     reveal_disguises: bool = False,
     known_types: Optional[Set[str]] = None,
-    stage_num: int = 0,
 ) -> List[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
     known_types = known_types or set()
@@ -284,11 +283,8 @@ def preview_entity_glyphs(
         char = d.CHAR_TREASURE
     if char is None:
         return []
-    stage2_high_elf = (
-        isinstance(entity, d.Monster) and entity.tribe.char == "H" and stage_num == 2
-    )
     known = False
-    if isinstance(entity, d.Monster) and stage2_high_elf:
+    if isinstance(entity, d.Monster) and entity.tribe.passive:
         known = entity.revealed or d.monster_type_key(entity) in known_types
     tone = "red" if known else "default"
     glyphs = [
@@ -364,8 +360,7 @@ def revealed_entity_glyphs(
         char = entity.tribe.char
         if not entity.active:
             return []
-        stage2_high_elf = char == "H" and stage_num == 2
-        if stage2_high_elf:
+        if entity.tribe.passive:
             known = entity.revealed or d.monster_type_key(entity) in known_types
         elif entity.tribe.is_elf:
             known = entity.revealed
@@ -378,7 +373,7 @@ def revealed_entity_glyphs(
         if char != "M" and not known:
             if show_entities:
                 return []
-            if entity.tribe.is_elf and not stage2_high_elf:
+            if entity.tribe.is_elf:
                 return [
                     FieldGlyph(
                         entity.x,
@@ -389,9 +384,9 @@ def revealed_entity_glyphs(
                     )
                 ]
             return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
-        if entity.tribe.is_elf and not stage2_high_elf:
+        if entity.tribe.is_elf:
             tone = "default"
-        elif stage2_high_elf:
+        elif entity.tribe.passive:
             tone = "red"
         elif stage_num in (5, 6) and party_tones is not None and entity in party_tones:
             tone = party_tones[entity]
@@ -411,7 +406,7 @@ def revealed_entity_glyphs(
                 tone = "blue" if party_strength <= player_attack else "red"
         dim = (
             False
-            if entity.tribe.is_elf
+            if entity.tribe.is_elf or entity.tribe.passive
             else (entity.met if char == "M" else bool(dim_types and char in dim_types))
         )
         glyphs = [
