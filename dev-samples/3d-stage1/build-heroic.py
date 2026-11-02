@@ -3537,19 +3537,22 @@ def pegasus(x, y):
                 add_feather(p, q, 106 - 3 * k, length, width, lift + 0.003 * k)
 
 def caltrop_plant(x, y):
-    """Caltrop plant: a dandelion-like rosette and stem carrying a large
-    round head, with spikes jutting from it here and there.
+    """Caltrop plant: a dandelion-like rosette and stem carrying a tall
+    Romanesco-like conical head covered by rounded buds in the
+    sunflower-seed (golden angle) spiral, each tipped with a short thorn.
 
-    The head and its spikes are close to the brick red the GUI fills
-    scattered caltrop (x) cells with; the leaves and stem are a reddish olive.
+    The head and its thorns are close to the brick red the GUI fills
+    scattered caltrop (x) cells with, matte with a fine grain, and the head
+    and buds are melted into one smooth metaball surface so it reads as a
+    plant rather than plastic. The leaves and stem are a reddish olive.
     """
     leaf = material('Caltrop plant olive-red leaves', (0.21, 0.22, 0.05), 0.3, 0.3,
                     rim=(0.75, 0.9, 0.4), rim_strength=1.0, coat=0.4)
     stem = material('Caltrop plant olive-red stem', (0.25, 0.23, 0.06), 0.25, 0.3,
                     rim=(0.8, 0.9, 0.45), rim_strength=0.8)
-    head = material('Caltrop plant bright brick red', (0.75, 0.18, 0.13), 0.1, 0.35,
-                    rim=(1.0, 0.7, 0.6), rim_strength=1.2, coat=0.5)
-    iron = head
+    head = textured(material('Caltrop plant matte brick red', (0.78, 0.19, 0.13), 0.1, 0.6,
+                             rim=(0.95, 0.42, 0.3), rim_strength=0.6),
+                    60, 0.12)
     # A rosette of serrated dandelion leaves on the floor. Uneven angles,
     # lengths, lift and roll keep it from reading as a symmetric badge.
     angles = (0.2, 1.02, 1.98, 2.82, 3.62, 4.58, 5.40)
@@ -3587,21 +3590,57 @@ def caltrop_plant(x, y):
         base = centre + Vector((0.10 * math.cos(a), 0.10 * math.sin(a), -0.26))
         cone('Caltrop plant sepal', base - Vector((0.06 * math.cos(a), 0.06 * math.sin(a), 0.06)),
              base + Vector((0.04 * math.cos(a), 0.04 * math.sin(a), 0.06)), 0.05, 0, leaf, 5, False)
-    radius = 0.32
-    sphere('Caltrop plant head', tuple(centre), (radius, radius, radius), head, 48)
-    # Iron spikes here and there: spread evenly, then every other one kept
-    # with varied lengths so the head looks irregular rather than a mace.
-    count = 22
-    for k in range(count):
-        z = 1 - 2 * (k + 0.5) / count
-        r = math.sqrt(1 - z * z)
-        a = k * math.pi * (3 - math.sqrt(5))
-        out = Vector((r * math.cos(a), r * math.sin(a), z))
-        if k % 2 or out.z < -0.6:
-            continue
-        length = (0.20, 0.28, 0.24)[k % 3]
-        cone('Caltrop spike', centre + out * (radius - 0.03), centre + out * (radius + length),
-             0.065, 0, iron, 6, False)
+    # A tall rounded cone for the head, apex up, given as (height, radius)
+    # from the apex down to the bottom where the sepals hold it.
+    profile = [(0.52, 0.0), (0.38, 0.08), (0.22, 0.16), (0.06, 0.23), (-0.08, 0.27),
+               (-0.18, 0.23), (-0.25, 0.12), (-0.27, 0.0)]
+    # Like a Romanesco, the head is covered by conical buds sitting on the
+    # seed positions of a sunflower spiral: the n-th at n golden angles
+    # around and down the cone from the apex, crowding together near the
+    # narrow top. The buds grow with their
+    # distance from the apex, so the smallest sit at the top and together
+    # they make the cone; their sharp tips are the thorns.
+    steps = [(Vector((r0, z0)) - Vector((r1, z1))).length
+             for (z0, r0), (z1, r1) in zip(profile, profile[1:])]
+    count, reach = 21, sum(steps[:4]) + 0.3 * steps[4]
+    golden = math.pi * (3 - math.sqrt(5))
+
+    def on_head(s):
+        k = 0
+        while k < len(steps) - 1 and s > steps[k]:
+            s -= steps[k]
+            k += 1
+        (z0, r0), (z1, r1) = profile[k], profile[k + 1]
+        f = s / steps[k]
+        return (r0 + (r1 - r0) * f, z0 + (z1 - z0) * f,
+                (r1 - r0) / steps[k], (z1 - z0) / steps[k])
+
+    arcs = [reach * (n / (count - 1)) ** 0.85 for n in range(count)]
+    # The core and the buds melt into one smooth metaball surface; each bud
+    # is a tapering chain of balls ending in a short sharp thorn.
+    balls = []
+    for k in range(13):
+        h = profile[0][0] + (profile[-1][0] - profile[0][0]) * k / 12
+        for (h0, r0), (h1, r1) in zip(profile, profile[1:]):
+            if h1 <= h <= h0:
+                r = r0 + (r1 - r0) * (h0 - h) / (h0 - h1)
+                break
+        if r > 0.03:
+            balls.append((centre + Vector((0, 0, h)), 0.6 * r / 0.6))
+    for n, s in enumerate(arcs):
+        r, z, dr, dz = on_head(s)
+        width = 0.045 + 0.07 * s / reach
+        a = n * golden
+        radial = Vector((math.cos(a), math.sin(a), 0))
+        point = centre + radial * r + Vector((0, 0, z))
+        out = (radial * -dz + Vector((0, 0, dr))).normalized()
+        out = (out + Vector((0, 0, 0.4))).normalized()
+        length = 1.7 * width
+        for t in (0.0, 0.3, 0.55, 0.78):
+            balls.append((point + out * (length * t), width * (1 - 0.8 * t) / 0.6))
+        cone('Caltrop bud thorn', point + out * (length * 0.7), point + out * (length * 1.3),
+             width * 0.22, 0, head, 8, True)
+    metaball_mesh('Caltrop plant head', [(tuple(c), radius) for c, radius in balls], head, 0.008)
 
 
 
