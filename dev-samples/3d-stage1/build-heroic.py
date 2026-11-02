@@ -3760,6 +3760,10 @@ def spore(x, y):
         sphere('Drifting spore', (x + dx, y + dy, z), (size, size, size), glow, 16)
 
 
+# Degrees the marksman's longbow leans forward about its grip.
+LONGBOW_LEAN = 6
+
+
 def marksman(x, y):
     """Stage 4 marksman (k): a burly ring-tailed lemur with a longbow taller
     than itself at its side and a quiver of fletched arrows on its back.
@@ -3842,28 +3846,48 @@ def marksman(x, y):
             radii[-1] = 0
         tube('Marksman tail band', path[lo:hi + 1], radii, (fur, black, pale, black)[band % 4],
              sides=12, smooth=True)
-    # A huge bone-white longbow at its side (screen left), gripped at its
-    # leather-wrapped middle at hand height; its upper tip towers far above
-    # its head and its lower tip sinks below the floor.
-    length = 2.2
-    foot = Vector((x - 0.36, y - 0.10, 0.58 - length / 2))
-    limb = []
-    for i in range(13):
-        t = i / 12
-        limb.append(foot + Vector((-0.22 * math.sin(math.pi * t),
-                                   -0.07 * math.sin(math.pi * t) + 0.06 * t, t * length)))
-    tube('Marksman longbow', limb, [0.02, 0.027, 0.032, 0.036, 0.04, 0.043, 0.047, 0.043,
-                                    0.04, 0.036, 0.032, 0.027, 0.02], bow, sides=8,
-         smooth=True)
+    # A huge bone-white longbow at its side (screen left), held like a
+    # Japanese yumi: gripped well below its middle at hand height, its lower
+    # tip just above the floor and its long upper limb towering above its
+    # head. (Gripped at its middle, the lower tip sank below the floor.)
+    # Its curve is a yumi's rather than one simple arc: bent deepest a
+    # little above the grip, and flicking back out at both tips.
+    length, grip, deepest = 2.0, 0.27, 0.40
+    foot = Vector((x - 0.36, y - 0.10, 0.58 - grip * length))
+
+    def smooth(e0, e1, t):
+        t = min(1.0, max(0.0, (t - e0) / (e1 - e0)))
+        return t * t * (3 - 2 * t)
+
+    def upright(t):
+        u = 0.5 * t / deepest if t < deepest else 0.5 + 0.5 * (t - deepest) / (1 - deepest)
+        bend = math.sin(math.pi * u) + 0.3 * (smooth(0.86, 1.0, t) + smooth(0.10, 0.0, t))
+        return foot + Vector((-0.22 * bend, -0.07 * bend + 0.06 * t, t * length))
+
+    # Leaning a little forward like a drawn yumi: turned about the grip so
+    # the upper tip goes out (screen left) and the string is no longer upright.
+    lean = Matrix.Rotation(-math.radians(LONGBOW_LEAN), 3, 'Y')
+
+    def on_bow(t):
+        return upright(grip) + lean @ (upright(t) - upright(grip))
+
+    def thickness(t):
+        # Thickest at the grip, thinning toward both tips.
+        u = 0.5 * t / grip if t < grip else 0.5 + 0.5 * (t - grip) / (1 - grip)
+        return 0.02 + 0.027 * math.sin(math.pi * u)
+
+    spans = [grip * i / 6 for i in range(6)] + [grip + (1 - grip) * i / 16 for i in range(17)]
+    limb = [on_bow(t) for t in spans]
+    tube('Marksman longbow', limb, [thickness(t) for t in spans], bow, sides=8, smooth=True)
     # A thick string, so it still shows at sprite size.
     tube('Marksman bowstring', [limb[0], limb[-1]], [0.015, 0.015], string, sides=8)
-    tube('Marksman bow grip', [limb[5], limb[7]], [0.052, 0.052], leather, sides=10,
-         smooth=True)
+    tube('Marksman bow grip', [on_bow(grip - 0.09), on_bow(grip), on_bow(grip + 0.09)],
+         [0.052, 0.052, 0.052], leather, sides=10, smooth=True)
     # Thick arms with bulging biceps and forearms. The right arm (screen
     # left) reaches out to the grip, its elbow outward past the string so
     # the upper arm passes just behind the string; the left fist rests on
     # the hip, elbow out.
-    hold = limb[6]
+    hold = on_bow(grip)
     shoulder, elbow = Vector((x - 0.26, y, 0.46)), Vector((x - 0.47, y + 0.06, 0.34))
     tube('Marksman right arm', [shoulder, elbow, elbow.lerp(hold, 0.35), hold],
          [0.08, 0.065, 0.08, 0.05], fur, sides=16, smooth=True)
