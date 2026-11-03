@@ -135,7 +135,8 @@ def _place_stage4_final_floor_barriers(floor: Floor) -> None:
 
 
 def _place_final_floor_barriers(
-    floor: Floor, percent: int, *, protected_points: Container[d.Point] = ()
+    floor: Floor, percent: int, *, protected_points: Container[d.Point] = (),
+    allowed_points: Optional[Container[d.Point]] = None,
 ) -> None:
     """Cover a percentage of eligible final-floor cells with barriers."""
     occupied = {(entity.x, entity.y) for entity in floor.entities}
@@ -155,6 +156,7 @@ def _place_final_floor_barriers(
         for y, row in enumerate(floor.field)
         for x, cell in enumerate(row)
         if cell == d.CHAR_FLOOR and (x, y) not in protected
+        and (allowed_points is None or (x, y) in allowed_points)
     ]
     count = len(candidates) * percent // 100
     for _ in range(count):

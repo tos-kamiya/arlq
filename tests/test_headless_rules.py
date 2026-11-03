@@ -240,6 +240,26 @@ def test_stage4_final_floor_barriers_cover_ten_percent_of_open_cells():
     assert floor.field[entity.y][entity.x] == d.CHAR_FLOOR
 
 
+
+def test_final_floor_barriers_respect_allowed_area_and_protected_cells(monkeypatch):
+    monkeypatch.setattr(stage_world_module.rand, "_value", 123)
+    floor = Floor(
+        field=blank_field(), entities=[],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        up=(1, 1), down=(3, 3), island=None,
+    )
+    allowed = {(x, y) for y in range(5, 15) for x in range(10, 20)}
+    protected = {(10, 5)}
+    stage_world_module._place_final_floor_barriers(
+        floor, 5, allowed_points=allowed, protected_points=protected,
+    )
+    barriers = {(x, y) for y, row in enumerate(floor.field)
+                for x, cell in enumerate(row) if cell == d.CHAR_BARRIER}
+    assert barriers <= allowed - protected
+    assert len(barriers) == len(allowed - protected) * 5 // 100
+    assert floor.persistent_barriers == barriers
+
+
 def test_game_config_from_args_does_not_mutate_gameplay_constants():
     original = (d.TORCH_RADIUS, d.CORRIDOR_H_WIDTH, d.CORRIDOR_V_WIDTH)
 

@@ -941,6 +941,7 @@ STAGE6_SUPPORT_POOLS = (
 ) + (_STAGE6_DEEP_SUPPORT_POOL,) * 2
 STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
 STAGE6_FINAL_FLOOR_BARRIER_PERCENT = 5
+STAGE6_BARRIER_VORTEX_RADIUS_MULTIPLIER = 1.5
 
 # Elves placed by the multi-floor builder instead of the static floor rosters.
 STAGE_RUNTIME_ELVES: Dict[int, Tuple[str, ...]] = {

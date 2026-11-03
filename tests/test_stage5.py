@@ -7,7 +7,7 @@ import pytest
 from arlq import defs as d
 from arlq import display, i18n, stage5, stage56, stage6
 from arlq import game_engine as engine
-from arlq.arlq import barrier_lp_damage, get_torched
+from arlq.arlq import barrier_lp_damage, get_torched, iterate_ellipse_points
 from arlq.stage_types import Floor
 
 
@@ -583,6 +583,30 @@ def test_initial_boss_room_excludes_ordinary_parties(monkeypatch, seed, escort):
     assert all(stage6.tile_at((e.x, e.y)) != room for e in ordinary)
     chest = next(e for e in current.entities if isinstance(e, d.Treasure))
     assert stage6.tile_at((chest.x, chest.y)) != room
+
+
+
+@pytest.mark.parametrize("escort", d.STAGE6_BOSS_ESCORTS)
+@pytest.mark.parametrize("seed", [0, 53, 123])
+def test_final_floor_random_barriers_stay_near_boss(monkeypatch, seed, escort):
+    engine.rand.set_seed(seed)
+    original_choice = stage6.rand.choice
+    monkeypatch.setattr(
+        stage6.rand, "choice",
+        lambda values: escort if values is d.STAGE6_BOSS_ESCORTS else original_choice(values),
+    )
+    floors, _ = stage6.build()
+    current = floors[-1]
+    boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W")
+    horizontal_radius = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
+    vortex_radius = round(horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO)
+    radius = round(vortex_radius * 1.5)
+    allowed = set(iterate_ellipse_points(boss.x, boss.y, radius, d.FOV_WIDTH_EXPANSION_RATIO))
+    assert current.persistent_barriers
+    assert current.persistent_barriers <= allowed
+    assert all(current.field[y][x] == d.CHAR_BARRIER for x, y in current.persistent_barriers)
+    for index in (1, 2):
+        assert len(floors[index].persistent_barriers) == d.STAGE6_HAZARD_COUNTS[index][1]
 
 
 def test_treasure_is_optional_and_does_not_finish_stage():

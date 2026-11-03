@@ -1,7 +1,7 @@
 """Stage 6 dungeon generation."""
 
 from . import defs as d, stage56
-from .arlq import GameConfig
+from .arlq import GameConfig, iterate_ellipse_points
 from .stage56 import (
     _open_points,
     normalize_parties,
@@ -241,6 +241,8 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     initial_boss_party = []
     boss_entrance = set()
     boss_reserved = set()
+    boss_barrier_area = None
+    boss_barrier_half_density = set()
     entry = None
     member_roles = list(d.RECRUITABLE_MEMBER_ROLES)
     while len(member_roles) > 4:
@@ -310,6 +312,19 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         if index == d.STAGE6_FLOORS - 1:
             initial_boss_party, boss_entrance = _place_initial_boss_party(current)
             boss = initial_boss_party[0]
+            horizontal_radius = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
+            vortex_radius = round(horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO)
+            barrier_radius = round(vortex_radius * d.STAGE6_BARRIER_VORTEX_RADIUS_MULTIPLIER)
+            boss_barrier_area = set(iterate_ellipse_points(
+                boss.x, boss.y, barrier_radius, d.FOV_WIDTH_EXPANSION_RATIO
+            ))
+            inner_area = set(iterate_ellipse_points(
+                boss.x, boss.y, round(vortex_radius * 0.6), d.FOV_WIDTH_EXPANSION_RATIO
+            ))
+            middle_area = set(iterate_ellipse_points(
+                boss.x, boss.y, round(vortex_radius * 1.2), d.FOV_WIDTH_EXPANSION_RATIO
+            ))
+            boss_barrier_half_density = middle_area - inner_area
             boss_room = tile_at((boss.x, boss.y))
             boss_reserved = {
                 (x, y) for y, row in enumerate(current.field) for x in range(len(row))
@@ -360,7 +375,12 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             (d.CHAR_CALTROP, d.CHAR_BARRIER), d.STAGE6_HAZARD_COUNTS[index]
         ):
             for _ in range(count):
-                x, y = rand.choice(_open_points(current))
+                candidates = _open_points(current)
+                if index == d.STAGE6_FLOORS - 1 and char == d.CHAR_BARRIER:
+                    candidates = [point for point in candidates if point in boss_barrier_area]
+                if not candidates:
+                    break
+                x, y = rand.choice(candidates)
                 current.field[y][x] = char
                 if char == d.CHAR_BARRIER:
                     current.persistent_barriers.add((x, y))
@@ -369,8 +389,13 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     _place_collapses(floors)
     _place_additional_stairs(floors)
     _place_final_floor_barriers(
-        floors[-1], d.STAGE6_FINAL_FLOOR_BARRIER_PERCENT, protected_points=boss_entrance
+        floors[-1], d.STAGE6_FINAL_FLOOR_BARRIER_PERCENT,
+        protected_points=boss_entrance, allowed_points=boss_barrier_area,
     )
+    for x, y in sorted(floors[-1].persistent_barriers & boss_barrier_half_density):
+        if rand.randrange(2):
+            floors[-1].persistent_barriers.remove((x, y))
+            floors[-1].field[y][x] = d.CHAR_FLOOR
     for current in floors:
         if current is floors[-1]:
             for entity in initial_boss_party:
