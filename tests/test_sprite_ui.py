@@ -1345,6 +1345,7 @@ def edge_shade_ui(ui, scroll):
     ui.window_width = 26 * 30
     ui._horizontal_scroll_px = scroll
     ui._edge_shade_group = 'edge-shade'
+    ui._edge_shade_bounds = None
     texels = sprite_funcs.EDGE_FLOOR_TEXELS_PER_CELL
     image = SimpleNamespace(width=d.FIELD_WIDTH * texels, height=d.FIELD_HEIGHT * texels)
     image.get_region = lambda *region: SimpleNamespace(region=region, width=region[2],
@@ -1406,3 +1407,42 @@ def test_edge_shade_multiplies_only_visible_strips_once_floor_is_drawn(cached_fl
         ui.window_height - ui.cell_size_y * (1 + sprite_funcs.EDGE_FLOOR_END_FADE[1]),
         ui.window_height - d.FIELD_HEIGHT * ui.cell_size_y,
     }
+
+
+def test_edge_floor_shade_uses_first_non_wall_from_each_edge():
+    field = [[d.CHAR_WALL] * 18 for _ in range(12)]
+    for y in range(3, 9):
+        for x in range(4, 15):
+            field[y][x] = d.CHAR_FLOOR
+    bounds = sprite_funcs.edge_floor_bounds(field)
+    assert bounds == (4, 3, 15, 9)
+    shade = sprite_funcs.edge_floor_shade
+    side, side_width = sprite_funcs.EDGE_FLOOR_SIDE_FADE
+    end, end_width = sprite_funcs.EDGE_FLOOR_END_FADE
+    assert shade(0, 6, 18, 12, bounds) == side
+    assert shade(4, 6, 18, 12, bounds) == side
+    assert shade(4 + side_width, 6, 18, 12, bounds) == 1
+    assert shade(18, 6, 18, 12, bounds) == side
+    assert shade(9, 0, 18, 12, bounds) == end
+    assert shade(9, 3, 18, 12, bounds) == end
+    assert shade(9, 3 + end_width, 18, 12, bounds) == 1
+    assert shade(9, 12, 18, 12, bounds) == end
+
+
+def test_edge_shade_strips_cover_shifted_fades(cached_floor_ui):
+    ui = edge_shade_ui(cached_floor_ui, 0)
+    ui._edge_shade_bounds = (3, 2, d.FIELD_WIDTH - 4, d.FIELD_HEIGHT - 3)
+    texels = sprite_funcs.EDGE_FLOOR_TEXELS_PER_CELL
+    covered = set()
+    for col, row, width, height in ui._edge_shade_strips():
+        for y in range(row, row + height):
+            for x in range(col, col + width):
+                assert (x, y) not in covered
+                covered.add((x, y))
+    for y in range(d.FIELD_HEIGHT * texels):
+        for x in range(d.FIELD_WIDTH * texels):
+            if (x, y) not in covered:
+                assert sprite_funcs.edge_floor_shade(
+                    (x + .5) / texels, (y + .5) / texels,
+                    d.FIELD_WIDTH, d.FIELD_HEIGHT, ui._edge_shade_bounds,
+                ) == 1

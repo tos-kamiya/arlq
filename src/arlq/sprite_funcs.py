@@ -220,7 +220,7 @@ FLOOR_CHECKER_SHADE = 0.88
 # face, cells until full brightness) for the sides and for the top and bottom.
 # Corners take the darker of the two. The fade is a smooth, linearly filtered
 # multiply layer over the floor, so walls and characters keep their colors.
-EDGE_FLOOR_SIDE_FADE = (0.5, 3.5)
+EDGE_FLOOR_SIDE_FADE = (0.7, 3.5)
 EDGE_FLOOR_END_FADE = (0.7, 1.5)
 EDGE_FLOOR_TEXELS_PER_CELL = 4
 # Terrain looks: file prefixes of the floor and wall parts, the floor tint and
@@ -431,26 +431,37 @@ def gray_image(data):
                                   pitch=data.width * 4)
 
 
-def edge_floor_shade(cx, cy, width, height):
+
+def edge_floor_bounds(field):
+    """Find the first non-wall column and row from each edge."""
+    points = [(x, y) for y, row in enumerate(field)
+              for x, cell in enumerate(row)
+              if cell not in (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)]
+    if not points:
+        return (1, 1, len(field[0]) - 1, len(field) - 1)
+    return (min(x for x, _ in points), min(y for _, y in points),
+            max(x for x, _ in points) + 1, max(y for _, y in points) + 1)
+
+def edge_floor_shade(cx, cy, width, height, bounds=None):
     """Floor shade at continuous field coordinates (in cells, origin top-left)."""
     def fade(distance, fade_spec):
         edge, cells = fade_spec
         t = min(1.0, max(0.0, distance / cells))
         return edge + (1 - edge) * t * t * (3 - 2 * t)
-    # The outer walls occupy the first and last cell of each axis.
-    side = fade(min(cx, width - cx) - 1, EDGE_FLOOR_SIDE_FADE)
-    end = fade(min(cy, height - cy) - 1, EDGE_FLOOR_END_FADE)
+    left, top, right, bottom = bounds or (1, 1, width - 1, height - 1)
+    side = fade(min(cx - left, right - cx), EDGE_FLOOR_SIDE_FADE)
+    end = fade(min(cy - top, bottom - cy), EDGE_FLOOR_END_FADE)
     return min(side, end)
 
 
-def edge_floor_shade_data(width, height, texels=EDGE_FLOOR_TEXELS_PER_CELL):
+def edge_floor_shade_data(width, height, texels=EDGE_FLOOR_TEXELS_PER_CELL, bounds=None):
     """Top-down RGBA bytes of the field's edge shade, sampled at texel centers."""
     # The shade is the minimum of a per-column and a per-row fade.
-    columns = [edge_floor_shade((col + 0.5) / texels, height / 2, width, height)
+    columns = [edge_floor_shade((col + 0.5) / texels, height / 2, width, height, bounds)
                for col in range(width * texels)]
     data = bytearray()
     for row in range(height * texels):
-        row_shade = edge_floor_shade(width / 2, (row + 0.5) / texels, width, height)
+        row_shade = edge_floor_shade(width / 2, (row + 0.5) / texels, width, height, bounds)
         for column_shade in columns:
             value = round(255 * min(column_shade, row_shade))
             data += bytes((value, value, value, 255))
@@ -595,6 +606,7 @@ class SpriteUI(PygletUI):
         # Between the floor and the ground discs.
         self._edge_shade_group = pyglet.graphics.Group(order=0)
         self._edge_shade_image = None
+        self._edge_shade_bounds = None
         # Rows are painted north to south: a row's walls, then its characters,
         # so walls overlap characters to their north but not to their south.
         self._row_groups = {}
@@ -723,6 +735,12 @@ class SpriteUI(PygletUI):
         self.field_pixel_width = max(
             self.cell_size_x, self.window_width - self.strength_column_width,
         )
+        field = kwargs.get('field')
+        if field:
+            bounds = edge_floor_bounds(field)
+            if bounds != self._edge_shade_bounds:
+                self._edge_shade_bounds = bounds
+                self._edge_shade_image = None
         self._last_stage_draw = (decor, kwargs.copy())
         theme = STAGE_TERRAIN_THEMES.get(kwargs.get('stage_num'), 'ruins')
         if theme != self._terrain_theme and theme in self._theme_images:
@@ -1708,7 +1726,8 @@ class SpriteUI(PygletUI):
             texels = EDGE_FLOOR_TEXELS_PER_CELL
             self._edge_shade_image = pyglet.image.ImageData(
                 width * texels, height * texels, 'RGBA',
-                edge_floor_shade_data(width, height), pitch=-width * texels * 4,
+                edge_floor_shade_data(width, height, bounds=self._edge_shade_bounds),
+                pitch=-width * texels * 4,
             ).get_texture()
         return self._edge_shade_image
 
@@ -1720,14 +1739,23 @@ class SpriteUI(PygletUI):
         """
         texels = EDGE_FLOOR_TEXELS_PER_CELL
         width, height = self.field_width * texels, self.field_height * texels
-        side = min(width // 2, math.ceil((1 + EDGE_FLOOR_SIDE_FADE[1]) * texels))
-        end = min(height // 2, math.ceil((1 + EDGE_FLOOR_END_FADE[1]) * texels))
-        middle = width - 2 * side
+        left, top, right, bottom = self._edge_shade_bounds or (
+            1, 1, self.field_width - 1, self.field_height - 1,
+        )
+        left_end = min(width, math.ceil((left + EDGE_FLOOR_SIDE_FADE[1]) * texels))
+        right_start = max(0, math.floor((right - EDGE_FLOOR_SIDE_FADE[1]) * texels))
+        if left_end > right_start:
+            left_end = right_start = (left_end + right_start) // 2
+        top_end = min(height, math.ceil((top + EDGE_FLOOR_END_FADE[1]) * texels))
+        bottom_start = max(0, math.floor((bottom - EDGE_FLOOR_END_FADE[1]) * texels))
+        if top_end > bottom_start:
+            top_end = bottom_start = (top_end + bottom_start) // 2
+        middle = right_start - left_end
         return (
-            (0, 0, side, height),
-            (width - side, 0, side, height),
-            (side, 0, middle, end),
-            (side, height - end, middle, end),
+            (0, 0, left_end, height),
+            (right_start, 0, width - right_start, height),
+            (left_end, 0, middle, top_end),
+            (left_end, bottom_start, middle, height - bottom_start),
         )
 
     def _draw_edge_shade(self):
