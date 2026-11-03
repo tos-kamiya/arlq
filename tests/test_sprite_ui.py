@@ -1064,7 +1064,9 @@ def test_matching_floor_cells_are_copied_as_one_checkerboard(cached_floor_ui):
     assert len(ui._drawables) == 1
     sprite = ui._drawables[0]
     assert sprite.image is ui._floor_tiles[sprite_funcs.VISIBLE_FLOOR, False]
-    assert (sprite.x, sprite.y, sprite.scale) == (0, 420, 1)
+    assert (sprite.x, sprite.y) == (0, 420)
+    assert sprite.scale_x == pytest.approx(26 / 30)
+    assert sprite.scale_y == 1
     assert sprite.blend_src == pyglet.gl.GL_ONE
     assert sprite.blend_dest == pyglet.gl.GL_ZERO
 
@@ -1094,6 +1096,8 @@ def test_floor_backdrop_is_reused_and_follows_scroll(cached_floor_ui, monkeypatc
     ui._draw_floor_backdrop()
     assert len(uploads) == 1
     assert [sprite.x for sprite in ui._drawables] == [0, -26]
+    assert all(sprite.scale_x == pytest.approx(26 / 30) for sprite in ui._drawables)
+    assert all(sprite.scale_y == 1 for sprite in ui._drawables)
 
 
 def test_floor_visibility_boundary_preserves_each_cells_shade_and_parity(cached_floor_ui):

@@ -1216,8 +1216,9 @@ class SpriteUI(PygletUI):
             self._floor_backdrops[key] = image
         left = self._field_col_x(0)
         bottom = self.window_height - self.field_height * self.cell_size_y
-        scale = self.scale / LOW_RESOLUTION_DETAIL_SCALE
-        signature = ('floor-backdrop', id(image), left, bottom, scale,
+        scale_x = self.cell_size_x / (SPRITE_CELL_SIZE_X * LOW_RESOLUTION_DETAIL_SCALE)
+        scale_y = self.cell_size_y / (CELL_SIZE_Y * LOW_RESOLUTION_DETAIL_SCALE)
+        signature = ('floor-backdrop', id(image), left, bottom, scale_x, scale_y,
                      id(self._floor_backdrop_group))
         sprite = self._draw_object(
             signature,
@@ -1226,7 +1227,8 @@ class SpriteUI(PygletUI):
                 blend_src=pyglet.gl.GL_ONE, blend_dest=pyglet.gl.GL_ZERO,
             ),
         )
-        self._set_drawable_attribute(sprite, 'scale', scale)
+        self._set_drawable_attribute(sprite, 'scale_x', scale_x)
+        self._set_drawable_attribute(sprite, 'scale_y', scale_y)
 
     def _draw_floor_tiles(self):
         cells = self._floor_cells
@@ -1249,8 +1251,9 @@ class SpriteUI(PygletUI):
     def _copy_floor_tile(self, x, y, rows, image):
         left = self._field_col_x(x)
         bottom = self.window_height - (y + rows) * self.cell_size_y
-        scale = self.scale / LOW_RESOLUTION_DETAIL_SCALE
-        signature = ('floor-copy', id(image), left, bottom, scale, id(self._floor_group))
+        scale_x = self.cell_size_x / (SPRITE_CELL_SIZE_X * LOW_RESOLUTION_DETAIL_SCALE)
+        scale_y = self.cell_size_y / (CELL_SIZE_Y * LOW_RESOLUTION_DETAIL_SCALE)
+        signature = ('floor-copy', id(image), left, bottom, scale_x, scale_y, id(self._floor_group))
         sprite = self._draw_bounded_object(
             left, rows * max(self.cell_size_x, SPRITE_CELL_SIZE_X * self.scale), signature,
             lambda: pyglet.sprite.Sprite(
@@ -1258,7 +1261,8 @@ class SpriteUI(PygletUI):
                 blend_src=pyglet.gl.GL_ONE, blend_dest=pyglet.gl.GL_ZERO,
             ),
         )
-        self._set_drawable_attribute(sprite, 'scale', scale)
+        self._set_drawable_attribute(sprite, 'scale_x', scale_x)
+        self._set_drawable_attribute(sprite, 'scale_y', scale_y)
 
     def _draw_wall_rect(self, x, y, width, height, color, shade, group):
         color = tuple(min(255, round(c * shade)) for c in color)
