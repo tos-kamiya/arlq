@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 6.3.3 - 2026-11-04
+
+- Place both Stage 6 Rare Chimeras on floor 3 and replace those removed from
+  floors 2 and 4 with regular Chimeras.
+
 ## 6.3.2 - 2026-11-03
 
 - Widen sprite-mode field cells to a 4:5 shape, align the floor tiles with
