@@ -2409,9 +2409,9 @@ def lifebringer_elf(x, y):
 def sylvan_elf(x, y):
     """Sylvan Elf: a farmer one step on the way to a harvest god, still an
     elf. A straw hat with a flower band, a spring green dress and a cream
-    apron, sprouts at the feet; for the spirit, friend of the fairy
-    companions: small translucent butterfly wings, a softly glowing veil over
-    the hem, and a glowing pot of fairy nectar offered in both hands.
+    apron, sprouts curling up at the feet; for the spirit, friend of the
+    fairy companions: a softly glowing veil over the hem, and a clay pot of
+    flower nectar offered in both hands.
     """
     robe = material('Sylvan elf spring green dress', (0.20, 0.55, 0.12), 0.15, 0.45,
                     rim=(0.8, 1.0, 0.6), rim_strength=1.0, coat=0.3)
@@ -2423,11 +2423,11 @@ def sylvan_elf(x, y):
     straw = material('Sylvan elf straw hat', (0.88, 0.70, 0.30), 0.0, 0.7,
                      rim=(1.0, 0.9, 0.6), rim_strength=0.6)
     flower = material('Sylvan elf flowers', (1.0, 0.55, 0.65), 0.1, 0.4)
-    wing = material('Sylvan elf butterfly wings', (1.0, 0.70, 0.88), 0.0, 0.25,
-                    emission=(1.0, 0.75, 0.9), strength=0.35,
-                    rim=(1.0, 0.95, 1.0), rim_strength=1.6)
-    nectar = material('Sylvan elf fairy nectar', (1.0, 0.65, 0.1), 0.3, 0.2,
-                      emission=(1.0, 0.6, 0.1), strength=2.0)
+    # Flower nectar: a clear, glossy, thick honey-amber liquid that glows
+    # only faintly, rather than shining like gold.
+    nectar = material('Sylvan elf flower nectar', (1.0, 0.70, 0.22), 0.6, 0.05,
+                      emission=(1.0, 0.65, 0.2), strength=0.25, coat=1.0,
+                      rim=(1.0, 0.9, 0.6), rim_strength=0.6)
     pot = material('Sylvan elf clay pot', (0.55, 0.30, 0.15), 0.0, 0.5, coat=0.5)
     leaf = material('Sylvan elf sprouts', (0.25, 0.70, 0.15), 0.2, 0.4)
     skin = material('Sylvan elf skin', (0.95, 0.78, 0.62), 0.2, 0.4,
@@ -2451,31 +2451,40 @@ def sylvan_elf(x, y):
                                        (x + side * 0.11, y - 0.24, 0.66)], [0.06, 0.06, 0.06], robe,
                  sides=12, smooth=True)
             sphere('Sylvan elf hand', (x + side * 0.08, y - 0.27, 0.66), (0.05, 0.045, 0.045), skin, 16)
-        tube('Sylvan elf nectar pot', [(x, y - 0.31, 0.60), (x, y - 0.31, 0.66), (x, y - 0.31, 0.73)],
-             [0.07, 0.085, 0.065], pot, sides=20, smooth=True)
-        sphere('Sylvan elf nectar', (x, y - 0.31, 0.74), (0.06, 0.06, 0.035), nectar, 20)
-        # Small translucent butterfly wings on the back, upper and lower pairs.
-        for side in (-1, 1):
-            for lower, (length, width, angle) in enumerate(((0.52, 0.30, 55), (0.36, 0.22, 15))):
-                a = math.radians(angle)
-                root = Vector((x + side * 0.05, y + 0.14, 0.78 - lower * 0.08))
-                # The wing's face turns toward the 60-degree camera.
-                along = Vector((side * math.cos(a), 0.15, math.sin(a))).normalized()
-                across = Vector((0, -0.5, 0.866)).cross(along).normalized()
-                n, verts = 20, []
-                for t in range(n):
-                    u = 2 * math.pi * t / n
-                    verts.append(tuple(root + along * (length * (0.5 - 0.5 * math.cos(u)))
-                                       + across * (width * 0.5 * math.sin(u))))
-                faces = [tuple(range(n))]
-                vane = mesh_object('Sylvan elf butterfly wing', verts, faces, wing, True)
-                vane.modifiers.new('Wing thickness', 'SOLIDIFY').thickness = 0.01
-        # Sprouts at the feet.
+        # An open pot, turned from its profile (radius, height): up the
+        # outside, over the rim and down the inside to the bottom. (A tube
+        # folded back at the rim would flip its rings and close the mouth.)
+        profile = [(0, 0.60), (0.07, 0.60), (0.085, 0.66), (0.065, 0.73), (0.06, 0.738),
+                   (0.054, 0.73), (0.052, 0.69), (0, 0.685)]
+        sides, verts, rings = 20, [], []
+        for r, z in profile:
+            if r == 0:
+                rings.append([len(verts)])
+                verts.append((x, y - 0.31, z))
+                continue
+            rings.append(list(range(len(verts), len(verts) + sides)))
+            verts += [(x + r * math.cos(2 * math.pi * k / sides),
+                       y - 0.31 + r * math.sin(2 * math.pi * k / sides), z) for k in range(sides)]
+        faces = []
+        for a, b in zip(rings, rings[1:]):
+            if len(a) == 1:
+                faces += [(a[0], b[(k + 1) % sides], b[k]) for k in range(sides)]
+            elif len(b) == 1:
+                faces += [(a[k], a[(k + 1) % sides], b[0]) for k in range(sides)]
+            else:
+                faces += [(a[k], a[(k + 1) % sides], b[(k + 1) % sides], b[k]) for k in range(sides)]
+        mesh_object('Sylvan elf nectar pot', verts, faces, pot, True)
+        # Nectar filling the pot to a little below the rim.
+        sphere('Sylvan elf nectar', (x, y - 0.31, 0.718), (0.053, 0.053, 0.006), nectar, 20)
+        # Sprouts at the feet, growing up and curling a little outward.
         for k in range(6):
             a = 2 * math.pi * k / 6 + 0.3
-            base = Vector((x + 0.30 * math.cos(a), y + 0.30 * math.sin(a), 0.0))
-            cone('Sylvan elf sprout', base, base + Vector((0.03 * math.cos(a), 0.03 * math.sin(a), 0.10)),
-                 0.035, 0, leaf, 5, False)
+            out = Vector((math.cos(a), math.sin(a), 0))
+            base = Vector((x, y, 0.0)) + out * 0.30
+            tube('Sylvan elf sprout', [base, base + out * 0.02 + Vector((0, 0, 0.09)),
+                                       base + out * 0.07 + Vector((0, 0, 0.16)),
+                                       base + out * 0.12 + Vector((0, 0, 0.19))],
+                 [0.03, 0.022, 0.014, 0], leaf, sides=5)
 
     def head(x, y):
         # Honey hair in a braid down the back, under a wide straw hat with
