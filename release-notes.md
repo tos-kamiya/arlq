@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 6.3.2 - 2026-11-03
+
+- Widen sprite-mode field cells to a 4:5 shape, align the floor tiles with
+  the cells, and redraw the floor, wall, stair and pit images for the new
+  cell shape so they are no longer stretched.
+- Refresh several character sprites: the Lifebringer Elf floats on a soft,
+  slightly see-through cloud and has thick brows; the Isolated Elf wears a
+  hermit's homespun robe and a cape of grass and moss; the Sylvan Elf loses
+  its wings and offers a pot of flower nectar; the Flame Cobra's hood is made
+  of glowing flame tongues.
+
 ## 6.3.1 - 2026-11-03
 
 - Draw walls surrounded by other walls as flat gray cells in sprite mode,
