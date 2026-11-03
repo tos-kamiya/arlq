@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 6.3.1 - 2026-11-03
+
+- Draw walls surrounded by other walls as flat gray cells in sprite mode,
+  including buried walls at the dungeon's edges. Restore the regular wall
+  rendering when adjacent or diagonally adjacent terrain is opened.
+- Fix pit entrance markers remaining visible after a rewind restores the pit
+  above them to its unopened state.
+- Reorganize the interface and options descriptions and simplify the Stage 6
+  introduction in the documentation.
+
 ## 6.3.0 - 2026-11-03
 
 - Improve sprite-mode responsiveness by drawing the checkerboard floor as a
