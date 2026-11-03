@@ -325,6 +325,29 @@ def test_rewind_restores_membership_but_keeps_discoveries(monkeypatch):
     assert player.known_member_floors == {"Healer": 1}
 
 
+def test_rewind_keeps_pit_entrances_only_when_the_restored_pit_is_open():
+    def make_floor():
+        field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+        return Floor(field, [], [[0] * len(row) for row in field], (2, 2), (3, 3), None)
+
+    upper, lower = make_floor(), make_floor()
+    player = d.Player(2, 2, 1, 120)
+    for x in (3, 4, 5):
+        lower.field[2][x] = d.CHAR_SCHOLAR_STAIRS_UP
+    lower.scholar_up_stairs.append((5, 2))
+    knowledge = stage_replay._RewindKnowledge.capture([upper, lower], player)
+
+    restored_upper, restored_lower = make_floor(), make_floor()
+    restored_upper.field[2][4] = d.CHAR_COLLAPSE
+    restored_lower.scholar_up_stairs.append((5, 2))
+    restored_lower.field[2][5] = d.CHAR_HIDDEN_STAIRS_UP
+    knowledge.restore([restored_upper, restored_lower], player)
+
+    assert restored_lower.field[2][3] == d.CHAR_FLOOR
+    assert restored_lower.field[2][4] == d.CHAR_SCHOLAR_STAIRS_UP
+    assert restored_lower.field[2][5] == d.CHAR_SCHOLAR_STAIRS_UP
+
+
 def test_replay_executes_operations_discarded_by_loop_contacts(monkeypatch):
     def build(*_):
         player = d.Player(2, 2, 10000, 120)

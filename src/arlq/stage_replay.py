@@ -57,11 +57,15 @@ class _RewindKnowledge:
         )
 
     def restore(self, floors: List[Floor], player: d.Player) -> None:
-        for floor_data, preserved_seen, preserved_secrets in zip(
+        for index, (floor_data, preserved_seen, preserved_secrets) in enumerate(zip(
             floors, self.seen, self.discovered_secrets, strict=True
-        ):
+        )):
             floor_data.seen = preserved_seen
             for (x, y), cell in preserved_secrets.items():
+                if cell == d.CHAR_SCHOLAR_STAIRS_UP and (x, y) not in floor_data.scholar_up_stairs:
+                    if (index == 0 or floors[index - 1].field[y][x] != d.CHAR_COLLAPSE
+                            or floor_data.field[y][x] != d.CHAR_FLOOR):
+                        continue
                 floor_data.field[y][x] = cell
             floor_data.update_outer_wall_decor()
         player.known_monsters = self.known_monsters
