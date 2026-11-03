@@ -166,6 +166,9 @@ def test_mouse_cursor_timeout_restarts_on_motion(sprite_ui, monkeypatch):
     now[0] = 15.0
     ui._pump()
     assert visible == [True, True, False]
+    assert ui._mouse_position is None
+    assert ui._resize_redraw_pending
+    ui._on_mouse_motion(21, 30, 1, 0)
     assert ui._mouse_position == (21, 30)
     ui._on_mouse_leave(21, 30)
     assert ui._mouse_position is None

@@ -914,6 +914,8 @@ class SpriteUI(PygletUI):
         if deadline is not None and time.monotonic() >= deadline:
             self.window.set_mouse_visible(False)
             self._mouse_visible_until = None
+            self._mouse_position = None
+            self._resize_redraw_pending = True
         if not self._resize_redraw_pending or not self._stage_input_active:
             return
         self._resize_redraw_pending = False
