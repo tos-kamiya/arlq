@@ -1952,12 +1952,33 @@ def high_elf(x, y):
 
 
 def isolated_elf(x, y):
-    """Isolated Elf: an old hermit, stooped with a rounded back, in a moss
-    robe tied with a rope, with long white hair, the only beard among the
+    """Isolated Elf: an old hermit long apart from the world, stooped with a
+    rounded back, in a coarse undyed homespun robe with a patch, a shaggy cape of dried grass and moss over the shoulders and back,
+    a rope belt with a dried gourd, long white hair, the only beard among the
     elves, bushy brows, a gnarled staff and an old scroll of elf history.
     """
-    robe = material('Isolated elf moss robe', (0.17, 0.24, 0.12), 0.2, 0.45,
-                    rim=(0.7, 0.85, 0.6), rim_strength=1.0, coat=0.3)
+    # Matte, coarse cloth rather than resin: no coat, a fine rough bump.
+    robe = material('Isolated elf homespun robe', (0.30, 0.23, 0.15), 0.0, 0.9,
+                    rim=(0.9, 0.8, 0.6), rim_strength=0.35)
+    nodes, links = robe.node_tree.nodes, robe.node_tree.links
+    robe_bsdf = nodes['Principled BSDF']
+    robe_bsdf.inputs['Specular IOR Level'].default_value = 0.2
+    robe_bsdf.inputs['Sheen Weight'].default_value = 0.2
+    robe_bsdf.inputs['Sheen Tint'].default_value = (0.45, 0.36, 0.24, 1)
+    weave = nodes.new('ShaderNodeTexNoise')
+    weave.inputs['Scale'].default_value = 140
+    weave.inputs['Detail'].default_value = 4
+    bump = nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value = 0.3
+    links.new(weave.outputs['Fac'], bump.inputs['Height'])
+    links.new(bump.outputs['Normal'], robe_bsdf.inputs['Normal'])
+    patch = material('Isolated elf patch', (0.22, 0.17, 0.11), 0.0, 0.9)
+    straw = material('Isolated elf dried grass', (0.50, 0.40, 0.18), 0.0, 0.8,
+                     rim=(1.0, 0.9, 0.6), rim_strength=0.6)
+    moss = material('Isolated elf moss', (0.14, 0.24, 0.08), 0.0, 0.85,
+                    rim=(0.7, 0.9, 0.5), rim_strength=0.8)
+    gourd = material('Isolated elf dried gourd', (0.62, 0.45, 0.20), 0.0, 0.5,
+                     rim=(1.0, 0.85, 0.6), rim_strength=0.6)
     rope = material('Isolated elf rope', (0.45, 0.32, 0.16), 0.0, 0.7)
     wood = material('Isolated elf staff wood', (0.28, 0.16, 0.07), 0.0, 0.6,
                     rim=(0.9, 0.7, 0.5), rim_strength=0.6)
@@ -1975,21 +1996,42 @@ def isolated_elf(x, y):
         tube('Isolated elf rope end', [(x + 0.06, y - 0.15, 0.58), (x + 0.08, y - 0.17, 0.46),
                                        (x + 0.07, y - 0.18, 0.38)], [0.018, 0.016, 0.014], rope,
              sides=6, smooth=True)
+        # A dried gourd hanging from the belt on its own cord.
+        tube('Isolated elf gourd cord', [(x + 0.13, y - 0.09, 0.58), (x + 0.16, y - 0.11, 0.50)],
+             [0.008, 0.008], rope, sides=6)
+        sphere('Isolated elf gourd', (x + 0.17, y - 0.12, 0.42), (0.055, 0.05, 0.06), gourd, 20)
+        sphere('Isolated elf gourd neck', (x + 0.165, y - 0.115, 0.49), (0.035, 0.032, 0.035), gourd, 16)
+        # A darker patch sewn on the front of the robe.
+        block('Isolated elf patch', (x - 0.07, y - 0.195, 0.30), (0.08, 0.012, 0.07), patch, 0.004,
+              rotation=(-0.2, 0, 0.25))
         # A rounded, stooped back.
-        sphere('Isolated elf hunched back', (x, y + 0.10, 0.84), (0.19, 0.15, 0.13), robe, 32)
+        sphere('Isolated elf hunched back', (x, y + 0.10, 0.84), (0.19, 0.15, 0.13), moss, 32)
+        # A shaggy cape of dried grass and moss covering the shoulders and
+        # the back: strands hanging from rings round the neck, parted in
+        # front only for the beard.
+        for row, (z0, r0, z1, r1, count) in enumerate(((0.98, 0.10, 0.74, 0.25, 26),
+                                                        (0.90, 0.16, 0.62, 0.28, 24))):
+            for k in range(count):
+                a = math.radians(-70 + 320 * (k + 0.5 * row) / count)
+                out = Vector((math.cos(a), math.sin(a), 0))
+                back = Vector((0, 0.04, 0))
+                cone('Isolated elf cape strand', Vector((x, y, z0)) + back + out * r0,
+                     Vector((x, y, z1 - 0.04 * (k % 3))) + back + out * r1, 0.05, 0,
+                     moss if (k + row) % 3 else straw, 4, False)
         # Right hand (screen left) on a gnarled staff taller than the elf.
         tube('Isolated elf staff', [(x - 0.30, y - 0.10, 0.0), (x - 0.31, y - 0.11, 0.45),
                                     (x - 0.29, y - 0.12, 0.85), (x - 0.31, y - 0.12, 1.05)],
              [0.028, 0.026, 0.024, 0.03], wood, sides=8, smooth=True)
         sphere('Isolated elf staff knot', (x - 0.32, y - 0.12, 1.08), (0.055, 0.055, 0.05), wood, 12,
                False)
+        # Wide, frayed sleeves.
         tube('Isolated elf right sleeve', [(x - 0.17, y, 0.84), (x - 0.24, y - 0.06, 0.74),
-                                           (x - 0.29, y - 0.11, 0.70)], [0.06, 0.06, 0.07], robe,
+                                           (x - 0.29, y - 0.11, 0.70)], [0.06, 0.07, 0.09], robe,
              sides=12, smooth=True)
         sphere('Isolated elf right hand', (x - 0.30, y - 0.12, 0.70), (0.05, 0.05, 0.05), skin, 16)
         # Left hand (screen right) holding an old scroll before the body.
         tube('Isolated elf left sleeve', [(x + 0.17, y, 0.84), (x + 0.22, y - 0.08, 0.70),
-                                          (x + 0.14, y - 0.20, 0.62)], [0.06, 0.06, 0.07], robe,
+                                          (x + 0.14, y - 0.20, 0.62)], [0.06, 0.07, 0.09], robe,
              sides=12, smooth=True)
         sphere('Isolated elf left hand', (x + 0.12, y - 0.22, 0.62), (0.05, 0.045, 0.045), skin, 16)
         bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=0.045, depth=0.26,
@@ -2007,9 +2049,13 @@ def isolated_elf(x, y):
         for side in (-1, 1):
             sphere('Isolated elf brow', (x + side * 0.055, y - 0.13, 1.085), (0.05, 0.025, 0.022),
                    white, 12)
-        tube('Isolated elf beard', [(x, y - 0.11, 0.98), (x, y - 0.17, 0.90), (x, y - 0.19, 0.78),
-                                    (x, y - 0.18, 0.66)], [(0.11, 0.06), (0.10, 0.06), (0.07, 0.04), 0],
-             white, sides=12, smooth=True)
+        # The beard starts closed inside the chin; its rings keep their wide
+        # axis across the face (a fixed `up`), as the path turning downward
+        # would otherwise twist them into a pinched waist.
+        tube('Isolated elf beard', [(x, y - 0.05, 1.00), (x, y - 0.12, 0.96), (x, y - 0.17, 0.89),
+                                    (x, y - 0.19, 0.78), (x, y - 0.18, 0.66)],
+             [0, (0.11, 0.06), (0.10, 0.06), (0.07, 0.04), 0],
+             white, sides=12, smooth=True, up=(0, 1, 0))
 
     elf_figure(x, y, 'Isolated elf', robe, skin, eye, body, head)
 
