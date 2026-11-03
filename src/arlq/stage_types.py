@@ -44,6 +44,27 @@ class Floor:
         if self.decor is None:
             self.decor = [[d.DECOR_NONE] * len(row) for row in self.field]
 
+    def update_outer_wall_decor(self) -> None:
+        """Mark buried walls along the edges of the floor."""
+        for row in self.decor:
+            for x, value in enumerate(row):
+                if value == d.DECOR_OUTER_WALL:
+                    row[x] = d.DECOR_NONE
+        for y, row in enumerate(self.field):
+            walls = (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
+            interior = [x for x, cell in enumerate(row) if cell not in walls]
+            edge_row = y in (0, len(self.field) - 1)
+            if not interior and not edge_row:
+                continue
+            for x, cell in enumerate(row):
+                if (cell != d.CHAR_WALL or self.decor[y][x] != d.DECOR_NONE
+                        or (not edge_row and interior[0] <= x <= interior[-1])):
+                    continue
+                neighbors = ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1))
+                if all(not (0 <= ny < len(self.field) and 0 <= nx < len(self.field[ny]))
+                       or self.field[ny][nx] in walls for nx, ny in neighbors):
+                    self.decor[y][x] = d.DECOR_OUTER_WALL
+
 
 @dataclass
 class ReplayContext:

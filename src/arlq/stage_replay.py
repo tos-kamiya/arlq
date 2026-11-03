@@ -63,6 +63,7 @@ class _RewindKnowledge:
             floor_data.seen = preserved_seen
             for (x, y), cell in preserved_secrets.items():
                 floor_data.field[y][x] = cell
+            floor_data.update_outer_wall_decor()
         player.known_monsters = self.known_monsters
         player.known_c_floors = self.known_c_floors
         player.elf_stage_floors = self.elf_floors
@@ -87,6 +88,8 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
             replay.config.corridor_v_width,
             replay.stage_num,
         )
+    for floor_data in floors:
+        floor_data.update_outer_wall_decor()
     player.known_monsters = set()
     player.boss_defeated = False
     player.treasure_collected = False

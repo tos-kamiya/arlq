@@ -671,6 +671,36 @@ def test_current_stage1_turn_records_respawn_created_by_the_same_turn(monkeypatc
     )
 
 
+def test_sword_break_exposes_outer_wall_as_column():
+    field = [[d.CHAR_WALL] * 9 for _ in range(5)]
+    for row in field:
+        row[3:6] = [d.CHAR_FLOOR] * 3
+    floor_data = Floor(field, [], [[1] * 9 for _ in field], (3, 2), (5, 2), None)
+    floor_data.update_outer_wall_decor()
+    assert floor_data.decor[2][:3] == [d.DECOR_OUTER_WALL, d.DECOR_OUTER_WALL, d.DECOR_NONE]
+    player = d.Player(3, 2, 10, 90)
+    player.item = d.ITEM_SWORD_X1_5
+    player.item_uses = 2
+    _move_player(KEYS['L'], floor_data, player)
+    assert field[2][2] == d.CHAR_FLOOR
+    assert floor_data.decor[2][1] == d.DECOR_NONE
+    assert floor_data.decor[2][0] == d.DECOR_OUTER_WALL
+
+
+def test_top_and_bottom_edge_walls_stay_columns_when_exposed():
+    field = [[d.CHAR_WALL] * 5 for _ in range(5)]
+    field[2][2] = d.CHAR_FLOOR
+    floor_data = Floor(field, [], [[1] * 5 for _ in field], (2, 2), (2, 2), None)
+    floor_data.update_outer_wall_decor()
+    assert floor_data.decor[0][2] == d.DECOR_OUTER_WALL
+    assert floor_data.decor[4][2] == d.DECOR_OUTER_WALL
+    field[1][2] = d.CHAR_FLOOR
+    field[3][2] = d.CHAR_FLOOR
+    floor_data.update_outer_wall_decor()
+    assert floor_data.decor[0][2] == d.DECOR_NONE
+    assert floor_data.decor[4][2] == d.DECOR_NONE
+
+
 def test_stage3_wall_pegasus_phase():
     player = d.Player(2, 2, 1, 90)
     player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])

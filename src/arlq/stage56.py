@@ -255,9 +255,13 @@ def reveal_scholar_features(current: Floor, known: list[list[int]]) -> None:
         for x, y in points:
             if known[y][x] and current.field[y][x] == hidden:
                 current.field[y][x] = revealed
+    gate_changed = False
     for x, y in current.d_gates:
         if known[y][x] and current.field[y][x] == d.CHAR_HIDDEN_D_GATE:
             current.field[y][x] = d.CHAR_D_GATE
+            gate_changed = True
+    if gate_changed:
+        current.update_outer_wall_decor()
 
 
 def sync_members(player: d.Player, previous: d.Point, direction: d.Point) -> None:

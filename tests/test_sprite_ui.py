@@ -695,6 +695,18 @@ def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
     assert order(0, 'sprite') < top.group.order < order(1, 'sprite')
 
 
+def test_outer_wall_is_a_flat_cell_without_column(sprite_ui, monkeypatch):
+    ui = sprite_ui
+    ui._decor = [[d.DECOR_OUTER_WALL]]
+    ui._floor_group = 'floor'
+    rectangles = []
+    monkeypatch.setattr(ui, '_draw_wall_rect', lambda *args: rectangles.append(args))
+    ui._draw_tile(0, 0, sprite_funcs.VISIBLE_WALL, [[d.CHAR_WALL]], lambda *_: True)
+    assert rectangles == [(0, 0, ui.cell_size_x, ui.cell_size_y,
+                           (24, 21, 19), 1, 'floor')]
+    assert not ui._drawables
+
+
 
 def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)

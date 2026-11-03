@@ -213,6 +213,7 @@ def _move_player(
         "sword_break", "golem_wall_break"
     }:
         current.broken_walls.add((player.x, player.y))
+        current.update_outer_wall_decor()
     if trace is not None and wall_result is not None:
         trace.record_wall(wall_result)
     return wall_result
@@ -2003,6 +2004,8 @@ def run_game(
             config.corridor_v_width,
             stage_num,
         )
+    for floor_data in floors:
+        floor_data.update_outer_wall_decor()
     player.known_monsters = set()
     player.boss_defeated = False
     player.treasure_collected = False
