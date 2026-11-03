@@ -399,10 +399,10 @@ def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
 
     assert (ui.window_width, ui.window_height) == (200, 120)
     assert ui.scale == pytest.approx(2)
-    assert ui.cell_size_x == pytest.approx(30)
+    assert ui.cell_size_x == pytest.approx(32)
     assert ui.cell_size_y == pytest.approx(40)
     assert ui.field_pixel_width == pytest.approx(106)
-    assert ui._horizontal_scroll_px == pytest.approx(30)
+    assert ui._horizontal_scroll_px == pytest.approx(32)
 
 
 @pytest.mark.parametrize('maximized_height', [1080, 2160])
@@ -446,7 +446,7 @@ def test_sprite_default_window_is_16_9_and_field_overflows():
     assert ui.window_height == d.FIELD_HEIGHT * 20 + 2 * 20
     assert ui.window_width == round(ui.window_height * 16 / 9)
     assert ui.field_pixel_width == ui.window_width - 60
-    assert ui.field_pixel_width < ui._map_pixel_width == d.FIELD_WIDTH * 15
+    assert ui.field_pixel_width < ui._map_pixel_width == d.FIELD_WIDTH * 16
     assert ui._horizontal_scroll_px == 0 and ui._camera_follow_player
 
 
@@ -467,7 +467,7 @@ def test_sprite_resize_constraints_allow_zoom_range():
 
     ui._update_minimum_window_size()
 
-    assert size_constraints[0][0:2] == ('minimum', 269)
+    assert size_constraints[0][0:2] == ('minimum', 273)
     assert size_constraints[0][2] == 250
     assert size_constraints[1] == ('maximum', sprite_funcs.MAX_WINDOW_WIDTH, 1720)
 
@@ -1065,7 +1065,7 @@ def test_matching_floor_cells_are_copied_as_one_checkerboard(cached_floor_ui):
     sprite = ui._drawables[0]
     assert sprite.image is ui._floor_tiles[sprite_funcs.VISIBLE_FLOOR, False]
     assert (sprite.x, sprite.y) == (0, 420)
-    assert sprite.scale_x == pytest.approx(26 / 30)
+    assert sprite.scale_x == pytest.approx(26 / 32)
     assert sprite.scale_y == 1
     assert sprite.blend_src == pyglet.gl.GL_ONE
     assert sprite.blend_dest == pyglet.gl.GL_ZERO
@@ -1096,7 +1096,7 @@ def test_floor_backdrop_is_reused_and_follows_scroll(cached_floor_ui, monkeypatc
     ui._draw_floor_backdrop()
     assert len(uploads) == 1
     assert [sprite.x for sprite in ui._drawables] == [0, -26]
-    assert all(sprite.scale_x == pytest.approx(26 / 30) for sprite in ui._drawables)
+    assert all(sprite.scale_x == pytest.approx(26 / 32) for sprite in ui._drawables)
     assert all(sprite.scale_y == 1 for sprite in ui._drawables)
 
 
