@@ -3,7 +3,7 @@
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-floor-training.py
 
 Two muted mint concrete slabs with different surface patterns, each filling
-one sprite-mode cell (15 x 20 px at scale 1), laid like the flagstones as a
+one sprite-mode cell (16 x 20 px at scale 1), laid like the flagstones as a
 checkerboard. Unlike the flagstones the colors are baked in; the GUI only
 darkens them for explored cells outside the current view.
 """
@@ -15,7 +15,7 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'floor'
 OUT.mkdir(parents=True, exist_ok=True)
-WIDTH, HEIGHT = 150, 200
+WIDTH, HEIGHT = 160, 200
 SLAB_X, SLAB_Y = 1.0, HEIGHT / WIDTH  # the canvas in world units
 # sRGB colors of the two slabs; parity 1 ('b') is slightly darker.
 MINT = {'a': (100, 126, 116), 'b': (90, 114, 105)}

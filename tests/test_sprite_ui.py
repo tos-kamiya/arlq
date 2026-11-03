@@ -887,7 +887,7 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     ui._frame_drawable_cache = None
     ui._reused_drawable_ids = set()
     ui._display_color = lambda color: color
-    ui._terrain_images = {char: SimpleNamespace(width=450, height=600, char=char)
+    ui._terrain_images = {char: SimpleNamespace(width=480, height=600, char=char)
                           for char in sprite_funcs.TERRAIN_FILES}
     ui._terrain_regions = {}
     ui._stage_field = [[' ', ' ']]
@@ -916,9 +916,9 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     # quarter cell over the explored floor beside it and is cropped at the
     # map edge on its other side.
     assert visible.y == 480 and visible.image.height * visible.scale_y == pytest.approx(30)
-    assert visible.image.region == (75, 450) and visible.x == 0
+    assert visible.image.region == (80, 480) and visible.x == 0
     assert visible.image.width * visible.scale_x == pytest.approx(13 * 1.25)
-    assert explored.image.region == (0, 375)
+    assert explored.image.region == (0, 400)
     assert explored.x == pytest.approx(13 - 13 * sprite_funcs.TERRAIN_SIDE)
     assert visible.group is ui._row_group(0, layer)
 
@@ -987,7 +987,7 @@ def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui._frame_drawable_cache = None
     ui._reused_drawable_ids = set()
     ui._display_color = lambda color: color
-    ui._terrain_images = {char: SimpleNamespace(width=450, height=500, char=char)
+    ui._terrain_images = {char: SimpleNamespace(width=480, height=500, char=char)
                           for char in sprite_funcs.TERRAIN_FILES}
     ui._terrain_regions = {}
     ui._stage_field = [[' ', d.CHAR_COLLAPSE, ' ']]
@@ -1293,7 +1293,7 @@ def test_offscreen_terrain_still_reads_neighbors(sprite_ui):
     ui = sprite_ui
     ui.window_width = 100
     ui._horizontal_scroll_px = 31
-    ui._terrain_images = {d.CHAR_COLLAPSE: SimpleNamespace(width=450, height=500)}
+    ui._terrain_images = {d.CHAR_COLLAPSE: SimpleNamespace(width=480, height=500)}
     ui._terrain_regions = {}
     ui._stage_field = [[d.CHAR_FLOOR, d.CHAR_COLLAPSE, d.CHAR_FLOOR]]
     ui._stage_discovered_at = lambda x, y: True

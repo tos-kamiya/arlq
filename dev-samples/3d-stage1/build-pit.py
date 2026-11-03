@@ -23,18 +23,23 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'pit'
 OUT.mkdir(parents=True, exist_ok=True)
-# The canvas covers one 15 x 20 px cell, 0.25 cells past each side (drawn by
+# The canvas covers one 16 x 20 px cell, 0.25 cells past each side (drawn by
 # the GUI only over explored floor) and the 0.25-cell band north of it
 # (sprite_funcs.TERRAIN_SIDE, TERRAIN_OVERHANG).
-CELL_PIXELS = (300, 400)  # 15 x 20 at 20 px per screen pixel
+CELL_PIXELS = (320, 400)  # 16 x 20 at 20 px per screen pixel
+# One world unit is 15 screen px, the cell width the models were made on, so
+# they keep their on-screen size on the wider cells. The cell is CELL_W units
+# wide, centred on x = 0.
+UNIT_PIXELS = 300
+CELL_W = CELL_PIXELS[0] / UNIT_PIXELS
 SIDE, OVERHANG = 0.25, 0.25
 WIDTH = round(CELL_PIXELS[0] * (1 + 2 * SIDE))
 HEIGHT = round(CELL_PIXELS[1] * (1 + OVERHANG))
 ELEVATION = math.radians(60)
-CELL_UP = CELL_PIXELS[1] / CELL_PIXELS[0]  # cell height on the image plane
+CELL_UP = CELL_PIXELS[1] / UNIT_PIXELS  # cell height on the image plane
 DEPTH = CELL_UP / math.sin(ELEVATION)  # the cell spans y = 0 (south) to DEPTH
-# The hole's radii as fractions of the cell's width and depth (its size on
-# the original 13 x 20 cells), enlarged by PIT_SCALE; its centre sits this
+# The hole's radii in units and as a fraction of the cell's depth (its size
+# on the original 13 x 20 cells), enlarged by PIT_SCALE; its centre sits this
 # fraction of the depth north of the cell's middle, so the larger slabs stay
 # within the canvas.
 HOLE_RADII = (0.36 * 13 / 15, 0.36)
@@ -224,7 +229,7 @@ bpy.ops.object.camera_add(location=image_up * (height / 2) - view * 20)
 camera = bpy.context.object
 camera.rotation_euler = view.to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = max(height, 1 + 2 * SIDE)
+camera.data.ortho_scale = max(height, CELL_W * (1 + 2 * SIDE))
 scene.camera = camera
 
 scene.render.use_freestyle = True
@@ -246,7 +251,7 @@ bpy.ops.render.render(write_still=True)
 for obj in [obj for obj in scene.objects if obj.type == 'MESH']:
     bpy.data.objects.remove(obj)
 for n, (x, y, size) in enumerate(FALLEN_ROCKS):
-    boulder('Fallen rock %d' % n, (x, DEPTH * y, 0.2 * size), PIT_SCALE * size)
+    boulder('Fallen rock %d' % n, (CELL_W * x, DEPTH * y, 0.2 * size), PIT_SCALE * size)
 # No outline, like the rocks around the pit (their outline is lost to the
 # holdout ground).
 scene.render.use_freestyle = False
