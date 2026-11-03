@@ -18,7 +18,7 @@ def enable_retained_ration_feature(monkeypatch):
 
 
 @pytest.mark.parametrize('decision,remaining,lp,commands', [
-    (True, 2, 100, 0), (False, 3, 0, 1), (None, 3, 0, 0),
+    (True, 0, 100, 0), (False, 1, 0, 1), (None, 1, 0, 0),
 ])
 def test_collapse_requires_explicit_continuation(monkeypatch, decision, remaining, lp, commands):
     player = d.Player(2, 2, 7, 0)
@@ -33,10 +33,10 @@ def test_collapse_requires_explicit_continuation(monkeypatch, decision, remainin
         input_game_over=lambda: game_over.append(True),
     )
     game_engine.run_game(ui, '123', stage_num=1)
-    assert prompts == [3]
+    assert prompts == [1]
     assert (player.lp, player.rations, player.level, player.x, player.y) == (lp, remaining, 7, 2, 2)
     assert len(game_over) == commands
-    assert draws[0] == (0, 3)
+    assert draws[0] == (0, 1)
 
 
 @pytest.mark.parametrize('symbols,expected', [
@@ -74,7 +74,7 @@ def test_replay_applies_ration_before_next_operation(monkeypatch):
     monkeypatch.setattr(game_engine, '_step', lambda *a, **kw: observed.append((a[2].lp, a[2].rations)))
     replay = ReplayContext(3, 123, GameConfig(), operations=[(1, 0)], ration_uses={0})
     stage_replay.replay_to_operation(replay, 1)
-    assert observed == [(100, 2)]
+    assert observed == [(100, 0)]
     assert player.lp == 100 - d.movement_lp_cost(player)
 
 
@@ -111,6 +111,7 @@ def test_terminal_ration_direct_keys(text, expected):
 
 def test_all_three_rations_then_final_game_over(monkeypatch):
     player = d.Player(2, 2, 7, 0)
+    player.rations = 3
     field = [[' '] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
     floors = [Floor(field, [], [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)], (2, 2), (3, 3), None)]
     monkeypatch.setattr(game_engine, 'build_single_floor', lambda *_: (floors, player))
@@ -144,7 +145,7 @@ def test_disabled_rations_end_game_without_prompt(monkeypatch):
     game_engine.run_game(ui, '123', stage_num=1)
     assert ended == [True]
     assert player.lp == 0
-    assert player.rations == 3
+    assert player.rations == 1
 
 
 def test_disabled_rations_hide_sprite_images(monkeypatch):

@@ -975,7 +975,8 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
     assert counts("b", 2) == [0, 3, 3, 3]
     assert counts("d", 1) == [3, 0, 0, 0]
     assert counts("d", 2) == [0, 3, 3, 2]
-    assert counts("B", 1) == [2, 2, 2, 2]
+    assert counts("B", 1) == [2, 2, 0, 0]
+    assert counts("B", 2) == [0, 0, 2, 2]
     assert counts("f", 1) == [0, 1, 1, 1]
     assert counts("f", 2) == [0, 1, 1, 1]
     assert counts("w", 2) == [0, 1, 1, 3]
@@ -985,7 +986,7 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
     })
     assert all(Counter(pool) == Counter({
         ("a", 1): 2, ("e", 1): 2, ("b", 1): 1,
-        ("B", 1): 1, ("w", 2): 1, ("k", 1): 1,
+        ("B", 2): 1, ("w", 2): 1, ("k", 1): 1,
     }) for pool in d.STAGE6_SUPPORT_POOLS[2:])
     assert d.STAGE6_PARTY_SIZE_WEIGHTS == (
         (78, 21, 1, 0, 0), (60, 30, 10, 0, 0),
@@ -1423,7 +1424,7 @@ def test_initial_parties_use_distinct_candidate_rooms(floor_index, detached):
     assert detached not in selected
     actual = [(leader.tribe.char, leader.empowered) for leader in parties]
     expected = ([('b', 1)] * 3 + [('B', 1)] * 2 + [('a', 1)] if floor_index == 0
-                else [('b', 2)] * 3 + [('B', 1)] * 2 + [('a', 2)])
+                else [('b', 2)] * 3 + [('B', 1 if floor_index == 1 else 2)] * 2 + [('a', 2)])
     assert actual == expected[:count]
     assert Counter(actual) == Counter(placed)
 
@@ -1484,6 +1485,7 @@ def test_emergency_ration_requires_visible_reachable_winnable_monster():
 
 
 def test_stage6_emergency_ration_used_once(monkeypatch):
+    monkeypatch.setattr(d, 'RATIONS_ENABLED', True)
     current, player = state(level=100, lp=0)
     current.seen = [[1] * d.FIELD_WIDTH for _ in current.field]
     current.entities = [monster(3, 2, 'a')]
@@ -1503,6 +1505,22 @@ def test_stage6_emergency_ration_used_once(monkeypatch):
     assert prompts == [0]
     assert player.rations == 0
     assert any('hunger' in message.lower() or '飢' in message for message in messages)
+
+
+def test_stage6_disabled_ration_ends_game_without_prompt(monkeypatch):
+    current, player = state(level=100, lp=0)
+    current.seen = [[1] * d.FIELD_WIDTH for _ in current.field]
+    current.entities = [monster(3, 2, 'a')]
+    monkeypatch.setattr(d, 'RATIONS_ENABLED', False)
+    monkeypatch.setattr(stage6, 'build', lambda *_: ([current], player))
+    from types import SimpleNamespace
+    ui = SimpleNamespace(
+        draw_stage=lambda **kw: None,
+        confirm_ration=lambda p: pytest.fail('Disabled ration must not be offered'),
+        input_game_over=lambda: None,
+    )
+    engine.run_game(ui, '123', stage_num=6)
+    assert player.rations == 1
 
 
 @pytest.mark.parametrize("char", ["g", "e"])

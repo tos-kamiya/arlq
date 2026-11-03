@@ -521,6 +521,7 @@ class SpriteUI(PygletUI):
         super()._initialize_state()
         self._mouse_position = None
         self._mouse_visible_until = None
+        self._edge_shade_fields = {}
         self._horizontal_scroll_px = 0
         self._floor_tiles = None
         self._edge_shade_pending = False
@@ -730,6 +731,15 @@ class SpriteUI(PygletUI):
             self._row_groups[order] = pyglet.graphics.Group(order=order)
         return self._row_groups[order]
 
+    def _set_edge_shade_field(self, field):
+        key = id(field)
+        if key not in self._edge_shade_fields:
+            self._edge_shade_fields[key] = (field, edge_floor_bounds(field))
+        bounds = self._edge_shade_fields[key][1]
+        if bounds != self._edge_shade_bounds:
+            self._edge_shade_bounds = bounds
+            self._edge_shade_image = None
+
     def draw_stage(self, *, decor=None, **kwargs):
         self._update_strength_column_width()
         self.field_pixel_width = max(
@@ -737,10 +747,7 @@ class SpriteUI(PygletUI):
         )
         field = kwargs.get('field')
         if field:
-            bounds = edge_floor_bounds(field)
-            if bounds != self._edge_shade_bounds:
-                self._edge_shade_bounds = bounds
-                self._edge_shade_image = None
+            self._set_edge_shade_field(field)
         self._last_stage_draw = (decor, kwargs.copy())
         theme = STAGE_TERRAIN_THEMES.get(kwargs.get('stage_num'), 'ruins')
         if theme != self._terrain_theme and theme in self._theme_images:

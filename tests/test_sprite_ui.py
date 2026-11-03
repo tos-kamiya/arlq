@@ -1432,6 +1432,22 @@ def test_edge_floor_shade_uses_first_non_wall_from_each_edge():
     assert shade(9, 12, 18, 12, bounds) == end
 
 
+def test_edge_shade_keeps_initial_bounds_when_returning_to_changed_floor(sprite_ui):
+    ui = sprite_ui
+    ui._edge_shade_bounds = None
+    ui._edge_shade_image = None
+    field = [[d.CHAR_WALL] * 8 for _ in range(6)]
+    field[2][3] = d.CHAR_FLOOR
+    other = [[d.CHAR_FLOOR] * 8 for _ in range(6)]
+    ui._set_edge_shade_field(field)
+    assert ui._edge_shade_bounds == (3, 2, 4, 3)
+    field[0][0] = d.CHAR_FLOOR
+    ui._set_edge_shade_field(other)
+    assert ui._edge_shade_bounds == (0, 0, 8, 6)
+    ui._set_edge_shade_field(field)
+    assert ui._edge_shade_bounds == (3, 2, 4, 3)
+
+
 def test_edge_shade_strips_cover_shifted_fades(cached_floor_ui):
     ui = edge_shade_ui(cached_floor_ui, 0)
     ui._edge_shade_bounds = (3, 2, d.FIELD_WIDTH - 4, d.FIELD_HEIGHT - 3)

@@ -2003,8 +2003,6 @@ def run_game(
             config.corridor_v_width,
             stage_num,
         )
-    if stage_num == 6:
-        player.rations = 1
     player.known_monsters = set()
     player.boss_defeated = False
     player.treasure_collected = False
@@ -2112,9 +2110,8 @@ def run_game(
         if player.lp <= 0:
             _stop_movement_repeat(ui)
             confirm = getattr(ui, "confirm_ration", None)
-            eligible = (
-                _ration_available(current, player, cur) if stage_num == 6
-                else d.RATIONS_ENABLED
+            eligible = d.RATIONS_ENABLED and (
+                stage_num != 6 or _ration_available(current, player, cur)
             )
             if not eligible or not player.rations or confirm is None:
                 break

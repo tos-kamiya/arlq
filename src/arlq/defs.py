@@ -457,7 +457,7 @@ class Player(Entity):
         super().__init__(x, y)
         self.level: float = level
         self.lp: float = lp
-        self.rations: int = len(RATIONS)
+        self.rations: int = 1
         self.item: Optional[str] = None
         self.item_uses: int = 0
         self.item_taken_from: Optional[str] = None
@@ -540,7 +540,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         "A", 2, MIN_FOOD, effect=EFFECT_SPECIAL_EXP, event_message="-- Level boosted!"
     ),  # Amoeba rare
     _MT("b", 5, 60, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Bison
-    _MT("B", 8, 80, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Buffalo
+    _MT("B", 8, 90, effect=EFFECT_FEED_MUCH, event_message="-- Stuffed!"),  # Buffalo
     _MT(
         "c",
         10,
@@ -895,7 +895,7 @@ STAGE6_FLOORS = 4
 STAGE6_INITIAL_PARTY_ROOMS: Tuple[Point, ...] = (
     (0, 0), (2, 0), (4, 0), (0, 2), (2, 2), (4, 2),
 )
-STAGE6_INITIAL_PARTY_PRIORITY = (("b", 2), ("b", 1), ("B", 1), ("a", 1), ("a", 2))
+STAGE6_INITIAL_PARTY_PRIORITY = (("b", 2), ("b", 1), ("B", 2), ("B", 1), ("a", 1), ("a", 2))
 # Weights for parties of 1, 2, and 3 monsters, by floor; larger sizes are disabled.
 STAGE6_PARTY_SIZE_WEIGHTS = (
     (78, 21, 1, 0, 0),
@@ -916,12 +916,12 @@ STAGE6_ROSTER = (
         ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 3, 2), ("B", 2, 1), ("c", 5, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 3, 2), ("B", 2, 2), ("c", 5, 2),
         ("C", 1, 1), ("d", 3, 2), ("f", 1, 1), ("f", 1, 2), ("g", 3, 1),
         ("k", 1, 1), ("w", 1, 2), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 3, 2), ("B", 2, 1), ("c", 6, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 3, 2), ("B", 2, 2), ("c", 6, 2),
         ("C", 1, 1), ("d", 2, 2), ("f", 1, 1), ("f", 1, 2), ("w", 3, 2), ("g", 3, 1),
         ("k", 1, 1),
     ),
@@ -930,7 +930,7 @@ STAGE6_BOSS_PARTY = (("W", 1), ("V", 1))
 STAGE6_BOSS_ESCORTS = (("f", 2), ("k", 1), ("w", 1), ("w", 2))
 _STAGE6_DEEP_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("e", 1), ("e", 1),
-    ("b", 1), ("B", 1), ("w", 2), ("k", 1),
+    ("b", 1), ("B", 2), ("w", 2), ("k", 1),
 )
 _STAGE6_FLOOR2_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("a", 1),

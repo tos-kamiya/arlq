@@ -208,7 +208,7 @@ Note on the Loop Companion: The destination becomes the new anchor, and subseque
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`). Floors 2–4 each have three empowered Bison (`b'`) party leaders. Each of these floors also has one normal `f` and one empowered `f'` as party leaders.
+Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`); on floors 3–4, Buffalo appear as empowered `B'`. Floors 2–4 each have three empowered Bison (`b'`) party leaders. Each of these floors also has one normal `f` and one empowered `f'` as party leaders.
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -294,7 +294,6 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 Generated maze sections are 11 cells wide.
 
-Once per Stage 6 playthrough, when you run out of LP, you may eat an emergency ration to restore LP to 30 if a monster party you can defeat and gain food from is within the explored area reachable with 30 LP. The ration is not shown in the status display. Choose `y` to eat, `n` for game over, or `q` / Esc to quit.
 
 On the final floor, the boss party and its section are chosen before any ordinary monster parties are placed. For every escort type, ordinary parties are placed outside that section without reducing their spawn totals; the boss-linked Mimic is exempt. The empowered Wyrm entrance is reserved at the same time. Vortex rearrangements and respawns retain their existing rules.
 
@@ -325,7 +324,7 @@ Vertically adjacent monsters fight in parties of up to three, combining their st
 
 | Display & Name | Description |
 | --- | --- |
-| **B** Buffalo | Attack power 8. Defeating it restores 80 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
+| **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **f** / **f'** Flame cobra | Defeating either grants 3 base experience. The empowered form `f'` places barriers on available adjacent cells in the four cardinal directions. |
 
 The floor 4 boss party consists of `W`, `V`, and one escort; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
