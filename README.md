@@ -290,18 +290,7 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
-Generated maze sections are 11 cells wide.
-
-
-On the final floor, the boss party and its section are chosen before any ordinary monster parties are placed. For every escort type, ordinary parties are placed outside that section without reducing their spawn totals; the boss-linked Mimic is exempt. The empowered Wyrm entrance is reserved at the same time. Vortex rearrangements and respawns retain their existing rules.
-
-Random barriers on floor 4 are limited to an ellipse centered on `W`, with both radii 1.5 times those of the Vortex effect. The placement rate is 5% within 0.6 Vortex radii, half that from 0.6 to 1.2 radii, and 5% from 1.2 to 1.5 radii. Monster-generated barrier rings are unchanged.
-
-When the boss escort is an empowered Wyrm (`w'`), `W` starts in the middle of the vertical party. Four ordinary floor cells form an open entrance beyond `w'`, with no barriers or entities. This improves access without guaranteeing a barrier-free route from the stairs; Vortex rearrangements keep their existing behavior.
-
 Stage 6 is a four-floor dungeon starting at level 1. The player fights with party members, and monsters also form parties. Find party members on floors 1–3, defeat the Dread Wyrm (`W`) on floor 4, and claim the treasure. Four of six candidates appear; the HUD shows discovered roles and floors. You can recruit up to two members; a third replaces the earliest recruit.
-
-On each floor, the six sections in alternating columns of the top and bottom rows receive parties first, excluding detached, wall-filled, and reserved boss sections. Eligible sections are shuffled, and leaders are selected from the existing spawn totals in priority order: b′, b, B, then a (including a′). Any remaining parties are placed normally.
 
 #### Party members
 
