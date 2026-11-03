@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 6.3.0 - 2026-11-03
+
+- Improve sprite-mode responsiveness by drawing the checkerboard floor as a
+  cached image. Explored floors have the same brightness inside and outside
+  the current view; walls retain their existing visibility shading.
+- Draw buried outer walls as dark, flat surfaces, exposing columns when walls
+  are broken. Align edge shading with the dungeon walls and stop enlarging
+  characters when the mouse cursor hides.
+- Use narrower Stage 6 maze sections, reserve the boss party's section before
+  placing other parties, and adjust Buffalo food recovery and party placement.
+- Add Stage 6 emergency ration support when rations are enabled; rations remain
+  disabled by default.
+
 ## 6.2.1 - 2026-11-03
 
 - Restore the sprite GUI's previous window size after maximizing on
