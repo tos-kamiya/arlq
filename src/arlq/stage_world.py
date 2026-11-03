@@ -80,14 +80,14 @@ def _is_wall_notch_point(point: d.Point) -> bool:
 
 
 def _add_filled_room_wall_notches(
-    field: List[List[str]], filled_rooms: Iterable[d.Point]
+    field: List[List[str]], filled_rooms: Iterable[d.Point], tile_width: int = d.TILE_WIDTH
 ) -> None:
     """Open irregularly spaced blocks along the outer edge of each filled room."""
     height, width = len(field), len(field[0])
     for tx, ty in filled_rooms:
-        left = tx * (d.TILE_WIDTH + 1) + 1
+        left = d.FIELD_X_MARGIN + tx * (tile_width + 1) + 1
         top = ty * (d.TILE_HEIGHT + 1) + 1
-        right = left + d.TILE_WIDTH - 1
+        right = left + tile_width - 1
         bottom = top + d.TILE_HEIGHT - 1
         edges = [
             [(left - 1, y) for y in range(top, bottom + 1)],
@@ -113,8 +113,8 @@ def _add_filled_room_wall_notches(
 
 def _add_stage1_margin_notches(field: List[List[str]]) -> None:
     """Break up the inner edges of Stage 1's filled side columns."""
-    left_edge = d.STAGE1_COLUMN_MARGIN * (d.TILE_WIDTH + 1)
-    right_edge = (d.TILE_NUM_X - d.STAGE1_COLUMN_MARGIN) * (d.TILE_WIDTH + 1)
+    left_edge = d.FIELD_X_MARGIN + d.STAGE1_COLUMN_MARGIN * (d.TILE_WIDTH + 1)
+    right_edge = d.FIELD_X_MARGIN + (d.TILE_NUM_X - d.STAGE1_COLUMN_MARGIN) * (d.TILE_WIDTH + 1)
     for tile_y in range(d.TILE_NUM_Y):
         top = tile_y * (d.TILE_HEIGHT + 1) + 1
         bottom = top + d.TILE_HEIGHT - 1
@@ -205,7 +205,7 @@ def _place_stage2_boss_barriers(
 def _inside_island(point: Optional[d.Point], island_tile: Optional[d.Point]) -> bool:
     if point is None or island_tile is None:
         return False
-    left = island_tile[0] * (d.TILE_WIDTH + 1)
+    left = d.FIELD_X_MARGIN + island_tile[0] * (d.TILE_WIDTH + 1)
     top = island_tile[1] * (d.TILE_HEIGHT + 1)
     return (
         left < point[0] < left + d.TILE_WIDTH + 1
@@ -380,7 +380,7 @@ def _spawn_island_elf(
 ) -> None:
     if island_tile is None:
         return
-    left = island_tile[0] * (d.TILE_WIDTH + 1) + 1
+    left = d.FIELD_X_MARGIN + island_tile[0] * (d.TILE_WIDTH + 1) + 1
     top = island_tile[1] * (d.TILE_HEIGHT + 1) + 1
     for y in range(top, top + d.TILE_HEIGHT):
         for x in range(left, left + d.TILE_WIDTH):
@@ -413,17 +413,18 @@ def _add_wall_spurs(
     down: d.Point,
     island_tile: Optional[d.Point],
     filled_rooms: Container[d.Point],
+    tile_width: int = d.TILE_WIDTH,
 ) -> None:
     """Add short room-wall spurs to selected unfilled rooms."""
-    stair_rooms = {tile_at(up), tile_at(down)}
+    stair_rooms = {tile_at(up, tile_width), tile_at(down, tile_width)}
     for ty in range(d.TILE_NUM_Y):
         for tx in range(d.TILE_NUM_X):
             room = (tx, ty)
             if room in stair_rooms or room == island_tile:
                 continue
-            left = tx * (d.TILE_WIDTH + 1) + 1
+            left = d.FIELD_X_MARGIN + tx * (tile_width + 1) + 1
             top = ty * (d.TILE_HEIGHT + 1) + 1
-            right = left + d.TILE_WIDTH - 1
+            right = left + tile_width - 1
             bottom = top + d.TILE_HEIGHT - 1
             if field[(top + bottom) // 2][(left + right) // 2] != d.CHAR_FLOOR:
                 continue
@@ -764,15 +765,16 @@ def _transition_candidates(
     stairs_to_avoid: List[d.Point],
     allowed_rooms: Optional[Container[d.Point]] = None,
     avoid_stair_rooms: bool = True,
+    tile_width: int = d.TILE_WIDTH,
 ) -> List[d.Point]:
     """Return matching floor cells outside the stairs' and adjacent rooms."""
-    stair_rooms = [tile_at(stair) for stair in stairs_to_avoid]
+    stair_rooms = [tile_at(stair, tile_width) for stair in stairs_to_avoid]
     candidates = []
     for y in range(1, d.FIELD_HEIGHT - 1):
         for x in range(1, d.FIELD_WIDTH - 1):
             if upper.field[y][x] != d.CHAR_FLOOR or lower.field[y][x] != d.CHAR_FLOOR:
                 continue
-            room = tile_at((x, y))
+            room = tile_at((x, y), tile_width)
             if allowed_rooms is not None and room not in allowed_rooms:
                 continue
             if avoid_stair_rooms and not all(
@@ -827,7 +829,7 @@ def _add_additional_stairs(floors: List[Floor], pair_counts: List[int]) -> None:
             ]
 
 
-def _place_collapses(floors: List[Floor]) -> None:
+def _place_collapses(floors: List[Floor], tile_width: int = d.TILE_WIDTH) -> None:
     """Place up to two five-cell Collapses on transitions below floors 2–4."""
     used_transitions: set[int] = set()
     for _ in range(2):
@@ -868,7 +870,7 @@ def _place_collapses(floors: List[Floor]) -> None:
             )
 
             candidates = []
-            for point in _transition_candidates(upper, lower, stair_points):
+            for point in _transition_candidates(upper, lower, stair_points, tile_width=tile_width):
                 footprint = d.collapse_footprint(point)
                 if any(
                     not (0 <= x < len(floor.field[0]) and 0 <= y < len(floor.field))

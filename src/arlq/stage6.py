@@ -6,7 +6,7 @@ from .stage56 import (
     _open_points,
     normalize_parties,
 )
-from .stage_maze import generate_floor_field, tile_at
+from .stage_maze import generate_floor_field, tile_at as maze_tile_at
 from .stage_types import Floor
 from .stage_world import (
     _add_filled_room_wall_notches,
@@ -15,6 +15,10 @@ from .stage_world import (
     _place_final_floor_barriers,
 )
 from .utils import rand
+
+
+def tile_at(point: d.Point) -> d.Point:
+    return maze_tile_at(point, d.TILE_WIDTH)
 
 
 def sample_party_size(floor_index: int) -> int:
@@ -269,10 +273,11 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             filled_counts_by_floor[index],
             split_room_graph=True,
             detach_leaf_room=True,
+            tile_width=d.TILE_WIDTH,
         )
         if index >= 2:
-            _add_wall_spurs(field, up, down, None, filled_rooms)
-        _add_filled_room_wall_notches(field, filled_rooms)
+            _add_wall_spurs(field, up, down, None, filled_rooms, d.TILE_WIDTH)
+        _add_filled_room_wall_notches(field, filled_rooms, d.TILE_WIDTH)
         if index:
             field[up[1]][up[0]] = d.CHAR_STAIRS_UP
         if index < d.STAGE6_FLOORS - 1:
@@ -292,7 +297,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             (x1, y1), (x2, y2) = split_edge
             if y1 == y2:
                 gate = (
-                    max(x1, x2) * (d.TILE_WIDTH + 1),
+                    d.FIELD_X_MARGIN + max(x1, x2) * (d.TILE_WIDTH + 1),
                     y1 * (d.TILE_HEIGHT + 1)
                     + 1
                     + (d.TILE_HEIGHT + 1 - config.corridor_h_width) // 2
@@ -300,7 +305,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 )
             else:
                 gate = (
-                    x1 * (d.TILE_WIDTH + 1)
+                    d.FIELD_X_MARGIN + x1 * (d.TILE_WIDTH + 1)
                     + 1
                     + (d.TILE_WIDTH + 1 - config.corridor_v_width) // 2
                     + config.corridor_v_width // 2,
@@ -386,7 +391,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                     current.persistent_barriers.add((x, y))
         floors.append(current)
         entry = down
-    _place_collapses(floors)
+    _place_collapses(floors, d.TILE_WIDTH)
     _place_additional_stairs(floors)
     _place_final_floor_barriers(
         floors[-1], d.STAGE6_FINAL_FLOOR_BARRIER_PERCENT,

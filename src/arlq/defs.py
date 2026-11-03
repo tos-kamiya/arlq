@@ -1,11 +1,12 @@
 from math import ceil
 from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
-TILE_WIDTH: int = 12
+TILE_WIDTH: int = 11
+FIELD_X_MARGIN: int = 2
 TILE_HEIGHT: int = 6
 TILE_NUM_X: int = 6
 TILE_NUM_Y: int = 3
-FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1
+FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1 + 2 * FIELD_X_MARGIN
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 # Stages available from the game's UI and command line.
 PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5, 6)
@@ -94,6 +95,7 @@ LP_OVERCHARGE_MAX: int = 120
 RATIONS_ENABLED: bool = False
 RATIONS = ("hardtack", "jerky", "hyorogan")
 RATION_LP: int = 100
+STAGE6_RATION_LP: int = 30
 LP_INIT: int = LP_OVERCHARGE_MAX
 LP_RESPAWN_MIN: int = 20
 LP_RESPAWN_COST: int = 6

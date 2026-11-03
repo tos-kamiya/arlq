@@ -8,13 +8,13 @@ from .utils import rand
 MAX_FLOOR_GENERATION_ATTEMPTS = 1000
 
 
-def tile_at(point: d.Point) -> d.Point:
-    return point[0] // (d.TILE_WIDTH + 1), point[1] // (d.TILE_HEIGHT + 1)
+def tile_at(point: d.Point, tile_width: int = d.TILE_WIDTH) -> d.Point:
+    return (point[0] - d.FIELD_X_MARGIN) // (tile_width + 1), point[1] // (d.TILE_HEIGHT + 1)
 
 
-def room_center(room: d.Point) -> d.Point:
+def room_center(room: d.Point, tile_width: int = d.TILE_WIDTH) -> d.Point:
     return (
-        room[0] * (d.TILE_WIDTH + 1) + d.TILE_WIDTH // 2 + 1,
+        d.FIELD_X_MARGIN + room[0] * (tile_width + 1) + tile_width // 2 + 1,
         room[1] * (d.TILE_HEIGHT + 1) + d.TILE_HEIGHT // 2 + 1,
     )
 
@@ -37,6 +37,7 @@ def generate_floor_field(
     filled_room_count: int,
     split_room_graph: bool = False,
     detach_leaf_room: bool = False,
+    tile_width: int = d.TILE_WIDTH,
 ) -> tuple[
     list[list[str]],
     d.Point,
@@ -50,11 +51,11 @@ def generate_floor_field(
     all_rooms = {(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)}
     for _ in range(MAX_FLOOR_GENERATION_ATTEMPTS):
         field, generated_up, generated_down = create_field(
-            corridor_h_width, corridor_v_width, d.CHAR_WALL
+            corridor_h_width, corridor_v_width, d.CHAR_WALL, tile_width=tile_width
         )
         up = up_point if up_point is not None else generated_up
         down = down_point if down_point is not None else generated_down
-        up_tile, down_tile = tile_at(up), tile_at(down)
+        up_tile, down_tile = tile_at(up, tile_width), tile_at(down, tile_width)
         if up_tile == down_tile:
             continue
 
@@ -157,16 +158,16 @@ def generate_floor_field(
                 room_components = (first_component, second_component)
 
         for room in sealed_rooms:
-            left = room[0] * (d.TILE_WIDTH + 1) + 1
+            left = d.FIELD_X_MARGIN + room[0] * (tile_width + 1) + 1
             top = room[1] * (d.TILE_HEIGHT + 1) + 1
             for y in range(top, top + d.TILE_HEIGHT):
-                for x in range(left, left + d.TILE_WIDTH):
+                for x in range(left, left + tile_width):
                     field[y][x] = d.CHAR_WALL
 
         # Rebuild internal partitions, opening only the accepted room tree.
         for ty in range(d.TILE_NUM_Y):
             for tx in range(d.TILE_NUM_X - 1):
-                x = (tx + 1) * (d.TILE_WIDTH + 1)
+                x = d.FIELD_X_MARGIN + (tx + 1) * (tile_width + 1)
                 for y in range(
                     ty * (d.TILE_HEIGHT + 1) + 1, (ty + 1) * (d.TILE_HEIGHT + 1)
                 ):
@@ -175,13 +176,13 @@ def generate_floor_field(
             y = (ty + 1) * (d.TILE_HEIGHT + 1)
             for tx in range(d.TILE_NUM_X):
                 for x in range(
-                    tx * (d.TILE_WIDTH + 1) + 1, (tx + 1) * (d.TILE_WIDTH + 1)
+                    d.FIELD_X_MARGIN + tx * (tile_width + 1) + 1, d.FIELD_X_MARGIN + (tx + 1) * (tile_width + 1)
                 ):
                     field[y][x] = d.CHAR_WALL
 
         for (x1, y1), (x2, y2) in edges:
             if y1 == y2:
-                x = max(x1, x2) * (d.TILE_WIDTH + 1)
+                x = d.FIELD_X_MARGIN + max(x1, x2) * (tile_width + 1)
                 offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
                 for y in range(
                     y1 * (d.TILE_HEIGHT + 1) + offset,
@@ -190,18 +191,18 @@ def generate_floor_field(
                     field[y][x] = d.CHAR_FLOOR
             else:
                 y = max(y1, y2) * (d.TILE_HEIGHT + 1)
-                offset = rand.randrange(d.TILE_WIDTH + 1 - corridor_v_width) + 1
+                offset = rand.randrange(tile_width + 1 - corridor_v_width) + 1
                 for x in range(
-                    x1 * (d.TILE_WIDTH + 1) + offset,
-                    x1 * (d.TILE_WIDTH + 1) + offset + corridor_v_width,
+                    d.FIELD_X_MARGIN + x1 * (tile_width + 1) + offset,
+                    d.FIELD_X_MARGIN + x1 * (tile_width + 1) + offset + corridor_v_width,
                 ):
                     field[y][x] = d.CHAR_FLOOR
 
         # Join stair cells to the center of their rooms and open those rooms.
         for stair in (up, down):
             sx, sy = stair
-            tx, ty = tile_at(stair)
-            cx, cy = room_center((tx, ty))
+            tx, ty = tile_at(stair, tile_width)
+            cx, cy = room_center((tx, ty), tile_width)
             while sx != cx:
                 field[sy][sx] = d.CHAR_FLOOR
                 sx += 1 if cx > sx else -1
@@ -209,10 +210,10 @@ def generate_floor_field(
                 field[sy][sx] = d.CHAR_FLOOR
                 sy += 1 if cy > sy else -1
             field[sy][sx] = d.CHAR_FLOOR
-            left = tx * (d.TILE_WIDTH + 1) + 1
+            left = d.FIELD_X_MARGIN + tx * (tile_width + 1) + 1
             top = ty * (d.TILE_HEIGHT + 1) + 1
             for y in range(top, top + d.TILE_HEIGHT):
-                for x in range(left, left + d.TILE_WIDTH):
+                for x in range(left, left + tile_width):
                     field[y][x] = d.CHAR_FLOOR
 
         return (

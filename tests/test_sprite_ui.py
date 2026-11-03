@@ -346,7 +346,7 @@ def test_shift_horizontal_view_scrolls_only_when_field_overflows():
 
     ui._horizontal_scroll_px = 50
     ui._handle_horizontal_view_key(pyglet.window.key.RIGHT)
-    assert ui._horizontal_scroll_px == 60
+    assert ui._horizontal_scroll_px == 50
 
     ui.field_pixel_width = 100
     ui._horizontal_scroll_px = 0
@@ -364,9 +364,9 @@ def test_sprite_camera_centers_player_and_clamps_at_field_edges():
     ui._center_camera_on_player(5)
     assert ui._horizontal_scroll_px == 35
     ui._center_camera_on_player(0)
-    assert ui._horizontal_scroll_px == -10
+    assert ui._horizontal_scroll_px == 0
     ui._center_camera_on_player(9)
-    assert ui._horizontal_scroll_px == 70
+    assert ui._horizontal_scroll_px == 60
 
 
 def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():

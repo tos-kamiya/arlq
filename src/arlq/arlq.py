@@ -143,11 +143,11 @@ def generate_maze(
 
 
 def place_to_tile(x: int, y: int) -> d.Point:
-    return (x - 1) // (d.TILE_WIDTH + 1), (y - 1) // (d.TILE_HEIGHT)
+    return (x - d.FIELD_X_MARGIN - 1) // (d.TILE_WIDTH + 1), (y - 1) // (d.TILE_HEIGHT)
 
 
 def tile_to_place_range(x: int, y: int) -> Tuple[d.Point, d.Point]:
-    lt = (x * (d.TILE_WIDTH + 1) + 1, y * (d.TILE_HEIGHT + 1) + 1)
+    lt = (d.FIELD_X_MARGIN + x * (d.TILE_WIDTH + 1) + 1, y * (d.TILE_HEIGHT + 1) + 1)
     rb = (lt[0] + d.TILE_WIDTH, lt[1] + d.TILE_HEIGHT)
     return lt, rb
 
@@ -317,6 +317,7 @@ def create_field(
     excluded_tile: Optional[d.Point] = None,
     margin_x: int = 0,
     tile_columns: Optional[int] = None,
+    tile_width: int = d.TILE_WIDTH,
 ) -> Tuple[List[List[str]], d.Point, d.Point]:
     def find_empty_cell(
         field: List[List[str]], left_top: d.Point, right_bottom: d.Point
@@ -350,13 +351,13 @@ def create_field(
         for x in range(0, d.FIELD_WIDTH):
             field[y][x] = wall_char
     for tx in range(d.TILE_NUM_X + 1):
-        x = tx * (d.TILE_WIDTH + 1)
+        x = d.FIELD_X_MARGIN + tx * (tile_width + 1)
         for y in range(0, d.FIELD_HEIGHT):
             field[y][x] = wall_char
     for ty in range(d.TILE_NUM_Y + 1):
         y = ty * (d.TILE_HEIGHT + 1)
         for tx in range(d.TILE_NUM_X + 1):
-            x = tx * (d.TILE_WIDTH + 1)
+            x = d.FIELD_X_MARGIN + tx * (tile_width + 1)
             field[y][x] = wall_char
 
     c = rand.randrange(17)
@@ -364,8 +365,8 @@ def create_field(
         y1 = ty * (d.TILE_HEIGHT + 1) + 1
         y2 = ty * (d.TILE_HEIGHT + 1) + d.TILE_HEIGHT
         for tx in range(d.TILE_NUM_X):
-            x1 = tx * (d.TILE_WIDTH + 1) + 1
-            x2 = tx * (d.TILE_WIDTH + 1) + d.TILE_WIDTH
+            x1 = d.FIELD_X_MARGIN + tx * (tile_width + 1) + 1
+            x2 = d.FIELD_X_MARGIN + tx * (tile_width + 1) + tile_width
             if (c := c + 3) % 17 < 5:
                 field[y1][x1] = wall_char
             if (c := c + 3) % 17 < 5:
@@ -388,14 +389,14 @@ def create_field(
             offset = rand.randrange(d.TILE_HEIGHT + 1 - corridor_h_width) + 1
             for y in range(corridor_h_width):
                 field[y1 * (d.TILE_HEIGHT + 1) + offset + y][
-                    x2 * (d.TILE_WIDTH + 1)
+                    d.FIELD_X_MARGIN + x2 * (tile_width + 1)
                 ] = d.CHAR_FLOOR
         else:
             assert x1 == x2
-            offset = rand.randrange(d.TILE_WIDTH + 1 - corridor_v_width) + 1
+            offset = rand.randrange(tile_width + 1 - corridor_v_width) + 1
             for x in range(corridor_v_width):
                 field[y2 * (d.TILE_HEIGHT + 1)][
-                    x1 * (d.TILE_WIDTH + 1) + offset + x
+                    d.FIELD_X_MARGIN + x1 * (tile_width + 1) + offset + x
                 ] = d.CHAR_FLOOR
 
     # The sealed tile can interrupt a direct route between its neighbors.
@@ -415,26 +416,36 @@ def create_field(
                 for y in range(corridor_h_width):
                     row = bypass_y * (d.TILE_HEIGHT + 1) + offset + y
                     field[row][
-                        (island_x + tile_offset_x) * (d.TILE_WIDTH + 1)
+                        d.FIELD_X_MARGIN + (island_x + tile_offset_x) * (tile_width + 1)
                     ] = d.CHAR_FLOOR
                     field[row][
-                        (island_x + 1 + tile_offset_x) * (d.TILE_WIDTH + 1)
+                        d.FIELD_X_MARGIN + (island_x + 1 + tile_offset_x) * (tile_width + 1)
                     ] = d.CHAR_FLOOR
 
     # Wall off the margin columns entirely so they read as removed, rather
     # than as a disconnected strip of tiny rooms.
     if tile_offset_x > 0 or tile_offset_x + tile_num_x < d.TILE_NUM_X:
-        left_edge = tile_offset_x * (d.TILE_WIDTH + 1)
-        right_edge = (tile_offset_x + tile_num_x) * (d.TILE_WIDTH + 1)
+        left_edge = d.FIELD_X_MARGIN + tile_offset_x * (tile_width + 1)
+        right_edge = d.FIELD_X_MARGIN + (tile_offset_x + tile_num_x) * (tile_width + 1)
         for y in range(d.FIELD_HEIGHT):
             for x in range(0, left_edge):
                 field[y][x] = wall_char
             for x in range(right_edge, d.FIELD_WIDTH):
                 field[y][x] = wall_char
 
-    r = tile_to_place_range(*first_p)
+    def room_range(point: d.Point) -> Tuple[d.Point, d.Point]:
+        x, y = point
+        left = d.FIELD_X_MARGIN + x * (tile_width + 1) + 1
+        top = y * (d.TILE_HEIGHT + 1) + 1
+        return (left, top), (left + tile_width, top + d.TILE_HEIGHT)
+
+    right_edge = d.FIELD_X_MARGIN + (tile_width + 1) * d.TILE_NUM_X
+    for row in field:
+        row[:d.FIELD_X_MARGIN] = [wall_char] * d.FIELD_X_MARGIN
+        row[right_edge + 1:] = [wall_char] * (d.FIELD_WIDTH - right_edge - 1)
+    r = room_range(first_p)
     first_p = find_empty_cell(field, r[0], r[1])
-    r = tile_to_place_range(*last_p)
+    r = room_range(last_p)
     last_p = find_empty_cell(field, r[0], r[1])
     return field, first_p, last_p
 

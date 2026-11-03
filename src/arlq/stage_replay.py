@@ -99,8 +99,10 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
             floors, player, floor[0], replay.config.torch_radius,
         )
 
+    if replay.stage_num == 6:
+        player.rations = 1
     if 0 in replay.ration_uses:
-        player.lp = d.RATION_LP
+        player.lp = d.STAGE6_RATION_LP if replay.stage_num == 6 else d.RATION_LP
         player.rations -= 1
     for index, direction in enumerate(replay.operations[:operation_count]):
         observe()
@@ -119,7 +121,7 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
         else:
             player.lp -= d.movement_lp_cost(player)
         if index + 1 in replay.ration_uses:
-            player.lp = d.RATION_LP
+            player.lp = d.STAGE6_RATION_LP if replay.stage_num == 6 else d.RATION_LP
             player.rations -= 1
         player.current_floor = floor[0]
     observe()

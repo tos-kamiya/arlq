@@ -1464,3 +1464,66 @@ def test_initial_parties_placement_excludes_sealed_rooms_and_preserves_roster(mo
             if char in ("a", "b", "B")
         })
         assert actual == expected
+
+
+def test_emergency_ration_requires_visible_reachable_winnable_monster():
+    current, player = state(level=100, lp=0)
+    visible = [[0] * d.FIELD_WIDTH for _ in current.field]
+    current.seen = [[1] * d.FIELD_WIDTH for _ in current.field]
+    enemy = monster(5, 2, 'a')
+    current.entities = [enemy]
+    assert engine._ration_available(current, player, visible)
+    player.level = 0
+    assert not engine._ration_available(current, player, visible)
+    player.level = 100
+    current.seen[2][5] = 0
+    assert not engine._ration_available(current, player, visible)
+    current.seen[2][5] = 1
+    enemy.x = 35
+    assert not engine._ration_available(current, player, visible)
+
+
+def test_stage6_emergency_ration_used_once(monkeypatch):
+    current, player = state(level=100, lp=0)
+    current.seen = [[1] * d.FIELD_WIDTH for _ in current.field]
+    current.entities = [monster(3, 2, 'a')]
+    monkeypatch.setattr(stage6, 'build', lambda *_: ([current], player))
+    prompts, messages = [], []
+    def collapse(*args, **kwargs):
+        player.lp = 0
+    monkeypatch.setattr(engine, '_step', collapse)
+    from types import SimpleNamespace
+    ui = SimpleNamespace(
+        draw_stage=lambda **kw: messages.append(kw['message']),
+        confirm_ration=lambda p: prompts.append(p.lp) or True,
+        input_direction=lambda: (1, 0),
+        input_game_over=lambda: None,
+    )
+    engine.run_game(ui, '123', stage_num=6)
+    assert prompts == [0]
+    assert player.rations == 0
+    assert any('hunger' in message.lower() or '飢' in message for message in messages)
+
+
+@pytest.mark.parametrize("char", ["g", "e"])
+def test_emergency_ration_excludes_monsters_without_food(char):
+    current, player = state(level=100, lp=0)
+    current.seen = [[1] * d.FIELD_WIDTH for _ in current.field]
+    visible = [[0] * d.FIELD_WIDTH for _ in current.field]
+    current.entities = [monster(3, 2, char)]
+    assert not engine._ration_available(current, player, visible)
+    current.entities.append(monster(3, 3, "a"))
+    assert engine._ration_available(current, player, visible)
+
+
+def test_stage6_uses_centered_narrow_sections_without_changing_field_size():
+    floors, _ = stage6.build()
+    right_edge = d.FIELD_X_MARGIN + (d.TILE_WIDTH + 1) * d.TILE_NUM_X
+    assert d.TILE_WIDTH == 11
+    for current in floors:
+        assert all(len(row) == d.FIELD_WIDTH for row in current.field)
+        assert all(cell == d.CHAR_WALL for row in current.field for cell in row[:d.FIELD_X_MARGIN])
+        assert all(cell == d.CHAR_WALL for row in current.field for cell in row[right_edge:])
+        for x in range(1, d.TILE_NUM_X):
+            point = (d.FIELD_X_MARGIN + x * (d.TILE_WIDTH + 1) + 1, 1)
+            assert stage6.tile_at(point) == (x, 0)

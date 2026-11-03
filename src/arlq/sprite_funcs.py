@@ -1481,7 +1481,7 @@ class SpriteUI(PygletUI):
             result = super().draw_status_bar(
                 turn, player, stage_num, message, extra_keys, game_start_turn,
             )
-            if d.RATIONS_ENABLED and player is not None:
+            if d.RATIONS_ENABLED and stage_num != 6 and player is not None:
                 size = self._status_row_height() * 1.6
                 for index, ration in enumerate(d.RATIONS):
                     self._draw_ration_image(
@@ -1590,11 +1590,7 @@ class SpriteUI(PygletUI):
     def _horizontal_scroll_bounds(self):
         if self.field_pixel_width >= self._map_pixel_width:
             return (0, 0)
-        margin = self.cell_size_x
-        return (
-            -margin,
-            self._map_pixel_width - self.field_pixel_width + margin,
-        )
+        return (0, self._map_pixel_width - self.field_pixel_width)
 
     def _center_camera_on_player(self, player_x):
         min_scroll, max_scroll = self._horizontal_scroll_bounds()

@@ -438,10 +438,7 @@ RATION_NAMES = {"hardtack": "Hardtack", "jerky": "Jerky", "hyorogan": "Hyorogan"
 
 def ration_prompt(player: d.Player) -> str:
     from .i18n import t as tr
-    name = tr(RATION_NAMES[
-        d.RATIONS[len(d.RATIONS) - player.rations]
-    ])
-    return tr("Collapsed from hunger! You had {ration}! Eat it and continue?").format(ration=name)
+    return tr("Eat your emergency ration and get back up?")
 
 
 def ration_options(yes: bool) -> List[Tuple[str, bool]]:

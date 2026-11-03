@@ -66,8 +66,7 @@ The right-hand strength labels grow with the field up to the HUD text size;
 their text area narrows to match smaller letters.
 Changing the width adjusts the visible field area without changing the height.
 Maximizing and restoring the window preserves its previous size. If the field is wider than the view, the camera follows the player;
-Shift+Left/Right scrolls the view three cells at a time without moving. The scroll range includes a
-one-cell margin at each edge.
+Shift+Left/Right scrolls the view three cells at a time without moving.
 
 Characters with bundled sprites use transparent images once identified.
 Hover over a field cell to enlarge its character in place to twice its usual
@@ -292,6 +291,10 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of all six Stage 6 party members.
 
 ### Stage 6: Dungeon with a Party
+
+Generated maze sections are 11 cells wide.
+
+Once per Stage 6 playthrough, when you run out of LP, you may eat an emergency ration to restore LP to 30 if a monster party you can defeat and gain food from is within the explored area reachable with 30 LP. The ration is not shown in the status display. Choose `y` to eat, `n` for game over, or `q` / Esc to quit.
 
 On the final floor, the boss party and its section are chosen before any ordinary monster parties are placed. For every escort type, ordinary parties are placed outside that section without reducing their spawn totals; the boss-linked Mimic is exempt. The empowered Wyrm entrance is reserved at the same time. Vortex rearrangements and respawns retain their existing rules.
 

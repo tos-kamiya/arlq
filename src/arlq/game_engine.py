@@ -160,6 +160,34 @@ def reachable_known_cells(
     return set(distances)
 
 
+
+def _ration_available(current: Floor, player: d.Player, visible: List[List[int]]) -> bool:
+    """Check for a beatable monster reachable with the emergency LP."""
+    targets = {
+        (entity.x, entity.y) for entity in current.entities
+        if isinstance(entity, d.Monster)
+        and not entity.tribe.is_elf and not entity.tribe.passive
+        and (entity.tribe.char != "M" or entity.active)
+        and any(monster.tribe.feed > 0 for monster in stage56.monster_party(current, entity))
+        and d.current_player_attack(player) >= sum(
+            d.monster_level(monster)
+            for monster in stage56.monster_party(current, entity)
+        )
+    }
+    if not targets:
+        return False
+    restored = deepcopy(player)
+    restored.lp = d.STAGE6_RATION_LP
+    phase_walls = {
+        (x, y) for y, row in enumerate(current.field)
+        for x, cell in enumerate(row) if cell == d.CHAR_D_GATE
+    }
+    reachable = reachable_known_cells(
+        current.field, current.seen, visible, current.entities, restored,
+        phase_walls, terminal_targets=targets,
+    )
+    return bool(targets & reachable)
+
 def _move_player(
     direction: d.Point,
     current: Floor,
@@ -1975,6 +2003,8 @@ def run_game(
             config.corridor_v_width,
             stage_num,
         )
+    if stage_num == 6:
+        player.rations = 1
     player.known_monsters = set()
     player.boss_defeated = False
     player.treasure_collected = False
@@ -2047,6 +2077,8 @@ def run_game(
         )
         if stage_draw_options:
             stage_draw_options["floor_view"] = floor_view
+        if player.lp <= 0:
+            message = (-1, trp(">> Collapsed from hunger! <<", 9))
         ui.draw_stage(
             turn=turn,
             game_start_turn=game_start_turn if has_rewound else None,
@@ -2080,7 +2112,11 @@ def run_game(
         if player.lp <= 0:
             _stop_movement_repeat(ui)
             confirm = getattr(ui, "confirm_ration", None)
-            if not d.RATIONS_ENABLED or not player.rations or confirm is None:
+            eligible = (
+                _ration_available(current, player, cur) if stage_num == 6
+                else d.RATIONS_ENABLED
+            )
+            if not eligible or not player.rations or confirm is None:
                 break
             decision = confirm(player)
             if decision is None:
@@ -2093,7 +2129,7 @@ def run_game(
             if trace is not None:
                 trace.turns[-1]["ration_used"] = True
             player.rations -= 1
-            player.lp = d.RATION_LP
+            player.lp = d.STAGE6_RATION_LP if stage_num == 6 else d.RATION_LP
             if replay_context is not None:
                 replay_context.ration_uses.add(len(replay_context.operations))
             message = (-1, "")

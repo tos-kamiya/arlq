@@ -448,7 +448,7 @@ class BlessedUI:
         for y, (strength_char, is_player) in enumerate(ui_display.build_strength_column(tribes, ranking_attack, d.FIELD_HEIGHT)):
             if strength_char is None:
                 continue
-            gauge_x = d.FIELD_WIDTH - (len(strength_char) - 1)
+            gauge_x = d.FIELD_WIDTH + 2 - len(strength_char)
             known = is_player or ui_display.strength_label_known(strength_char, known_types)
             put(gauge_x, y, strength_char, "white", bold=is_player, dim=not known)
 
@@ -523,7 +523,7 @@ class BlessedUI:
         )
         add("#" * filled + "-" * (bar_len - filled), bar_color)
         add("]  ")
-        if d.RATIONS_ENABLED:
+        if d.RATIONS_ENABLED and stage_num != 6:
             add(f"RATION: {player.rations}  ")
         add("/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit")
 

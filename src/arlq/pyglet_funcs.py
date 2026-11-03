@@ -1,6 +1,7 @@
 import locale
 import json
 import math
+import random
 import sys
 import time
 from functools import wraps
@@ -1477,7 +1478,7 @@ class PygletUI:
         lp_width = self._text_width(lp_str, size_scale=hud_scale)
         x_offset = lp_text_x_offset + lp_width
 
-        extra = (f"RATION: {player.rations}  " if d.RATIONS_ENABLED else "") + (
+        extra = (f"RATION: {player.rations}  " if d.RATIONS_ENABLED and stage_num != 6 else "") + (
             "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
         )
         if not self._status_shows_lp_gauge():
@@ -1863,7 +1864,7 @@ class PygletUI:
         self.stop_movement_repeat()
         self._key_queue.clear()
         yes = prompt is None
-        ration = d.RATIONS[len(d.RATIONS) - player.rations] if player is not None else None
+        ration = random.choice(d.RATIONS) if player is not None else None
         while True:
             self._clear_drawables()
             width = self.field_pixel_width

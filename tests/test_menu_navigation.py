@@ -199,3 +199,19 @@ def test_zero_duration_skips_effect_in_all_frontends():
         # No window or terminal is available; zero must return before rendering.
         ui.draw_combat_effect((0, 0), True)
         ui.draw_combat_effect((0, 0), False)
+
+
+def test_terminal_strength_labels_are_outside_field(monkeypatch):
+    from types import SimpleNamespace
+    from arlq import defs as d, display
+    ui = BlessedUI.__new__(BlessedUI)
+    ui.term = SimpleNamespace(home='', clear='', normal='', move_xy=lambda x, y: f'<{x},{y}>')
+    ui.dots = False
+    ui._style = lambda text, *args, **kwargs: text
+    monkeypatch.setattr(display, 'build_strength_column', lambda *_: [('b\u0027', False), ('@', True)])
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    seen = [[0] * d.FIELD_WIDTH for _ in field]
+    player = d.Player(2, 2, 1, 100)
+    output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[])
+    assert f'<{d.FIELD_WIDTH},0>b\u0027' in output
+    assert f'<{d.FIELD_WIDTH + 1},1>@' in output
