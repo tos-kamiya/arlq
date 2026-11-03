@@ -43,62 +43,9 @@ arlq-sprites
 arlq-cli
 ```
 
-Running `arlq` without options opens the graphical interface. Running
-`arlq-cli` without options starts the terminal interface. In the GUI, use a
-connected gamepad's D-pad or left stick to move, and button 0 to select a
-stage. The GUI stage selector arranges `[1]` through `[6]` in two columns and
-three rows; use arrow keys or the gamepad to navigate, or a number key to select
-directly. Change gamepad button assignments in `Settings -> Gamepad button settings`.
-The terminal stage selector uses the same two-column stage layout, with a blank
-line after Quit. Use arrow keys and Enter, or select a stage by number.
-After contacting an enemy, its party composition remains in brackets to the
-left of event messages. Temporary effect popups appear near the player while
-event messages remain in the bottom status area, so both can be visible at once.
-LP and LVL changes in these popups are rounded to one decimal place, omitting
-trailing `.0`.
+## Command-line options
 
-Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
-through `arlq --sprites`. Its window opens at about 16:9 and shows part of the
-field, scrolling with the player. The window can be resized in both dimensions.
-Changing the window height zooms the field while keeping its rendering detail
-consistent and the HUD at the configured interface size.
-The right-hand strength labels grow with the field up to the HUD text size;
-their text area narrows to match smaller letters.
-Changing the width adjusts the visible field area without changing the height.
-Maximizing and restoring the window preserves its previous size. If the field is wider than the view, the camera follows the player;
-Shift+Left/Right scrolls the view three cells at a time without moving.
-
-Characters with bundled sprites use transparent images once identified.
-Buried walls along the dungeon's edges appear as flat earth;
-walls exposed by breaking through them appear as columns.
-Explored floors remain equally bright inside and outside the current view.
-Hover over a field cell to enlarge its character in place to twice its usual
-size, with its name above its head. Unidentified characters show no name.
-At the dungeon's top edge, the name appears below the character instead.
-Japanese names include the character's glyph in parentheses; in English,
-Marksman and Komodo Dragon are shown as `Marksman(k)` and `Komodo Dragon(d)`.
-Moving to another cell restores the previous character. The mouse cursor
-appears when moved and hides after three seconds without movement.
-Unidentified monsters (including traps and Collapses), companions and elves
-appear as 3D `?`, `!` and `&` symbols standing in yellow, green and white light
-pillars.
-Stage 6 party members have sprites with randomly selected skin tones. The player is shown holding a
-chimera's sword while carrying it, and its own blade glows blue after the
-Collector Elf's blessing. The LP gauge floats just above the player, like a
-fighting game's, instead of in the status row. Ground markers preserve strength
-and status colors, and faint light pillars distinguish companions. Terrain has
-a separate illustrated style, including marble walls and stairs, floor tiles,
-fires, and Collapse pits; rocks fallen through a pit lie on the floor below
-it.
-Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
-`--scale` to enlarge the GUI. Blender is only needed to regenerate the bundled
-images.
-
-The terminal interface requires a terminal at least 80 columns wide and 24
-lines high. The game pauses if the terminal becomes smaller and resumes when
-it is large enough again.
-
-### Options shared by `arlq-cli` and `arlq`
+### Options shared by `arlq-cli`, `arlq`, and `arlq-sprites`
 
 | Option | Description |
 | --- | --- |
@@ -134,31 +81,79 @@ reproduce the same layout.
 
 In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 seconds for combat and barrier damage effects (default: 0.3). Choosing 0 disables the effects and their delay. The selection is saved and also used in terminal mode.
 
+## Screen and controls
+
+`arlq-cli` runs in a terminal, `arlq` opens a character-based GUI, and
+`arlq-sprites` opens a GUI with character sprites.
+
+### Common to all modes
+
+The stage selector arranges `[1]` through `[6]` in two columns and three rows;
+select a stage directly with a number key. GUI modes also support gamepads;
+button assignments can be changed in `Settings -> Gamepad button settings`.
+
+Control the player character (`@` in `arlq-cli` and `arlq`) using the arrow keys or WASD.
+Your vision is centered on your location, and explored areas remain visible on the automap.
+
+After contacting an enemy, its party composition remains in brackets to the
+left of event messages. Temporary status popups appear near the player, while
+event messages remain in the bottom status area. LP and LVL changes in the
+popups are rounded to one decimal place, omitting trailing `.0`.
+
+### Terminal: `arlq-cli`
+
+The Blessed terminal interface requires at least 80 columns and 24 lines. The
+game pauses if the terminal becomes smaller and resumes when it is large enough
+again. `arlq --terminal` also starts the terminal interface.
+
+### Sprite GUI: `arlq-sprites`
+
+Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
+through `arlq --sprites`. Its window opens at about 16:9 and shows part of the
+field, scrolling with the player. The window can be resized in both dimensions.
+Changing the window height zooms the field while keeping its rendering detail
+consistent.
+If the field is wider than the view, the camera follows the player;
+Shift+Left/Right scrolls the view three cells at a time without moving.
+
+Characters with bundled sprites use transparent images once identified.
+Hover over a field cell to enlarge its character in place to twice its usual
+size, with its name above its head. Unidentified characters show no name.
+At the dungeon's top edge, the name appears below the character instead.
+Japanese names include the character's glyph in parentheses; in English,
+Marksman and Komodo Dragon are shown as `Marksman(k)` and `Komodo Dragon(d)`.
+Moving to another cell restores the previous character. The mouse cursor
+appears when moved and hides after three seconds without movement.
+Unidentified monsters (including traps and Collapses), companions and elves
+appear as 3D `?`, `!` and `&` symbols standing in yellow, green and white light
+pillars.
+Stage 6 party members have sprites with randomly selected skin tones. The player is shown holding a
+chimera's sword while carrying it, and its own blade glows blue after the
+Collector Elf's blessing. The LP gauge floats just above the player, like a
+fighting game's, instead of in the status row. Ground markers preserve strength
+and status colors, and faint light pillars distinguish companions. Terrain has
+a separate illustrated style, including marble walls and stairs, floor tiles,
+fires, and Collapse pits; rocks fallen through a pit lie on the floor below
+it.
+Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
+`--scale` to enlarge the GUI.
+
 ## Game Description
 
 * **Objective**  
   Explore the dungeon, defeat the stage boss to unlock its treasure chest, and claim the treasure. Elves can help in the later stages.
 
-* **Player and Fog**  
-  You control the character represented by `@` using the arrow keys or WASD.
-
-  Each move uses LP; reaching zero ends the game. Defeating monsters restores LP. The background behind `@` turns yellow at 40 LP or below and red at 20 LP or below. Your vision is centered on your location, and explored areas remain visible on the automap.
+  LP represents the player's life and decreases with movement or damage; reaching zero ends the game. Defeating monsters restores LP. The background behind `@` turns yellow at 40 LP or below and red at 20 LP or below.
 
   Every stage starts with 120 LP, temporarily above the normal maximum of 100, to give you more time to explore. The gauge is magenta while LP exceeds its maximum. Defeating monsters cannot replenish the excess. Returning after a defeat subtracts 6 LP, then guarantees a minimum of 20 LP, without imposing an upper limit. This does not grant the starting bonus again.
 
-  Holding a direction repeats movement when repeat is enabled. Automatic repeat stopping is on by default and can be changed in `Settings` or with `--no-auto-repeat-stop`. It pauses near known hazards and after encounters or special movement; release and press the direction again to resume.
+* **Player Support Features**
 
-  Overshoot assist cancels an accidental movement sequence if you return to the same position within five turns without gaining new map or monster information, encountering an entity, taking damage, or changing floors. Possible return cells are marked with a dark gray `.`.
-
-  Press `F` to toggle a highlight on every explored-map cell reachable with your remaining LP. With a gamepad, the preview button can show it while held or toggle it on and off.
-
-  While preview is active, press Up or Down to inspect another floor in Stages 3 and 4. Moving closes the keyboard preview.
-
-  Reachable cells are calculated using these rules:
-
-  - Unexplored cells remain hidden, and no route is shown.
-  - The estimate avoids entities displayed on the map and stairs. It does not break walls or count LP recovery.
-  - Marksman damage is not included, so the estimate may differ from the actual reachable area.
+  | Feature | Description |
+  | --- | --- |
+  | Movement repeat | Holding a direction repeats movement when enabled. Automatic stopping is on by default near known hazards and after encounters or special movement; release and press the direction again to resume. Change it in `Settings` or with `--no-auto-repeat-stop`. |
+  | Overshoot assist | Cancels movement and LP use when you return to the same position within five turns without gaining map or monster information, encountering an entity, taking damage, or changing floors. Possible return cells are marked with a dark gray `.`. |
+  | Reachable area preview | Press `F` to highlight explored cells reachable with your remaining LP. A gamepad button can show the preview while held or toggle it. While viewing the preview, Up or Down inspects another floor in Stages 3 and 4; moving closes the keyboard preview. Unexplored cells and routes remain hidden. The estimate avoids displayed entities and stairs, does not break walls or count LP recovery, and excludes Marksman damage, so actual reach may differ. |
 
 * **Monsters, Companions, and Elves**  
   Unencountered monsters are displayed as `?`, companions as `!`, and unidentified elves as `&`. Contact reveals an entity's type.
