@@ -3770,9 +3770,27 @@ def flame_cobra(x, y):
     scales = amphibian_skin('Cobra crimson skin', (0.80, 0.08, 0.03), (0.38, 0.035, 0.014),
                             spots=7.0, transmission=0.3, rim=(1.0, 0.55, 0.2),
                             rim_strength=1.6)
-    flame = material('Cobra orange flame', (0.95, 0.22, 0.03), 0.7, 0.2,
-                     emission=(1.0, 0.25, 0.02), strength=0.3,
-                     rim=(1.0, 0.75, 0.3), rim_strength=1.2)
+    def fire(name, glow, strength):
+        """Flame that shines by its own light: matte and dark, without
+        reflections or refraction, so it does not look like plastic. It
+        glows brightest where it faces the camera and deepens to red at its
+        edges, which keeps its form."""
+        mat = material(name, (0.05, 0.01, 0.0), roughness=1.0)
+        nodes, links = mat.node_tree.nodes, mat.node_tree.links
+        bsdf = nodes['Principled BSDF']
+        bsdf.inputs['Specular IOR Level'].default_value = 0.0
+        bsdf.inputs['Emission Strength'].default_value = strength
+        facing = nodes.new('ShaderNodeLayerWeight')
+        facing.inputs['Blend'].default_value = 0.5
+        mix = nodes.new('ShaderNodeMix')
+        mix.data_type = 'RGBA'
+        mix.inputs[6].default_value = (*glow, 1)              # A: facing the camera
+        mix.inputs[7].default_value = (0.85, 0.10, 0.01, 1)  # B: deep red edges
+        links.new(facing.outputs['Facing'], mix.inputs['Factor'])
+        links.new(mix.outputs[2], bsdf.inputs['Emission Color'])
+        return mat
+
+    flame = fire('Cobra orange flame', (1.0, 0.30, 0.03), 1.1)
     belly = material('Cobra molten belly', (1.0, 0.55, 0.08), 0.3, 0.2,
                      emission=(1.0, 0.4, 0.05), strength=0.4,
                      rim=(1.0, 0.8, 0.4), rim_strength=0.8)
@@ -3805,19 +3823,39 @@ def flame_cobra(x, y):
     widths.append(radii[-1])
     triangle_facets(tube('Cobra coiled body', curve, widths, scales, sides=8, flat=0.8,
                          twist=math.pi / 8))
-    # A broad hood spreading like fire, with pointed flame tongues rising
-    # from its edge, close behind the neck and leaning back a little.
-    def hood(bx, bz):
-        return Vector((x + bx, y + 0.06 + 0.3 * (bz - 0.6), bz))
+    # A hood of fire: rounded flame tongues fanning out behind the neck,
+    # each thick at the root, swaying once and tapering to a point, with
+    # shorter yellow tongues in front of them. (A flat jagged plate read as
+    # a folding screen.) The hood sits close behind the neck, leaning back
+    # a little.
+    def hood(bx, bz, front=0.0):
+        return Vector((x + bx, y + 0.06 - front + 0.3 * (bz - 0.6), bz))
 
-    verts = [tuple(hood(bx, bz)) for bx, bz in [
-        (0, 0.35), (-0.42, 0.73), (-0.43, 1.12), (-0.31, 1.02), (-0.24, 1.34), (0, 1.08),
-        (0.24, 1.34), (0.31, 1.02), (0.43, 1.12), (0.42, 0.73)]]
-    membrane = mesh_object('Cobra flame hood', verts, [(0, i, i + 1) for i in range(1, 9)],
-                           flame, False)
-    solid = membrane.modifiers.new('Hood thickness', 'SOLIDIFY')
-    solid.thickness = 0.03
-    solid.offset = 0
+    # The core is a golden orange, close to the outer flames' color.
+    core = fire('Cobra golden flame core', (1.0, 0.50, 0.08), 1.3)
+
+    def tongue(base, tip, width, sway, mat, front):
+        (bx, bz), (tx, tz) = base, tip
+        dx, dz = tx - bx, tz - bz
+        length = math.hypot(dx, dz)
+        nx, nz = -dz / length, dx / length  # across the tongue, in the hood
+        path = [hood(bx + dx * t + nx * sway * w, bz + dz * t + nz * sway * w, front)
+                for t, w in ((0, 0), (0.3, 1), (0.65, -0.6), (1, 0))]
+        tube('Cobra flame tongue', path,
+             [(width * 0.8, 0.04), (width, 0.045), (width * 0.6, 0.035), 0], mat,
+             sides=10, smooth=True, up=(0, 1, 0))
+
+    # Each tongue bulges outward low down and rises toward its tip, as
+    # flames do, rather than pointing sideways like spikes.
+    for side in (-1, 1):
+        for (bx, bz), (tx, tz), width, sway in (((0.10, 0.52), (0.42, 0.98), 0.14, 0.10),
+                                                ((0.12, 0.70), (0.38, 1.27), 0.15, 0.10),
+                                                ((0.08, 0.86), (0.19, 1.42), 0.14, 0.08)):
+            tongue((side * bx, bz), (side * tx, tz), width, -side * sway, flame, 0.0)
+        for (bx, bz), (tx, tz), width, sway in (((0.08, 0.62), (0.30, 1.02), 0.09, 0.06),
+                                                ((0.06, 0.80), (0.16, 1.20), 0.09, 0.05)):
+            tongue((side * bx, bz), (side * tx, tz), width, -side * sway, core, 0.03)
+    tongue((0, 0.86), (0.03, 1.30), 0.13, 0.05, flame, 0.0)
     tube('Cobra throat', [(x, y - 0.10, 0.56), (x, y - 0.13, 0.80), (x, y - 0.10, 1.02)],
          [(0.09, 0.04), (0.11, 0.05), (0.08, 0.04)], belly, sides=6)
     # Wedge head pointing forward, with a forked tongue.
@@ -3828,11 +3866,6 @@ def flame_cobra(x, y):
         sphere('Cobra eye', (x + side * 0.10, y - 0.26, 1.20), (0.04, 0.035, 0.028), eye, 16)
         cone('Cobra tongue', (x, y - 0.40, 1.05), (x + side * 0.04, y - 0.56, 1.02),
              0.015, 0, belly, 4, False)
-        # Molten flames licking up each side of the hood, just in front of it.
-        tube('Cobra hood flame', [hood(side * 0.35, 0.67) - Vector((0, 0.03, 0)),
-                                  hood(side * 0.45, 0.95) - Vector((0, 0.03, 0)),
-                                  hood(side * 0.48, 1.23) - Vector((0, 0.03, 0))],
-             [0.055, 0.065, 0], belly, sides=6)
 
 
 def spore(x, y):
