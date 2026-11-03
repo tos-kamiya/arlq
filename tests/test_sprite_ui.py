@@ -695,15 +695,29 @@ def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
     assert order(0, 'sprite') < top.group.order < order(1, 'sprite')
 
 
-def test_outer_wall_is_a_flat_cell_without_column(sprite_ui, monkeypatch):
+@pytest.mark.parametrize('tile_color', [sprite_funcs.VISIBLE_WALL, sprite_funcs.WALL])
+def test_outer_wall_is_a_flat_cell_without_column(sprite_ui, monkeypatch, tile_color):
     ui = sprite_ui
     ui._decor = [[d.DECOR_OUTER_WALL]]
     ui._floor_group = 'floor'
     rectangles = []
     monkeypatch.setattr(ui, '_draw_wall_rect', lambda *args: rectangles.append(args))
-    ui._draw_tile(0, 0, sprite_funcs.VISIBLE_WALL, [[d.CHAR_WALL]], lambda *_: True)
+    ui._draw_tile(0, 0, tile_color, [[d.CHAR_WALL]], lambda *_: True)
     assert rectangles == [(0, 0, ui.cell_size_x, ui.cell_size_y,
-                           (24, 21, 19), 1, 'floor')]
+                           tile_color, 1, 'floor')]
+    assert not ui._drawables
+
+
+@pytest.mark.parametrize('tile_color', [sprite_funcs.VISIBLE_WALL, sprite_funcs.WALL])
+def test_buried_wall_is_a_flat_wall_colored_cell(sprite_ui, monkeypatch, tile_color):
+    ui = sprite_ui
+    ui._decor = [[d.DECOR_BURIED_WALL]]
+    ui._floor_group = 'floor'
+    rectangles = []
+    monkeypatch.setattr(ui, '_draw_wall_rect', lambda *args: rectangles.append(args))
+    ui._draw_tile(0, 0, tile_color, [[d.CHAR_WALL]], lambda *_: True)
+    assert rectangles == [(0, 0, ui.cell_size_x, ui.cell_size_y,
+                           tile_color, 1, 'floor')]
     assert not ui._drawables
 
 

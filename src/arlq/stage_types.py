@@ -45,10 +45,10 @@ class Floor:
             self.decor = [[d.DECOR_NONE] * len(row) for row in self.field]
 
     def update_outer_wall_decor(self) -> None:
-        """Mark buried walls along the edges of the floor."""
+        """Mark buried walls at the edges and inside solid wall areas."""
         for row in self.decor:
             for x, value in enumerate(row):
-                if value == d.DECOR_OUTER_WALL:
+                if value in (d.DECOR_OUTER_WALL, d.DECOR_BURIED_WALL):
                     row[x] = d.DECOR_NONE
         for y, row in enumerate(self.field):
             walls = (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
@@ -60,10 +60,23 @@ class Floor:
                 if (cell != d.CHAR_WALL or self.decor[y][x] != d.DECOR_NONE
                         or (not edge_row and interior[0] <= x <= interior[-1])):
                     continue
-                neighbors = ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1))
                 if all(not (0 <= ny < len(self.field) and 0 <= nx < len(self.field[ny]))
-                       or self.field[ny][nx] in walls for nx, ny in neighbors):
+                       or self.field[ny][nx] in walls
+                       for ny in range(y - 1, y + 2)
+                       for nx in range(x - 1, x + 2)):
                     self.decor[y][x] = d.DECOR_OUTER_WALL
+        walls = (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
+        for y, row in enumerate(self.field):
+            for x, cell in enumerate(row):
+                if (cell == d.CHAR_WALL and self.decor[y][x] == d.DECOR_NONE
+                        and all(
+                            0 <= ny < len(self.field)
+                            and 0 <= nx < len(self.field[ny])
+                            and self.field[ny][nx] in walls
+                            for ny in range(y - 1, y + 2)
+                            for nx in range(x - 1, x + 2)
+                        )):
+                    self.decor[y][x] = d.DECOR_BURIED_WALL
 
 
 @dataclass

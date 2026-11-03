@@ -701,6 +701,41 @@ def test_top_and_bottom_edge_walls_stay_columns_when_exposed():
     assert floor_data.decor[4][2] == d.DECOR_NONE
 
 
+def test_interior_solid_wall_is_flat_until_a_diagonal_cell_opens():
+    field = [[d.CHAR_FLOOR] * 7 for _ in range(7)]
+    for y in range(1, 6):
+        for x in range(1, 6):
+            field[y][x] = d.CHAR_WALL
+    floor_data = Floor(field, [], [[1] * 7 for _ in field], (0, 0), (6, 6), None)
+    floor_data.update_outer_wall_decor()
+    assert floor_data.decor[3][3] == d.DECOR_BURIED_WALL
+    assert floor_data.decor[1][3] == d.DECOR_NONE
+
+    field[2][2] = d.CHAR_FLOOR
+    floor_data.update_outer_wall_decor()
+    assert floor_data.decor[3][3] == d.DECOR_NONE
+    assert floor_data.decor[4][4] == d.DECOR_BURIED_WALL
+
+
+@pytest.mark.parametrize(
+    ('edge', 'diagonal'),
+    [((0, 2), (1, 1)), ((4, 2), (3, 1)),
+     ((2, 0), (1, 1)), ((2, 4), (1, 3))],
+)
+def test_edge_wall_stays_a_column_when_diagonally_exposed(edge, diagonal):
+    field = [[d.CHAR_WALL] * 5 for _ in range(5)]
+    field[2][2] = d.CHAR_FLOOR
+    floor_data = Floor(field, [], [[1] * 5 for _ in field], (2, 2), (2, 2), None)
+    floor_data.update_outer_wall_decor()
+    x, y = edge
+    assert floor_data.decor[y][x] == d.DECOR_OUTER_WALL
+
+    dx, dy = diagonal
+    field[dy][dx] = d.CHAR_FLOOR
+    floor_data.update_outer_wall_decor()
+    assert floor_data.decor[y][x] == d.DECOR_NONE
+
+
 def test_stage3_wall_pegasus_phase():
     player = d.Player(2, 2, 1, 90)
     player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])

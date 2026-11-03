@@ -1101,10 +1101,9 @@ class SpriteUI(PygletUI):
             or tile_color not in (VISIBLE_WALL, WALL)
         ):
             return super()._draw_tile(x, y, tile_color, field, discovered_at)
-        if self._decor_at(x, y) == d.DECOR_OUTER_WALL:
-            color = (24, 21, 19) if tile_color == VISIBLE_WALL else (14, 12, 11)
+        if self._decor_at(x, y) in (d.DECOR_OUTER_WALL, d.DECOR_BURIED_WALL):
             self._draw_wall_rect(self._field_col_x(x), y * self.cell_size_y,
-                                 self.cell_size_x, self.cell_size_y, color, 1,
+                                 self.cell_size_x, self.cell_size_y, tile_color, 1,
                                  self._floor_group)
             return
         floor = VISIBLE_FLOOR if tile_color == VISIBLE_WALL else FLOOR

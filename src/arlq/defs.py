@@ -81,6 +81,7 @@ CHAR_COLLAPSE: str = "O"
 DECOR_NONE: str = ""
 DECOR_FALLEN_ROCKS: str = "fallen rocks"  # below a pit on the floor above
 DECOR_OUTER_WALL: str = "outer wall"
+DECOR_BURIED_WALL: str = "buried wall"
 
 TORCH_RADIUS: int = 3
 FOV_WIDTH_EXPANSION_RATIO: float = 1.4
