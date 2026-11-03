@@ -519,6 +519,72 @@ def test_generated_boss_retains_each_escort(monkeypatch, escort):
     assert not stage56.special_monster(actual)
 
 
+
+@pytest.mark.parametrize("seed", range(16))
+def test_empowered_wyrm_boss_has_central_boss_and_clear_entrance(monkeypatch, seed):
+    engine.rand.set_seed(seed)
+    original_choice = stage6.rand.choice
+    monkeypatch.setattr(
+        stage6.rand, "choice",
+        lambda values: ("w", 2) if values is d.STAGE6_BOSS_ESCORTS else original_choice(values),
+    )
+    floors, _ = stage6.build()
+    current = floors[-1]
+    boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W")
+    party = stage56.monster_party(current, boss)
+    assert len(party) == 3
+    escort = next(e for e in party if e.tribe.char == "w")
+    vortex = next(e for e in party if e.tribe.char == "V")
+    assert escort.empowered == 2
+    assert escort.x == boss.x == vortex.x
+    assert escort.y + vortex.y == 2 * boss.y
+    direction = escort.y - boss.y
+    assert abs(direction) == 1
+    x, y = escort.x, escort.y + direction
+    entrance = {(x, y), (x - 1, y), (x + 1, y), (x, y + direction)}
+    assert all(current.field[py][px] == d.CHAR_FLOOR for px, py in entrance)
+    assert not entrance.intersection((e.x, e.y) for e in current.entities)
+    assert not entrance.intersection(current.persistent_barriers)
+
+
+
+@pytest.mark.parametrize("escort", d.STAGE6_BOSS_ESCORTS)
+@pytest.mark.parametrize("seed", [0, 2, 53, 123])
+def test_initial_boss_room_excludes_ordinary_parties(monkeypatch, seed, escort):
+    engine.rand.set_seed(seed)
+    original_choice = stage6.rand.choice
+    monkeypatch.setattr(
+        stage6.rand, "choice",
+        lambda values: escort if values is d.STAGE6_BOSS_ESCORTS else original_choice(values),
+    )
+    original_boss = stage6._place_initial_boss_party
+    boss_positions = []
+
+    def place_boss(current):
+        assert not current.entities
+        party, entrance = original_boss(current)
+        boss_positions.extend((entity, entity.x, entity.y) for entity in party)
+        return party, entrance
+
+    monkeypatch.setattr(stage6, "_place_initial_boss_party", place_boss)
+    floors, _ = stage6.build()
+    current = floors[-1]
+    boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W")
+    party = stage56.monster_party(current, boss)
+    assert len(party) == 3
+    assert all((entity.x, entity.y) == (x, y) for entity, x, y in boss_positions)
+    actual_escort = next(e for e in party if e.tribe.char not in ("W", "V"))
+    assert (actual_escort.tribe.char, actual_escort.empowered) == escort
+    room = stage6.tile_at((boss.x, boss.y))
+    assert all(stage6.tile_at((e.x, e.y)) == room for e in party)
+    ordinary = [e for e in current.entities if isinstance(e, d.Monster)
+                and not isinstance(e, d.Collapse) and e not in party
+                and not (e.tribe.char == "M" and e.mimic_boss_char == "W")]
+    assert all(stage6.tile_at((e.x, e.y)) != room for e in ordinary)
+    chest = next(e for e in current.entities if isinstance(e, d.Treasure))
+    assert stage6.tile_at((chest.x, chest.y)) != room
+
+
 def test_treasure_is_optional_and_does_not_finish_stage():
     current, player = state()
     chest = d.Treasure(3, 2, "TF")
@@ -882,10 +948,11 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
                 for floor in d.STAGE6_ROSTER]
 
     assert counts("b", 1) == [3, 0, 0, 0]
-    assert counts("b", 2) == [0, 2, 2, 2]
+    assert counts("b", 2) == [0, 3, 3, 3]
     assert counts("d", 1) == [3, 0, 0, 0]
     assert counts("d", 2) == [0, 3, 3, 2]
     assert counts("B", 1) == [2, 2, 2, 2]
+    assert counts("f", 1) == [0, 1, 1, 1]
     assert counts("f", 2) == [0, 1, 1, 1]
     assert counts("w", 2) == [0, 1, 1, 3]
     assert Counter(d.STAGE6_SUPPORT_POOLS[1]) == Counter({
@@ -1332,7 +1399,7 @@ def test_initial_parties_use_distinct_candidate_rooms(floor_index, detached):
     assert detached not in selected
     actual = [(leader.tribe.char, leader.empowered) for leader in parties]
     expected = ([('b', 1)] * 3 + [('B', 1)] * 2 + [('a', 1)] if floor_index == 0
-                else [('b', 2)] * 2 + [('B', 1)] * 2 + [('a', 2)] * 2)
+                else [('b', 2)] * 3 + [('B', 1)] * 2 + [('a', 2)])
     assert actual == expected[:count]
     assert Counter(actual) == Counter(placed)
 
@@ -1355,13 +1422,19 @@ def test_initial_parties_placement_excludes_sealed_rooms_and_preserves_roster(mo
         ))
         eligible = set(d.STAGE6_INITIAL_PARTY_ROOMS) & connected
         count = len(eligible)
-        initial = calls[index][:count]
+        if index == d.STAGE6_FLOORS - 1:
+            boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W")
+            eligible.discard(stage6.tile_at((boss.x, boss.y)))
+        count = len(eligible)
+        spawning = [(leader, room) for leader, room in calls[index] if leader[0] != "W"]
+        assert len(spawning) == sum(amount for _, amount, _ in d.STAGE6_ROSTER[index])
+        initial = spawning[:count]
         selected = {room for _, room in initial}
         assert len(selected) == count
         assert selected <= eligible
         assert all(char in ("a", "b", "B") for (char, _), _ in initial)
-        assert all(room is None for _, room in calls[index][count:])
-        actual = Counter(leader for leader, _ in calls[index] if leader[0] in ("a", "b", "B"))
+        assert all(room is None for _, room in spawning[count:])
+        actual = Counter(leader for leader, _ in spawning if leader[0] in ("a", "b", "B"))
         expected = Counter({
             (char, rank): amount for char, amount, rank in d.STAGE6_ROSTER[index]
             if char in ("a", "b", "B")

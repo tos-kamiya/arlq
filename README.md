@@ -209,7 +209,7 @@ Note on the Loop Companion: The destination becomes the new anchor, and subseque
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`).
+Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`). Floors 2–4 each have three empowered Bison (`b'`) party leaders. Each of these floors also has one normal `f` and one empowered `f'` as party leaders.
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -293,9 +293,13 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
+On the final floor, the boss party and its section are chosen before any ordinary monster parties are placed. For every escort type, ordinary parties are placed outside that section without reducing their spawn totals; the boss-linked Mimic is exempt. The empowered Wyrm entrance is reserved at the same time. Vortex rearrangements and respawns retain their existing rules.
+
+When the boss escort is an empowered Wyrm (`w'`), `W` starts in the middle of the vertical party. Four ordinary floor cells form an open entrance beyond `w'`, with no barriers or entities. This improves access without guaranteeing a barrier-free route from the stairs; Vortex rearrangements keep their existing behavior.
+
 Stage 6 is a four-floor dungeon starting at level 1. The player fights with party members, and monsters also form parties. Find party members on floors 1–3, defeat the Dread Wyrm (`W`) on floor 4, and claim the treasure. Four of six candidates appear; the HUD shows discovered roles and floors. You can recruit up to two members; a third replaces the earliest recruit.
 
-On each floor, the six sections in alternating columns of the top and bottom rows receive parties first, excluding detached and wall-filled sections. Eligible sections are shuffled, and leaders are selected from the existing spawn totals in priority order: b′, b, B, then a (including a′). Any remaining parties are placed normally.
+On each floor, the six sections in alternating columns of the top and bottom rows receive parties first, excluding detached, wall-filled, and reserved boss sections. Eligible sections are shuffled, and leaders are selected from the existing spawn totals in priority order: b′, b, B, then a (including a′). Any remaining parties are placed normally.
 
 #### Party members
 

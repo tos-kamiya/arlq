@@ -95,6 +95,13 @@ def _place_party(
         if isinstance(entity, d.Monster)
     }
     candidates = set(_open_points(current))
+    if any(char == "W" for char, _ in roster):
+        connected_rooms = set().union(
+            *(component for component in current.room_components if len(component) > 1)
+        )
+        candidates = {point for point in candidates if tile_at(point) in connected_rooms}
+    if room is not None:
+        candidates = {point for point in candidates if tile_at(point) == room}
     candidates = {
         point
         for point in candidates
@@ -135,6 +142,8 @@ def _place_party(
                 {(x + dx, y + dy) for x, y in cells for dx, dy in ((0, -1), (0, 1))}
                 & candidates - set(cells) - occupied
             )
+            if any(char == "W" for char, _ in roster):
+                frontier = [point for point in frontier if tile_at(point) == tile_at(seed)]
             if not frontier:
                 break
             cells.append(rand.choice(frontier))
@@ -160,11 +169,53 @@ def _party_roster(char: str, rank: int, floor_index: int) -> list[tuple[str, int
     ]
 
 
-def _place_initial_parties(current: Floor, floor_index: int) -> dict[tuple[str, int], int]:
+def _place_initial_boss_party(current: Floor) -> tuple[list[d.Monster], set[d.Point]]:
+    """Choose the boss layout before reserving its room for ordinary spawns."""
+    escort = rand.choice(d.STAGE6_BOSS_ESCORTS)
+    if escort != ("w", 2):
+        _place_party(current, [*d.STAGE6_BOSS_PARTY, escort], d.STAGE6_FLOORS - 1)
+        return current.entities[-3:], set()
+    available = set(_open_points(current))
     connected_rooms = set().union(
         *(component for component in current.room_components if len(component) > 1)
     )
-    rooms = [room for room in d.STAGE6_INITIAL_PARTY_ROOMS if room in connected_rooms]
+    choices = []
+    for x, y in sorted(available):
+        room = tile_at((x, y))
+        if room not in connected_rooms:
+            continue
+        for direction in (-1, 1):
+            cells = ((x, y), (x, y - direction), (x, y + direction))
+            entrance = {
+                (x, y + 2 * direction),
+                (x - 1, y + 2 * direction),
+                (x + 1, y + 2 * direction),
+                (x, y + 3 * direction),
+            }
+            footprint = set(cells) | entrance
+            if footprint <= available and all(tile_at(point) == room for point in footprint):
+                choices.append((cells, entrance))
+    if not choices:
+        raise RuntimeError("could not place Stage 6 empowered-wyrm boss entrance")
+    cells, entrance = rand.choice(choices)
+    party = [
+        d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[char], rank)
+        for (x, y), (char, rank) in zip(cells, [*d.STAGE6_BOSS_PARTY, escort])
+    ]
+    current.entities.extend(party)
+    return party, entrance
+
+
+def _place_initial_parties(
+    current: Floor, floor_index: int, excluded_room: d.Point | None = None
+) -> dict[tuple[str, int], int]:
+    connected_rooms = set().union(
+        *(component for component in current.room_components if len(component) > 1)
+    )
+    rooms = [
+        room for room in d.STAGE6_INITIAL_PARTY_ROOMS
+        if room in connected_rooms and room != excluded_room
+    ]
     shuffled = []
     while rooms:
         shuffled.append(rooms.pop(rand.randrange(len(rooms))))
@@ -187,6 +238,9 @@ def _place_initial_parties(current: Floor, floor_index: int) -> dict[tuple[str, 
 def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     config = config or GameConfig()
     floors = []
+    initial_boss_party = []
+    boss_entrance = set()
+    boss_reserved = set()
     entry = None
     member_roles = list(d.RECRUITABLE_MEMBER_ROLES)
     while len(member_roles) > 4:
@@ -252,7 +306,17 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 )
             current.d_gates[gate] = "."
             current.field[gate[1]][gate[0]] = d.CHAR_HIDDEN_D_GATE
-        initial_parties = _place_initial_parties(current, index)
+        boss_room = None
+        if index == d.STAGE6_FLOORS - 1:
+            initial_boss_party, boss_entrance = _place_initial_boss_party(current)
+            boss = initial_boss_party[0]
+            boss_room = tile_at((boss.x, boss.y))
+            boss_reserved = {
+                (x, y) for y, row in enumerate(current.field) for x in range(len(row))
+                if tile_at((x, y)) == boss_room
+            }
+            current.respawn_exclusions.update(boss_reserved)
+        initial_parties = _place_initial_parties(current, index, boss_room)
         _place_detached_room_monsters(current, room_components)
         for role, member_floor in member_floors:
             if member_floor != index:
@@ -271,9 +335,6 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 )
             )
         if index == d.STAGE6_FLOORS - 1:
-            boss_party = list(d.STAGE6_BOSS_PARTY)
-            boss_party.append(rand.choice(d.STAGE6_BOSS_ESCORTS))
-            _place_party(current, boss_party, index)
             mimic = d.Monster(
                 *rand.choice(_open_points(current)),
                 d.CHAR_TO_MONSTER_TRIBE["M"],
@@ -307,10 +368,20 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         entry = down
     _place_collapses(floors)
     _place_additional_stairs(floors)
-    _place_final_floor_barriers(floors[-1], d.STAGE6_FINAL_FLOOR_BARRIER_PERCENT)
+    _place_final_floor_barriers(
+        floors[-1], d.STAGE6_FINAL_FLOOR_BARRIER_PERCENT, protected_points=boss_entrance
+    )
     for current in floors:
+        if current is floors[-1]:
+            for entity in initial_boss_party:
+                current.entities.remove(entity)
         normalize_parties(current, d.MEMBER_STAGE_MONSTER_PARTY_LIMIT)
+        if current is floors[-1]:
+            current.entities.extend(initial_boss_party)
         stage56.initialize_monster_barriers(current)
+    for x, y in boss_entrance:
+        floors[-1].field[y][x] = d.CHAR_FLOOR
+    floors[-1].respawn_exclusions.difference_update(boss_reserved)
     player = d.Player(*floors[0].up, 1, d.LP_INIT)
     player.rescue_stage = True
     player.treasure_stage = True
@@ -367,6 +438,7 @@ def _place_additional_stairs(floors: list[Floor]) -> None:
             *lower.down_stairs,
             *lower.collapse_landings,
         }
+        fixed.update(upper.respawn_exclusions | lower.respawn_exclusions)
         fixed.update(
             point
             for current in (upper, lower)

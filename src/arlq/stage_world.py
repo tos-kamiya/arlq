@@ -134,7 +134,9 @@ def _place_stage4_final_floor_barriers(floor: Floor) -> None:
     _place_final_floor_barriers(floor, d.STAGE4_FINAL_FLOOR_BARRIER_PERCENT)
 
 
-def _place_final_floor_barriers(floor: Floor, percent: int) -> None:
+def _place_final_floor_barriers(
+    floor: Floor, percent: int, *, protected_points: Container[d.Point] = ()
+) -> None:
     """Cover a percentage of eligible final-floor cells with barriers."""
     occupied = {(entity.x, entity.y) for entity in floor.entities}
     protected = {
@@ -145,6 +147,7 @@ def _place_final_floor_barriers(floor: Floor, percent: int) -> None:
         *floor.scholar_up_stairs,
         *floor.scholar_down_stairs,
         *floor.collapse_landings,
+        *protected_points,
         *occupied,
     }
     candidates = [
@@ -836,12 +839,14 @@ def _place_collapses(floors: List[Floor]) -> None:
                 upper.down,
                 *upper.up_stairs,
                 *upper.down_stairs,
+                *upper.respawn_exclusions,
             }
             lower_fixed = {
                 lower.up,
                 lower.down,
                 *lower.up_stairs,
                 *lower.down_stairs,
+                *lower.respawn_exclusions,
             }
             occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
             occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
