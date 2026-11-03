@@ -1661,10 +1661,12 @@ def loop_spiral(x, y):
                 centre + along * 0.20 - side * 0.01 - Vector((0, 0, 0.04))]
         tube('Loop cyan lightning', bolt, [0.027, 0.023, 0], glow, sides=6)
 
-def metaball_mesh(name, elements, mat, resolution=0.01):
+def metaball_mesh(name, elements, mat, resolution=0.01, stiffness=None):
     """Melt (position, radius) metaballs into one smooth mesh object.
 
-    The surface lies at roughly 0.6 of each element's radius.
+    The surface lies at roughly 0.6 of each element's radius. A `stiffness`
+    above Blender's default 2 melts the elements less, keeping each one's
+    round bulge.
     """
     meta = bpy.data.metaballs.new(name)
     meta.resolution = meta.render_resolution = resolution
@@ -1672,6 +1674,8 @@ def metaball_mesh(name, elements, mat, resolution=0.01):
         element = meta.elements.new()
         element.co = co
         element.radius = radius
+        if stiffness is not None:
+            element.stiffness = stiffness
     obj = bpy.data.objects.new(name, meta)
     bpy.context.collection.objects.link(obj)
     bpy.ops.object.select_all(action='DESELECT')
@@ -2226,17 +2230,65 @@ def collector_elf(x, y):
                body_radii=[(0.27, 0.22), (0.22, 0.18), (0.15, 0.12), (0.08, 0.07)])
 
 
+# Opacity of the Lifebringer's cloud facing the camera and at its edges.
+CLOUD_OPACITY = (0.9, 0.7)
+
+
 def lifebringer_elf(x, y):
     """Lifebringer Elf: drawn as a spirit or god rather than an elf. It floats
-    on a bumpy white cloud that its slim robe sinks into, in softly glowing translucent
-    ivory, with long white-gold hair (no beard and no pointed ears), a gold
+    on a flat-bottomed cumulus that its slim robe sinks into, in softly glowing translucent
+    ivory, with long white-gold hair, thick brows reaching past the face
+    (no beard and no pointed ears), a gold
     halo behind the head, offering in both hands an orb of soft green light.
     """
     robe = material('Lifebringer champagne robe', (0.85, 0.70, 0.40), 0.3, 0.3,
                     emission=(1.0, 0.85, 0.5), strength=0.04,
                     rim=(1.0, 0.9, 0.6), rim_strength=1.2, coat=0.5)
-    cloud = material('Lifebringer cloud', (0.70, 0.76, 0.90), 0.2, 0.6,
-                     rim=(1.0, 1.0, 1.0), rim_strength=1.0)
+    # Matte cloud, white on top and shaded blue-grey toward its underside
+    # like a cumulus, so the melted puffs keep their relief without the
+    # gloss that made them look like bubbles.
+    cloud = material('Lifebringer cloud', (0.80, 0.84, 0.94), roughness=1.0,
+                     rim=(1.0, 1.0, 1.0), rim_strength=0.3)
+    nodes, links = cloud.node_tree.nodes, cloud.node_tree.links
+    cloud_bsdf = nodes['Principled BSDF']
+    cloud_bsdf.inputs['Specular IOR Level'].default_value = 0.1
+    position = nodes.new('ShaderNodeNewGeometry')
+    height = nodes.new('ShaderNodeSeparateXYZ')
+    ramp = nodes.new('ShaderNodeMapRange')
+    ramp.data_type = 'FLOAT_VECTOR'
+    # World heights, after the model is scaled to its size.
+    ramp.inputs[7].default_value = (0.03 * SIZES['L'],) * 3  # From Min (vector)
+    ramp.inputs[8].default_value = (0.24 * SIZES['L'],) * 3  # From Max (vector)
+    ramp.inputs[9].default_value = (0.42, 0.48, 0.66)   # To Min: underside
+    ramp.inputs[10].default_value = (0.86, 0.89, 0.97)  # To Max: sunlit top
+    combine = nodes.new('ShaderNodeCombineXYZ')
+    links.new(position.outputs['Position'], height.inputs[0])
+    for axis in 'XYZ':
+        links.new(height.outputs['Z'], combine.inputs[axis])
+    links.new(combine.outputs[0], ramp.inputs[6])
+    links.new(ramp.outputs[1], cloud_bsdf.inputs['Base Color'])
+    # Slightly see-through, more toward its edges, like a real cloud's
+    # thinning rim: CLOUD_OPACITY facing the camera, less where it turns away.
+    out = nodes['Material Output']
+    surface = out.inputs['Surface'].links[0].from_socket
+    facing = nodes.new('ShaderNodeLayerWeight')
+    facing.inputs['Blend'].default_value = 0.5
+    opacity = nodes.new('ShaderNodeMapRange')
+    opacity.inputs['To Min'].default_value = CLOUD_OPACITY[0]
+    opacity.inputs['To Max'].default_value = CLOUD_OPACITY[1]
+    clear = nodes.new('ShaderNodeBsdfTransparent')
+    veil = nodes.new('ShaderNodeMixShader')
+    # Only the near surface counts; the far one would double the opacity.
+    backface = nodes.new('ShaderNodeNewGeometry')
+    front_only = nodes.new('ShaderNodeMix')
+    front_only.inputs[3].default_value = 0.0  # B: back faces are clear
+    links.new(facing.outputs['Facing'], opacity.inputs['Value'])
+    links.new(backface.outputs['Backfacing'], front_only.inputs['Factor'])
+    links.new(opacity.outputs['Result'], front_only.inputs[2])
+    links.new(front_only.outputs[0], veil.inputs['Fac'])
+    links.new(clear.outputs[0], veil.inputs[1])
+    links.new(surface, veil.inputs[2])
+    links.new(veil.outputs[0], out.inputs['Surface'])
     gold = material('Lifebringer halo gold', (1.0, 0.75, 0.25), roughness=0.25, metallic=0.6,
                     emission=(1.0, 0.7, 0.2), strength=1.5)
     skin = material('Lifebringer skin', (0.96, 0.84, 0.72), 0.2, 0.4,
@@ -2249,20 +2301,33 @@ def lifebringer_elf(x, y):
     eye = material('Lifebringer eyes', (0.10, 0.20, 0.15), roughness=0.3, coat=1.0)
 
     def body(x, y):
-        # A bumpy cumulus of separate puffs, so it reads as a cloud rather
-        # than a flared skirt, with small wisps drifting beside it.
-        for k, (px, py, pz, r) in enumerate((
-                (0.0, 0.02, 0.22, 0.20), (-0.22, 0.06, 0.18, 0.16), (0.23, 0.04, 0.17, 0.17),
-                (-0.12, -0.18, 0.15, 0.15), (0.13, -0.19, 0.16, 0.14), (0.0, 0.22, 0.17, 0.15),
-                (-0.36, -0.04, 0.11, 0.11), (0.37, -0.06, 0.10, 0.12), (-0.02, -0.26, 0.10, 0.11),
-                (0.30, 0.20, 0.11, 0.10), (-0.30, 0.20, 0.10, 0.10))):
-            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=r,
-                                                  location=(x + px, y + py, pz))
-            puff = finish(bpy.context.object, cloud, True, 'Lifebringer cloud puff')
-            puff.scale = (1.0, 1.0, 0.8)
-        for px, py, pz, r in ((-0.52, 0.06, 0.30, 0.06), (0.50, -0.10, 0.36, 0.05),
-                              (0.46, 0.12, 0.20, 0.045)):
-            sphere('Lifebringer cloud wisp', (x + px, y + py, pz), (r * 1.4, r, r * 0.8), cloud, 16)
+        # A cumulus: a wide, flat-bottomed base with round bumps of
+        # different sizes rising on top, joined with soft creases (stiff
+        # metaballs) rather than a heap of separate bubbles or one smooth
+        # mass (which read as a flared skirt), with two small clouds drifting
+        # beside it. Metaball surfaces lie at about 0.6 of the element radius.
+        def cumulus(name, cx, cy, cz, puffs, scale):
+            shape = metaball_mesh(name, [((x + cx + scale * px, y + cy + scale * py,
+                                           cz + scale * pz), scale * r / 0.6)
+                                         for px, py, pz, r in puffs],
+                                  cloud, 0.008, stiffness=4.0)
+            for v in shape.data.vertices:  # flat bottom
+                v.co.z = max(v.co.z, cz + 0.03 * scale)
+            return shape
+
+        cumulus('Lifebringer cloud', 0, 0, 0, (
+            # Base: wide and low.
+            (-0.24, 0.02, 0.10, 0.15), (0.24, 0.00, 0.10, 0.15), (0.0, -0.14, 0.10, 0.16),
+            (0.0, 0.16, 0.10, 0.15), (-0.38, -0.06, 0.08, 0.10), (0.39, -0.08, 0.08, 0.10),
+            (-0.16, -0.22, 0.08, 0.11), (0.17, -0.22, 0.08, 0.11),
+            # Bumps on top, larger toward the middle.
+            (0.0, 0.04, 0.20, 0.17), (-0.20, -0.10, 0.17, 0.12), (0.21, -0.11, 0.17, 0.12),
+            (-0.30, 0.12, 0.16, 0.11), (0.30, 0.12, 0.16, 0.11), (0.0, -0.24, 0.14, 0.10),
+            (-0.40, -0.12, 0.12, 0.07), (0.41, -0.13, 0.12, 0.07)), 1.0)
+        cumulus('Lifebringer cloud wisp', -0.56, 0.06, 0.24, (
+            (-0.06, 0, 0.05, 0.05), (0.03, 0, 0.07, 0.065), (0.11, 0, 0.04, 0.04)), 0.6)
+        cumulus('Lifebringer cloud wisp', 0.54, -0.04, 0.30, (
+            (-0.08, 0, 0.04, 0.04), (0.0, 0, 0.06, 0.06), (0.08, 0, 0.05, 0.05)), 0.6)
         # Wide sleeves meeting before the chest, hands offering the orb.
         for side in (-1, 1):
             tube('Lifebringer sleeve', [(x + side * 0.18, y, 0.84), (x + side * 0.27, y - 0.10, 0.72),
@@ -2278,6 +2343,13 @@ def lifebringer_elf(x, y):
             tube('Lifebringer hair lock', [(x + dx, y + 0.08, 1.04), (x + dx * 1.4, y + 0.17, 0.84),
                                            (x + dx * 1.6, y + 0.20, 0.62)], [0.05, 0.05, 0], hair,
                  sides=8, smooth=True)
+        # Thick white-gold brows reaching past the sides of the face, their
+        # outer ends drooping a little for a gentle, not stern, look.
+        for side in (-1, 1):
+            tube('Lifebringer brow', [(x + side * 0.03, y - 0.14, 1.10),
+                                      (x + side * 0.11, y - 0.135, 1.10),
+                                      (x + side * 0.22, y - 0.11, 1.04)],
+                 [(0.03, 0.022), (0.032, 0.024), (0.012, 0.01)], hair, sides=10, smooth=True)
         # A halo standing behind the head.
         bpy.ops.mesh.primitive_torus_add(major_radius=0.22, minor_radius=0.018,
                                          location=(x, y + 0.14, 1.10))
