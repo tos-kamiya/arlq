@@ -71,6 +71,7 @@ Shift+Left/Right scrolls the view three cells at a time without moving.
 Characters with bundled sprites use transparent images once identified.
 Buried walls along the dungeon's edges appear as flat earth;
 walls exposed by breaking through them appear as columns.
+Explored floors remain equally bright inside and outside the current view.
 Hover over a field cell to enlarge its character in place to twice its usual
 size, with its name above its head. Unidentified characters show no name.
 At the dungeon's top edge, the name appears below the character instead.

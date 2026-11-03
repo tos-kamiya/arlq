@@ -1055,6 +1055,33 @@ def test_matching_floor_cells_are_copied_as_one_checkerboard(cached_floor_ui):
     assert sprite.blend_dest == pyglet.gl.GL_ZERO
 
 
+def test_floor_backdrop_is_reused_and_follows_scroll(cached_floor_ui, monkeypatch):
+    ui = cached_floor_ui
+    ui._use_floor_backdrop = True
+    ui.field_width, ui.field_height = 5, 3
+    ui._terrain_theme = 'ruins'
+    ui._floor_backdrop_group = 'backdrop'
+    data = bytes(range(16))
+    tile = SimpleNamespace(width=2, height=2, get_data=lambda *args: data)
+    ui._floor_tiles[sprite_funcs.VISIBLE_FLOOR, False].get_image_data = lambda: tile
+    uploads = []
+    def image_data(width, height, fmt, pixels, pitch):
+        uploads.append((width, height, pixels, pitch))
+        return SimpleNamespace(get_texture=lambda: SimpleNamespace(width=width, height=height))
+    monkeypatch.setattr(sprite_funcs.pyglet.image, 'ImageData', image_data)
+    ui._draw_floor(0, 0, sprite_funcs.FLOOR, None, None)
+    assert ui._floor_backdrop_pending and not ui._floor_cells
+    ui._draw_floor_backdrop()
+    assert len(uploads) == 1
+    width, height, pixels, pitch = uploads[0]
+    assert (width, height, pitch) == (5, 3, 20)
+    assert pixels[:20] == (data[8:16] * 3)[:20]
+    ui._horizontal_scroll_px = 26
+    ui._draw_floor_backdrop()
+    assert len(uploads) == 1
+    assert [sprite.x for sprite in ui._drawables] == [0, -26]
+
+
 def test_floor_visibility_boundary_preserves_each_cells_shade_and_parity(cached_floor_ui):
     ui = cached_floor_ui
     ui.map_mode = True

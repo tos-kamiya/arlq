@@ -524,6 +524,9 @@ class SpriteUI(PygletUI):
         self._edge_shade_fields = {}
         self._horizontal_scroll_px = 0
         self._floor_tiles = None
+        self._floor_backdrops = {}
+        self._use_floor_backdrop = False
+        self._floor_backdrop_pending = False
         self._edge_shade_pending = False
         self._ration_images = None
         self._sprite_images = {}
@@ -604,6 +607,7 @@ class SpriteUI(PygletUI):
         self._barrier_images = [barrier_image(variant) for variant in (0, 1)]
         self._smoke_images = [smoke_image(barrier) for barrier in self._barrier_images]
         self._floor_group = pyglet.graphics.Group(order=-1)
+        self._floor_backdrop_group = pyglet.graphics.Group(order=-2)
         # Between the floor and the ground discs.
         self._edge_shade_group = pyglet.graphics.Group(order=0)
         self._edge_shade_image = None
@@ -624,6 +628,7 @@ class SpriteUI(PygletUI):
             self._create_floor_tiles()
             self._theme_floor_tiles[theme] = (self._floor_tiles, self._floor_cell_tiles)
         self._set_terrain_theme('ruins')
+        self._use_floor_backdrop = True
 
     def _set_terrain_theme(self, theme):
         self._terrain_theme = theme
@@ -1162,6 +1167,9 @@ class SpriteUI(PygletUI):
 
     def _draw_floor(self, x, y, tile_color, field, discovered_at):
         self._edge_shade_pending = True
+        if self._use_floor_backdrop and self._floor_tiles is not None:
+            self._floor_backdrop_pending = True
+            return
         if self._floor_tiles is not None:
             self._floor_cells[x, y] = tile_color
             return
@@ -1187,6 +1195,39 @@ class SpriteUI(PygletUI):
         self._set_drawable_attribute(stone, 'scale_x', scale_x)
         self._set_drawable_attribute(stone, 'scale_y', scale_y)
         self._set_drawable_attribute(stone, 'color', draw_tint)
+
+    def _draw_floor_backdrop(self):
+        key = (self._terrain_theme, self.map_mode, self.field_width, self.field_height)
+        image = self._floor_backdrops.get(key)
+        if image is None:
+            tile = self._floor_tiles[VISIBLE_FLOOR, self.map_mode].get_image_data()
+            tile_width, tile_height = tile.width, tile.height
+            tile_pixels = tile.get_data('RGBA', tile_width * 4)
+            width = self.field_width * tile_width // 2
+            height = self.field_height * tile_height // 2
+            row_bytes = tile_width * 4
+            repeat = (width + tile_width - 1) // tile_width
+            rows = []
+            for y in range(height):
+                source_y = (y - height) % tile_height
+                row = tile_pixels[source_y * row_bytes:(source_y + 1) * row_bytes]
+                rows.append((row * repeat)[:width * 4])
+            image = pyglet.image.ImageData(width, height, 'RGBA', b''.join(rows),
+                                           pitch=width * 4).get_texture()
+            self._floor_backdrops[key] = image
+        left = self._field_col_x(0)
+        bottom = self.window_height - self.field_height * self.cell_size_y
+        scale = self.scale / LOW_RESOLUTION_DETAIL_SCALE
+        signature = ('floor-backdrop', id(image), left, bottom, scale,
+                     id(self._floor_backdrop_group))
+        sprite = self._draw_object(
+            signature,
+            lambda: pyglet.sprite.Sprite(
+                image, x=left, y=bottom, batch=self.batch, group=self._floor_backdrop_group,
+                blend_src=pyglet.gl.GL_ONE, blend_dest=pyglet.gl.GL_ZERO,
+            ),
+        )
+        self._set_drawable_attribute(sprite, 'scale', scale)
 
     def _draw_floor_tiles(self):
         cells = self._floor_cells
@@ -1717,6 +1758,7 @@ class SpriteUI(PygletUI):
         self._field_text_cells = frozenset()
         self._floor_cells = {}
         self._edge_shade_pending = False
+        self._floor_backdrop_pending = False
 
     def _retain_drawable(self, signature):
         return True
@@ -1728,6 +1770,8 @@ class SpriteUI(PygletUI):
         for pos in self._fallen_rock_draws:
             if pos not in occupied:
                 self._draw_terrain(pos, d.DECOR_FALLEN_ROCKS, 'wall')
+        if self._floor_backdrop_pending:
+            self._draw_floor_backdrop()
         if self._floor_cells:
             self._draw_floor_tiles()
         if self._edge_shade_pending:
