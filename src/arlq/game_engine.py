@@ -843,7 +843,7 @@ def _resolve_elf_contact(
         current.entities.append(entity)
         if player.k_elf_refused:
             player.x, player.y = _find_escape_place(current)
-            current.respawn_glows.add((player.x, player.y))
+            current.player_respawn_glow = (player.x, player.y)
             event_message = trp("-- Respawned to a random location.", 5)
         else:
             event_message = trp("-- Please bring the cursed sword (C).", 7)
@@ -1017,7 +1017,7 @@ def _resolve_monster_contact(
             # frame, even when the checkpoint is outside its FOV.
             current.contact_reveal = (entity.x, entity.y)
             event_message = trp("-- Respawned!", 5)
-        current.respawn_glows.add((player.x, player.y))
+        current.player_respawn_glow = (player.x, player.y)
         if trace is not None:
             trace.record_contact(
                 {
@@ -1162,7 +1162,7 @@ def _resolve_party_contact(
         else:
             player.x, player.y = checkpoint[0]
         current.contact_reveal = (entity.x, entity.y)
-        current.respawn_glows.add((player.x, player.y))
+        current.player_respawn_glow = (player.x, player.y)
         d.apply_respawn_penalty(player)
         d.clear_player_item(player)
         player.last_contact_monster = contact_key
@@ -1564,7 +1564,7 @@ def _process_respawn_queue(
             x, y = _spawn(*args, empowered)
         if len(floors[spawn_floor].entities) > previous_entity_count:
             respawned = floors[spawn_floor].entities[-1]
-            floors[spawn_floor].respawn_glows.add((respawned.x, respawned.y))
+            floors[spawn_floor].respawn_glows[respawned.x, respawned.y] = d.RESPAWN_GLOW_TURNS
             if isinstance(respawned, d.Companion):
                 respawned.revealed = True
             elif isinstance(respawned, d.Elf):
@@ -1648,7 +1648,10 @@ def _process_multi_floor_turn(
         if player.status_popup_ticks == 0:
             player.status_popup = None
     for each_floor in floors:
-        each_floor.respawn_glows.clear()
+        each_floor.player_respawn_glow = None
+        each_floor.respawn_glows = {
+            pos: turns - 1 for pos, turns in each_floor.respawn_glows.items() if turns > 1
+        }
     current = floors[floor[0]]
 
     previous = (player.x, player.y)
@@ -1962,6 +1965,14 @@ def observe_world(
     return visible
 
 
+def respawn_glow_cells(current: Floor) -> Set[d.Point]:
+    """Respawn light columns to draw: the player's and the monsters'/companions'."""
+    cells = set(current.respawn_glows)
+    if current.player_respawn_glow is not None:
+        cells.add(current.player_respawn_glow)
+    return cells
+
+
 def _stage_draw_options(
     stage_num: int,
     floors: List[Floor],
@@ -2101,7 +2112,7 @@ def run_game(
             message=message[1],
             checkpoint=checkpoint[0],
             decor=display_floor.decor,
-            respawn_glows=display_floor.respawn_glows,
+            respawn_glows=respawn_glow_cells(display_floor),
             d_gates=display_floor.d_gates,
             reachable_cells=reachable_cells,
             overshoot_markers=(
@@ -2257,7 +2268,7 @@ def run_game(
                 debug_show_entities=debug_show_entities, stage_num=stage_num,
                 message=None,
                 checkpoint=checkpoint[0], decor=active.decor,
-                respawn_glows=active.respawn_glows,
+                respawn_glows=respawn_glow_cells(active),
                 **_stage_draw_options(
                     stage_num, floors, floor[0], single_floor_stage,
                     show_floor_label=True,
@@ -2453,7 +2464,7 @@ def run_game(
             extra_keys=True,
             checkpoint=checkpoint[0],
             decor=display_floor.decor,
-            respawn_glows=display_floor.respawn_glows,
+            respawn_glows=respawn_glow_cells(display_floor),
             floor_view=floor_view,
             **stage_draw_options,
         )

@@ -115,6 +115,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "adjacent_monster_exemptions",
         "room_components",
         "decor",
+        "player_respawn_glow",
         "respawn_glows",
         "d_gates",
     }
@@ -219,14 +220,16 @@ def test_stage3_player_respawn_glows_until_the_next_turn():
     _step(KEYS["R"], floors, player, [0], checkpoint, Counter(), 1)
 
     assert (player.x, player.y) == (1, 2)
-    assert floors[0].respawn_glows == {(1, 2)}
+    assert floors[0].player_respawn_glow == (1, 2)
+    assert game_engine_module.respawn_glow_cells(floors[0]) == {(1, 2)}
 
     _step((0, 0), floors, player, [0], checkpoint, Counter(), 2)
 
-    assert floors[0].respawn_glows == set()
+    assert floors[0].player_respawn_glow is None
+    assert game_engine_module.respawn_glow_cells(floors[0]) == set()
 
 
-def test_stage3_respawned_monster_glows_on_its_floor():
+def test_stage3_respawned_monster_glows_for_three_turns():
     player = d.Player(2, 2, 100, 90)
     floors, _ = stage3_state(player, [])
 
@@ -235,7 +238,14 @@ def test_stage3_respawned_monster_glows_on_its_floor():
     )
 
     (monster,) = floors[0].entities
-    assert floors[0].respawn_glows == {(monster.x, monster.y)}
+    cell = (monster.x, monster.y)
+    assert floors[0].respawn_glows == {cell: d.RESPAWN_GLOW_TURNS}
+    for turn in range(1, d.RESPAWN_GLOW_TURNS):
+        assert game_engine_module.respawn_glow_cells(floors[0]) == {cell}
+        _step((0, 0), floors, player, [0], [(2, 2)], Counter(), turn)
+    assert game_engine_module.respawn_glow_cells(floors[0]) == {cell}
+    _step((0, 0), floors, player, [0], [(2, 2)], Counter(), d.RESPAWN_GLOW_TURNS)
+    assert game_engine_module.respawn_glow_cells(floors[0]) == set()
 
 
 def test_stage4_final_floor_barriers_cover_ten_percent_of_open_cells():

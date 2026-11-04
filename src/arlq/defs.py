@@ -106,6 +106,9 @@ LP_WARNING_THRESHOLD: int = 40
 LP_LOW_THRESHOLD: int = 20  # LP bar/player "@" turn red at or below this
 
 MONSTER_RESPAWN_INTERVAL: int = 65
+# Turns a respawned monster or companion stands in the sprite GUI's light
+# column (the player's lasts until its next move).
+RESPAWN_GLOW_TURNS: int = 3
 MARKSMAN_RESPAWN_INTERVAL: int = 3 * MONSTER_RESPAWN_INTERVAL
 SWORD_USES: int = 3
 CURSED_SWORD_LP_COST: int = 10

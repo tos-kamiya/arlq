@@ -201,8 +201,8 @@ PILLAR_FADE = 1.1
 # and the brightness between bands. Each band is leaf-shaped: its width (a
 # fraction of the band period) peaks halfway up and tapers to a point at both
 # ends, the taper exponent shaping its curve.
-RESPAWN_COLUMN_RADIUS = 0.85
-RESPAWN_COLUMN_HEIGHT = 2.6
+RESPAWN_COLUMN_RADIUS = 0.7
+RESPAWN_COLUMN_HEIGHT = 2.15
 RESPAWN_COLUMN_BACK_ALPHA = 0.4
 RESPAWN_COLUMN_FRONT_ALPHA = 0.75
 RESPAWN_COLUMN_FADE = 0.7
@@ -214,6 +214,10 @@ RESPAWN_COLUMN_BAND_WIDTH = 0.6
 RESPAWN_COLUMN_BAND_TAPER = 0.7
 RESPAWN_COLUMN_GAP_SHADE = 0.15
 RESPAWN_COLUMN_TEXELS = 96
+# A respawn on an explored cell outside the current view lights its column
+# alone, in this neutral color, so the hidden character's strength stays
+# unknown.
+RESPAWN_COLUMN_UNSEEN_COLOR = COLOR_MAP['default']
 # The companion travelling with the player floats small at its right shoulder:
 # size relative to a normal sprite, and its ground point from the player's
 # cell centre (cell widths east, cell heights north).
@@ -575,6 +579,10 @@ class SpriteUI(PygletUI):
     _floor_checker_shade = FLOOR_CHECKER_SHADE
     _wall_tints = TERRAIN_THEMES['ruins'][4]
     _respawn_glows = frozenset()
+    # Respawn cells of this frame on known cells, and those whose column a
+    # character's sprite has drawn.
+    _respawn_draws = ()
+    _respawn_columns_drawn = frozenset()
     _show_pit_up_marker = True
 
     def _initialize_state(self):
@@ -1160,6 +1168,9 @@ class SpriteUI(PygletUI):
                 and field[y][x] not in FALLEN_ROCK_BLOCKERS
                 and d.DECOR_FALLEN_ROCKS in self._terrain_images):
             self._fallen_rock_draws += ((x, y),)
+        if (x, y) in self._respawn_glows and discovered_at(x, y):
+            # Respawns show in the current view and on explored cells outside it.
+            self._respawn_draws += ((x, y),)
         if tile_color in FLOOR_TINTS:
             return self._draw_floor(x, y, tile_color, field, discovered_at)
         if (
@@ -1824,6 +1835,8 @@ class SpriteUI(PygletUI):
         self._sprite_cells.clear()
         self._player_cell = None
         self._fallen_rock_draws = ()
+        self._respawn_draws = ()
+        self._respawn_columns_drawn = frozenset()
         self._field_text_cells = frozenset()
         self._floor_cells = {}
         self._edge_shade_pending = False
@@ -1839,6 +1852,11 @@ class SpriteUI(PygletUI):
         for pos in self._fallen_rock_draws:
             if pos not in occupied:
                 self._draw_terrain(pos, d.DECOR_FALLEN_ROCKS, 'wall')
+        for x, y in self._respawn_draws:
+            if (x, y) not in self._respawn_columns_drawn:
+                self._draw_respawn_column(self._field_col_x(x) + self.cell_size_x / 2,
+                                          (y + 0.5) * self.cell_size_y, 1.0, y,
+                                          RESPAWN_COLUMN_UNSEEN_COLOR)
         if self._floor_backdrop_pending:
             self._draw_floor_backdrop()
         if self._floor_cells:
@@ -2092,10 +2110,9 @@ class SpriteUI(PygletUI):
         if disc_scale:
             self._draw_ground_disc(cx, cy, disc_scale * GROUND_DISC_RADIUS * self._sprite_unit(),
                                    color, upper_right_color)
-            visible = self._cur_torched
-            if (pos in self._respawn_glows and visible is not None
-                    and 0 <= y < len(visible) and 0 <= x < len(visible[y]) and visible[y][x]):
+            if pos in self._respawn_draws:
                 self._draw_respawn_column(cx, cy, size, y, color)
+                self._respawn_columns_drawn = self._respawn_columns_drawn | {pos}
         return top
 
     def _draw_hover_name(self, pos, text, head_top):

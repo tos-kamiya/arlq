@@ -36,10 +36,12 @@ class Floor:
     # No rule reads them; the sprite GUI draws them. They are written by turn
     # processing, so a rewind's replay rebuilds them along with `field`.
     decor: Optional[List[List[str]]] = None
-    # Cells where the player or a monster/companion respawned this turn; the
-    # sprite GUI wraps whoever stands there in a light column until the next
-    # turn. No rule reads them.
-    respawn_glows: set[d.Point] = dataclass_field(default_factory=set)
+    # Where the player respawned this turn, and where monsters/companions
+    # respawned with the turns left (d.RESPAWN_GLOW_TURNS): the sprite GUI
+    # lights a column there, around whoever stands on the cell. No rule reads
+    # them.
+    player_respawn_glow: Optional[d.Point] = None
+    respawn_glows: Dict[d.Point, int] = dataclass_field(default_factory=dict)
 
     # Tutorial monsters allowed to remain horizontally or diagonally adjacent.
     adjacent_monster_exemptions: set[d.Point] = dataclass_field(default_factory=set)
