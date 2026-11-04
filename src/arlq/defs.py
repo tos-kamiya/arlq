@@ -25,6 +25,7 @@ MEMBER_STAGE_JESTER_EXP_MULTIPLIER = 1.5
 JESTER_EXPERIENCE_WEIGHT = 0.25
 KNIGHT_INITIAL_LEVEL = 50
 KNIGHT_EXPERIENCE_RATIO = 0.5
+FLAME_COBRA_EXPERIENCE = 5
 PARTY_EXPERIENCE_MEMBER_WEIGHTS = {
     MEMBER_JESTER: JESTER_EXPERIENCE_WEIGHT,
     MEMBER_HEALER: 0.5,
@@ -909,21 +910,21 @@ STAGE6_PARTY_SIZE_WEIGHTS = (
 # Normal and empowered f party leaders appear on floors 2–4.
 STAGE6_ROSTER = (
     (
-        ("a", 24, 1), ("A", 2, 1), ("b", 3, 1), ("B", 2, 1), ("c", 5, 1),
+        ("a", 24, 1), ("A", 2, 1), ("b", 2, 1), ("B", 2, 1), ("c", 5, 1),
         ("d", 3, 1), ("e", 1, 1), ("g", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 3, 2), ("B", 2, 1), ("c", 5, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 1), ("c", 5, 2),
         ("d", 3, 2), ("f", 1, 1), ("f", 1, 2), ("w", 1, 2), ("g", 3, 1),
         ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 3, 2), ("B", 2, 2), ("c", 5, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 2), ("c", 5, 2),
         ("C", 2, 1), ("d", 3, 2), ("f", 1, 1), ("f", 1, 2), ("g", 3, 1),
         ("k", 1, 1), ("w", 1, 2), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 3, 2), ("B", 2, 2), ("c", 7, 2),
+        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 2), ("c", 7, 2),
         ("d", 2, 2), ("f", 1, 1), ("f", 1, 2), ("w", 3, 2), ("g", 3, 1),
         ("k", 1, 1),
     ),
@@ -932,12 +933,12 @@ STAGE6_BOSS_PARTY = (("W", 1), ("V", 1))
 STAGE6_BOSS_ESCORTS = (("f", 2), ("k", 1), ("w", 1), ("w", 2))
 _STAGE6_DEEP_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("e", 1), ("e", 1),
-    ("b", 1), ("B", 2), ("w", 2), ("k", 1),
+    ("b", 1), ("w", 2), ("k", 1),
 )
 _STAGE6_FLOOR2_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("a", 1),
     ("f", 1), ("f", 1),
-    ("b", 1), ("b", 1), ("B", 1),
+    ("b", 1), ("b", 1),
     ("e", 1), ("e", 1),
 )
 STAGE6_SUPPORT_POOLS = (
@@ -1126,11 +1127,11 @@ def take_monster_item(
     player.item_uses = sword_uses if item in (ITEM_SWORD_X1_5, ITEM_SWORD_CURSED) else 0
 
 
-def grant_defeat_level(player: Player, effect: Optional[str]) -> None:
+def grant_defeat_level(player: Player, effect: Optional[str], char: str = "") -> None:
     if effect == EFFECT_LEVEL_REDUCE:
         player.level = max(1, player.level * 2 // 3)
     else:
-        player.level += 10 if effect == EFFECT_SPECIAL_EXP else 1
+        player.level += 10 if effect == EFFECT_SPECIAL_EXP else FLAME_COBRA_EXPERIENCE if char == "f" else 1
 
 
 def has_member(player: Player, role: str) -> bool:

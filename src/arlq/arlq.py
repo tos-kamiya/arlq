@@ -871,7 +871,7 @@ def update_entities(
                     tribes_to_be_respawned.append(m.tribe.char)
 
                 effect = m.tribe.effect
-                d.grant_defeat_level(player, effect)
+                d.grant_defeat_level(player, effect, m.tribe.char)
                 activate_mimic_for_defeat(m, entities)
                 if effect == d.EFFECT_UNLOCK_TREASURE:
                     player.boss_defeated = True

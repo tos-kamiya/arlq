@@ -307,6 +307,15 @@ def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain, stage_nu
 
 
 
+@pytest.mark.parametrize("stage_num", [3, 5, 6])
+@pytest.mark.parametrize("rank", [1, 2])
+def test_flame_cobra_grants_five_experience(stage_num, rank):
+    current, player = state(level=100)
+    current.entities = [monster(3, 2, "f", rank)]
+    step(current, player, stage_num=stage_num)
+    assert player.level == 105
+
+
 def test_knight_growth_uses_shared_experience_before_jester_bonus():
     current, player = state(("Jester", "Knight"), lp=10)
     knight = player.members[1]
@@ -971,8 +980,8 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
         return [sum(count for ch, count, r in floor if ch == char and r == rank)
                 for floor in d.STAGE6_ROSTER]
 
-    assert counts("b", 1) == [3, 0, 0, 0]
-    assert counts("b", 2) == [0, 3, 3, 3]
+    assert counts("b", 1) == [2, 0, 0, 0]
+    assert counts("b", 2) == [0, 2, 2, 2]
     assert counts("d", 1) == [3, 0, 0, 0]
     assert counts("d", 2) == [0, 3, 3, 2]
     assert counts("B", 1) == [2, 2, 0, 0]
@@ -982,11 +991,11 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
     assert counts("w", 2) == [0, 1, 1, 3]
     assert Counter(d.STAGE6_SUPPORT_POOLS[1]) == Counter({
         ("a", 1): 3, ("f", 1): 2, ("b", 1): 2,
-        ("B", 1): 1, ("e", 1): 2,
+        ("e", 1): 2,
     })
     assert all(Counter(pool) == Counter({
         ("a", 1): 2, ("e", 1): 2, ("b", 1): 1,
-        ("B", 2): 1, ("w", 2): 1, ("k", 1): 1,
+        ("w", 2): 1, ("k", 1): 1,
     }) for pool in d.STAGE6_SUPPORT_POOLS[2:])
     assert d.STAGE6_PARTY_SIZE_WEIGHTS == (
         (78, 21, 1, 0, 0), (60, 30, 10, 0, 0),
@@ -1423,8 +1432,8 @@ def test_initial_parties_use_distinct_candidate_rooms(floor_index, detached):
     assert selected <= set(d.STAGE6_INITIAL_PARTY_ROOMS)
     assert detached not in selected
     actual = [(leader.tribe.char, leader.empowered) for leader in parties]
-    expected = ([('b', 1)] * 3 + [('B', 1)] * 2 + [('a', 1)] if floor_index == 0
-                else [('b', 2)] * 3 + [('B', 1 if floor_index == 1 else 2)] * 2 + [('a', 2)])
+    expected = ([('b', 1)] * 2 + [('B', 1)] * 2 + [('a', 1)] * 2 if floor_index == 0
+                else [('b', 2)] * 2 + [('B', 1 if floor_index == 1 else 2)] * 2 + [('a', 2)] * 2)
     assert actual == expected[:count]
     assert Counter(actual) == Counter(placed)
 

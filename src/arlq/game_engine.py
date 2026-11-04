@@ -720,7 +720,7 @@ def _defeat_monster(
         player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
     if ch == "C":
         player.elf_stage_flags |= d.ELF_STAGE_C_FLAG
-    d.grant_defeat_level(player, entity.tribe.effect)
+    d.grant_defeat_level(player, entity.tribe.effect, entity.tribe.char)
     d.apply_feed(
         player,
         entity.tribe.feed,
@@ -1172,7 +1172,7 @@ def _resolve_party_contact(
             if monster.tribe.effect == d.EFFECT_SPECIAL_EXP
             else 0
             if monster.tribe.effect == d.EFFECT_LEVEL_REDUCE
-            else 3
+            else d.FLAME_COBRA_EXPERIENCE
             if monster.tribe.char == "f"
             else 1
             for monster in party
