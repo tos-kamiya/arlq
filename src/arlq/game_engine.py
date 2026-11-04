@@ -1564,7 +1564,11 @@ def _process_respawn_queue(
             x, y = _spawn(*args, empowered)
         if len(floors[spawn_floor].entities) > previous_entity_count:
             respawned = floors[spawn_floor].entities[-1]
-            floors[spawn_floor].respawn_glows[respawned.x, respawned.y] = d.RESPAWN_GLOW_TURNS
+            # Companions and elves come back as a move, not a respawn: no light.
+            if isinstance(respawned, d.Monster) and not isinstance(respawned, d.Elf):
+                floors[spawn_floor].respawn_glows[respawned.x, respawned.y] = (
+                    d.RESPAWN_GLOW_TURNS
+                )
             if isinstance(respawned, d.Companion):
                 respawned.revealed = True
             elif isinstance(respawned, d.Elf):

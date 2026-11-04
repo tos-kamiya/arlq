@@ -36,7 +36,7 @@ class Floor:
     # No rule reads them; the sprite GUI draws them. They are written by turn
     # processing, so a rewind's replay rebuilds them along with `field`.
     decor: Optional[List[List[str]]] = None
-    # Where the player respawned this turn, and where monsters/companions
+    # Where the player respawned this turn, and where monsters (not elves)
     # respawned with the turns left (d.RESPAWN_GLOW_TURNS): the sprite GUI
     # lights a column there, around whoever stands on the cell. No rule reads
     # them.

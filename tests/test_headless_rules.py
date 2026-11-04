@@ -1391,6 +1391,8 @@ def test_stage3_respawned_companion_is_already_revealed(monkeypatch):
     )
     assert companion.tribe.char == "n"
     assert companion.revealed
+    # A companion's return is a move, not a respawn: no light column.
+    assert floor.respawn_glows == {}
 
 
 @pytest.mark.parametrize("stage_num", d.PUBLIC_STAGE_NUMBERS)

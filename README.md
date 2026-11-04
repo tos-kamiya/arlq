@@ -132,9 +132,9 @@ chimera's sword while carrying it, and its own blade glows blue after the
 Collector Elf's blessing. The LP gauge floats just above the player, like a
 fighting game's, instead of in the status row. Ground markers preserve strength
 and status colors, and faint light pillars distinguish companions. A
-respawned character stands in a column of light in its ground marker's color,
-with leaf-shaped bands swirling up it: the player until its next move, a monster
-or a companion for three turns, also on explored cells outside the view.
+respawned player or monster stands in a column of light in its ground marker's
+color, with leaf-shaped bands swirling up it: the player until its next move, a
+monster for three turns, also on explored cells outside the view.
 Terrain has
 a separate illustrated style, including marble walls and stairs, floor tiles,
 fires, and Collapse pits; rocks fallen through a pit lie on the floor below
