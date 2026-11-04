@@ -58,7 +58,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-stairs.py
 
 `src/arlq/assets/stairs/stairs-up.png`、`stairs-down.png`、`stairs-landing.png` を出力する。`--` の後に部品名を並べると、その部品だけを書き出す（例：`-- landing`）。
 
-`stairs-landing.png` は、上り階段と同じ板の並びから影を写す見えない床を除いたもの（試作）。階段を上り下りするとき、GUIは階と階の間の様子を戦闘エフェクトと同じ時間だけ止め絵で見せる（`sprite_funcs.py` の `draw_floor_transition()`）。フィールドをほぼ黒（`TRANSITION_BACKGROUND`）で覆い、この画像と主人公をマップ上と同じ大きさで、プレイヤーが出た階段のマスと同じ列に描く（左右の位置はマップ上と同じで、上下だけフィールドの中央に動かす）。主人公の足元は、マスの左右の中央で、高さだけを踊り場の踏み面（`LANDING_FEET_HEIGHT`）に合わせる。上りも下りも同じ絵で、使った階段だけを描く。踊り場は普通の階段と同じ金色（`TERRAIN_TINT`）に着色する。落とし穴に落ちるときは、闇の中に主人公だけを描く。ダンジョン探検家と穴を登るときは、主人公の背丈の2倍（`ROPE_LENGTH`）の長さで、ダンジョン探検家の麻縄と同じ色（`ROPE_COLOR`）の縦の線分を、主人公の高さの中央を中心に、主人公の手前に描く。主人公の後ろには、縄に沿って、見つけた隠し通路の足元の光と同じ緑の、より淡い縦長の光（地面の円盤の画像を縦に伸ばしたもの。`ROPE_GLOW_*`）を描く。どの移動かはゲーム側の `floor_transition_kind()` が判定する。
+`stairs-landing.png` は、上り階段と同じ板の並びから影を写す見えない床を除いたもの（試作）。階段を上り下りするとき、GUIは階と階の間の様子を戦闘エフェクトと同じ時間だけ止め絵で見せる（`sprite_funcs.py` の `draw_floor_transition()`）。フィールドをほぼ黒（`TRANSITION_BACKGROUND`）で覆い、この画像と主人公をマップ上と同じ大きさで、プレイヤーが出た階段のマス（画面上で階段があった位置）に描く。主人公の足元は、マスの左右の中央で、高さだけを踊り場の踏み面（`LANDING_FEET_HEIGHT`）に合わせる。落とし穴に落ちるときと穴を登るときも、主人公をその穴のマスに描く。上りも下りも同じ絵で、使った階段だけを描く。踊り場は普通の階段と同じ金色（`TERRAIN_TINT`）に着色する。落とし穴に落ちるときは、闇の中に主人公だけを描く。ダンジョン探検家と穴を登るときは、主人公の背丈の2倍（`ROPE_LENGTH`）の長さで、ダンジョン探検家の麻縄と同じ色（`ROPE_COLOR`）の縦の線分を、主人公の高さの中央を中心に、主人公の手前に描く。主人公の後ろには、縄に沿って、見つけた隠し通路の足元の光と同じ緑の、より淡い縦長の光（地面の円盤の画像を縦に伸ばしたもの。`ROPE_GLOW_*`）を描く。どの移動かはゲーム側の `floor_transition_kind()` が判定する。
 
 ```bash
 PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-floor-transitions.py [OUT]

@@ -317,3 +317,43 @@ def test_disabling_automatic_repeat_stop_skips_precheck_and_event_stop(monkeypat
 
     assert precheck_calls == []
     assert step_repeat_reasons == [None]
+
+
+def test_run_game_shows_the_floor_transition_from_the_stairs(monkeypatch):
+    player = d.Player(2, 2, 100, 90)
+    upper = floor_with()
+    lower = floor_with()
+    upper.field[2][3] = d.CHAR_STAIRS_DOWN
+    upper.down_stairs = [(3, 2)]
+    lower.field[4][4] = d.CHAR_STAIRS_UP
+    lower.up_stairs = [(4, 4)]
+    monkeypatch.setattr(
+        game_engine, "build_single_floor", lambda *_args: ([upper, lower], player)
+    )
+    transitions = []
+
+    class UI:
+        auto_repeat_stop_enabled = False
+        input_was_repeat = False
+        farthest_preview = False
+        shift_direction = False
+
+        def __init__(self):
+            self.moves = iter([(1, 0)])
+
+        def draw_stage(self, **_kwargs):
+            pass
+
+        def input_direction(self):
+            return next(self.moves, None)
+
+        def input_alphabet(self):
+            return None
+
+        def draw_floor_transition(self, kind, transition_player, exit_point):
+            transitions.append((kind, (transition_player.x, transition_player.y), exit_point))
+            player.lp = 0
+
+    game_engine.run_game(UI(), "test-seed", config=GameConfig(), stage_num=1)
+
+    assert transitions == [("down", (4, 4), (3, 2))]

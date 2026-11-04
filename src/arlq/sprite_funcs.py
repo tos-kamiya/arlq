@@ -338,10 +338,9 @@ TERRAIN_EXPLORED_SHADE = 0.55
 STAIR_DISC_OPACITY = 90
 # Between floors (draw_floor_transition): a near-black field with only the
 # player, standing on the landing of a floating switchback when taking stairs
-# (gold), both the size they are in play. Both
-# stay in the column of the cell the player left from, as in play, but move
-# up or down to the middle of the field. The landing image covers a cell like
-# the up stairs' image; the player's feet go LANDING_FEET_HEIGHT cell heights
+# (gold), both the size they are in play and on the cell the player left
+# from, where the stairs or pit were on screen. The landing image covers that
+# cell like the up stairs' image; the player's feet go LANDING_FEET_HEIGHT cell heights
 # above its south edge, the height of the landing's tread. Climbing out of a
 # pit, a rope segment ROPE_LENGTH times the player's height, the color of the
 # Dungeon Explorer's hemp rope, is drawn over the player: ROPE_WIDTH cell
@@ -1452,27 +1451,28 @@ class SpriteUI(PygletUI):
     def draw_floor_transition(self, kind, player, exit_point=None) -> None:
         """Show the moment between floors as a still: on the landing of the
         stairs the player is taking, or alone in the dark falling through or
-        climbing out of a pit, in the column of the cell it left from."""
+        climbing out of a pit, on the cell it left from."""
         seconds = self.combat_effect_seconds
         if seconds == 0 or '@' not in self._sprite_images:
             return
         field_height = self.field_height * self.cell_size_y
         shapes = [pyglet.shapes.Rectangle(
-            0, self.window_height - field_height, self.field_pixel_width, field_height,
+            # The whole window's width: the scrolled field can show past
+            # field_pixel_width.
+            0, self.window_height - field_height,
+            max(self.field_pixel_width, self.window_width or 0), field_height,
             color=self._display_color(TRANSITION_BACKGROUND), batch=self.batch,
             group=pyglet.graphics.Group(order=99998),
         )]
         cell_x, cell_y = self.cell_size_x, self.cell_size_y
-        column = (exit_point or (player.x, player.y))[0]
+        column, row = exit_point or (player.x, player.y)
         left = self._field_col_x(column)
-        cx, cy = left + cell_x / 2, field_height / 2
+        cx, cy = left + cell_x / 2, (row + 0.5) * cell_y
         image = self._landing_image
         if kind in ('down', 'up') and image is not None:
-            # A cell in the stairs' own column, moved up or down to the middle
-            # of the field.
             cell_pixels = image.width / (1 + 2 * TERRAIN_SIDE)
             overhang = TERRAIN_OVERHANG[d.CHAR_STAIRS_UP]
-            cell_bottom = cy + (1 + overhang) * cell_y / 2
+            cell_bottom = (row + 1) * cell_y
             landing = pyglet.sprite.Sprite(
                 image, x=left - TERRAIN_SIDE * cell_x,
                 y=self.window_height - cell_bottom, batch=self.batch,

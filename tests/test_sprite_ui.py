@@ -1667,7 +1667,7 @@ def test_floor_transition_is_skipped_without_combat_effect_time(sprite_ui, monke
     ui.draw_floor_transition('down', d.Player(3, 4, level=1, lp=d.LP_INIT))
 
 
-def test_floor_transition_keeps_the_stairs_column(sprite_ui, monkeypatch):
+def test_floor_transition_is_drawn_on_the_stairs_cell(sprite_ui, monkeypatch):
     ui = sprite_ui
     ui.combat_effect_seconds = 0.3
     ui.field_height = 20
@@ -1689,4 +1689,5 @@ def test_floor_transition_keeps_the_stairs_column(sprite_ui, monkeypatch):
     figure = next(obj for obj in made if obj.image is ui._sprite_images['@'])
     left = 7 * 13 - 26
     assert landing.x == left - sprite_funcs.TERRAIN_SIDE * 13
+    assert landing.y == ui.window_height - 3 * 20
     assert figure.x + figure.image.width * figure.scale / 2 == left + 13 / 2
