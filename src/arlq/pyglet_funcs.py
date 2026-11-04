@@ -1199,10 +1199,11 @@ class PygletUI:
         loop_trail_markers: Optional[Set[d.Point]] = None,
         decor: Optional[List[List[str]]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
+        respawn_glows: Optional[Set[d.Point]] = None,
     ):
         """
-        Renders the game stage (`decor`, the decorations no rule reads, is
-        not drawn here):
+        Renders the game stage (`decor`, the decorations no rule reads, and
+        `respawn_glows` are not drawn here):
         - Clears the screen.
         - Draws the field and its cells.
         - Draws the player and entities with appropriate colors.

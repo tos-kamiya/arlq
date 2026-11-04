@@ -115,6 +115,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "adjacent_monster_exemptions",
         "room_components",
         "decor",
+        "respawn_glows",
         "d_gates",
     }
 
@@ -206,6 +207,35 @@ def test_stage3_respawn_on_up_stairs_does_not_ascend_automatically():
     _step((0, 0), floors, player, floor, checkpoint, Counter(), 2)
 
     assert floor[0] == 1
+
+
+def test_stage3_player_respawn_glows_until_the_next_turn():
+    floors, _ = stage3_state(
+        d.Player(2, 2, 1, 90), [d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["C"])]
+    )
+    player = d.Player(2, 2, 1, 90)
+    checkpoint = [(1, 2)]
+
+    _step(KEYS["R"], floors, player, [0], checkpoint, Counter(), 1)
+
+    assert (player.x, player.y) == (1, 2)
+    assert floors[0].respawn_glows == {(1, 2)}
+
+    _step((0, 0), floors, player, [0], checkpoint, Counter(), 2)
+
+    assert floors[0].respawn_glows == set()
+
+
+def test_stage3_respawned_monster_glows_on_its_floor():
+    player = d.Player(2, 2, 100, 90)
+    floors, _ = stage3_state(player, [])
+
+    game_engine_module._process_respawn_queue(
+        floors, player, [0], Counter({(0, "a"): 1}), 0
+    )
+
+    (monster,) = floors[0].entities
+    assert floors[0].respawn_glows == {(monster.x, monster.y)}
 
 
 def test_stage4_final_floor_barriers_cover_ten_percent_of_open_cells():
@@ -359,6 +389,7 @@ def test_game_loop_draws_with_keyword_arguments_only():
         "message",
         "checkpoint",
         "decor",
+        "respawn_glows",
         "d_gates",
         "reachable_cells",
         "overshoot_markers",

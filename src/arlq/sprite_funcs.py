@@ -193,6 +193,27 @@ PILLAR_BACK_ALPHA = 0.9
 PILLAR_FRONT_ALPHA = 0.4
 PILLAR_EDGE = 0.45
 PILLAR_FADE = 1.1
+# For the turn after a respawn, the character stands in a taller column of
+# light in its ground disc's main color, with helical bands twisting up the
+# column. Its near wall (the outside) is brighter than the far wall seen
+# through it (the inside). Bands around it, their twist in turns over the full
+# height, the angle of one band's foot (0 east, increasing toward the viewer),
+# and the brightness between bands. Each band is leaf-shaped: its width (a
+# fraction of the band period) peaks halfway up and tapers to a point at both
+# ends, the taper exponent shaping its curve.
+RESPAWN_COLUMN_RADIUS = 0.85
+RESPAWN_COLUMN_HEIGHT = 2.6
+RESPAWN_COLUMN_BACK_ALPHA = 0.4
+RESPAWN_COLUMN_FRONT_ALPHA = 0.75
+RESPAWN_COLUMN_FADE = 0.7
+RESPAWN_COLUMN_EDGE = 0.8
+RESPAWN_COLUMN_BANDS = 5
+RESPAWN_COLUMN_TWIST = 1 / 3
+RESPAWN_COLUMN_START = math.radians(360 / 10)
+RESPAWN_COLUMN_BAND_WIDTH = 0.6
+RESPAWN_COLUMN_BAND_TAPER = 0.7
+RESPAWN_COLUMN_GAP_SHADE = 0.15
+RESPAWN_COLUMN_TEXELS = 96
 # The companion travelling with the player floats small at its right shoulder:
 # size relative to a normal sprite, and its ground point from the player's
 # cell centre (cell widths east, cell heights north).
@@ -304,16 +325,19 @@ def _luminance(color):
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def pillar_image(side):
+def pillar_image(side, height=PILLAR_HEIGHT / PILLAR_RADIUS, peaks=None,
+                 fade=PILLAR_FADE, band=None, width=GROUND_DISC_TEXELS, edge=PILLAR_EDGE):
     """One wall ('back' or 'front') of an open light cylinder, white with alpha.
 
     The image spans the cylinder's width and, from the bottom of its ground
-    ellipse, the side height plus that ellipse; the tint is applied when drawn.
+    ellipse, the side height (in radii) plus that ellipse; the tint is applied
+    when drawn. `band(angle, t)` scales the opacity at an angle around the
+    cylinder (0 east, pi/2 nearest the viewer) and height fraction t.
     """
-    flatten, height = GROUND_DISC_FLATTEN, PILLAR_HEIGHT / PILLAR_RADIUS
-    width = GROUND_DISC_TEXELS
+    flatten = GROUND_DISC_FLATTEN
     rows = round(width * (height + 2 * flatten) / 2)
-    peak = PILLAR_BACK_ALPHA if side == 'back' else PILLAR_FRONT_ALPHA
+    back, front = peaks or (PILLAR_BACK_ALPHA, PILLAR_FRONT_ALPHA)
+    peak = back if side == 'back' else front
     rgba = bytearray()
     for row in range(rows):
         v = (row + 0.5) / rows * (height + 2 * flatten) - flatten
@@ -325,10 +349,30 @@ def pillar_image(side):
             alpha = 0.0
             if 0 <= t <= 1:
                 rim = min(1.0, (1 - abs(u)) / 0.06)
-                alpha = (peak * rim * min(1.0, PILLAR_EDGE / math.sqrt(1 - u * u + 0.02))
-                         * (1 - t) ** PILLAR_FADE)
+                alpha = (peak * rim * min(1.0, edge / math.sqrt(1 - u * u + 0.02))
+                         * (1 - t) ** fade)
+                if band is not None:
+                    angle = math.acos(max(-1.0, min(1.0, u)))
+                    alpha *= band(angle if side == 'front' else -angle, t)
             rgba += bytes((255, 255, 255, round(255 * alpha)))
     return pyglet.image.ImageData(width, rows, 'RGBA', bytes(rgba), pitch=width * 4)
+
+
+def respawn_column_image(side, gaps=False):
+    """A respawn column wall: its helical bands, or with `gaps` the space between."""
+    def band(angle, t):
+        phase = RESPAWN_COLUMN_BANDS * (angle - RESPAWN_COLUMN_START
+                                        + 2 * math.pi * RESPAWN_COLUMN_TWIST * t)
+        # Distance from the nearest band centre, as a fraction of the period.
+        offset = abs((phase / (2 * math.pi) + 0.5) % 1 - 0.5)
+        half_width = RESPAWN_COLUMN_BAND_WIDTH / 2 * math.sin(math.pi * t) ** RESPAWN_COLUMN_BAND_TAPER
+        value = max(0.0, min(1.0, (half_width - offset) / 0.06 + 0.5))
+        return 1 - value if gaps else value
+    return pillar_image(
+        side, RESPAWN_COLUMN_HEIGHT / RESPAWN_COLUMN_RADIUS,
+        (RESPAWN_COLUMN_BACK_ALPHA, RESPAWN_COLUMN_FRONT_ALPHA),
+        RESPAWN_COLUMN_FADE, band, RESPAWN_COLUMN_TEXELS, RESPAWN_COLUMN_EDGE,
+    )
 
 
 def smoke_image(barrier):
@@ -530,6 +574,7 @@ class SpriteUI(PygletUI):
     _floor_tints = FLOOR_TINTS
     _floor_checker_shade = FLOOR_CHECKER_SHADE
     _wall_tints = TERRAIN_THEMES['ruins'][4]
+    _respawn_glows = frozenset()
     _show_pit_up_marker = True
 
     def _initialize_state(self):
@@ -595,6 +640,10 @@ class SpriteUI(PygletUI):
         self._disc_halves = (ground_disc_image('lower-left'), ground_disc_image('upper-right'))
         self._disc_group = pyglet.graphics.Group(order=1)
         self._pillar_images = {side: pillar_image(side) for side in ('back', 'front')}
+        self._respawn_column_images = {
+            (side, gaps): respawn_column_image(side, gaps)
+            for side in ('back', 'front') for gaps in (False, True)
+        }
         assets = Path(__file__).parent / 'assets'
         # Per theme: wall parts, floor images and their grayscale copies for
         # the map display. A theme whose images are missing uses the ruins'.
@@ -774,6 +823,7 @@ class SpriteUI(PygletUI):
         if theme != self._terrain_theme and theme in self._theme_images:
             self._set_terrain_theme(theme)
         self._decor = decor
+        self._respawn_glows = kwargs.get('respawn_glows') or set()
         self._known_types = kwargs.get('known_types') or set()
         self._cur_torched = kwargs.get('cur_torched')
         player = kwargs.get('player')
@@ -2042,6 +2092,10 @@ class SpriteUI(PygletUI):
         if disc_scale:
             self._draw_ground_disc(cx, cy, disc_scale * GROUND_DISC_RADIUS * self._sprite_unit(),
                                    color, upper_right_color)
+            visible = self._cur_torched
+            if (pos in self._respawn_glows and visible is not None
+                    and 0 <= y < len(visible) and 0 <= x < len(visible[y]) and visible[y][x]):
+                self._draw_respawn_column(cx, cy, size, y, color)
         return top
 
     def _draw_hover_name(self, pos, text, head_top):
@@ -2114,30 +2168,49 @@ class SpriteUI(PygletUI):
 
     def _draw_pillar(self, cx, cy, size, row, color, familiar=False):
         """Additive light cylinder around a companion: far wall behind, near wall over it."""
-        radius = size * PILLAR_RADIUS * self._sprite_unit()
-        for side, layer in (('back', 'pillar-back'), ('front', 'pillar-front')):
-            image = self._pillar_images[side]
-            left = cx - radius
-            bottom = self.window_height - cy - radius * GROUND_DISC_FLATTEN
-            scale_x = 2 * radius / image.width
-            scale_y = (PILLAR_HEIGHT * size * self._sprite_unit()
-                       + 2 * radius * GROUND_DISC_FLATTEN) / image.height
-            group = self._row_group(row, 'familiar-front' if familiar and side == 'front'
-                                    else layer)
-            tint = self._display_color(color)
-            signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
-                         id(group), pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE, tint)
-            pillar = self._draw_bounded_object(
-                left, image.width * scale_x, signature,
-                partial(
-                    pyglet.sprite.Sprite, image, x=left, y=bottom,
-                    blend_src=pyglet.gl.GL_SRC_ALPHA, blend_dest=pyglet.gl.GL_ONE,
-                    batch=self.batch, group=group,
-                ),
-            )
-            self._set_drawable_attribute(pillar, 'scale_x', scale_x)
-            self._set_drawable_attribute(pillar, 'scale_y', scale_y)
-            self._set_drawable_attribute(pillar, 'color', tint)
+        for side in ('back', 'front'):
+            self._draw_light_wall(self._pillar_images[side], side, cx, cy,
+                                  size * PILLAR_RADIUS, size * PILLAR_HEIGHT, row, color,
+                                  familiar)
+
+    def _draw_respawn_column(self, cx, cy, size, row, color):
+        """Swirled light column of a respawned character, in its ground disc's main color.
+
+        The space between the bands takes a dimmer copy of that color.
+        """
+        gap_color = tuple(round(c * RESPAWN_COLUMN_GAP_SHADE) for c in color)
+        for side in ('back', 'front'):
+            for gaps, tint in ((False, color), (True, gap_color)):
+                self._draw_light_wall(self._respawn_column_images[side, gaps], side, cx, cy,
+                                      size * RESPAWN_COLUMN_RADIUS,
+                                      size * RESPAWN_COLUMN_HEIGHT, row, tint)
+
+    def _draw_light_wall(self, image, side, cx, cy, radius, height, row, color,
+                         familiar=False):
+        """One additive wall of a light cylinder; radius and height in cell widths."""
+        unit = self._sprite_unit()
+        radius *= unit
+        layer = 'pillar-back' if side == 'back' else 'pillar-front'
+        left = cx - radius
+        bottom = self.window_height - cy - radius * GROUND_DISC_FLATTEN
+        scale_x = 2 * radius / image.width
+        scale_y = (height * unit + 2 * radius * GROUND_DISC_FLATTEN) / image.height
+        group = self._row_group(row, 'familiar-front' if familiar and side == 'front'
+                                else layer)
+        tint = self._display_color(color)
+        signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
+                     id(group), pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE, tint)
+        pillar = self._draw_bounded_object(
+            left, image.width * scale_x, signature,
+            partial(
+                pyglet.sprite.Sprite, image, x=left, y=bottom,
+                blend_src=pyglet.gl.GL_SRC_ALPHA, blend_dest=pyglet.gl.GL_ONE,
+                batch=self.batch, group=group,
+            ),
+        )
+        self._set_drawable_attribute(pillar, 'scale_x', scale_x)
+        self._set_drawable_attribute(pillar, 'scale_y', scale_y)
+        self._set_drawable_attribute(pillar, 'color', tint)
 
     def _draw_ground_disc(self, cx, cy, radius, color, upper_right_color=None, opacity=255):
         """A disc seen at the sprites' 60-degree view, fading outward, below the sprite.

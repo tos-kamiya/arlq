@@ -569,8 +569,10 @@ class BlessedUI:
         loop_trail_markers: Optional[Set[d.Point]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
         decor: Optional[List[List[str]]] = None,
+        respawn_glows: Optional[Set[d.Point]] = None,
     ):
-        # `decor` (decorations no rule reads) is not drawn in the terminal.
+        # `decor` (decorations no rule reads) and `respawn_glows` are not drawn
+        # in the terminal.
         self._wait_for_terminal_size()
         show_entities = show_entities or self.map_mode
         stage_args = (

@@ -131,7 +131,10 @@ Stage 6 party members have sprites with randomly selected skin tones. The player
 chimera's sword while carrying it, and its own blade glows blue after the
 Collector Elf's blessing. The LP gauge floats just above the player, like a
 fighting game's, instead of in the status row. Ground markers preserve strength
-and status colors, and faint light pillars distinguish companions. Terrain has
+and status colors, and faint light pillars distinguish companions. For the
+turn after the player, a monster or a companion respawns in view, it stands in a
+column of light in its ground marker's color, with leaf-shaped bands swirling
+up it. Terrain has
 a separate illustrated style, including marble walls and stairs, floor tiles,
 fires, and Collapse pits; rocks fallen through a pit lie on the floor below
 it.
