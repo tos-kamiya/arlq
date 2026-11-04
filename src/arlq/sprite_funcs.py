@@ -214,9 +214,9 @@ RESPAWN_COLUMN_BAND_WIDTH = 0.6
 RESPAWN_COLUMN_BAND_TAPER = 0.7
 RESPAWN_COLUMN_GAP_SHADE = 0.15
 RESPAWN_COLUMN_TEXELS = 96
-# A respawn on an explored cell outside the current view lights its column
-# alone, in this neutral color, so the hidden character's strength stays
-# unknown.
+# A respawn cell where no character sprite is drawn (a hidden or text-only
+# character) lights its column alone, in this neutral color, so the
+# character's strength stays unknown.
 RESPAWN_COLUMN_UNSEEN_COLOR = COLOR_MAP['default']
 # The companion travelling with the player floats small at its right shoulder:
 # size relative to a normal sprite, and its ground point from the player's
