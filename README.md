@@ -138,7 +138,7 @@ monster for three turns, also on explored cells outside the view.
 Terrain has
 a separate illustrated style, including marble walls and stairs, floor tiles,
 fires, and Collapse pits; rocks fallen through a pit lie on the floor below
-it.
+it. The Stage 5 training ground's walls are plain marble-colored boxes, one per cell.
 Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
 `--scale` to enlarge the GUI.
 

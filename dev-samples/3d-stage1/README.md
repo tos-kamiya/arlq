@@ -80,15 +80,14 @@ PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py
 
 `--stage 5` を付けると、そのステージの地形の見た目で描き、`heroic/preview-terrain-stage5.jpg` に書き出す。
 
-ステージ5（トレーニングルーム）だけは地形の見た目を変え、床をくすんだミント色のコンクリート、柱を白っぽい大理石にする（`sprite_funcs.py` の `TERRAIN_THEMES`、`STAGE_TERRAIN_THEMES`）。床は敷石と同じ1マス1枚の板で、まだら・細かい凹凸・小さな気泡のある、つやのないコンクリート。色の違う2枚を市松模様に並べる。色は画像に焼き込み、GUIは視界外の探索済みの床を暗くするだけにする（マップの白黒表示では灰色にした画像を使う）。柱は形も材質も通常の列柱と同じで、床際の暗さを弱め（`FOOT_SHADE` 0.45）、露出を上げて書き出し、ほぼ白で着色する。画像がないときは通常の床と柱を使う。
+ステージ5（トレーニングルーム）だけは地形の見た目を変え、床をくすんだミント色のコンクリートにし、壁は画像を使わず、マスより一回り小さい大理石色の直方体（上面と前面の2枚の長方形）で描く（`sprite_funcs.py` の `TERRAIN_THEMES`、`STAGE_TERRAIN_THEMES`）。床は敷石と同じ1マス1枚の板で、まだら・細かい凹凸・小さな気泡のある、つやのないコンクリート。色の違う2枚を市松模様に並べる。色は画像に焼き込み、GUIは視界外の探索済みの床を暗くするだけにする（マップの白黒表示では灰色にした画像を使う）。訓練室は壁が多いため、描画コストを抑えるのが目的。床の画像がないときは通常の床を使う。
 
 ```bash
 blender --background --threads 4 --python dev-samples/3d-stage1/build-floor-training.py
-blender --background --threads 4 --python dev-samples/3d-stage1/build-walls.py -- --training
-.venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/floor/training-*.png src/arlq/assets/walls/training-*.png
+.venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/floor/training-*.png
 ```
 
-`src/arlq/assets/floor/training-a.png`、`training-b.png` と `src/arlq/assets/walls/training-column.png`、`training-link-west.png`、`training-link-east.png` を出力する。
+`src/arlq/assets/floor/training-a.png`、`training-b.png` を出力する。
 
 画像は `src/arlq/assets/characters/` に同梱する。プレイヤーの `@` は画像へ焼き込まず、ステータスや強さの列は従来の文字表示を維持する。
 

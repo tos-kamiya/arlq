@@ -730,6 +730,7 @@ def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
     ui._row_groups = {}
     ui._drawables = []
     ui._display_color = lambda color: color
+    ui.map_mode = False
     floors = []
     monkeypatch.setattr(PygletUI, '_draw_tile',
                         lambda self, x, y, color, *args: floors.append((x, y, color)))
@@ -748,6 +749,40 @@ def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
     assert front.args[1] + front.args[3] == pytest.approx(500 - (40 - overhang))
     order = lambda y, layer: ui._row_group(y, layer).order
     assert order(0, 'sprite') < top.group.order < order(1, 'sprite')
+
+
+@pytest.mark.parametrize('tile_color', [sprite_funcs.VISIBLE_WALL, sprite_funcs.WALL])
+def test_training_room_walls_are_boxes_smaller_than_the_cell(monkeypatch, tile_color):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
+    ui._terrain_theme = 'training'
+    ui._wall_images = None
+    ui._wall_tints = sprite_funcs.TERRAIN_THEMES['training'][4]
+    ui._floor_images = None
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.window_height = 500
+    ui.batch = None
+    ui._row_groups = {}
+    ui._drawables = []
+    ui._display_color = lambda color: color
+    ui.map_mode = False
+    monkeypatch.setattr(PygletUI, '_draw_tile', lambda *args: None)
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+                        lambda *args, **kwargs: SimpleNamespace(args=args, **kwargs))
+    field = [[d.CHAR_WALL] * 3 for _ in range(3)]
+    ui._draw_tile(1, 1, tile_color, field, lambda x, y: True)
+    top, front = ui._drawables
+    assert (top.color, front.color) == ui._wall_tints[tile_color]
+    # Narrower than the cell, with floor showing at both sides.
+    assert 13 < top.args[0] and top.args[0] + top.args[2] < 26
+    assert front.args[0] == top.args[0] and front.args[2] == top.args[2]
+    # The front face shows even with a wall to the south, ends above the
+    # cell's south edge, and the top reaches no further north than the overhang.
+    assert front.args[1] > 500 - 40
+    assert top.args[1] == pytest.approx(front.args[1] + front.args[3])
+    # The top face is as tall as it is wide on screen: a square seen from above.
+    assert top.args[3] == pytest.approx(top.args[2])
+    assert top.args[1] + top.args[3] <= 500 - (20 - sprite_funcs.WALL_OVERHANG * 20) + 1e-9
 
 
 @pytest.mark.parametrize('tile_color', [sprite_funcs.VISIBLE_WALL, sprite_funcs.WALL])

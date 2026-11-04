@@ -230,6 +230,15 @@ FAMILIAR_OFFSET = (0.7, 0.15)
 WALL_OVERHANG = 0.25
 WALL_TOP_SHADE = 1.25
 WALL_FRONT_SHADE = 0.7
+# Plain wall boxes, one per cell with floor showing between them: the gap on
+# the west and east (cell widths), the footprint's south edge (cell heights
+# from the cell's north edge), and the height its top is lifted north. The top
+# face is drawn as tall as it is wide on screen, so it reads as a square seen
+# from above; it stays within WALL_OVERHANG of the cell so rows still overlap
+# in order.
+WALL_BLOCK_INSET = 0.12
+WALL_BLOCK_SOUTH = 0.92
+WALL_BLOCK_HEIGHT = 0.56
 # Marble column parts (mid grey, tinted per visible/explored wall color);
 # each covers one cell plus the WALL_OVERHANG band north of it.
 WALL_PARTS = ('link-west', 'link-east', 'column')
@@ -237,7 +246,7 @@ WALL_PARTS = ('link-west', 'link-east', 'column')
 WALL_TINT = {VISIBLE_WALL: 2.4, WALL: 1.75}
 # Per terrain theme, the wall parts are brightened by this factor when loaded,
 # since a tint can only darken them; explored tints are divided by it, so only
-# visible walls get brighter. The training room's whiter columns would clip.
+# visible walls get brighter.
 WALL_IMAGE_GAIN = {'ruins': 1.3}
 # Flagstone floor: two near-white stones laid as a checkerboard, tinted a warm
 # dark grey per visible/explored floor, alternate cells slightly darker.
@@ -255,17 +264,22 @@ EDGE_FLOOR_TEXELS_PER_CELL = 4
 # Terrain looks: file prefixes of the floor and wall parts, the floor tint and
 # checkerboard shade, and the wall tint, per visible/explored color. Stage 5's
 # training room lays mint foam mats (colors baked in, so the tint only darkens
-# explored cells) between whiter marble columns; other stages use the ruins.
+# explored cells); other stages use the ruins. A theme without a wall prefix
+# draws each wall as a plain marble-colored box (see WALL_BLOCK_*), cheap to
+# draw in the room's many walls: the wall entry then gives (top face, front
+# face) colors per visible/explored color.
 TERRAIN_THEMES = {
     'ruins': ('floor-', 'wall-', FLOOR_TINTS, FLOOR_CHECKER_SHADE,
               {color: tuple(min(255, round(c * scale)) for c in color)
                for color, scale in WALL_TINT.items()}),
-    'training': ('training-', 'training-',
+    'training': ('training-', None,
                  {VISIBLE_FLOOR: (255, 255, 255), FLOOR: (150, 150, 150)}, 1,
-                 {VISIBLE_WALL: (250, 250, 246), WALL: (165, 166, 163)}),
+                 {VISIBLE_WALL: ((230, 224, 196), (178, 171, 144)),
+                  WALL: ((152, 148, 129), (116, 111, 94))}),
 }
-for _theme, _look in TERRAIN_THEMES.items():
-    _look[4][WALL] = tuple(round(c / WALL_IMAGE_GAIN.get(_theme, 1)) for c in _look[4][WALL])
+for _theme, _gain in WALL_IMAGE_GAIN.items():
+    _tints = TERRAIN_THEMES[_theme][4]
+    _tints[WALL] = tuple(round(c / _gain) for c in _tints[WALL])
 STAGE_TERRAIN_THEMES = {5: 'training'}
 # Sprites swapped in a terrain theme: the training room's chest is a toy.
 THEME_SPRITES = {'training': {'T': 'T-toy'}}
@@ -600,6 +614,7 @@ class SpriteUI(PygletUI):
         self._sprite_images = {}
         self._sprite_head_room = {}
         self._theme_floor_tiles = {}
+        self._wall_rect_colors = {}
 
     def __init__(self, scale=None, key_repeat_interval=None):
         self._member_skins = {char: random.choice(MEMBER_SKINS) for char in MEMBER_SPRITES}
@@ -657,11 +672,14 @@ class SpriteUI(PygletUI):
         # the map display. A theme whose images are missing uses the ruins'.
         self._theme_images = {}
         for theme, (floor_prefix, wall_prefix, *_) in TERRAIN_THEMES.items():
-            paths = [assets / 'walls' / (wall_prefix + part + '.png') for part in WALL_PARTS]
-            walls = ({part: mipmapped(brightened_image(
-                          pyglet.image.load(str(path)).get_image_data(), WALL_IMAGE_GAIN.get(theme, 1)))
-                      for part, path in zip(WALL_PARTS, paths)}
-                     if all(path.is_file() for path in paths) else None)
+            walls = None
+            if wall_prefix is not None:
+                paths = [assets / 'walls' / (wall_prefix + part + '.png') for part in WALL_PARTS]
+                if all(path.is_file() for path in paths):
+                    walls = {part: mipmapped(brightened_image(
+                                 pyglet.image.load(str(path)).get_image_data(),
+                                 WALL_IMAGE_GAIN.get(theme, 1)))
+                             for part, path in zip(WALL_PARTS, paths)}
             floor_paths = [assets / 'floor' / (floor_prefix + part + '.png')
                            for part in FLOOR_PARTS]
             floors = grays = None
@@ -670,7 +688,9 @@ class SpriteUI(PygletUI):
                 floors = [mipmapped(image) for image in data]
                 grays = [mipmapped(gray_image(image)) for image in data]
             ruins = self._theme_images.get('ruins', (None, None, None))
-            self._theme_images[theme] = (walls or ruins[0], floors or ruins[1],
+            if wall_prefix is not None and walls is None:
+                walls = ruins[0]
+            self._theme_images[theme] = (walls, floors or ruins[1],
                                          grays if floors else ruins[2])
         self._set_terrain_theme('ruins')
         self._terrain_images = {char: mipmapped(pyglet.image.load(str(assets / filename)))
@@ -1226,6 +1246,8 @@ class SpriteUI(PygletUI):
                     self._set_drawable_attribute(piece, 'scale_y', scale_y)
                     self._set_drawable_attribute(piece, 'color', draw_tint)
             return
+        if TERRAIN_THEMES[self._terrain_theme][1] is None:
+            return self._draw_wall_block(x, y, tile_color, group)
         south_is_wall = wall_at(x, y + 1)
         self._draw_wall_rect(left, top, width, height, tile_color, WALL_TOP_SHADE, group)
         if not south_is_wall:
@@ -1234,6 +1256,18 @@ class SpriteUI(PygletUI):
             front = WALL_OVERHANG * self.cell_size_y
             self._draw_wall_rect(left, (y + 1) * self.cell_size_y - front, width, front + 1,
                                  tile_color, WALL_FRONT_SHADE, group)
+
+    def _draw_wall_block(self, x, y, tile_color, group):
+        """A free-standing box a little smaller than its cell: top and front faces."""
+        top_color, front_color = self._wall_tints[tile_color]
+        cx, cy = self.cell_size_x, self.cell_size_y
+        left = self._field_col_x(x) + WALL_BLOCK_INSET * cx
+        width = (1 - 2 * WALL_BLOCK_INSET) * cx
+        lift = WALL_BLOCK_HEIGHT
+        front = (y + WALL_BLOCK_SOUTH - lift) * cy
+        top = max(front - width, (y - WALL_OVERHANG) * cy)
+        self._draw_wall_rect(left, top, width, front - top, top_color, 1, group)
+        self._draw_wall_rect(left, front, width, lift * cy, front_color, 1, group)
 
     def _decor_at(self, x, y):
         decor = self._decor
@@ -1342,9 +1376,14 @@ class SpriteUI(PygletUI):
         self._set_drawable_attribute(sprite, 'scale_y', scale_y)
 
     def _draw_wall_rect(self, x, y, width, height, color, shade, group):
-        color = tuple(min(255, round(c * shade)) for c in color)
+        # Walls use only a few colors; shading them per rectangle was a
+        # noticeable share of a wall-heavy stage's drawing time.
+        key = (color, shade, self.map_mode)
+        draw_color = self._wall_rect_colors.get(key)
+        if draw_color is None:
+            draw_color = self._display_color(tuple(min(255, round(c * shade)) for c in color))
+            self._wall_rect_colors[key] = draw_color
         bottom = self.window_height - y - height
-        draw_color = self._display_color(color)
         signature = ('rectangle', x, bottom, width, height, draw_color, id(group))
         self._draw_bounded_object(
             x, width, signature,
