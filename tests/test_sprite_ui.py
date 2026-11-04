@@ -556,6 +556,40 @@ def test_companion_stands_in_green_light_pillar(sprite_ui):
     assert len(ui._drawables) == 1
 
 
+def _respawn_ui(ui, glows, visible_cells):
+    ui._display_color = lambda color: color
+    ui._respawn_column_images = {
+        (side, gaps): SimpleNamespace(width=96, height=200)
+        for side in ('back', 'front') for gaps in (False, True)
+    }
+    ui._respawn_glows = glows
+    ui._cur_torched = [[int((x, y) in visible_cells) for x in range(10)] for y in range(10)]
+    return ui
+
+
+def test_respawned_character_stands_in_swirled_column_of_its_disc_color(sprite_ui):
+    ui = _respawn_ui(sprite_ui, {(4, 5)}, {(4, 5)})
+    color = ui._tone_color('blue')
+    ui._draw_field_text((4, 5), 'b', color, True)
+    sprite, *walls = ui._drawables
+    images = ui._respawn_column_images
+    assert [wall.image for wall in walls] == [
+        images['back', False], images['back', True],
+        images['front', False], images['front', True],
+    ]
+    gap = tuple(round(c * sprite_funcs.RESPAWN_COLUMN_GAP_SHADE) for c in color)
+    assert [wall.color for wall in walls] == [color, gap, color, gap]
+    assert ui.outlines[0][3] == color
+    assert walls[0].group.order < sprite.group.order < walls[2].group.order
+
+
+@pytest.mark.parametrize('glows, visible', (({(4, 5)}, set()), (set(), {(4, 5)})))
+def test_respawn_column_needs_a_respawn_in_view(sprite_ui, glows, visible):
+    ui = _respawn_ui(sprite_ui, glows, visible)
+    ui._draw_field_text((4, 5), 'b', ui._tone_color('blue'), True)
+    assert len(ui._drawables) == 1
+
+
 @pytest.mark.parametrize('met', (False, True))
 def test_met_elf_sprite_and_disc_are_darker(sprite_ui, met):
     ui = sprite_ui
