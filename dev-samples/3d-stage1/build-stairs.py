@@ -11,10 +11,16 @@ north of it (sprite_funcs.TERRAIN_SIDE, TERRAIN_OVERHANG):
                    back at a landing and rising on to the left behind, with
                    their shadows on the floor
   stairs-down.png  the same going down into a dark opening
+  stairs-landing.png
+                   the up flight alone, with no floor and no shadow, for the
+                   moment between floors (a dark screen with just the turn)
+
+Pass part names after `--` to render only those, e.g. `-- landing`.
 The stone is near-white; the GUI tints it gold, darker outside the view.
 """
 from pathlib import Path
 import math
+import sys
 
 import bpy
 from mathutils import Vector
@@ -155,7 +161,7 @@ scene.world = world
 marble = material('Marble', (0.92, 0.91, 0.88), rim_strength=0.25)
 void = material('Void', (0.0, 0.0, 0.0), roughness=1.0)
 ground = holdout('Ground')
-parts = {'up': [], 'down': []}
+parts = {'up': [], 'down': [], 'landing': []}
 
 x0 = -(FLIGHT_STEPS * STEP_RUN + LANDING) / 2
 x1 = x0 + FLIGHT_STEPS * STEP_RUN
@@ -194,6 +200,8 @@ parts['up'] += switchback('Up', UP_RISE, (y0, y1), (y1, y2), marble)
 floor = box('Shadow floor', -3, 3, -3, 6, -0.02, 0, marble, bevel=0)
 floor.is_shadow_catcher = True
 parts['up'].append(floor)
+# Between floors: the same flight with nothing under it, so no shadow.
+parts['landing'] += switchback('Landing', UP_RISE, (y0, y1), (y1, y2), marble)
 
 # Down: a low kerb rings a rectangular opening with no walls inside: the
 # plates float down from left to right along the back, turn at the landing
@@ -259,7 +267,10 @@ lines.linestyle.thickness = 4.0
 scene.render.image_settings.file_format = 'PNG'
 scene.render.image_settings.color_mode = 'RGBA'
 
+only = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else list(parts)
 for name, objects in parts.items():
+    if name not in only:
+        continue
     for obj in scene.objects:
         obj.hide_render = obj.type == 'MESH' and obj not in objects
     scene.render.filepath = str(OUT / ('stairs-' + name + '.png'))

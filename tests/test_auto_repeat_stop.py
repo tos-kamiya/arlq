@@ -229,6 +229,7 @@ def test_falling_onto_same_position_collapse_drops_one_floor_per_turn():
 
     assert floor_index == [1]
     assert (player.x, player.y) == (3, 2)
+    assert player.floor_exit == (3, 2)
 
     _process_multi_floor_turn(
         (1, 0), floors, player, floor_index, checkpoint, queue, 2
@@ -261,6 +262,7 @@ def test_stair_transition_marks_repeat_stop_reason():
 
     assert "floor_transition" in reasons
     assert (player.x, player.y) == (4, 4)
+    assert player.floor_exit == (3, 2)
 
 
 def test_marksman_hit_marks_repeat_stop_reason(monkeypatch):

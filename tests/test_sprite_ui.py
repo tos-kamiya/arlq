@@ -1612,3 +1612,81 @@ def test_edge_shade_strips_cover_shifted_fades(cached_floor_ui):
                     (x + .5) / texels, (y + .5) / texels,
                     d.FIELD_WIDTH, d.FIELD_HEIGHT, ui._edge_shade_bounds,
                 ) == 1
+
+
+@pytest.mark.parametrize('kind, tint', [
+    ('down', sprite_funcs.TERRAIN_TINT),
+    ('up', sprite_funcs.TERRAIN_TINT),
+    ('fall', None),
+    ('climb', None),
+])
+def test_floor_transition_shows_only_the_players_landing(sprite_ui, monkeypatch,
+                                                         kind, tint):
+    ui = sprite_ui
+    ui._disc_image = SimpleNamespace(width=64, height=64)
+    ui.combat_effect_seconds = 0.3
+    ui.field_height = 20
+    ui.field_pixel_width = 26 * 13
+    ui._landing_image = SimpleNamespace(width=480, height=600)
+    shown, deleted = [], []
+    monkeypatch.setattr('arlq.sprite_funcs.time.sleep', lambda seconds: None)
+    monkeypatch.setattr(ui, '_flip', lambda: shown.extend(made))
+    made = []
+
+    def track(factory):
+        def make(*args, **kwargs):
+            obj = factory(*args, **kwargs)
+            obj.delete = lambda: deleted.append(obj)
+            made.append(obj)
+            return obj
+        return make
+
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        track(lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs)))
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+                        track(lambda *args, **kwargs: SimpleNamespace(args=args, **kwargs)))
+    player = d.Player(3, 4, level=1, lp=d.LP_INIT)
+
+    ui.draw_floor_transition(kind, player)
+
+    landings = [obj for obj in shown if getattr(obj, 'image', None) is ui._landing_image]
+    assert [landing.color for landing in landings] == ([] if tint is None else [tint])
+    assert any(getattr(obj, 'image', None) is ui._sprite_images['@'] for obj in shown)
+    ropes = [obj for obj in shown if getattr(obj, 'color', None) == sprite_funcs.ROPE_COLOR]
+    assert len(ropes) == (kind == 'climb')
+    glows = [obj for obj in shown if getattr(obj, 'image', None) is ui._disc_image]
+    assert [glow.opacity for glow in glows] == (
+        [sprite_funcs.ROPE_GLOW_OPACITY] if kind == 'climb' else [])
+    assert deleted == shown
+
+
+def test_floor_transition_is_skipped_without_combat_effect_time(sprite_ui, monkeypatch):
+    ui = sprite_ui
+    ui.combat_effect_seconds = 0
+    monkeypatch.setattr(ui, '_flip', lambda: pytest.fail('drew a transition'))
+    ui.draw_floor_transition('down', d.Player(3, 4, level=1, lp=d.LP_INIT))
+
+
+def test_floor_transition_keeps_the_stairs_column(sprite_ui, monkeypatch):
+    ui = sprite_ui
+    ui.combat_effect_seconds = 0.3
+    ui.field_height = 20
+    ui.field_pixel_width = 26 * 13
+    ui._horizontal_scroll_px = 26
+    ui._landing_image = SimpleNamespace(width=480, height=600)
+    made = []
+    monkeypatch.setattr('arlq.sprite_funcs.time.sleep', lambda seconds: None)
+    monkeypatch.setattr(ui, '_flip', lambda: None)
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: made.append(SimpleNamespace(
+                            image=picture, delete=lambda: None, **kwargs)) or made[-1])
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+                        lambda *args, **kwargs: SimpleNamespace(delete=lambda: None))
+
+    ui.draw_floor_transition('down', d.Player(3, 4, level=1, lp=d.LP_INIT), (7, 2))
+
+    landing = next(obj for obj in made if obj.image is ui._landing_image)
+    figure = next(obj for obj in made if obj.image is ui._sprite_images['@'])
+    left = 7 * 13 - 26
+    assert landing.x == left - sprite_funcs.TERRAIN_SIDE * 13
+    assert figure.x + figure.image.width * figure.scale / 2 == left + 13 / 2

@@ -56,7 +56,15 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-floor.py
 blender --background --threads 4 --python dev-samples/3d-stage1/build-stairs.py
 ```
 
-`src/arlq/assets/stairs/stairs-up.png` と `stairs-down.png` を出力する。
+`src/arlq/assets/stairs/stairs-up.png`、`stairs-down.png`、`stairs-landing.png` を出力する。`--` の後に部品名を並べると、その部品だけを書き出す（例：`-- landing`）。
+
+`stairs-landing.png` は、上り階段と同じ板の並びから影を写す見えない床を除いたもの（試作）。階段を上り下りするとき、GUIは階と階の間の様子を戦闘エフェクトと同じ時間だけ止め絵で見せる（`sprite_funcs.py` の `draw_floor_transition()`）。フィールドをほぼ黒（`TRANSITION_BACKGROUND`）で覆い、この画像と主人公をマップ上と同じ大きさで、プレイヤーが出た階段のマスと同じ列に描く（左右の位置はマップ上と同じで、上下だけフィールドの中央に動かす）。主人公の足元は、マスの左右の中央で、高さだけを踊り場の踏み面（`LANDING_FEET_HEIGHT`）に合わせる。上りも下りも同じ絵で、使った階段だけを描く。踊り場は普通の階段と同じ金色（`TERRAIN_TINT`）に着色する。落とし穴に落ちるときは、闇の中に主人公だけを描く。ダンジョン探検家と穴を登るときは、主人公の背丈の2倍（`ROPE_LENGTH`）の長さで、ダンジョン探検家の麻縄と同じ色（`ROPE_COLOR`）の縦の線分を、主人公の高さの中央を中心に、主人公の手前に描く。主人公の後ろには、縄に沿って、見つけた隠し通路の足元の光と同じ緑の、より淡い縦長の光（地面の円盤の画像を縦に伸ばしたもの。`ROPE_GLOW_*`）を描く。どの移動かはゲーム側の `floor_transition_kind()` が判定する。
+
+```bash
+PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-floor-transitions.py [OUT]
+```
+
+で、4通りの止め絵を並べた画像（既定は `heroic/preview-floor-transitions.jpg`）を書き出せる。
 
 崩落（Collapse）の穴（`O`）も、黄色の文字の代わりに、床に開いた不定形の穴と、その縁に転がる岩として描く。`build-pit.py` が壁と同じ60度のカメラで、元の大きさの1.2倍（`PIT_SCALE`）の穴を、1マスに左右0.25マスずつと北への0.25マスの張り出しを加えた範囲（マスは幅16・高さ20ピクセルの比率で、480×500ピクセル）で `pit.png` に書き出す。階段と同じく、モデルの1単位は画面の15ピクセルのままにする。大きくした穴が範囲に収まるよう、穴の中心はマスの中央より少し北に置く（`PIT_NORTH`）。GUIは階段と同じく、左右のはみ出しを隣のマスが探索済みの普通の床のときだけ描き、同じ着色（`TERRAIN_TINT`、`TERRAIN_EXPLORED_SHADE`）で敷石の上に重ねる。穴の縁は滑らかに膨らんだ不定形の輪郭で、すぐ下に明るい岩肌の縁（`LIP_DEPTH`）がある。穴の中はでこぼこの岩肌の縦穴で、底は真っ暗、落ちていく角張ったかけらが3つある。縁の周りには大きさの違う角張った岩（`ROCKS`）と小さな瓦礫（`RUBBLE`）が転がり、一部は穴にかかる。岩は底を平らに切った不揃いな多面体で、細かい凹凸のバンプを付ける。穴の外の地面はホールドアウトの透明な板で隠す。岩は青みのある灰色で書き出し、金色の着色で灰色の石に見えるようにする（`ROCK_COLOR`）。プレイヤーが穴の上に立てるよう、壁の層（キャラクターより奥）に描く。中央の `?`（崩落そのもの）は、ルールに合わせて未識別のモンスターと同じ `?` の記号（後述）で描く。画像がない場合は黄色の `O` の文字で描く。
 

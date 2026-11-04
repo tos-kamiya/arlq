@@ -2921,3 +2921,21 @@ def test_f_check_ignores_inactive_mimic_but_counts_untriggered_collapse(
     game_engine_module.run_game(ui, '123', stage_num=1)
     assert len(prompts) == expected_prompts
     assert field[1][3] == d.CHAR_FLOOR
+
+
+def test_floor_transition_kind_tells_stairs_from_pits():
+    def floor(cells):
+        field = [[d.CHAR_FLOOR] * 3 for _ in range(3)]
+        for (x, y), char in cells.items():
+            field[y][x] = char
+        return SimpleNamespace(field=field)
+
+    kind = game_engine_module.floor_transition_kind
+    upper = floor({(1, 1): d.CHAR_COLLAPSE, (0, 0): d.CHAR_STAIRS_DOWN})
+    lower = floor({(1, 1): d.CHAR_SCHOLAR_STAIRS_UP, (2, 2): d.CHAR_STAIRS_UP})
+    floors = [upper, lower]
+    assert kind(floors, 0, 0, (1, 1)) is None
+    assert kind(floors, 0, 1, (1, 1)) == "fall"
+    assert kind(floors, 1, 0, (1, 1)) == "climb"
+    assert kind(floors, 0, 1, (2, 2)) == "down"
+    assert kind(floors, 1, 0, (0, 0)) == "up"

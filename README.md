@@ -139,6 +139,10 @@ Terrain has
 a separate illustrated style, including marble walls and stairs, floor tiles,
 fires, and Collapse pits; rocks fallen through a pit lie on the floor below
 it. The Stage 5 training ground's walls are plain marble-colored boxes, one per cell.
+Taking stairs or falling through a pit briefly shows the moment between floors
+on a nearly black screen, in the same column as the stairs or pit: the player
+standing on the landing of a floating switchback, or alone in the dark while falling
+through a pit, or holding a rope in a faint green glow while climbing out of one. It lasts as long as the combat effect.
 Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
 `--scale` to enlarge the GUI.
 

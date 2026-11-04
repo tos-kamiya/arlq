@@ -336,6 +336,25 @@ TERRAIN_OVERHANG = {d.CHAR_STAIRS_UP: 0.5, d.CHAR_STAIRS_DOWN: 0.5,
 TERRAIN_EXPLORED_SHADE = 0.55
 # Opacity of the yellow ground disc that marks each stair.
 STAIR_DISC_OPACITY = 90
+# Between floors (draw_floor_transition): a near-black field with only the
+# player, standing on the landing of a floating switchback when taking stairs
+# (gold), both the size they are in play. Both
+# stay in the column of the cell the player left from, as in play, but move
+# up or down to the middle of the field. The landing image covers a cell like
+# the up stairs' image; the player's feet go LANDING_FEET_HEIGHT cell heights
+# above its south edge, the height of the landing's tread. Climbing out of a
+# pit, a rope segment ROPE_LENGTH times the player's height, the color of the
+# Dungeon Explorer's hemp rope, is drawn over the player: ROPE_WIDTH cell
+# widths wide and ROPE_OFFSET right of its centre. Behind the player, a faint
+# glow in the green of discovered passages' floor light runs along the rope:
+# the ground disc's fading image stretched ROPE_GLOW_WIDTH cell widths wide
+# and ROPE_GLOW_LENGTH times the rope's length, at ROPE_GLOW_OPACITY.
+LANDING_FILE = 'stairs/stairs-landing.png'
+TRANSITION_BACKGROUND = (6, 6, 8)
+LANDING_FEET_HEIGHT = 0.725
+ROPE_COLOR = (160, 134, 96)
+ROPE_WIDTH, ROPE_OFFSET, ROPE_LENGTH = 0.08, 0.1, 2.0
+ROPE_GLOW_WIDTH, ROPE_GLOW_LENGTH, ROPE_GLOW_OPACITY = 0.9, 1.3, 90
 
 
 def _luminance(color):
@@ -697,6 +716,8 @@ class SpriteUI(PygletUI):
                                 for char, filename in TERRAIN_FILES.items()
                                 if (assets / filename).is_file()}
         self._terrain_regions = {}
+        self._landing_image = (mipmapped(pyglet.image.load(str(assets / LANDING_FILE)))
+                               if (assets / LANDING_FILE).is_file() else None)
         self._barrier_images = [barrier_image(variant) for variant in (0, 1)]
         self._smoke_images = [smoke_image(barrier) for barrier in self._barrier_images]
         self._floor_group = pyglet.graphics.Group(order=-1)
@@ -1427,6 +1448,84 @@ class SpriteUI(PygletUI):
         finally:
             for effect in effects:
                 effect.delete()
+
+    def draw_floor_transition(self, kind, player, exit_point=None) -> None:
+        """Show the moment between floors as a still: on the landing of the
+        stairs the player is taking, or alone in the dark falling through or
+        climbing out of a pit, in the column of the cell it left from."""
+        seconds = self.combat_effect_seconds
+        if seconds == 0 or '@' not in self._sprite_images:
+            return
+        field_height = self.field_height * self.cell_size_y
+        shapes = [pyglet.shapes.Rectangle(
+            0, self.window_height - field_height, self.field_pixel_width, field_height,
+            color=self._display_color(TRANSITION_BACKGROUND), batch=self.batch,
+            group=pyglet.graphics.Group(order=99998),
+        )]
+        cell_x, cell_y = self.cell_size_x, self.cell_size_y
+        column = (exit_point or (player.x, player.y))[0]
+        left = self._field_col_x(column)
+        cx, cy = left + cell_x / 2, field_height / 2
+        image = self._landing_image
+        if kind in ('down', 'up') and image is not None:
+            # A cell in the stairs' own column, moved up or down to the middle
+            # of the field.
+            cell_pixels = image.width / (1 + 2 * TERRAIN_SIDE)
+            overhang = TERRAIN_OVERHANG[d.CHAR_STAIRS_UP]
+            cell_bottom = cy + (1 + overhang) * cell_y / 2
+            landing = pyglet.sprite.Sprite(
+                image, x=left - TERRAIN_SIDE * cell_x,
+                y=self.window_height - cell_bottom, batch=self.batch,
+                group=pyglet.graphics.Group(order=99999),
+            )
+            landing.scale_x = cell_x / cell_pixels
+            landing.scale_y = (1 + overhang) * cell_y / image.height
+            landing.color = self._display_color(TERRAIN_TINT)
+            shapes.append(landing)
+            cy = cell_bottom - LANDING_FEET_HEIGHT * cell_y
+        sprite = self._player_sprite(player)
+        picture = self._sprite_images[sprite]
+        padding = max(1, round(self.scale))
+        scale = 1.8 * max(1, self._sprite_unit() - 2 * padding) / SPRITE_REFERENCE_PIXELS
+        figure = pyglet.sprite.Sprite(
+            picture, x=cx - picture.width * scale / 2,
+            y=self.window_height - cy - (picture.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale,
+            batch=self.batch, group=pyglet.graphics.Group(order=100000),
+        )
+        figure.scale = scale
+        shapes.append(figure)
+        if kind == 'climb':
+            # A rope segment over the player, centred on the figure's height.
+            figure_height = (picture.height / 2 + SPRITE_GROUND_OFFSET_PIXELS
+                             - self._sprite_head_room.get(sprite, 0)) * scale
+            length = ROPE_LENGTH * figure_height
+            width = max(2, round(ROPE_WIDTH * cell_x))
+            rope_x = cx + ROPE_OFFSET * cell_x
+            rope_middle = cy - figure_height / 2
+            glow_image = self._disc_image
+            glow_width, glow_length = ROPE_GLOW_WIDTH * cell_x, ROPE_GLOW_LENGTH * length
+            glow = pyglet.sprite.Sprite(
+                glow_image, x=rope_x - glow_width / 2,
+                y=self.window_height - rope_middle - glow_length / 2,
+                batch=self.batch, group=pyglet.graphics.Group(order=99999),
+            )
+            glow.scale_x = glow_width / glow_image.width
+            glow.scale_y = glow_length / glow_image.height
+            glow.color = self._display_color(COLOR_MAP[CI_GREEN])
+            glow.opacity = ROPE_GLOW_OPACITY
+            shapes.append(glow)
+            shapes.append(pyglet.shapes.Rectangle(
+                round(rope_x - width / 2),
+                self.window_height - (rope_middle + length / 2),
+                width, length, color=self._display_color(ROPE_COLOR),
+                batch=self.batch, group=pyglet.graphics.Group(order=100001),
+            ))
+        try:
+            self._flip()
+            time.sleep(seconds)
+        finally:
+            for shape in shapes:
+                shape.delete()
 
     def _draw_player(self, pos, player):
         if '@' not in self._sprite_images:

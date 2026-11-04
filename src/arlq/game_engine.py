@@ -1755,6 +1755,7 @@ def _process_multi_floor_turn(
     if standing_on_collapse or entered_pit:
         from_floor = floor[0]
         collapse_point = previous if standing_on_collapse else (player.x, player.y)
+        player.floor_exit = collapse_point
         if collapse_hit is not None:
             current.seen[collapse_hit.y][collapse_hit.x] = 1
         current.seen[collapse_point[1]][collapse_point[0]] = 1
@@ -1900,6 +1901,7 @@ def _process_multi_floor_turn(
         else _handle_floor_transition(current, floors, player, floor, checkpoint)
     )
     if transition_message is not None:
+        player.floor_exit = movement_destination
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("floor_transition")
         event_message = prefer_event_message(event_message, transition_message)
@@ -1967,6 +1969,22 @@ def observe_world(
                         current.field[y][x] = d.CHAR_SCHOLAR_STAIRS_UP
     _reveal_paired_stair_cells(floors, player)
     return visible
+
+
+def floor_transition_kind(
+    floors: List[Floor], from_floor: int, to_floor: int, point: d.Point
+) -> Optional[str]:
+    """How the player just changed floors, landing at `point`: "down" or "up"
+    by stairs, "fall" through a pit, "climb" out of one (with the Dungeon
+    Explorer). None when the floor did not change."""
+    if from_floor == to_floor:
+        return None
+    x, y = point
+    if to_floor > from_floor and floors[from_floor].field[y][x] == d.CHAR_COLLAPSE:
+        return "fall"
+    if to_floor < from_floor and floors[to_floor].field[y][x] == d.CHAR_COLLAPSE:
+        return "climb"
+    return "down" if to_floor > from_floor else "up"
 
 
 def respawn_glow_cells(current: Floor) -> Set[d.Point]:
@@ -2282,6 +2300,7 @@ def run_game(
             if effect is not None:
                 effect((player.x, player.y), False)
 
+        floor_before_step = floor[0]
         step_result = _process_multi_floor_turn(
             move,
             floors,
@@ -2342,6 +2361,12 @@ def run_game(
             event_message: Optional[Tuple[int, str]] = (5, rewind_message)
         else:
             event_message = step_result
+            transition = floor_transition_kind(
+                floors, floor_before_step, floor[0], (player.x, player.y)
+            )
+            show_floor_transition = getattr(ui, "draw_floor_transition", None)
+            if transition is not None and show_floor_transition is not None:
+                show_floor_transition(transition, player, player.floor_exit)
         player.current_floor = floor[0]
         # A stair contact can change the player's floor during _step(). Keep
         # the displayed floor in sync so the next frame shows the new floor.
