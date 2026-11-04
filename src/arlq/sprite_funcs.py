@@ -205,11 +205,15 @@ FAMILIAR_OFFSET = (0.7, 0.15)
 WALL_OVERHANG = 0.25
 WALL_TOP_SHADE = 1.25
 WALL_FRONT_SHADE = 0.7
-# Marble column parts (near-white, tinted per visible/explored wall color);
+# Marble column parts (mid grey, tinted per visible/explored wall color);
 # each covers one cell plus the WALL_OVERHANG band north of it.
 WALL_PARTS = ('link-west', 'link-east', 'column')
 # Explored walls and floor outside the current view are kept clearly darker.
 WALL_TINT = {VISIBLE_WALL: 2.4, WALL: 1.75}
+# Per terrain theme, the wall parts are brightened by this factor when loaded,
+# since a tint can only darken them; explored tints are divided by it, so only
+# visible walls get brighter. The training room's whiter columns would clip.
+WALL_IMAGE_GAIN = {'ruins': 1.3}
 # Flagstone floor: two near-white stones laid as a checkerboard, tinted a warm
 # dark grey per visible/explored floor, alternate cells slightly darker.
 FLOOR_PARTS = ('a', 'b')
@@ -235,6 +239,8 @@ TERRAIN_THEMES = {
                  {VISIBLE_FLOOR: (255, 255, 255), FLOOR: (150, 150, 150)}, 1,
                  {VISIBLE_WALL: (250, 250, 246), WALL: (165, 166, 163)}),
 }
+for _theme, _look in TERRAIN_THEMES.items():
+    _look[4][WALL] = tuple(round(c / WALL_IMAGE_GAIN.get(_theme, 1)) for c in _look[4][WALL])
 STAGE_TERRAIN_THEMES = {5: 'training'}
 # Sprites swapped in a terrain theme: the training room's chest is a toy.
 THEME_SPRITES = {'training': {'T': 'T-toy'}}
@@ -431,6 +437,15 @@ def gray_image(data):
                                   pitch=data.width * 4)
 
 
+def brightened_image(data, gain):
+    """Copy of image data with its colors scaled by gain (clipped), alpha kept."""
+    rgba = data.get_data('RGBA', data.width * 4)
+    table = bytes(min(255, round(value * gain)) for value in range(256))
+    bright = bytearray(rgba.translate(table))
+    bright[3::4] = rgba[3::4]
+    return pyglet.image.ImageData(data.width, data.height, 'RGBA', bytes(bright),
+                                  pitch=data.width * 4)
+
 
 def edge_floor_bounds(field):
     """Find the first non-wall column and row from each edge."""
@@ -586,7 +601,8 @@ class SpriteUI(PygletUI):
         self._theme_images = {}
         for theme, (floor_prefix, wall_prefix, *_) in TERRAIN_THEMES.items():
             paths = [assets / 'walls' / (wall_prefix + part + '.png') for part in WALL_PARTS]
-            walls = ({part: mipmapped(pyglet.image.load(str(path)))
+            walls = ({part: mipmapped(brightened_image(
+                          pyglet.image.load(str(path)).get_image_data(), WALL_IMAGE_GAIN.get(theme, 1)))
                       for part, path in zip(WALL_PARTS, paths)}
                      if all(path.is_file() for path in paths) else None)
             floor_paths = [assets / 'floor' / (floor_prefix + part + '.png')
