@@ -25,3 +25,11 @@ def combat_effect_seconds(settings: dict) -> float:
         if value in d.COMBAT_EFFECT_SECONDS_CHOICES:
             return float(value)
     return d.COMBAT_EFFECT_SECONDS
+
+
+def floor_transition_seconds(settings: dict) -> float:
+    value = settings.get("floor_transition_seconds", d.FLOOR_TRANSITION_SECONDS)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if value in d.FLOOR_TRANSITION_SECONDS_CHOICES:
+            return float(value)
+    return d.FLOOR_TRANSITION_SECONDS

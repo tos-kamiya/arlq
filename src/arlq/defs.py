@@ -1234,4 +1234,8 @@ from .display import (
 )
 
 COMBAT_EFFECT_SECONDS = 0.3
+# The sprite GUI's still between floors (stairs and pits), set in Settings;
+# 0 skips it.
+FLOOR_TRANSITION_SECONDS = 0.5
+FLOOR_TRANSITION_SECONDS_CHOICES = tuple(n / 10 for n in range(11))
 COMBAT_EFFECT_SECONDS_CHOICES = tuple(n / 10 for n in range(6))

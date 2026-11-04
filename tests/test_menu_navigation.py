@@ -189,6 +189,48 @@ def test_invalid_combat_effect_duration_uses_default(value):
     assert combat_effect_seconds({"combat_effect_seconds": value}) == 0.3
 
 
+@pytest.mark.parametrize("presses, seconds", [(0, 0.5), (-5, 0.0), (5, 1.0), (-2, 0.3)])
+def test_sprite_settings_select_and_reload_floor_transition_duration(
+    monkeypatch, tmp_path, presses, seconds
+):
+    from arlq.settings import floor_transition_seconds, load_settings
+
+    path = tmp_path / "settings.json"
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    arrow = key.RIGHT if presses > 0 else key.LEFT
+    events = [(key.DOWN, 0)] * 4 + [(arrow, 0)] * abs(presses) + [(key.RETURN, 0)]
+    ui = _menu_ui(monkeypatch, events)
+    ui.supports_floor_transition = True
+    ui.set_scale = lambda scale: None
+
+    ui.settings_menu()
+
+    assert ui.floor_transition_seconds == seconds
+    assert floor_transition_seconds(load_settings(path)) == seconds
+    assert load_settings(path)["combat_effect_seconds"] == 0.3
+
+
+def test_plain_gui_settings_have_no_floor_transition_row(monkeypatch, tmp_path):
+    path = tmp_path / "settings.json"
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    # Four Downs wrap back to the scale row without a gamepad.
+    ui = _menu_ui(monkeypatch, [(key.DOWN, 0)] * 4 + [(key.RIGHT, 0), (key.RETURN, 0)])
+    scales = []
+    ui.set_scale = scales.append
+
+    ui.settings_menu()
+
+    assert scales == [1.25]
+    assert "floor_transition_seconds" not in json.loads(path.read_text())
+
+
+@pytest.mark.parametrize("value", [None, True, "0.1", -0.1, 1.1, 0.25, float("nan")])
+def test_invalid_floor_transition_duration_uses_default(value):
+    from arlq.settings import floor_transition_seconds
+
+    assert floor_transition_seconds({"floor_transition_seconds": value}) == 0.5
+
+
 def test_zero_duration_skips_effect_in_all_frontends():
     from arlq.blessed_funcs import BlessedUI
     from arlq.sprite_funcs import SpriteUI

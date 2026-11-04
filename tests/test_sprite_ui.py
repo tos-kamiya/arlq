@@ -1629,7 +1629,8 @@ def test_floor_transition_shows_only_the_players_landing(sprite_ui, monkeypatch,
     ui.field_pixel_width = 26 * 13
     ui._landing_image = SimpleNamespace(width=480, height=600)
     shown, deleted = [], []
-    monkeypatch.setattr('arlq.sprite_funcs.time.sleep', lambda seconds: None)
+    slept = []
+    monkeypatch.setattr('arlq.sprite_funcs.time.sleep', slept.append)
     monkeypatch.setattr(ui, '_flip', lambda: shown.extend(made))
     made = []
 
@@ -1658,11 +1659,13 @@ def test_floor_transition_shows_only_the_players_landing(sprite_ui, monkeypatch,
     assert [glow.opacity for glow in glows] == (
         [sprite_funcs.ROPE_GLOW_OPACITY] if kind == 'climb' else [])
     assert deleted == shown
+    assert slept == [d.FLOOR_TRANSITION_SECONDS]
 
 
-def test_floor_transition_is_skipped_without_combat_effect_time(sprite_ui, monkeypatch):
+def test_floor_transition_is_skipped_at_zero_seconds(sprite_ui, monkeypatch):
     ui = sprite_ui
-    ui.combat_effect_seconds = 0
+    ui.combat_effect_seconds = 0.3
+    ui.floor_transition_seconds = 0
     monkeypatch.setattr(ui, '_flip', lambda: pytest.fail('drew a transition'))
     ui.draw_floor_transition('down', d.Player(3, 4, level=1, lp=d.LP_INIT))
 

@@ -80,6 +80,7 @@ reproduce the same layout.
 | `--auto-repeat-stop` / `--no-auto-repeat-stop` | Enable or disable automatic repeat stopping near known hazards and after encounters. Enabled by default; the selection is saved for later GUI starts and can also be changed in `Settings`. |
 
 In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 seconds for combat and barrier damage effects (default: 0.3). Choosing 0 disables the effects and their delay. The selection is saved and also used in terminal mode.
+In `arlq-sprites`, `Floor transition duration` selects 0 to 1 second in 0.1-second steps for the still shown between floors (default: 0.5; 0 skips it).
 
 ## Screen and controls
 
@@ -142,7 +143,7 @@ it. The Stage 5 training ground's walls are plain marble-colored boxes, one per 
 Taking stairs or falling through a pit briefly shows the moment between floors
 on a nearly black screen, where the stairs or pit were: the player
 standing on the landing of a floating switchback, or alone in the dark while falling
-through a pit, or holding a rope in a faint green glow while climbing out of one. It lasts as long as the combat effect.
+through a pit, or holding a rope in a faint green glow while climbing out of one. It lasts 0.5 seconds by default; `Floor transition duration` in `Settings` selects 0 to 1 second in 0.1-second steps, and 0 skips it.
 Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
 `--scale` to enlarge the GUI.
 

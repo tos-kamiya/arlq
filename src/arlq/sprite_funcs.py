@@ -585,6 +585,7 @@ class SpriteUI(PygletUI):
     """Reuse input, menus, visibility and glyph selection without duplicating rules."""
 
     supports_horizontal_view = True
+    supports_floor_transition = True
 
     # Decorations of the floor being drawn (see draw_stage), and the cells to
     # draw fallen rocks on once the characters of this frame are known.
@@ -1452,7 +1453,7 @@ class SpriteUI(PygletUI):
         """Show the moment between floors as a still: on the landing of the
         stairs the player is taking, or alone in the dark falling through or
         climbing out of a pit, on the cell it left from."""
-        seconds = self.combat_effect_seconds
+        seconds = self.floor_transition_seconds
         if seconds == 0 or '@' not in self._sprite_images:
             return
         field_height = self.field_height * self.cell_size_y
