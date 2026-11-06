@@ -1209,11 +1209,13 @@ def _resolve_party_contact(
     player.level = old_level + experience
     if any(monster.tribe.effect == d.EFFECT_LEVEL_REDUCE for monster in party):
         player.level = max(1, math.floor(player.level * 2 / 3))
-    knight = next(
-        (member for member in player.members if member.role == d.MEMBER_KNIGHT), None
+    jester_departed = player.level >= d.JESTER_DEPARTURE_LEVEL and d.has_member(
+        player, d.MEMBER_JESTER
     )
-    if knight is not None:
-        knight.level += base_experience * d.KNIGHT_EXPERIENCE_RATIO
+    if jester_departed:
+        player.members[:] = [member for member in player.members
+                             if member.role != d.MEMBER_JESTER]
+        player.known_member_floors.pop(d.MEMBER_JESTER, None)
     player.lp = old_lp
     d.apply_feed(player, feed, lp_overcharge)
     if any(monster.tribe.char == "M" for monster in party):
@@ -1273,7 +1275,9 @@ def _resolve_party_contact(
             popup = f"LP-{_format_popup_amount(lost_lp)}"
     if popup:
         _set_status_popup(player, popup, popup_tone)
-    return _ContactResult(boss_message)
+    return _ContactResult(boss_message or (
+        trp("-- Jester left the party.", 5) if jester_departed else None
+    ))
 
 
 def _resolve_contact(
@@ -1296,7 +1300,15 @@ def _resolve_contact(
     entity = current.entities[hit]
 
     if isinstance(entity, d.PartyMember):
+        departed = (player.members[0] if stage_num == 6
+                    and len(player.members) == d.PARTY_LIMIT else None)
         result = stage56.recruit(current, player, entity)
+        if departed is not None:
+            stage6.relocate_candidates(floors, player, [departed], floor[0])
+        if entity.role == d.MEMBER_JESTER and player.level >= d.JESTER_DEPARTURE_LEVEL:
+            player.members.remove(entity)
+            player.known_member_floors.pop(d.MEMBER_JESTER, None)
+            result = trp("-- Jester left the party.", 5)
         if trace is not None:
             trace.record_contact({"type": "member", "id": entity.role,
                                   "joined": entity in player.members})
@@ -1760,6 +1772,10 @@ def _process_multi_floor_turn(
             current.seen[collapse_hit.y][collapse_hit.x] = 1
         current.seen[collapse_point[1]][collapse_point[0]] = 1
         floor[0] += 1
+        if stage_num == 6:
+            stage6.record_transition(
+                floors, player, from_floor, collapse_point, floor[0], (player.x, player.y)
+            )
         checkpoint[0] = (player.x, player.y)
         if trace is not None:
             trace.record_checkpoint("trap_fall", (player.x, player.y), floor[0])
@@ -1901,6 +1917,11 @@ def _process_multi_floor_turn(
         else _handle_floor_transition(current, floors, player, floor, checkpoint)
     )
     if transition_message is not None:
+        if stage_num == 6:
+            stage6.record_transition(
+                floors, player, floor_before, movement_destination, floor[0],
+                (player.x, player.y),
+            )
         player.floor_exit = movement_destination
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("floor_transition")

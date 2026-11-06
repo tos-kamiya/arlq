@@ -178,7 +178,8 @@ def stage5_member_progress_marks(
     current_roles = {member.role for member in player.members}
     for role in roles:
         label = d.MEMBER_GLYPHS[role]
-        departed = role in player.joined_members and role not in current_roles
+        departed = (not getattr(player, "stage6_candidates", False)
+                    and role in player.joined_members and role not in current_roles)
         if departed:
             label += "-"
         elif role not in current_roles:

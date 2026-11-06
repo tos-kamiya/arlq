@@ -215,7 +215,7 @@ Note on the Loop Companion: The destination becomes the new anchor, and subseque
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`); on floors 3–4, Buffalo appear as empowered `B'`. Floors 2–4 each have two empowered Bison (`b'`) party leaders. Each of these floors also has one normal `f` and one empowered `f'` as party leaders.
+Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`); on floors 3–4, Buffalo appear as empowered `B'`. Floors 2–4 each have two empowered Bison (`b'`) party leaders. Floor 1 also has an additional solitary `b`, and floor 3 an additional solitary `b'`. Floors 2–4 also each have one normal `f` and one empowered `f'` as party leaders.
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -299,22 +299,24 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
-Stage 6 is a four-floor dungeon starting at level 1. The player fights with party members, and monsters also form parties. Find party members on floors 1–3, defeat the Dread Wyrm (`W`) on floor 4, and claim the treasure. Four of six candidates appear; the HUD shows discovered roles and floors. You can recruit up to two members; a third replaces the earliest recruit.
+Stage 6 is a four-floor dungeon starting at level 1. Each floor transition has one or two pairs of ordinary stairs, with equal probability. The player fights with party members, and monsters also form parties. Defeat the Dread Wyrm (`W`) on floor 4 and claim the treasure. Four of six candidates each start on a randomly selected floor from 1 to 3; the HUD shows discovered roles and floors. You can recruit up to two members; a third replaces the earliest recruit. Replaced members reappear on a random floor. Waiting candidates move to random floors when you use a different staircase, pit, or hidden staircase from the last one used; repeatedly traversing the same connection does not move them.
 
 #### Party members
 
 | Display & Profession | Ability |
 | --- | --- |
-| **J** Jester | Multiplies your shared experience by 1.5. |
-| **H** Healer | Halves movement LP cost and reduces the defeat cost to 2, including when rewinding. |
+| **J** Jester | Multiplies your shared experience by 1.5 and leaves permanently when your level reaches 80. |
+| **H** Healer | Reduces movement LP cost to one-third and the defeat cost to 2, including when rewinding. |
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
-| **K** Knight | Joins at level 50 and gains half your shared experience before the Jester bonus. Adds K's level to your attack power. |
+| **K** Knight | Adds a fixed 80 to your attack power. |
 | **D** Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Climb through an entrance and leave the pit on the next move. In sprite mode, discovered passages are marked by green light on the floor instead of a `.`. Discovered passages remain usable after D leaves; entrances still require D, and their green discs in sprite mode are shown only while D is in the party. |
-| **G** Guardian | Reduces extra barrier damage and caltrop damage to one-third. |
+| **G** Guardian | Prevents barrier and caltrop damage. |
 
 Monsters are placed without horizontal adjacency; party members line up vertically.
 
-Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. Experience sharing counts the player and K as 1 each, H and G as 0.5 each, and R and D as 0. J counts as 0.25. J's multiplier applies to the player's share.
+Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. Experience sharing counts the player, K, H and G as 1 each, and J, R and D as 0. J's multiplier applies to the player's share.
+
+The isolated rooms on floors 1–3 each contain two monsters drawn without replacement from `b`, `b'`, `c`, `f` and `A`; floor 4 has no isolated room. Floor 3 has two `w'` leaders.
 
 #### Monsters
 

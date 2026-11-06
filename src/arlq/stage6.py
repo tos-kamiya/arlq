@@ -69,7 +69,7 @@ def _place_detached_room_monsters(
     if not point_pairs:
         raise RuntimeError("detached Stage 6 room needs two separated open cells")
     points = rand.choice(point_pairs)
-    candidates = [("b", 1), ("b", 2), ("c", 1), ("A", 1)]
+    candidates = [("b", 1), ("b", 2), ("c", 1), ("f", 1), ("A", 1)]
     roster = []
     for _ in range(2):
         choice = rand.choice(candidates)
@@ -98,7 +98,8 @@ def _place_party(
         for entity in current.entities
         if isinstance(entity, d.Monster)
     }
-    candidates = set(_open_points(current))
+    candidates = {point for point in _open_points(current)
+                  if not _in_detached_terminal_room(current, point)}
     if any(char == "W" for char, _ in roster):
         connected_rooms = set().union(
             *(component for component in current.room_components if len(component) > 1)
@@ -251,7 +252,6 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     member_roles = list(d.RECRUITABLE_MEMBER_ROLES)
     while len(member_roles) > 4:
         member_roles.pop(rand.randrange(len(member_roles)))
-    member_floors = [(role, rand.randrange(3)) for role in member_roles]
     filled_counts_by_floor = [0] + [
         rand.choice((0, 1, 2)) for _ in range(d.STAGE6_FLOORS - 1)
     ]
@@ -271,10 +271,13 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             config.corridor_v_width,
             0,
             filled_counts_by_floor[index],
-            split_room_graph=True,
-            detach_leaf_room=True,
+            split_room_graph=index < d.STAGE6_FLOORS - 1,
+            detach_leaf_room=index < d.STAGE6_FLOORS - 1,
             tile_width=d.TILE_WIDTH,
         )
+        if index == d.STAGE6_FLOORS - 1:
+            room_components = ({(x, y) for y in range(d.TILE_NUM_Y)
+                                for x in range(d.TILE_NUM_X)} - set(filled_rooms),)
         if index >= 2:
             _add_wall_spurs(field, up, down, None, filled_rooms, d.TILE_WIDTH)
         _add_filled_room_wall_notches(field, filled_rooms, d.TILE_WIDTH)
@@ -337,15 +340,8 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             }
             current.respawn_exclusions.update(boss_reserved)
         initial_parties = _place_initial_parties(current, index, boss_room)
-        _place_detached_room_monsters(current, room_components)
-        for role, member_floor in member_floors:
-            if member_floor != index:
-                continue
-            current.entities.append(
-                d.PartyMember(
-                    *rand.choice(_open_points(current)), role, origin_floor=index
-                )
-            )
+        if index < d.STAGE6_FLOORS - 1:
+            _place_detached_room_monsters(current, room_components)
         for char in ("l", "n", "o", "p"):
             current.entities.append(
                 d.Companion(
@@ -356,7 +352,8 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             )
         if index == d.STAGE6_FLOORS - 1:
             mimic = d.Monster(
-                *rand.choice(_open_points(current)),
+                *rand.choice([point for point in _open_points(current)
+                              if not _in_detached_terminal_room(current, point)]),
                 d.CHAR_TO_MONSTER_TRIBE["M"],
                 mimic_boss_char="W",
             )
@@ -365,6 +362,9 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         for char, count, rank in d.STAGE6_ROSTER[index]:
             for _ in range(count - initial_parties.get((char, rank), 0)):
                 _place_party(current, _party_roster(char, rank, index), index)
+        extra_bison_rank = d.STAGE6_EXTRA_BISON_RANKS[index]
+        if extra_bison_rank is not None:
+            _place_party(current, [("b", extra_bison_rank)], index)
         if index == d.STAGE6_FLOORS - 1:
             boss = next(
                 entity
@@ -413,9 +413,57 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         floors[-1].field[y][x] = d.CHAR_FLOOR
     floors[-1].respawn_exclusions.difference_update(boss_reserved)
     player = d.Player(*floors[0].up, 1, d.LP_INIT)
+    player.stage6_candidates = True
+    for role in member_roles:
+        floor_index = rand.randrange(d.STAGE6_FLOORS - 1)
+        current = floors[floor_index]
+        reachable = _reachable_floor_points(current, current.up)
+        points = [point for point in _open_points(current)
+                  if point in reachable and (floor_index != 0 or point != (player.x, player.y))]
+        point = rand.choice(points)
+        current.entities.append(d.PartyMember(*point, role, origin_floor=floor_index))
     player.rescue_stage = True
     player.treasure_stage = True
     return floors, player
+
+
+def relocate_candidates(floors, player, candidates=None, player_floor=None):
+    if candidates is None:
+        candidates = []
+        for current in floors:
+            for entity in list(current.entities):
+                if isinstance(entity, d.PartyMember):
+                    current.entities.remove(entity)
+                    candidates.append(entity)
+    for member in candidates:
+        available = [
+            (index, [point for point in _open_points(current)
+                     if index != player_floor or point != (player.x, player.y)])
+            for index, current in enumerate(floors)
+        ]
+        available = [(index, points) for index, points in available if points]
+        if not available:
+            raise RuntimeError("no space for party candidate")
+        index, points = rand.choice(available)
+        member.x, member.y = rand.choice(points)
+        member.origin_floor = index
+        player.known_member_floors.pop(member.role, None)
+        floors[index].entities.append(member)
+
+
+def record_transition(floors, player, source_floor, source, destination_floor, destination):
+    upper = min(source_floor, destination_floor)
+    upper_point = source if source_floor == upper else destination
+    lower_point = destination if source_floor == upper else source
+    collapse = next((entity for entity in floors[upper].entities
+                     if isinstance(entity, d.Collapse)
+                     and upper_point in d.collapse_footprint((entity.x, entity.y))), None)
+    key = (upper, "pit", collapse.x, collapse.y) if collapse else (
+        upper, upper_point, lower_point
+    )
+    if getattr(player, "last_candidate_connection", None) != key:
+        relocate_candidates(floors, player, player_floor=destination_floor)
+        player.last_candidate_connection = key
 
 
 def _reachable_floor_points(current: Floor, entry: d.Point) -> set[d.Point]:
@@ -452,8 +500,10 @@ def _choose_stair_point(
 
 
 def _place_additional_stairs(floors: list[Floor]) -> None:
-    """Add a second ordinary paired staircase on each floor transition."""
+    """Add a second ordinary paired staircase on half of floor transitions."""
     for upper, lower in zip(floors, floors[1:]):
+        if rand.randrange(2) == 0:
+            continue
         occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
         occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
         fixed = {

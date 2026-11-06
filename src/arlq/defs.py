@@ -22,19 +22,19 @@ PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
 MEMBER_STAGE_MONSTER_PARTY_LIMIT = 3
 MEMBER_STAGE_JESTER_EXP_MULTIPLIER = 1.5
-JESTER_EXPERIENCE_WEIGHT = 0.25
-KNIGHT_INITIAL_LEVEL = 50
-KNIGHT_EXPERIENCE_RATIO = 0.5
+JESTER_EXPERIENCE_WEIGHT = 0.0
+KNIGHT_INITIAL_LEVEL = 80
+JESTER_DEPARTURE_LEVEL = 80
 FLAME_COBRA_EXPERIENCE = 5
 PARTY_EXPERIENCE_MEMBER_WEIGHTS = {
     MEMBER_JESTER: JESTER_EXPERIENCE_WEIGHT,
-    MEMBER_HEALER: 0.5,
-    MEMBER_GUARDIAN: 0.5,
+    MEMBER_HEALER: 1.0,
+    MEMBER_GUARDIAN: 1.0,
     MEMBER_KNIGHT: 1.0,
     MEMBER_ROGUE: 0.0,
     MEMBER_DUNGEON_EXPLORER: 0.0,
 }
-HEALER_MOVE_COST = 1 / 2
+HEALER_MOVE_COST = 1 / 3
 HEALER_RESPAWN_COST = 2
 RECRUITABLE_MEMBER_ROLES = (
     MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT,
@@ -913,6 +913,7 @@ STAGE6_PARTY_SIZE_WEIGHTS = (
 )
 # Each roster entry (character, count, rank) supplies party leaders.
 # Normal and empowered f party leaders appear on floors 2–4.
+STAGE6_EXTRA_BISON_RANKS = (1, None, 2, None)
 STAGE6_ROSTER = (
     (
         ("a", 24, 1), ("A", 2, 1), ("b", 2, 1), ("B", 2, 1), ("c", 5, 1),
@@ -924,9 +925,9 @@ STAGE6_ROSTER = (
         ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 2), ("c", 5, 2),
-        ("C", 2, 1), ("d", 3, 2), ("f", 1, 1), ("f", 1, 2), ("g", 3, 1),
-        ("k", 1, 1), ("w", 1, 2), ("X", 1, 1), ("E", 1, 1),
+        ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 2), ("c", 6, 2),
+        ("C", 1, 1), ("d", 3, 2), ("f", 1, 1), ("f", 1, 2), ("g", 3, 1),
+        ("k", 1, 1), ("w", 2, 2), ("X", 1, 1), ("E", 1, 1),
     ),
     (
         ("a", 3, 2), ("A", 2, 1), ("b", 2, 2), ("B", 2, 2), ("c", 7, 2),
@@ -1162,7 +1163,7 @@ def movement_lp_cost(player: Player) -> float:
 
 def caltrop_lp_damage(player: Player) -> float:
     return (
-        CALTROP_LP_DAMAGE // 3
+        0
         if has_member(player, MEMBER_GUARDIAN)
         else CALTROP_LP_DAMAGE
     )

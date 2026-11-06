@@ -590,7 +590,7 @@ def reveal_entities_in_fov(
             continue
         if player.rescue_stage and isinstance(entity, d.PartyMember):
             player.seen_members.add(entity.role)
-            player.known_member_floors.setdefault(entity.role, floor_index + 1)
+            player.known_member_floors[entity.role] = floor_index + 1
         if player.companion is None or player.companion.tribe.char != "n":
             continue
         if isinstance(entity, d.Monster) and entity.active:
@@ -675,7 +675,7 @@ def barrier_lp_damage(player: d.Player) -> int:
         )
         else d.BARRIER_LP_DAMAGE
     )
-    return damage // 3 if damage and d.has_member(player, d.MEMBER_GUARDIAN) else damage
+    return 0 if d.has_member(player, d.MEMBER_GUARDIAN) else damage
 
 
 def apply_barrier_damage(

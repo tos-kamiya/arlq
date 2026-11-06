@@ -160,6 +160,7 @@
     "Noble": "貴族(N)",
     "-- {joined} joined; {departed} left the party.": "-- {joined}が加入し、{departed}はパーティーを離れた。",
     "-- {joined} joined your party.": "-- {joined}がパーティーに加入した。",
+    "-- Jester left the party.": "-- ジェスターはパーティーを離れた。",
     "-- Your party lost and respawned together.": "-- 敗北！ パーティー全員でリスポーンした。",
     "-- Defeat the Wyrm on the final floor, then take the treasure.": "-- 最終フロアのウィルム(W)を倒し、宝箱を手に入れよう。",
     "-- Explore the training ground and claim the Fire Drake’s treasure.": "-- 訓練場を進み、ファイアドレイクの宝箱を手に入れよう。",
