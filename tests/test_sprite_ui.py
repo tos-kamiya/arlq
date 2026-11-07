@@ -1755,3 +1755,44 @@ def test_floor_transition_is_drawn_on_the_stairs_cell(sprite_ui, monkeypatch):
     assert landing.x == left - sprite_funcs.TERRAIN_SIDE * 13
     assert landing.y == ui.window_height - 3 * 20
     assert figure.x + figure.image.width * figure.scale / 2 == left + 13 / 2
+
+
+
+
+
+@pytest.mark.parametrize("visible", [True, False])
+def test_boss_route_lights_a_diamond_on_the_floor_stone_even_under_the_player(
+        sprite_ui, visible):
+    ui = sprite_ui
+    ui.window_width = None
+    ui._horizontal_scroll_px = 0
+    ui._route_mark_image = SimpleNamespace(width=160, height=200)
+    ui._route_mark_group = object()
+    ui._draw_boss_route_marker((2, 3), visible, True)
+    mark = ui._drawables[0]
+    assert mark.image is ui._route_mark_image
+    assert (mark.x, mark.y) == (2 * 13, 500 - 4 * 20)
+    assert (mark.scale_x, mark.scale_y) == pytest.approx((13 / 160, 20 / 200))
+    assert mark.color == (round(255 * sprite_funcs.ROUTE_MARK_SHADE[visible]),) * 3
+    assert mark.group is ui._route_mark_group
+    assert mark.blend_dest == pyglet.gl.GL_ONE  # light added onto the floor stone
+    assert ui.text_calls == []
+    assert ui._field_text_cells == frozenset()
+
+
+def test_boss_route_without_mark_image_stays_yellow_dot_beside_player(sprite_ui):
+    ui = sprite_ui
+    ui._route_mark_image = None
+    ui._draw_boss_route_marker((2, 3), True, True)
+    assert ui.text_calls == []
+    ui._draw_boss_route_marker((2, 3), True, False)
+    assert len(ui.text_calls) == 1 and ui.text_calls[0][1] == '.'
+
+
+def test_bundled_route_mark_is_a_floor_stone_sized_overlay():
+    assets = Path(sprite_funcs.__file__).parent / 'assets'
+    mark = pyglet.image.load(str(assets / sprite_funcs.ROUTE_MARK_FILE)).get_image_data()
+    floor = pyglet.image.load(str(assets / 'floor/floor-a.png'))
+    assert (mark.width, mark.height) == (floor.width, floor.height)
+    data = mark.get_data('RGBA', mark.width * 4)
+    assert data[3] == 0  # transparent outside the diamond

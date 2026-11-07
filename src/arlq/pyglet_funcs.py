@@ -1075,6 +1075,11 @@ class PygletUI:
     def _draw_d_gate(self, pos: d.Point, glyph: str):
         self._draw_field_text(pos, glyph, COLOR_MAP[CI_GREEN], bold=True)
 
+    def _draw_boss_route_marker(self, pos, visible: bool, under_player: bool) -> None:
+        """Stage 6 route to the boss: a yellow dot, hidden under the player."""
+        if not under_player:
+            self._draw_field_text(pos, ".", COLOR_MAP[CI_YELLOW])
+
     def _draw_stairs(self, pos: d.Point, char: str):
         """Draw an ordinary stair or an Explorer stair marker."""
         is_scholar = char in d.SCHOLAR_STAIR_CHARS
@@ -1283,9 +1288,10 @@ class PygletUI:
         for y, row in enumerate(decor or ()):
             for x, value in enumerate(row):
                 if (value in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
-                        and torched[y][x] and field[y][x] == d.CHAR_FLOOR
-                        and (floor_view or (x, y) != (px, py))):
-                    self._draw_field_text((x, y), ".", COLOR_MAP[CI_YELLOW])
+                        and torched[y][x] and field[y][x] == d.CHAR_FLOOR):
+                    self._draw_boss_route_marker(
+                        (x, y), bool(cur_torched[y][x]), not floor_view and (x, y) == (px, py)
+                    )
 
         if not floor_view:
             for x, y in overshoot_markers or set():
