@@ -1209,7 +1209,8 @@ class SpriteUI(PygletUI):
         if (field[y][x] == d.CHAR_BARRIER and discovered_at(x, y)
                 and tile_color != REACHABLE_CELL_COLOR and self._floor_images is not None):
             return self._draw_barrier(x, y, field, discovered_at)
-        if (self._decor_at(x, y) == d.DECOR_FALLEN_ROCKS and discovered_at(x, y)
+        if (self._decor_at(x, y) in (d.DECOR_FALLEN_ROCKS, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
+                and discovered_at(x, y)
                 and field[y][x] not in FALLEN_ROCK_BLOCKERS
                 and d.DECOR_FALLEN_ROCKS in self._terrain_images):
             self._fallen_rock_draws += ((x, y),)

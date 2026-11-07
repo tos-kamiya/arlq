@@ -1,5 +1,7 @@
 """Stage 6 dungeon generation."""
 
+from collections import deque
+
 from . import defs as d, stage56
 from .arlq import GameConfig, iterate_ellipse_points
 from .stage56 import (
@@ -424,9 +426,54 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                   and sum(abs(a - b) for a, b in zip(tile_at(point), start_room)) <= 1]
         point = rand.choice(points)
         current.entities.append(d.PartyMember(*point, role, origin_floor=floor_index))
+    _mark_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
     player.rescue_stage = True
     player.treasure_stage = True
     return floors, player
+
+
+def _mark_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None:
+    """Mark a shortest initial walking route using ordinary stairs."""
+    origin = (0, start)
+    goal = (len(floors) - 1, boss)
+    previous = {origin: None}
+    pending = deque([origin])
+    pits = [
+        {(entity.x, entity.y) for entity in floor.entities if isinstance(entity, d.Collapse)}
+        for floor in floors
+    ]
+    while pending and goal not in previous:
+        index, (x, y) = pending.popleft()
+        current = floors[index]
+        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+            point = (x + dx, y + dy)
+            nx, ny = point
+            if not (0 <= ny < len(current.field) and 0 <= nx < len(current.field[ny])):
+                continue
+            if (point in pits[index] or current.field[ny][nx] in (
+                    *d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE, d.CHAR_D_GATE, d.CHAR_COLLAPSE)):
+                continue
+            dest_index, dest = index, point
+            if index + 1 < len(floors) and point in current.down_stairs:
+                dest_index += 1
+                dest = floors[dest_index].up_stairs[current.down_stairs.index(point)]
+            elif index > 0 and point in current.up_stairs:
+                dest_index -= 1
+                dest = floors[dest_index].down_stairs[current.up_stairs.index(point)]
+            next_state = (dest_index, dest)
+            if next_state not in previous:
+                previous[next_state] = ((index, (x, y)), point)
+                pending.append(next_state)
+    if goal not in previous:
+        raise RuntimeError("no initial route to the Stage 6 boss")
+    route = []
+    state = goal
+    while state is not None:
+        route.append(state)
+        link = previous[state]
+        state = link[0] if link is not None else None
+    for index, (x, y) in list(reversed(route))[::3]:
+        floors[index].decor[y][x] = d.DECOR_BOSS_ROUTE
 
 
 def relocate_candidates(floors, player, candidates=None, player_floor=None):

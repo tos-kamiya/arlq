@@ -2060,6 +2060,7 @@ def test_collapse_pits_leave_fallen_rocks_decor_on_the_floor_below():
     lower = make_floor()
     lower.field[1][3] = d.CHAR_WALL
     lower.field[3][3] = d.CHAR_STAIRS_UP
+    lower.decor[2][4] = d.DECOR_BOSS_ROUTE
     lower_field = deepcopy(lower.field)
 
     game_engine_module._process_multi_floor_turn(
@@ -2073,7 +2074,8 @@ def test_collapse_pits_leave_fallen_rocks_decor_on_the_floor_below():
         for y, row in enumerate(lower.decor)
         for x, decor in enumerate(row)
         if decor == d.DECOR_FALLEN_ROCKS
-    } == {(4, 2), (2, 2)}
+    } == {(2, 2)}
+    assert lower.decor[2][4] == d.DECOR_BOSS_ROUTE_FALLEN_ROCKS
     assert lower.field == lower_field
     assert all(decor == d.DECOR_NONE for row in upper.decor for decor in row)
 

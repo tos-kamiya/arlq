@@ -257,3 +257,22 @@ def test_terminal_strength_labels_are_outside_field(monkeypatch):
     output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[])
     assert f'<{d.FIELD_WIDTH},0>b\u0027' in output
     assert f'<{d.FIELD_WIDTH + 1},1>@' in output
+
+
+def test_terminal_boss_route_only_marks_explored_floor(monkeypatch):
+    from arlq import defs as d, display
+    ui = BlessedUI.__new__(BlessedUI)
+    ui.term = SimpleNamespace(home='', clear='', normal='', move_xy=lambda x, y: f'<{x},{y}>')
+    ui.dots = False
+    ui._style = lambda text, color=None, *args, **kwargs: f'[{color}:{text}]'
+    monkeypatch.setattr(display, 'build_strength_column', lambda *_: [])
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    seen = [[0] * d.FIELD_WIDTH for _ in field]
+    seen[2][3] = 1
+    player = d.Player(2, 2, 1, 100)
+    decor = [[d.DECOR_NONE] * d.FIELD_WIDTH for _ in field]
+    decor[2][3] = decor[2][4] = d.DECOR_BOSS_ROUTE
+    output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[],
+                            decor=decor)
+    assert '<3,2>[yellow:.]' in output
+    assert '<4,2>[yellow:.]' not in output

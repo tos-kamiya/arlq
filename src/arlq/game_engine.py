@@ -355,7 +355,11 @@ def _reveal_collapse_pits(
             current.field[y][x] = d.CHAR_COLLAPSE
             current.seen[y][x] = 1
             if lower is not None and lower.field[y][x] == d.CHAR_FLOOR:
-                lower.decor[y][x] = d.DECOR_FALLEN_ROCKS
+                lower.decor[y][x] = (
+                    d.DECOR_BOSS_ROUTE_FALLEN_ROCKS
+                    if lower.decor[y][x] in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
+                    else d.DECOR_FALLEN_ROCKS
+                )
 
 
 def _marksman_shoot(

@@ -32,6 +32,35 @@ def monster(x, y, char, rank=1):
     return d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[char], rank)
 
 
+def boss_route(floor):
+    return {(x, y) for y, row in enumerate(floor.decor)
+            for x, value in enumerate(row) if value == d.DECOR_BOSS_ROUTE}
+
+
+def test_boss_route_avoids_pits_and_hidden_passages_and_uses_stairs():
+    def corridor():
+        field = [list("#######"), list("#     #"), list("#     #"), list("#######")]
+        return Floor(field, [], [[0] * 7 for _ in field], (1, 1), (5, 1), None)
+
+    upper, lower = corridor(), corridor()
+    upper.down_stairs = [(5, 1)]
+    lower.up_stairs = [(5, 1)]
+    upper.entities.append(d.Collapse(2, 1))
+    upper.field[1][3] = d.CHAR_HIDDEN_D_GATE
+    stage6._mark_boss_route([upper, lower], (1, 1), (4, 1))
+
+    assert (2, 1) not in boss_route(upper)
+    assert (3, 1) not in boss_route(upper)
+    assert boss_route(upper) == {(1, 1), (3, 2)}
+    assert boss_route(lower) == {(5, 1)}
+
+
+def test_generated_boss_route_reaches_all_floors():
+    floors, player = stage6.build()
+    assert (player.x, player.y) in boss_route(floors[0])
+    assert all(boss_route(floor) for floor in floors)
+
+
 @pytest.mark.parametrize('rogue', [False, True])
 @pytest.mark.parametrize('explorer', [False, True])
 def test_world_discoveries_depend_on_joined_members(rogue, explorer):

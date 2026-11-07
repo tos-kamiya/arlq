@@ -1279,6 +1279,13 @@ class PygletUI:
             if field[y][x] == d.CHAR_D_GATE:
                 self._draw_d_gate((x, y), glyph)
 
+        for y, row in enumerate(decor or ()):
+            for x, value in enumerate(row):
+                if (value in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
+                        and torched[y][x] and field[y][x] == d.CHAR_FLOOR
+                        and (floor_view or (x, y) != (px, py))):
+                    self._draw_field_text((x, y), ".", COLOR_MAP[CI_YELLOW])
+
         if not floor_view:
             for x, y in overshoot_markers or set():
                 if (

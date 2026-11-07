@@ -119,6 +119,7 @@ class BlessedUI:
         loop_trail_markers: Optional[Set[d.Point]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
         message=None,
+        decor: Optional[List[List[str]]] = None,
     ) -> str:
         output = [self.term.home + self.term.clear]
         reveal_disguises = debug_show_entities or monochrome
@@ -263,6 +264,13 @@ class BlessedUI:
                     bold=True,
                     bg=cell_background(x, y),
                 )
+
+        for y, row in enumerate(decor or ()):
+            for x, value in enumerate(row):
+                if (value in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
+                        and torched[y][x] and field[y][x] == d.CHAR_FLOOR
+                        and (floor_view or (x, y) != (px, py))):
+                    put(x, y, ".", "yellow", bg=cell_background(x, y))
 
         if not floor_view:
             for x, y in rewind_markers:
@@ -571,8 +579,7 @@ class BlessedUI:
         decor: Optional[List[List[str]]] = None,
         respawn_glows: Optional[Set[d.Point]] = None,
     ):
-        # `decor` (decorations no rule reads) and `respawn_glows` are not drawn
-        # in the terminal.
+        # Respawn glows are not drawn in the terminal.
         self._wait_for_terminal_size()
         show_entities = show_entities or self.map_mode
         stage_args = (
@@ -582,6 +589,7 @@ class BlessedUI:
             overshoot_markers, loop_trail_markers,
             d_gates,
             message,
+            decor,
         )
         status_args = (
             player,

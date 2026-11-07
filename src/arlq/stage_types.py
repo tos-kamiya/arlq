@@ -33,7 +33,7 @@ class Floor:
     broken_walls: set[d.Point] = dataclass_field(default_factory=set)
     respawn_exclusions: set[d.Point] = dataclass_field(default_factory=set)
     # Decorations (d.DECOR_*), one per cell and the same size as `field`.
-    # No rule reads them; the sprite GUI draws them. They are written by turn
+    # No gameplay rule reads them; renderers draw them. They are written by turn
     # processing, so a rewind's replay rebuilds them along with `field`.
     decor: Optional[List[List[str]]] = None
     # Where the player respawned this turn, and where monsters (not elves)

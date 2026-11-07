@@ -81,6 +81,8 @@ CHAR_COLLAPSE: str = "O"
 # the sprite GUI draws them.
 DECOR_NONE: str = ""
 DECOR_FALLEN_ROCKS: str = "fallen rocks"  # below a pit on the floor above
+DECOR_BOSS_ROUTE: str = "boss route"
+DECOR_BOSS_ROUTE_FALLEN_ROCKS: str = "boss route and fallen rocks"
 DECOR_OUTER_WALL: str = "outer wall"
 DECOR_BURIED_WALL: str = "buried wall"
 
