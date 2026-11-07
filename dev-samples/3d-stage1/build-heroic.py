@@ -4580,6 +4580,8 @@ def pyramid(name, base, half_width, half_depth, tip, mat, front_depth=None):
 CAT_HEAD_TILT = 0.9
 # How far the lower jaw swings down from shut, in radians.
 CAT_JAW_OPEN = 0.9
+# The tail's thickness, relative to its first build.
+CAT_TAIL_GIRTH = 1.5
 
 
 def yawning_cat(x, y):
@@ -4622,11 +4624,25 @@ def yawning_cat(x, y):
                              ((-0.22, 0.15), (-0.34, 0.08), (-0.46, 0.045))],
              [0.055, 0.05, 0.047], limb_fur, sides=16, smooth=True)
         sphere('Cat fore paw', (x + side * 0.07, y - 0.50, 0.035), (0.058, 0.075, 0.035), cream, 16)
-        sphere('Cat thigh', (x + side * 0.11, y + 0.28, 0.33), (0.07, 0.13, 0.12), fur, 24)
-        tube('Cat hind leg', [(x + side * 0.11, y + py, pz) for py, pz in
-                              ((0.31, 0.30), (0.35, 0.15), (0.32, 0.05))],
-             [0.05, 0.04, 0.037], limb_fur, sides=16, smooth=True)
-        sphere('Cat hind paw', (x + side * 0.11, y + 0.30, 0.03), (0.05, 0.07, 0.03), cream, 16)
+        # The hind leg folds in a Z: a thick thigh from the hip forward and
+        # down to the knee, the shank back down to the hock, held high as a
+        # cat's is, and the long foot down and a little forward to the paw.
+        hx = x + side * 0.115
+        hip, knee, hock = (0.32, 0.42), (0.21, 0.27), (0.39, 0.20)
+        tube('Cat thigh', [(hx, y + py, pz) for py, pz in
+                           (hip, (0.27, 0.34), knee)],
+             [0.095, 0.085, 0.05], limb_fur, sides=20, smooth=True)
+        # The round, heavy haunch over the thigh, long along it.
+        haunch = sphere('Cat haunch', (hx, y + 0.29, 0.36), (0.085, 0.125, 0.16),
+                        limb_fur, 32)
+        haunch.rotation_euler.x = -0.58
+        sphere('Cat knee', (hx, y + knee[0], knee[1]), (0.05, 0.05, 0.05), limb_fur, 16)
+        tube('Cat hind shank', [(hx, y + knee[0], knee[1]), (hx, y + hock[0], hock[1])],
+             [0.045, 0.034], limb_fur, sides=16, smooth=True)
+        sphere('Cat hock', (hx, y + hock[0], hock[1]), (0.034, 0.036, 0.036), limb_fur, 16)
+        tube('Cat hind foot', [(hx, y + hock[0], hock[1]), (hx, y + 0.34, 0.04)],
+             [0.036, 0.034], limb_fur, sides=16, smooth=True)
+        sphere('Cat hind paw', (hx, y + 0.315, 0.033), (0.055, 0.08, 0.033), cream, 16)
     # The tail rises from the rump and hooks over toward the head side: a
     # question mark. Hooked sideways (-x, screen left once turned) rather
     # than forward, so the camera sees the hook rather than its edge.
@@ -4634,9 +4650,10 @@ def yawning_cat(x, y):
             (0.06, 0.44, 0.84), (0.02, 0.44, 0.92), (-0.05, 0.44, 0.94), (-0.11, 0.44, 0.90),
             (-0.13, 0.44, 0.83), (-0.12, 0.44, 0.78)]
     tube('Cat question-mark tail', [(x + px, y + py, pz) for px, py, pz in tail],
-         [0.045, 0.045, 0.043, 0.042, 0.041, 0.04, 0.039, 0.037, 0.035, 0.03], limb_fur,
+         [r * CAT_TAIL_GIRTH for r in
+          (0.045, 0.045, 0.043, 0.042, 0.041, 0.04, 0.039, 0.037, 0.035, 0.03)], limb_fur,
          sides=12, smooth=True, up=(0, 1, 0))
-    sphere('Cat tail tip', (x - 0.12, y + 0.44, 0.775), (0.03, 0.03, 0.03), limb_fur, 12)
+    sphere('Cat tail tip', (x - 0.12, y + 0.44, 0.775), (0.03 * CAT_TAIL_GIRTH,) * 3, limb_fur, 12)
     # Neck, collar and tag, between the chest and the raised head.
     tube('Cat neck', [(x, y - 0.20, 0.20), (x, y - 0.27, 0.30), (x, y - 0.30, 0.36)],
          [0.09, 0.085, 0.08], limb_fur, sides=24, smooth=True)
