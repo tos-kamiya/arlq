@@ -299,6 +299,8 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
+Each Stage 6 floor has three A party leaders. Normal f party leaders number two on floor 1 and one each on floors 2–3; floors 2–3 also each have one empowered f leader. Floor 2 has one C, providing a cursed sword for the boss fight.
+
 Stage 6 is a three-floor dungeon starting at level 1. Each floor transition has one or two pairs of ordinary stairs, with equal probability. The player fights with party members, and monsters also form parties. Defeat the Dread Wyrm (`W`) on floor 3 and claim the treasure. Four of six candidates start on floor 1, in the player’s starting section or an adjacent section; the HUD shows discovered roles and floors. The first time you leave floor 1, all waiting candidates relocate to random floors from 1 to 3. You can recruit up to two members; a third replaces the earliest recruit. Departing members reappear on a random floor from 1 to 3. Yellow dots spaced about three steps apart on explored floors mark a shortest route from the starting position to the boss (in `arlq-sprites`, floor tiles with a diamond of yellow light instead), calculated at the start using ordinary stairs and avoiding pits and hidden passages. The route does not change as the dungeon changes.
 
 An empowered Caltrop Plant (`X'`) appears on floor 3.
