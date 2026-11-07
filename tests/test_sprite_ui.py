@@ -349,7 +349,9 @@ def test_shift_horizontal_view_scrolls_only_when_field_overflows():
 
     ui._horizontal_scroll_px = 50
     ui._handle_horizontal_view_key(pyglet.window.key.RIGHT)
-    assert ui._horizontal_scroll_px == 50
+    assert ui._horizontal_scroll_px == 60
+    ui._handle_horizontal_view_key(pyglet.window.key.RIGHT)
+    assert ui._horizontal_scroll_px == 60
 
     ui.field_pixel_width = 100
     ui._horizontal_scroll_px = 0
@@ -369,7 +371,7 @@ def test_sprite_camera_centers_player_and_clamps_at_field_edges():
     ui._center_camera_on_player(0)
     assert ui._horizontal_scroll_px == 0
     ui._center_camera_on_player(9)
-    assert ui._horizontal_scroll_px == 60
+    assert ui._horizontal_scroll_px == 70
 
 
 def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
@@ -432,7 +434,7 @@ def test_sprite_maximize_restore_accepts_window_manager_size(
     assert size_requests == []
 
 
-def test_sprite_default_window_is_16_9_and_field_overflows():
+def test_sprite_default_window_is_one_cell_narrower_and_field_overflows():
     ui = SpriteUI.__new__(SpriteUI)
     ui._initialize_state()
     ui.field_width, ui.field_height = d.FIELD_WIDTH, d.FIELD_HEIGHT
@@ -444,7 +446,7 @@ def test_sprite_default_window_is_16_9_and_field_overflows():
     ui._set_scaled_dimensions()
 
     assert ui.window_height == d.FIELD_HEIGHT * 20 + 2 * 20
-    assert ui.window_width == round(ui.window_height * 16 / 9)
+    assert ui.window_width == round(ui.window_height * 16 / 9) - ui.cell_size_x
     assert ui.field_pixel_width == ui.window_width - 60
     assert ui.field_pixel_width < ui._map_pixel_width == d.FIELD_WIDTH * 16
     assert ui._horizontal_scroll_px == 0 and ui._camera_follow_player

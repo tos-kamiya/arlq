@@ -1739,6 +1739,7 @@ def test_emergency_ration_excludes_monsters_without_food(char):
 def test_stage6_uses_centered_narrow_sections_without_changing_field_size():
     floors, _ = stage6.build()
     right_edge = d.FIELD_X_MARGIN + (d.TILE_WIDTH + 1) * d.TILE_NUM_X
+    assert d.FIELD_X_MARGIN == 1
     assert d.TILE_WIDTH == 11
     for current in floors:
         assert all(len(row) == d.FIELD_WIDTH for row in current.field)

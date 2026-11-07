@@ -2,7 +2,8 @@ from math import ceil
 from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
 TILE_WIDTH: int = 11
-FIELD_X_MARGIN: int = 2
+FIELD_X_MARGIN: int = 1
+FIELD_SIDEBAR_GAP: int = 2
 TILE_HEIGHT: int = 6
 TILE_NUM_X: int = 6
 TILE_NUM_Y: int = 3

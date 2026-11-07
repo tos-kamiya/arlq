@@ -132,6 +132,7 @@ VISIBLE_WALL = (86, 96, 111)
 REACHABLE_CELL_COLOR = (91, 129, 180)
 STRENGTH_COLUMN_BG = (30, 34, 48)
 STRENGTH_COLUMN_PADDING = 4
+FIELD_SIDEBAR_GAP = 1
 
 CELL_SIZE_Y = 20
 CELL_SIZE_X = 13
@@ -636,7 +637,7 @@ class PygletUI:
         self.font_size = max(1, round(self.cell_size_y * FONT_HEIGHT_RATIO))
         self.strength_column_padding = max(1, round(STRENGTH_COLUMN_PADDING * self.scale))
         self.strength_column_width = 2 * self.cell_size_x + 2 * self.strength_column_padding
-        self.field_pixel_width = self.field_width * self.cell_size_x
+        self.field_pixel_width = (self.field_width + FIELD_SIDEBAR_GAP) * self.cell_size_x
         self.window_width = self.field_pixel_width + self.strength_column_width
         self.window_height = (self.field_height + 2) * self.cell_size_y
 

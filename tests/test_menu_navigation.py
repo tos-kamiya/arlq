@@ -255,8 +255,8 @@ def test_terminal_strength_labels_are_outside_field(monkeypatch):
     seen = [[0] * d.FIELD_WIDTH for _ in field]
     player = d.Player(2, 2, 1, 100)
     output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[])
-    assert f'<{d.FIELD_WIDTH},0>b\u0027' in output
-    assert f'<{d.FIELD_WIDTH + 1},1>@' in output
+    assert f'<{d.FIELD_WIDTH + d.FIELD_SIDEBAR_GAP},0>b\u0027' in output
+    assert f'<{d.FIELD_WIDTH + d.FIELD_SIDEBAR_GAP + 1},1>@' in output
 
 
 def test_terminal_boss_route_only_marks_explored_floor(monkeypatch):

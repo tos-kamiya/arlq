@@ -19,6 +19,7 @@ from .pyglet_funcs import (
     CI_GREEN,
     CI_YELLOW,
     COLOR_MAP,
+    FIELD_SIDEBAR_GAP,
     FLOOR,
     FONT_HEIGHT_RATIO,
     MAX_UI_SCALE,
@@ -1615,8 +1616,9 @@ class SpriteUI(PygletUI):
                 self.field_height * self.cell_size_y + 2 * self._hud_row_height
             )
         self.window_width = min(
-            self._map_pixel_width + self.strength_column_width,
-            round(self.window_height * DEFAULT_WINDOW_ASPECT),
+            self._map_pixel_width + FIELD_SIDEBAR_GAP * self.cell_size_x
+            + self.strength_column_width,
+            round(self.window_height * DEFAULT_WINDOW_ASPECT) - self.cell_size_x,
         )
         self.field_pixel_width = max(
             self.cell_size_x, self.window_width - self.strength_column_width
@@ -1892,7 +1894,8 @@ class SpriteUI(PygletUI):
     def _horizontal_scroll_bounds(self):
         if self.field_pixel_width >= self._map_pixel_width:
             return (0, 0)
-        return (0, self._map_pixel_width - self.field_pixel_width)
+        return (0, max(0, self._map_pixel_width
+                       + FIELD_SIDEBAR_GAP * self.cell_size_x - self.field_pixel_width))
 
     def _center_camera_on_player(self, player_x):
         min_scroll, max_scroll = self._horizontal_scroll_bounds()
