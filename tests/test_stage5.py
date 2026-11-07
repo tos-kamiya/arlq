@@ -1113,8 +1113,8 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
     assert counts("c", 2) == [0, 5, 6, 7]
     assert counts("C", 1) == [0, 0, 1, 0]
     assert d.STAGE6_EXTRA_BISON_RANKS == (1, None, 2, None)
-    assert counts("d", 1) == [3, 0, 0, 0]
-    assert counts("d", 2) == [0, 3, 3, 2]
+    assert counts("d", 1) == [4, 2, 0, 0]
+    assert counts("d", 2) == [0, 2, 4, 4]
     assert counts("B", 1) == [1, 1, 0, 0]
     assert counts("B", 2) == [0, 0, 1, 1]
     assert counts("f", 1) == [2, 1, 1, 1]
