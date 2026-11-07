@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 TILE_WIDTH: int = 11
 FIELD_X_MARGIN: int = 1
 FIELD_SIDEBAR_GAP: int = 2
+INITIALLY_KNOWN_MONSTERS: Tuple[str, ...] = ("a",)
 TILE_HEIGHT: int = 6
 TILE_NUM_X: int = 6
 TILE_NUM_Y: int = 3
@@ -480,7 +481,7 @@ class Player(Entity):
         self.boss_defeated: bool = False
         self.treasure_collected: bool = False
         # Identified monster types are known across all floors.
-        self.known_monsters: Set[str] = set()
+        self.known_monsters: Set[str] = set(INITIALLY_KNOWN_MONSTERS)
         # Floors where the Cursed Chimera has been identified or defeated us.
         self.known_c_floors: Set[int] = set()
         self.elf_stage_floors: Dict[str, int] = {}

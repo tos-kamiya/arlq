@@ -94,7 +94,7 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
         )
     for floor_data in floors:
         floor_data.update_outer_wall_decor()
-    player.known_monsters = set()
+    player.known_monsters = set(d.INITIALLY_KNOWN_MONSTERS)
     player.boss_defeated = False
     player.treasure_collected = False
     floor = [0]

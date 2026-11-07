@@ -522,11 +522,11 @@ def test_rogue_identifies_active_mimics_and_traps_when_they_enter_fov():
 
     stage56.reveal_rogue_monsters(current, player, visible)
 
-    assert player.known_monsters == {d.monster_type_key(targets[0])}
+    assert player.known_monsters == {"a", d.monster_type_key(targets[0])}
     for target in targets[1:]:
         visible[target.y][target.x] = 1
     stage56.reveal_rogue_monsters(current, player, visible)
-    assert player.known_monsters == {
+    assert player.known_monsters == {"a"} | {
         d.monster_type_key(target) for target in targets
     }
 

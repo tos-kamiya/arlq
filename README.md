@@ -165,7 +165,7 @@ Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
   | Reachable area preview | Press `F` to highlight explored cells reachable with your remaining LP. A gamepad button can show the preview while held or toggle it. While viewing the preview, Up or Down inspects another floor in Stages 3 and 4; moving closes the keyboard preview. Unexplored cells and routes remain hidden. The estimate avoids displayed entities and stairs, does not break walls or count LP recovery, and excludes Marksman damage, so actual reach may differ. |
 
 * **Monsters, Companions, and Elves**  
-  Unencountered monsters are displayed as `?`, companions as `!`, and unidentified elves as `&`. Contact reveals an entity's type.
+  Unencountered monsters are displayed as `?`, companions as `!`, and unidentified elves as `&`. Contact reveals an entity's type. The rank 1 Amoeba (`a`) is known from the start of every stage; stronger ranks are identified separately.
 
   Monster identification persists across floors. Companion identification is tracked separately on each floor in every stage, so an unencountered companion is shown again as `!` on a new floor.
   In `arlq` and `arlq-cli`, the right-hand strength column shows identified monster types in white and unidentified types in gray.

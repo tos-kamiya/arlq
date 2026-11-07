@@ -8,9 +8,34 @@ import pytest
 
 from arlq import defs as d
 from arlq import game_engine as engine
-from arlq import stage5, stage6, stage_replay
+from arlq import display, stage5, stage6, stage_replay
 from arlq.arlq import GameConfig
 from arlq.stage_types import Floor, ReplayContext
+
+
+@pytest.mark.parametrize('stage_num', range(1, 7))
+def test_amoeba_is_known_at_the_start_of_every_stage(stage_num):
+    class FirstFrame(Exception):
+        pass
+
+    def draw_stage(**kwargs):
+        known = kwargs['known_types']
+        assert 'a' in known
+        assert 'a2' not in known
+        assert display.strength_label_known('a', known)
+        assert not display.strength_label_known("a'", known)
+        raise FirstFrame
+
+    engine.rand.set_seed(12345)
+    with pytest.raises(FirstFrame):
+        engine.run_game(SimpleNamespace(draw_stage=draw_stage), 'test', stage_num=stage_num)
+
+
+@pytest.mark.parametrize('stage_num', range(3, 7))
+def test_replay_starts_with_only_rank_one_amoeba_known(stage_num):
+    replay = ReplayContext(stage_num, 12345, GameConfig())
+    _, player, *_ = stage_replay.replay_to_operation(replay, 0)
+    assert player.known_monsters == {'a'}
 
 
 def signature(player, entities, field, seen):
