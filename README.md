@@ -299,7 +299,7 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
-Stage 6 is a four-floor dungeon starting at level 1. Each floor transition has one or two pairs of ordinary stairs, with equal probability. The player fights with party members, and monsters also form parties. Defeat the Dread Wyrm (`W`) on floor 4 and claim the treasure. Four of six candidates each start on a randomly selected floor from 1 to 3; the HUD shows discovered roles and floors. You can recruit up to two members; a third replaces the earliest recruit. Replaced members reappear on a random floor. Waiting candidates move to random floors when you use a different staircase, pit, or hidden staircase from the last one used; repeatedly traversing the same connection does not move them.
+Stage 6 is a four-floor dungeon starting at level 1. Each floor transition has one or two pairs of ordinary stairs, with equal probability. The player fights with party members, and monsters also form parties. Defeat the Dread Wyrm (`W`) on floor 4 and claim the treasure. Four of six candidates start on floor 1, in the player’s starting section or an adjacent section; the HUD shows discovered roles and floors. The first time you leave floor 1, all waiting candidates relocate to random floors from 1 to 4. You can recruit up to two members; a third replaces the earliest recruit. Departing members reappear on a random floor from 1 to 4.
 
 An empowered Caltrop Plant (`X'`) appears on floor 4.
 
@@ -307,7 +307,7 @@ An empowered Caltrop Plant (`X'`) appears on floor 4.
 
 | Display & Profession | Ability |
 | --- | --- |
-| **J** Jester | Multiplies your shared experience by 1.5 and leaves permanently when your level reaches 80. |
+| **J** Jester | Multiplies your shared experience by 1.5 and leaves when your level reaches 80 (permanently in Stage 5). |
 | **H** Healer | Reduces movement LP cost to one-third and the defeat cost to 2, including when rewinding. |
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **K** Knight | Adds a fixed 80 to your attack power. |

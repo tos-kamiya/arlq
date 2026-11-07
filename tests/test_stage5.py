@@ -264,8 +264,7 @@ def test_stage6_departed_member_does_not_reappear():
     )
 
 
-def test_stage6_candidates_start_on_first_three_floors():
-    seen_floors = set()
+def test_stage6_candidates_start_on_first_floor():
     for seed in range(5):
         engine.rand.set_seed(seed)
         floors, player = stage6.build()
@@ -274,14 +273,15 @@ def test_stage6_candidates_start_on_first_three_floors():
         assert len(members) == 4
         assert len({member.role for _, member in members}) == 4
         for index, member in members:
-            assert index < 3 and member.origin_floor == index
+            assert index == 0 and member.origin_floor == index
             assert (member.x, member.y) in stage6._reachable_floor_points(floors[index], floors[index].up)
             assert index != 0 or (member.x, member.y) != (player.x, player.y)
-            seen_floors.add(index)
-    assert seen_floors == {0, 1, 2}
+            room = stage6.tile_at((member.x, member.y))
+            start = stage6.tile_at((player.x, player.y))
+            assert abs(room[0] - start[0]) + abs(room[1] - start[1]) <= 1
 
 
-def test_stage6_same_connection_does_not_relocate_again(monkeypatch):
+def test_stage6_only_first_departure_from_floor_one_relocates_candidates(monkeypatch):
     floors, player = stage6.build()
     calls = []
     monkeypatch.setattr(stage6, "relocate_candidates", lambda *args, **kwargs: calls.append(1))
@@ -289,7 +289,24 @@ def test_stage6_same_connection_does_not_relocate_again(monkeypatch):
     stage6.record_transition(floors, player, 1, (2, 2), 0, (1, 1))
     assert len(calls) == 1
     stage6.record_transition(floors, player, 0, (3, 3), 1, (4, 4))
-    assert len(calls) == 2
+    assert len(calls) == 1
+
+
+def test_stage6_relocation_includes_fourth_floor_and_preserves_joined_members(monkeypatch):
+    floors, player = stage6.build()
+    member = next(e for e in floors[0].entities if isinstance(e, d.PartyMember))
+    stage56.recruit(floors[0], player, member)
+    waiting = {e.role for e in floors[0].entities if isinstance(e, d.PartyMember)}
+    player.known_member_floors.update(dict.fromkeys(waiting, 1))
+    monkeypatch.setattr(stage6.rand, "choice", lambda choices: choices[-1])
+
+    stage6.record_transition(floors, player, 0, (1, 1), 1, (2, 2))
+
+    relocated = [e for e in floors[3].entities if isinstance(e, d.PartyMember)]
+    assert {e.role for e in relocated} == waiting
+    assert all(e.origin_floor == 3 for e in relocated)
+    assert member in player.members
+    assert not waiting & player.known_member_floors.keys()
 
 
 def test_stage5_replaces_oldest_member_without_respawning_them():
@@ -330,7 +347,7 @@ def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain, stage_nu
     current.entities = [monster(3, 2, "b"), monster(3, 3, "a")]
     feed = max(e.tribe.feed for e in current.entities)
     step(current, player, stage_num=stage_num)
-    assert current.entities == []
+    assert not any(isinstance(entity, d.Monster) for entity in current.entities)
     assert player.level == 100 + gain
     assert player.lp == min(d.LP_MAX, 10 + feed)
 
@@ -368,7 +385,7 @@ def test_jester_leaves_when_experience_crosses_level_80(stage_num):
     step(current, player, stage_num=stage_num)
     assert player.level == pytest.approx(81)
     assert not d.has_member(player, d.MEMBER_JESTER)
-    assert not any(isinstance(e, d.PartyMember) for e in current.entities)
+    assert sum(isinstance(e, d.PartyMember) for e in current.entities) == (stage_num == 6)
 
 
 def test_group_strength_defeat_preserves_party_and_healer_penalty():

@@ -414,12 +414,14 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     floors[-1].respawn_exclusions.difference_update(boss_reserved)
     player = d.Player(*floors[0].up, 1, d.LP_INIT)
     player.stage6_candidates = True
+    start_room = tile_at((player.x, player.y))
     for role in member_roles:
-        floor_index = rand.randrange(d.STAGE6_FLOORS - 1)
+        floor_index = 0
         current = floors[floor_index]
         reachable = _reachable_floor_points(current, current.up)
         points = [point for point in _open_points(current)
-                  if point in reachable and (floor_index != 0 or point != (player.x, player.y))]
+                  if point in reachable and point != (player.x, player.y)
+                  and sum(abs(a - b) for a, b in zip(tile_at(point), start_room)) <= 1]
         point = rand.choice(points)
         current.entities.append(d.PartyMember(*point, role, origin_floor=floor_index))
     player.rescue_stage = True
@@ -452,18 +454,9 @@ def relocate_candidates(floors, player, candidates=None, player_floor=None):
 
 
 def record_transition(floors, player, source_floor, source, destination_floor, destination):
-    upper = min(source_floor, destination_floor)
-    upper_point = source if source_floor == upper else destination
-    lower_point = destination if source_floor == upper else source
-    collapse = next((entity for entity in floors[upper].entities
-                     if isinstance(entity, d.Collapse)
-                     and upper_point in d.collapse_footprint((entity.x, entity.y))), None)
-    key = (upper, "pit", collapse.x, collapse.y) if collapse else (
-        upper, upper_point, lower_point
-    )
-    if getattr(player, "last_candidate_connection", None) != key:
+    if destination_floor != 0 and not getattr(player, "stage6_candidates_relocated", False):
         relocate_candidates(floors, player, player_floor=destination_floor)
-        player.last_candidate_connection = key
+        player.stage6_candidates_relocated = True
 
 
 def _reachable_floor_points(current: Floor, entry: d.Point) -> set[d.Point]:

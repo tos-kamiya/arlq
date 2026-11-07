@@ -1217,9 +1217,12 @@ def _resolve_party_contact(
         player, d.MEMBER_JESTER
     )
     if jester_departed:
+        departed = next(member for member in player.members if member.role == d.MEMBER_JESTER)
         player.members[:] = [member for member in player.members
                              if member.role != d.MEMBER_JESTER]
         player.known_member_floors.pop(d.MEMBER_JESTER, None)
+        if stage_num == 6:
+            stage6.relocate_candidates(floors, player, [departed], floor[0])
     player.lp = old_lp
     d.apply_feed(player, feed, lp_overcharge)
     if any(monster.tribe.char == "M" for monster in party):
@@ -1312,6 +1315,8 @@ def _resolve_contact(
         if entity.role == d.MEMBER_JESTER and player.level >= d.JESTER_DEPARTURE_LEVEL:
             player.members.remove(entity)
             player.known_member_floors.pop(d.MEMBER_JESTER, None)
+            if stage_num == 6:
+                stage6.relocate_candidates(floors, player, [entity], floor[0])
             result = trp("-- Jester left the party.", 5)
         if trace is not None:
             trace.record_contact({"type": "member", "id": entity.role,
