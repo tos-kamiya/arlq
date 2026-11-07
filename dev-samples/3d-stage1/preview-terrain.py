@@ -1,7 +1,8 @@
 """Headless sample of the sprite GUI's terrain: the two floor tiles, a wall
 of marble columns, a golem rock, a pit, the rocks fallen from a pit on
-the floor above, and the up and down stairs, each drawn as in the game and
-labelled.
+the floor above, the up and down stairs, each drawn as in the game, and the
+Stage 6 tavern, labelled. The tavern is not in the game yet: its image is laid
+over its two cells here, at the game's scale, placed by tavern.json.
 
     PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py [--stage N]
 
@@ -10,6 +11,7 @@ drawn in that stage's terrain look); needs ImageMagick's `convert`.
 """
 from pathlib import Path
 import argparse
+import json
 from types import SimpleNamespace
 import subprocess
 import tempfile
@@ -31,8 +33,9 @@ ROW = 4
 # (label, first column, last column) of each sample along ROW.
 SAMPLES = [('FLOOR A / B', 2, 3), ('WALL (COLUMNS)', 6, 8), ('GOLEM ROCK', 11, 11),
            ('PIT', 14, 14), ('FALLEN ROCKS', 17, 17), ('STAIRS UP', 20, 20),
-           ('STAIRS DOWN', 23, 23)]
-LEFT, RIGHT, TOP, BOTTOM = 1, 25, ROW - 1, ROW + 1
+           ('STAIRS DOWN', 23, 23), ('TAVERN', 26, 27)]
+LEFT, RIGHT, TOP, BOTTOM = 1, 29, ROW - 1, ROW + 1
+TAVERN = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets' / 'tavern'
 
 ui = SpriteUI(scale=4)
 field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
@@ -63,6 +66,15 @@ with tempfile.TemporaryDirectory() as work:
     for label, first, last in SAMPLES:
         center = (ui._field_col_x(first) + ui._field_col_x(last) + cx) / 2 - left
         labels += ['-annotate', '+%d+0' % round(center - width / 2), label]
+    placing = json.loads((TAVERN / 'tavern.json').read_text())
+    tavern_left = round(ui._field_col_x(26))
+    tavern_bottom = round((ROW + 1 + placing['under']) * cy)
+    tavern_width = round(placing['cells'] * cx)
+    tavern_height = round((placing['under'] + 1 + placing['overhang']) * cy)
+    subprocess.run(['convert', str(full), '(', str(TAVERN / 'tavern.png'), '-resize',
+                    '%dx%d!' % (tavern_width, tavern_height), ')', '-geometry',
+                    '+%d+%d' % (tavern_left, tavern_bottom - tavern_height), '-composite',
+                    str(full)], check=True)
     subprocess.run(['convert', str(full), '-crop', '%dx%d+%d+%d' % (width, height, left,
                                                                      round(TOP * cy)),
                     '+repage', '(', '-size', '%dx52' % width, 'xc:#1e2230', '-fill', 'white',

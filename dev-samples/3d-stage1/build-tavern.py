@@ -18,10 +18,12 @@ fit the two cells' width, whatever that makes its scale beside the
 characters. The canvas is the two cells wide; it covers OVERHANG cells
 north of them, where the roof and chimney rise, and UNDER cells south of
 them, where the turned cottage's front corner and eaves reach, both found
-from the shrunk model and printed:
+from the shrunk model, printed and written beside the image:
   tavern.png
+  tavern.json  {"cells": 2, "under": UNDER, "overhang": OVERHANG}
 """
 from pathlib import Path
+import json
 import math
 
 import bpy
@@ -372,6 +374,9 @@ ups = [(shrink @ p).y * math.sin(ELEVATION) + (shrink @ p).z * math.cos(ELEVATIO
 UNDER = math.ceil(max(0.0, -min(ups)) / CELL_UP * 20) / 20
 OVERHANG = math.ceil(max(0.0, max(ups) / CELL_UP - 1) * 20) / 20
 print(f'tavern: scale {fit:.3f}, UNDER {UNDER}, OVERHANG {OVERHANG}')
+# Where the image sits on the cells, for whatever draws it.
+(OUT / 'tavern.json').write_text(json.dumps({'cells': CELLS, 'under': UNDER,
+                                             'overhang': OVERHANG}) + '\n')
 scene.render.resolution_y = round(CELL_PIXELS[1] * (UNDER + 1 + OVERHANG))
 
 # Lights as for the stairs: a warm key above and behind, cool fill and rims.
