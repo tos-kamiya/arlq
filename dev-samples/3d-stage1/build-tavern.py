@@ -12,8 +12,9 @@ wall, like a catslide roof, so the gables read like the kana へ), a low brick c
 ridge, a plank door in a timber frame of posts and a beam standing out
 from the wall, and
 tall, unglazed windows with diagonal lattice bars, lit softly from inside;
-no sign. The cottage is built twice its first size; the chimney, door,
-window and roof tiles keep theirs. The finished cottage is then shrunk to
+no sign. Like the characters, it is drawn simplified and exaggerated:
+a large door, windows and chimney for the cottage, big bricks and tiles, a
+thick roof and ridge, and the chimney leaning a little. The finished cottage is then shrunk to
 fit the two cells' width, whatever that makes its scale beside the
 characters. The canvas is the two cells wide; it covers OVERHANG cells
 north of them, where the roof and chimney rise, and UNDER cells south of
@@ -60,13 +61,17 @@ EAVE_OUT, GABLE_OUT = 0.10 * SCALE, 0.06 * SCALE
 BACK_DEPTH = 0.635 * SCALE
 NORTH = RIDGE_Y + BACK_DEPTH
 BACK_EAVES = EAVES + RIDGE_RISE - BACK_DEPTH * math.tan(PITCH)
-ROOF_THICK = 0.03
-# Turned toward screen right, further than the monsters (MONSTER_YAW in
-# build-heroic.py turns them 30 degrees the other way).
-YAW = math.radians(45)
+# A thick roof, so its edges read as a chunky slab, like a toy's.
+ROOF_THICK = 0.07
+# Turned toward screen right, a little further than the monsters (MONSTER_YAW
+# in build-heroic.py turns them 30 degrees the other way); 10 degrees less
+# than at first, so the cottage is a little narrower on screen and is
+# shrunk less to fit the cells.
+YAW = math.radians(35)
 # The roof tiles: width, the step between courses down the slope, each
-# tile's length (so the courses overlap) and thickness.
-TILE_W, TILE_STEP, TILE_LEN, TILE_THICK = 0.11, 0.075, 0.11, 0.018
+# tile's length (so the courses overlap) and thickness; large and few, so
+# they still read at sprite size.
+TILE_W, TILE_STEP, TILE_LEN, TILE_THICK = 0.20, 0.13, 0.19, 0.03
 
 
 def material(name, color, roughness=0.65, metallic=0.0, rim_strength=0.0,
@@ -117,9 +122,9 @@ def brick(name, across):
     texture.inputs['Color2'].default_value = (0.32, 0.11, 0.06, 1)
     texture.inputs['Mortar'].default_value = (0.55, 0.50, 0.44, 1)
     texture.inputs['Scale'].default_value = 1.0
-    texture.inputs['Mortar Size'].default_value = 0.008
-    texture.inputs['Brick Width'].default_value = 0.16
-    texture.inputs['Row Height'].default_value = 0.07
+    texture.inputs['Mortar Size'].default_value = 0.012
+    texture.inputs['Brick Width'].default_value = 0.26
+    texture.inputs['Row Height'].default_value = 0.11
     texture.inputs['Bias'].default_value = -0.2
     links.new(position.outputs['Object'], split.inputs[0])
     links.new(split.outputs[across], plane.inputs['X'])
@@ -250,50 +255,57 @@ for side, name in ((-1, 'South'), (1, 'North')):
         -ROOF_THICK / 2, ROOF_THICK / 2, boards, 0.004, rotation=(angle, 0, 0))
     bpy.context.object.location = centre
     tile_courses(name + ' roof', ridge, x_axis, down, out, (left, right), (0, run))
-bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.045, depth=right - left,
-                                    location=(0, mid, top + ROOF_THICK + 0.01),
+bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.08, depth=right - left,
+                                    location=(0, mid, top + ROOF_THICK + 0.02),
                                     rotation=(0, math.pi / 2, 0))
 finish(bpy.context.object, 'Ridge tiles', tiles[0])
 
-# A low brick chimney at the west gable, the one turned toward the camera,
-# set back behind the ridge on the north slope, with a corbelled brick top
-# and a dark flue; it keeps its first size, set back as far for the
-# cottage's size.
-cx0, cx1 = -HALF_W + 0.02, -HALF_W + 0.20
-cy0 = mid + 0.08 * SCALE
-cy1 = cy0 + 0.18
-chimney_top = top + 0.06
-box('Chimney', cx0, cx1, cy0, cy1, EAVES, chimney_top, brick_front, 0.006)
-box('Chimney corbel', cx0 - 0.02, cx1 + 0.02, cy0 - 0.02, cy1 + 0.02, chimney_top,
-    chimney_top + 0.04, brick_front, 0.006)
-box('Chimney flue', cx0 + 0.04, cx1 - 0.04, cy0 + 0.04, cy1 - 0.04, chimney_top + 0.035,
-    chimney_top + 0.042, boards, 0)
+# A stout brick chimney at the west gable, the one turned toward the camera,
+# set back behind the ridge on the north slope, with a thick corbelled brick
+# top and a dark flue; drawn large for the cottage, and leaning a little
+# toward the west, like a toy's.
+cx0, cx1 = -HALF_W + 0.04, -HALF_W + 0.34
+cy0 = mid + 0.16
+cy1 = cy0 + 0.30
+chimney_top = top + 0.28
+chimney_start = set(bpy.data.objects)
+box('Chimney', cx0, cx1, cy0, cy1, EAVES, chimney_top, brick_front, 0.01)
+box('Chimney corbel', cx0 - 0.04, cx1 + 0.04, cy0 - 0.04, cy1 + 0.04, chimney_top,
+    chimney_top + 0.08, brick_front, 0.01)
+box('Chimney flue', cx0 + 0.06, cx1 - 0.06, cy0 + 0.06, cy1 - 0.06, chimney_top + 0.075,
+    chimney_top + 0.085, boards, 0)
+base = Vector(((cx0 + cx1) / 2, (cy0 + cy1) / 2, EAVES))
+lean = (Matrix.Translation(base) @ Matrix.Rotation(math.radians(-5), 4, 'Y')
+        @ Matrix.Translation(-base))
+bpy.context.view_layer.update()
+for obj in set(bpy.data.objects) - chimney_start:
+    obj.matrix_world = lean @ obj.matrix_world
 
-# The front: a plank door with a doorstep, and a tall, unglazed window lit
-# softly from inside, framed in oak; both keep their first sizes, placed
-# about as far from the middle for the cottage's size.
-DOOR_X0, DOOR_X1, DOOR_TOP = -0.60, -0.32, 0.62
+# The front: a plank door with a doorstep, and tall, unglazed windows lit
+# softly from inside, framed in thick oak; both drawn large for the cottage,
+# so they read at sprite size, the door's top tucked under the eaves.
+DOOR_X0, DOOR_X1, DOOR_TOP = -0.67, -0.25, 0.74
 front = SOUTH - 0.012
 box('Door', DOOR_X0, DOOR_X1, front - 0.01, SOUTH + 0.01, 0.0, DOOR_TOP, wood, 0.006)
 for k in range(1, 4):
     px = DOOR_X0 + k * (DOOR_X1 - DOOR_X0) / 4
     box('Door plank gap', px - 0.004, px + 0.004, front - 0.016, front, 0.02, DOOR_TOP - 0.02,
         dark_iron, 0)
-box('Door handle', DOOR_X1 - 0.06, DOOR_X1 - 0.03, front - 0.04, front - 0.01, 0.28, 0.31,
-    dark_iron, 0.005)
-box('Doorstep', DOOR_X0 - 0.05, DOOR_X1 + 0.05, SOUTH - 0.10, SOUTH, 0, 0.03, stone, 0.006)
+box('Door handle', DOOR_X1 - 0.09, DOOR_X1 - 0.05, front - 0.05, front - 0.01, 0.34, 0.38,
+    dark_iron, 0.008)
+box('Doorstep', DOOR_X0 - 0.08, DOOR_X1 + 0.08, SOUTH - 0.14, SOUTH, 0, 0.05, stone, 0.01)
 # A timber frame stands out from the wall around the door: a post either
 # side and a beam across above the door.
-POST, STAND_OUT, BEAM_Z0, BEAM_Z1 = 0.06, 0.07, DOOR_TOP + 0.05, DOOR_TOP + 0.11
+POST, STAND_OUT, BEAM_Z0, BEAM_Z1 = 0.09, 0.10, DOOR_TOP + 0.04, DOOR_TOP + 0.13
 x_lo, x_hi = DOOR_X0 - 0.02 - POST, DOOR_X1 + 0.02 + POST
 for px in (x_lo, x_hi - POST):
     box('Door post', px, px + POST, SOUTH - STAND_OUT, SOUTH, 0.0, BEAM_Z0, timber, 0.006)
 box('Door beam', x_lo - 0.04, x_hi + 0.04, SOUTH - STAND_OUT, SOUTH, BEAM_Z0, BEAM_Z1, timber,
     0.006)
-WIN_W, WIN_Z0, WIN_Z1, F = 0.18, 0.30, 0.62, 0.035
+WIN_W, WIN_Z0, WIN_Z1, F = 0.26, 0.24, 0.66, 0.055
 # The windows' bars cross diagonally in a lattice of tall diamonds: bars
 # this thick, rising this steeply, LATTICE diamonds across.
-BAR, BAR_RISE, LATTICE = 0.016, 1.8, 2
+BAR, BAR_RISE, LATTICE = 0.026, 1.8, 2
 
 
 def window(a0, wall, at):
