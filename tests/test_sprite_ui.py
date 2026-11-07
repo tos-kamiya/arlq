@@ -1327,6 +1327,32 @@ def test_shared_drawable_cache_retains_duplicates_and_deletes_stale_objects(ui_t
     assert len(created) == 2
 
 
+def test_sprite_ui_recreates_uncached_objects_and_retains_floor():
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._menu_active = False
+    ui._drawable_cache = {}
+    ui._sprite_cells = {}
+
+    def create():
+        obj = SimpleNamespace(deleted=False)
+        obj.delete = lambda: setattr(obj, 'deleted', True)
+        return obj
+
+    ui._clear_drawables()
+    floor = ui._draw_object(('floor-copy', 1, 1), create)
+    label = ui._draw_object(('label', 'status'), create)
+    ui._finish_drawables()
+
+    ui._clear_drawables()
+    assert label.deleted
+    assert ui._draw_object(('floor-copy', 1, 1), create) is floor
+    replacement = ui._draw_object(('label', 'status'), create)
+    ui._finish_drawables()
+    assert replacement is not label
+    assert not replacement.deleted and not floor.deleted
+    assert all(key[0] != 'label' for key in ui._drawable_cache)
+
+
 def test_pyglet_tile_color_changes_keep_the_same_background_object(monkeypatch):
     ui = PygletUI.__new__(PygletUI)
     ui._initialize_state()

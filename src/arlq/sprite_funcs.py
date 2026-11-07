@@ -1098,7 +1098,7 @@ class SpriteUI(PygletUI):
             (round(255 * (1 if visible else BARRIER_EXPLORED_SHADE)),) * 3
         ))
         opacity = SMOKE_OPACITY if cooled else 255
-        signature = ('sprite', id(image), self._field_col_x(x), bottom, scale_x, scale_y,
+        signature = ('barrier-cell', x, y, id(image), bottom, scale_x, scale_y,
                      id(group), pyglet.gl.GL_SRC_ALPHA, blend_dest, tint, opacity)
         light = self._draw_bounded_object(
             self._field_col_x(x), image.width * scale_x, signature,
@@ -1108,6 +1108,8 @@ class SpriteUI(PygletUI):
                 batch=self.batch, group=group,
             ),
         )
+        if light is not None and light.x != self._field_col_x(x):
+            light.x = self._field_col_x(x)
         self._set_drawable_attribute(light, 'scale_x', scale_x)
         self._set_drawable_attribute(light, 'scale_y', scale_y)
         self._set_drawable_attribute(light, 'color', tint)
@@ -1178,12 +1180,14 @@ class SpriteUI(PygletUI):
         scale_x = self.cell_size_x / cell_pixels
         scale_y = (1 + TERRAIN_OVERHANG[char]) * self.cell_size_y / image.height
         group = self._row_group(y, layer)
-        signature = ('sprite', id(image), left, bottom, scale_x, scale_y, id(group), draw_tint)
+        signature = ('terrain-cell', x, y, id(image), bottom, scale_x, scale_y, id(group), draw_tint)
         terrain = self._draw_bounded_object(
             left, image.width * scale_x, signature,
             partial(pyglet.sprite.Sprite, image, x=left, y=bottom,
                     batch=self.batch, group=group),
         )
+        if terrain is not None and terrain.x != left:
+            terrain.x = left
         self._set_drawable_attribute(terrain, 'scale_x', scale_x)
         self._set_drawable_attribute(terrain, 'scale_y', scale_y)
         self._set_drawable_attribute(terrain, 'color', draw_tint)
@@ -1254,7 +1258,7 @@ class SpriteUI(PygletUI):
                     scale_x = width / image.width
                     scale_y = height / image.height
                     draw_tint = self._display_color(tint)
-                    signature = ('sprite', id(image), left, bottom, scale_x, scale_y,
+                    signature = ('wall-cell', x, y, part, id(image), bottom, scale_x, scale_y,
                                  id(group), draw_tint)
                     piece = self._draw_bounded_object(
                         left, image.width * scale_x, signature,
@@ -1263,6 +1267,8 @@ class SpriteUI(PygletUI):
                             batch=self.batch, group=group,
                         ),
                     )
+                    if piece is not None and piece.x != left:
+                        piece.x = left
                     self._set_drawable_attribute(piece, 'scale_x', scale_x)
                     self._set_drawable_attribute(piece, 'scale_y', scale_y)
                     self._set_drawable_attribute(piece, 'color', draw_tint)
@@ -1385,7 +1391,7 @@ class SpriteUI(PygletUI):
         bottom = self.window_height - (y + rows) * self.cell_size_y
         scale_x = self.cell_size_x / (SPRITE_CELL_SIZE_X * LOW_RESOLUTION_DETAIL_SCALE)
         scale_y = self.cell_size_y / (CELL_SIZE_Y * LOW_RESOLUTION_DETAIL_SCALE)
-        signature = ('floor-copy', id(image), left, bottom, scale_x, scale_y, id(self._floor_group))
+        signature = ('floor-copy', x, y, rows, id(image), bottom, scale_x, scale_y, id(self._floor_group))
         sprite = self._draw_bounded_object(
             left, rows * max(self.cell_size_x, SPRITE_CELL_SIZE_X * self.scale), signature,
             lambda: pyglet.sprite.Sprite(
@@ -1393,6 +1399,8 @@ class SpriteUI(PygletUI):
                 blend_src=pyglet.gl.GL_ONE, blend_dest=pyglet.gl.GL_ZERO,
             ),
         )
+        if sprite is not None and sprite.x != left:
+            sprite.x = left
         self._set_drawable_attribute(sprite, 'scale_x', scale_x)
         self._set_drawable_attribute(sprite, 'scale_y', scale_y)
 
@@ -1970,6 +1978,9 @@ class SpriteUI(PygletUI):
             self._set_drawable_attribute(badge, 'color', badge_color)
 
     def _clear_drawables(self):
+        for drawable in getattr(self, '_uncached_drawables', ()):
+            drawable.delete()
+        self._uncached_drawables = []
         super()._clear_drawables()
         self._sprite_cells.clear()
         self._player_cell = None
@@ -1982,7 +1993,20 @@ class SpriteUI(PygletUI):
         self._floor_backdrop_pending = False
 
     def _retain_drawable(self, signature):
-        return True
+        return signature[0] in {
+            'tile', 'floor-copy', 'floor-backdrop', 'terrain-cell',
+            'wall-cell', 'barrier-cell', 'edge-shade',
+        }
+
+    def _draw_object(self, signature, factory):
+        if self._retain_drawable(signature):
+            return super()._draw_object(signature, factory)
+        drawable = factory()
+        if not hasattr(self, '_uncached_drawables'):
+            self._uncached_drawables = []
+        self._uncached_drawables.append(drawable)
+        self._drawables.append(drawable)
+        return drawable
 
     def _finish_drawables(self):
         if self._frame_drawable_cache is None:
@@ -2057,7 +2081,7 @@ class SpriteUI(PygletUI):
             bottom = self.window_height - (row + height) * scale_y
             # Texture rows run bottom-up; the shade data was laid out top-down.
             region = (col, image.height - row - height, width, height)
-            signature = ('edge-shade', id(image), region, left, bottom, scale_x, scale_y,
+            signature = ('edge-shade', id(image), region, bottom, scale_x, scale_y,
                          id(self._edge_shade_group))
             sprite = self._draw_bounded_object(
                 left, width * scale_x, signature,
@@ -2067,6 +2091,8 @@ class SpriteUI(PygletUI):
                     blend_src=pyglet.gl.GL_DST_COLOR, blend_dest=pyglet.gl.GL_ZERO,
                 ),
             )
+            if sprite is not None and sprite.x != left:
+                sprite.x = left
             self._set_drawable_attribute(sprite, 'scale_x', scale_x)
             self._set_drawable_attribute(sprite, 'scale_y', scale_y)
 
