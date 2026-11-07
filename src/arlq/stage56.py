@@ -54,6 +54,12 @@ def normalize_parties(
     current: Floor, party_limit: int = d.MONSTER_PARTY_LIMIT
 ) -> None:
     """Enforce party limits after spawning or rearranging; retain W and V."""
+    glowing = [
+        (entity, current.respawn_glows[(entity.x, entity.y)])
+        for entity in current.entities
+        if isinstance(entity, d.Monster)
+        and (entity.x, entity.y) in current.respawn_glows
+    ]
     _separate_golems(current)
     positions = monster_positions(current.entities)
     checked = set()
@@ -84,6 +90,11 @@ def normalize_parties(
                 kept += 1
                 special |= is_special
     _separate_diagonal_monsters(current)
+    current.respawn_glows = {
+        (entity.x, entity.y): turns
+        for entity, turns in glowing
+        if entity in current.entities
+    }
 
 
 def _neighbor_pairs(monsters: list[d.Monster], offsets: tuple[d.Point, ...]):

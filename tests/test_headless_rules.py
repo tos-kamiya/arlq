@@ -248,6 +248,14 @@ def test_stage3_respawned_monster_glows_for_three_turns():
     assert game_engine_module.respawn_glow_cells(floors[0]) == set()
 
 
+def test_respawn_glow_is_hidden_when_monster_is_removed():
+    player = d.Player(2, 2, 100, 90)
+    floors, _ = stage3_state(player, [])
+    floors[0].respawn_glows[(5, 5)] = d.RESPAWN_GLOW_TURNS
+
+    assert game_engine_module.respawn_glow_cells(floors[0]) == set()
+
+
 def test_stage4_final_floor_barriers_cover_ten_percent_of_open_cells():
     field = blank_field()
     field[1][1] = d.CHAR_STAIRS_UP

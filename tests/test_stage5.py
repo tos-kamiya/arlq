@@ -1050,6 +1050,37 @@ def test_normalize_separates_horizontal_neighbors():
     assert not (first.y == second.y and abs(first.x - second.x) == 1)
 
 
+def test_respawn_glow_follows_monster_moved_by_party_normalization():
+    current, _ = state()
+    first, second = monster(5, 5, "a"), monster(6, 5, "b")
+    current.entities = [first, second]
+    current.respawn_glows = {(6, 5): d.RESPAWN_GLOW_TURNS}
+
+    stage56.normalize_parties(current)
+
+    assert (second.x, second.y) != (6, 5)
+    assert current.respawn_glows == {(second.x, second.y): d.RESPAWN_GLOW_TURNS}
+
+
+def test_respawn_glow_removed_when_party_normalization_removes_monster(monkeypatch):
+    current, player = state()
+    current.entities = [monster(5, 5, "a")]
+
+    def spawn(current, char, rank, origin_floor, avoid, floor_index=0):
+        current.entities.append(monster(5, 6, char, rank))
+        return (5, 6)
+
+    monkeypatch.setattr(stage56, "respawn", spawn)
+    monkeypatch.setattr(d, "MEMBER_STAGE_MONSTER_PARTY_LIMIT", 1)
+    engine._process_respawn_queue(
+        [current], player, [0], Counter({(0, "b"): 1}), 0, stage_num=6
+    )
+
+    assert len(current.entities) == 1
+    assert current.respawn_glows == {}
+    assert engine.respawn_glow_cells(current) == set()
+
+
 def test_detached_terminal_room_receives_two_distinct_random_monsters():
     current, _ = state()
     monsters = stage6._place_detached_room_monsters(

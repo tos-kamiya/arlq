@@ -2023,7 +2023,11 @@ def floor_transition_kind(
 
 def respawn_glow_cells(current: Floor) -> Set[d.Point]:
     """Respawn light columns to draw: the player's and the monsters'/companions'."""
-    cells = set(current.respawn_glows)
+    monster_positions = {
+        (entity.x, entity.y) for entity in current.entities
+        if isinstance(entity, d.Monster) and entity.active
+    }
+    cells = set(current.respawn_glows) & monster_positions
     if current.player_respawn_glow is not None:
         cells.add(current.player_respawn_glow)
     return cells
