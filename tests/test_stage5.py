@@ -1175,7 +1175,7 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
     assert counts("b", 2) == [0, 5, 5]
     assert counts("c", 2) == [0, 5, 7]
     assert counts("C", 1) == [0, 1, 0]
-    assert counts("A", 1) == [3, 3, 3]
+    assert counts("A", 1) == [2, 2, 2]
     assert d.STAGE6_EXTRA_BISON_RANKS == (1, None, None)
     assert counts("d", 1) == [4, 2, 0]
     assert counts("d", 2) == [0, 2, 4]
@@ -1649,10 +1649,13 @@ def test_initial_parties_include_isolated_rooms_and_preserve_roster(monkeypatch,
     engine.rand.set_seed(seed)
     floors, _ = stage6.build()
     for index, current in enumerate(floors):
-        eligible = set(d.STAGE6_INITIAL_PARTY_ROOMS) & set().union(*current.room_components)
+        available = set().union(*current.room_components)
         if index == d.STAGE6_FLOORS - 1:
             boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W")
-            eligible.discard(stage6.tile_at((boss.x, boss.y)))
+            available.discard(stage6.tile_at((boss.x, boss.y)))
+        eligible = {room if room in available else (room[0] + 1, room[1])
+                    for room in d.STAGE6_INITIAL_PARTY_ROOMS
+                    if room in available or (room[0] + 1, room[1]) in available}
         count = min(len(eligible), 5)
         spawning = [(leader, room) for leader, room in calls[index] if leader[0] != "W"]
         assert sum(leader == ("X", 2) for leader, _ in spawning) == (index == 2)
@@ -1672,6 +1675,29 @@ def test_initial_parties_include_isolated_rooms_and_preserve_roster(monkeypatch,
         if d.STAGE6_EXTRA_BISON_RANKS[index] is not None:
             expected[("b", d.STAGE6_EXTRA_BISON_RANKS[index])] += 1
         assert actual == expected
+
+
+@pytest.mark.parametrize("unavailable", ["filled", "boss", "no_space"])
+def test_initial_party_falls_back_to_room_on_right(monkeypatch, unavailable):
+    current, _ = state()
+    current.field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    current.entities = []
+    current.room_components = ({(5, 2)} if unavailable == "filled" else {(4, 2), (5, 2)},)
+    monkeypatch.setattr(d, "STAGE6_INITIAL_PARTY_ROOMS", ((4, 2),))
+    if unavailable == "no_space":
+        original = stage6._place_party
+
+        def place(current, roster, floor_index, *, room):
+            if room == (4, 2):
+                raise RuntimeError("no space")
+            return original(current, roster, floor_index, room=room)
+
+        monkeypatch.setattr(stage6, "_place_party", place)
+    placed = stage6._place_initial_parties(
+        current, 2, excluded_room=(4, 2) if unavailable == "boss" else None
+    )
+    assert placed == {("b", 2): 1}
+    assert all(stage6.tile_at((e.x, e.y)) == (5, 2) for e in current.entities)
 
 
 def test_emergency_ration_requires_visible_reachable_winnable_monster():

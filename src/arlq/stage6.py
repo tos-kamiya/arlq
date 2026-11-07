@@ -216,9 +216,10 @@ def _place_initial_boss_party(current: Floor) -> tuple[list[d.Monster], set[d.Po
 def _place_initial_parties(
     current: Floor, floor_index: int, excluded_room: d.Point | None = None
 ) -> dict[tuple[str, int], int]:
+    available = set().union(*current.room_components) - {excluded_room}
     rooms = [
         room for room in d.STAGE6_INITIAL_PARTY_ROOMS
-        if room != excluded_room and any(room in component for component in current.room_components)
+        if room in available or (room[0] + 1, room[1]) in available
     ]
     shuffled = []
     while rooms:
@@ -234,11 +235,22 @@ def _place_initial_parties(
         for _ in range(min(count, 4 if char == "b" else count))
     ]
     placed = {}
-    for room, (char, rank) in zip(shuffled, leaders):
-        _place_party(
-            current, _party_roster(char, rank, floor_index), floor_index, room=room
-        )
-        placed[(char, rank)] = placed.get((char, rank), 0) + 1
+    used_rooms = set()
+    for room in shuffled:
+        if sum(placed.values()) >= len(leaders):
+            break
+        char, rank = leaders[sum(placed.values())]
+        roster = _party_roster(char, rank, floor_index)
+        for candidate in (room, (room[0] + 1, room[1])):
+            if candidate not in available or candidate in used_rooms:
+                continue
+            try:
+                _place_party(current, roster, floor_index, room=candidate)
+            except RuntimeError:
+                continue
+            used_rooms.add(candidate)
+            placed[(char, rank)] = placed.get((char, rank), 0) + 1
+            break
     return placed
 
 
