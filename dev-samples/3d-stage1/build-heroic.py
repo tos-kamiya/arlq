@@ -4580,18 +4580,20 @@ def pyramid(name, base, half_width, half_depth, tip, mat, front_depth=None):
 CAT_HEAD_TILT = 0.9
 # How far the lower jaw swings down from shut, in radians.
 CAT_JAW_OPEN = 0.9
-# The tail's thickness, relative to its first build.
+# The tail's thickness, relative to its first build, made up of fur: its
+# surface is broken into tufts this deep.
 CAT_TAIL_GIRTH = 1.5
+CAT_TAIL_TUFTS = 0.03
+# How far the neck and head are moved forward, about 1/20 of the body length.
+CAT_HEAD_FORWARD = 0.05
 
 
 def yawning_cat(x, y):
     """Yawning Cat (Y), a Stage 6 member: a ginger tabby in a full stretch,
     front legs reaching out along the floor, rump and question-mark tail
     raised, its head thrown up in a wide yawn (eyes squeezed shut, pink
-    mouth, tongue curling out), wearing a brown leather collar with a brass
-    tag (the tavern's cat). Unlike the other members it is drawn like the
-    monsters: true proportions, no upward stretch, turned to screen left
-    (`MONSTER_YAW`). No fangs or claws, so it is not taken for a monster;
+    mouth, tongue curling out), the tail thick with tufted fur. Unlike the other members it is drawn like the monsters: true
+    proportions, no upward stretch, turned to screen left (`MONSTER_YAW`). No fangs or claws, so it is not taken for a monster;
     not white and gold (the Lifebringer Elf), nor the companions' green
     glow."""
     orange, stripe = (1.0, 0.42, 0.10), (0.42, 0.11, 0.02)
@@ -4608,9 +4610,6 @@ def yawning_cat(x, y):
     pink = material('Cat pink skin', (0.95, 0.42, 0.45), roughness=0.5)
     mouth = material('Cat mouth inside', (0.14, 0.02, 0.03), roughness=0.7)
     tongue = material('Cat tongue', (1.0, 0.55, 0.62), roughness=0.4, coat=0.4)
-    leather = material('Cat leather collar', (0.16, 0.06, 0.02), roughness=0.55)
-    brass = material('Cat brass tag', (0.85, 0.58, 0.22), roughness=0.3, metallic=0.9,
-                     rim=(1.0, 0.9, 0.6), rim_strength=0.6)
     # The body rises from the chest, low over the outstretched paws, to the
     # raised rump; head toward -y.
     tube('Cat body', [(x, y + py, pz) for py, pz in
@@ -4649,18 +4648,27 @@ def yawning_cat(x, y):
     tail = [(0.0, 0.38, 0.43), (0.01, 0.42, 0.53), (0.03, 0.44, 0.64), (0.06, 0.44, 0.74),
             (0.06, 0.44, 0.84), (0.02, 0.44, 0.92), (-0.05, 0.44, 0.94), (-0.11, 0.44, 0.90),
             (-0.13, 0.44, 0.83), (-0.12, 0.44, 0.78)]
-    tube('Cat question-mark tail', [(x + px, y + py, pz) for px, py, pz in tail],
-         [r * CAT_TAIL_GIRTH for r in
-          (0.045, 0.045, 0.043, 0.042, 0.041, 0.04, 0.039, 0.037, 0.035, 0.03)], limb_fur,
-         sides=12, smooth=True, up=(0, 1, 0))
-    sphere('Cat tail tip', (x - 0.12, y + 0.44, 0.775), (0.03 * CAT_TAIL_GIRTH,) * 3, limb_fur, 12)
-    # Neck, collar and tag, between the chest and the raised head.
+    # Thick with fur rather than flesh: the surface is broken into tufts,
+    # so its outline is ragged instead of a smooth tube's.
+    fluffy = [tube('Cat question-mark tail', [(x + px, y + py, pz) for px, py, pz in tail],
+                   [r * CAT_TAIL_GIRTH for r in
+                    (0.045, 0.045, 0.043, 0.042, 0.041, 0.04, 0.039, 0.037, 0.035, 0.03)],
+                   limb_fur, sides=24, smooth=True, up=(0, 1, 0)),
+              sphere('Cat tail tip', (x - 0.12, y + 0.44, 0.775), (0.03 * CAT_TAIL_GIRTH,) * 3,
+                     limb_fur, 24)]
+    tufts = bpy.data.textures.new('Cat tail tufts', 'CLOUDS')
+    tufts.noise_scale = 0.05
+    tufts.noise_depth = 1
+    for obj in fluffy:
+        obj.modifiers.new('Fine mesh', 'SUBSURF').levels = 2
+        fur_tufts = obj.modifiers.new('Fur tufts', 'DISPLACE')
+        fur_tufts.texture = tufts
+        fur_tufts.texture_coords = 'GLOBAL'
+        fur_tufts.strength = CAT_TAIL_TUFTS
+        fur_tufts.mid_level = 0.5
+    neck_start = set(bpy.data.objects)
     tube('Cat neck', [(x, y - 0.20, 0.20), (x, y - 0.27, 0.30), (x, y - 0.30, 0.36)],
          [0.09, 0.085, 0.08], limb_fur, sides=24, smooth=True)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.088, minor_radius=0.02,
-                                     location=(x, y - 0.265, 0.29), rotation=(0.6, 0, 0))
-    finish(bpy.context.object, leather, True, 'Cat collar')
-    sphere('Cat brass tag', (x, y - 0.335, 0.235), (0.03, 0.012, 0.03), brass, 16)
     head_start = set(bpy.data.objects)
     # The head is built facing the front, then pitched up for the yawn: a
     # cranium, a short muzzle in front of it (the upper jaw) with the cheeks
@@ -4738,6 +4746,8 @@ def yawning_cat(x, y):
     neck = Vector((cx, cy + 0.05, cz - 0.05))
     transform_new(head_start, Matrix.Translation(neck) @ Matrix.Rotation(-CAT_HEAD_TILT, 4, 'X')
                   @ Matrix.Translation(-neck))
+    # The neck and head reach a little further forward from the chest.
+    transform_new(neck_start, Matrix.Translation((0, -CAT_HEAD_FORWARD, 0)))
 
 
 def label(value, pos, size):
