@@ -1263,6 +1263,32 @@ def test_legacy_defeat_applies_item_and_caltrop_field_effect():
     assert any(d.CHAR_CALTROP in row for row in field)
 
 
+@pytest.mark.parametrize("rank", [1, 2])
+@pytest.mark.parametrize("legacy", [False, True])
+def test_caltrop_plant_rank_two_spreads_one_tile_farther(rank, legacy):
+    player = d.Player(10, 10, 100, d.LP_INIT)
+    plant = d.Monster(11, 10, d.CHAR_TO_MONSTER_TRIBE["X"], empowered=rank)
+    field = blank_field()
+    if legacy:
+        update_entities(KEYS["R"], field, player, [player, plant], respawn_point=(10, 10))
+    else:
+        floor = Floor(
+            field=field,
+            entities=[plant],
+            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+            up=(1, 1),
+            down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+            island=None,
+        )
+        game_engine_module._defeat_monster(
+            plant, floor, player, [0], [(10, 10)], Counter(), floors=[floor], stage_num=2
+        )
+    assert field[player.y][player.x + 2] == d.CHAR_CALTROP
+    assert field[player.y][player.x + 4] == (
+        d.CHAR_CALTROP if rank == 2 else d.CHAR_FLOOR
+    )
+
+
 def test_legacy_companion_identity_is_tracked_on_the_instance():
     player = d.Player(2, 2, 100, 90)
     companion = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["n"])

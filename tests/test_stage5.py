@@ -1074,6 +1074,8 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
     assert counts("f", 1) == [2, 1, 1, 1]
     assert counts("f", 2) == [0, 1, 1, 1]
     assert counts("w", 2) == [0, 1, 2, 3]
+    assert counts("X", 1) == [0, 1, 1, 0]
+    assert counts("X", 2) == [0, 0, 0, 1]
     assert Counter(d.STAGE6_SUPPORT_POOLS[1]) == Counter({
         ("a", 1): 3, ("f", 1): 2, ("b", 1): 2,
         ("e", 1): 2,
@@ -1543,6 +1545,7 @@ def test_initial_parties_include_isolated_rooms_and_preserve_roster(monkeypatch,
             eligible.discard(stage6.tile_at((boss.x, boss.y)))
         count = min(len(eligible), 5)
         spawning = [(leader, room) for leader, room in calls[index] if leader[0] != "W"]
+        assert sum(leader == ("X", 2) for leader, _ in spawning) == (index == 3)
         assert len(spawning) == (int(d.STAGE6_EXTRA_BISON_RANKS[index] is not None)
                                  + sum(amount for _, amount, _ in d.STAGE6_ROSTER[index]))
         initial = spawning[:count]

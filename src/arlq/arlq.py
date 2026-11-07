@@ -491,12 +491,13 @@ def spread_caltrops(
     origin: d.Point,
     entities: List[d.Entity],
     protected_points: Container[d.Point] = (),
+    radius: int = d.CALTROP_SPREAD_RADIUS,
 ) -> None:
     ox, oy = origin
     for x, y in iterate_ellipse_points(
         ox,
         oy,
-        d.CALTROP_SPREAD_RADIUS,
+        radius,
         d.CALTROP_WIDTH_EXPANSION_RATIO,
         except_for_center=True,
         except_for_entities=entities,
@@ -881,7 +882,10 @@ def update_entities(
                     player.boss_defeated = True
                     unlock_treasure_for_defeat(m, entities)
                 elif effect == d.EFFECT_CALTROP_SPREAD:
-                    spread_caltrops(field, (player.x, player.y), entities)
+                    spread_caltrops(
+                        field, (player.x, player.y), entities,
+                        radius=d.CALTROP_SPREAD_RADIUS + (m.empowered == 2),
+                    )
                 elif effect == d.EFFECT_ROCK_SPREAD:
                     for x, y in iterate_offsets(
                         player.x,

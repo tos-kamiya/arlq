@@ -736,6 +736,7 @@ def _defeat_monster(
             (player.x, player.y),
             current.entities,
             set(current.scholar_up_stairs + current.scholar_down_stairs),
+            radius=d.CALTROP_SPREAD_RADIUS + (entity.empowered == 2),
         )
     elif entity.tribe.effect == d.EFFECT_ROCK_SPREAD:
         protected_collapse_cells = current.collapse_landings | set().union(

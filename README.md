@@ -224,7 +224,7 @@ Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alo
 | **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
 | **g** Golem         | When defeated, rocks scatter up to two tiles in each of the four diagonal directions around you, replacing any walls there. It yields no food.                                                                        |
 | **H** High Elf      | In Stage 2, a passive elf: contact reveals it without combat or a reward. |
-| **X** Caltrop Plant | Contacting it scatters caltrops (`x`) around you in a checkerboard pattern centered on the contact cell, consistent at every location. |
+| **X** Caltrop Plant | Contacting it scatters caltrops (`x`) around you in a checkerboard pattern centered on the contact cell, consistent at every location. The rank-2 form `X'` scatters them one tile farther. |
 
 Queued respawns are processed every 65 turns. Rare Erebus (`E`) and the Vortex
 (`V`) can return on any Stage 4 floor. The Caltrop Plant (`X`), which appears
@@ -300,6 +300,8 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 ### Stage 6: Dungeon with a Party
 
 Stage 6 is a four-floor dungeon starting at level 1. Each floor transition has one or two pairs of ordinary stairs, with equal probability. The player fights with party members, and monsters also form parties. Defeat the Dread Wyrm (`W`) on floor 4 and claim the treasure. Four of six candidates each start on a randomly selected floor from 1 to 3; the HUD shows discovered roles and floors. You can recruit up to two members; a third replaces the earliest recruit. Replaced members reappear on a random floor. Waiting candidates move to random floors when you use a different staircase, pit, or hidden staircase from the last one used; repeatedly traversing the same connection does not move them.
+
+An empowered Caltrop Plant (`X'`) appears on floor 4.
 
 #### Party members
 
