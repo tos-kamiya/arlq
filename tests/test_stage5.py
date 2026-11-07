@@ -772,6 +772,25 @@ def test_pit_falls_to_next_floor_with_members():
     assert [(e.x, e.y) for e in player.members] == [(3, 2), (3, 2)]
 
 
+def test_generated_pit_landings_are_floor_for_reported_seed():
+    engine.rand.set_seed(49011)
+    floors, _ = stage6.build()
+    for upper, lower in zip(floors, floors[1:]):
+        for collapse in (e for e in upper.entities if isinstance(e, d.Collapse)):
+            for x, y in d.collapse_footprint((collapse.x, collapse.y)):
+                if upper.field[y][x] == d.CHAR_FLOOR:
+                    assert lower.field[y][x] == d.CHAR_FLOOR
+
+
+def test_collapse_placement_rejects_wall_below_reachable_pit():
+    upper, _ = state()
+    lower, _ = state()
+    lower.field[4][5] = d.CHAR_WALL
+    assert not d.collapse_placement_cells_valid((5, 5), upper.field, lower.field)
+    upper.field[4][5] = d.CHAR_WALL
+    assert d.collapse_placement_cells_valid((5, 5), upper.field, lower.field)
+
+
 def test_climbing_pit_moves_checkpoint_after_leaving_pit():
     upper, player = state(("Dungeon Explorer",))
     lower, _ = state()

@@ -210,7 +210,7 @@ def collapse_footprint(center: Point) -> Set[Point]:
 def collapse_placement_cells_valid(
     point: Point, *fields: Sequence[Sequence[str]]
 ) -> bool:
-    """Check that a Collapse footprint contains only floor or wall cells."""
+    """Check the footprint and ensure every possible landing is floor."""
     if not fields:
         return False
     for field in fields:
@@ -224,6 +224,11 @@ def collapse_placement_cells_valid(
                 *WALL_CHARS,
                 *HIDDEN_PASSAGE_CHARS,
             ):
+                return False
+    if len(fields) >= 2:
+        upper, lower = fields[:2]
+        for x, y in collapse_footprint(point):
+            if upper[y][x] == CHAR_FLOOR and lower[y][x] != CHAR_FLOOR:
                 return False
     return True
 
