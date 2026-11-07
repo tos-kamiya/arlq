@@ -12,7 +12,7 @@ GROUPS = ('monsters', 'members', 'others')
 MONSTERS = {'a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'F', 'f', 'g', 'rock', 'X', 'e', 'E',
             'w', 'W', 'm', 'k', 'V', 'T', 'T-toy', 'M', "'", '"'}
 # Members are named like 'jester-light', one model per skin tone.
-MEMBERS = ('jester', 'healer', 'rogue', 'knight', 'guardian', 'explorer')
+MEMBERS = ('jester', 'healer', 'rogue', 'knight', 'guardian', 'explorer', 'cat')
 
 
 def group_of(char):

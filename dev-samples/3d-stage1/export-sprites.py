@@ -46,6 +46,7 @@ models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treas
            ('guardian-light', 'guardian-light', (0, 0)),
            ('guardian-medium', 'guardian-medium', (0, 0)),
            ('guardian-dark', 'guardian-dark', (0, 0)),
+           ('cat', 'yawning-cat', (0, 0)),
            ('ration-hyorogan', 'ration-hyorogan', (0, 0)),
            ('ration-hardtack', 'ration-hardtack', (0, 0)),
            ('ration-jerky', 'ration-jerky', (0, 0))]

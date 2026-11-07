@@ -103,7 +103,9 @@ ROW += [('?', 'UNKNOWN ?', 60, 0), ('!', 'UNKNOWN !', 65, 0), ('&', 'UNKNOWN &',
 RATIONS = ('ration-hyorogan', 'ration-hardtack', 'ration-jerky')
 ROW += [('ration-hyorogan', 'HYOROGAN', 75, 0), ('ration-hardtack', 'HARDTACK', 80, 0),
         ('ration-jerky', 'JERKY', 85, 0)]
-OFF_GRID = ("'", '"', '?', '!', '&', *RATIONS)
+# The Stage 6 Yawning Cat, while it is tried out on its own.
+ROW += [('cat', 'YAWNING CAT', 90, 0)]
+OFF_GRID = ("'", '"', '?', '!', '&', *RATIONS, 'cat')
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba's first size, baked into the meshes.
@@ -129,7 +131,8 @@ SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b':
          'knight-light': 1.79, 'knight-medium': 1.79, 'knight-dark': 1.79,
          'guardian-light': 1.49, 'guardian-medium': 1.49, 'guardian-dark': 1.49,
          '?': 1.3, '!': 1.3, '&': 1.3,
-         'ration-hyorogan': 1.4, 'ration-hardtack': 1.3, 'ration-jerky': 1.45}
+         'ration-hyorogan': 1.4, 'ration-hardtack': 1.3, 'ration-jerky': 1.45,
+         'cat': 1.2}
 # The unknown symbols float this high above the floor and lean back this many
 # degrees, so they read almost undistorted from the 60-degree camera.
 UNKNOWN_FLOAT = 0.2
@@ -4528,6 +4531,198 @@ def jerky(x, y):
         soften(stick, 0.018)
 
 
+def tabby_fur(name, base, stripe, scale=3.5, axis='Z', yaw=0.0):
+    """Ginger tabby fur: matte with a sheen like `animal_hide()`, crossed by
+    wavy dark bands across `axis` of the world position, first turned `yaw`
+    about the vertical (to undo the turn a model is given)."""
+    mat = material(name, base, roughness=0.8, rim=(1.0, 0.8, 0.6), rim_strength=0.6)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes['Principled BSDF']
+    bsdf.inputs['Sheen Weight'].default_value = 0.12
+    bsdf.inputs['Sheen Roughness'].default_value = 0.4
+    bsdf.inputs['Sheen Tint'].default_value = (*base, 1)
+    bsdf.inputs['Specular IOR Level'].default_value = 0.3
+    position = nodes.new('ShaderNodeNewGeometry')
+    wave = nodes.new('ShaderNodeTexWave')
+    wave.wave_type = 'BANDS'
+    wave.bands_direction = axis
+    turn = nodes.new('ShaderNodeMapping')
+    turn.inputs['Rotation'].default_value = (0, 0, yaw)
+    wave.inputs['Scale'].default_value = scale
+    wave.inputs['Distortion'].default_value = 6.0
+    wave.inputs['Detail Scale'].default_value = 1.5
+    wave.inputs['Detail'].default_value = 1.0
+    ramp = nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.elements[0].position = 0.15
+    ramp.color_ramp.elements[0].color = (*stripe, 1)
+    ramp.color_ramp.elements[1].position = 0.3
+    ramp.color_ramp.elements[1].color = (*base, 1)
+    links.new(position.outputs['Position'], turn.inputs['Vector'])
+    links.new(turn.outputs['Vector'], wave.inputs['Vector'])
+    links.new(wave.outputs['Fac'], ramp.inputs['Fac'])
+    links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
+    return mat
+
+
+def pyramid(name, base, half_width, half_depth, tip, mat, front_depth=None):
+    """A four-sided pyramid with a diamond base around `base` (x across, y
+    deep), its point at `tip`: a cat's ear. `front_depth` (by default
+    `half_depth`) sets how far the base reaches forward; 0 makes the front
+    flat, the ear bulging only behind."""
+    bx, by, bz = base
+    front = half_depth if front_depth is None else front_depth
+    vertices = [(bx - half_width, by, bz), (bx, by - front, bz),
+                (bx + half_width, by, bz), (bx, by + half_depth, bz), tuple(tip)]
+    faces = [(3, 2, 1, 0)] + [(k, (k + 1) % 4, 4) for k in range(4)]
+    return mesh_object(name, vertices, faces, mat, False)
+
+
+CAT_HEAD_TILT = 0.9
+# How far the lower jaw swings down from shut, in radians.
+CAT_JAW_OPEN = 0.9
+
+
+def yawning_cat(x, y):
+    """Yawning Cat (Y), a Stage 6 member: a ginger tabby in a full stretch,
+    front legs reaching out along the floor, rump and question-mark tail
+    raised, its head thrown up in a wide yawn (eyes squeezed shut, pink
+    mouth, tongue curling out), wearing a brown leather collar with a brass
+    tag (the tavern's cat). Unlike the other members it is drawn like the
+    monsters: true proportions, no upward stretch, turned to screen left
+    (`MONSTER_YAW`). No fangs or claws, so it is not taken for a monster;
+    not white and gold (the Lifebringer Elf), nor the companions' green
+    glow."""
+    orange, stripe = (1.0, 0.42, 0.10), (0.42, 0.11, 0.02)
+    # Stripes run round the long body (bands along it, undoing the turn the
+    # model is given later), and round the upright legs, neck and tail.
+    fur = tabby_fur('Cat ginger tabby fur', orange, stripe, axis='Y', yaw=-MONSTER_YAW)
+    limb_fur = tabby_fur('Cat ginger tabby limbs', orange, stripe)
+    plain = material('Cat ginger fur', orange, roughness=0.8, rim=(1.0, 0.8, 0.6),
+                     rim_strength=0.6)
+    cream = material('Cat cream fur', (0.95, 0.80, 0.58), roughness=0.8,
+                     rim=(1.0, 0.92, 0.8), rim_strength=0.6)
+    line = material('Cat dark stripe', stripe, roughness=0.8)
+    lid = material('Cat closed eyelid', (0.04, 0.015, 0.01), roughness=0.6)
+    pink = material('Cat pink skin', (0.95, 0.42, 0.45), roughness=0.5)
+    mouth = material('Cat mouth inside', (0.14, 0.02, 0.03), roughness=0.7)
+    tongue = material('Cat tongue', (1.0, 0.55, 0.62), roughness=0.4, coat=0.4)
+    leather = material('Cat leather collar', (0.16, 0.06, 0.02), roughness=0.55)
+    brass = material('Cat brass tag', (0.85, 0.58, 0.22), roughness=0.3, metallic=0.9,
+                     rim=(1.0, 0.9, 0.6), rim_strength=0.6)
+    # The body rises from the chest, low over the outstretched paws, to the
+    # raised rump; head toward -y.
+    tube('Cat body', [(x, y + py, pz) for py, pz in
+                      ((-0.24, 0.19), (-0.12, 0.25), (0.02, 0.33), (0.16, 0.40),
+                       (0.27, 0.44), (0.35, 0.43), (0.40, 0.40))],
+         [(0.11, 0.10), (0.13, 0.12), (0.145, 0.13), (0.155, 0.14), (0.15, 0.135),
+          (0.12, 0.11), (0.0, 0.0)], fur, sides=32, smooth=True)
+    sphere('Cat chest', (x, y - 0.25, 0.19), (0.115, 0.10, 0.115), cream, 24)
+    for side in (-1, 1):
+        tube('Cat foreleg', [(x + side * 0.07, y + py, pz) for py, pz in
+                             ((-0.22, 0.15), (-0.34, 0.08), (-0.46, 0.045))],
+             [0.055, 0.05, 0.047], limb_fur, sides=16, smooth=True)
+        sphere('Cat fore paw', (x + side * 0.07, y - 0.50, 0.035), (0.058, 0.075, 0.035), cream, 16)
+        sphere('Cat thigh', (x + side * 0.11, y + 0.28, 0.33), (0.07, 0.13, 0.12), fur, 24)
+        tube('Cat hind leg', [(x + side * 0.11, y + py, pz) for py, pz in
+                              ((0.31, 0.30), (0.35, 0.15), (0.32, 0.05))],
+             [0.05, 0.04, 0.037], limb_fur, sides=16, smooth=True)
+        sphere('Cat hind paw', (x + side * 0.11, y + 0.30, 0.03), (0.05, 0.07, 0.03), cream, 16)
+    # The tail rises from the rump and hooks over toward the head side: a
+    # question mark. Hooked sideways (-x, screen left once turned) rather
+    # than forward, so the camera sees the hook rather than its edge.
+    tail = [(0.0, 0.38, 0.43), (0.01, 0.42, 0.53), (0.03, 0.44, 0.64), (0.06, 0.44, 0.74),
+            (0.06, 0.44, 0.84), (0.02, 0.44, 0.92), (-0.05, 0.44, 0.94), (-0.11, 0.44, 0.90),
+            (-0.13, 0.44, 0.83), (-0.12, 0.44, 0.78)]
+    tube('Cat question-mark tail', [(x + px, y + py, pz) for px, py, pz in tail],
+         [0.045, 0.045, 0.043, 0.042, 0.041, 0.04, 0.039, 0.037, 0.035, 0.03], limb_fur,
+         sides=12, smooth=True, up=(0, 1, 0))
+    sphere('Cat tail tip', (x - 0.12, y + 0.44, 0.775), (0.03, 0.03, 0.03), limb_fur, 12)
+    # Neck, collar and tag, between the chest and the raised head.
+    tube('Cat neck', [(x, y - 0.20, 0.20), (x, y - 0.27, 0.30), (x, y - 0.30, 0.36)],
+         [0.09, 0.085, 0.08], limb_fur, sides=24, smooth=True)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.088, minor_radius=0.02,
+                                     location=(x, y - 0.265, 0.29), rotation=(0.6, 0, 0))
+    finish(bpy.context.object, leather, True, 'Cat collar')
+    sphere('Cat brass tag', (x, y - 0.335, 0.235), (0.03, 0.012, 0.03), brass, 16)
+    head_start = set(bpy.data.objects)
+    # The head is built facing the front, then pitched up for the yawn: a
+    # cranium, a short muzzle in front of it (the upper jaw) with the cheeks
+    # either side, and a lower jaw swung down from its hinge, the dark mouth
+    # between the jaws and the tongue lying on the lower one.
+    cx, cy, cz = x, y - 0.34, 0.44
+    rx, ry, rz = 0.15, 0.13, 0.125
+    carved = [sphere('Cat head', (cx, cy, cz), (rx, ry, rz), plain, 40)]
+
+    def front(dx, dz, out=0.0):
+        """The point on the front of the cranium `dx` across and `dz` up
+        from its centre, `out` further forward."""
+        t = max(0.0, 1 - (dx / rx) ** 2 - (dz / rz) ** 2)
+        return (cx + dx, cy - ry * math.sqrt(t) - out, cz + dz)
+
+    carved.append(sphere('Cat muzzle', (cx, cy - 0.105, cz - 0.04), (0.064, 0.06, 0.041),
+                         cream, 32))
+    for side in (-1, 1):
+        carved.append(sphere('Cat cheek', (cx + side * 0.06, cy - 0.075, cz - 0.045),
+                             (0.073, 0.067, 0.062), cream, 24))
+        # Broad ears, their tips leaning outward, flat in front and bulging
+        # only behind, with a tuft of cream ear hair set into the flat front
+        # of each so only its middle shows.
+        pyramid('Cat ear', (cx + side * 0.08, cy + 0.0, cz + 0.08), 0.075, 0.045,
+                (cx + side * 0.15, cy + 0.0, cz + 0.20), plain, front_depth=0.0)
+        pyramid('Cat ear hair', (cx + side * 0.08, cy + 0.004, cz + 0.09), 0.05, 0.012,
+                (cx + side * 0.135, cy - 0.004, cz + 0.178), cream)
+        # Eyes squeezed shut, just above the muzzle on the face: arcs bulging
+        # upward, rising from the inner to the outer corner, the pair like
+        # an upside-down 八.
+        tube('Cat closed eye', [front(side * dx, dz, 0.003) for dx, dz in
+                                ((0.03, 0.0), (0.05, 0.019), (0.075, 0.03), (0.10, 0.033))],
+             [0.011] * 4, lid, sides=8, smooth=True)
+    for dx in (-0.04, 0.0, 0.04):
+        tube('Cat forehead stripe', [front(dx, dz, 0.002) for dz in (0.11, 0.085, 0.06)],
+             [0.01, 0.012, 0.007], line, sides=8, smooth=True)
+    sphere('Cat nose', (cx, cy - 0.162, cz - 0.012), (0.022, 0.014, 0.014), pink, 16)
+    # The lower jaw and the tongue on it are built shut, then swung open.
+    jaw_start = set(bpy.data.objects)
+    # The front half of an ellipsoid (seen from above, an oval cut across
+    # with the half toward the body thrown away): widest at the cut, where
+    # it joins the face, rounding off to the chin.
+    jaw = sphere('Cat lower jaw', (cx, cy - 0.015, cz - 0.095), (0.081, 0.15, 0.028), cream, 24)
+    mesh = bmesh.new()
+    mesh.from_mesh(jaw.data)
+    bmesh.ops.bisect_plane(mesh, geom=mesh.verts[:] + mesh.edges[:] + mesh.faces[:],
+                           plane_co=(0, 0, 0), plane_no=(0, 1, 0), clear_outer=True)
+    for face in bmesh.ops.holes_fill(mesh, edges=mesh.edges[:], sides=0)['faces']:
+        face.smooth = False
+    mesh.to_mesh(jaw.data)
+    mesh.free()
+    sphere('Cat tongue', (cx, cy - 0.11, cz - 0.075), (0.043, 0.065, 0.014), tongue, 24)
+    hinge = Vector((cx, cy - 0.01, cz - 0.075))
+    transform_new(jaw_start, Matrix.Translation(hinge) @ Matrix.Rotation(CAT_JAW_OPEN, 4, 'X')
+                  @ Matrix.Translation(-hinge))
+    # The mouth is carved out of the cranium, muzzle and cheeks above the
+    # opened lower jaw by a cylinder lying across the face; the carved walls
+    # take the cylinder's dark color, so the hollow reads as the inside of
+    # the mouth without a part of its own.
+    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.05, depth=0.10,
+                                        location=(cx, cy - 0.10, cz - 0.11),
+                                        rotation=(0, math.pi / 2, 0))
+    cutter = finish(bpy.context.object, mouth, True, 'Cat mouth cutter')
+    for obj in carved:
+        carve = obj.modifiers.new('Mouth', 'BOOLEAN')
+        carve.operation = 'DIFFERENCE'
+        carve.solver = 'EXACT'
+        carve.material_mode = 'TRANSFER'
+        carve.object = cutter
+        bpy.ops.object.select_all(action='DESELECT')
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.modifier_apply(modifier=carve.name)
+    bpy.data.objects.remove(cutter)
+    neck = Vector((cx, cy + 0.05, cz - 0.05))
+    transform_new(head_start, Matrix.Translation(neck) @ Matrix.Rotation(-CAT_HEAD_TILT, 4, 'X')
+                  @ Matrix.Translation(-neck))
+
+
 def label(value, pos, size):
     bpy.ops.object.text_add(location=pos)
     obj = bpy.context.object
@@ -4552,6 +4747,7 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock,
+            'cat': yawning_cat,
             'ration-hyorogan': hyorogan, 'ration-hardtack': hardtack, 'ration-jerky': jerky,
             **{'jester-' + tone: (lambda tone: lambda x, y: jester(x, y, tone))(tone)
                for tone in MEMBER_SKINS},
@@ -4615,7 +4811,7 @@ for char, name, x, y in ROW:
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = (MONSTER_YAW if char in (*'aAbBcdDCFfgkmeEXTM', 'T-toy') else WYRM_YAW if char in 'wW'
+    yaw = (MONSTER_YAW if char in (*'aAbBcdDCFfgkmeEXTM', 'T-toy', 'cat') else WYRM_YAW if char in 'wW'
            else PEGASUS_YAW if char == 'p' else 0)
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
