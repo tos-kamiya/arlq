@@ -9,7 +9,9 @@ tiles in overlapping courses under half-round ridge tiles (its ridge
 east-west, along the two cells; both slopes at the same pitch, the back one
 running on down over the cottage stretched back under it to a low back
 wall, like a catslide roof, so the gables read like the kana へ), a low brick chimney at the west gable, set back behind the
-ridge, a plank door and a tall, unglazed window lit softly from inside;
+ridge, a plank door in a timber frame of posts and a beam standing out
+from the wall, and
+tall, unglazed windows with diagonal lattice bars, lit softly from inside;
 no sign. The cottage is built twice its first size; the chimney, door,
 window and roof tiles keep theirs. The finished cottage is then shrunk to
 fit the two cells' width, whatever that makes its scale beside the
@@ -175,6 +177,7 @@ boards = material('Roof boards', (0.03, 0.025, 0.02), roughness=0.9)
 tiles = [material('Dark roof tile', color, roughness=0.55, rim_strength=0.15)
          for color in ((0.075, 0.072, 0.08), (0.10, 0.095, 0.10), (0.06, 0.058, 0.065))]
 wood = material('Weathered oak', (0.22, 0.11, 0.05), roughness=0.75, rim_strength=0.1)
+timber = material('Dark timber', (0.12, 0.06, 0.03), roughness=0.8, rim_strength=0.1)
 dark_iron = material('Black iron fittings', (0.03, 0.03, 0.035), roughness=0.4, metallic=0.9)
 stone = material('Doorstep stone', (0.45, 0.44, 0.42), roughness=0.85)
 glow = material('Warm lamplight', (0.8, 0.45, 0.18), emission=(1.0, 0.50, 0.16), strength=1.2)
@@ -277,32 +280,69 @@ for k in range(1, 4):
 box('Door handle', DOOR_X1 - 0.06, DOOR_X1 - 0.03, front - 0.04, front - 0.01, 0.28, 0.31,
     dark_iron, 0.005)
 box('Doorstep', DOOR_X0 - 0.05, DOOR_X1 + 0.05, SOUTH - 0.10, SOUTH, 0, 0.03, stone, 0.006)
+# A timber frame stands out from the wall around the door: a post either
+# side and a beam across above the door.
+POST, STAND_OUT, BEAM_Z0, BEAM_Z1 = 0.06, 0.07, DOOR_TOP + 0.05, DOOR_TOP + 0.11
+x_lo, x_hi = DOOR_X0 - 0.02 - POST, DOOR_X1 + 0.02 + POST
+for px in (x_lo, x_hi - POST):
+    box('Door post', px, px + POST, SOUTH - STAND_OUT, SOUTH, 0.0, BEAM_Z0, timber, 0.006)
+box('Door beam', x_lo - 0.04, x_hi + 0.04, SOUTH - STAND_OUT, SOUTH, BEAM_Z0, BEAM_Z1, timber,
+    0.006)
 WIN_W, WIN_Z0, WIN_Z1, F = 0.18, 0.30, 0.62, 0.035
+# The windows' bars cross diagonally in a lattice of tall diamonds: bars
+# this thick, rising this steeply, LATTICE diamonds across.
+BAR, BAR_RISE, LATTICE = 0.016, 1.8, 2
 
 
-def window(a0, wall, place):
+def window(a0, wall, at):
     """A tall window `a0` to `a0 + WIN_W` along a wall whose outer face is at
-    `wall` across it; `place(a0, a1, d0, d1, z0, z1)` turns spans along and
-    across the wall (d0 < d1, outward to inward) into a box's six bounds."""
+    `wall` across it; `at(a, d, z)` turns a point `a` along the wall, `d`
+    across it (growing inward) and `z` up into world coordinates."""
     a1 = a0 + WIN_W
-    am = (a0 + a1) / 2
-    zm = (WIN_Z0 + WIN_Z1) / 2
     face = wall - 0.012
-    box('Window light', *place(a0, a1, face - 0.002, wall + 0.02, WIN_Z0, WIN_Z1), glow, 0)
+
+    def slab(name, b0, b1, d0, d1, z0, z1, mat, bevel):
+        p, q = at(b0, d0, z0), at(b1, d1, z1)
+        box(name, min(p[0], q[0]), max(p[0], q[0]), min(p[1], q[1]), max(p[1], q[1]),
+            z0, z1, mat, bevel)
+
+    slab('Window light', a0, a1, face - 0.002, wall + 0.02, WIN_Z0, WIN_Z1, glow, 0)
     for name, b0, b1, z0, z1 in (('Window sill', a0 - F, a1 + F, WIN_Z0 - F, WIN_Z0),
                                  ('Window lintel', a0 - F, a1 + F, WIN_Z1, WIN_Z1 + F),
                                  ('Window jamb', a0 - F, a0, WIN_Z0, WIN_Z1),
-                                 ('Window jamb', a1, a1 + F, WIN_Z0, WIN_Z1),
-                                 ('Window mullion', am - 0.012, am + 0.012, WIN_Z0, WIN_Z1),
-                                 ('Window transom', a0, a1, zm - 0.012, zm + 0.012)):
-        box(name, *place(b0, b1, face - 0.03, wall + 0.01, z0, z1), wood, 0.004)
+                                 ('Window jamb', a1, a1 + F, WIN_Z0, WIN_Z1)):
+        slab(name, b0, b1, face - 0.03, wall + 0.01, z0, z1, wood, 0.004)
+    # Each bar is the line z = WIN_Z0 + sign * BAR_RISE * (a - a0) + c, cut
+    # to the window.
+    step = BAR_RISE * WIN_W / LATTICE
+    for sign in (1, -1):
+        offsets = [k * step for k in range(-2 * LATTICE - 6, 2 * LATTICE + 7)]
+        for c in offsets:
+            lo = (WIN_Z0 - WIN_Z0 - c) / (sign * BAR_RISE) + a0
+            hi = (WIN_Z1 - WIN_Z0 - c) / (sign * BAR_RISE) + a0
+            s0, s1 = max(a0, min(lo, hi)), min(a1, max(lo, hi))
+            if s1 - s0 < 1e-3:
+                continue
+            ends = [(s, WIN_Z0 + sign * BAR_RISE * (s - a0) + c) for s in (s0, s1)]
+            length = math.hypot(ends[1][0] - ends[0][0], ends[1][1] - ends[0][1])
+            na = -(ends[1][1] - ends[0][1]) / length * BAR / 2
+            nz = (ends[1][0] - ends[0][0]) / length * BAR / 2
+            vertices = [at(s + ka * na, d, z + ka * nz) for (s, z) in ends
+                        for ka in (-1, 1) for d in (face - 0.02, wall + 0.01)]
+            faces = [(0, 2, 3, 1), (4, 5, 7, 6), (0, 1, 5, 4), (2, 6, 7, 3),
+                     (0, 4, 6, 2), (1, 3, 7, 5)]
+            mesh('Window lattice bar', vertices, faces, wood)
 
 
-# One in the front wall beside the door, and one in the middle of the west
-# gable, the one turned toward the camera.
-window(0.35, SOUTH, lambda a0, a1, d0, d1, z0, z1: (a0, a1, d0, d1, z0, z1))
-window((SOUTH + NORTH - WIN_W) / 2, -HALF_W,
-       lambda a0, a1, d0, d1, z0, z1: (d0, d1, a0, a1, z0, z1))
+# Two in the front wall beside the door, either side of where the one
+# window first stood (centred WIN_FRONT along it, WIN_GAP apart), and two in
+# the west gable, the one turned toward the camera: one in its middle and
+# one nearer the front.
+WIN_FRONT, WIN_GAP = 0.44, 0.50
+for centre in (WIN_FRONT - WIN_GAP / 2, WIN_FRONT + WIN_GAP / 2):
+    window(centre - WIN_W / 2, SOUTH, lambda a, d, z: (a, d, z))
+for centre in ((SOUTH + NORTH) / 2, SOUTH + 0.42):
+    window(centre - WIN_W / 2, -HALF_W, lambda a, d, z: (d, a, z))
 # Like the monsters, the cottage is turned about its middle, though 45
 # degrees and toward screen right, so its west gable and chimney show beside the
 # front.
