@@ -4,6 +4,7 @@ from typing import Any, List, Optional, Set, Tuple
 from blessed import Terminal
 
 from . import defs as d
+from .arlq import barrier_lp_damage
 from .settings import combat_effect_seconds, load_settings
 from . import display as ui_display
 from .i18n import t as tr
@@ -188,6 +189,10 @@ class BlessedUI:
                 )
                 discovered = bool(torched[y][x] or show_entities)
                 visible = bool(cur_torched[y][x])
+                harmless = (
+                    cell == d.CHAR_BARRIER and barrier_lp_damage(player) == 0
+                    or cell == d.CHAR_CALTROP and d.caltrop_lp_damage(player) == 0
+                )
                 if discovered and cell in d.SCHOLAR_STAIR_CHARS:
                     stair_glyph = (
                         d.CHAR_STAIRS_UP
@@ -220,6 +225,7 @@ class BlessedUI:
                                 d.CHAR_STAIRS_DOWN,
                             )
                             else None,
+                            dim=harmless,
                             bg="blue" if (x, y) in highlighted_cells else None,
                         )
                     elif discovered:
@@ -234,7 +240,8 @@ class BlessedUI:
                                 bg="blue" if (x, y) in highlighted_cells else None,
                             )
                         else:
-                            put(x, y, display_cell, bg="blue" if (x, y) in highlighted_cells else None)
+                            put(x, y, display_cell, dim=harmless,
+                                bg="blue" if (x, y) in highlighted_cells else None)
                     elif (x + y) % 2 == 1:
                         put(x, y, ".", dim=True)
                 else:
@@ -252,7 +259,8 @@ class BlessedUI:
                         else None
                     )
                     background = cell_background(x, y)
-                    put(x, y, display_cell if discovered else " ", color, bg=background)
+                    put(x, y, display_cell if discovered else " ", color,
+                        dim=discovered and harmless, bg=background)
 
         for (x, y), glyph in (d_gates or {}).items():
             if field[y][x] == d.CHAR_D_GATE:

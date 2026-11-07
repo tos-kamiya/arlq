@@ -263,6 +263,8 @@ Entering a barrier (`=`) costs an extra 30 LP. The protective amulet removes
 this cost unless you are holding the cursed sword. Collector and Javelin
 bonuses stack with item modifiers, including swords and poison.
 
+In `arlq` and `arlq-cli`, barriers and caltrops appear dimmer while their damage is prevented.
+
 ### Stage 4: Deep Labyrinth
 
 Stage 4 has five connected floors and features elves, including some new ones. New monsters and traps also appear. The boss is the empowered Fire Drake (`F'`).

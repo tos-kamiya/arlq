@@ -276,3 +276,32 @@ def test_terminal_boss_route_only_marks_explored_floor(monkeypatch):
                             decor=decor)
     assert '<3,2>[yellow:.]' in output
     assert '<4,2>[yellow:.]' not in output
+
+
+@pytest.mark.parametrize('dots', [False, True])
+@pytest.mark.parametrize('protection,expected', [
+    ('none', (False, False)),
+    ('amulet', (True, False)),
+    ('cursed_amulet', (False, False)),
+    ('guardian', (True, True)),
+])
+def test_terminal_dims_only_harmless_hazards(monkeypatch, dots, protection, expected):
+    from arlq import defs as d, display
+    ui = BlessedUI.__new__(BlessedUI)
+    ui.term = SimpleNamespace(home='', clear='', normal='', move_xy=lambda x, y: f'<{x},{y}>')
+    ui.dots = dots
+    ui._style = lambda text, color=None, bold=False, dim=False, bg=None: f'[{text}:{dim}]'
+    monkeypatch.setattr(display, 'build_strength_column', lambda *_: [])
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    field[2][3], field[2][4] = d.CHAR_BARRIER, d.CHAR_CALTROP
+    seen = [[1] * d.FIELD_WIDTH for _ in field]
+    player = d.Player(2, 2, 1, 100)
+    if protection in ('amulet', 'cursed_amulet'):
+        player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
+    if protection == 'cursed_amulet':
+        player.item = d.ITEM_SWORD_CURSED
+    if protection == 'guardian':
+        player.members.append(d.PartyMember(2, 2, d.MEMBER_GUARDIAN))
+    output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[])
+    assert f'<3,2>[=:{expected[0]}]' in output
+    assert f'<4,2>[x:{expected[1]}]' in output

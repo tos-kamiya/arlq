@@ -353,6 +353,7 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 
 class PygletUI:
     supports_horizontal_view = False
+    dim_protected_hazards = True
     # Whether draw_floor_transition shows a still (and Settings offers its time).
     supports_floor_transition = False
 
@@ -1262,7 +1263,9 @@ class PygletUI:
                 else:
                     tile_color = FOG
                 if cell == d.CHAR_CALTROP and discovered:
-                    tile_color = (132, 70, 60)
+                    tile_color = ((85, 60, 57)
+                                  if self.dim_protected_hazards and d.caltrop_lp_damage(player) == 0
+                                  else (132, 70, 60))
                 if (
                     cell == d.CHAR_BARRIER
                     and discovered
@@ -1277,7 +1280,9 @@ class PygletUI:
                 if discovered and cell in d.STAIR_CHARS:
                     self._draw_stairs((x, y), cell)
                 elif discovered and cell == d.CHAR_BARRIER:
-                    self._draw_field_text((x, y), d.CHAR_BARRIER, COLOR_MAP[CI_RED], bold=True)
+                    harmless = self.dim_protected_hazards and barrier_lp_damage(player) == 0
+                    color = self._dim_color(COLOR_MAP[CI_RED]) if harmless else COLOR_MAP[CI_RED]
+                    self._draw_field_text((x, y), d.CHAR_BARRIER, color, bold=not harmless)
                 elif discovered and cell == d.CHAR_COLLAPSE:
                     self._draw_pit((x, y))
 

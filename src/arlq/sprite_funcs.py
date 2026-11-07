@@ -594,6 +594,7 @@ class SpriteUI(PygletUI):
 
     supports_horizontal_view = True
     supports_floor_transition = True
+    dim_protected_hazards = False
 
     # Decorations of the floor being drawn (see draw_stage), and the cells to
     # draw fallen rocks on once the characters of this frame are known.
