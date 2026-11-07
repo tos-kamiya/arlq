@@ -61,6 +61,15 @@ def test_generated_boss_route_reaches_all_floors():
     assert all(boss_route(floor) for floor in floors)
 
 
+def test_stage6_floors_have_no_loop_companions():
+    floors, _ = stage6.build()
+
+    for floor in floors:
+        companions = [entity.tribe.char for entity in floor.entities
+                      if isinstance(entity, d.Companion)]
+        assert sorted(companions) == ["n", "o", "p"]
+
+
 @pytest.mark.parametrize('rogue', [False, True])
 @pytest.mark.parametrize('explorer', [False, True])
 def test_world_discoveries_depend_on_joined_members(rogue, explorer):

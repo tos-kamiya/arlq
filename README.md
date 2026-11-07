@@ -191,7 +191,7 @@ Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
 
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
-| **l** Loop Companion | Appears from Stage 3 onward. Rewinds up to 80 turns on contact, or to the start if fewer turns have elapsed. |
+| **l** Loop Companion | Appears in Stages 3–4. Rewinds up to 80 turns on contact, or to the start if fewer turns have elapsed. |
 | **n** Nomicon  | Reveals the type of every active monster and elf within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |

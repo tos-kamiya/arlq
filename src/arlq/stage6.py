@@ -344,7 +344,9 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         initial_parties = _place_initial_parties(current, index, boss_room)
         if index < d.STAGE6_FLOORS - 1:
             _place_detached_room_monsters(current, room_components)
-        for char in ("l", "n", "o", "p"):
+        # Retain the former Loop Companion's random draw for seeded generation.
+        rand.choice(_open_points(current))
+        for char in ("n", "o", "p"):
             current.entities.append(
                 d.Companion(
                     *rand.choice(_open_points(current)),
