@@ -156,8 +156,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
         isolated = [entity for entity in floor.entities
                     if isinstance(entity, d.Monster)
                     and stage6.tile_at((entity.x, entity.y)) in detached]
-        assert len(isolated) == 2
-        assert all(e.tribe.char in {"b", "c", "f", "A"} for e in isolated)
+        assert len(isolated) >= 2
     assert stage6.tile_at((player.x, player.y)) not in next(
         component for component in floors[0].room_components if len(component) == 1
     )
@@ -738,7 +737,7 @@ def test_climbing_pit_moves_checkpoint_after_leaving_pit():
     assert checkpoint == [(4, 2)]
 
 
-def test_pit_requires_scholar_but_discovered_passage_remains_usable():
+def test_pit_and_discovered_passage_require_explorer():
     upper, player = state(("Dungeon Explorer",))
     lower, _ = state()
     upper.field[2][3] = d.CHAR_COLLAPSE
@@ -755,7 +754,25 @@ def test_pit_requires_scholar_but_discovered_passage_remains_usable():
     assert floor_index == [1]
     engine._step((1, 0), [upper, lower], player, floor_index, checkpoint,
                  Counter(), 1, stage_num=6)
+    assert (player.x, player.y) == (3, 2)
+    player.members.append(d.PartyMember(3, 2, d.MEMBER_DUNGEON_EXPLORER))
+    engine._step((1, 0), [upper, lower], player, floor_index, checkpoint,
+                 Counter(), 1, stage_num=6)
     assert (player.x, player.y) == (4, 2)
+
+
+@pytest.mark.parametrize('explorer', [False, True])
+def test_discovered_passage_reachability_and_repeat_follow_explorer(explorer):
+    current, player = state((d.MEMBER_DUNGEON_EXPLORER,) if explorer else ())
+    current.field = [list('#####'), list('# . #'), list('#####')]
+    current.seen = [[1] * 5 for _ in range(3)]
+    player.x, player.y = 1, 1
+    reachable = engine.reachable_known_cells(
+        current.field, current.seen, current.seen, [], player,
+        phase_walls={(2, 1)}, terminal_targets={(3, 1)},
+    )
+    assert ((3, 1) in reachable) is explorer
+    assert engine._should_stop_movement_repeat((1, 0), current, player) is not explorer
 
 
 def test_explorer_climbs_pit_by_stepping_onto_marker():
@@ -1043,16 +1060,18 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
         return [sum(count for ch, count, r in floor if ch == char and r == rank)
                 for floor in d.STAGE6_ROSTER]
 
-    assert counts("b", 1) == [2, 0, 0, 0]
-    assert counts("b", 2) == [0, 2, 2, 2]
+    assert counts("a", 1) == [16, 0, 0, 0]
+    assert counts("a", 2) == [0, 1, 1, 1]
+    assert counts("b", 1) == [5, 0, 0, 0]
+    assert counts("b", 2) == [0, 5, 5, 5]
     assert counts("c", 2) == [0, 5, 6, 7]
     assert counts("C", 1) == [0, 0, 1, 0]
     assert d.STAGE6_EXTRA_BISON_RANKS == (1, None, 2, None)
     assert counts("d", 1) == [3, 0, 0, 0]
     assert counts("d", 2) == [0, 3, 3, 2]
-    assert counts("B", 1) == [2, 2, 0, 0]
-    assert counts("B", 2) == [0, 0, 2, 2]
-    assert counts("f", 1) == [0, 1, 1, 1]
+    assert counts("B", 1) == [1, 1, 0, 0]
+    assert counts("B", 2) == [0, 0, 1, 1]
+    assert counts("f", 1) == [2, 1, 1, 1]
     assert counts("f", 2) == [0, 1, 1, 1]
     assert counts("w", 2) == [0, 1, 2, 3]
     assert Counter(d.STAGE6_SUPPORT_POOLS[1]) == Counter({
@@ -1493,19 +1512,20 @@ def test_initial_parties_use_distinct_candidate_rooms(floor_index, detached):
         parties.append(leader)
         remaining = [monster for monster in remaining if monster not in party]
     selected = {stage6.tile_at((leader.x, leader.y)) for leader in parties}
-    count = 5 if detached in d.STAGE6_INITIAL_PARTY_ROOMS else 6
+    count = 5
     assert len(parties) == len(selected) == count
     assert selected <= set(d.STAGE6_INITIAL_PARTY_ROOMS)
-    assert detached not in selected
+    if detached in d.STAGE6_INITIAL_PARTY_ROOMS:
+        assert detached in selected
     actual = [(leader.tribe.char, leader.empowered) for leader in parties]
-    expected = ([('b', 1)] * 2 + [('B', 1)] * 2 + [('a', 1)] * 2 if floor_index == 0
-                else [('b', 2)] * 2 + [('B', 1 if floor_index == 1 else 2)] * 2 + [('a', 2)] * 2)
+    expected = ([('b', 1)] * 4 + [('B', 1)] if floor_index == 0
+                else [('b', 2)] * 4 + [('B', 1 if floor_index == 1 else 2)])
     assert actual == expected[:count]
     assert Counter(actual) == Counter(placed)
 
 
 @pytest.mark.parametrize("seed", [0, 123, 789])
-def test_initial_parties_placement_excludes_sealed_rooms_and_preserves_roster(monkeypatch, seed):
+def test_initial_parties_include_isolated_rooms_and_preserve_roster(monkeypatch, seed):
     calls = {}
     original = stage6._place_party
 
@@ -1517,15 +1537,11 @@ def test_initial_parties_placement_excludes_sealed_rooms_and_preserves_roster(mo
     engine.rand.set_seed(seed)
     floors, _ = stage6.build()
     for index, current in enumerate(floors):
-        connected = set().union(*(
-            component for component in current.room_components if len(component) > 1
-        ))
-        eligible = set(d.STAGE6_INITIAL_PARTY_ROOMS) & connected
-        count = len(eligible)
+        eligible = set(d.STAGE6_INITIAL_PARTY_ROOMS) & set().union(*current.room_components)
         if index == d.STAGE6_FLOORS - 1:
             boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W")
             eligible.discard(stage6.tile_at((boss.x, boss.y)))
-        count = len(eligible)
+        count = min(len(eligible), 5)
         spawning = [(leader, room) for leader, room in calls[index] if leader[0] != "W"]
         assert len(spawning) == (int(d.STAGE6_EXTRA_BISON_RANKS[index] is not None)
                                  + sum(amount for _, amount, _ in d.STAGE6_ROSTER[index]))

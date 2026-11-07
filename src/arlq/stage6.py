@@ -99,7 +99,7 @@ def _place_party(
         if isinstance(entity, d.Monster)
     }
     candidates = {point for point in _open_points(current)
-                  if not _in_detached_terminal_room(current, point)}
+                  if roster[0][0] == "b" or not _in_detached_terminal_room(current, point)}
     if any(char == "W" for char, _ in roster):
         connected_rooms = set().union(
             *(component for component in current.room_components if len(component) > 1)
@@ -214,22 +214,22 @@ def _place_initial_boss_party(current: Floor) -> tuple[list[d.Monster], set[d.Po
 def _place_initial_parties(
     current: Floor, floor_index: int, excluded_room: d.Point | None = None
 ) -> dict[tuple[str, int], int]:
-    connected_rooms = set().union(
-        *(component for component in current.room_components if len(component) > 1)
-    )
     rooms = [
         room for room in d.STAGE6_INITIAL_PARTY_ROOMS
-        if room in connected_rooms and room != excluded_room
+        if room != excluded_room and any(room in component for component in current.room_components)
     ]
     shuffled = []
     while rooms:
         shuffled.append(rooms.pop(rand.randrange(len(rooms))))
+    shuffled.sort(key=lambda room: not any(
+        len(component) == 1 and room in component for component in current.room_components
+    ))
     leaders = [
         (char, rank)
         for char, rank in d.STAGE6_INITIAL_PARTY_PRIORITY
         for roster_char, count, roster_rank in d.STAGE6_ROSTER[floor_index]
         if (char, rank) == (roster_char, roster_rank)
-        for _ in range(count)
+        for _ in range(min(count, 4 if char == "b" else count))
     ]
     placed = {}
     for room, (char, rank) in zip(shuffled, leaders):

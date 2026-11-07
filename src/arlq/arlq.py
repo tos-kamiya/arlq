@@ -625,6 +625,8 @@ def move_player(
         return WallEvent("blocked")
 
     cell = field[ny][nx]
+    if cell == d.CHAR_D_GATE and not d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
+        return WallEvent("blocked")
     if cell in passable_cells:
         player.x, player.y = nx, ny
         return None
@@ -643,6 +645,8 @@ def move_player(
             0 <= jump_y < height
             and 0 <= jump_x < width
             and field[jump_y][jump_x] in PLAYER_PASSABLE_CELLS
+            and (field[jump_y][jump_x] != d.CHAR_D_GATE
+                 or d.has_member(player, d.MEMBER_DUNGEON_EXPLORER))
         ):
             player.x, player.y = jump_x, jump_y
             player.karma += 1

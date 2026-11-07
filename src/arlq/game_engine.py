@@ -126,6 +126,8 @@ def reachable_known_cells(
                 continue
 
             cell = field[ny][nx]
+            if cell == d.CHAR_D_GATE and not d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
+                continue
             if (nx, ny) in (terminal_targets or ()):
                 terrain_cost = d.movement_lp_cost(player)
             elif (nx, ny) in (phase_walls or ()) or (
@@ -274,12 +276,13 @@ def _should_stop_movement_repeat(
     known_cell = bool(current.seen[ny][nx]) or show_all_entities
     cell = current.field[ny][nx]
     next_position = (nx, ny)
-    passable_secret = cell == d.CHAR_D_GATE or (
+    passable_secret = (cell == d.CHAR_D_GATE and d.has_member(player, d.MEMBER_DUNGEON_EXPLORER)) or (
         cell == d.CHAR_GOLEM_WALL and d.has_member(player, d.MEMBER_ROGUE)
     )
     if known_cell and cell in (
         *d.WALL_CHARS,
         d.CHAR_HIDDEN_D_GATE,
+        d.CHAR_D_GATE,
         d.CHAR_CALTROP,
         d.CHAR_BARRIER,
         d.CHAR_COLLAPSE,

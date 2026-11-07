@@ -2207,6 +2207,7 @@ def test_sword_breaks_hidden_passage_into_floor(item):
 
 def test_discovered_passage_does_not_consume_sword():
     player = d.Player(2, 2, 10, 90)
+    player.members.append(d.PartyMember(2, 2, d.MEMBER_DUNGEON_EXPLORER))
     player.item = d.ITEM_SWORD_X1_5
     player.item_uses = 2
     floors, field = stage3_state(player, [])

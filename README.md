@@ -215,7 +215,7 @@ Note on the Loop Companion: The destination becomes the new anchor, and subseque
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`); on floors 3–4, Buffalo appear as empowered `B'`. Floors 2–4 each have two empowered Bison (`b'`) party leaders. Floor 1 also has an additional solitary `b`, and floor 3 an additional solitary `b'`. Floors 2–4 also each have one normal `f` and one empowered `f'` as party leaders.
+Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`); on floors 3–4, Buffalo appear as empowered `B'`. Floor 1 has 16 `a`, five `b`, and two `f` party leaders; floors 2–4 each have one `a'` and five empowered Bison (`b'`) party leaders. Floor 1 also has an additional solitary `b`, and floor 3 an additional solitary `b'`. Floors 2–4 also each have one normal `f` and one empowered `f'` as party leaders.
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -309,14 +309,14 @@ Stage 6 is a four-floor dungeon starting at level 1. Each floor transition has o
 | **H** Healer | Reduces movement LP cost to one-third and the defeat cost to 2, including when rewinding. |
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **K** Knight | Adds a fixed 80 to your attack power. |
-| **D** Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Climb through an entrance and leave the pit on the next move. In sprite mode, discovered passages are marked by green light on the floor instead of a `.`. Discovered passages remain usable after D leaves; entrances still require D, and their green discs in sprite mode are shown only while D is in the party. |
+| **D** Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Both require D in the party to use, even after discovery. Climb through an entrance and leave the pit on the next move. In sprite mode, discovered passages are marked by green light on the floor instead of a `.`; entrance discs appear only while D is in the party. |
 | **G** Guardian | Prevents barrier and caltrop damage. |
 
 Monsters are placed without horizontal adjacency; party members line up vertically.
 
 Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. Experience sharing counts the player, K, H and G as 1 each, and J, R and D as 0. J's multiplier applies to the player's share.
 
-The isolated rooms on floors 1–3 each contain two monsters drawn without replacement from `b`, `b'`, `c`, `f` and `A`; floor 4 has no isolated room. Floor 3 has two `w'` leaders.
+The isolated rooms on floors 1–3 each contain two monsters drawn without replacement from `b`, `b'`, `c`, `f` and `A`; additional Bison parties may also appear there. Floor 4 has no isolated room. Floor 3 has two `w'` leaders.
 
 #### Monsters
 
