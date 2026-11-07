@@ -1796,3 +1796,24 @@ def test_bundled_route_mark_is_a_floor_stone_sized_overlay():
     assert (mark.width, mark.height) == (floor.width, floor.height)
     data = mark.get_data('RGBA', mark.width * 4)
     assert data[3] == 0  # transparent outside the diamond
+
+
+def test_cat_member_uses_its_sprite(sprite_ui):
+    ui = sprite_ui
+    ui._member_skins = {}
+    for tone in ('member_waiting', 'member'):
+        ui._draw_member(display.FieldGlyph(4, 5, 'Y', tone))
+    assert [obj.image for obj in ui._drawables] == [ui._sprite_images['yawning-cat']] * 2
+    assert len(ui.outlines) == 1
+
+
+def test_tavern_parts_are_aligned_and_dim_when_explored(sprite_ui):
+    ui = sprite_ui
+    ui._tavern_images = {part: SimpleNamespace(width=320, height=620) for part in ('/', '\\')}
+    ui._draw_tavern((4, 5), '/', True)
+    ui._draw_tavern((5, 5), '\\', False)
+    left, right = ui._drawables
+    assert right.x == left.x + ui.cell_size_x
+    assert left.scale_y * left.image.height == pytest.approx(1.55 * ui.cell_size_y)
+    assert left.color == (255, 255, 255)
+    assert right.color == (140, 140, 140)

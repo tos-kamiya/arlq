@@ -93,6 +93,8 @@ UNKNOWN_PILLAR = 0.21
 UNKNOWN_DISC_REFERENCE = CI_BLUE
 MEMBER_SPRITES = {'J': 'jester', 'H': 'healer', 'R': 'rogue',
                   'K': 'knight', 'G': 'guardian', 'D': 'explorer'}
+CAT_SPRITE = 'yawning-cat'
+SPRITE_FILES[CAT_SPRITE] = 'yawning-cat.png'
 MEMBER_SKINS = ('light', 'medium', 'dark')
 SPRITE_FILES.update({f'{name}-{skin}': f'{name}-{skin}.png'
                      for name in MEMBER_SPRITES.values() for skin in MEMBER_SKINS})
@@ -115,6 +117,7 @@ SPRITE_NAMES.update({f'{name}-{skin}': role
                      for role, char in d.MEMBER_GLYPHS.items()
                      if (name := MEMBER_SPRITES.get(char))
                      for skin in MEMBER_SKINS})
+SPRITE_NAMES[CAT_SPRITE] = d.MEMBER_YAWNING_CAT
 # Golem rubble outside the current view is darkened like explored walls.
 ROCK_EXPLORED_SHADE = 0.6
 # An elf the player has met (drawn without bold as text) is shown with its
@@ -725,6 +728,14 @@ class SpriteUI(PygletUI):
         self._terrain_images = {char: mipmapped(pyglet.image.load(str(assets / filename)))
                                 for char, filename in TERRAIN_FILES.items()
                                 if (assets / filename).is_file()}
+        tavern_path = assets / 'tavern' / 'tavern.png'
+        if tavern_path.is_file():
+            tavern = mipmapped(pyglet.image.load(str(tavern_path)))
+            half = tavern.width // 2
+            self._tavern_images = {part: tavern.get_region(i * half, 0, half, tavern.height)
+                                   for i, part in enumerate(('/', '\\'))}
+        else:
+            self._tavern_images = {}
         self._terrain_regions = {}
         self._route_mark_image = (mipmapped(pyglet.image.load(str(assets / ROUTE_MARK_FILE)))
                                   if (assets / ROUTE_MARK_FILE).is_file() else None)
@@ -1171,6 +1182,31 @@ class SpriteUI(PygletUI):
         self._draw_terrain(
             pos, char, 'column' if char == d.CHAR_STAIRS_UP else 'wall'
         )
+
+    def _draw_tavern(self, pos, part, visible):
+        image = self._tavern_images.get(part)
+        if image is None:
+            return super()._draw_tavern(pos, part, visible)
+        x, y = pos
+        left = self._field_col_x(x)
+        bottom = self.window_height - (y + 1) * self.cell_size_y
+        scale_x = self.cell_size_x / image.width
+        scale_y = 1.55 * self.cell_size_y / image.height
+        shade = 1 if visible else TERRAIN_EXPLORED_SHADE
+        tint = self._display_color((round(255 * shade),) * 3)
+        group = self._row_group(y, 'column')
+        signature = ('terrain-cell', 'tavern', x, y, id(image), bottom,
+                     scale_x, scale_y, id(group), tint)
+        sprite = self._draw_bounded_object(
+            left, image.width * scale_x, signature,
+            partial(pyglet.sprite.Sprite, image, x=left, y=bottom,
+                    batch=self.batch, group=group),
+        )
+        if sprite is not None and sprite.x != left:
+            sprite.x = left
+        self._set_drawable_attribute(sprite, 'scale_x', scale_x)
+        self._set_drawable_attribute(sprite, 'scale_y', scale_y)
+        self._set_drawable_attribute(sprite, 'color', tint)
 
     def _draw_boss_route_marker(self, pos, visible, under_player):
         image = self._route_mark_image
@@ -2203,7 +2239,8 @@ class SpriteUI(PygletUI):
 
     def _draw_member(self, glyph):
         name = MEMBER_SPRITES.get(glyph.char)
-        key = f'{name}-{self._member_skins[glyph.char]}' if name else None
+        key = (CAT_SPRITE if glyph.char == 'Y' else
+               f'{name}-{self._member_skins[glyph.char]}' if name else None)
         if key not in self._sprite_images:
             return super()._draw_member(glyph)
         color = self._tone_color('default')
