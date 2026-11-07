@@ -901,7 +901,7 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
 STAGE4_FLOORS = len(STAGE4_ROSTER)
 
 # Stage 6 dungeon and monster-party settings.
-STAGE6_FLOORS = 4
+STAGE6_FLOORS = 3
 STAGE6_INITIAL_PARTY_ROOMS: Tuple[Point, ...] = (
     (0, 0), (2, 0), (4, 0), (0, 2), (2, 2), (4, 2),
 )
@@ -910,12 +910,11 @@ STAGE6_INITIAL_PARTY_PRIORITY = (("b", 2), ("b", 1), ("B", 2), ("B", 1))
 STAGE6_PARTY_SIZE_WEIGHTS = (
     (78, 21, 1, 0, 0),
     (60, 30, 10, 0, 0),
-    (46, 30, 24, 0, 0),
     (45, 30, 25, 0, 0),
 )
 # Each roster entry (character, count, rank) supplies party leaders.
-# Normal and empowered f party leaders appear on floors 2–4.
-STAGE6_EXTRA_BISON_RANKS = (1, None, 2, None)
+# Normal and empowered f party leaders appear on floors 2–3.
+STAGE6_EXTRA_BISON_RANKS = (1, None, None)
 STAGE6_ROSTER = (
     (
         ("a", 16, 1), ("A", 2, 1), ("b", 5, 1), ("B", 1, 1), ("c", 5, 1),
@@ -928,18 +927,13 @@ STAGE6_ROSTER = (
         ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 2), ("c", 6, 2),
-        ("C", 1, 1), ("d", 4, 2), ("f", 1, 1), ("f", 1, 2), ("g", 3, 1),
-        ("k", 1, 1), ("w", 2, 2), ("X", 1, 1), ("E", 1, 1),
-    ),
-    (
         ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 2), ("c", 7, 2),
         ("d", 4, 2), ("f", 1, 1), ("f", 1, 2), ("w", 3, 2), ("g", 3, 1),
         ("k", 1, 1), ("X", 1, 2),
     ),
 )
 STAGE6_BOSS_PARTY = (("W", 1), ("V", 1))
-STAGE6_BOSS_ESCORTS = (("f", 2), ("k", 1), ("w", 1), ("w", 2))
+STAGE6_BOSS_ESCORTS = (("f", 1), ("k", 1), ("w", 1))
 _STAGE6_DEEP_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("e", 1), ("e", 1),
     ("b", 1), ("w", 2), ("k", 1),
@@ -952,8 +946,8 @@ _STAGE6_FLOOR2_SUPPORT_POOL = (
 )
 STAGE6_SUPPORT_POOLS = (
     (("a", 1),), _STAGE6_FLOOR2_SUPPORT_POOL
-) + (_STAGE6_DEEP_SUPPORT_POOL,) * 2
-STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
+) + (_STAGE6_DEEP_SUPPORT_POOL,)
+STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2))
 STAGE6_FINAL_FLOOR_BARRIER_PERCENT = 5
 STAGE6_BARRIER_VORTEX_RADIUS_MULTIPLIER = 1.5
 

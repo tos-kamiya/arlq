@@ -173,9 +173,9 @@ def step(current, player, direction=(1, 0), checkpoint=(2, 2), stage_num=6):
 
 def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
     floors, player = stage6.build()
-    assert len(floors) == 4 and player.rescue_stage and player.treasure_stage
+    assert len(floors) == 3 and player.rescue_stage and player.treasure_stage
     for floor_index, floor in enumerate(floors):
-        if floor_index == 3:
+        if floor_index == 2:
             assert len(floor.room_components) == 1
             continue
         assert len(floor.room_components) == 2
@@ -269,7 +269,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
             for entity in floor.entities
         )
         for floor in floors
-    ] == [1, 3, 3, 3]
+    ] == [1, 3, 3]
     assert not any(
         isinstance(entity, d.Monster)
         and entity.tribe.char == "g"
@@ -330,7 +330,7 @@ def test_stage6_only_first_departure_from_floor_one_relocates_candidates(monkeyp
     assert len(calls) == 1
 
 
-def test_stage6_relocation_includes_fourth_floor_and_preserves_joined_members(monkeypatch):
+def test_stage6_relocation_includes_final_floor_and_preserves_joined_members(monkeypatch):
     floors, player = stage6.build()
     member = next(e for e in floors[0].entities if isinstance(e, d.PartyMember))
     stage56.recruit(floors[0], player, member)
@@ -340,9 +340,9 @@ def test_stage6_relocation_includes_fourth_floor_and_preserves_joined_members(mo
 
     stage6.record_transition(floors, player, 0, (1, 1), 1, (2, 2))
 
-    relocated = [e for e in floors[3].entities if isinstance(e, d.PartyMember)]
+    relocated = [e for e in floors[-1].entities if isinstance(e, d.PartyMember)]
     assert {e.role for e in relocated} == waiting
-    assert all(e.origin_floor == 3 for e in relocated)
+    assert all(e.origin_floor == 2 for e in relocated)
     assert member in player.members
     assert not waiting & player.known_member_floors.keys()
 
@@ -714,7 +714,7 @@ def test_final_floor_random_barriers_stay_near_boss(monkeypatch, seed, escort):
     assert current.persistent_barriers
     assert current.persistent_barriers <= allowed
     assert all(current.field[y][x] == d.CHAR_BARRIER for x, y in current.persistent_barriers)
-    for index in (1, 2):
+    for index in (1,):
         assert len(floors[index].persistent_barriers) == d.STAGE6_HAZARD_COUNTS[index][1]
 
 
@@ -1126,7 +1126,7 @@ def test_seed_reproduces_layout_and_groups():
     assert signature() != first
 
 
-def test_stage6_adds_solo_bison_on_first_and_third_floors(monkeypatch):
+def test_stage6_adds_solo_bison_on_first_floor(monkeypatch):
     original = stage6._place_party
     added = []
 
@@ -1137,8 +1137,8 @@ def test_stage6_adds_solo_bison_on_first_and_third_floors(monkeypatch):
 
     monkeypatch.setattr(stage6, "_place_party", record)
     stage6.build()
-    assert all(added.count(index) >= 1 for index in (0, 2))
-    assert not any(index in (1, 3) for index in added)
+    assert added.count(0) >= 1
+    assert not any(index in (1, 2) for index in added)
 
 
 def test_deep_roster_counts_and_party_sizes_by_floor():
@@ -1146,22 +1146,22 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
         return [sum(count for ch, count, r in floor if ch == char and r == rank)
                 for floor in d.STAGE6_ROSTER]
 
-    assert counts("a", 1) == [16, 0, 0, 0]
-    assert counts("a", 2) == [0, 1, 1, 1]
-    assert counts("b", 1) == [5, 0, 0, 0]
-    assert counts("b", 2) == [0, 5, 5, 5]
-    assert counts("c", 2) == [0, 5, 6, 7]
-    assert counts("C", 1) == [0, 0, 1, 0]
-    assert d.STAGE6_EXTRA_BISON_RANKS == (1, None, 2, None)
-    assert counts("d", 1) == [4, 2, 0, 0]
-    assert counts("d", 2) == [0, 2, 4, 4]
-    assert counts("B", 1) == [1, 1, 0, 0]
-    assert counts("B", 2) == [0, 0, 1, 1]
-    assert counts("f", 1) == [2, 1, 1, 1]
-    assert counts("f", 2) == [0, 1, 1, 1]
-    assert counts("w", 2) == [0, 1, 2, 3]
-    assert counts("X", 1) == [0, 1, 1, 0]
-    assert counts("X", 2) == [0, 0, 0, 1]
+    assert counts("a", 1) == [16, 0, 0]
+    assert counts("a", 2) == [0, 1, 1]
+    assert counts("b", 1) == [5, 0, 0]
+    assert counts("b", 2) == [0, 5, 5]
+    assert counts("c", 2) == [0, 5, 7]
+    assert counts("C", 1) == [0, 0, 0]
+    assert d.STAGE6_EXTRA_BISON_RANKS == (1, None, None)
+    assert counts("d", 1) == [4, 2, 0]
+    assert counts("d", 2) == [0, 2, 4]
+    assert counts("B", 1) == [1, 1, 0]
+    assert counts("B", 2) == [0, 0, 1]
+    assert counts("f", 1) == [2, 1, 1]
+    assert counts("f", 2) == [0, 1, 1]
+    assert counts("w", 2) == [0, 1, 3]
+    assert counts("X", 1) == [0, 1, 0]
+    assert counts("X", 2) == [0, 0, 1]
     assert Counter(d.STAGE6_SUPPORT_POOLS[1]) == Counter({
         ("a", 1): 3, ("f", 1): 2, ("b", 1): 2,
         ("e", 1): 2,
@@ -1172,9 +1172,9 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
     }) for pool in d.STAGE6_SUPPORT_POOLS[2:])
     assert d.STAGE6_PARTY_SIZE_WEIGHTS == (
         (78, 21, 1, 0, 0), (60, 30, 10, 0, 0),
-        (46, 30, 24, 0, 0), (45, 30, 25, 0, 0),
+        (45, 30, 25, 0, 0),
     )
-    assert d.STAGE6_BOSS_ESCORTS == (("f", 2), ("k", 1), ("w", 1), ("w", 2))
+    assert d.STAGE6_BOSS_ESCORTS == (("f", 1), ("k", 1), ("w", 1))
 
 
 def test_member_trial_has_fixed_ordered_layout():
@@ -1582,7 +1582,7 @@ def test_defeating_wyrm_preserves_overlapping_and_persistent_barriers():
     assert remaining == {(2, 2), (4, 2), (4, 3), (4, 4)}
 
 
-@pytest.mark.parametrize("floor_index", range(4))
+@pytest.mark.parametrize("floor_index", range(d.STAGE6_FLOORS))
 @pytest.mark.parametrize("detached", [None, (0, 0), (1, 1)])
 def test_initial_parties_use_distinct_candidate_rooms(floor_index, detached):
     current, _ = state()
@@ -1631,7 +1631,7 @@ def test_initial_parties_include_isolated_rooms_and_preserve_roster(monkeypatch,
             eligible.discard(stage6.tile_at((boss.x, boss.y)))
         count = min(len(eligible), 5)
         spawning = [(leader, room) for leader, room in calls[index] if leader[0] != "W"]
-        assert sum(leader == ("X", 2) for leader, _ in spawning) == (index == 3)
+        assert sum(leader == ("X", 2) for leader, _ in spawning) == (index == 2)
         assert len(spawning) == (int(d.STAGE6_EXTRA_BISON_RANKS[index] is not None)
                                  + sum(amount for _, amount, _ in d.STAGE6_ROSTER[index]))
         initial = spawning[:count]

@@ -52,7 +52,7 @@ arlq-cli
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a compact member-ability trial; Stage 6 is a four-floor boss and treasure dungeon. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a compact member-ability trial; Stage 6 is a three-floor boss and treasure dungeon. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -215,7 +215,7 @@ Note on the Loop Companion: The destination becomes the new anchor, and subseque
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`); on floors 3–4, Buffalo appear as empowered `B'`. Floor 1 has 16 `a`, five `b`, and two `f` party leaders; floors 2–4 each have one `a'` and five empowered Bison (`b'`) party leaders. Floor 1 also has an additional solitary `b`, and floor 3 an additional solitary `b'`. Floors 2–4 also each have one normal `f` and one empowered `f'` as party leaders.
+Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`); on floor 3, Buffalo appear as empowered `B'`. Floor 1 has 16 `a`, five `b`, and two `f` party leaders; floors 2–3 each have one `a'` and five empowered Bison (`b'`) party leaders. Floor 1 also has an additional solitary `b`. Floors 2–3 also each have one normal `f` and one empowered `f'` as party leaders.
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -299,9 +299,9 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
-Stage 6 is a four-floor dungeon starting at level 1. Each floor transition has one or two pairs of ordinary stairs, with equal probability. The player fights with party members, and monsters also form parties. Defeat the Dread Wyrm (`W`) on floor 4 and claim the treasure. Four of six candidates start on floor 1, in the player’s starting section or an adjacent section; the HUD shows discovered roles and floors. The first time you leave floor 1, all waiting candidates relocate to random floors from 1 to 4. You can recruit up to two members; a third replaces the earliest recruit. Departing members reappear on a random floor from 1 to 4. Yellow dots spaced about three steps apart on explored floors mark a shortest route from the starting position to the boss, calculated at the start using ordinary stairs and avoiding pits and hidden passages. The route does not change as the dungeon changes.
+Stage 6 is a three-floor dungeon starting at level 1. Each floor transition has one or two pairs of ordinary stairs, with equal probability. The player fights with party members, and monsters also form parties. Defeat the Dread Wyrm (`W`) on floor 3 and claim the treasure. Four of six candidates start on floor 1, in the player’s starting section or an adjacent section; the HUD shows discovered roles and floors. The first time you leave floor 1, all waiting candidates relocate to random floors from 1 to 3. You can recruit up to two members; a third replaces the earliest recruit. Departing members reappear on a random floor from 1 to 3. Yellow dots spaced about three steps apart on explored floors mark a shortest route from the starting position to the boss, calculated at the start using ordinary stairs and avoiding pits and hidden passages. The route does not change as the dungeon changes.
 
-An empowered Caltrop Plant (`X'`) appears on floor 4.
+An empowered Caltrop Plant (`X'`) appears on floor 3.
 
 #### Party members
 
@@ -318,7 +318,7 @@ Monsters are placed without horizontal adjacency; party members line up vertical
 
 Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. Experience sharing counts the player, K, H and G as 1 each, and J, R and D as 0. J's multiplier applies to the player's share.
 
-The isolated rooms on floors 1–3 each contain two monsters drawn without replacement from `b`, `b'`, `c`, `f` and `A`; additional Bison parties may also appear there. Floor 4 has no isolated room. Floor 3 has two `w'` leaders.
+The isolated rooms on floors 1–2 each contain two monsters drawn without replacement from `b`, `b'`, `c`, `f` and `A`; additional Bison parties may also appear there. Floor 3 has no isolated room.
 
 #### Monsters
 
@@ -327,7 +327,7 @@ The isolated rooms on floors 1–3 each contain two monsters drawn without repla
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **f** / **f'** Flame cobra | Defeating either grants 5 base experience. The empowered form `f'` places barriers on available adjacent cells in the four cardinal directions. |
 
-The floor 4 boss party consists of `W`, `V`, and one escort; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
+The floor 3 boss party consists of `W`, `V`, and one escort chosen from `f`, `k`, and `w`; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
 ## Development commands
 
