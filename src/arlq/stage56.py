@@ -1,6 +1,7 @@
 """Gameplay mechanics shared by Stages 5 and 6."""
 
 from . import defs as d
+from .arlq import iterate_ellipse_points
 from .i18n import t, trp
 from .stage_types import Floor
 from .utils import rand
@@ -223,6 +224,7 @@ def recruit(
         player.known_member_floors.pop(departed.role, None)
     current.entities.remove(member)
     player.members.append(member)
+    member.exploration_turns = 0
     if departed is not None:
         return trp("-- {joined} joined; {departed} left the party.", 5).format(
             joined=t(member.role), departed=t(departed.role)
@@ -556,3 +558,31 @@ def respawn(
         entity = d.Companion(*point, tribe, origin_floor=origin_floor)
     current.entities.append(entity)
     return point
+
+
+def explore_with_cat(current: Floor, player: d.Player) -> None:
+    """Let the cat explore a small patch every twenty accompanying turns."""
+    cat = next((member for member in player.members
+                if member.role == d.MEMBER_YAWNING_CAT), None)
+    if cat is None:
+        return
+    cat.exploration_turns += 1
+    if cat.exploration_turns < d.CAT_EXPLORE_INTERVAL:
+        return
+    cat.exploration_turns = 0
+    candidates = [
+        (x, y) for x, y in iterate_ellipse_points(
+            player.x, player.y, d.CAT_EXPLORE_RADIUS, d.FOV_WIDTH_EXPANSION_RATIO
+        )
+        if (0 <= y < len(current.field) and 0 <= x < len(current.field[y])
+            and current.field[y][x] == d.CHAR_FLOOR and not current.seen[y][x])
+    ]
+    if not candidates:
+        return
+    cx, cy = rand.choice(candidates)
+    size = d.CAT_EXPLORE_SIZE
+    top = max(0, min(cy, len(current.field) - size))
+    left = max(0, min(cx, len(current.field[cy]) - size))
+    for y in range(top, min(len(current.field), top + size)):
+        for x in range(left, min(len(current.field[y]), left + size)):
+            current.seen[y][x] = 1

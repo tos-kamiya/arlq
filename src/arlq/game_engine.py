@@ -1950,6 +1950,7 @@ def _process_multi_floor_turn(
     )
     if player.rescue_stage:
         stage56.sync_members(player, previous, direction)
+        stage56.explore_with_cat(floors[floor[0]], player)
     if (
         stage_num == 5
         and floor[0] == floor_before

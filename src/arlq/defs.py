@@ -19,6 +19,10 @@ MEMBER_KNIGHT = "Knight"
 MEMBER_DUNGEON_EXPLORER = "Dungeon Explorer"
 MEMBER_GUARDIAN = "Guardian"
 MEMBER_NOBLE = "Noble"
+MEMBER_YAWNING_CAT = "Yawning Cat"
+CAT_EXPLORE_INTERVAL = 20
+CAT_EXPLORE_SIZE = 2
+CAT_EXPLORE_RADIUS = 10  # Vertical radius, tuned independently of Vortex.
 
 PARTY_LIMIT = 2
 MONSTER_PARTY_LIMIT = 5
@@ -35,16 +39,18 @@ PARTY_EXPERIENCE_MEMBER_WEIGHTS = {
     MEMBER_KNIGHT: 1.0,
     MEMBER_ROGUE: 0.0,
     MEMBER_DUNGEON_EXPLORER: 0.0,
+    MEMBER_YAWNING_CAT: 0.0,
 }
 HEALER_MOVE_COST = 1 / 3
 HEALER_RESPAWN_COST = 2
 RECRUITABLE_MEMBER_ROLES = (
     MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT,
-    MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN,
+    MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN, MEMBER_YAWNING_CAT,
 )
 MEMBER_GLYPHS = {
     MEMBER_JESTER: "J", MEMBER_HEALER: "H", MEMBER_ROGUE: "R",
     MEMBER_KNIGHT: "K", MEMBER_DUNGEON_EXPLORER: "D", MEMBER_GUARDIAN: "G", MEMBER_NOBLE: "N",
+    MEMBER_YAWNING_CAT: "Y",
 }
 # Stages that feature elves and share the multi-floor progress state.
 ELF_STAGES = frozenset({3, 4})
@@ -378,6 +384,7 @@ class PartyMember(Entity):
     ):
         super().__init__(x, y)
         self.role = role
+        self.exploration_turns = 0
         self.origin_floor = origin_floor
         self.level: float = KNIGHT_INITIAL_LEVEL if role == MEMBER_KNIGHT else 0
 

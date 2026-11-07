@@ -214,6 +214,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
         "Knight",
         "Dungeon Explorer",
         "Guardian",
+        "Yawning Cat",
     }
     assert not any(
         isinstance(e, d.PartyMember)
@@ -286,6 +287,8 @@ def test_stage5_member_progress_shows_candidates_before_they_depart():
     assert [
         label for label, _ in display.stage5_member_progress_marks(player)
     ] == ["J1", "H", "R2", "K", "D", "G"]
+    player.stage6_candidates = True
+    assert display.stage5_member_progress_marks(player)[-1] == ("Y", False)
 
 
 def test_stage6_departed_member_does_not_reappear():
@@ -377,6 +380,7 @@ def test_stage5_replaces_oldest_member_without_respawning_them():
         (("Jester", "Knight"), 1.5),
         (("Healer", "Rogue"), 1),
         (("Guardian",), 1),
+        ((d.MEMBER_YAWNING_CAT,), 2),
     ],
 )
 @pytest.mark.parametrize("stage_num", [5, 6])
@@ -1749,3 +1753,108 @@ def test_stage6_uses_centered_narrow_sections_without_changing_field_size():
         for x in range(1, d.TILE_NUM_X):
             point = (d.FIELD_X_MARGIN + x * (d.TILE_WIDTH + 1) + 1, 1)
             assert stage6.tile_at(point) == (x, 0)
+
+
+@pytest.mark.parametrize("stage_num", [5, 6])
+def test_cat_explores_after_twenty_turns_without_identifying_or_stopping(monkeypatch, stage_num):
+    current, player = state((d.MEMBER_YAWNING_CAT,))
+    enemy = monster(10, 6, "b")
+    waiting = d.PartyMember(11, 6, d.MEMBER_HEALER)
+    current.entities = [enemy, waiting]
+    monkeypatch.setattr(stage56.rand, "choice", lambda cells: (10, 6))
+    stops = set()
+    for turn in range(20):
+        engine._step(
+            (1, 0) if turn % 2 == 0 else (-1, 0), [current], player,
+            [0], [(2, 2)], Counter(), turn, stage_num=stage_num,
+            repeat_stop_reasons=stops,
+        )
+        if turn < 19:
+            assert not any(map(any, current.seen))
+    assert {(x, y) for y, row in enumerate(current.seen)
+            for x, value in enumerate(row) if value} == {
+        (x, y) for y in range(6, 8) for x in range(10, 12)
+    }
+    assert player.known_monsters == {"a"}
+    assert not player.known_member_floors
+    assert not stops
+    assert display.revealed_entity_glyphs(
+        enemy, player.known_monsters, False, 100, None,
+    )[0].char == "?"
+    assert display.revealed_entity_glyphs(
+        waiting, player.known_monsters, False, 100, None,
+    )[0].char == "H"
+
+
+@pytest.mark.parametrize("bottom_right", [False, True])
+def test_cat_exploration_clips_at_map_edges_and_preserves_knowledge(monkeypatch, bottom_right):
+    current, player = state((d.MEMBER_YAWNING_CAT,))
+    if bottom_right:
+        player.x, player.y = d.FIELD_WIDTH - 1, d.FIELD_HEIGHT - 1
+    current.seen[10][10] = 1
+    current.field[0][1] = "#"
+    cat = player.members[0]
+    cat.exploration_turns = 19
+    def choose(cells):
+        assert (10, 10) not in cells
+        assert (1, 0) not in cells
+        return (d.FIELD_WIDTH - 1, d.FIELD_HEIGHT - 1) if bottom_right else (0, 0)
+    monkeypatch.setattr(stage56.rand, "choice", choose)
+    stage56.explore_with_cat(current, player)
+    left = d.FIELD_WIDTH - 2 if bottom_right else 0
+    top = d.FIELD_HEIGHT - 2 if bottom_right else 0
+    assert {(x, y) for y, row in enumerate(current.seen)
+            for x, value in enumerate(row) if value} == {
+        (10, 10), *((x, y) for y in range(top, top + 2)
+                    for x in range(left, left + 2)),
+    }
+    assert current.seen[10][10] == 1
+    assert cat.exploration_turns == 0
+
+
+def test_cat_handles_fully_explored_floor_and_recruitment_resets_counter():
+    current, player = state((d.MEMBER_YAWNING_CAT,))
+    cat = player.members.pop()
+    cat.exploration_turns = 19
+    stage56.explore_with_cat(current, player)
+    assert not any(map(any, current.seen))
+    assert cat.exploration_turns == 19
+    current.entities.append(cat)
+    stage56.recruit(current, player, cat)
+    assert cat.exploration_turns == 0
+    current.seen = [[1] * len(row) for row in current.field]
+    cat.exploration_turns = 19
+    stage56.explore_with_cat(current, player)
+    assert cat.exploration_turns == 0
+
+
+def test_cat_selects_only_nearby_unexplored_floor_independently_of_vortex(monkeypatch):
+    current, player = state((d.MEMBER_YAWNING_CAT,))
+    player.x, player.y = 35, 11
+    current.seen[11][35] = 1
+    current.field[11][36] = "#"
+    monkeypatch.setattr(d, "VORTEX_FLOOR_DIAMETER_RATIO", 0)
+    def choose(cells):
+        expected = set(iterate_ellipse_points(35, 11, 10, d.FOV_WIDTH_EXPANSION_RATIO))
+        assert set(cells) == expected - {(35, 11), (36, 11)}
+        assert (35, 1) in cells
+        assert (35, 0) not in cells
+        assert (35, 21) in cells
+        assert (35, 22) not in cells
+        assert (0, 11) not in cells
+        return (35, 1)
+    monkeypatch.setattr(stage56.rand, "choice", choose)
+    player.members[0].exploration_turns = 19
+    stage56.explore_with_cat(current, player)
+    assert current.seen[1][35] == 1
+
+
+def test_cat_does_nothing_when_only_distant_floor_is_unexplored(monkeypatch):
+    current, player = state((d.MEMBER_YAWNING_CAT,))
+    current.seen = [[1] * len(row) for row in current.field]
+    current.seen[-1][-1] = 0
+    monkeypatch.setattr(stage56.rand, "choice", lambda cells: pytest.fail("No local candidates"))
+    player.members[0].exploration_turns = 19
+    stage56.explore_with_cat(current, player)
+    assert current.seen[-1][-1] == 0
+    assert player.members[0].exploration_turns == 0
