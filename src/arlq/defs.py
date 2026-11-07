@@ -88,6 +88,7 @@ CHAR_COLLAPSE: str = "O"
 # Decorations kept beside the field (Floor.decor): no rule reads them; only
 # the sprite GUI draws them.
 DECOR_NONE: str = ""
+DECOR_TAVERN_PREFIX: str = "tavern:"
 DECOR_FALLEN_ROCKS: str = "fallen rocks"  # below a pit on the floor above
 DECOR_BOSS_ROUTE: str = "boss route"
 DECOR_BOSS_ROUTE_FALLEN_ROCKS: str = "boss route and fallen rocks"

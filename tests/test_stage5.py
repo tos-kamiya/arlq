@@ -305,21 +305,30 @@ def test_stage6_departed_member_does_not_reappear():
     )
 
 
-def test_stage6_candidates_start_on_first_floor():
+def test_stage6_candidates_start_near_eligible_taverns():
     for seed in range(5):
         engine.rand.set_seed(seed)
         floors, player = stage6.build()
+        assert len(floors[0].down_stairs) == len(floors[1].up_stairs) == 1
+        for floor in floors[:2]:
+            x, y = floor.tavern
+            for dx, char in enumerate("/\\=\\"):
+                assert floor.decor[y][x + dx] == d.DECOR_TAVERN_PREFIX + char
+            assert abs(x - floor.up[0]) + abs(y - floor.up[1]) <= 15
         members = [(index, e) for index, floor in enumerate(floors)
                    for e in floor.entities if isinstance(e, d.PartyMember)]
         assert len(members) == 4
         assert len({member.role for _, member in members}) == 4
         for index, member in members:
-            assert index == 0 and member.origin_floor == index
+            assert index in (0, 1) and member.origin_floor == index
+            if member.role in (d.MEMBER_HEALER, d.MEMBER_DUNGEON_EXPLORER):
+                assert index == 0
+            if member.role in (d.MEMBER_KNIGHT, d.MEMBER_GUARDIAN):
+                assert index == 1
             assert (member.x, member.y) in stage6._reachable_floor_points(floors[index], floors[index].up)
             assert index != 0 or (member.x, member.y) != (player.x, player.y)
-            room = stage6.tile_at((member.x, member.y))
-            start = stage6.tile_at((player.x, player.y))
-            assert abs(room[0] - start[0]) + abs(room[1] - start[1]) <= 1
+            tavern = floors[index].tavern
+            assert abs(member.x - tavern[0]) + abs(member.y - tavern[1]) <= 7
 
 
 def test_stage6_only_first_departure_from_floor_one_relocates_candidates(monkeypatch):
@@ -333,19 +342,22 @@ def test_stage6_only_first_departure_from_floor_one_relocates_candidates(monkeyp
     assert len(calls) == 1
 
 
-def test_stage6_relocation_includes_final_floor_and_preserves_joined_members(monkeypatch):
+def test_stage6_relocation_respects_taverns_and_preserves_joined_members(monkeypatch):
     floors, player = stage6.build()
-    member = next(e for e in floors[0].entities if isinstance(e, d.PartyMember))
-    stage56.recruit(floors[0], player, member)
-    waiting = {e.role for e in floors[0].entities if isinstance(e, d.PartyMember)}
+    floor = next(f for f in floors if any(isinstance(e, d.PartyMember) for e in f.entities))
+    member = next(e for e in floor.entities if isinstance(e, d.PartyMember))
+    stage56.recruit(floor, player, member)
+    waiting = {e.role for f in floors for e in f.entities if isinstance(e, d.PartyMember)}
     player.known_member_floors.update(dict.fromkeys(waiting, 1))
     monkeypatch.setattr(stage6.rand, "choice", lambda choices: choices[-1])
 
     stage6.record_transition(floors, player, 0, (1, 1), 1, (2, 2))
 
-    relocated = [e for e in floors[-1].entities if isinstance(e, d.PartyMember)]
+    relocated = [e for f in floors[:2] for e in f.entities if isinstance(e, d.PartyMember)]
     assert {e.role for e in relocated} == waiting
-    assert all(e.origin_floor == 2 for e in relocated)
+    assert not any(isinstance(e, d.PartyMember) for e in floors[-1].entities)
+    assert all(e.origin_floor == 0 for e in relocated if e.role in (d.MEMBER_HEALER, d.MEMBER_DUNGEON_EXPLORER))
+    assert all(e.origin_floor == 1 for e in relocated if e.role in (d.MEMBER_KNIGHT, d.MEMBER_GUARDIAN))
     assert member in player.members
     assert not waiting & player.known_member_floors.keys()
 

@@ -267,7 +267,10 @@ class BlessedUI:
 
         for y, row in enumerate(decor or ()):
             for x, value in enumerate(row):
-                if (value in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
+                if value.startswith(d.DECOR_TAVERN_PREFIX) and torched[y][x]:
+                    put(x, y, value[len(d.DECOR_TAVERN_PREFIX):], "yellow",
+                        bold=True, bg=cell_background(x, y))
+                elif (value in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
                         and torched[y][x] and field[y][x] == d.CHAR_FLOOR
                         and (floor_view or (x, y) != (px, py))):
                     put(x, y, ".", "yellow", bg=cell_background(x, y))

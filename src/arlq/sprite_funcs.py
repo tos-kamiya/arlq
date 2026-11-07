@@ -2211,7 +2211,8 @@ class SpriteUI(PygletUI):
 
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
-        if text == d.CHAR_BARRIER and self._floor_images is not None:
+        if (text == d.CHAR_BARRIER and self._floor_images is not None
+                and not self._decor_at(x, y).startswith(d.DECOR_TAVERN_PREFIX)):
             return  # shown by the barrier light itself
         if text in self._mark_images and (x - 1, y) in self._sprite_cells:
             return self._draw_rank_mark((x - 1, y), text, color)

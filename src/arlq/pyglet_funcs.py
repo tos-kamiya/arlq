@@ -1287,7 +1287,10 @@ class PygletUI:
 
         for y, row in enumerate(decor or ()):
             for x, value in enumerate(row):
-                if (value in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
+                if value.startswith(d.DECOR_TAVERN_PREFIX) and torched[y][x]:
+                    self._draw_field_text((x, y), value[len(d.DECOR_TAVERN_PREFIX):],
+                                          COLOR_MAP[CI_YELLOW], bold=True)
+                elif (value in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
                         and torched[y][x] and field[y][x] == d.CHAR_FLOOR):
                     self._draw_boss_route_marker(
                         (x, y), bool(cur_torched[y][x]), not floor_view and (x, y) == (px, py)

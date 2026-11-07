@@ -430,20 +430,59 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     floors[-1].respawn_exclusions.difference_update(boss_reserved)
     player = d.Player(*floors[0].up, 1, d.LP_INIT)
     player.stage6_candidates = True
-    start_room = tile_at((player.x, player.y))
+    for current in floors[:2]:
+        _place_tavern(current, current.up)
     for role in member_roles:
-        floor_index = 0
+        if role in (d.MEMBER_HEALER, d.MEMBER_DUNGEON_EXPLORER):
+            floor_index = 0
+        elif role in (d.MEMBER_KNIGHT, d.MEMBER_GUARDIAN):
+            floor_index = 1
+        else:
+            floor_index = rand.randrange(2)
         current = floors[floor_index]
-        reachable = _reachable_floor_points(current, current.up)
-        points = [point for point in _open_points(current)
-                  if point in reachable and point != (player.x, player.y)
-                  and sum(abs(a - b) for a, b in zip(tile_at(point), start_room)) <= 1]
-        point = rand.choice(points)
+        point = _candidate_near_tavern(current, current.up)
         current.entities.append(d.PartyMember(*point, role, origin_floor=floor_index))
     _mark_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
     player.rescue_stage = True
     player.treasure_stage = True
     return floors, player
+
+
+def _place_tavern(current: Floor, anchor: d.Point) -> None:
+    reachable = _reachable_floor_points(current, anchor)
+    open_points = set(_open_points(current)) & reachable
+    choices = [
+        (x, y) for x, y in open_points
+        if all((x + dx, y) in open_points for dx in range(4))
+    ]
+    if not choices:
+        raise RuntimeError("no space for stage 6 tavern")
+    x, y = min(choices, key=lambda p: (abs(p[0] - anchor[0]) + abs(p[1] - anchor[1]), p))
+    current.tavern = (x, y)
+    for dx, char in enumerate("/\\=\\"):
+        current.decor[y][x + dx] = d.DECOR_TAVERN_PREFIX + char
+
+
+def _candidate_near_tavern(
+    current: Floor, anchor: d.Point, excluded: d.Point | None = None
+) -> d.Point:
+    tavern = current.tavern or anchor
+    reachable = _reachable_floor_points(current, anchor)
+    points = [p for p in _open_points(current) if p in reachable and p != excluded
+              and not _in_tavern(current, p)]
+    if not points:
+        raise RuntimeError("no space near stage 6 tavern")
+    nearby = [p for p in points if abs(p[0] - tavern[0]) + abs(p[1] - tavern[1]) <= 7]
+    if nearby:
+        return rand.choice(nearby)
+    return min(points, key=lambda p: (abs(p[0] - tavern[0]) + abs(p[1] - tavern[1]), p))
+
+
+def _in_tavern(current: Floor, point: d.Point) -> bool:
+    if current.tavern is None:
+        return False
+    x, y = current.tavern
+    return x <= point[0] < x + 4 and point[1] == y
 
 
 def _mark_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None:
@@ -487,7 +526,8 @@ def _mark_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None
         link = previous[state]
         state = link[0] if link is not None else None
     for index, (x, y) in list(reversed(route))[::3]:
-        floors[index].decor[y][x] = d.DECOR_BOSS_ROUTE
+        if floors[index].decor[y][x] == d.DECOR_NONE and not _in_tavern(floors[index], (x, y)):
+            floors[index].decor[y][x] = d.DECOR_BOSS_ROUTE
 
 
 def relocate_candidates(floors, player, candidates=None, player_floor=None):
@@ -499,16 +539,14 @@ def relocate_candidates(floors, player, candidates=None, player_floor=None):
                     current.entities.remove(entity)
                     candidates.append(entity)
     for member in candidates:
-        available = [
-            (index, [point for point in _open_points(current)
-                     if index != player_floor or point != (player.x, player.y)])
-            for index, current in enumerate(floors)
-        ]
-        available = [(index, points) for index, points in available if points]
-        if not available:
-            raise RuntimeError("no space for party candidate")
-        index, points = rand.choice(available)
-        member.x, member.y = rand.choice(points)
+        fixed_floor = {
+            d.MEMBER_HEALER: 0, d.MEMBER_DUNGEON_EXPLORER: 0,
+            d.MEMBER_KNIGHT: 1, d.MEMBER_GUARDIAN: 1,
+        }.get(member.role)
+        index = fixed_floor if fixed_floor is not None else rand.randrange(2)
+        current = floors[index]
+        excluded = (player.x, player.y) if index == player_floor else None
+        member.x, member.y = _candidate_near_tavern(current, current.up, excluded)
         member.origin_floor = index
         player.known_member_floors.pop(member.role, None)
         floors[index].entities.append(member)
@@ -555,7 +593,7 @@ def _choose_stair_point(
 
 def _place_additional_stairs(floors: list[Floor]) -> None:
     """Add a second ordinary paired staircase on half of floor transitions."""
-    for upper, lower in zip(floors, floors[1:]):
+    for upper, lower in zip(floors[1:], floors[2:]):
         if rand.randrange(2) == 0:
             continue
         occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
