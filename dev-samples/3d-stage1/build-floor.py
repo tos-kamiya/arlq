@@ -16,7 +16,12 @@ ROOT = Path(__file__).resolve().parent
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'floor'
 OUT.mkdir(parents=True, exist_ok=True)
 WIDTH, HEIGHT = 160, 200
-SLAB_X, SLAB_Y = 1.0, HEIGHT / WIDTH  # the canvas in world units
+# Seen with the walls' 60-degree orthographic camera, so the slab's south
+# edge shows its thickness. The canvas is 1 x HEIGHT / WIDTH on the image
+# plane; the cell's north-south depth on the ground follows from the angle.
+ELEVATION = math.radians(60)
+CANVAS_UP = HEIGHT / WIDTH
+SLAB_X, SLAB_Y = 1.0, CANVAS_UP / math.sin(ELEVATION)  # the cell in world units
 
 
 def stone(name, seed):
@@ -72,7 +77,9 @@ bevel.segments = 3
 # Joint below the slab: a dark bed of mortar filling the whole cell.
 bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0, -0.07))
 mortar = bpy.context.object
-mortar.scale = (SLAB_X, SLAB_Y, 1)
+# Wider and deeper than the cell: the tilted camera looks past the slab's
+# north edge onto the bed beyond the cell, which would otherwise be empty.
+mortar.scale = (SLAB_X * 1.5, SLAB_Y * 1.5, 1)
 mortar_mat = bpy.data.materials.new('Mortar')
 mortar_mat.use_nodes = True
 mortar_mat.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.45, 0.45, 0.45, 1)
@@ -84,10 +91,12 @@ sun = bpy.context.object
 sun.data.energy = 3.0
 sun.rotation_euler = (Vector((0, 0, 0)) - Vector((-4, -6, 8))).to_track_quat('-Z', 'Y').to_euler()
 
-bpy.ops.object.camera_add(location=(0, 0, 5))
+view = Vector((0, math.cos(ELEVATION), -math.sin(ELEVATION)))
+bpy.ops.object.camera_add(location=-view * 20)
 camera = bpy.context.object
+camera.rotation_euler = view.to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = SLAB_Y  # the canvas is taller than wide
+camera.data.ortho_scale = CANVAS_UP  # the canvas is taller than wide
 scene.camera = camera
 scene.render.image_settings.file_format = 'PNG'
 scene.render.image_settings.color_mode = 'RGBA'

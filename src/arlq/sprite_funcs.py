@@ -264,8 +264,8 @@ EDGE_FLOOR_END_FADE = (0.7, 1.5)
 EDGE_FLOOR_TEXELS_PER_CELL = 4
 # Terrain looks: file prefixes of the floor and wall parts, the floor tint and
 # checkerboard shade, and the wall tint, per visible/explored color. Stage 5's
-# training room lays mint foam mats (colors baked in, so the tint only darkens
-# explored cells); other stages use the ruins. A theme without a wall prefix
+# training room lays concrete slabs tinted muted mint, like the flagstones'
+# near-white images; other stages use the ruins. A theme without a wall prefix
 # draws each wall as a plain marble-colored box (see WALL_BLOCK_*), cheap to
 # draw in the room's many walls: the wall entry then gives (top face, front
 # face) colors per visible/explored color.
@@ -274,7 +274,7 @@ TERRAIN_THEMES = {
               {color: tuple(min(255, round(c * scale)) for c in color)
                for color, scale in WALL_TINT.items()}),
     'training': ('training-', None,
-                 {VISIBLE_FLOOR: (255, 255, 255), FLOOR: (150, 150, 150)}, 1,
+                 {VISIBLE_FLOOR: (112, 139, 128), FLOOR: (66, 82, 75)}, 0.91,
                  {VISIBLE_WALL: ((230, 224, 196), (178, 171, 144)),
                   WALL: ((152, 148, 129), (116, 111, 94))}),
 }

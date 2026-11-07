@@ -2,12 +2,13 @@
 
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-floor-training.py
 
-Two muted mint concrete slabs with different surface patterns, each filling
+Two near-white concrete slabs with different surface patterns, each filling
 one sprite-mode cell (16 x 20 px at scale 1), laid like the flagstones as a
-checkerboard. Unlike the flagstones the colors are baked in; the GUI only
-darkens them for explored cells outside the current view.
+checkerboard. As with the flagstones, the GUI tints them muted mint
+(sprite_funcs.TERRAIN_THEMES), slightly darker on alternate cells.
 """
 from pathlib import Path
+import math
 
 import bpy
 from mathutils import Vector
@@ -16,10 +17,16 @@ ROOT = Path(__file__).resolve().parent
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'floor'
 OUT.mkdir(parents=True, exist_ok=True)
 WIDTH, HEIGHT = 160, 200
-SLAB_X, SLAB_Y = 1.0, HEIGHT / WIDTH  # the canvas in world units
-# sRGB colors of the two slabs; parity 1 ('b') is slightly darker.
-MINT = {'a': (100, 126, 116), 'b': (90, 114, 105)}
-JOINT = (40, 48, 45)
+# Seen with the walls' 60-degree orthographic camera, so the slab's south
+# edge shows its thickness. The canvas is 1 x HEIGHT / WIDTH on the image
+# plane; the cell's north-south depth on the ground follows from the angle.
+ELEVATION = math.radians(60)
+CANVAS_UP = HEIGHT / WIDTH
+SLAB_X, SLAB_Y = 1.0, CANVAS_UP / math.sin(ELEVATION)  # the cell in world units
+# sRGB colors of the slabs and the joint; the joint keeps the darkness
+# relative to the slab that the former baked-in mint had.
+SLAB = (235, 235, 235)
+JOINT = (104, 104, 104)
 
 
 def linear(srgb):
@@ -105,7 +112,9 @@ bevel.width = 0.02
 bevel.segments = 2
 bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0, -0.07))
 joint = bpy.context.object
-joint.scale = (SLAB_X, SLAB_Y, 1)
+# Wider and deeper than the cell: the tilted camera looks past the slab's
+# north edge onto the bed beyond the cell, which would otherwise be empty.
+joint.scale = (SLAB_X * 1.5, SLAB_Y * 1.5, 1)
 joint_mat = bpy.data.materials.new('Joint')
 joint_mat.use_nodes = True
 joint_mat.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (
@@ -118,15 +127,17 @@ sun = bpy.context.object
 sun.data.energy = 2.0
 sun.rotation_euler = (Vector((0, 0, 0)) - Vector((-4, -6, 8))).to_track_quat('-Z', 'Y').to_euler()
 
-bpy.ops.object.camera_add(location=(0, 0, 5))
+view = Vector((0, math.cos(ELEVATION), -math.sin(ELEVATION)))
+bpy.ops.object.camera_add(location=-view * 20)
 camera = bpy.context.object
+camera.rotation_euler = view.to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = SLAB_Y  # the canvas is taller than wide
+camera.data.ortho_scale = CANVAS_UP  # the canvas is taller than wide
 scene.camera = camera
 scene.render.image_settings.file_format = 'PNG'
 scene.render.image_settings.color_mode = 'RGBA'
 for name, seed in (('a', 1), ('b', 2)):
     slab.data.materials.clear()
-    slab.data.materials.append(concrete('Concrete ' + name, MINT[name], seed))
+    slab.data.materials.append(concrete('Concrete ' + name, SLAB, seed))
     scene.render.filepath = str(OUT / ('training-' + name + '.png'))
     bpy.ops.render.render(write_still=True)
