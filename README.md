@@ -222,7 +222,7 @@ Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alo
 | **C** Rare Chimera  | Its Cursed Sword gives 3x attack power. Each monster or elf contact and each wall broken costs an extra 10 LP. Like the normal sword, it can break up to three walls. |
 | **e** Erebus        | Battling it drains your vitality by a small amount.                                                                     |
 | **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
-| **g** Golem         | When defeated, rocks scatter up to two tiles in each of the four diagonal directions around you. It yields no food.                                                                        |
+| **g** Golem         | When defeated, rocks scatter up to two tiles in each of the four diagonal directions around you, replacing any walls there. It yields no food.                                                                        |
 | **H** High Elf      | In Stage 2, a passive elf: contact reveals it without combat or a reward. |
 | **X** Caltrop Plant | Contacting it scatters caltrops (`x`) around you in a checkerboard pattern centered on the contact cell, consistent at every location. |
 

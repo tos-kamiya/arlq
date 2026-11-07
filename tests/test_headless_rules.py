@@ -1998,7 +1998,7 @@ def test_golem_rocks_mark_golem_walls_in_terrain_and_decor():
         down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
         island=None,
     )
-    floor.field[8][9] = d.CHAR_WALL  # an existing wall stays out of the record
+    floor.field[8][8] = d.CHAR_WALL  # an existing wall becomes Golem rubble
     before = deepcopy(floor.field)
     game_engine_module._defeat_monster(
         golem, floor, player, [0], [(10, 10)], Counter(), floors=[floor], stage_num=2

@@ -756,7 +756,7 @@ def _defeat_monster(
         ):
             if (x, y) not in protected_collapse_cells and current.field[y][
                 x
-            ] == d.CHAR_FLOOR:
+            ] in (d.CHAR_FLOOR, *d.WALL_CHARS):
                 current.field[y][x] = d.CHAR_GOLEM_WALL
     elif entity.tribe.effect == d.EFFECT_VORTEX:
         _vortex_rearrange(
