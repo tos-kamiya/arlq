@@ -453,13 +453,13 @@ def _place_tavern(current: Floor, anchor: d.Point) -> None:
     open_points = set(_open_points(current)) & reachable
     choices = [
         (x, y) for x, y in open_points
-        if all((x + dx, y) in open_points for dx in range(4))
+        if all((x + dx, y) in open_points for dx in range(2))
     ]
     if not choices:
         raise RuntimeError("no space for stage 6 tavern")
     x, y = min(choices, key=lambda p: (abs(p[0] - anchor[0]) + abs(p[1] - anchor[1]), p))
     current.tavern = (x, y)
-    for dx, char in enumerate("/\\=\\"):
+    for dx, char in enumerate("/\\"):
         current.decor[y][x + dx] = d.DECOR_TAVERN_PREFIX + char
 
 
@@ -482,7 +482,7 @@ def _in_tavern(current: Floor, point: d.Point) -> bool:
     if current.tavern is None:
         return False
     x, y = current.tavern
-    return x <= point[0] < x + 4 and point[1] == y
+    return x <= point[0] < x + 2 and point[1] == y
 
 
 def _mark_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None:

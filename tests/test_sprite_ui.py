@@ -12,13 +12,6 @@ from arlq.pyglet_funcs import PygletUI
 from arlq.sprite_funcs import SPRITE_FILES, SPRITE_REFERENCE_PIXELS, SpriteUI
 
 
-def test_tavern_equals_is_drawn_with_sprite_floor(sprite_ui):
-    sprite_ui._floor_images = object()
-    sprite_ui._decor = [[d.DECOR_TAVERN_PREFIX + "="]]
-    sprite_ui._draw_field_text((0, 0), "=", (255, 255, 0), True)
-    assert sprite_ui.text_calls[-1][1] == "="
-
-
 @pytest.fixture
 def sprite_ui(monkeypatch):
     monkeypatch.setattr(i18n, '_lang', 'en')

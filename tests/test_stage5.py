@@ -312,7 +312,7 @@ def test_stage6_candidates_start_near_eligible_taverns():
         assert len(floors[0].down_stairs) == len(floors[1].up_stairs) == 1
         for floor in floors[:2]:
             x, y = floor.tavern
-            for dx, char in enumerate("/\\=\\"):
+            for dx, char in enumerate("/\\"):
                 assert floor.decor[y][x + dx] == d.DECOR_TAVERN_PREFIX + char
             assert abs(x - floor.up[0]) + abs(y - floor.up[1]) <= 15
         members = [(index, e) for index, floor in enumerate(floors)
