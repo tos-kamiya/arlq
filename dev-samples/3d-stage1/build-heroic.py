@@ -59,8 +59,8 @@ CELL_W = SCREEN_PIXEL * 16
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
 GRID_COLS, GRID_ROWS = 14, 8
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
-# the companions and elves; monsters in stage order, then Stage 5 members and
-# the Stage 5 toy chest.
+# the companions and elves; monsters in stage order, then Stage 5 members,
+# the Stage 5 toy chest and the Stage 6 Yawning Cat.
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
@@ -82,7 +82,7 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('explorer-dark', 'DUNGEON EXPLORER DARK'),
          ('guardian-light', 'GUARDIAN LIGHT'), ('guardian-medium', 'GUARDIAN MEDIUM'),
          ('guardian-dark', 'GUARDIAN DARK'),
-         ('T-toy', 'TOY CHEST')]
+         ('T-toy', 'TOY CHEST'), ('cat', 'YAWNING CAT')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -103,9 +103,7 @@ ROW += [('?', 'UNKNOWN ?', 60, 0), ('!', 'UNKNOWN !', 65, 0), ('&', 'UNKNOWN &',
 RATIONS = ('ration-hyorogan', 'ration-hardtack', 'ration-jerky')
 ROW += [('ration-hyorogan', 'HYOROGAN', 75, 0), ('ration-hardtack', 'HARDTACK', 80, 0),
         ('ration-jerky', 'JERKY', 85, 0)]
-# The Stage 6 Yawning Cat, while it is tried out on its own.
-ROW += [('cat', 'YAWNING CAT', 90, 0)]
-OFF_GRID = ("'", '"', '?', '!', '&', *RATIONS, 'cat')
+OFF_GRID = ("'", '"', '?', '!', '&', *RATIONS)
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba's first size, baked into the meshes.
@@ -4874,7 +4872,7 @@ for row in range(GRID_ROWS):
         cx, cy = cell_centre(col, row)
         block('Floor tile', (cx, cy, -0.05), (CELL_W - 0.04, CELL_D - 0.04, 0.1),
               tile if (col + row) % 2 == 0 else tile_dark, 0.02)
-label('ARLQ / STAGE 1-5 / HEROIC RESIN', (0, CELL_D / 2 + 0.5, 0.0), 0.2)
+label('ARLQ / STAGE 1-6 / HEROIC RESIN', (0, CELL_D / 2 + 0.5, 0.0), 0.2)
 # Warm key, cool fill, strong back rim lights for glossy edges.
 for name, pos, power, size, color in [
         ('Key', (-4, -6, 8), 1000, 5, (1.0, 0.93, 0.85)),
