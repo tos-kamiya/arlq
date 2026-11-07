@@ -291,7 +291,8 @@ THEME_SPRITES = {'training': {'T': 'T-toy'}}
 # checkerboard), added onto the floor; the back sheet reaches a little into the
 # cell above. While the protective amulet makes barriers harmless, the cells
 # within one cell of the player (its own and the eight around it) show only
-# faint grey smoke of the same shape. Barriers outside the current view are
+# faint grey smoke of the same shape. A Guardian also cools nearby caltrops.
+# Barriers outside the current view are
 # darkened like the floor. Sizes are in cell widths/heights.
 BARRIER_TEXELS = (48, 96)
 BARRIER_HEIGHT = 1.5
@@ -603,6 +604,7 @@ class SpriteUI(PygletUI):
     # cools the barrier stones around it.
     _cur_torched = None
     _cooling_center = None
+    _guardian_protection = False
     # The field being drawn, for stairs and pits that spread over neighbouring floor.
     _stage_field = None
     _stage_discovered_at = None
@@ -895,6 +897,10 @@ class SpriteUI(PygletUI):
             if player is not None and not kwargs.get('floor_view') and barrier_lp_damage(player) == 0
             else None
         )
+        self._guardian_protection = (
+            self._cooling_center is not None
+            and d.has_member(player, d.MEMBER_GUARDIAN)
+        )
         result = super().draw_stage(decor=decor, **kwargs)
         return result
 
@@ -1081,14 +1087,17 @@ class SpriteUI(PygletUI):
             return col, row
         return None
 
+    def _near_cooling_center(self, x, y):
+        if self._cooling_center is None:
+            return False
+        cx, cy = self._cooling_center
+        return max(abs(x - cx), abs(y - cy)) <= 1
+
     def _draw_barrier(self, x, y, field, discovered_at):
         """Orange magic light rising from the floor, or faint smoke near the player while harmless."""
         visible = self._cur_torched is not None and self._cur_torched[y][x]
         self._draw_floor(x, y, VISIBLE_FLOOR if visible else FLOOR, field, discovered_at)
-        cooled = False
-        if self._cooling_center is not None:
-            cx, cy = self._cooling_center
-            cooled = max(abs(x - cx), abs(y - cy)) <= 1
+        cooled = self._near_cooling_center(x, y)
         image = (self._smoke_images if cooled else self._barrier_images)[(x + y) % 2]
         bottom = self.window_height - (y + 1 - BARRIER_BASE) * self.cell_size_y
         group = self._row_group(y, 'pillar-back')
@@ -1207,7 +1216,9 @@ class SpriteUI(PygletUI):
     def _draw_tile(self, x, y, tile_color, field, discovered_at):
         # Stairs and pits drawn after this cell look at their neighbours through these.
         self._stage_field, self._stage_discovered_at = field, discovered_at
-        if (field[y][x] == d.CHAR_BARRIER and discovered_at(x, y)
+        if ((field[y][x] == d.CHAR_BARRIER
+             or (field[y][x] == d.CHAR_CALTROP and self._guardian_protection
+                 and self._near_cooling_center(x, y))) and discovered_at(x, y)
                 and tile_color != REACHABLE_CELL_COLOR and self._floor_images is not None):
             return self._draw_barrier(x, y, field, discovered_at)
         if (self._decor_at(x, y) in (d.DECOR_FALLEN_ROCKS, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)

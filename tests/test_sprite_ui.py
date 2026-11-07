@@ -889,6 +889,39 @@ def test_barrier_glows_on_the_floor_and_only_smokes_near_a_protected_player(
     assert light.scale_y * 96 > ui.cell_size_y
 
 
+@pytest.mark.parametrize('guardian, amulet, floor_view, barrier_cooled, caltrop_cooled', [
+    (False, False, False, False, False),
+    (False, True, False, True, False),
+    (True, False, False, True, True),
+    (True, False, True, False, False),
+])
+def test_guardian_cools_barriers_and_caltrops_near_player(
+    monkeypatch, guardian, amulet, floor_view, barrier_cooled, caltrop_cooled,
+):
+    ui, field = _barrier_ui(monkeypatch, None)
+    ui.window_width = 300
+    ui._update_strength_column_width = lambda: setattr(ui, 'strength_column_width', 50)
+    ui._camera_follow_player = False
+    ui._last_camera_player_pos = None
+    player = d.Player(2, 2, 1, 100)
+    if guardian:
+        player.members.append(d.PartyMember(2, 2, d.MEMBER_GUARDIAN))
+    if amulet:
+        player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
+    monkeypatch.setattr(PygletUI, 'draw_stage', lambda self, **kwargs: None)
+    ui.draw_stage(player=player, floor_view=floor_view)
+    ui._draw_tile(2, 2, sprite_funcs.VISIBLE_FLOOR, field, lambda x, y: True)
+    assert ui._drawables[-1].image.name.startswith('smoke' if barrier_cooled else 'barrier')
+
+    field[2][3] = field[2][4] = d.CHAR_CALTROP
+    drawn = []
+    monkeypatch.setattr(ui, '_draw_barrier', lambda x, y, *_: drawn.append((x, y)))
+    monkeypatch.setattr(PygletUI, '_draw_tile', lambda *args: None)
+    for x in (3, 4):
+        ui._draw_tile(x, 2, (132, 70, 60), field, lambda x, y: True)
+    assert drawn == ([(3, 2)] if caltrop_cooled else [])
+
+
 def test_barrier_image_glows_from_the_floor_and_fades_upward():
     image = sprite_funcs.barrier_image(0)
     width, height = sprite_funcs.BARRIER_TEXELS
