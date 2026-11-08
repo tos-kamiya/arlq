@@ -27,9 +27,9 @@
 # 1. シーンを作り直す（全体プレビューは描かない。約1分）
 blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --save-only
 # 2. 直したキャラクターだけ書き出す（名前は export-sprites.py の models の1つ目）
-blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only explorer-light explorer-medium explorer-dark
+blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only explorer-m-l explorer-m-m explorer-m-d
 # 3. 書き出した画像だけ、透明な画素に輪郭の色を広げる
-.venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/characters/explorer-*.png
+.venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/characters/explorer-m-*.png
 ```
 
 - `--save-only` は、直したキャラクターのシーンだけでなく3つのシーンをすべて作り直すので、`.blend` は3つとも変更ありになる。1つのシーンだけでよければ `-- --group monsters`（または `members`、`others`）を使う。
@@ -93,11 +93,12 @@ cd src/arlq/assets/characters
 convert -background '#46423c' chimera.png comodo-dragon.png dragon.png \
   +repage -gravity south +append +repage -flatten /tmp/compare.png
 # メンバーの一覧（肌の色3段）
-for t in light medium dark; do
-  convert -background '#46423c' player.png jester-$t.png healer-$t.png rogue-$t.png \
-    knight-$t.png guardian-$t.png explorer-$t.png +repage -gravity south +append +repage /tmp/row-$t.png
+for t in l m d; do
+  convert -background '#46423c' player.png jester-n-$t.png healer-f-$t.png healer-m-$t.png \
+    rogue-n-$t.png knight-n-$t.png guardian-n-$t.png explorer-f-$t.png explorer-m-$t.png \
+    seer-f-$t.png seer-m-$t.png +repage -gravity south +append +repage /tmp/row-$t.png
 done
-convert -background '#46423c' /tmp/row-light.png /tmp/row-medium.png /tmp/row-dark.png \
+convert -background '#46423c' /tmp/row-l.png /tmp/row-m.png /tmp/row-d.png \
   +repage -gravity center -append +repage -flatten /tmp/members-preview.png
 ```
 

@@ -21,7 +21,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from heroic_groups import GROUPS, blend_path, group_of
+from heroic_groups import GROUPS, MEMBER_TONES, MEMBER_VARIANTS, blend_path, group_of
 
 OUT = Path(__file__).resolve().parent / 'heroic'
 GROUP = sys.argv[sys.argv.index('--group') + 1] if '--group' in sys.argv else None
@@ -63,6 +63,9 @@ GRID_COLS, GRID_ROWS = 14, 7
 # the medium skin tone in the order J, H, R, K, G, D (Explorer), S (Fairy
 # Seer), Y (female and male for the Healer, Dungeon Explorer and Fairy Seer,
 # whose hair shows), and last the Stage 5 toy chest.
+MEMBER_LABELS = {'jester': 'JESTER', 'healer': 'HEALER', 'rogue': 'ROGUE', 'knight': 'KNIGHT',
+                 'guardian': 'GUARDIAN', 'explorer': 'EXPLORER', 'seer': 'FAIRY SEER'}
+GENDER_LABELS = {'f': ' FEMALE', 'm': ' MALE', 'n': ''}
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
@@ -73,18 +76,13 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('X', 'CALTROP PLANT'), ('e', 'EREBUS'), ('w', 'WYRM'), ('W', 'DREAD WYRM'),
          ('E', 'RARE EREBUS'), ('m', 'SPORE'), ('k', 'MARKSMAN'), ('V', 'VORTEX'),
          ('f', 'FLAME COBRA'), ('B', 'BUFFALO'),
-         ('jester-medium', 'JESTER'),
-         ('healer-medium', 'HEALER FEMALE'), ('healer-male-medium', 'HEALER MALE'),
-         ('rogue-medium', 'ROGUE'), ('knight-medium', 'KNIGHT'), ('guardian-medium', 'GUARDIAN'),
-         ('explorer-female-medium', 'EXPLORER FEMALE'), ('explorer-medium', 'EXPLORER MALE'),
-         ('seer-medium', 'FAIRY SEER FEMALE'), ('seer-male-medium', 'FAIRY SEER MALE'),
+         *[(f'{job}-{gender}-m', MEMBER_LABELS[job] + GENDER_LABELS[gender])
+           for job, gender in MEMBER_VARIANTS],
          ('cat', 'YAWNING CAT'), ('T-toy', 'TOY CHEST')]
 # The members in the light and dark skin tones are built for sprite export
 # only, off the preview grid like the marks and rations below.
-MEMBER_MODELS = ('jester', 'healer', 'healer-male', 'rogue', 'knight', 'explorer',
-                 'explorer-female', 'guardian', 'seer', 'seer-male')
-OTHER_TONES = [(f'{model}-{tone}', f'{model}-{tone}'.upper())
-               for model in MEMBER_MODELS for tone in ('light', 'dark')]
+OTHER_TONES = [(f'{job}-{gender}-{tone}', f'{job}-{gender}-{tone}'.upper())
+               for job, gender in MEMBER_VARIANTS for tone in MEMBER_TONES if tone != 'm']
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -125,18 +123,15 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09 * 0.95, 'B': 1.13 * 0.95, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
-         'rock': 2.5, 'jester-light': 1.3, 'jester-medium': 1.3, 'jester-dark': 1.3,
-         'healer-light': 1.4, 'healer-medium': 1.4, 'healer-dark': 1.4,
-         'rogue-light': 1.42, 'rogue-medium': 1.42, 'rogue-dark': 1.42,
-         'explorer-light': 1.49, 'explorer-medium': 1.49, 'explorer-dark': 1.49,
-         'knight-light': 1.79, 'knight-medium': 1.79, 'knight-dark': 1.79,
-         'guardian-light': 1.49, 'guardian-medium': 1.49, 'guardian-dark': 1.49,
+         'rock': 2.5,
          '?': 1.3, '!': 1.3, '&': 1.3,
          'ration-hyorogan': 1.4, 'ration-hardtack': 1.3, 'ration-jerky': 1.45,
-         'cat': 1.2, 'seer-light': 1.3, 'seer-medium': 1.3, 'seer-dark': 1.3,
-         **{'healer-male-' + tone: 1.4 for tone in ('light', 'medium', 'dark')},
-         **{'explorer-female-' + tone: 1.49 for tone in ('light', 'medium', 'dark')},
-         **{'seer-male-' + tone: 1.3 for tone in ('light', 'medium', 'dark')}}
+         'cat': 1.2}
+# Each party member job is one size for both genders and every skin tone.
+MEMBER_SIZES = {'jester': 1.3, 'healer': 1.4, 'rogue': 1.42, 'knight': 1.79, 'guardian': 1.49,
+                'explorer': 1.49, 'seer': 1.3}
+SIZES.update({f'{job}-{gender}-{tone}': MEMBER_SIZES[job]
+              for job, gender in MEMBER_VARIANTS for tone in MEMBER_TONES})
 # The unknown symbols float this high above the floor and lean back this many
 # degrees, so they read almost undistorted from the 60-degree camera.
 UNKNOWN_FLOAT = 0.2
@@ -1831,8 +1826,8 @@ ELF_STRETCH = 1.3
 MEMBER_HEAD_SIZE = 1.49
 
 
-def member_head_scale(char):
-    return MEMBER_HEAD_SIZE / SIZES[char]
+def member_head_scale(job):
+    return MEMBER_HEAD_SIZE / MEMBER_SIZES[job]
 
 
 def elf_figure(x, y, prefix, robe, skin, eye, body, head, skirt=(0.25, 0.19, 0.14), torso=None,
@@ -2671,7 +2666,7 @@ def jester(x, y, tone):
 
     elf_figure(x, y, 'Jester', motley, skin, eye, body, head, skirt=(0.21, 0.19, 0.16),
                skirt_z=(0.40, 0.49, 0.58), ears=False,
-               head_scale=member_head_scale('jester-' + tone))
+               head_scale=member_head_scale('jester'))
 
 
 def healer(x, y, tone, gender='female'):
@@ -2793,7 +2788,7 @@ def healer(x, y, tone, gender='female'):
 
     elf_figure(x, y, 'Healer', robe, skin, eye, body, head, ears=False,
                girth=1.08 if gender == 'male' else 1.0,
-               head_scale=member_head_scale('healer-' + tone))
+               head_scale=member_head_scale('healer'))
 
 
 def sphere_shell(name, center, scale, mat, keep, thickness=0.02, reshape=None):
@@ -2959,7 +2954,7 @@ def rogue(x, y, tone):
     upper = set(bpy.data.objects)
     elf_figure(x, y, 'Rogue', charcoal, skin, eye, body, head, skirt=(0.23, 0.19, 0.16),
                skirt_z=(0.32, 0.46, 0.58), ears=False,
-               head_scale=member_head_scale('rogue-' + tone))
+               head_scale=member_head_scale('rogue'))
     # Lean the body forward over the bent knees, tilting the head back as
     # much so the eyes still face the camera. (Turning the figure to show
     # the lean in profile made it look like it was diving.)
@@ -5016,7 +5011,7 @@ def fairy_seer(x, y, tone, gender='female'):
     elf_figure(x, y, 'Fairy Seer', dress, skin, eye, body, head,
                skirt=None if male else (0.24, 0.19, 0.14), skirt_z=(0.14, 0.36, 0.58),
                ears=False, girth=1.08 if male else 1.0,
-               head_scale=member_head_scale('seer-' + tone))
+               head_scale=member_head_scale('seer'))
 
 
 def label(value, pos, size):
@@ -5028,6 +5023,17 @@ def label(value, pos, size):
     obj.data.size = size
     obj.data.extrude = 0.002
     obj.data.materials.append(ink)
+
+
+def member_builder(job, gender, tone):
+    """The builder for one member model; `gender` and `tone` are the letters
+    of its name (see heroic_groups.py)."""
+    build = {'jester': jester, 'healer': healer, 'rogue': rogue, 'knight': knight,
+             'guardian': guardian, 'explorer': dungeon_explorer, 'seer': fairy_seer}[job]
+    tone = {'l': 'light', 'm': 'medium', 'd': 'dark'}[tone]
+    if gender == 'n':
+        return lambda x, y: build(x, y, tone)
+    return lambda x, y: build(x, y, tone, {'f': 'female', 'm': 'male'}[gender])
 
 
 builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
@@ -5045,27 +5051,8 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock,
             'cat': yawning_cat,
             'ration-hyorogan': hyorogan, 'ration-hardtack': hardtack, 'ration-jerky': jerky,
-            **{'jester-' + tone: (lambda tone: lambda x, y: jester(x, y, tone))(tone)
-               for tone in MEMBER_SKINS},
-            **{'healer-' + tone: (lambda tone: lambda x, y: healer(x, y, tone))(tone)
-               for tone in MEMBER_SKINS},
-            **{'rogue-' + tone: (lambda tone: lambda x, y: rogue(x, y, tone))(tone)
-               for tone in MEMBER_SKINS},
-            **{'explorer-' + tone: (lambda tone: lambda x, y: dungeon_explorer(x, y, tone))(tone)
-               for tone in MEMBER_SKINS},
-            **{'knight-' + tone: (lambda tone: lambda x, y: knight(x, y, tone))(tone)
-               for tone in MEMBER_SKINS},
-            **{'guardian-' + tone: (lambda tone: lambda x, y: guardian(x, y, tone))(tone)
-               for tone in MEMBER_SKINS},
-            **{'seer-' + tone: (lambda tone: lambda x, y: fairy_seer(x, y, tone))(tone)
-               for tone in MEMBER_SKINS},
-            **{'healer-male-' + tone: (lambda tone: lambda x, y: healer(x, y, tone, 'male'))(tone)
-               for tone in MEMBER_SKINS},
-            **{'explorer-female-' + tone:
-               (lambda tone: lambda x, y: dungeon_explorer(x, y, tone, 'female'))(tone)
-               for tone in MEMBER_SKINS},
-            **{'seer-male-' + tone: (lambda tone: lambda x, y: fairy_seer(x, y, tone, 'male'))(tone)
-               for tone in MEMBER_SKINS}}
+            **{f'{job}-{gender}-{tone}': member_builder(job, gender, tone)
+               for job, gender in MEMBER_VARIANTS for tone in MEMBER_TONES}}
 def render_group_shot():
     """Open the others' scene, bring in the other groups, and render them all."""
     bpy.ops.wm.open_mainfile(filepath=str(blend_path('others')))

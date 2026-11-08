@@ -10,7 +10,7 @@ from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
-from heroic_groups import blend_path, group_of
+from heroic_groups import MEMBER_MODELS, blend_path, group_of
 
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'characters'
 OUT.mkdir(parents=True, exist_ok=True)
@@ -32,29 +32,8 @@ models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treas
            ('rock', 'golem-rock', (0, 0)),
            ('?', 'unknown-question', (0, 0)), ('!', 'unknown-exclamation', (0, 0)),
            ('&', 'unknown-ampersand', (0, 0)),
-           ('jester-light', 'jester-light', (0, 0)), ('jester-medium', 'jester-medium', (0, 0)),
-           ('jester-dark', 'jester-dark', (0, 0)),
-           ('healer-light', 'healer-light', (0, 0)), ('healer-medium', 'healer-medium', (0, 0)),
-           ('healer-dark', 'healer-dark', (0, 0)),
-           ('rogue-light', 'rogue-light', (0, 0)), ('rogue-medium', 'rogue-medium', (0, 0)),
-           ('rogue-dark', 'rogue-dark', (0, 0)),
-           ('explorer-light', 'explorer-light', (0, 0)),
-           ('explorer-medium', 'explorer-medium', (0, 0)),
-           ('explorer-dark', 'explorer-dark', (0, 0)),
-           ('knight-light', 'knight-light', (0, 0)), ('knight-medium', 'knight-medium', (0, 0)),
-           ('knight-dark', 'knight-dark', (0, 0)),
-           ('guardian-light', 'guardian-light', (0, 0)),
-           ('guardian-medium', 'guardian-medium', (0, 0)),
-           ('guardian-dark', 'guardian-dark', (0, 0)),
+           *[(model, model, (0, 0)) for model in MEMBER_MODELS],
            ('cat', 'yawning-cat', (0, 0)),
-           ('seer-light', 'fairy-seer-light', (0, 0)),
-           ('seer-medium', 'fairy-seer-medium', (0, 0)),
-           ('seer-dark', 'fairy-seer-dark', (0, 0)),
-           *[(f'{job}-{gender}-{tone}', f'{job}-{gender}-{tone}', (0, 0))
-             for job, gender in (('healer', 'male'), ('explorer', 'female'))
-             for tone in ('light', 'medium', 'dark')],
-           *[(f'seer-male-{tone}', f'fairy-seer-male-{tone}', (0, 0))
-             for tone in ('light', 'medium', 'dark')],
            ('ration-hyorogan', 'ration-hyorogan', (0, 0)),
            ('ration-hardtack', 'ration-hardtack', (0, 0)),
            ('ration-jerky', 'ration-jerky', (0, 0))]

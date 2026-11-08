@@ -11,8 +11,16 @@ HEROIC = Path(__file__).resolve().parent / 'heroic'
 GROUPS = ('monsters', 'members', 'others')
 MONSTERS = {'a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'F', 'f', 'g', 'rock', 'X', 'e', 'E',
             'w', 'W', 'm', 'k', 'V', 'T', 'T-toy', 'M', "'", '"'}
-# Members are named like 'jester-light', one model per skin tone.
-MEMBERS = ('jester', 'healer', 'rogue', 'knight', 'guardian', 'explorer', 'cat', 'seer')
+# Party member models are named '<job>-<gender>-<tone>', like their sprite
+# files: gender f(emale), m(ale), or n for a job with one build for both;
+# tone l(ight), m(edium) or d(ark) skin.
+MEMBER_VARIANTS = (('jester', 'n'), ('healer', 'f'), ('healer', 'm'), ('rogue', 'n'),
+                   ('knight', 'n'), ('guardian', 'n'), ('explorer', 'f'), ('explorer', 'm'),
+                   ('seer', 'f'), ('seer', 'm'))
+MEMBER_TONES = ('l', 'm', 'd')
+MEMBER_MODELS = tuple(f'{job}-{gender}-{tone}' for job, gender in MEMBER_VARIANTS
+                      for tone in MEMBER_TONES)
+MEMBERS = (*dict.fromkeys(job for job, _ in MEMBER_VARIANTS), 'cat')
 
 
 def group_of(char):

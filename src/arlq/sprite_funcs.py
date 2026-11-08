@@ -91,11 +91,14 @@ UNKNOWN_PILLAR = 0.21
 # Their ground disc is darkened, if needed, to no brighter (by luminance) than
 # the blue disc of a beatable identified monster.
 UNKNOWN_DISC_REFERENCE = CI_BLUE
-MEMBER_SPRITES = {'J': 'jester', 'H': 'healer', 'R': 'rogue',
-                  'K': 'knight', 'G': 'guardian', 'D': 'explorer'}
+# Member sprite files are named '<job>-<gender>-<skin>.png': gender f, m, or
+# n for a job drawn alike for both; skin l(ight), m(edium) or d(ark). Each
+# member is shown in one gender for now.
+MEMBER_SPRITES = {'J': 'jester-n', 'H': 'healer-f', 'R': 'rogue-n',
+                  'K': 'knight-n', 'G': 'guardian-n', 'D': 'explorer-m'}
 CAT_SPRITE = 'yawning-cat'
 SPRITE_FILES[CAT_SPRITE] = 'yawning-cat.png'
-MEMBER_SKINS = ('light', 'medium', 'dark')
+MEMBER_SKINS = ('l', 'm', 'd')
 SPRITE_FILES.update({f'{name}-{skin}': f'{name}-{skin}.png'
                      for name in MEMBER_SPRITES.values() for skin in MEMBER_SKINS})
 ROCK_SPRITE = 'golem rock'

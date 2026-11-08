@@ -108,7 +108,7 @@ def test_hover_enlarges_sprite_with_fixed_feet_and_original_cell_hitbox(sprite_u
     ('player sword', 'Player'),
     ('k', 'Marksman(k)'),
     ('d', 'Komodo Dragon(d)'),
-    ('knight-light', 'Knight'), ('explorer-dark', 'Dungeon Explorer'),
+    ('knight-n-l', 'Knight'), ('explorer-m-d', 'Dungeon Explorer'),
 ])
 def test_hover_names_preserve_identity_and_member_roles(sprite_ui, key, name):
     sprite_ui._draw_hover_name((4, 5), key, 100)
@@ -138,9 +138,9 @@ def test_hover_name_is_below_only_at_dungeon_top(sprite_ui, row):
 @pytest.mark.parametrize('key,name', [
     ('c', 'キメラ(c)'), ('k', '射手(k)'), ('@', 'プレイヤー(@)'),
     ('d', 'コモドドラゴン(d)'),
-    ('player blessed', 'プレイヤー(@)'), ('knight-light', '騎士(K)'),
+    ('player blessed', 'プレイヤー(@)'), ('knight-n-l', '騎士(K)'),
     ('K', 'コレクターエルフ(K)'), ('D', 'ドラゴン(D)'),
-    ('explorer-dark', 'ダンジョン探検家(D)'),
+    ('explorer-m-d', 'ダンジョン探検家(D)'),
 ])
 def test_japanese_hover_names_include_glyph(sprite_ui, monkeypatch, key, name):
     monkeypatch.setattr(i18n, '_lang', 'ja')
@@ -221,12 +221,12 @@ def test_bundled_sprites_cover_stage1_characters():
 @pytest.mark.parametrize('char,name', sprite_funcs.MEMBER_SPRITES.items())
 def test_member_sprite_uses_stable_skin_without_pillar(sprite_ui, monkeypatch, char, name):
     ui = sprite_ui
-    ui._member_skins = dict.fromkeys(sprite_funcs.MEMBER_SPRITES, 'medium')
+    ui._member_skins = dict.fromkeys(sprite_funcs.MEMBER_SPRITES, 'm')
     pillars = []
     monkeypatch.setattr(ui, '_draw_pillar', lambda *args: pillars.append(args))
     for tone in ('member_waiting', 'member'):
         ui._draw_member(display.FieldGlyph(4, 5, char, tone))
-    assert [obj.image for obj in ui._drawables] == [ui._sprite_images[f'{name}-medium']] * 2
+    assert [obj.image for obj in ui._drawables] == [ui._sprite_images[f'{name}-m']] * 2
     assert not pillars
     assert len(ui.outlines) == 1
     assert ui.outlines[0][2] == pytest.approx(sprite_funcs.GROUND_DISC_RADIUS * ui.cell_size_x)
