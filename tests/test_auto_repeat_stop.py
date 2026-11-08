@@ -63,7 +63,7 @@ def test_repeat_does_not_inspect_unknown_terrain_ahead():
         d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["a"]),
         d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W"),
         d.Collapse(4, 2),
-        d.Companion(4, 2, d.CHAR_TO_TRIBE["n"]),
+        d.Fairy(4, 2, d.CHAR_TO_TRIBE["n"]),
     ],
 )
 def test_repeat_stops_before_entering_displayed_entity_cell(entity):
@@ -153,7 +153,7 @@ def test_wall_break_marks_repeat_stop_reason():
 
 def test_pegasus_jump_marks_repeat_stop_reason():
     player = d.Player(2, 2, 100, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_TRIBE[d.CHAR_PEGASUS])
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_TRIBE[d.CHAR_PEGASUS])
     floor = floor_with()
     floor.field[2][3] = d.CHAR_WALL
 

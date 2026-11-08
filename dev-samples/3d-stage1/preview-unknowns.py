@@ -1,6 +1,6 @@
 """Headless sample of the sprite GUI's unidentified symbols: an unknown monster
-`?`, companion `!` and elf `&`, each standing in its light pillar, then for
-comparison an identified companion, drawn as in the game and labelled.
+`?`, fairy `!` and elf `&`, each standing in its light pillar, then for
+comparison an identified fairy, drawn as in the game and labelled.
 
     PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-unknowns.py
 
@@ -24,12 +24,12 @@ ROW = 5
 LEFT, RIGHT, TOP, BOTTOM = 1, 18, ROW - 3, ROW + 1
 
 monster = d.Monster(3, ROW, d.CHAR_TO_MONSTER_TRIBE['b'])
-companion = d.Companion(7, ROW, d.CHAR_TO_COMPANION_TRIBE['n'])
+fairy = d.Fairy(7, ROW, d.CHAR_TO_FAIRY_TRIBE['n'])
 elf = d.Elf(11, ROW, d.CHAR_TO_MONSTER_TRIBE['S'])
-known = d.Companion(16, ROW, d.CHAR_TO_COMPANION_TRIBE['n'])
+known = d.Fairy(16, ROW, d.CHAR_TO_FAIRY_TRIBE['n'])
 known.revealed = True
-SAMPLES = [('? MONSTER', monster), ('! COMPANION', companion), ('& ELF', elf),
-           ('KNOWN COMPANION', known)]
+SAMPLES = [('? MONSTER', monster), ('! FAIRY', fairy), ('& ELF', elf),
+           ('KNOWN FAIRY', known)]
 
 ui = SpriteUI(scale=4)
 field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]

@@ -46,12 +46,12 @@ entities = [d.Monster(13 + i * 3, 8, d.CHAR_TO_MONSTER_TRIBE[char])
 chest = d.Treasure(37, 8, 'D')
 chest.unlocked = True
 entities.append(chest)
-# Companions in the room below, and Pegasus travelling with the player.
+# Fairies in the room below, and Pegasus travelling with the player.
 for i, char in enumerate(('n', 'o', 'p')):
-    companion = d.Companion(14 + i * 4, 11, d.CHAR_TO_COMPANION_TRIBE[char])
-    companion.revealed = True
-    entities.append(companion)
-player.companion = d.Companion(0, 0, d.CHAR_TO_COMPANION_TRIBE['p'])
+    fairy = d.Fairy(14 + i * 4, 11, d.CHAR_TO_FAIRY_TRIBE[char])
+    fairy.revealed = True
+    entities.append(fairy)
+player.fairy = d.Fairy(0, 0, d.CHAR_TO_FAIRY_TRIBE['p'])
 # Stage 2 additions: rank 2 and rank 3 bison, and the fire drake.
 entities += [d.Monster(25, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=2),
              d.Monster(29, 11, d.CHAR_TO_MONSTER_TRIBE['b'], empowered=3),

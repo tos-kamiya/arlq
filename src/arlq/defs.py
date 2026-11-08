@@ -20,7 +20,7 @@ MEMBER_DUNGEON_EXPLORER = "Dungeon Explorer"
 MEMBER_GUARDIAN = "Guardian"
 MEMBER_NOBLE = "Noble"
 MEMBER_YAWNING_CAT = "Yawning Cat"
-MEMBER_SEER = "Fairy Seer"
+MEMBER_FAIRY_SEER = "Fairy Seer"
 CAT_EXPLORE_INTERVAL = 20
 CAT_EXPLORE_SIZE = 2
 CAT_EXPLORE_RADIUS = 10  # Vertical radius, tuned independently of Vortex.
@@ -41,19 +41,19 @@ PARTY_EXPERIENCE_MEMBER_WEIGHTS = {
     MEMBER_ROGUE: 0.0,
     MEMBER_DUNGEON_EXPLORER: 0.0,
     MEMBER_YAWNING_CAT: 0.0,
-    MEMBER_SEER: 0.0,
+    MEMBER_FAIRY_SEER: 0.0,
 }
 HEALER_MOVE_COST = 1 / 3
 HEALER_RESPAWN_COST = 2
 RECRUITABLE_MEMBER_ROLES = (
     MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT,
-    MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN, MEMBER_YAWNING_CAT, MEMBER_SEER,
+    MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN, MEMBER_YAWNING_CAT, MEMBER_FAIRY_SEER,
 )
 MEMBER_GLYPHS = {
     MEMBER_JESTER: "J", MEMBER_HEALER: "H", MEMBER_ROGUE: "R",
     MEMBER_KNIGHT: "K", MEMBER_DUNGEON_EXPLORER: "D", MEMBER_GUARDIAN: "G", MEMBER_NOBLE: "N",
     MEMBER_YAWNING_CAT: "Y",
-    MEMBER_SEER: "S",
+    MEMBER_FAIRY_SEER: "S",
 }
 # Stages that feature elves and share the multi-floor progress state.
 ELF_STAGES = frozenset({3, 4})
@@ -143,7 +143,7 @@ STAGE3_W_FLAG: int = 16
 ELF_STAGE_S_FLAG: int = 32
 ELF_STAGE_J_FLAG: int = 64
 ELF_STAGE_L_FLAG: int = 128
-SYLVAN_COMPANION_DURATION_MULTIPLIER: float = 1.25
+SYLVAN_FAIRY_DURATION_MULTIPLIER: float = 1.25
 LOOP_TURNS = 80
 LOOP_TRAIL_TURNS = 10
 OVERSHOOT_REWIND_TURNS = 5
@@ -292,7 +292,7 @@ class MonsterTribe(Tribe):
         level: Level of the monster.
         feed: Feed value (game-specific parameter).
         item: Item that can be dropped.
-        effect: Additional effect (exclusive with companion).
+        effect: Additional effect (exclusive with fairy).
         passive: Reveal on contact without combat, removal, or respawn.
     """
 
@@ -340,12 +340,12 @@ class ElfTribe(MonsterTribe):
         )
 
 
-class CompanionTribe(Tribe):
+class FairyTribe(Tribe):
     """
-    Class representing companion tribes in the game.
+    Class representing fairy tribes in the game.
 
     Attributes:
-        durability: Durability of the companion.
+        durability: Durability of the fairy.
     """
 
     def __init__(
@@ -359,20 +359,20 @@ class CompanionTribe(Tribe):
         self.durability: int = durability
 
 
-class Companion(Entity):
+class Fairy(Entity):
     """
-    Class representing companions in the game.
+    Class representing fairies in the game.
 
     Attributes:
-        tribe: Tribe information of the companion (CompanionTribe instance).
-        origin_floor: (multi-floor stages) index of the floor this companion was
+        tribe: Tribe information of the fairy (FairyTribe instance).
+        origin_floor: (multi-floor stages) index of the floor this fairy was
             spawned on, used to respawn it there after it is carried to
             another floor and expires.
     """
 
-    def __init__(self, x, y, tribe: CompanionTribe, origin_floor: Optional[int] = None):
+    def __init__(self, x, y, tribe: FairyTribe, origin_floor: Optional[int] = None):
         super().__init__(x, y)
-        self.tribe: CompanionTribe = tribe
+        self.tribe: FairyTribe = tribe
         # Per-instance effective lifetime; bonuses must not change the
         # tribe's shared base durability.
         self.durability: int = tribe.durability
@@ -381,7 +381,7 @@ class Companion(Entity):
 
 
 class PartyMember(Entity):
-    """A permanent recruit, separate from the temporary companion slot."""
+    """A permanent recruit, separate from the temporary fairy slot."""
 
     def __init__(
         self, x: int, y: int, role: str, origin_floor: Optional[int] = None
@@ -473,12 +473,12 @@ class Player(Entity):
         item: Item held by the player.
         item_uses: Remaining uses for consumable item effects.
         item_taken_from: Source from which the item was taken.
-        companion: (Optional) Companion associated with the player (Companion instance).
+        fairy: (Optional) Fairy associated with the player (Fairy instance).
         karma: Karma value.
     """
 
     def __init__(
-        self, x: int, y: int, level: float, lp: float, companion: Optional[Companion] = None
+        self, x: int, y: int, level: float, lp: float, fairy: Optional[Fairy] = None
     ):
         super().__init__(x, y)
         self.level: float = level
@@ -487,7 +487,7 @@ class Player(Entity):
         self.item: Optional[str] = None
         self.item_uses: int = 0
         self.item_taken_from: Optional[str] = None
-        self.companion: Optional[Companion] = companion
+        self.fairy: Optional[Fairy] = fairy
         self.karma: int = 0
         self.boss_defeated: bool = False
         self.treasure_collected: bool = False
@@ -543,11 +543,11 @@ class Player(Entity):
 
 class SpawnConfig:
     """
-    Holds the spawn configuration for a monster or companion tribe.
+    Holds the spawn configuration for a monster or fairy tribe.
 
     Attributes:
         tribe: The Tribe object.
-        population: Number of monsters/companions to spawn or a probability (if float).
+        population: Number of monsters/fairies to spawn or a probability (if float).
     """
 
     def __init__(self, tribe: Tribe, population: Union[float, int], empowered: int = 1):
@@ -558,7 +558,7 @@ class SpawnConfig:
 
 _MT = MonsterTribe
 _ET = ElfTribe
-_CT = CompanionTribe
+_CT = FairyTribe
 
 MIN_FOOD = 8
 
@@ -694,10 +694,10 @@ assert len({tribe.char for tribe in MONSTER_TRIBES}) == len(MONSTER_TRIBES), (
     "Duplicate tribe char"
 )
 
-COMPANION_TRIBES: List[CompanionTribe] = [
+FAIRY_TRIBES: List[FairyTribe] = [
     _CT(
         "l"
-    ),  # Looping companion; contact always rewinds via _rewind, so no event_message here
+    ),  # Looping fairy; contact always rewinds via _rewind, so no event_message here
     _CT("n", 10, event_message="-- Nomicon joined!", event_message_importance=3),
     _CT("o", 20, event_message="-- Ocular joined!", event_message_importance=3),
     _CT(
@@ -709,11 +709,11 @@ COMPANION_TRIBES: List[CompanionTribe] = [
 ]
 
 CHAR_TO_TRIBE: Dict[str, Tribe] = {
-    mt.char: mt for mt in MONSTER_TRIBES + COMPANION_TRIBES
+    mt.char: mt for mt in MONSTER_TRIBES + FAIRY_TRIBES
 }
 CHAR_TO_MONSTER_TRIBE: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
-CHAR_TO_COMPANION_TRIBE: Dict[str, CompanionTribe] = {
-    mt.char: mt for mt in COMPANION_TRIBES
+CHAR_TO_FAIRY_TRIBE: Dict[str, FairyTribe] = {
+    mt.char: mt for mt in FAIRY_TRIBES
 }
 
 _SC = SpawnConfig

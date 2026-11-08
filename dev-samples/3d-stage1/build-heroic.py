@@ -1,4 +1,4 @@
-"""Refined, more dramatic versions of the Stage 1-2 characters, companions and marks.
+"""Refined, more dramatic versions of the Stage 1-2 characters, fairies and marks.
 
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
 
@@ -59,7 +59,7 @@ CELL_W = SCREEN_PIXEL * 16
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
 GRID_COLS, GRID_ROWS = 14, 8
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
-# the companions and elves; monsters in stage order, then Stage 5 members,
+# the fairies and elves; monsters in stage order, then Stage 5 members,
 # the Stage 5 toy chest and the Stage 6 Yawning Cat.
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
@@ -97,7 +97,7 @@ def cell_centre(col, row):
 ROW = [(char, name, *cell_centre(*slot)) for (char, name), slot in zip(ORDER, SLOTS)]
 # Rank marks remain available for sprite export, outside the preview grid.
 ROW += [("'", 'RANK 2', 50, 0), ('"', 'RANK 3', 55, 0)]
-# So are the symbols shown for unidentified monsters, companions and elves.
+# So are the symbols shown for unidentified monsters, fairies and elves.
 ROW += [('?', 'UNKNOWN ?', 60, 0), ('!', 'UNKNOWN !', 65, 0), ('&', 'UNKNOWN &', 70, 0)]
 # And the Stage 6 emergency rations (see preview-rations.py).
 RATIONS = ('ration-hyorogan', 'ration-hardtack', 'ration-jerky')
@@ -139,9 +139,9 @@ UNKNOWN_LEAN = 40
 # font file is neither packed nor bundled). Without it, Blender's built-in font
 # is used, emboldened, though its '?' has an unusual cut hook.
 UNKNOWN_FONT = Path('/usr/share/fonts/opentype/inter/Inter-Bold.otf')
-# The pegasus companion turns further left, so its horse profile shows.
+# The pegasus fairy turns further left, so its horse profile shows.
 PEGASUS_YAW = math.radians(-45)
-# Monsters and the chest turn slightly toward screen left; the player and companions face front.
+# Monsters and the chest turn slightly toward screen left; the player and fairies face front.
 MONSTER_YAW = math.radians(-30)
 # Wyrms turn less, so both of their tall folded wings show.
 WYRM_YAW = math.radians(-12)
@@ -185,8 +185,8 @@ def material(name, color, transmission=0.0, roughness=0.35, emission=None,
         links.new(mix.outputs[0], out.inputs['Surface'])
     return mat
 
-def companion_green(name, strength=0.3, trim=False):
-    """Translucent, softly glowing green resin that every companion (n, o, l,
+def fairy_green(name, strength=0.3, trim=False):
+    """Translucent, softly glowing green resin that every fairy (n, o, l,
     p) is made of; `trim` is a deeper green for details set on that body."""
     if trim:
         return material(name, (0.01, 0.25, 0.08), 0.3, 0.15, emission=(0.02, 0.35, 0.1),
@@ -1175,7 +1175,7 @@ def great_dragon(x, y, fire=False):
                          strength=4.0)
         sphere('Drake jaw ember', (x, y - 0.86, 0.73), (0.04, 0.06, 0.025), ember, 16)
     else:
-        # Komodo-dragon olive-bronze hide, apart from the companions' green.
+        # Komodo-dragon olive-bronze hide, apart from the fairies' green.
         scales = material('Dragon olive-bronze scales', (0.15, 0.14, 0.07), 0.25, 0.3,
                           rim=(0.65, 0.60, 0.40), rim_strength=1.0, coat=0.8)
         belly = material('Dragon dusky ochre belly', (0.46, 0.38, 0.22), 0.25, 0.3,
@@ -1377,11 +1377,11 @@ def transform_new(start, matrix):
 
 
 def nomicon(x, y):
-    leather = companion_green('Nomicon green resin cover')
-    green = companion_green('Nomicon deep green corners', 0.5, trim=True)
+    leather = fairy_green('Nomicon green resin cover')
+    green = fairy_green('Nomicon deep green corners', 0.5, trim=True)
     # Aged parchment without a glow, and dimmer runes: the open pages face
     # the camera, and white glowing paper made the tome glare beside the
-    # other companions.
+    # other fairies.
     page = material('Nomicon paper pages', (0.56, 0.53, 0.44), 0.1, 0.6)
     rune = material('Nomicon cyan runes', (0.1, 0.75, 1.0), emission=(0.1, 0.7, 1.0),
                     strength=1.0)
@@ -1437,7 +1437,7 @@ def nomicon(x, y):
 
 
 def ocular(x, y):
-    """Ocular companion (o): a floating eyeball framed by the outline of a
+    """Ocular fairy (o): a floating eyeball framed by the outline of a
     left eye in a deep green ring floating just in front of it: an almond,
     rounded at the inner corner (the viewer's left) and pointed and lifted
     at the outer corner, where the ring's fin flicks up and out. The whole
@@ -1452,13 +1452,13 @@ def ocular(x, y):
     # first colour turned redder and a yellower amber looked too yellow.
     iris = material('Ocular amber iris', (1.0, 0.40, 0.03), 0.2, 0.15,
                     emission=(1.0, 0.40, 0.03), strength=0.6, coat=0.6)
-    # The gear's lines glow the companions' cyan (as the Nomicon's eyes).
+    # The gear's lines glow the fairies' cyan (as the Nomicon's eyes).
     # Weaker than the Nomicon's: stronger glow burned out to white here.
     gear_line = material('Ocular cyan gear lines', (0.0, 0.5, 1.0), emission=(0.0, 0.55, 1.0),
                          strength=0.9)
     limbus = material('Ocular dark limbal ring', (0.22, 0.06, 0.01), roughness=0.5)
     cornea = material('Ocular clear cornea', (1.0, 1.0, 1.0), 1.0, 0.02, coat=1.0)
-    # Halfway between the companions' deep trim green (too dim beside the
+    # Halfway between the fairies' deep trim green (too dim beside the
     # others) and their bright resin green (too bright for these lines).
     green = material('Ocular mid green rings', (0.115, 0.55, 0.25), 0.45, 0.15,
                      emission=(0.11, 0.625, 0.25), strength=0.55, rim=(0.45, 1.0, 0.6),
@@ -1591,17 +1591,17 @@ def ocular(x, y):
 
 
 def loop_spiral(x, y):
-    """Loop companion: a calm whirl of time, the Vortex's upturned funnel
+    """Loop fairy: a calm whirl of time, the Vortex's upturned funnel
     without its menace, like a party popper's streamers without the popper.
-    Twenty-four short, smooth ribbons of green companion resin in two
+    Twenty-four short, smooth ribbons of green fairy resin in two
     greens follow one another up and out in four spiral arms wound
     round the funnel, so the whirl still reads as one when small (rather
     than as rings like the Ocular's eye). A simplified form of the
     Vortex's lightning, three short kinked bolts of bright cyan light,
     crackles out from the middle. The ribbons are long flat strips with
     square-cut ends. No smoke, pebbles, jagged edges or dark colours."""
-    greens = [companion_green('Loop green resin ribbon'),
-              companion_green('Loop deep green resin ribbon', 0.5, trim=True)]
+    greens = [fairy_green('Loop green resin ribbon'),
+              fairy_green('Loop deep green resin ribbon', 0.5, trim=True)]
     glow = material('Loop cyan lightning', (0.1, 0.75, 1.0), emission=(0.2, 0.85, 1.0),
                     strength=4.0)
     # The funnel is back at its first height (it was lowered to 0.6 times
@@ -2411,7 +2411,7 @@ def sylvan_elf(x, y):
     """Sylvan Elf: a farmer one step on the way to a harvest god, still an
     elf. A straw hat with a flower band, a spring green dress and a cream
     apron, sprouts curling up at the feet; for the spirit, friend of the
-    fairy companions: a softly glowing veil over the hem, and a clay pot of
+    fairies: a softly glowing veil over the hem, and a clay pot of
     flower nectar offered in both hands.
     """
     robe = material('Sylvan elf spring green dress', (0.20, 0.55, 0.12), 0.15, 0.45,
@@ -2797,7 +2797,7 @@ def rogue(x, y, tone):
     the uncovered face, folding into a cowl round the neck; wide sleeves
     and a rope belt.
     Crouched with the knees bent out and leaning a little forward, one hand
-    holds the knife up at face height, its blade glowing the companions'
+    holds the knife up at face height, its blade glowing the fairies'
     cyan as a magic tool that sees through traps; the other is held out
     to say "wait" (it stops the party before danger). A small coil of rope
     hangs at the hip. Reads as neither man nor woman. `tone` picks one of
@@ -2993,7 +2993,7 @@ def dungeon_explorer(x, y, tone):
                      metallic=0.5, rim=(1.0, 0.6, 0.5), rim_strength=0.5, coat=0.5)
     axe_head = material('Dungeon Explorer ice axe head', (0.05, 0.05, 0.055), roughness=0.35,
                         metallic=0.8, rim=(0.8, 0.82, 0.9), rim_strength=0.6)
-    # Warm amber: green is the companions' colour, light blue the Rogue's knife.
+    # Warm amber: green is the fairies' colour, light blue the Rogue's knife.
     lamp = material('Dungeon Explorer light stone', (1.0, 0.74, 0.32), 0.3, 0.15,
                     emission=(1.0, 0.72, 0.30), strength=3.0,
                     rim=(1.0, 0.92, 0.7), rim_strength=0.9, coat=0.8)
@@ -3535,7 +3535,7 @@ def guardian(x, y, tone):
 
 
 def pegasus(x, y):
-    """Pegasus companion: a small, slender fairy horse of glowing pearl,
+    """Pegasus fairy: a small, slender fairy horse of glowing pearl,
     hovering with legs tucked under, on wide feathered wings large for its
     body, with a full mane and green resin hooves.
     """
@@ -3545,12 +3545,12 @@ def pegasus(x, y):
     pearl = material('Pegasus fairy pearl', (0.78, 0.84, 0.95), 0.0, 0.4,
                      emission=(0.75, 0.9, 1.0), strength=0.04,
                      rim=(0.6, 0.95, 1.0), rim_strength=0.8, coat=0.2)
-    wisp = companion_green('Pegasus deep green mane', 0.5, trim=True)
+    wisp = fairy_green('Pegasus deep green mane', 0.5, trim=True)
     feather = material('Pegasus feathers', (0.62, 0.95, 0.72), 0.5, 0.25,
                        emission=(0.5, 1.0, 0.65), strength=0.1,
                        rim=(0.8, 1.0, 0.85), rim_strength=1.4)
     eye = material('Pegasus eyes', (0.02, 0.03, 0.06), roughness=0.2, coat=1.0)
-    green = companion_green('Pegasus deep green hooves', 0.5, trim=True)
+    green = fairy_green('Pegasus deep green hooves', 0.5, trim=True)
     # Slender body, neck and head melted into one shape; head toward -Y with
     # a short muzzle.
     body = [((0, -0.12, 0.58), 0.25), ((0, 0.02, 0.56), 0.26), ((0, 0.16, 0.55), 0.25),
@@ -3884,7 +3884,7 @@ def spore(x, y):
     eyes on its stem glaring up at the player.
 
     Violet keeps it apart from the red caltrop plant and the green used for
-    companions.
+    fairies.
     """
     cap = material('Spore dusky violet cap', (0.30, 0.12, 0.40), 0.3, 0.35,
                    rim=(0.85, 0.6, 1.0), rim_strength=1.2, coat=0.5)
@@ -4241,7 +4241,7 @@ def rank_mark(x, y, count):
 
 
 def unknown_mark(x, y, char):
-    """An unidentified monster '?', companion '!' or elf '&': the symbol itself,
+    """An unidentified monster '?', fairy '!' or elf '&': the symbol itself,
     a plump block of pale light floating a little above the floor.
 
     The GUI stands it in a light pillar that alone carries the color (yellow,
@@ -4592,7 +4592,7 @@ def yawning_cat(x, y):
     raised, its head thrown up in a wide yawn (eyes squeezed shut, pink
     mouth, tongue curling out), the tail thick with tufted fur. Unlike the other members it is drawn like the monsters: true
     proportions, no upward stretch, turned to screen left (`MONSTER_YAW`). No fangs or claws, so it is not taken for a monster;
-    not white and gold (the Lifebringer Elf), nor the companions' green
+    not white and gold (the Lifebringer Elf), nor the fairies' green
     glow."""
     orange, stripe = (1.0, 0.42, 0.10), (0.42, 0.11, 0.02)
     # Stripes run round the long body (bands along it, undoing the turn the

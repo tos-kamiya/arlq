@@ -781,19 +781,19 @@ def test_marksman_shots_are_blocked_only_by_opaque_terrain(terrain, blocked):
 
 @pytest.mark.parametrize("old_arrow_mark", [False, True])
 @pytest.mark.parametrize(
-    "marksman_x, player_x, companion_x, mark_x",
+    "marksman_x, player_x, fairy_x, mark_x",
     [
         (1, 5, 3, 4),
         (8, 4, 6, 5),
     ],
 )
-def test_floor_loop_companion_blocks_marksman_shots_after_player_moves(
-    old_arrow_mark, marksman_x, player_x, companion_x, mark_x
+def test_floor_loop_fairy_blocks_marksman_shots_after_player_moves(
+    old_arrow_mark, marksman_x, player_x, fairy_x, mark_x
 ):
     field = blank_field()
     marksman = d.Monster(marksman_x, 2, d.CHAR_TO_MONSTER_TRIBE["k"])
     player = d.Player(player_x, 3, 1, 90)
-    entities = [marksman, d.Companion(companion_x, 2, d.CHAR_TO_COMPANION_TRIBE["l"])]
+    entities = [marksman, d.Fairy(fairy_x, 2, d.CHAR_TO_FAIRY_TRIBE["l"])]
     current = Floor(
         field=field,
         entities=entities,
@@ -1154,7 +1154,7 @@ def test_mimic_identification_is_scoped_to_its_boss():
 
 def test_nomicon_identifies_active_mimic_in_fov():
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
     mimic = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
     mimic.active = False
 
@@ -1169,7 +1169,7 @@ def test_nomicon_identifies_active_mimic_in_fov():
 
 def test_nomicon_records_cursed_chimera_floor_in_fov():
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
     chimera = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["C"])
 
     reveal_entities_in_fov(player, [chimera], torch_radius=3, floor_index=1)
@@ -1179,7 +1179,7 @@ def test_nomicon_records_cursed_chimera_floor_in_fov():
 
 def test_non_nomicon_fov_does_not_record_cursed_chimera_floor():
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
     chimera = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["C"])
 
     reveal_entities_in_fov(player, [chimera], torch_radius=3, floor_index=2)
@@ -1298,14 +1298,14 @@ def test_caltrop_plant_rank_two_spreads_one_tile_farther(rank, legacy):
     )
 
 
-def test_legacy_companion_identity_is_tracked_on_the_instance():
+def test_legacy_fairy_identity_is_tracked_on_the_instance():
     player = d.Player(2, 2, 100, 90)
-    companion = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
+    fairy = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
 
-    update_entities(KEYS["R"], blank_field(), player, [companion])
+    update_entities(KEYS["R"], blank_field(), player, [fairy])
 
-    assert player.companion is companion
-    assert companion.revealed
+    assert player.fairy is fairy
+    assert fairy.revealed
 
 
 def test_legacy_boss_unlocks_its_treasure_object():
@@ -1393,18 +1393,18 @@ def test_legacy_respawn_queue_controls_actual_respawn(monkeypatch):
     ]
 
 
-def test_legacy_respawned_companion_is_already_revealed(monkeypatch):
+def test_legacy_respawned_fairy_is_already_revealed(monkeypatch):
     entities = []
     field = blank_field()
     monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_args, **_kwargs: (5, 2))
 
-    companion = respawn_entity(d.CHAR_TO_TRIBE["n"], entities, field)
+    fairy = respawn_entity(d.CHAR_TO_TRIBE["n"], entities, field)
 
-    assert isinstance(companion, d.Companion)
-    assert companion.revealed
+    assert isinstance(fairy, d.Fairy)
+    assert fairy.revealed
 
 
-def test_stage3_respawned_companion_is_already_revealed(monkeypatch):
+def test_stage3_respawned_fairy_is_already_revealed(monkeypatch):
     floor = Floor(
         field=blank_field(),
         entities=[],
@@ -1421,12 +1421,12 @@ def test_stage3_respawned_companion_is_already_revealed(monkeypatch):
         [floor], d.Player(2, 2, 100, 90), [0], Counter({(0, "n"): 1}), 0
     )
 
-    companion = next(
-        entity for entity in floor.entities if isinstance(entity, d.Companion)
+    fairy = next(
+        entity for entity in floor.entities if isinstance(entity, d.Fairy)
     )
-    assert companion.tribe.char == "n"
-    assert companion.revealed
-    # A companion's return is a move, not a respawn: no light column.
+    assert fairy.tribe.char == "n"
+    assert fairy.revealed
+    # A fairy's return is a move, not a respawn: no light column.
     assert floor.respawn_glows == {}
 
 
@@ -1624,7 +1624,7 @@ def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypat
     assert player.last_contact_monster == (0, 3, 2)
 
 
-def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monkeypatch):
+def test_loop_fairy_rewinds_world_and_per_instance_fairy_knowledge(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     player.rations = 1
     player.known_monsters = {"a", "W"}
@@ -1633,23 +1633,23 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
     player.boss_defeated = True
     player.treasure_collected = True
     player.elf_stage_floors = {"I": 1, "J": 3, "K": 2, "H": 1}
-    loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
-    known_companion = d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
-    known_companion.revealed = True
+    loop = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["l"])
+    known_fairy = d.Fairy(4, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
+    known_fairy.revealed = True
     current_treasure = d.Treasure(5, 2, "TW")
     current_treasure.unlocked = True
     current_floors, current_field = stage3_state(
-        player, [loop, known_companion, current_treasure]
+        player, [loop, known_fairy, current_treasure]
     )
     current_floors[0].seen[1][1] = 9
     current_field[10][10] = d.CHAR_WALL
 
     old_player = d.Player(5, 5, 7, 60)
-    old_loop = d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"])
-    old_companion = d.Companion(8, 5, d.CHAR_TO_COMPANION_TRIBE["n"])
+    old_loop = d.Fairy(6, 5, d.CHAR_TO_FAIRY_TRIBE["l"])
+    old_fairy = d.Fairy(8, 5, d.CHAR_TO_FAIRY_TRIBE["n"])
     old_treasure = d.Treasure(7, 5, "TW")
     old_floors, old_field = stage3_state(
-        old_player, [old_loop, old_companion, old_treasure]
+        old_player, [old_loop, old_fairy, old_treasure]
     )
     old_field[10][10] = " "
     old_floors[0].up = (4, 5)
@@ -1660,7 +1660,7 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
     checkpoint = [(2, 2)]
 
     def spawn_loop(entities, _field, _char, _avoid, _island, _floor_index=None):
-        entities.append(d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        entities.append(d.Fairy(6, 5, d.CHAR_TO_FAIRY_TRIBE["l"]))
 
     monkeypatch.setattr(stage_replay_module, "_spawn", spawn_loop)
     messages = run_stage3_keys(
@@ -1685,17 +1685,17 @@ def test_loop_companion_rewinds_world_and_per_instance_companion_knowledge(monke
     ).unlocked
     assert not player.boss_defeated
     assert not player.treasure_collected
-    restored_companion = next(
+    restored_fairy = next(
         entity
         for entity in current_floors[0].entities
-        if isinstance(entity, d.Companion) and entity.tribe.char == "n"
+        if isinstance(entity, d.Fairy) and entity.tribe.char == "n"
     )
-    assert not restored_companion.revealed
+    assert not restored_fairy.revealed
     assert player.elf_stage_floors == {"I": 1, "J": 3, "K": 2, "H": 1}
     assert not player.stage_won
     assert len(current_floors[0].entities) == 3
     assert any(
-        isinstance(entity, d.Companion) and entity.tribe.char == "l"
+        isinstance(entity, d.Fairy) and entity.tribe.char == "l"
         for entity in current_floors[0].entities
     )
     assert any(isinstance(entity, d.Treasure) for entity in current_floors[0].entities)
@@ -1710,14 +1710,14 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     current_sylvan_elf = d.Monster(5, 2, d.CHAR_TO_MONSTER_TRIBE["S"])
     current_sylvan_elf.revealed = True
     current_sylvan_elf.met = True
-    loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
+    loop = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["l"])
     current_floors, _ = stage3_state(
         player, [loop, current_high_elf, current_sylvan_elf]
     )
 
     old_player = d.Player(5, 5, 7, 60)
     old_player.elf_stage_flags = 0
-    old_loop = d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"])
+    old_loop = d.Fairy(6, 5, d.CHAR_TO_FAIRY_TRIBE["l"])
     old_high_elf = d.Monster(7, 5, d.CHAR_TO_MONSTER_TRIBE["H"])
     old_sylvan_elf = d.Monster(8, 5, d.CHAR_TO_MONSTER_TRIBE["S"])
     old_floors, _ = stage3_state(old_player, [old_loop, old_high_elf, old_sylvan_elf])
@@ -1728,7 +1728,7 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     queue: "Counter" = Counter()
 
     def spawn_loop(entities, _field, _char, _avoid, _island, _floor_index=None):
-        entities.append(d.Companion(6, 5, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        entities.append(d.Fairy(6, 5, d.CHAR_TO_FAIRY_TRIBE["l"]))
 
     monkeypatch.setattr(stage_replay_module, "_spawn", spawn_loop)
     run_stage3_keys(
@@ -1755,7 +1755,7 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
 
 def test_loop_contact_returns_rewind_request_before_normal_turn_processing(monkeypatch):
     player = d.Player(2, 2, 1, d.LP_INIT)
-    loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
+    loop = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["l"])
     floors, _ = stage3_state(player, [loop])
 
     def unexpected_hazard(*_args):
@@ -1773,8 +1773,8 @@ def test_loop_contact_returns_rewind_request_before_normal_turn_processing(monke
 
 def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
     player = d.Player(2, 2, 20, d.LP_INIT)
-    first_floor_loop = d.Companion(8, 8, d.CHAR_TO_COMPANION_TRIBE["l"])
-    second_floor_loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
+    first_floor_loop = d.Fairy(8, 8, d.CHAR_TO_FAIRY_TRIBE["l"])
+    second_floor_loop = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["l"])
     floors = [
         Floor(
             field=blank_field(),
@@ -1806,7 +1806,7 @@ def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
         assert char == "l"
         assert floor_index == 1
         entities.append(
-            d.Companion(*respawn_position, d.CHAR_TO_COMPANION_TRIBE["l"])
+            d.Fairy(*respawn_position, d.CHAR_TO_FAIRY_TRIBE["l"])
         )
         return respawn_position
 
@@ -1834,12 +1834,12 @@ def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
     restored_first_floor_loop = next(
         entity
         for entity in floors[0].entities
-        if isinstance(entity, d.Companion) and entity.tribe.char == "l"
+        if isinstance(entity, d.Fairy) and entity.tribe.char == "l"
     )
     respawned_loop = next(
         entity
         for entity in floors[1].entities
-        if isinstance(entity, d.Companion) and entity.tribe.char == "l"
+        if isinstance(entity, d.Fairy) and entity.tribe.char == "l"
     )
     assert (restored_first_floor_loop.x, restored_first_floor_loop.y) == (8, 8)
     assert (respawned_loop.x, respawned_loop.y) == respawn_position
@@ -1857,11 +1857,11 @@ def test_replay_rewind_restores_world_state_and_preserves_current_knowledge(
     def initial_state(*_args, **_kwargs):
         player = d.Player(5, 5, 1000, d.LP_INIT)
         mimic = d.Monster(8, 8, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
-        companion = d.Companion(7, 8, d.CHAR_TO_COMPANION_TRIBE["n"])
+        fairy = d.Fairy(7, 8, d.CHAR_TO_FAIRY_TRIBE["n"])
         chest = d.Treasure(9, 8, "TW")
         floor = Floor(
             field=blank_field(),
-            entities=[mimic, companion, chest],
+            entities=[mimic, fairy, chest],
             seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
             up=(5, 5),
             down=(9, 8),
@@ -1877,14 +1877,14 @@ def test_replay_rewind_restores_world_state_and_preserves_current_knowledge(
 
     def spawn_loop(entities, _field, char, _avoid, _island, _floor_index=None):
         assert char == "l"
-        entities.append(d.Companion(12, 12, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        entities.append(d.Fairy(12, 12, d.CHAR_TO_FAIRY_TRIBE["l"]))
         return 12, 12
 
     monkeypatch.setattr(stage_replay_module, "_spawn", spawn_loop)
     player = d.Player(2, 2, 9, 30)
     player.known_monsters = {"MW"}
     player.elf_stage_floors = {"I": 2}
-    loop = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])
+    loop = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["l"])
     floors, _ = stage3_state(player, [loop])
     floors[0].seen[1][1] = 7
     changed_mimic = d.Monster(4, 4, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
@@ -1917,13 +1917,13 @@ def test_replay_rewind_restores_world_state_and_preserves_current_knowledge(
     restored_mimic = next(
         entity for entity in floors[0].entities if isinstance(entity, d.Monster)
     )
-    restored_companion = next(
-        entity for entity in floors[0].entities if isinstance(entity, d.Companion)
+    restored_fairy = next(
+        entity for entity in floors[0].entities if isinstance(entity, d.Fairy)
     )
     restored_loop = next(
         entity
         for entity in floors[0].entities
-        if isinstance(entity, d.Companion) and entity.tribe.char == "l"
+        if isinstance(entity, d.Fairy) and entity.tribe.char == "l"
     )
     restored_chest = next(
         entity for entity in floors[0].entities if isinstance(entity, d.Treasure)
@@ -1931,7 +1931,7 @@ def test_replay_rewind_restores_world_state_and_preserves_current_knowledge(
     assert not restored_mimic.revealed
     assert not restored_mimic.met
     assert restored_mimic.active
-    assert not restored_companion.revealed
+    assert not restored_fairy.revealed
     assert (restored_loop.x, restored_loop.y) == (12, 12)
     assert restored_loop.revealed
     assert (
@@ -1983,7 +1983,7 @@ def test_live_loop_rewind_replays_from_seed_for_repeatable_random_results(monkey
         player = d.Player(2, 2, 1, d.LP_INIT)
         floor = Floor(
             field=blank_field(),
-            entities=[d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["l"])],
+            entities=[d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["l"])],
             seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
             up=(2, 2),
             down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
@@ -2003,7 +2003,7 @@ def test_live_loop_rewind_replays_from_seed_for_repeatable_random_results(monkey
                 next(
                     (entity.x, entity.y)
                     for entity in kwargs["entities"]
-                    if isinstance(entity, d.Companion) and entity.tribe.char == "l"
+                    if isinstance(entity, d.Fairy) and entity.tribe.char == "l"
                 )
             )
 
@@ -2089,14 +2089,14 @@ def test_collapse_pits_leave_fallen_rocks_decor_on_the_floor_below():
     assert all(decor == d.DECOR_NONE for row in upper.decor for decor in row)
 
 
-def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():
-    """A companion carried to another floor before it expires must respawn
+def test_carried_fairy_respawns_on_its_origin_floor_not_current_floor():
+    """A fairy carried to another floor before it expires must respawn
     where it came from. Otherwise the floor it expired on can end up with
     two of the same kind once the queued respawn fires (e.g. two Pegasus
-    companions on one floor)."""
+    fairies on one floor)."""
     player = d.Player(2, 2, 100, 90)
-    origin_pegasus = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["p"], origin_floor=0)
-    other_pegasus = d.Companion(7, 7, d.CHAR_TO_COMPANION_TRIBE["p"], origin_floor=1)
+    origin_pegasus = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["p"], origin_floor=0)
+    other_pegasus = d.Fairy(7, 7, d.CHAR_TO_FAIRY_TRIBE["p"], origin_floor=1)
     floors = [
         Floor(
             field=blank_field(),
@@ -2123,12 +2123,12 @@ def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():
     _step(KEYS["R"], floors, player, floor, checkpoint, queue, 1)
     _step(KEYS["R"], floors, player, floor, checkpoint, queue, 2)
     assert floor[0] == 1
-    assert player.companion is origin_pegasus
+    assert player.fairy is origin_pegasus
 
-    # Force the carried companion to expire while it is on floor 1.
+    # Force the carried fairy to expire while it is on floor 1.
     player.karma = origin_pegasus.tribe.durability
     _step((0, 0), floors, player, floor, checkpoint, queue, 3)
-    assert player.companion is None
+    assert player.fairy is None
     assert queue[(0, "p")] == 1  # queued for its origin floor, not floor 1
 
     # Advance to the next respawn tick: the respawn must land on floor 0,
@@ -2137,13 +2137,13 @@ def test_carried_companion_respawns_on_its_origin_floor_not_current_floor():
     next_boundary = ((3 // interval) + 1) * interval
     _step((0, 0), floors, player, floor, checkpoint, queue, next_boundary)
 
-    def companion_count(entities, char):
+    def fairy_count(entities, char):
         return sum(
-            1 for e in entities if isinstance(e, d.Companion) and e.tribe.char == char
+            1 for e in entities if isinstance(e, d.Fairy) and e.tribe.char == char
         )
 
-    assert companion_count(floors[0].entities, "p") == 1
-    assert companion_count(floors[1].entities, "p") == 1
+    assert fairy_count(floors[0].entities, "p") == 1
+    assert fairy_count(floors[1].entities, "p") == 1
 
 
 def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
@@ -2629,10 +2629,10 @@ def test_non_isolated_elf_repeat_contact_does_not_relocate_player():
     assert (player.x, player.y) == (3, 2)
 
 
-def test_repeated_elf_contact_ends_turn_before_companion_expiration():
+def test_repeated_elf_contact_ends_turn_before_fairy_expiration():
     player = d.Player(2, 2, 100, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"], origin_floor=0)
-    player.karma = player.companion.tribe.durability
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["n"], origin_floor=0)
+    player.karma = player.fairy.tribe.durability
     entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["K"])
     entity.met = True
     floors, _ = stage3_state(player, [entity])
@@ -2641,14 +2641,14 @@ def test_repeated_elf_contact_ends_turn_before_companion_expiration():
     messages = run_stage3_keys("R", floors, player, [0], [(2, 2)], queue)
 
     assert messages == ["-- The Collector Elf (K) looks satisfied."]
-    assert player.companion is not None
+    assert player.fairy is not None
     assert queue == Counter()
 
 
 def test_sylvan_elf_grants_nectar_once_and_stays_in_place():
     player = d.Player(2, 2, 100, 90)
-    companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
-    player.companion = companion
+    fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
+    player.fairy = fairy
     elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["S"])
     floors, _ = stage3_state(player, [elf])
 
@@ -2657,7 +2657,7 @@ def test_sylvan_elf_grants_nectar_once_and_stays_in_place():
     )
 
     assert player.elf_stage_flags & d.ELF_STAGE_S_FLAG
-    assert companion.durability == 10
+    assert fairy.durability == 10
     assert elf.met and elf in floors[0].entities
     assert (player.x, player.y) == (3, 2)
     assert messages[-1] == "-- The Sylvan Elf replenished your fairy nectar."
@@ -2667,13 +2667,13 @@ def test_sylvan_elf_grants_nectar_once_and_stays_in_place():
     ("char", "expected_durability"),
     [("n", 13), ("o", 25), ("p", 7), ("l", 1)],
 )
-def test_fairy_nectar_extends_future_companions_except_loop_companion(
+def test_fairy_nectar_extends_future_fairies_except_loop_fairy(
     char, expected_durability
 ):
     player = d.Player(2, 2, 100, 90)
     player.elf_stage_flags |= d.ELF_STAGE_S_FLAG
-    companion = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE[char])
-    floors, _ = stage3_state(player, [companion])
+    fairy = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE[char])
+    floors, _ = stage3_state(player, [fairy])
 
     result = game_engine_module._resolve_contact(
         0, floors[0], floors, player, [0], [(2, 2)], Counter()
@@ -2681,10 +2681,10 @@ def test_fairy_nectar_extends_future_companions_except_loop_companion(
 
     if char == "l":
         assert result.rewind_requested
-        assert player.companion is None
+        assert player.fairy is None
     else:
-        assert player.companion is companion
-    assert companion.durability == expected_durability
+        assert player.fairy is fairy
+    assert fairy.durability == expected_durability
 
 
 def test_elf_stage_flags_keep_their_bit_values():
@@ -2787,22 +2787,22 @@ def test_revealed_entity_glyphs_distinguish_unknown_known_and_empowered():
         ("'", "red", True),
     ]
 
-    companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
-    unknown = d.revealed_entity_glyphs(companion, set(), False, 1, None)
-    assert [(glyph.char, glyph.tone) for glyph in unknown] == [("!", "companion")]
+    fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
+    unknown = d.revealed_entity_glyphs(fairy, set(), False, 1, None)
+    assert [(glyph.char, glyph.tone) for glyph in unknown] == [("!", "fairy")]
     unknown_debug = d.revealed_entity_glyphs(
-        companion, set(), True, 1, None, debug_show_entities=True
+        fairy, set(), True, 1, None, debug_show_entities=True
     )
     assert [(glyph.char, glyph.tone) for glyph in unknown_debug] == [("n", "default")]
     known_by_tribe = d.revealed_entity_glyphs(
-        companion, {"n"}, True, 1, None, debug_show_entities=True
+        fairy, {"n"}, True, 1, None, debug_show_entities=True
     )
     assert [(glyph.char, glyph.tone) for glyph in known_by_tribe] == [("n", "default")]
-    companion.revealed = True
+    fairy.revealed = True
     known_debug = d.revealed_entity_glyphs(
-        companion, set(), True, 1, None, debug_show_entities=True
+        fairy, set(), True, 1, None, debug_show_entities=True
     )
-    assert [(glyph.char, glyph.tone) for glyph in known_debug] == [("n", "companion")]
+    assert [(glyph.char, glyph.tone) for glyph in known_debug] == [("n", "fairy")]
     preview = d.preview_entity_glyphs(monster)
     assert [(glyph.char, glyph.dim, glyph.bold) for glyph in preview] == [
         ("b", True, False),

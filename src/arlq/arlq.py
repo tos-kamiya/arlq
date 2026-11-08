@@ -228,7 +228,7 @@ def _marksman_sight_score(
     blocked_entities = {
         (entity.x, entity.y)
         for entity in entities
-        if isinstance(entity, (d.Companion, d.Treasure))
+        if isinstance(entity, (d.Fairy, d.Treasure))
     }
     score = 0
     for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
@@ -263,8 +263,8 @@ def spawn_at(
     elif isinstance(tribe, d.MonsterTribe):
         entity = d.Monster(x, y, tribe, empowered=empowered)
     else:
-        assert isinstance(tribe, d.CompanionTribe)
-        entity = d.Companion(x, y, tribe, origin_floor=origin_floor)
+        assert isinstance(tribe, d.FairyTribe)
+        entity = d.Fairy(x, y, tribe, origin_floor=origin_floor)
     entities.append(entity)
     return entity
 
@@ -274,7 +274,7 @@ def spawn_entities(
     field: List[List[str]],
     spawn_configs: List[d.SpawnConfig],
 ) -> None:
-    """Spawn monsters and companions from the stage's spawn configurations.
+    """Spawn monsters and fairies from the stage's spawn configurations.
 
     A float population is the probability of spawning one entity.
     """
@@ -295,9 +295,9 @@ def respawn_entity(
     entities: List[d.Entity],
     field: List[List[str]],
 ) -> d.Entity:
-    """Place one monster or companion for legacy single-floor callers.
+    """Place one monster or fairy for legacy single-floor callers.
 
-    Companion instances are returned revealed, matching the former respawn
+    Fairy instances are returned revealed, matching the former respawn
     helper's behavior.
     """
     if tribe.char == "k":
@@ -305,7 +305,7 @@ def respawn_entity(
     else:
         x, y = find_random_place(entities, field, distance=2)
     entity = spawn_at(entities, x, y, tribe)
-    if isinstance(entity, d.Companion):
+    if isinstance(entity, d.Fairy):
         entity.revealed = True
     return entity
 
@@ -532,7 +532,7 @@ def get_torched(player: d.Player, torch_radius: int) -> List[List[int]]:
         [0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)
     ]
 
-    has_ocular = player.companion is not None and player.companion.tribe.char == "o"
+    has_ocular = player.fairy is not None and player.fairy.tribe.char == "o"
     if player.item == d.ITEM_SPORES:
         torch_radius = 2 if has_ocular else 1
     elif has_ocular:
@@ -592,7 +592,7 @@ def reveal_entities_in_fov(
         if player.rescue_stage and isinstance(entity, d.PartyMember):
             player.seen_members.add(entity.role)
             player.known_member_floors[entity.role] = floor_index + 1
-        if player.companion is None or player.companion.tribe.char != "n":
+        if player.fairy is None or player.fairy.tribe.char != "n":
             continue
         if isinstance(entity, d.Monster) and entity.active:
             if entity.tribe.is_elf:
@@ -639,7 +639,7 @@ def move_player(
         field[ny][nx] = d.CHAR_FLOOR
         return WallEvent("golem_wall_break")
 
-    if player.companion is not None and player.companion.tribe.char == d.CHAR_PEGASUS:
+    if player.fairy is not None and player.fairy.tribe.char == d.CHAR_PEGASUS:
         jump_x = player.x + dx * d.PEGASUS_STEP_X
         jump_y = player.y + dy * d.PEGASUS_STEP_Y
         if (
@@ -764,19 +764,19 @@ def update_entities(
                 del entities[eei]
                 effect = d.EFFECT_GOT_TREASURE
                 player.treasure_collected = True
-        elif isinstance(ee, d.Companion):
-            c: d.Companion = ee
+        elif isinstance(ee, d.Fairy):
+            c: d.Fairy = ee
             c.revealed = True
 
             del entities[eei]
 
             events.contact = ContactEvent("companion", c.tribe.char)
 
-            player.companion = c
+            player.fairy = c
             player.karma = 0
             if c.tribe.char != "l" and player.elf_stage_flags & d.ELF_STAGE_S_FLAG:
                 c.durability = math.ceil(
-                    c.tribe.durability * d.SYLVAN_COMPANION_DURATION_MULTIPLIER
+                    c.tribe.durability * d.SYLVAN_FAIRY_DURATION_MULTIPLIER
                 )
 
             event_message = c.tribe.event_message
@@ -931,18 +931,18 @@ def update_entities(
     reveal_entities_in_fov(player, entities)
 
     if (
-        player.companion is not None
-        and player.karma >= player.companion.durability
+        player.fairy is not None
+        and player.karma >= player.fairy.durability
     ):
         candidate_message = trp("-- The fairy vanishes.", 3)
         if prefer_event_message(
             message[1] if message is not None else None, candidate_message
         ) == candidate_message:
             message = (MESSAGE_TICKS, candidate_message)
-        char = player.companion.tribe.char
+        char = player.fairy.tribe.char
         events.expired.append(ExpiredEvent("companion_departed", event_id=char))
         tribes_to_be_respawned.append(char)
-        player.companion = None
+        player.fairy = None
 
     return UpdateResult(
         effect, tribes_to_be_respawned, message, contact_happened, events

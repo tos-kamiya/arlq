@@ -555,7 +555,7 @@ def respawn(
     if isinstance(tribe, d.MonsterTribe):
         entity = d.Monster(*point, tribe, rank)
     else:
-        entity = d.Companion(*point, tribe, origin_floor=origin_floor)
+        entity = d.Fairy(*point, tribe, origin_floor=origin_floor)
     current.entities.append(entity)
     return point
 

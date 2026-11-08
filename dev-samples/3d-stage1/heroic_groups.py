@@ -2,7 +2,7 @@
 
 Monsters (with the treasure chest beside the mimic, the golem's rock and the
 rank marks) go in one scene, the Stage 5 party members in another, and
-everyone else (the player, companions and elves) in the third, so one group
+everyone else (the player, fairies and elves) in the third, so one group
 can be rebuilt without the others.
 """
 from pathlib import Path

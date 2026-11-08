@@ -169,7 +169,7 @@ def rewind(
     loop_floor = floors[respawn_floor]
     restored_entities = loop_floor.entities
     for index, restored in enumerate(restored_entities):
-        if isinstance(restored, d.Companion) and restored.tribe.char == "l":
+        if isinstance(restored, d.Fairy) and restored.tribe.char == "l":
             del restored_entities[index]
             break
     l_position = _spawn(
@@ -182,7 +182,7 @@ def rewind(
     )
     for restored in restored_entities:
         if (
-            isinstance(restored, d.Companion)
+            isinstance(restored, d.Fairy)
             and restored.tribe.char == "l"
             and (restored.x, restored.y) == l_position
         ):

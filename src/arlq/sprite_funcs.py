@@ -76,7 +76,7 @@ SPRITE_FILES = {
     'player blessed': 'player-blessed.png',
     # Not a glyph: the plastic toy chest drawn for 'T' in Stage 5.
     'T-toy': 'treasure-toy.png',
-    # Unidentified monsters (and traps), companions and elves.
+    # Unidentified monsters (and traps), fairies and elves.
     '?': 'unknown-question.png',
     '!': 'unknown-exclamation.png',
     '&': 'unknown-ampersand.png',
@@ -187,7 +187,7 @@ LP_GAUGE_GAP = 0.52
 LP_GAUGE_BACKING = (0, 0, 0, 255)
 LP_GAUGE_FRAME = (235, 235, 235)
 LP_GAUGE_OPACITY = 1.0
-# Companions stand inside a faint green pillar of light: an open cylinder on
+# Fairies stand inside a faint green pillar of light: an open cylinder on
 # the ground disc's ellipse, seen at the same 60-degree view. Radius and side
 # height in cell widths; peak opacity of the far wall (behind the sprite) and
 # the near wall (over it); the sides glow brighter, and both fade upward.
@@ -222,7 +222,7 @@ RESPAWN_COLUMN_TEXELS = 96
 # character) lights its column alone, in this neutral color, so the
 # character's strength stays unknown.
 RESPAWN_COLUMN_UNSEEN_COLOR = COLOR_MAP['default']
-# The companion travelling with the player floats small at its right shoulder:
+# The fairy travelling with the player floats small at its right shoulder:
 # size relative to a normal sprite, and its ground point from the player's
 # cell centre (cell widths east, cell heights north).
 FAMILIAR_SIZE = 0.6
@@ -2303,9 +2303,9 @@ class SpriteUI(PygletUI):
         finally:
             self._enlarge_neighbors = True
 
-    def _draw_companion_slot(self, pos, char):
+    def _draw_fairy_slot(self, pos, char):
         if char not in self._sprite_images:
-            return super()._draw_companion_slot(pos, char)
+            return super()._draw_fairy_slot(pos, char)
         x, y = pos
         dx, dy = FAMILIAR_OFFSET
         cx = self._field_col_x(x - 1) + 0.5 * self.cell_size_x + dx * self._sprite_unit()
@@ -2337,7 +2337,7 @@ class SpriteUI(PygletUI):
         if hovered:
             self._draw_hover_name(pos, text, top)
         self._sprite_cells[pos] = size
-        if text in d.CHAR_TO_COMPANION_TRIBE:
+        if text in d.CHAR_TO_FAIRY_TRIBE:
             green = COLOR_MAP[CI_GREEN]
             self._draw_pillar(cx, cy, size, y, self._dim_color(green) if dimmed else green)
         elif text in UNKNOWN_SPRITES:
@@ -2436,7 +2436,7 @@ class SpriteUI(PygletUI):
         return cy - (picture.height / 2 + SPRITE_GROUND_OFFSET_PIXELS - head_room) * scale
 
     def _draw_pillar(self, cx, cy, size, row, color, familiar=False):
-        """Additive light cylinder around a companion: far wall behind, near wall over it."""
+        """Additive light cylinder around a fairy: far wall behind, near wall over it."""
         for side in ('back', 'front'):
             self._draw_light_wall(self._pillar_images[side], side, cx, cy,
                                   size * PILLAR_RADIUS, size * PILLAR_HEIGHT, row, color,

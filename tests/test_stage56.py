@@ -62,13 +62,13 @@ def test_generated_boss_route_reaches_all_floors():
     assert not boss_route(floors[-1])
 
 
-def test_stage6_floors_have_no_loop_companions():
+def test_stage6_floors_have_no_loop_fairies():
     floors, _ = stage6.build()
 
     for floor in floors:
-        companions = [entity.tribe.char for entity in floor.entities
-                      if isinstance(entity, d.Companion)]
-        assert sorted(companions) == ["n", "o", "p"]
+        fairies = [entity.tribe.char for entity in floor.entities
+                      if isinstance(entity, d.Fairy)]
+        assert sorted(fairies) == ["n", "o", "p"]
 
 
 @pytest.mark.parametrize('rogue', [False, True])
@@ -292,12 +292,12 @@ def test_stage5_member_progress_shows_candidates_before_they_depart():
     assert display.stage5_member_progress_marks(player)[-2:] == [("Y", False), ("S", False)]
 
 
-def test_seer_identifies_companions_in_explored_areas_on_every_floor():
-    upper, player = state((d.MEMBER_SEER,))
+def test_fairy_seer_identifies_fairies_in_explored_areas_on_every_floor():
+    upper, player = state((d.MEMBER_FAIRY_SEER,))
     lower, _ = state()
-    known = d.Companion(20, 10, d.CHAR_TO_COMPANION_TRIBE["n"])
-    later = d.Companion(21, 10, d.CHAR_TO_COMPANION_TRIBE["o"])
-    other_floor = d.Companion(20, 10, d.CHAR_TO_COMPANION_TRIBE["n"])
+    known = d.Fairy(20, 10, d.CHAR_TO_FAIRY_TRIBE["n"])
+    later = d.Fairy(21, 10, d.CHAR_TO_FAIRY_TRIBE["o"])
+    other_floor = d.Fairy(20, 10, d.CHAR_TO_FAIRY_TRIBE["n"])
     upper.entities.extend([known, later])
     lower.entities.append(other_floor)
     upper.seen[10][20] = lower.seen[10][20] = 1
@@ -311,7 +311,7 @@ def test_seer_identifies_companions_in_explored_areas_on_every_floor():
     assert later.revealed
 
     player.members.clear()
-    newcomer = d.Companion(21, 10, d.CHAR_TO_COMPANION_TRIBE["o"])
+    newcomer = d.Fairy(21, 10, d.CHAR_TO_FAIRY_TRIBE["o"])
     lower.entities.append(newcomer)
     lower.seen[10][21] = 1
     engine.observe_world([upper, lower], player, 1, d.TORCH_RADIUS)
@@ -359,7 +359,7 @@ def test_stage6_leaving_first_floor_keeps_candidates_in_place():
     upper.down = lower.up = (3, 2)
     upper.field[2][3] = d.CHAR_STAIRS_DOWN
     lower.field[2][3] = d.CHAR_STAIRS_UP
-    candidate = d.PartyMember(10, 10, d.MEMBER_SEER, origin_floor=0)
+    candidate = d.PartyMember(10, 10, d.MEMBER_FAIRY_SEER, origin_floor=0)
     upper.entities.append(candidate)
     player.known_member_floors[candidate.role] = 1
     floor = [0]
@@ -386,8 +386,8 @@ def test_stage6_departed_members_return_to_first_floor_tavern():
 
 def test_stage5_replaces_oldest_member_without_respawning_them():
     current, player = state(("Jester", "Healer"))
-    companion = d.Companion(2, 2, d.CHAR_TO_TRIBE["n"])
-    player.companion = companion
+    fairy = d.Fairy(2, 2, d.CHAR_TO_TRIBE["n"])
+    player.fairy = fairy
     recruit = d.PartyMember(3, 2, "Rogue")
     current.entities.append(recruit)
     player.joined_members.update(("Jester", "Healer"))
@@ -402,7 +402,7 @@ def test_stage5_replaces_oldest_member_without_respawning_them():
         for entity in current.entities
     )
     assert display.stage5_member_progress_marks(player)[0] == ("J-", False)
-    assert player.companion is companion
+    assert player.fairy is fairy
 
 
 @pytest.mark.parametrize(
@@ -966,7 +966,7 @@ def test_loop_replay_preserves_lp_including_earlier_rewinds(monkeypatch, roles):
 
     def build(*_):
         current, player = state(roles)
-        current.entities = [d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"])]
+        current.entities = [d.Fairy(4, 2, d.CHAR_TO_FAIRY_TRIBE["l"])]
         return [current], player
 
     monkeypatch.setattr(stage6, "build", build)
@@ -987,7 +987,7 @@ def test_live_loop_rewind_preserves_target_lp(monkeypatch, roles):
 
     def build(*_):
         current, player = state(roles)
-        current.entities = [d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"])]
+        current.entities = [d.Fairy(4, 2, d.CHAR_TO_FAIRY_TRIBE["l"])]
         return [current], player
 
     monkeypatch.setattr(stage6, "build", build)

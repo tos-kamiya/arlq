@@ -409,7 +409,7 @@ def _marksman_shoot(
             if any(
                 (other.x, other.y) == (x, y)
                 and (
-                    isinstance(other, d.Companion)
+                    isinstance(other, d.Fairy)
                     or isinstance(other, d.PartyMember)
                     or isinstance(other, d.Treasure)
                     or isinstance(other, d.Monster)
@@ -468,7 +468,7 @@ def _vortex_rearrange(
         for entity in current.entities
         if (entity.x, entity.y) in affected_points
         and (
-            isinstance(entity, d.Companion)
+            isinstance(entity, d.Fairy)
             or isinstance(entity, d.Treasure) and include_treasures
             or (
                 isinstance(entity, d.Monster)
@@ -617,7 +617,7 @@ def _vortex_rearrange(
             char = entity.tribe.char
             empowered = entity.empowered if isinstance(entity, d.Monster) else 1
             origin_floor = (
-                entity.origin_floor if isinstance(entity, d.Companion) else floor_index
+                entity.origin_floor if isinstance(entity, d.Fairy) else floor_index
             )
             relocate(char, origin_floor, empowered)
 
@@ -1310,7 +1310,7 @@ def _resolve_contact(
     """Resolve contact with the entity at `hit` in current.entities.
 
     The result explicitly marks encounters that end the turn immediately,
-    bypassing the usual end-of-turn processing (Loop Companion rewind and
+    bypassing the usual end-of-turn processing (Loop Fairy rewind and
     repeated elf contact).
     """
     entity = current.entities[hit]
@@ -1348,7 +1348,7 @@ def _resolve_contact(
                 )
         return _ContactResult(None)
 
-    if isinstance(entity, d.Companion):
+    if isinstance(entity, d.Fairy):
         ch = entity.tribe.char
         if trace is not None:
             trace.record_contact({"type": "companion", "id": ch})
@@ -1365,9 +1365,9 @@ def _resolve_contact(
             and player.elf_stage_flags & d.ELF_STAGE_S_FLAG
         ):
             entity.durability = math.ceil(
-                entity.tribe.durability * d.SYLVAN_COMPANION_DURATION_MULTIPLIER
+                entity.tribe.durability * d.SYLVAN_FAIRY_DURATION_MULTIPLIER
             )
-        player.companion = entity
+        player.fairy = entity
         player.karma = 0
         tribe_message = entity.tribe.event_message
         return _ContactResult(
@@ -1592,12 +1592,12 @@ def _process_respawn_queue(
             x, y = _spawn(*args, empowered)
         if len(floors[spawn_floor].entities) > previous_entity_count:
             respawned = floors[spawn_floor].entities[-1]
-            # Companions and elves come back as a move, not a respawn: no light.
+            # Fairies and elves come back as a move, not a respawn: no light.
             if isinstance(respawned, d.Monster) and not isinstance(respawned, d.Elf):
                 floors[spawn_floor].respawn_glows[respawned.x, respawned.y] = (
                     d.RESPAWN_GLOW_TURNS
                 )
-            if isinstance(respawned, d.Companion):
+            if isinstance(respawned, d.Fairy):
                 respawned.revealed = True
             elif isinstance(respawned, d.Elf):
                 if respawned.tribe.char == "L":
@@ -1753,7 +1753,7 @@ def _process_multi_floor_turn(
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("entity_contact")
         entity = current.entities[hit]
-        if isinstance(entity, d.Companion) and entity.tribe.char == "l":
+        if isinstance(entity, d.Fairy) and entity.tribe.char == "l":
             contact = _resolve_contact(
                 hit,
                 current,
@@ -1894,19 +1894,19 @@ def _process_multi_floor_turn(
         event_message = prefer_event_message(event_message, contact.message)
 
     if (
-        player.companion is not None
-        and player.karma >= player.companion.durability
+        player.fairy is not None
+        and player.karma >= player.fairy.durability
     ):
-        ch = player.companion.tribe.char
-        # Respawn on the floor the companion came from, not wherever it was
+        ch = player.fairy.tribe.char
+        # Respawn on the floor the fairy came from, not wherever it was
         # carried to and expired: otherwise a floor that never lost its own
         # copy can end up with two once the queued respawn fires.
-        origin_floor = player.companion.origin_floor
+        origin_floor = player.fairy.origin_floor
         if origin_floor is None:
             origin_floor = floor[0]
         spawn_key = (origin_floor, ch)
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
-        player.companion = None
+        player.fairy = None
         event_message = prefer_event_message(
             event_message, trp("-- The fairy vanishes.", 3)
         )
@@ -1997,10 +1997,10 @@ def observe_world(
                             and upper.field[y][x] == d.CHAR_COLLAPSE):
                         current.field[y][x] = d.CHAR_SCHOLAR_STAIRS_UP
     _reveal_paired_stair_cells(floors, player)
-    if d.has_member(player, d.MEMBER_SEER):
+    if d.has_member(player, d.MEMBER_FAIRY_SEER):
         for known_floor in floors:
             for entity in known_floor.entities:
-                if (isinstance(entity, d.Companion)
+                if (isinstance(entity, d.Fairy)
                         and known_floor.seen[entity.y][entity.x]):
                     entity.revealed = True
     return visible
@@ -2023,7 +2023,7 @@ def floor_transition_kind(
 
 
 def respawn_glow_cells(current: Floor) -> Set[d.Point]:
-    """Respawn light columns to draw: the player's and the monsters'/companions'."""
+    """Respawn light columns to draw: the player's and the monsters'/fairies'."""
     monster_positions = {
         (entity.x, entity.y) for entity in current.entities
         if isinstance(entity, d.Monster) and entity.active
@@ -2226,7 +2226,7 @@ def run_game(
             ui.escape_check_requested = False
             active = floors[floor[0]]
             targets = {(entity.x, entity.y) for entity in active.entities
-                       if isinstance(entity, (d.Monster, d.Companion, d.PartyMember))
+                       if isinstance(entity, (d.Monster, d.Fairy, d.PartyMember))
                        and not (isinstance(entity, d.Monster)
                                 and entity.tribe.char == "M" and not entity.active)}
             explorer = d.has_member(player, d.MEMBER_DUNGEON_EXPLORER)

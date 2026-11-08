@@ -544,14 +544,14 @@ def test_rank_mark_without_sprite_stays_text(sprite_ui):
     assert not sprite_ui._drawables
 
 
-def test_companion_stands_in_green_light_pillar(sprite_ui):
+def test_fairy_stands_in_green_light_pillar(sprite_ui):
     ui = sprite_ui
     ui._display_color = lambda color: color
-    ui._draw_field_text((4, 5), 'n', ui._tone_color('companion'), True)
+    ui._draw_field_text((4, 5), 'n', ui._tone_color('fairy'), True)
     sprite, back, front = ui._drawables
     assert sprite.image is ui._sprite_images['n']
     assert (back.image, front.image) == (ui._pillar_images['back'], ui._pillar_images['front'])
-    assert back.color == front.color == ui._tone_color('companion')
+    assert back.color == front.color == ui._tone_color('fairy')
     assert back.group.order < sprite.group.order < front.group.order
     ui._drawables.clear()
     ui._draw_field_text((4, 5), 'b', ui._tone_color('blue'), True)

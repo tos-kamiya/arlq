@@ -433,7 +433,7 @@ def test_legacy_wall_sword_break_reports_remaining_uses():
 
 def test_legacy_wall_pegasus_phase():
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
     field = blank_field()
     field[2][3] = d.CHAR_WALL
     trace = TraceRecorder(params={})
@@ -465,18 +465,18 @@ def test_legacy_contact_treasure_locked_and_unlocked():
     assert turn2["contact"] == {"type": "treasure", "id": "TD", "collected": True}
 
 
-def test_legacy_contact_companion_join():
+def test_legacy_contact_fairy_join():
     player = d.Player(2, 2, 1, 90)
-    companion = d.Companion(3, 2, d.CHAR_TO_COMPANION_TRIBE["n"])
+    fairy = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
     field = blank_field()
     trace = TraceRecorder(params={})
 
     turn = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player, [player, companion], set()
+        trace, "R", update_entities, KEYS["R"], field, player, [player, fairy], set()
     )
 
     assert turn["contact"] == {"type": "companion", "id": "n"}
-    assert player.companion is companion
+    assert player.fairy is fairy
 
 
 def test_legacy_contact_monster_win_expires_old_item_as_overwritten():
@@ -536,9 +536,9 @@ def test_legacy_contact_high_elf_always_refused():
     assert turn["contact"] == {"type": "monster", "id": "H", "outcome": "refused"}
 
 
-def test_legacy_companion_departed_on_karma_limit():
+def test_legacy_fairy_departed_on_karma_limit():
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["l"])  # durability 1
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["l"])  # durability 1
     player.karma = 1
     field = blank_field()
     trace = TraceRecorder(params={})
@@ -546,7 +546,7 @@ def test_legacy_companion_departed_on_karma_limit():
     turn = committed_turn(trace, "U", update_entities, KEYS["U"], field, player, [player], set())
 
     assert turn["expired"] == [{"type": "companion_departed", "id": "l"}]
-    assert player.companion is None
+    assert player.fairy is None
 
 
 def test_legacy_world_respawn_event_reports_position(monkeypatch):
@@ -738,7 +738,7 @@ def test_edge_wall_stays_a_column_when_diagonally_exposed(edge, diagonal):
 
 def test_stage3_wall_pegasus_phase():
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
     floor_data = one_floor([])
     floor_data.field[2][3] = d.CHAR_WALL
     trace = TraceRecorder(params={})
@@ -752,7 +752,7 @@ def test_stage3_wall_pegasus_phase():
 
 def test_stage3_wall_pegasus_phase_after_player_state_is_deepcopied():
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE[d.CHAR_PEGASUS])
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE[d.CHAR_PEGASUS])
     player = deepcopy(player)
     floor_data = one_floor([])
     floor_data.field[2][3] = d.CHAR_WALL
@@ -764,7 +764,7 @@ def test_stage3_wall_pegasus_phase_after_player_state_is_deepcopied():
 
 def test_stage3_wall_blocked_when_pegasus_jump_target_is_solid():
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
     floor_data = one_floor([])
     floor_data.field[2][3] = d.CHAR_WALL
     floor_data.field[2][2 + d.PEGASUS_STEP_X] = d.CHAR_WALL
@@ -900,9 +900,9 @@ def test_stage3_stairs_contact_records_floor_transition():
     assert floor[0] == 1
 
 
-def test_stage3_companion_departed_on_karma_limit():
+def test_stage3_fairy_departed_on_karma_limit():
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"], origin_floor=0)
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"], origin_floor=0)
     player.karma = 5  # p's durability
     floors = [one_floor([])]
     floor = [0]
@@ -914,7 +914,7 @@ def test_stage3_companion_departed_on_karma_limit():
     trace.commit_turn()
 
     assert trace.turns[-1]["expired"] == [{"type": "companion_departed", "id": "p"}]
-    assert player.companion is None
+    assert player.fairy is None
 
 
 def test_stage3_world_respawn_event_includes_floor(monkeypatch):
@@ -944,7 +944,7 @@ def test_stage3_world_respawn_event_includes_floor(monkeypatch):
 ])
 def test_pegasus_barrier_landing_requires_immunity(flags, item, guardian, allowed):
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
     player.elf_stage_flags = flags
     player.item = item
     if guardian:
@@ -960,7 +960,7 @@ def test_pegasus_barrier_landing_requires_immunity(flags, item, guardian, allowe
 @pytest.mark.parametrize("rogue", [False, True])
 def test_pegasus_landing_on_golem_wall(rogue):
     player = d.Player(2, 2, 1, 90)
-    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
     if rogue:
         player.members.append(d.PartyMember(0, 0, d.MEMBER_ROGUE))
     floor = one_floor([])

@@ -348,7 +348,7 @@ class BlessedUI:
             color = (
                 None
                 if glyph.tone in (
-                    "companion", "member", "member_waiting", "default", "stair"
+                    "fairy", "member", "member_waiting", "default", "stair"
                 )
                 else glyph.tone
             )
@@ -450,11 +450,11 @@ class BlessedUI:
                         player.status_popup_tone,
                         bold=True,
                     )
-        if not floor_view and player.companion and px + 1 < d.FIELD_WIDTH:
+        if not floor_view and player.fairy and px + 1 < d.FIELD_WIDTH:
             put(
                 px + 1,
                 py,
-                player.companion.tribe.char,
+                player.fairy.tribe.char,
                 "green" if not self.dots else None,
                 dim=self.dots,
                 bg=cell_background(px + 1, py),
@@ -628,7 +628,7 @@ class BlessedUI:
         time.sleep(seconds)
 
     def draw_rewind_transition(self, message: str) -> None:
-        """Show the Loop Companion transition before rebuilding the past."""
+        """Show the Loop Fairy transition before rebuilding the past."""
         self._wait_for_terminal_size()
         width = max(0, d.FIELD_WIDTH - 3)
         height = min(d.FIELD_HEIGHT, self.term.height)

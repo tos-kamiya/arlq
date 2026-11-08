@@ -177,7 +177,7 @@ def stage5_member_progress_marks(
     marks = []
     current_roles = {member.role for member in player.members}
     for role in roles:
-        if role in (d.MEMBER_YAWNING_CAT, d.MEMBER_SEER) and not getattr(player, "stage6_candidates", False):
+        if role in (d.MEMBER_YAWNING_CAT, d.MEMBER_FAIRY_SEER) and not getattr(player, "stage6_candidates", False):
             continue
         label = d.MEMBER_GLYPHS[role]
         departed = (not getattr(player, "stage6_candidates", False)
@@ -195,9 +195,9 @@ def stage5_member_progress_marks(
 class FieldGlyph(NamedTuple):
     """One character to draw on the field.
 
-    ``tone`` is a semantic name (``yellow``, ``blue``, ``red``, ``companion``,
+    ``tone`` is a semantic name (``yellow``, ``blue``, ``red``, ``fairy``,
     ``default``, ``black``, ``magenta``, ``stair``). Each frontend maps it.
-    ``companion`` is green in the GUI and the terminal's default color;
+    ``fairy`` is green in the GUI and the terminal's default color;
     ``stair`` follows the stair glyph style in each frontend.
     """
 
@@ -280,7 +280,7 @@ def preview_entity_glyphs(
             and not reveal_disguises
         ):
             char = d.CHAR_TREASURE
-    elif isinstance(entity, d.Companion):
+    elif isinstance(entity, d.Fairy):
         char = entity.tribe.char
     elif isinstance(entity, d.Treasure):
         char = d.CHAR_TREASURE
@@ -352,12 +352,12 @@ def revealed_entity_glyphs(
         )]
     if isinstance(entity, d.Collapse):
         return [FieldGlyph(entity.x, entity.y, "?", "yellow", bold=True)]
-    if isinstance(entity, d.Companion):
+    if isinstance(entity, d.Fairy):
         char = entity.tribe.char
         known = entity.revealed
         if not known and not show_entities:
             char = "!"
-        tone = "default" if debug_show_entities and not known else "companion"
+        tone = "default" if debug_show_entities and not known else "fairy"
         return [FieldGlyph(entity.x, entity.y, char, tone, bold=True)]
     if isinstance(entity, d.Monster):
         char = entity.tribe.char

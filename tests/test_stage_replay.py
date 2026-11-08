@@ -55,7 +55,7 @@ def signature(player, entities, field, seen):
                 entity.marksman_shots_fired,
                 entity.arrow_marks,
             )
-        elif isinstance(entity, d.Companion):
+        elif isinstance(entity, d.Fairy):
             state += (entity.tribe.char, entity.revealed, entity.durability)
         elif isinstance(entity, d.PartyMember):
             state += (entity.role, entity.origin_floor)
@@ -150,7 +150,7 @@ def test_live_and_replay_match_after_vortex_rearrangement(
         entities = [
             d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["V"]),
             d.Monster(8, 6, d.CHAR_TO_MONSTER_TRIBE["k"]),
-            d.Companion(10, 5, d.CHAR_TO_COMPANION_TRIBE["n"]),
+            d.Fairy(10, 5, d.CHAR_TO_FAIRY_TRIBE["n"]),
         ]
         if stage_num == 6:
             entities.extend(
@@ -197,7 +197,7 @@ def test_repeated_rewinds_replay_rogue_checks_and_scholar_discoveries(
             field,
             [
                 d.Monster(3, 3, d.CHAR_TO_MONSTER_TRIBE["V"]),
-                d.Companion(4, 3, d.CHAR_TO_COMPANION_TRIBE["l"]),
+                d.Fairy(4, 3, d.CHAR_TO_FAIRY_TRIBE["l"]),
             ],
             [[0] * len(row) for row in field],
             (2, 2),
@@ -218,7 +218,7 @@ def test_repeated_rewinds_replay_rogue_checks_and_scholar_discoveries(
 
     def respawn_loop(entities, *_args):
         engine.rand.randrange(100)
-        entities.append(d.Companion(4, 3, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        entities.append(d.Fairy(4, 3, d.CHAR_TO_FAIRY_TRIBE["l"]))
         return 4, 3
 
     monkeypatch.setattr(engine, "_vortex_rearrange", disturb_map)
@@ -241,7 +241,7 @@ def test_repeated_rewinds_without_vortex_preserve_exploration(monkeypatch):
         field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
         current = Floor(
             field,
-            [d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"])],
+            [d.Fairy(4, 2, d.CHAR_TO_FAIRY_TRIBE["l"])],
             [[0] * len(row) for row in field],
             (2, 2),
             (70, 18),
@@ -250,7 +250,7 @@ def test_repeated_rewinds_without_vortex_preserve_exploration(monkeypatch):
         return [current], player
 
     def respawn_loop(entities, *_args):
-        entities.append(d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        entities.append(d.Fairy(4, 2, d.CHAR_TO_FAIRY_TRIBE["l"]))
         return 4, 2
 
     monkeypatch.setattr(stage_replay, "_spawn", respawn_loop)
@@ -269,8 +269,8 @@ def test_cross_floor_rewinds_stop_at_latest_anchor(monkeypatch, delay):
             field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
             floors.append(Floor(
                 field,
-                [d.Companion(4 if index == 0 else 3, 2,
-                             d.CHAR_TO_COMPANION_TRIBE["l"])],
+                [d.Fairy(4 if index == 0 else 3, 2,
+                             d.CHAR_TO_FAIRY_TRIBE["l"])],
                 [[0] * len(row) for row in field],
                 (2, 2), (2, 3), None,
             ))
@@ -278,7 +278,7 @@ def test_cross_floor_rewinds_stop_at_latest_anchor(monkeypatch, delay):
 
     def respawn_loop(entities, _field, _char, _avoid, _island, floor_index):
         position = (4 if floor_index == 0 else 3, 2)
-        entities.append(d.Companion(*position, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        entities.append(d.Fairy(*position, d.CHAR_TO_FAIRY_TRIBE["l"]))
         return position
 
     monkeypatch.setattr(stage_replay, "_spawn", respawn_loop)
@@ -304,7 +304,7 @@ def test_rewind_keeps_current_knowledge_after_vortex_erasure(monkeypatch):
         field[3][12] = d.CHAR_HIDDEN_D_GATE
         entities = [
             d.Monster(15, 2, d.CHAR_TO_MONSTER_TRIBE["V"]),
-            d.Companion(16, 2, d.CHAR_TO_COMPANION_TRIBE["l"]),
+            d.Fairy(16, 2, d.CHAR_TO_FAIRY_TRIBE["l"]),
         ]
         current = Floor(
             field, entities, [[0] * len(row) for row in field], (2, 2), (70, 18), None
@@ -316,7 +316,7 @@ def test_rewind_keeps_current_knowledge_after_vortex_erasure(monkeypatch):
         current.seen = [[0] * len(row) for row in current.field]
 
     def respawn_loop(entities, *_args):
-        entities.append(d.Companion(16, 2, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        entities.append(d.Fairy(16, 2, d.CHAR_TO_FAIRY_TRIBE["l"]))
         return 16, 2
 
     monkeypatch.setattr(engine, "_vortex_rearrange", disturb_map)
@@ -380,7 +380,7 @@ def test_replay_executes_operations_discarded_by_loop_contacts(monkeypatch):
         field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
         entities = [
             d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["V"]),
-            d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"]),
+            d.Fairy(4, 2, d.CHAR_TO_FAIRY_TRIBE["l"]),
         ]
         return [
             Floor(
@@ -400,7 +400,7 @@ def test_replay_executes_operations_discarded_by_loop_contacts(monkeypatch):
         current.seen = [[0] * len(row) for row in current.field]
 
     def respawn_loop(entities, *_args):
-        entities.append(d.Companion(4, 2, d.CHAR_TO_COMPANION_TRIBE["l"]))
+        entities.append(d.Fairy(4, 2, d.CHAR_TO_FAIRY_TRIBE["l"]))
         return 4, 2
 
     monkeypatch.setattr(stage6, "build", build)

@@ -725,7 +725,7 @@ class PygletUI:
     def _tone_color(self, tone: str, dim: bool = False) -> Tuple[int, int, int]:
         if tone == "black":
             color = (0, 0, 0)
-        elif tone == "companion":
+        elif tone == "fairy":
             color = COLOR_MAP[CI_GREEN]
         elif tone == "stair":
             color = COLOR_MAP[CI_YELLOW]
@@ -1069,8 +1069,8 @@ class PygletUI:
         self._draw_text((glyph.x, glyph.y), glyph.char, self._tone_color("default"),
                         bold=glyph.bold, x_offset=self._field_text_x_offset())
 
-    def _draw_companion_slot(self, pos: d.Point, char: str):
-        """Draws the companion travelling with the player, in the cell to its right."""
+    def _draw_fairy_slot(self, pos: d.Point, char: str):
+        """Draws the fairy travelling with the player, in the cell to its right."""
         self._draw_field_text(pos, char, COLOR_MAP[CI_GREEN], bold=True)
 
     def _draw_d_gate(self, pos: d.Point, glyph: str):
@@ -1127,7 +1127,7 @@ class PygletUI:
         time.sleep(seconds)
 
     def draw_rewind_transition(self, message: str) -> None:
-        """Show the Loop Companion transition before rebuilding the past."""
+        """Show the Loop Fairy transition before rebuilding the past."""
         overlay_group = pyglet.graphics.Group(order=10000)
         text_group = self._text_overlay_group
         if text_group is None:
@@ -1340,8 +1340,8 @@ class PygletUI:
         if not floor_view:
             self._draw_player((px, py), player)
 
-        if not floor_view and player.companion is not None and px + 1 < d.FIELD_WIDTH:
-            self._draw_companion_slot((px + 1, py), player.companion.tribe.char)
+        if not floor_view and player.fairy is not None and px + 1 < d.FIELD_WIDTH:
+            self._draw_fairy_slot((px + 1, py), player.fairy.tribe.char)
 
         # Draw entities (monster and treasures)
         player_attack = d.current_player_attack(player)
@@ -1380,7 +1380,7 @@ class PygletUI:
                 paint(glyph)
 
         # Stage 3 followers persist across floor changes and are rendered
-        # independently of the temporary companion slot.
+        # independently of the temporary fairy slot.
         for fx, fy, ffloor, fchar in player.persistent_followers:
             if not floor_view and ffloor == player.current_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
                 self._draw_follower((fx, fy), fchar)
