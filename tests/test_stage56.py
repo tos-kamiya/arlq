@@ -490,7 +490,7 @@ def test_group_strength_defeat_preserves_party_and_healer_penalty():
     before = player.members.copy()
     step(current, player, checkpoint=(1, 1))
     assert current.entities == enemies
-    assert player.level == 10 and player.lp == 88
+    assert player.level == 10 and player.lp == 87
     assert player.members == before
     assert all((member.x, member.y) == (1, 1) for member in player.members)
 
@@ -525,7 +525,7 @@ def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
     player.members.append(d.PartyMember(player.x, player.y, "Healer"))
     assert barrier_lp_damage(player) == 0
     assert d.caltrop_lp_damage(player) == 0
-    assert d.movement_lp_cost(player) == pytest.approx(1 / 3)
+    assert d.movement_lp_cost(player) == pytest.approx(1 / 2)
 
 
 def test_rogue_does_not_preannounce_marksman_shooting_lane():
@@ -951,8 +951,8 @@ def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):
     engine.run_game(ui, "test", stage_num=6)
     assert ui.frames[0] == (0, 90, (2, 2))
     assert ui.frames[1][0::2] == (1, (3, 2))
-    assert ui.frames[1][1] == pytest.approx(90 - 1 / 3)
-    assert player.lp == pytest.approx(90 - 1 / 3)
+    assert ui.frames[1][1] == pytest.approx(90 - 1 / 2)
+    assert player.lp == pytest.approx(90 - 1 / 2)
     assert (player.x, player.y) == (3, 2)
     assert player.current_floor == 1
     assert ui.stops == 2
@@ -998,7 +998,7 @@ def test_live_loop_rewind_preserves_target_lp(monkeypatch, roles):
         map_mode=False,
     )
     engine.run_game(ui, "test", stage_num=6)
-    assert frames[:3] == pytest.approx([90, 90 - (1 / 3 if roles else 1), 90])
+    assert frames[:3] == pytest.approx([90, 90 - (1 / 2 if roles else 1), 90])
 
 
 def test_candidate_glyph_is_known_on_first_sighting():

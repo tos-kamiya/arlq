@@ -313,7 +313,7 @@ An empowered Caltrop Plant (`X'`) appears on floor 3.
 | Display & Profession | Ability |
 | --- | --- |
 | **J** Jester | Multiplies your shared experience by 1.5 and leaves permanently when your level reaches 80, or immediately if recruited at level 80 or higher. |
-| **H** Healer | Reduces movement LP cost to one-third and the defeat cost to 2, including when rewinding. |
+| **H** Healer | Reduces movement LP cost to one-half and the defeat cost to 3, including when rewinding. |
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **K** Knight | Adds a fixed 40 to your attack power. |
 | **D** Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Both require D in the party to use, even after discovery. Climb through an entrance and leave the pit on the next move. In sprite mode, discovered passages are marked by green light on the floor instead of a `.`; entrance discs appear only while D is in the party. |
