@@ -92,15 +92,17 @@ UNKNOWN_PILLAR = 0.21
 # the blue disc of a beatable identified monster.
 UNKNOWN_DISC_REFERENCE = CI_BLUE
 # Member sprite files are named '<job>-<gender>-<skin>.png': gender f, m, or
-# n for a job drawn alike for both; skin l(ight), m(edium) or d(ark). Each
-# member is shown in one gender for now.
-MEMBER_SPRITES = {'J': 'jester-n', 'H': 'healer-f', 'R': 'rogue-n',
-                  'K': 'knight-n', 'G': 'guardian-n', 'D': 'explorer-m'}
+# n for a job drawn alike for both; skin l(ight), m(edium) or d(ark).
+MEMBER_SPRITES = {'J': ('jester-n',), 'H': ('healer-f', 'healer-m'),
+                  'R': ('rogue-n',), 'K': ('knight-n',),
+                  'G': ('guardian-n',), 'D': ('explorer-f', 'explorer-m'),
+                  'S': ('seer-f', 'seer-m')}
 CAT_SPRITE = 'yawning-cat'
 SPRITE_FILES[CAT_SPRITE] = 'yawning-cat.png'
 MEMBER_SKINS = ('l', 'm', 'd')
 SPRITE_FILES.update({f'{name}-{skin}': f'{name}-{skin}.png'
-                     for name in MEMBER_SPRITES.values() for skin in MEMBER_SKINS})
+                     for names in MEMBER_SPRITES.values() for name in names
+                     for skin in MEMBER_SKINS})
 ROCK_SPRITE = 'golem rock'
 SPRITE_NAMES = {
     '@': 'Player', 'a': 'Amoeba', 'A': 'Rare Amoeba', 'b': 'Bison',
@@ -118,7 +120,7 @@ SPRITE_NAMES.update(dict.fromkeys(
     ('player sword', 'player cursed sword', 'player blessed'), 'Player'))
 SPRITE_NAMES.update({f'{name}-{skin}': role
                      for role, char in d.MEMBER_GLYPHS.items()
-                     if (name := MEMBER_SPRITES.get(char))
+                     for name in MEMBER_SPRITES.get(char, ())
                      for skin in MEMBER_SKINS})
 SPRITE_NAMES[CAT_SPRITE] = d.MEMBER_YAWNING_CAT
 # Golem rubble outside the current view is darkened like explored walls.
@@ -652,6 +654,7 @@ class SpriteUI(PygletUI):
         self._wall_rect_colors = {}
 
     def __init__(self, scale=None, key_repeat_interval=None):
+        self._member_variants = {char: random.choice(names) for char, names in MEMBER_SPRITES.items()}
         self._member_skins = {char: random.choice(MEMBER_SKINS) for char in MEMBER_SPRITES}
         self._last_stage_draw = None
         self._resize_redraw_pending = False
@@ -2241,7 +2244,7 @@ class SpriteUI(PygletUI):
         )
 
     def _draw_member(self, glyph):
-        name = MEMBER_SPRITES.get(glyph.char)
+        name = self._member_variants.get(glyph.char)
         key = (CAT_SPRITE if glyph.char == 'Y' else
                f'{name}-{self._member_skins[glyph.char]}' if name else None)
         if key not in self._sprite_images:

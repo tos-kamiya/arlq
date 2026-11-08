@@ -109,6 +109,7 @@ def test_hover_enlarges_sprite_with_fixed_feet_and_original_cell_hitbox(sprite_u
     ('k', 'Marksman(k)'),
     ('d', 'Komodo Dragon(d)'),
     ('knight-n-l', 'Knight'), ('explorer-m-d', 'Dungeon Explorer'),
+    ('seer-f-l', 'Fairy Seer'), ('seer-m-d', 'Fairy Seer'),
 ])
 def test_hover_names_preserve_identity_and_member_roles(sprite_ui, key, name):
     sprite_ui._draw_hover_name((4, 5), key, 100)
@@ -218,9 +219,12 @@ def test_bundled_sprites_cover_stage1_characters():
         assert (directory / filename).is_file()
 
 
-@pytest.mark.parametrize('char,name', sprite_funcs.MEMBER_SPRITES.items())
+@pytest.mark.parametrize('char,name', [
+    (char, name) for char, names in sprite_funcs.MEMBER_SPRITES.items() for name in names
+])
 def test_member_sprite_uses_stable_skin_without_pillar(sprite_ui, monkeypatch, char, name):
     ui = sprite_ui
+    ui._member_variants = {char: name}
     ui._member_skins = dict.fromkeys(sprite_funcs.MEMBER_SPRITES, 'm')
     pillars = []
     monkeypatch.setattr(ui, '_draw_pillar', lambda *args: pillars.append(args))
@@ -1801,6 +1805,7 @@ def test_bundled_route_mark_is_a_floor_stone_sized_overlay():
 def test_cat_member_uses_its_sprite(sprite_ui):
     ui = sprite_ui
     ui._member_skins = {}
+    ui._member_variants = {}
     for tone in ('member_waiting', 'member'):
         ui._draw_member(display.FieldGlyph(4, 5, 'Y', tone))
     assert [obj.image for obj in ui._drawables] == [ui._sprite_images['yawning-cat']] * 2
