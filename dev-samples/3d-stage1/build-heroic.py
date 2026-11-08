@@ -57,11 +57,12 @@ scene.world = world
 SCREEN_PIXEL = 186 / 1.8 / 11 * 2.6 / 256
 CELL_W = SCREEN_PIXEL * 16
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
-GRID_COLS, GRID_ROWS = 14, 10
+GRID_COLS, GRID_ROWS = 14, 7
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
-# the fairies and elves; monsters in stage order, then Stage 5 members,
-# the Stage 5 toy chest, the Stage 6 Yawning Cat and the Fairy Seer, then
-# the second-gender Healer, Dungeon Explorer and Fairy Seer.
+# the fairies and elves; monsters in stage order, then the party members in
+# the medium skin tone in the order J, H, R, K, G, D (Explorer), S (Fairy
+# Seer), Y (female and male for the Healer, Dungeon Explorer and Fairy Seer,
+# whose hair shows), and last the Stage 5 toy chest.
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
@@ -72,27 +73,18 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('X', 'CALTROP PLANT'), ('e', 'EREBUS'), ('w', 'WYRM'), ('W', 'DREAD WYRM'),
          ('E', 'RARE EREBUS'), ('m', 'SPORE'), ('k', 'MARKSMAN'), ('V', 'VORTEX'),
          ('f', 'FLAME COBRA'), ('B', 'BUFFALO'),
-         ('jester-light', 'JESTER LIGHT'), ('jester-medium', 'JESTER MEDIUM'),
-         ('jester-dark', 'JESTER DARK'), ('healer-light', 'HEALER LIGHT'),
-         ('healer-medium', 'HEALER MEDIUM'), ('healer-dark', 'HEALER DARK'),
-         ('rogue-light', 'ROGUE LIGHT'), ('rogue-medium', 'ROGUE MEDIUM'),
-         ('rogue-dark', 'ROGUE DARK'), ('knight-light', 'KNIGHT LIGHT'),
-         ('knight-medium', 'KNIGHT MEDIUM'), ('knight-dark', 'KNIGHT DARK'),
-         ('explorer-light', 'DUNGEON EXPLORER LIGHT'),
-         ('explorer-medium', 'DUNGEON EXPLORER MEDIUM'),
-         ('explorer-dark', 'DUNGEON EXPLORER DARK'),
-         ('guardian-light', 'GUARDIAN LIGHT'), ('guardian-medium', 'GUARDIAN MEDIUM'),
-         ('guardian-dark', 'GUARDIAN DARK'),
-         ('T-toy', 'TOY CHEST'), ('cat', 'YAWNING CAT'),
-         ('seer-light', 'FAIRY SEER LIGHT'), ('seer-medium', 'FAIRY SEER MEDIUM'),
-         ('seer-dark', 'FAIRY SEER DARK'),
-         ('healer-male-light', 'HEALER MALE LIGHT'), ('healer-male-medium', 'HEALER MALE MEDIUM'),
-         ('healer-male-dark', 'HEALER MALE DARK'),
-         ('explorer-female-light', 'DUNGEON EXPLORER FEMALE LIGHT'),
-         ('explorer-female-medium', 'DUNGEON EXPLORER FEMALE MEDIUM'),
-         ('explorer-female-dark', 'DUNGEON EXPLORER FEMALE DARK'),
-         ('seer-male-light', 'FAIRY SEER MALE LIGHT'), ('seer-male-medium', 'FAIRY SEER MALE MEDIUM'),
-         ('seer-male-dark', 'FAIRY SEER MALE DARK')]
+         ('jester-medium', 'JESTER'),
+         ('healer-medium', 'HEALER FEMALE'), ('healer-male-medium', 'HEALER MALE'),
+         ('rogue-medium', 'ROGUE'), ('knight-medium', 'KNIGHT'), ('guardian-medium', 'GUARDIAN'),
+         ('explorer-female-medium', 'EXPLORER FEMALE'), ('explorer-medium', 'EXPLORER MALE'),
+         ('seer-medium', 'FAIRY SEER FEMALE'), ('seer-male-medium', 'FAIRY SEER MALE'),
+         ('cat', 'YAWNING CAT'), ('T-toy', 'TOY CHEST')]
+# The members in the light and dark skin tones are built for sprite export
+# only, off the preview grid like the marks and rations below.
+MEMBER_MODELS = ('jester', 'healer', 'healer-male', 'rogue', 'knight', 'explorer',
+                 'explorer-female', 'guardian', 'seer', 'seer-male')
+OTHER_TONES = [(f'{model}-{tone}', f'{model}-{tone}'.upper())
+               for model in MEMBER_MODELS for tone in ('light', 'dark')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -113,7 +105,8 @@ ROW += [('?', 'UNKNOWN ?', 60, 0), ('!', 'UNKNOWN !', 65, 0), ('&', 'UNKNOWN &',
 RATIONS = ('ration-hyorogan', 'ration-hardtack', 'ration-jerky')
 ROW += [('ration-hyorogan', 'HYOROGAN', 75, 0), ('ration-hardtack', 'HARDTACK', 80, 0),
         ('ration-jerky', 'JERKY', 85, 0)]
-OFF_GRID = ("'", '"', '?', '!', '&', *RATIONS)
+ROW += [(char, name, 90 + 5 * k, 0) for k, (char, name) in enumerate(OTHER_TONES)]
+OFF_GRID = ("'", '"', '?', '!', '&', *RATIONS, *(char for char, _ in OTHER_TONES))
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba's first size, baked into the meshes.
