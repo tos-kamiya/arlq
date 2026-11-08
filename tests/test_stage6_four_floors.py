@@ -15,8 +15,8 @@ def test_four_floor_dungeon(seed):
                    and e.empowered == 1 for e in floor.entities) <= 1
         swords = [e for e in floor.entities
                   if isinstance(e, d.Monster) and e.tribe.char == "c"]
-        assert len(swords) == 1
-        assert swords[0].empowered == 1
+        assert len(swords) == 3
+        assert all(sword.empowered == 1 for sword in swords)
     assert any(isinstance(e, d.Monster) and e.tribe.char == "b"
                and e.empowered == 3 for e in floors[2].entities)
     assert any(isinstance(e, d.Monster) and e.tribe.char == "B"
