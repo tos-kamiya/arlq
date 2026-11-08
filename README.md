@@ -117,35 +117,9 @@ consistent.
 If the field is wider than the view, the camera follows the player;
 Shift+Left/Right scrolls the view three cells at a time without moving.
 
-Characters with bundled sprites use transparent images once identified.
-Hover over a field cell to enlarge its character in place to twice its usual
-size, with its name above its head. Unidentified characters show no name.
-At the dungeon's top edge, the name appears below the character instead.
-Japanese names include the character's glyph in parentheses; in English,
-Marksman and Komodo Dragon are shown as `Marksman(k)` and `Komodo Dragon(d)`.
-Moving to another cell restores the previous character. The mouse cursor
-appears when moved and hides after three seconds without movement.
-Unidentified monsters (including traps and Collapses), fairies and elves
-appear as 3D `?`, `!` and `&` symbols standing in yellow, green and white light
-pillars.
-Stage 6 party members have sprites with randomly selected skin tones. The player is shown holding a
-chimera's sword while carrying it, and its own blade glows blue after the
-Collector Elf's blessing. The LP gauge floats just above the player, like a
-fighting game's, instead of in the status row. Ground markers preserve strength
-and status colors, and faint light pillars distinguish fairies. A
-respawned player or monster stands in a column of light in its ground marker's
-color, with leaf-shaped bands swirling up it: the player until its next move, a
-monster for three turns, also on explored cells outside the view.
-Terrain has
-a separate illustrated style, including marble walls and stairs, floor tiles,
-fires, and Collapse pits; rocks fallen through a pit lie on the floor below
-it. The Stage 5 training ground's walls are plain marble-colored boxes, one per cell.
-Taking stairs or falling through a pit briefly shows the moment between floors
-on a nearly black screen, where the stairs or pit were: the player
-standing on the landing of a floating switchback, or alone in the dark while falling
-through a pit, or holding a rope in a faint green glow while climbing out of one. It lasts 0.5 seconds by default; `Floor transition duration` in `Settings` selects 0 to 1 second in 0.1-second steps, and 0 skips it.
-Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
-`--scale` to enlarge the GUI.
+The player is shown holding a sword when carrying one. The LP gauge appears just above the player, as in a fighting game. Ground discs show whether monsters are identified, their strength, and the player's status.
+
+Hover over a character to enlarge it and display its name. Unidentified characters show no name.
 
 ## Game Description
 
@@ -153,6 +127,8 @@ Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
   Explore the dungeon, defeat the stage boss to unlock its treasure chest, and claim the treasure. Elves can help in the later stages.
 
   LP represents the player's life and decreases with movement or damage; reaching zero ends the game. Defeating monsters restores LP. The background behind `@` turns yellow at 40 LP or below and red at 20 LP or below.
+
+  Level represents the player's strength. Defeating monsters grants experience, which is added to the player's level.
 
   Every stage starts with 120 LP, temporarily above the normal maximum of 100, to give you more time to explore. The gauge is magenta while LP exceeds its maximum. Defeating monsters cannot replenish the excess. Returning after a defeat subtracts 6 LP, then guarantees a minimum of 20 LP, without imposing an upper limit. This does not grant the starting bonus again.
 
@@ -206,7 +182,7 @@ Note on the Loop Fairy: The destination becomes the new anchor, and subsequent r
 | Display & Name      | Description                                                                                                                                                       |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **a** Amoeba        | Weak enough to be defeated from the start. Useful for leveling up.                                                                                                |
-| **A** Rare Amoeba   | Defeating it raises your level by 10 instead of the usual 1. |
+| **A** Rare Amoeba   | Worth 10 experience instead of the usual 1. |
 | **b** Bison         | The second weakest. Defeating it restores a large amount of LP. Hunt it when you're hungry.                                                                       |
 | **c** Chimera       | Moderately strong. It carries a sword. Taking it raises combat power to 1.5x and lets you break up to three walls.                                               |
 | **d** Komodo Dragon | Powerful but dangerous. Defeating it restores a large amount of LP, but leaves you poisoned, reducing combat power to one third (rounded up) until replaced.        |
@@ -277,7 +253,7 @@ Stage 4 has five connected floors and features elves, including some new ones. N
 | Display & Name | Description |
 | -------------- | ----------- |
 | **E** Rare Erebus | On defeat, reduces your level to two thirds, rounded down, with a minimum of 1. |
-| **k** Marksman | Grants 3 base experience when defeated. Shoots arrows along a horizontal or vertical line for 4 LP damage per hit, but not from an adjacent cell. Walls, stairs, fairies, waiting party members, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. Respawns on a 195-turn cycle after defeat. |
+| **k** Marksman | Worth 3 experience. Shoots arrows along a horizontal or vertical line for 4 LP damage per hit, but not from an adjacent cell. Walls, stairs, fairies, waiting party members, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. Respawns on a 195-turn cycle after defeat. |
 
 #### Traps
 
@@ -304,9 +280,7 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
-Each Stage 6 floor has two A party leaders and three solitary c. Normal f party leaders number two on floor 1 and one each on floors 2–3; floors 2–3 also each have one empowered f leader. C does not appear; use ordinary swords from c for the boss fight.
-
-Stage 6 is a four-floor dungeon starting at level 1. There is one pair of ordinary stairs between floors 1 and 2; between floors 2 and 3 there are one or two pairs, with equal probability. The player fights with party members, and monsters also form parties. Defeat the Dread Wyrm (`W`) on floor 4 and claim the treasure. Four of eight candidates are chosen at random and start near the tavern by the starting position on floor 1. The HUD shows discovered roles and floors. The area around the tavern, within 0.2 times the Vortex radius (a horizontal radius of about 6 cells), is mapped from the start. Waiting candidates stay in place when you change floors. You can recruit up to two members; a third replaces the earliest recruit. Departing members reappear near the floor 1 tavern. Yellow dots spaced about three steps apart on explored floors mark a shortest route from the starting position to the boss (in `arlq-sprites`, floor tiles with a diamond of yellow light instead), calculated at the start using ordinary stairs and avoiding pits and hidden passages. The final floor has no route markers. The route does not change as the dungeon changes. In `arlq-sprites`, taverns and the Yawning Cat use their own artwork.
+Stage 6 is a four-floor dungeon starting at level 1. Recruit party members near the tavern and face monsters that also form parties. Follow the route markers, defeat the Dread Wyrm (`W`) on the final floor, and claim the treasure.
 
 An empowered Caltrop Plant (`X'`) appears on floor 3.
 
@@ -314,29 +288,27 @@ An empowered Caltrop Plant (`X'`) appears on floor 3.
 
 | Display & Profession | Ability |
 | --- | --- |
-| **J** Jester | Multiplies your shared experience by 1.5 and leaves permanently when your level reaches 80, or immediately if recruited at level 80 or higher. |
-| **H** Healer | Reduces movement LP cost to three-quarters and the defeat cost to 3, including when rewinding. |
+| **J** Jester | Multiplies your experience by 1.5 and leaves permanently when your level reaches 80. |
+| **H** Healer | Reduces movement LP cost to three-quarters and the defeat cost to 3. |
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **K** Knight | Adds a fixed 40 to your attack power. |
-| **D** Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Both require D in the party to use, even after discovery. Climb through an entrance and leave the pit on the next move. In sprite mode, discovered passages are marked by green light on the floor instead of a `.`; entrance discs appear only while D is in the party. |
-| **G** Guardian | Reduces barrier damage from 30 LP to 5 LP. |
-| **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. Identified fairies remain known after S leaves; newly discovered fairies remain unidentified. |
-| **Y** Yawning Cat | Every 20 accompanying turns, explores a 2×2 area starting at a random unexplored floor cell within an ellipse around the player on the current floor (vertical radius 10 cells, horizontal radius ×1.4, about 50% of a normal Vortex; independently configured). The 2×2 area shifts inward at map edges; if no nearby unexplored floor remains, nothing happens. Uses normal explored-map display, including unidentified monsters (`?`), without identifying them or stopping movement repeat. The counter resets on recruitment. |
+| **D** Dungeon Explorer | Lets you climb pits using a rope and travel through hidden passages. These are shown with green characters or light. |
+| **G** Guardian | Greatly reduces barrier damage. |
+| **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
+| **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
 
 Monsters are placed without horizontal adjacency; party members line up vertically.
 
-Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. The player receives all experience in Stages 5 and 6, regardless of members. J multiplies this by 1.5.
+Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. The player receives the monsters' combined experience.
 
-The isolated rooms on floors 1–3 each contain two monsters drawn without replacement from `b`, `b'`, `c`, `f` and `A`; additional Bison parties may also appear there. Floor 4 has no isolated room.
-
-Bison and Buffalo parties are preferentially distributed across alternating sections. If a preferred section is unavailable, the section immediately to its right is tried.
+Some rooms may be sealed by walls, but D can discover passages into them.
 
 #### Monsters
 
 | Display & Name | Description |
 | --- | --- |
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
-| **f** / **f'** Flame cobra | Defeating either grants 5 base experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
+| **f** / **f'** Flame cobra | Worth 5 experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
 
 The floor 4 boss party consists of `W`, `V`, and `w` (total attack 230); a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
@@ -356,13 +328,3 @@ ChatGPT, Gemini, Claude, and Grok contributed to the design and implementation o
 ## License
 
 This project is licensed under the BSD-2 license.
-
-Stage 6 balance is experimental. Floors 3–4 use the deep-floor roster; floors 1–3 have isolated rooms. Equal-sized enemy parties on each floor are ordered by initial boss-route progress and walking distance from that route. Isolated rooms retain separate spawns.
-
-Stage 6 adds up to two extra corridors per floor. Each joins adjacent rooms with the longest current path between them, creating loops while preserving isolated areas. Distances are recalculated after each addition.
-
-Sword carriers c are solitary, normal-rank monsters limited to one per floor, including isolated-room spawns; they do not participate in strength-based placement. Floor 3 introduces rank-3 Bison, and floor 4 adds rank-3 Buffalo. Other deep-floor enemies use rank 2; c is not used to scale difficulty.
-
-Stage 6 normal f spawns are reduced to one party leader per floor, with none in support pools or isolated-room draws. Empowered f counts are unchanged.
-
-Stage 6 d/d' party leaders total 4, 4, 3, 1 by floor; k leaders total 0, 1, 2, 3. Support pools and respawn rules are unchanged.
