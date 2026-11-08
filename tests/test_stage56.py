@@ -438,6 +438,14 @@ def test_flame_cobra_grants_five_experience(stage_num, rank):
     assert player.level == 105
 
 
+@pytest.mark.parametrize("stage_num", [3, 5, 6])
+def test_marksman_grants_three_experience(stage_num):
+    current, player = state(level=100)
+    current.entities = [monster(3, 2, "k")]
+    step(current, player, stage_num=stage_num)
+    assert player.level == 103
+
+
 def test_knight_level_is_fixed_and_jester_leaves_at_80():
     current, player = state(("Jester", "Knight"), lp=10)
     knight = player.members[1]
@@ -508,7 +516,6 @@ def test_fractional_attack_hazards_and_status():
     player.item = d.ITEM_SWORD_X1_5
     assert d.current_player_attack(player) == pytest.approx(190.75)
     assert barrier_lp_damage(player) == 30
-    assert d.caltrop_lp_damage(player) == 3
     current.field[2][3] = d.CHAR_CALTROP
     step(current, player)
     assert player.lp == 87
@@ -519,12 +526,10 @@ def test_fractional_attack_hazards_and_status():
 def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
     _, player = state(("Guardian",))
     assert barrier_lp_damage(player) == 5
-    assert d.caltrop_lp_damage(player) == 3
     assert d.movement_lp_cost(player) == 1
 
     player.members.append(d.PartyMember(player.x, player.y, "Healer"))
     assert barrier_lp_damage(player) == 5
-    assert d.caltrop_lp_damage(player) == 3
     assert d.movement_lp_cost(player) == pytest.approx(3 / 4)
 
     player.elf_stage_flags |= d.ELF_STAGE_H_FLAG

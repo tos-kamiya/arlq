@@ -738,7 +738,7 @@ def update_entities(
 
     # Caltrop damage
     if field[player.y][player.x] == d.CHAR_CALTROP:
-        player.lp -= d.caltrop_lp_damage(player)
+        player.lp -= d.CALTROP_LP_DAMAGE
         field[player.y][player.x] = d.CHAR_FLOOR
     if apply_barrier_damage(field, player, previous):
         message = (MESSAGE_TICKS, trp("-- The barrier burns you.", 5))
@@ -883,7 +883,7 @@ def update_entities(
                     tribes_to_be_respawned.append(m.tribe.char)
 
                 effect = m.tribe.effect
-                d.grant_defeat_level(player, effect, m.tribe.char)
+                d.grant_defeat_level(player, m.tribe)
                 activate_mimic_for_defeat(m, entities)
                 if effect == d.EFFECT_UNLOCK_TREASURE:
                     player.boss_defeated = True

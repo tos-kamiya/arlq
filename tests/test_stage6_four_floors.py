@@ -39,7 +39,6 @@ def test_member_rewards_and_knight():
         d.PartyMember(1, 1, d.MEMBER_KNIGHT),
         d.PartyMember(1, 1, d.MEMBER_HEALER),
     ]
-    assert d.experience_share_count(player) == 1
     assert d.current_player_attack(player) == 41
 
 

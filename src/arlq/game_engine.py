@@ -140,7 +140,7 @@ def reachable_known_cells(
                   and d.has_member(player, d.MEMBER_DUNGEON_EXPLORER)):
                 terrain_cost = d.movement_lp_cost(player)
             elif cell == d.CHAR_CALTROP:
-                terrain_cost = d.movement_lp_cost(player) + d.caltrop_lp_damage(player)
+                terrain_cost = d.movement_lp_cost(player) + d.CALTROP_LP_DAMAGE
             elif cell == d.CHAR_COLLAPSE:
                 terrain_cost = d.movement_lp_cost(player)
             elif cell == d.CHAR_BARRIER:
@@ -334,7 +334,7 @@ def _apply_terrain_hazards(
             trace.record_damage("barrier")
     if field[player.y][player.x] == d.CHAR_CALTROP:
         old_lp = player.lp
-        player.lp -= d.caltrop_lp_damage(player)
+        player.lp -= d.CALTROP_LP_DAMAGE
         damage = max(0, old_lp - player.lp)
         if damage:
             _set_status_popup(player, f"LP-{_format_popup_amount(damage)}", "default")
@@ -734,7 +734,7 @@ def _defeat_monster(
         player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
     if ch == "C":
         player.elf_stage_flags |= d.ELF_STAGE_C_FLAG
-    d.grant_defeat_level(player, entity.tribe.effect, entity.tribe.char)
+    d.grant_defeat_level(player, entity.tribe)
     d.apply_feed(
         player,
         entity.tribe.feed,
@@ -1185,19 +1185,7 @@ def _resolve_party_contact(
         return _ContactResult(trp("-- Your party lost and respawned together.", 5))
 
     old_level, old_lp = player.level, player.lp
-    base_experience = (
-        sum(
-            10
-            if monster.tribe.effect == d.EFFECT_SPECIAL_EXP
-            else 0
-            if monster.tribe.effect == d.EFFECT_LEVEL_REDUCE
-            else d.FLAME_COBRA_EXPERIENCE
-            if monster.tribe.char == "f"
-            else 1
-            for monster in party
-        )
-        / d.experience_share_count(player)
-    )
+    base_experience = sum(monster.tribe.experience for monster in party)
     experience = base_experience * d.experience_multiplier(player)
     feed = max(monster.tribe.feed for monster in party)
     lp_overcharge = (
@@ -1268,10 +1256,7 @@ def _resolve_party_contact(
     popup_tone = "default"
     if "A" in party_chars and player.level > old_level:
         popup = f"LVL+{_format_popup_amount(player.level - old_level)}"
-        if (
-            d.experience_share_count(player) != 1
-            or d.experience_multiplier(player) != 1
-        ):
+        if d.experience_multiplier(player) != 1:
             popup_tone = "green"
     elif "E" in party_chars:
         lost_level = max(0, old_level - player.level)

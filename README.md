@@ -277,7 +277,7 @@ Stage 4 has five connected floors and features elves, including some new ones. N
 | Display & Name | Description |
 | -------------- | ----------- |
 | **E** Rare Erebus | On defeat, reduces your level to two thirds, rounded down, with a minimum of 1. |
-| **k** Marksman | Shoots arrows along a horizontal or vertical line for 4 LP damage per hit, but not from an adjacent cell. Walls, stairs, fairies, waiting party members, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. Respawns on a 195-turn cycle after defeat. |
+| **k** Marksman | Grants 3 base experience when defeated. Shoots arrows along a horizontal or vertical line for 4 LP damage per hit, but not from an adjacent cell. Walls, stairs, fairies, waiting party members, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. Respawns on a 195-turn cycle after defeat. |
 
 #### Traps
 

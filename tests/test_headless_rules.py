@@ -890,7 +890,7 @@ def test_erebus_rare_reduces_level_to_two_thirds_instead_of_granting_level(
 ):
     player = d.Player(1, 1, initial_level, 90)
 
-    d.grant_defeat_level(player, d.EFFECT_LEVEL_REDUCE)
+    d.grant_defeat_level(player, d.CHAR_TO_MONSTER_TRIBE["E"])
 
     assert player.level == expected_level
 
