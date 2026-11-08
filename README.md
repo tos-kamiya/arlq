@@ -125,14 +125,14 @@ Japanese names include the character's glyph in parentheses; in English,
 Marksman and Komodo Dragon are shown as `Marksman(k)` and `Komodo Dragon(d)`.
 Moving to another cell restores the previous character. The mouse cursor
 appears when moved and hides after three seconds without movement.
-Unidentified monsters (including traps and Collapses), companions and elves
+Unidentified monsters (including traps and Collapses), fairies and elves
 appear as 3D `?`, `!` and `&` symbols standing in yellow, green and white light
 pillars.
 Stage 6 party members have sprites with randomly selected skin tones. The player is shown holding a
 chimera's sword while carrying it, and its own blade glows blue after the
 Collector Elf's blessing. The LP gauge floats just above the player, like a
 fighting game's, instead of in the status row. Ground markers preserve strength
-and status colors, and faint light pillars distinguish companions. A
+and status colors, and faint light pillars distinguish fairies. A
 respawned player or monster stands in a column of light in its ground marker's
 color, with leaf-shaped bands swirling up it: the player until its next move, a
 monster for three turns, also on explored cells outside the view.
@@ -164,10 +164,11 @@ Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
   | Overshoot assist | Cancels movement and LP use when you return to the same position within five turns without gaining map or monster information, encountering an entity, taking damage, or changing floors. Possible return cells are marked with a dark gray `.`. |
   | Reachable area preview | Press `F` to highlight explored cells reachable with your remaining LP. A gamepad button can show the preview while held or toggle it. While viewing the preview, Up or Down inspects another floor in Stages 3 and 4; moving closes the keyboard preview. Unexplored cells and routes remain hidden. The estimate avoids displayed entities and stairs, does not break walls or count LP recovery, and excludes Marksman damage, so actual reach may differ. |
 
-* **Monsters, Companions, and Elves**  
-  Unencountered monsters are displayed as `?`, companions as `!`, and unidentified elves as `&`. Contact reveals an entity's type. The rank 1 Amoeba (`a`) is known from the start of every stage; stronger ranks are identified separately.
+* **Monsters, Fairies, and Elves**
 
-  Monster identification persists across floors. Companion identification is tracked separately on each floor in every stage, so an unencountered companion is shown again as `!` on a new floor.
+  Unencountered monsters are displayed as `?`, fairies as `!`, and unidentified elves as `&`. Contact reveals an entity's type. The rank 1 Amoeba (`a`) is known from the start of every stage; stronger ranks are identified separately.
+
+  Monster identification persists across floors. Fairy identification is tracked separately on each floor in every stage, so an unencountered fairy is shown again as `!` on a new floor.
   In `arlq` and `arlq-cli`, the right-hand strength column shows identified monster types in white and unidentified types in gray.
 
   Contact with an ordinary monster starts combat. You win if its level is at or below your current attack power. Most victories raise your level by 1 and restore LP, but some monsters give no LP or drain LP or levels instead. Each victory updates the checkpoint. Losing to a stronger monster returns you to the checkpoint and clears your held item; losing twice in a row to the same monster, without contacting another monster in between, sends you to a random location instead. Stairs and falls also update the checkpoint.
@@ -176,7 +177,7 @@ Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
 
   Some monsters, such as `d`, respawn. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked `T` clears the stage.
 
-  Companions provide a temporary benefit, with one temporary companion at a time. Each monster combat encounter consumes one unit of its duration; a party encounter counts once regardless of its size. Each Pegasus jump also consumes one unit. For example, the Nomicon identifies nearby monsters and elves.
+  Fairies provide a temporary benefit, with one fairy at a time. Each monster combat encounter consumes one unit of its duration; a party encounter counts once regardless of its size. Each Pegasus jump also consumes one unit. For example, the Nomicon identifies nearby monsters and elves.
 
   Most elves appear from Stage 3 onward and provide support, such as increased attack power, when you meet certain conditions.
 
@@ -187,16 +188,16 @@ Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
 
   In Stages 5 and 6, you can recruit up to two party members whose abilities support combat and exploration.
 
-## Companion List
+## Fairy List
 
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
-| **l** Loop Companion | Appears in Stages 3–4. Rewinds up to 80 turns on contact, or to the start if fewer turns have elapsed. |
+| **l** Loop Fairy | Appears in Stages 3–4. Rewinds up to 80 turns on contact, or to the start if fewer turns have elapsed. |
 | **n** Nomicon  | Reveals the type of every active monster and elf within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. Barrier landings require barrier immunity; R clears Golem walls at the landing point. |
 
-Note on the Loop Companion: The destination becomes the new anchor, and subsequent rewinds cannot go earlier than that anchor, even when using a Loop Companion on another floor. Explored maps, monster identities, and learned elf and member locations remain known. Map knowledge is carried over as it stands immediately before the rewind, including any areas erased by a Vortex. The path from the discarded future appears as cyan dots for 10 turns after the rewind.
+Note on the Loop Fairy: The destination becomes the new anchor, and subsequent rewinds cannot go earlier than that anchor, even when using a Loop Fairy on another floor. Explored maps, monster identities, and learned elf and member locations remain known. Map knowledge is carried over as it stands immediately before the rewind, including any areas erased by a Vortex. The path from the discarded future appears as cyan dots for 10 turns after the rewind.
 
 ## Stage List
 
@@ -274,7 +275,7 @@ Stage 4 has five connected floors and features elves, including some new ones. N
 | Display & Name | Description |
 | -------------- | ----------- |
 | **E** Rare Erebus | On defeat, reduces your level to two thirds, rounded down, with a minimum of 1. |
-| **k** Marksman | Shoots arrows along a horizontal or vertical line for 4 LP damage per hit, but not from an adjacent cell. Walls, stairs, companions, waiting party members, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. Respawns on a 195-turn cycle after defeat. |
+| **k** Marksman | Shoots arrows along a horizontal or vertical line for 4 LP damage per hit, but not from an adjacent cell. Walls, stairs, fairies, waiting party members, treasure, and active monsters block arrows; caltrops (`x`), Collapse terrain (`O`), and barriers do not. Respawns on a 195-turn cycle after defeat. |
 
 #### Traps
 
@@ -286,18 +287,18 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | -------------- | ----------- |
 | **T** Mimic | Appears as a treasure chest after the stage boss is defeated. It has level 1; defeating it moves the player to a random position on the same floor. |
 | **?** / **O** Collapse | When a Rogue is in the party and its `?` cell enters the field of view, pits (`O`) open in the four adjacent cells, except where a wall already exists. Otherwise, entering its `?` cell opens the pits. On the next move, entering a pit drops the player to the next floor. Defeating Collapse removes the `?`; it does not respawn. |
-| **V** Vortex | Repositions nearby monsters, companions, and treasure chests when defeated, and erases map memory in the affected area. Map memory lost to a Vortex is not restored by the Loop Companion's rewind. |
+| **V** Vortex | Repositions nearby monsters, fairies, and treasure chests when defeated, and erases map memory in the affected area. Map memory lost to a Vortex is not restored by the Loop Fairy's rewind. |
 
 #### Elves
 
 | Display & Name | Description |
 | -------------- | ----------- |
 | **L** Lifebringer Elf | Each meeting cures poison, raises your permanent LP maximum by 5, up to 120, and restores LP to 120. L then disappears and returns on a random floor at a later 65-turn respawn tick. |
-| **S** Sylvan Elf | Gives you fairy nectar. Companions recruited afterward, except `l`, stay with you 1.25 times longer. |
+| **S** Sylvan Elf | Gives you fairy nectar. Fairies recruited afterward, except `l`, stay with you 1.25 times longer. |
 
 ### Stage 5: Training Ground
 
-Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of six Stage 6 party members (excluding the Yawning Cat and Seer).
+Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of six Stage 6 party members (excluding the Yawning Cat and Fairy Seer).
 
 ### Stage 6: Dungeon with a Party
 
@@ -317,7 +318,7 @@ An empowered Caltrop Plant (`X'`) appears on floor 3.
 | **K** Knight | Adds a fixed 40 to your attack power. |
 | **D** Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Both require D in the party to use, even after discovery. Climb through an entrance and leave the pit on the next move. In sprite mode, discovered passages are marked by green light on the floor instead of a `.`; entrance discs appear only while D is in the party. |
 | **G** Guardian | Prevents barrier and caltrop damage. |
-| **S** Seer | While in the party, identifies companions in explored areas on every floor. Identified companions remain known after S leaves; newly discovered companions remain unidentified. |
+| **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. Identified fairies remain known after S leaves; newly discovered fairies remain unidentified. |
 | **Y** Yawning Cat | Every 20 accompanying turns, explores a 2×2 area starting at a random unexplored floor cell within an ellipse around the player on the current floor (vertical radius 10 cells, horizontal radius ×1.4, about 50% of a normal Vortex; independently configured). The 2×2 area shifts inward at map edges; if no nearby unexplored floor remains, nothing happens. Uses normal explored-map display, including unidentified monsters (`?`), without identifying them or stopping movement repeat. The counter resets on recruitment. |
 
 Monsters are placed without horizontal adjacency; party members line up vertically.
