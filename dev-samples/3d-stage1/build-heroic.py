@@ -57,10 +57,10 @@ scene.world = world
 SCREEN_PIXEL = 186 / 1.8 / 11 * 2.6 / 256
 CELL_W = SCREEN_PIXEL * 16
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
-GRID_COLS, GRID_ROWS = 14, 8
+GRID_COLS, GRID_ROWS = 14, 9
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
 # the fairies and elves; monsters in stage order, then Stage 5 members,
-# the Stage 5 toy chest and the Stage 6 Yawning Cat.
+# the Stage 5 toy chest, the Stage 6 Yawning Cat and the Fairy Seer.
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
@@ -82,7 +82,9 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('explorer-dark', 'DUNGEON EXPLORER DARK'),
          ('guardian-light', 'GUARDIAN LIGHT'), ('guardian-medium', 'GUARDIAN MEDIUM'),
          ('guardian-dark', 'GUARDIAN DARK'),
-         ('T-toy', 'TOY CHEST'), ('cat', 'YAWNING CAT')]
+         ('T-toy', 'TOY CHEST'), ('cat', 'YAWNING CAT'),
+         ('seer-light', 'FAIRY SEER LIGHT'), ('seer-medium', 'FAIRY SEER MEDIUM'),
+         ('seer-dark', 'FAIRY SEER DARK')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -130,7 +132,7 @@ SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b':
          'guardian-light': 1.49, 'guardian-medium': 1.49, 'guardian-dark': 1.49,
          '?': 1.3, '!': 1.3, '&': 1.3,
          'ration-hyorogan': 1.4, 'ration-hardtack': 1.3, 'ration-jerky': 1.45,
-         'cat': 1.2}
+         'cat': 1.2, 'seer-light': 1.3, 'seer-medium': 1.3, 'seer-dark': 1.3}
 # The unknown symbols float this high above the floor and lean back this many
 # degrees, so they read almost undistorted from the 60-degree camera.
 UNKNOWN_FLOAT = 0.2
@@ -4748,6 +4750,182 @@ def yawning_cat(x, y):
     transform_new(neck_start, Matrix.Translation((0, -CAT_HEAD_FORWARD, 0)))
 
 
+def fairy_seer(x, y, tone):
+    """Fairy Seer (S), a Stage 6 member: a farmer who also studies the
+    fairies, kin in look to the Sylvan Elf. The same wide straw hat, with a
+    band of sky-blue flowers; the Sylvan Elf's colors turned round, a
+    calf-length oatmeal dress under a moss green bib apron (matte, not the
+    fairies' glowing green), sleeves rolled to the elbows and brown boots.
+    A soft chestnut braid falls over one shoulder. One hand raises a
+    small clay mug of the Sylvan Elf's flower nectar, a little cousin of its
+    pot; the other holds an open field notebook, with a pencil in the apron
+    pocket, the researcher. No pointed ears. `tone` picks one of
+    `MEMBER_SKINS`.
+    """
+    dress = material('Fairy Seer oatmeal dress', (0.88, 0.82, 0.68), 0.05, 0.65,
+                     rim=(1.0, 0.95, 0.85), rim_strength=0.6)
+    apron = material('Fairy Seer moss apron', (0.24, 0.34, 0.13), 0.0, 0.7,
+                     rim=(0.8, 0.9, 0.6), rim_strength=0.5)
+    straw = material('Fairy Seer straw hat', (0.88, 0.70, 0.30), 0.0, 0.7,
+                     rim=(1.0, 0.9, 0.6), rim_strength=0.6)
+    flower = material('Fairy Seer blue flowers', (0.40, 0.65, 1.0), 0.1, 0.4)
+    boots = material('Fairy Seer brown boots', (0.32, 0.20, 0.10), 0.0, 0.55,
+                     rim=(1.0, 0.8, 0.6), rim_strength=0.4)
+    wood = material('Fairy Seer wood', (0.45, 0.28, 0.13), 0.0, 0.45, coat=0.4,
+                    rim=(1.0, 0.85, 0.6), rim_strength=0.5)
+    clay = material('Fairy Seer clay mug', (0.55, 0.30, 0.15), 0.0, 0.5, coat=0.5)
+    # The Sylvan Elf's flower nectar: clear honey-amber, glowing faintly.
+    nectar = material('Fairy Seer flower nectar', (1.0, 0.70, 0.22), 0.6, 0.05,
+                      emission=(1.0, 0.65, 0.2), strength=0.25, coat=1.0,
+                      rim=(1.0, 0.9, 0.6), rim_strength=0.6)
+    paper = material('Fairy Seer notebook pages', (0.95, 0.92, 0.82), 0.0, 0.6)
+    cover = material('Fairy Seer notebook cover', (0.40, 0.22, 0.12), 0.0, 0.5)
+    ink = material('Fairy Seer ink', (0.15, 0.12, 0.10), 0.0, 0.6)
+    pencil = material('Fairy Seer pencil', (0.95, 0.70, 0.15), 0.0, 0.4)
+    skin = material('Fairy Seer skin ' + tone, MEMBER_SKINS[tone], 0.2, 0.4,
+                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    hair = material('Fairy Seer chestnut hair', (0.36, 0.17, 0.07), 0.1, 0.4,
+                    rim=(1.0, 0.75, 0.5), rim_strength=0.7, coat=0.3)
+    eye = material('Fairy Seer eyes', (0.04, 0.03, 0.02), roughness=0.2, coat=1.0)
+    # Turned 30 degrees about X, a flat part faces the 60-degree camera.
+    facing = math.radians(30)
+    toward = Vector((0, -math.sin(facing), math.cos(facing)))
+    down = Vector((0, -math.cos(facing), -math.sin(facing)))
+
+    def skirt_radius(z):
+        # The dress skirt from elf_figure, hem 0.14, hip 0.58.
+        if z < 0.36:
+            return 0.24 + (0.19 - 0.24) * (z - 0.14) / 0.22
+        return 0.19 + (0.14 - 0.19) * (z - 0.36) / 0.22
+
+    def body(x, y):
+        # Boots showing under the hem, toes out a little.
+        for side in (-1, 1):
+            tube('Fairy Seer boot', [(x + side * 0.08, y, 0.16), (x + side * 0.09, y - 0.03, 0.06),
+                                     (x + side * 0.11, y - 0.10, 0.04),
+                                     (x + side * 0.12, y - 0.14, 0.04)],
+                 [0.06, 0.065, 0.055, 0], boots, sides=12, smooth=True)
+        # The bib apron: a curved panel over the front of the skirt and a
+        # bib on the chest, held by straps over the shoulders.
+        rows = [0.20, 0.30, 0.40, 0.50, 0.58]
+        cols = [math.radians(a) for a in range(-55, 56, 11)]
+        verts = []
+        for z in rows:
+            r = skirt_radius(z) + 0.012
+            verts += [(x + r * math.sin(a), y - r * math.cos(a), z) for a in cols]
+        n = len(cols)
+        faces = [(i * n + k, i * n + k + 1, (i + 1) * n + k + 1, (i + 1) * n + k)
+                 for i in range(len(rows) - 1) for k in range(n - 1)]
+        panel = mesh_object('Fairy Seer apron skirt', verts, faces, apron, True)
+        panel.modifiers.new('Apron thickness', 'SOLIDIFY').thickness = 0.01
+        block('Fairy Seer apron bib', (x, y - 0.165, 0.70), (0.20, 0.03, 0.22), apron, 0.02,
+              (-0.10, 0, 0))
+        for side in (-1, 1):
+            tube('Fairy Seer apron strap', [(x + side * 0.08, y - 0.17, 0.80),
+                                            (x + side * 0.11, y - 0.10, 0.88),
+                                            (x + side * 0.12, y + 0.05, 0.88)],
+                 [0.016] * 3, apron, sides=6, smooth=True)
+        tube('Fairy Seer apron tie', [(x - 0.16, y - 0.08, 0.58), (x, y - 0.17, 0.58),
+                                      (x + 0.16, y - 0.08, 0.58)], [0.02] * 3, apron,
+             sides=6, smooth=True)
+        # A pocket on the bib with a pencil standing in it.
+        block('Fairy Seer apron pocket', (x - 0.05, y - 0.185, 0.66), (0.08, 0.012, 0.07), apron,
+              0.01, (-0.10, 0, 0))
+        tube('Fairy Seer pencil', [(x - 0.03, y - 0.19, 0.64), (x - 0.025, y - 0.20, 0.76)],
+             [0.009, 0.009], pencil, sides=6)
+        # Sleeves rolled up to the elbows, the forearms bare.
+        def arm(name, shoulder, elbow, wrist):
+            shoulder, elbow, wrist = Vector(shoulder), Vector(elbow), Vector(wrist)
+            tube(name + ' sleeve', [shoulder, shoulder.lerp(elbow, 0.5), elbow],
+                 [0.06, 0.062, 0.058], dress, sides=12, smooth=True)
+            roll = elbow.lerp(shoulder, 0.12)
+            tube(name + ' rolled cuff', [roll, elbow.lerp(wrist, 0.08)], [0.068, 0.066], dress,
+                 sides=12, smooth=True)
+            tube(name + ' forearm', [elbow, wrist], [0.042, 0.034], skin, sides=10, smooth=True)
+
+        # The right hand (screen left) raises a small clay mug of fairy
+        # nectar by its handle, a little cousin of the Sylvan Elf's pot,
+        # open to the camera so the nectar shows.
+        cx, cy, cz = x - 0.30, y - 0.22, 0.82
+        m = 1.3
+        profile = [(0, 0.0), (0.042, 0.0), (0.05, 0.012), (0.052, 0.08), (0.049, 0.092),
+                   (0.043, 0.09), (0.041, 0.08), (0.039, 0.014), (0, 0.012)]
+        profile = [(r * m, z * m) for r, z in profile]
+        sides, verts, rings = 20, [], []
+        for r, z in profile:
+            if r == 0:
+                rings.append([len(verts)])
+                verts.append((cx, cy, cz + z))
+                continue
+            rings.append(list(range(len(verts), len(verts) + sides)))
+            verts += [(cx + r * math.cos(2 * math.pi * k / sides),
+                       cy + r * math.sin(2 * math.pi * k / sides), cz + z) for k in range(sides)]
+        faces = []
+        for r1, r2 in zip(rings, rings[1:]):
+            if len(r1) == 1:
+                faces += [(r1[0], r2[(k + 1) % sides], r2[k]) for k in range(sides)]
+            elif len(r2) == 1:
+                faces += [(r1[k], r1[(k + 1) % sides], r2[0]) for k in range(sides)]
+            else:
+                faces += [(r1[k], r1[(k + 1) % sides], r2[(k + 1) % sides], r2[k])
+                          for k in range(sides)]
+        mesh_object('Fairy Seer nectar mug', verts, faces, clay, True)
+        sphere('Fairy Seer mug nectar', (cx, cy, cz + 0.078 * m), (0.04 * m, 0.04 * m, 0.005), nectar, 20)
+        handle = Vector((cx - 0.056 * m, cy, cz + 0.046 * m))
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.026 * m, minor_radius=0.009 * m,
+                                         location=handle,
+                                         rotation=(math.pi / 2, 0, 0))
+        finish(bpy.context.object, clay, True, 'Fairy Seer mug handle')
+        # The hand closes round the handle, covering it from the front.
+        grip = handle + Vector((-0.012, -0.012, -0.004))
+        arm('Fairy Seer right', (x - 0.17, y, 0.84), (x - 0.30, y - 0.03, 0.68),
+            grip - Vector((0.01, 0, 0.03)))
+        sphere('Fairy Seer right hand', tuple(grip), (0.042, 0.045, 0.048), skin, 16)
+        # The left hand holds an open notebook before the waist, turned up
+        # to the camera.
+        book = Vector((x + 0.08, y - 0.27, 0.66))
+        arm('Fairy Seer left', (x + 0.17, y, 0.84), (x + 0.26, y - 0.03, 0.68),
+            (x + 0.17, y - 0.22, 0.62))
+        sphere('Fairy Seer left hand', (x + 0.15, y - 0.25, 0.62), (0.045, 0.045, 0.04), skin, 16)
+        for side in (-1, 1):
+            rotation = (facing, side * math.radians(10), 0)
+            half = book + Vector((side * 0.055, 0, 0)) + toward * 0.0
+            block('Fairy Seer notebook cover', tuple(half - toward * 0.008),
+                  (0.115, 0.15, 0.006), cover, 0.003, rotation)
+            block('Fairy Seer notebook page', tuple(half), (0.105, 0.14, 0.012), paper, 0.003,
+                  rotation)
+            for k in range(3):
+                line = half + Vector((0, 0, 0)) + toward * 0.008 + (-down) * (0.035 - k * 0.03)
+                tube('Fairy Seer notes', [line - Vector((0.035, 0, 0)), line + Vector((0.035, 0, 0))],
+                     [0.003, 0.003], ink, sides=4)
+
+    def head(x, y):
+        # Chestnut hair, a soft braid over the left shoulder (screen right)
+        # tied with a blue ribbon, under the Sylvan Elf's wide straw hat
+        # with a band of small sky-blue flowers.
+        sphere('Fairy Seer hair cap', (x, y + 0.04, 1.07), (0.155, 0.14, 0.13), hair, 32)
+        for side in (-1, 1):
+            sphere('Fairy Seer side hair', (x + side * 0.11, y - 0.03, 1.08), (0.05, 0.06, 0.07), hair, 16)
+        braid = [(x + 0.11, y + 0.02, 1.02), (x + 0.15, y - 0.03, 0.94), (x + 0.15, y - 0.07, 0.86)]
+        tube('Fairy Seer braid', braid, [0.045, 0.04, 0.03], hair, sides=10, smooth=True)
+        sphere('Fairy Seer braid ribbon', braid[-1], (0.035, 0.025, 0.02), flower, 12)
+        tube('Fairy Seer braid tip', [braid[-1], (x + 0.15, y - 0.08, 0.80)], [0.028, 0], hair,
+             sides=8, smooth=True)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=0.24, depth=0.02,
+                                            location=(x, y + 0.02, 1.17))
+        finish(bpy.context.object, straw, True, 'Fairy Seer hat brim')
+        tube('Fairy Seer hat crown', [(x, y + 0.02, 1.17), (x, y + 0.02, 1.25), (x, y + 0.02, 1.28)],
+             [0.14, 0.13, 0.11], straw, sides=24, smooth=True)
+        for k in range(5):
+            a = math.radians(-150 + k * 30)
+            sphere('Fairy Seer hat flower', (x + 0.145 * math.cos(a), y + 0.02 + 0.145 * math.sin(a), 1.20),
+                   (0.032, 0.032, 0.028), flower, 12)
+
+    elf_figure(x, y, 'Fairy Seer', dress, skin, eye, body, head, skirt=(0.24, 0.19, 0.14),
+               skirt_z=(0.14, 0.36, 0.58), ears=False,
+               head_scale=member_head_scale('seer-' + tone))
+
+
 def label(value, pos, size):
     bpy.ops.object.text_add(location=pos)
     obj = bpy.context.object
@@ -4785,6 +4963,8 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             **{'knight-' + tone: (lambda tone: lambda x, y: knight(x, y, tone))(tone)
                for tone in MEMBER_SKINS},
             **{'guardian-' + tone: (lambda tone: lambda x, y: guardian(x, y, tone))(tone)
+               for tone in MEMBER_SKINS},
+            **{'seer-' + tone: (lambda tone: lambda x, y: fairy_seer(x, y, tone))(tone)
                for tone in MEMBER_SKINS}}
 def render_group_shot():
     """Open the others' scene, bring in the other groups, and render them all."""
