@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 6.4.1 - 2026-11-08
+
+- Revise the Stage 5 training map and rebalance party members and Stage 6
+  encounters, equipment, and recruitment.
+- Add the Seer fairy and new character sprite variants, and update fairy names.
+- Show barrier protection in the interface, including a smaller sprite when
+  the Guardian reduces damage, and raise the tavern floor onto a stone plinth.
+- Let Golem rocks replace barriers when they scatter.
+
 ## 6.4.0 - 2026-11-08
 
 - Rebuild Stage 6 as a four-floor dungeon with looping corridors, revised
