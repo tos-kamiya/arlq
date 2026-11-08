@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 6.4.0 - 2026-11-08
+
+- Rebuild Stage 6 as a four-floor dungeon with looping corridors, revised
+  enemy parties and growth, and a new boss encounter. Taverns on the first
+  two floors gather party candidates and reveal their surroundings; route
+  markers guide players on earlier floors.
+- Add the Yawning Cat party member, which explores nearby areas over time,
+  and new tavern and cat artwork in sprite mode.
+- Adjust Pegasus landings on barriers and Golem rubble according to the
+  player's protections and party members.
+- Improve sprite rendering and transitions, respawn effects, and pit landings.
+
 ## 6.3.3 - 2026-11-04
 
 - Place both Stage 6 Rare Chimeras on floor 3 and replace those removed from
