@@ -57,10 +57,11 @@ scene.world = world
 SCREEN_PIXEL = 186 / 1.8 / 11 * 2.6 / 256
 CELL_W = SCREEN_PIXEL * 16
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
-GRID_COLS, GRID_ROWS = 14, 9
+GRID_COLS, GRID_ROWS = 14, 10
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
 # the fairies and elves; monsters in stage order, then Stage 5 members,
-# the Stage 5 toy chest, the Stage 6 Yawning Cat and the Fairy Seer.
+# the Stage 5 toy chest, the Stage 6 Yawning Cat and the Fairy Seer, then
+# the second-gender Healer and Dungeon Explorer.
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
@@ -84,7 +85,12 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('guardian-dark', 'GUARDIAN DARK'),
          ('T-toy', 'TOY CHEST'), ('cat', 'YAWNING CAT'),
          ('seer-light', 'FAIRY SEER LIGHT'), ('seer-medium', 'FAIRY SEER MEDIUM'),
-         ('seer-dark', 'FAIRY SEER DARK')]
+         ('seer-dark', 'FAIRY SEER DARK'),
+         ('healer-male-light', 'HEALER MALE LIGHT'), ('healer-male-medium', 'HEALER MALE MEDIUM'),
+         ('healer-male-dark', 'HEALER MALE DARK'),
+         ('explorer-female-light', 'DUNGEON EXPLORER FEMALE LIGHT'),
+         ('explorer-female-medium', 'DUNGEON EXPLORER FEMALE MEDIUM'),
+         ('explorer-female-dark', 'DUNGEON EXPLORER FEMALE DARK')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -132,7 +138,9 @@ SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b':
          'guardian-light': 1.49, 'guardian-medium': 1.49, 'guardian-dark': 1.49,
          '?': 1.3, '!': 1.3, '&': 1.3,
          'ration-hyorogan': 1.4, 'ration-hardtack': 1.3, 'ration-jerky': 1.45,
-         'cat': 1.2, 'seer-light': 1.3, 'seer-medium': 1.3, 'seer-dark': 1.3}
+         'cat': 1.2, 'seer-light': 1.3, 'seer-medium': 1.3, 'seer-dark': 1.3,
+         **{'healer-male-' + tone: 1.4 for tone in ('light', 'medium', 'dark')},
+         **{'explorer-female-' + tone: 1.49 for tone in ('light', 'medium', 'dark')}}
 # The unknown symbols float this high above the floor and lean back this many
 # degrees, so they read almost undistorted from the 60-degree camera.
 UNKNOWN_FLOAT = 0.2
@@ -2670,15 +2678,16 @@ def jester(x, y, tone):
                head_scale=member_head_scale('jester-' + tone))
 
 
-def healer(x, y, tone):
+def healer(x, y, tone, gender='female'):
     """Healer (H), a Stage 5 member: a temple healer of no real-world faith,
     in a long cream robe with a turquoise stole and silver fittings (not the
     Lifebringer's white and gold), a lowered hood and a thin silver circlet,
     shoulder-length hair. One hand holds a staff topped by a silver ring
     with a floating pale aqua drop crystal; the other is raised before the
     chest, palm out, with a small healing light. The game's own emblem, a
-    drop inside a ring, is on the chest. The face reads as neither man nor
-    woman. `tone` picks one of `MEMBER_SKINS`.
+    drop inside a ring, is on the chest. `tone` picks one of `MEMBER_SKINS`;
+    `gender` 'female' has the shoulder-length hair, 'male' short hair
+    parted in the middle and a little broader shoulders.
     """
     robe = material('Healer cream robe', (0.86, 0.82, 0.72), 0.05, 0.6,
                     rim=(1.0, 0.97, 0.9), rim_strength=0.7)
@@ -2752,6 +2761,31 @@ def healer(x, y, tone):
         sphere('Healer healing light', (x + 0.21, y - 0.31, 0.90), (0.05, 0.05, 0.05), glow, 20)
 
     def head(x, y):
+        if gender == 'male':
+            short_hair(x, y)
+        else:
+            long_hair(x, y)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.152, minor_radius=0.012,
+                                         location=(x, y + 0.01, 1.10))
+        finish(bpy.context.object, silver, True, 'Healer circlet')
+        sphere('Healer circlet stone', (x, y - 0.143, 1.10), (0.022, 0.012, 0.03), glow, 12)
+
+    def short_hair(x, y):
+        # Short hair parted in the middle: two even halves meeting in a
+        # shallow groove down the centre of the crown, falling to each side
+        # over the temples to about the middle of the ear, and a short back
+        # over the nape.
+        sphere('Healer hair cap', (x, y + 0.035, 1.08), (0.152, 0.142, 0.125), hair, 32)
+        for side in (-1, 1):
+            sphere('Healer hair half', (x + side * 0.055, y - 0.01, 1.135), (0.10, 0.135, 0.075),
+                   hair, 24)
+            tube('Healer hair side', [(x + side * 0.10, y - 0.07, 1.12),
+                                      (x + side * 0.142, y - 0.04, 1.06),
+                                      (x + side * 0.145, y - 0.01, 1.00)],
+                 [0.045, 0.04, 0.025], hair, sides=10, smooth=True)
+        sphere('Healer hair nape', (x, y + 0.085, 1.02), (0.13, 0.08, 0.08), hair, 24)
+
+    def long_hair(x, y):
         # Shoulder-length hair under a thin silver circlet.
         sphere('Healer hair cap', (x, y + 0.03, 1.08), (0.155, 0.145, 0.13), hair, 32)
         for side in (-1, 1):
@@ -2760,12 +2794,9 @@ def healer(x, y, tone):
                  sides=10, smooth=True)
         tube('Healer hair back', [(x, y + 0.10, 1.06), (x, y + 0.14, 0.96), (x, y + 0.13, 0.90)],
              [0.11, 0.10, 0.07], hair, sides=12, smooth=True)
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.152, minor_radius=0.012,
-                                         location=(x, y + 0.01, 1.10))
-        finish(bpy.context.object, silver, True, 'Healer circlet')
-        sphere('Healer circlet stone', (x, y - 0.143, 1.10), (0.022, 0.012, 0.03), glow, 12)
 
     elf_figure(x, y, 'Healer', robe, skin, eye, body, head, ears=False,
+               girth=1.08 if gender == 'male' else 1.0,
                head_scale=member_head_scale('healer-' + tone))
 
 
@@ -2952,7 +2983,7 @@ def rogue(x, y, tone):
 HELMET_PUSH = math.radians(4)  # how far the Dungeon Explorer's helmet is pushed back
 
 
-def dungeon_explorer(x, y, tone):
+def dungeon_explorer(x, y, tone, gender='male'):
     """Dungeon Explorer (D), a Stage 5 member: a caver who finds hidden
     routes. Lightly dressed like a caving team, but the helmet is a khaki
     pith helmet with a brown leather band, and the headlamp is a glowing
@@ -2964,8 +2995,11 @@ def dungeon_explorer(x, y, tone):
     a black head with a deeply curved, toothed pick, and a black wrist leash)
     beside the body, its head at shoulder height. The left hand
     rests on the hip. No weapon besides the tool, no cape. `tone` picks one of
-    `MEMBER_SKINS`.
+    `MEMBER_SKINS`; `gender` 'male' shows no hair under the helmet, 'female'
+    a fringe and a short cut, the locks framing the face to the jaw.
     """
+    hair = material('Dungeon Explorer brown hair', (0.20, 0.11, 0.05), 0.1, 0.4,
+                    rim=(0.9, 0.7, 0.5), rim_strength=0.6, coat=0.3)
     shirt = material('Dungeon Explorer light grey shirt', (0.36, 0.37, 0.39), 0.0, 0.55,
                      rim=(0.85, 0.87, 0.92), rim_strength=0.45)
     trousers = material('Dungeon Explorer navy trousers', (0.06, 0.08, 0.20), 0.0, 0.6,
@@ -3131,6 +3165,16 @@ def dungeon_explorer(x, y, tone):
         # each side. The light stone sits on the front above the band.
         center, radii = Vector((x, y + 0.005, 1.05)), Vector((0.158, 0.19, 0.215))
         thick = 0.025
+        if gender == 'female':
+            # A short fringe under the front brim and a short cut: locks
+            # framing the face down to the jaw, and the back over the nape.
+            sphere('Dungeon Explorer fringe', (x, y - 0.105, 1.10), (0.12, 0.05, 0.04), hair, 24)
+            sphere('Dungeon Explorer hair back', (x, y + 0.07, 1.02), (0.15, 0.10, 0.11), hair, 24)
+            for side in (-1, 1):
+                tube('Dungeon Explorer hair lock', [(x + side * 0.125, y - 0.08, 1.10),
+                                                    (x + side * 0.145, y - 0.08, 1.01),
+                                                    (x + side * 0.135, y - 0.06, 0.95)],
+                     [0.045, 0.045, 0.02], hair, sides=10, smooth=True)
         start = set(bpy.data.objects)
         rim_z, rim_tilt = 0.13, 0.10
 
@@ -4965,6 +5009,11 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             **{'guardian-' + tone: (lambda tone: lambda x, y: guardian(x, y, tone))(tone)
                for tone in MEMBER_SKINS},
             **{'seer-' + tone: (lambda tone: lambda x, y: fairy_seer(x, y, tone))(tone)
+               for tone in MEMBER_SKINS},
+            **{'healer-male-' + tone: (lambda tone: lambda x, y: healer(x, y, tone, 'male'))(tone)
+               for tone in MEMBER_SKINS},
+            **{'explorer-female-' + tone:
+               (lambda tone: lambda x, y: dungeon_explorer(x, y, tone, 'female'))(tone)
                for tone in MEMBER_SKINS}}
 def render_group_shot():
     """Open the others' scene, bring in the other groups, and render them all."""
