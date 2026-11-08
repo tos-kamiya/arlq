@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 6.4.2 - 2026-11-09
+
+- Give ordinary Flame Cobras barriers on their left and right.
+
 ## 6.4.1 - 2026-11-08
 
 - Revise the Stage 5 training map and rebalance party members and Stage 6

@@ -463,8 +463,10 @@ def update_moved_monster_barriers(
 def _barrier_offsets(entity: d.Monster) -> tuple[d.Point, ...]:
     if entity.tribe.char in {"w", "W"}:
         return tuple((dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy)
-    if entity.tribe.char == "f" and entity.empowered == 2:
-        return ((0, -1), (1, 0), (0, 1), (-1, 0))
+    if entity.tribe.char == "f":
+        if entity.empowered == 2:
+            return ((0, -1), (1, 0), (0, 1), (-1, 0))
+        return ((1, 0), (-1, 0))
     return ()
 
 

@@ -676,7 +676,7 @@ def _defeat_monster(
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
     ch = entity.tribe.char
-    if ch == "w" or (ch == "f" and entity.empowered == 2):
+    if ch in ("w", "f"):
         other_monster_barrier_cells = {
             point
             for other in current.entities

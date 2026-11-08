@@ -1639,20 +1639,21 @@ def test_tutorial_adjacency_exceptions_follow_monster_markers(monkeypatch):
 
 
 @pytest.mark.parametrize("stage_num", range(1, 7))
-def test_empowered_f_barriers_depend_on_rank_and_clear_on_defeat(stage_num):
+@pytest.mark.parametrize("rank, footprint", [
+    (1, {(4, 3), (2, 3)}),
+    (2, {(3, 2), (4, 3), (3, 4), (2, 3)}),
+])
+def test_f_barriers_depend_on_rank_and_clear_on_defeat(stage_num, rank, footprint):
     current, player = state()
-    ordinary = monster(3, 3, "f")
-    empowered = monster(3, 3, "f", 2)
-    assert stage56.barrier_cells(current, ordinary) == ()
-    footprint = {(3, 2), (4, 3), (3, 4), (2, 3)}
-    assert set(stage56.barrier_cells(current, empowered)) == footprint
-    current.entities = [empowered]
-    stage56.place_monster_barriers(current, empowered)
+    cobra = monster(3, 3, "f", rank)
+    assert set(stage56.barrier_cells(current, cobra)) == footprint
+    current.entities = [cobra]
+    stage56.place_monster_barriers(current, cobra)
     assert all(current.field[y][x] == d.CHAR_BARRIER for x, y in footprint)
-    current.entities.remove(empowered)
+    current.entities.remove(cobra)
 
     engine._defeat_monster(
-        empowered, current, player, [0], [(1, 1)], Counter(), stage_num=stage_num,
+        cobra, current, player, [0], [(1, 1)], Counter(), stage_num=stage_num,
     )
 
     assert all(current.field[y][x] == d.CHAR_FLOOR for x, y in footprint)

@@ -336,7 +336,7 @@ Bison and Buffalo parties are preferentially distributed across alternating sect
 | Display & Name | Description |
 | --- | --- |
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
-| **f** / **f'** Flame cobra | Defeating either grants 5 base experience. The empowered form `f'` places barriers on available adjacent cells in the four cardinal directions. |
+| **f** / **f'** Flame cobra | Defeating either grants 5 base experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
 
 The floor 4 boss party consists of `W`, `V`, and `w` (total attack 230); a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
