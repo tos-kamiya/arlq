@@ -61,7 +61,7 @@ GRID_COLS, GRID_ROWS = 14, 10
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
 # the fairies and elves; monsters in stage order, then Stage 5 members,
 # the Stage 5 toy chest, the Stage 6 Yawning Cat and the Fairy Seer, then
-# the second-gender Healer and Dungeon Explorer.
+# the second-gender Healer, Dungeon Explorer and Fairy Seer.
 ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
          ('@K', 'PLAYER + K BLESSING'), ('a', 'AMOEBA'), ('A', 'RARE AMOEBA'), ('b', 'BISON'),
          ('c', 'CHIMERA'), ('d', 'COMODO DRAGON'), ('T', 'TREASURE CHEST'), ('M', 'MIMIC'), ('D', 'DRAGON'),
@@ -90,7 +90,9 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('healer-male-dark', 'HEALER MALE DARK'),
          ('explorer-female-light', 'DUNGEON EXPLORER FEMALE LIGHT'),
          ('explorer-female-medium', 'DUNGEON EXPLORER FEMALE MEDIUM'),
-         ('explorer-female-dark', 'DUNGEON EXPLORER FEMALE DARK')]
+         ('explorer-female-dark', 'DUNGEON EXPLORER FEMALE DARK'),
+         ('seer-male-light', 'FAIRY SEER MALE LIGHT'), ('seer-male-medium', 'FAIRY SEER MALE MEDIUM'),
+         ('seer-male-dark', 'FAIRY SEER MALE DARK')]
 # Characters stand on every other cell, like the light squares of a
 # chessboard, so neighbours in a row are two cells apart.
 SLOTS = [(col, row) for row in range(GRID_ROWS) for col in range(GRID_COLS)
@@ -140,7 +142,8 @@ SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b':
          'ration-hyorogan': 1.4, 'ration-hardtack': 1.3, 'ration-jerky': 1.45,
          'cat': 1.2, 'seer-light': 1.3, 'seer-medium': 1.3, 'seer-dark': 1.3,
          **{'healer-male-' + tone: 1.4 for tone in ('light', 'medium', 'dark')},
-         **{'explorer-female-' + tone: 1.49 for tone in ('light', 'medium', 'dark')}}
+         **{'explorer-female-' + tone: 1.49 for tone in ('light', 'medium', 'dark')},
+         **{'seer-male-' + tone: 1.3 for tone in ('light', 'medium', 'dark')}}
 # The unknown symbols float this high above the floor and lean back this many
 # degrees, so they read almost undistorted from the 60-degree camera.
 UNKNOWN_FLOAT = 0.2
@@ -4794,7 +4797,7 @@ def yawning_cat(x, y):
     transform_new(neck_start, Matrix.Translation((0, -CAT_HEAD_FORWARD, 0)))
 
 
-def fairy_seer(x, y, tone):
+def fairy_seer(x, y, tone, gender='female'):
     """Fairy Seer (S), a Stage 6 member: a farmer who also studies the
     fairies, kin in look to the Sylvan Elf. The same wide straw hat, with a
     band of sky-blue flowers; the Sylvan Elf's colors turned round, a
@@ -4804,8 +4807,11 @@ def fairy_seer(x, y, tone):
     small clay mug of the Sylvan Elf's flower nectar, a little cousin of its
     pot; the other holds an open field notebook, with a pencil in the apron
     pocket, the researcher. No pointed ears. `tone` picks one of
-    `MEMBER_SKINS`.
+    `MEMBER_SKINS`; `gender` 'female' wears the dress and bib apron with a
+    braid, 'male' moss green bib overalls over an oatmeal shirt, with short
+    hair and a little broader shoulders.
     """
+    male = gender == 'male'
     dress = material('Fairy Seer oatmeal dress', (0.88, 0.82, 0.68), 0.05, 0.65,
                      rim=(1.0, 0.95, 0.85), rim_strength=0.6)
     apron = material('Fairy Seer moss apron', (0.24, 0.34, 0.13), 0.0, 0.7,
@@ -4842,7 +4848,32 @@ def fairy_seer(x, y, tone):
             return 0.24 + (0.19 - 0.24) * (z - 0.14) / 0.22
         return 0.19 + (0.14 - 0.19) * (z - 0.36) / 0.22
 
+    def overalls(x, y):
+        # Bib overalls: the seat and straight legs in moss green, turned up
+        # once above the boots.
+        tube('Fairy Seer overalls seat', [(x, y, 0.36), (x, y, 0.47), (x, y, 0.60)],
+             [(0.15, 0.12), (0.165, 0.13), (0.165, 0.135)], apron, sides=24, smooth=True)
+        for side in (-1, 1):
+            hip, knee = (x + side * 0.08, y, 0.42), (x + side * 0.10, y - 0.01, 0.24)
+            ankle = (x + side * 0.11, y, 0.10)
+            tube('Fairy Seer overalls leg', [hip, knee, ankle], [0.08, 0.072, 0.066], apron,
+                 sides=12, smooth=True)
+            tube('Fairy Seer overalls cuff', [(ankle[0], ankle[1], 0.10), (ankle[0], ankle[1], 0.14)],
+                 [0.074, 0.074], apron, sides=12, smooth=True)
+            tube('Fairy Seer boot', [(ankle[0], ankle[1] + 0.03, 0.10),
+                                     (ankle[0], ankle[1] - 0.05, 0.05),
+                                     (ankle[0], ankle[1] - 0.11, 0.035)],
+                 [0.072, 0.068, 0.05], boots, sides=12, smooth=True)
+
     def body(x, y):
+        if male:
+            overalls(x, y)
+        else:
+            apron_skirt(x, y)
+        bib(x, y)
+        hands(x, y)
+
+    def apron_skirt(x, y):
         # Boots showing under the hem, toes out a little.
         for side in (-1, 1):
             tube('Fairy Seer boot', [(x + side * 0.08, y, 0.16), (x + side * 0.09, y - 0.03, 0.06),
@@ -4862,6 +4893,11 @@ def fairy_seer(x, y, tone):
                  for i in range(len(rows) - 1) for k in range(n - 1)]
         panel = mesh_object('Fairy Seer apron skirt', verts, faces, apron, True)
         panel.modifiers.new('Apron thickness', 'SOLIDIFY').thickness = 0.01
+        tube('Fairy Seer apron tie', [(x - 0.16, y - 0.08, 0.58), (x, y - 0.17, 0.58),
+                                      (x + 0.16, y - 0.08, 0.58)], [0.02] * 3, apron,
+             sides=6, smooth=True)
+
+    def bib(x, y):
         block('Fairy Seer apron bib', (x, y - 0.165, 0.70), (0.20, 0.03, 0.22), apron, 0.02,
               (-0.10, 0, 0))
         for side in (-1, 1):
@@ -4869,14 +4905,13 @@ def fairy_seer(x, y, tone):
                                             (x + side * 0.11, y - 0.10, 0.88),
                                             (x + side * 0.12, y + 0.05, 0.88)],
                  [0.016] * 3, apron, sides=6, smooth=True)
-        tube('Fairy Seer apron tie', [(x - 0.16, y - 0.08, 0.58), (x, y - 0.17, 0.58),
-                                      (x + 0.16, y - 0.08, 0.58)], [0.02] * 3, apron,
-             sides=6, smooth=True)
         # A pocket on the bib with a pencil standing in it.
         block('Fairy Seer apron pocket', (x - 0.05, y - 0.185, 0.66), (0.08, 0.012, 0.07), apron,
               0.01, (-0.10, 0, 0))
         tube('Fairy Seer pencil', [(x - 0.03, y - 0.19, 0.64), (x - 0.025, y - 0.20, 0.76)],
              [0.009, 0.009], pencil, sides=6)
+
+    def hands(x, y):
         # Sleeves rolled up to the elbows, the forearms bare.
         def arm(name, shoulder, elbow, wrist):
             shoulder, elbow, wrist = Vector(shoulder), Vector(elbow), Vector(wrist)
@@ -4944,6 +4979,24 @@ def fairy_seer(x, y, tone):
                      [0.003, 0.003], ink, sides=4)
 
     def head(x, y):
+        if male:
+            short_hair(x, y)
+        else:
+            braided_hair(x, y)
+        hat(x, y)
+
+    def short_hair(x, y):
+        # Short chestnut hair under the hat: a little over the temples to
+        # the top of the ear, and a short back over the nape.
+        sphere('Fairy Seer hair cap', (x, y + 0.04, 1.07), (0.152, 0.14, 0.125), hair, 32)
+        for side in (-1, 1):
+            tube('Fairy Seer hair side', [(x + side * 0.10, y - 0.07, 1.12),
+                                          (x + side * 0.142, y - 0.04, 1.07),
+                                          (x + side * 0.145, y - 0.01, 1.02)],
+                 [0.045, 0.04, 0.022], hair, sides=10, smooth=True)
+        sphere('Fairy Seer hair nape', (x, y + 0.085, 1.02), (0.13, 0.08, 0.08), hair, 24)
+
+    def braided_hair(x, y):
         # Chestnut hair, a soft braid over the left shoulder (screen right)
         # tied with a blue ribbon, under the Sylvan Elf's wide straw hat
         # with a band of small sky-blue flowers.
@@ -4955,6 +5008,8 @@ def fairy_seer(x, y, tone):
         sphere('Fairy Seer braid ribbon', braid[-1], (0.035, 0.025, 0.02), flower, 12)
         tube('Fairy Seer braid tip', [braid[-1], (x + 0.15, y - 0.08, 0.80)], [0.028, 0], hair,
              sides=8, smooth=True)
+
+    def hat(x, y):
         bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=0.24, depth=0.02,
                                             location=(x, y + 0.02, 1.17))
         finish(bpy.context.object, straw, True, 'Fairy Seer hat brim')
@@ -4965,8 +5020,9 @@ def fairy_seer(x, y, tone):
             sphere('Fairy Seer hat flower', (x + 0.145 * math.cos(a), y + 0.02 + 0.145 * math.sin(a), 1.20),
                    (0.032, 0.032, 0.028), flower, 12)
 
-    elf_figure(x, y, 'Fairy Seer', dress, skin, eye, body, head, skirt=(0.24, 0.19, 0.14),
-               skirt_z=(0.14, 0.36, 0.58), ears=False,
+    elf_figure(x, y, 'Fairy Seer', dress, skin, eye, body, head,
+               skirt=None if male else (0.24, 0.19, 0.14), skirt_z=(0.14, 0.36, 0.58),
+               ears=False, girth=1.08 if male else 1.0,
                head_scale=member_head_scale('seer-' + tone))
 
 
@@ -5014,6 +5070,8 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
                for tone in MEMBER_SKINS},
             **{'explorer-female-' + tone:
                (lambda tone: lambda x, y: dungeon_explorer(x, y, tone, 'female'))(tone)
+               for tone in MEMBER_SKINS},
+            **{'seer-male-' + tone: (lambda tone: lambda x, y: fairy_seer(x, y, tone, 'male'))(tone)
                for tone in MEMBER_SKINS}}
 def render_group_shot():
     """Open the others' scene, bring in the other groups, and render them all."""

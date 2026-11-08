@@ -53,6 +53,8 @@ models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treas
            *[(f'{job}-{gender}-{tone}', f'{job}-{gender}-{tone}', (0, 0))
              for job, gender in (('healer', 'male'), ('explorer', 'female'))
              for tone in ('light', 'medium', 'dark')],
+           *[(f'seer-male-{tone}', f'fairy-seer-male-{tone}', (0, 0))
+             for tone in ('light', 'medium', 'dark')],
            ('ration-hyorogan', 'ration-hyorogan', (0, 0)),
            ('ration-hardtack', 'ration-hardtack', (0, 0)),
            ('ration-jerky', 'ration-jerky', (0, 0))]
