@@ -2011,6 +2011,12 @@ def observe_world(
                             and upper.field[y][x] == d.CHAR_COLLAPSE):
                         current.field[y][x] = d.CHAR_SCHOLAR_STAIRS_UP
     _reveal_paired_stair_cells(floors, player)
+    if d.has_member(player, d.MEMBER_SEER):
+        for known_floor in floors:
+            for entity in known_floor.entities:
+                if (isinstance(entity, d.Companion)
+                        and known_floor.seen[entity.y][entity.x]):
+                    entity.revealed = True
     return visible
 
 

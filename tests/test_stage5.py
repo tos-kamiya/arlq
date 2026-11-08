@@ -289,7 +289,34 @@ def test_stage5_member_progress_shows_candidates_before_they_depart():
         label for label, _ in display.stage5_member_progress_marks(player)
     ] == ["J1", "H", "R2", "K", "D", "G"]
     player.stage6_candidates = True
-    assert display.stage5_member_progress_marks(player)[-1] == ("Y", False)
+    assert display.stage5_member_progress_marks(player)[-2:] == [("Y", False), ("S", False)]
+
+
+def test_seer_identifies_companions_in_explored_areas_on_every_floor():
+    upper, player = state((d.MEMBER_SEER,))
+    lower, _ = state()
+    known = d.Companion(20, 10, d.CHAR_TO_COMPANION_TRIBE["n"])
+    later = d.Companion(21, 10, d.CHAR_TO_COMPANION_TRIBE["o"])
+    other_floor = d.Companion(20, 10, d.CHAR_TO_COMPANION_TRIBE["n"])
+    upper.entities.extend([known, later])
+    lower.entities.append(other_floor)
+    upper.seen[10][20] = lower.seen[10][20] = 1
+
+    engine.observe_world([upper, lower], player, 0, d.TORCH_RADIUS)
+    assert known.revealed and other_floor.revealed
+    assert not later.revealed
+
+    upper.seen[10][21] = 1
+    engine.observe_world([upper, lower], player, 0, d.TORCH_RADIUS)
+    assert later.revealed
+
+    player.members.clear()
+    newcomer = d.Companion(21, 10, d.CHAR_TO_COMPANION_TRIBE["o"])
+    lower.entities.append(newcomer)
+    lower.seen[10][21] = 1
+    engine.observe_world([upper, lower], player, 1, d.TORCH_RADIUS)
+    assert known.revealed and later.revealed and other_floor.revealed
+    assert not newcomer.revealed
 
 
 def test_stage6_departed_member_does_not_reappear():

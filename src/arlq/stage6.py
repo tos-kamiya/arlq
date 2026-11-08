@@ -431,11 +431,9 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     floors[-1].respawn_exclusions.difference_update(boss_reserved)
     player = d.Player(*floors[0].up, 1, d.LP_INIT)
     player.stage6_candidates = True
-    for current in floors[:2]:
-        _place_tavern(current, current.up)
-        horizontal_radius = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
-        vortex_radius = round(horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO)
-        radius = round(vortex_radius * d.STAGE6_TAVERN_KNOWN_VORTEX_RATIO)
+    radius = _tavern_known_radius()
+    for index, current in enumerate(floors[:2]):
+        _place_tavern(current, current.up, avoid_anchor=index == 1)
         for x, y in iterate_ellipse_points(
             *current.tavern, radius, d.FOV_WIDTH_EXPANSION_RATIO
         ):
@@ -458,12 +456,22 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     return floors, player
 
 
-def _place_tavern(current: Floor, anchor: d.Point) -> None:
+def _tavern_known_radius() -> int:
+    horizontal_radius = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
+    vortex_radius = round(horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO)
+    return round(vortex_radius * d.STAGE6_TAVERN_KNOWN_VORTEX_RATIO)
+
+
+def _place_tavern(current: Floor, anchor: d.Point, *, avoid_anchor: bool = False) -> None:
     reachable = _reachable_floor_points(current, anchor)
     open_points = set(_open_points(current)) & reachable
+    excluded = set(iterate_ellipse_points(
+        *anchor, _tavern_known_radius(), d.FOV_WIDTH_EXPANSION_RATIO
+    )) if avoid_anchor else set()
     choices = [
         (x, y) for x, y in open_points
-        if all((x + dx, y) in open_points for dx in range(2))
+        if (x, y) not in excluded
+        and all((x + dx, y) in open_points for dx in range(2))
     ]
     if not choices:
         raise RuntimeError("no space for stage 6 tavern")
