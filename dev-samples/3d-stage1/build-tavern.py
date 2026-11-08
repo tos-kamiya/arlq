@@ -293,7 +293,6 @@ for k in range(1, 4):
         dark_iron, 0)
 box('Door handle', DOOR_X1 - 0.09, DOOR_X1 - 0.05, front - 0.05, front - 0.01, 0.34, 0.38,
     dark_iron, 0.008)
-box('Doorstep', DOOR_X0 - 0.08, DOOR_X1 + 0.08, SOUTH - 0.14, SOUTH, 0, 0.05, stone, 0.01)
 # A timber frame stands out from the wall around the door: a post either
 # side and a beam across above the door.
 POST, STAND_OUT, BEAM_Z0, BEAM_Z1 = 0.09, 0.10, DOOR_TOP + 0.04, DOOR_TOP + 0.13
@@ -357,6 +356,22 @@ for centre in (WIN_FRONT - WIN_GAP / 2, WIN_FRONT + WIN_GAP / 2):
     window(centre - WIN_W / 2, SOUTH, lambda a, d, z: (a, d, z))
 for centre in ((SOUTH + NORTH) / 2, SOUTH + 0.42):
     window(centre - WIN_W / 2, -HALF_W, lambda a, d, z: (d, a, z))
+# The floor is raised a little off the ground: everything built so far is
+# lifted FLOOR_RISE onto a stone plinth, a little wider than the walls and
+# reaching out in front past the door posts as a narrow porch ledge, with
+# STEPS stone steps up to it before the door.
+FLOOR_RISE, PLINTH_OUT, LEDGE, STEPS, TREAD = 0.20, 0.04, 0.16, 2, 0.12
+lift = Matrix.Translation((0, 0, FLOOR_RISE))
+bpy.context.view_layer.update()
+for obj in scene.objects:
+    obj.matrix_world = lift @ obj.matrix_world
+box('Plinth', -HALF_W - PLINTH_OUT, HALF_W + PLINTH_OUT, SOUTH - LEDGE, NORTH + PLINTH_OUT,
+    0, FLOOR_RISE, stone, 0.01)
+for k in range(STEPS):
+    y1 = SOUTH - LEDGE - k * TREAD
+    box('Step', x_lo - 0.04, x_hi + 0.04, y1 - TREAD, y1, 0,
+        FLOOR_RISE * (STEPS - k) / (STEPS + 1), stone, 0.01)
+
 # Like the monsters, the cottage is turned about its middle, though 45
 # degrees and toward screen right, so its west gable and chimney show beside the
 # front.
