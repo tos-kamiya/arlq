@@ -645,11 +645,17 @@ def move_player(
         if (
             0 <= jump_y < height
             and 0 <= jump_x < width
-            and field[jump_y][jump_x] in PLAYER_PASSABLE_CELLS
+            and (field[jump_y][jump_x] in PLAYER_PASSABLE_CELLS
+                 or (field[jump_y][jump_x] == d.CHAR_GOLEM_WALL
+                     and break_golem_walls))
+            and (field[jump_y][jump_x] != d.CHAR_BARRIER
+                 or barrier_lp_damage(player) == 0)
             and (field[jump_y][jump_x] != d.CHAR_D_GATE
                  or d.has_member(player, d.MEMBER_DUNGEON_EXPLORER))
         ):
             player.x, player.y = jump_x, jump_y
+            if field[jump_y][jump_x] == d.CHAR_GOLEM_WALL:
+                field[jump_y][jump_x] = d.CHAR_FLOOR
             player.karma += 1
             return WallEvent("pegasus_phase")
 

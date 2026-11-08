@@ -194,7 +194,7 @@ Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
 | **l** Loop Companion | Appears in Stages 3–4. Rewinds up to 80 turns on contact, or to the start if fewer turns have elapsed. |
 | **n** Nomicon  | Reveals the type of every active monster and elf within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
-| **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. |
+| **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. Barrier landings require barrier immunity; R clears Golem walls at the landing point. |
 
 Note on the Loop Companion: The destination becomes the new anchor, and subsequent rewinds cannot go earlier than that anchor, even when using a Loop Companion on another floor. Explored maps, monster identities, and learned elf and member locations remain known. Map knowledge is carried over as it stands immediately before the rewind, including any areas erased by a Vortex. The path from the discarded future appears as cyan dots for 10 turns after the rewind.
 

@@ -934,3 +934,41 @@ def test_stage3_world_respawn_event_includes_floor(monkeypatch):
         {"type": "respawn", "kind": "monster", "id": "a", "at": [6, 4], "floor": 1}
     ]
     assert queue[(1, "a")] == 0
+
+
+@pytest.mark.parametrize("flags, item, guardian, allowed", [
+    (0, None, False, False),
+    (d.ELF_STAGE_H_FLAG, None, False, True),
+    (d.ELF_STAGE_H_FLAG, d.ITEM_SWORD_CURSED, False, False),
+    (0, None, True, True),
+])
+def test_pegasus_barrier_landing_requires_immunity(flags, item, guardian, allowed):
+    player = d.Player(2, 2, 1, 90)
+    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
+    player.elf_stage_flags = flags
+    player.item = item
+    if guardian:
+        player.members.append(d.PartyMember(0, 0, d.MEMBER_GUARDIAN))
+    floor = one_floor([])
+    floor.field[2][3] = d.CHAR_WALL
+    floor.field[2][2 + d.PEGASUS_STEP_X] = d.CHAR_BARRIER
+    result = _move_player(KEYS["R"], floor, player)
+    assert result.result == ("pegasus_phase" if allowed else "blocked")
+    assert player.x == (2 + d.PEGASUS_STEP_X if allowed else 2)
+
+
+@pytest.mark.parametrize("rogue", [False, True])
+def test_pegasus_landing_on_golem_wall(rogue):
+    player = d.Player(2, 2, 1, 90)
+    player.companion = d.Companion(2, 2, d.CHAR_TO_COMPANION_TRIBE["p"])
+    if rogue:
+        player.members.append(d.PartyMember(0, 0, d.MEMBER_ROGUE))
+    floor = one_floor([])
+    floor.field[2][3] = d.CHAR_WALL
+    target = (2 + d.PEGASUS_STEP_X, 2)
+    floor.field[target[1]][target[0]] = d.CHAR_GOLEM_WALL
+    result = _move_player(KEYS["R"], floor, player)
+    assert result.result == ("pegasus_phase" if rogue else "blocked")
+    assert ((player.x, player.y) == target) == rogue
+    assert (target in floor.broken_walls) == rogue
+    assert floor.field[target[1]][target[0]] == (d.CHAR_FLOOR if rogue else d.CHAR_GOLEM_WALL)

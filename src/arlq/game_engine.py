@@ -203,6 +203,13 @@ def _move_player(
         for x, cell in enumerate(row)
         if cell == d.CHAR_D_GATE
     }
+    jump_x = player.x + direction[0] * d.PEGASUS_STEP_X
+    jump_y = player.y + direction[1] * d.PEGASUS_STEP_Y
+    jump_golem_wall = (
+        0 <= jump_y < len(current.field)
+        and 0 <= jump_x < len(current.field[jump_y])
+        and current.field[jump_y][jump_x] == d.CHAR_GOLEM_WALL
+    )
     wall_result = move_player(
         direction,
         current.field,
@@ -213,7 +220,8 @@ def _move_player(
     )
     if wall_result is not None and wall_result.result in {
         "sword_break", "golem_wall_break"
-    }:
+    } or (wall_result is not None and wall_result.result == "pegasus_phase"
+          and jump_golem_wall):
         current.broken_walls.add((player.x, player.y))
         current.update_outer_wall_decor()
     if trace is not None and wall_result is not None:
