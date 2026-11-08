@@ -280,28 +280,68 @@ def test_terminal_boss_route_only_marks_explored_floor(monkeypatch):
 
 @pytest.mark.parametrize('dots', [False, True])
 @pytest.mark.parametrize('protection,expected', [
-    ('none', (False, False)),
-    ('amulet', (True, False)),
-    ('cursed_amulet', (False, False)),
-    ('guardian', (True, False)),
+    ('none', ('black', False, 'red')),
+    ('amulet', ('red', True, None)),
+    ('cursed_amulet', ('black', False, 'red')),
+    ('guardian', ('red', False, None)),
+    ('guardian_amulet', ('red', True, None)),
+    ('guardian_cursed', ('red', False, None)),
 ])
 def test_terminal_dims_protected_barriers(monkeypatch, dots, protection, expected):
     from arlq import defs as d, display
     ui = BlessedUI.__new__(BlessedUI)
     ui.term = SimpleNamespace(home='', clear='', normal='', move_xy=lambda x, y: f'<{x},{y}>')
     ui.dots = dots
-    ui._style = lambda text, color=None, bold=False, dim=False, bg=None: f'[{text}:{dim}]'
+    ui._style = lambda text, color=None, bold=False, dim=False, bg=None: f'[{text}:{color}:{dim}:{bg}]'
     monkeypatch.setattr(display, 'build_strength_column', lambda *_: [])
     field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
     field[2][3], field[2][4] = d.CHAR_BARRIER, d.CHAR_CALTROP
     seen = [[1] * d.FIELD_WIDTH for _ in field]
     player = d.Player(2, 2, 1, 100)
-    if protection in ('amulet', 'cursed_amulet'):
+    if protection in ('amulet', 'cursed_amulet', 'guardian_amulet', 'guardian_cursed'):
         player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
-    if protection == 'cursed_amulet':
+    if protection in ('cursed_amulet', 'guardian_cursed'):
         player.item = d.ITEM_SWORD_CURSED
-    if protection == 'guardian':
+    if protection in ('guardian', 'guardian_amulet', 'guardian_cursed'):
         player.members.append(d.PartyMember(2, 2, d.MEMBER_GUARDIAN))
     output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[])
-    assert f'<3,2>[=:{expected[0]}]' in output
-    assert f'<4,2>[x:{expected[1]}]' in output
+    assert f'<3,2>[=:{expected[0]}:{expected[1]}:{expected[2]}]' in output
+    assert f'<4,2>[x:magenta:False:' in output
+
+@pytest.mark.parametrize('protection,background,foreground,dimmed', [
+    ('none', (220, 82, 82), (0, 0, 0), False),
+    ('guardian', None, (220, 82, 82), False),
+    ('amulet', None, (110, 41, 41), True),
+])
+def test_gui_barrier_colors(monkeypatch, protection, background, foreground, dimmed):
+    from arlq import defs as d
+    ui = PygletUI.__new__(PygletUI)
+    ui._initialize_state()
+    ui.map_mode = False
+    ui._clear_drawables = lambda: None
+    ui._field_draw_columns = lambda width: range(width)
+    tiles, labels = [], []
+    ui._draw_tile = lambda x, y, color, *_: tiles.append(color)
+
+    class Drawn(Exception):
+        pass
+
+    def capture(pos, char, color, bold=False):
+        labels.append((color, bold))
+        raise Drawn
+
+    ui._draw_field_text = capture
+    player = d.Player(0, 0, 1, 100)
+    if protection == 'guardian':
+        player.members.append(d.PartyMember(0, 0, d.MEMBER_GUARDIAN))
+    if protection == 'amulet':
+        player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
+    with pytest.raises(Drawn):
+        ui.draw_stage(turn=0, player=player, entities=[], field=[[d.CHAR_BARRIER]],
+                      cur_torched=[[1]], torched=[[1]], known_types=set(),
+                      show_entities=False)
+    if background is not None:
+        assert tiles[0] == background
+    else:
+        assert tiles[0] != (220, 82, 82)
+    assert labels == [(foreground, not dimmed)]

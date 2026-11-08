@@ -155,13 +155,18 @@ class BlessedUI:
                 player = entity
                 px, py = entity.x, entity.y
         assert player is not None and px is not None and py is not None
+        barrier_damage = barrier_lp_damage(player)
 
         def cell_background(x: int, y: int) -> Optional[str]:
             if (x, y) in highlighted_cells:
                 return "blue"
-            if self.dots or not (0 <= y < len(field) and 0 <= x < len(field[y])):
+            if not (0 <= y < len(field) and 0 <= x < len(field[y])):
                 return None
             discovered = torched[y][x] or show_entities
+            if discovered and field[y][x] == d.CHAR_BARRIER:
+                return "red" if barrier_damage == d.BARRIER_LP_DAMAGE else None
+            if self.dots:
+                return None
             return "black" if discovered else None
 
         def visible_default_foreground(
@@ -171,6 +176,8 @@ class BlessedUI:
                 return "white"
             if color is None and background == "black":
                 return "white"
+            if color is None and background == "red":
+                return "black"
             return color
 
         self._combat_cell_backgrounds = {
@@ -189,9 +196,11 @@ class BlessedUI:
                 )
                 discovered = bool(torched[y][x] or show_entities)
                 visible = bool(cur_torched[y][x])
-                harmless = (
-                    cell == d.CHAR_BARRIER and barrier_lp_damage(player) < d.BARRIER_LP_DAMAGE
-                )
+                if discovered and cell == d.CHAR_BARRIER:
+                    background = cell_background(x, y)
+                    color = "black" if background == "red" else "red"
+                    put(x, y, display_cell, color, dim=barrier_damage == 0, bg=background)
+                    continue
                 if discovered and cell in d.SCHOLAR_STAIR_CHARS:
                     stair_glyph = (
                         d.CHAR_STAIRS_UP
@@ -224,7 +233,6 @@ class BlessedUI:
                                 d.CHAR_STAIRS_DOWN,
                             )
                             else None,
-                            dim=harmless,
                             bg="blue" if (x, y) in highlighted_cells else None,
                         )
                     elif discovered:
@@ -239,7 +247,7 @@ class BlessedUI:
                                 bg="blue" if (x, y) in highlighted_cells else None,
                             )
                         else:
-                            put(x, y, display_cell, dim=harmless,
+                            put(x, y, display_cell,
                                 bg="blue" if (x, y) in highlighted_cells else None)
                     elif (x + y) % 2 == 1:
                         put(x, y, ".", dim=True)
@@ -259,7 +267,7 @@ class BlessedUI:
                     )
                     background = cell_background(x, y)
                     put(x, y, display_cell if discovered else " ", color,
-                        dim=discovered and harmless, bg=background)
+                        bg=background)
 
         for (x, y), glyph in (d_gates or {}).items():
             if field[y][x] == d.CHAR_D_GATE:

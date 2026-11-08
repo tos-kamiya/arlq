@@ -1272,7 +1272,7 @@ class PygletUI:
                     and discovered
                     and barrier_lp_damage(player) == d.BARRIER_LP_DAMAGE
                 ):
-                    tile_color = (67, 42, 45)
+                    tile_color = COLOR_MAP[CI_RED] if self.dim_protected_hazards else (67, 42, 45)
                 if reachable_cells and (x, y) in reachable_cells and not floor_view:
                     tile_color = REACHABLE_CELL_COLOR
                 self._combat_cell_colors[(x, y)] = tile_color
@@ -1281,9 +1281,14 @@ class PygletUI:
                 if discovered and cell in d.STAIR_CHARS:
                     self._draw_stairs((x, y), cell)
                 elif discovered and cell == d.CHAR_BARRIER:
-                    harmless = self.dim_protected_hazards and barrier_lp_damage(player) < d.BARRIER_LP_DAMAGE
-                    color = self._dim_color(COLOR_MAP[CI_RED]) if harmless else COLOR_MAP[CI_RED]
-                    self._draw_field_text((x, y), d.CHAR_BARRIER, color, bold=not harmless)
+                    damage = barrier_lp_damage(player)
+                    dimmed = self.dim_protected_hazards and damage == 0
+                    if (self.dim_protected_hazards and damage == d.BARRIER_LP_DAMAGE
+                            and tile_color != REACHABLE_CELL_COLOR):
+                        color = (0, 0, 0)
+                    else:
+                        color = self._dim_color(COLOR_MAP[CI_RED]) if dimmed else COLOR_MAP[CI_RED]
+                    self._draw_field_text((x, y), d.CHAR_BARRIER, color, bold=not dimmed)
                 elif discovered and cell == d.CHAR_COLLAPSE:
                     self._draw_pit((x, y))
 

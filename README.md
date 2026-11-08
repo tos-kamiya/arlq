@@ -264,7 +264,7 @@ Entering a barrier (`=`) costs an extra 30 LP. The protective amulet removes
 this cost unless you are holding the cursed sword. Collector and Javelin
 bonuses stack with item modifiers, including swords and poison.
 
-In `arlq` and `arlq-cli`, barriers appear dimmer while their damage is reduced or prevented.
+In `arlq` and `arlq-cli`, barriers have a red background and black glyph when they deal 30 LP damage. With G they have a red glyph on the normal background; when the amulet prevents their damage, the glyph is dim red.
 
 ### Stage 4: Deep Labyrinth
 
