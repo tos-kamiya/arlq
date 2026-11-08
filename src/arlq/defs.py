@@ -20,7 +20,7 @@ MEMBER_DUNGEON_EXPLORER = "Dungeon Explorer"
 MEMBER_GUARDIAN = "Guardian"
 MEMBER_NOBLE = "Noble"
 MEMBER_YAWNING_CAT = "Yawning Cat"
-MEMBER_SEER = "Seer"
+MEMBER_SEER = "Fairy Seer"
 CAT_EXPLORE_INTERVAL = 20
 CAT_EXPLORE_SIZE = 2
 CAT_EXPLORE_RADIUS = 10  # Vertical radius, tuned independently of Vortex.
@@ -655,7 +655,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
     _ET(
         "S",
         event_message=(
-            "-- The Sylvan Elf gave you fairy nectar! Companions will stay with you longer."
+            "-- The Sylvan Elf gave you fairy nectar! Fairies will stay with you longer."
         ),
         event_message_importance=7,
     ),

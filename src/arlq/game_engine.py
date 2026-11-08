@@ -1908,7 +1908,7 @@ def _process_multi_floor_turn(
         queue[spawn_key] = queue.get(spawn_key, 0) + 1
         player.companion = None
         event_message = prefer_event_message(
-            event_message, trp("-- The companion vanishes.", 3)
+            event_message, trp("-- The fairy vanishes.", 3)
         )
         if trace is not None:
             trace.add_expired({"type": "companion_departed", "id": ch})

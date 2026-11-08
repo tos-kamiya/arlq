@@ -934,7 +934,7 @@ def update_entities(
         player.companion is not None
         and player.karma >= player.companion.durability
     ):
-        candidate_message = trp("-- The companion vanishes.", 3)
+        candidate_message = trp("-- The fairy vanishes.", 3)
         if prefer_event_message(
             message[1] if message is not None else None, candidate_message
         ) == candidate_message:

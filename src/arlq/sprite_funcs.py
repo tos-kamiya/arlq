@@ -102,14 +102,14 @@ ROCK_SPRITE = 'golem rock'
 SPRITE_NAMES = {
     '@': 'Player', 'a': 'Amoeba', 'A': 'Rare Amoeba', 'b': 'Bison',
     'B': 'Buffalo', 'c': 'Chimera', 'C': 'Rare Chimera', 'd': 'Komodo Dragon',
-    'D': 'Dragon', 'T': 'Treasure', 'M': 'Mimic', 'l': 'Looping Companion',
+    'D': 'Dragon', 'T': 'Treasure', 'M': 'Mimic', 'l': 'Loop Fairy',
     'n': 'Nomicon', 'o': 'Ocular', 'F': 'Fire Drake', 'f': 'Flame Cobra',
     'g': 'Golem', 'k': 'Marksman', 'V': 'Vortex', 'w': 'Wyrm',
     'W': 'Dread Wyrm', 'm': 'Spore', 'e': 'Erebus', 'E': 'Rare Erebus',
     'X': 'Caltrop Plant', 'p': 'Pegasus', 'H': 'High Elf', 'I': 'Isolated Elf',
     'J': 'Javelin Elf', 'K': 'Collector Elf', 'L': 'Lifebringer Elf',
     'S': 'Sylvan Elf', '?': 'Unidentified Monster',
-    '!': 'Unidentified Companion', '&': 'Unidentified Elf',
+    '!': 'Unidentified Fairy', '&': 'Unidentified Elf',
 }
 SPRITE_NAMES.update(dict.fromkeys(
     ('player sword', 'player cursed sword', 'player blessed'), 'Player'))
