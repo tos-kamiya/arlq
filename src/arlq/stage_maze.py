@@ -28,6 +28,36 @@ def shuffle_floor_layout(layout: list[tuple[int, int]]) -> list[tuple[int, int]]
     return shuffled
 
 
+
+def _add_long_loop_edges(edges, rooms, count):
+    """Join adjacent rooms with the longest existing graph path."""
+    adjacency = {room: set() for room in rooms}
+    for a, b in edges:
+        adjacency[a].add(b)
+        adjacency[b].add(a)
+    for _ in range(count):
+        choices = []
+        for a in sorted(rooms):
+            distances = {a: 0}
+            pending = [a]
+            for node in pending:
+                for neighbor in sorted(adjacency[node]):
+                    if neighbor not in distances:
+                        distances[neighbor] = distances[node] + 1
+                        pending.append(neighbor)
+            x, y = a
+            for b in ((x + 1, y), (x, y + 1)):
+                if b in distances and b not in adjacency[a]:
+                    choices.append((distances[b], a, b))
+        if not choices:
+            break
+        longest = max(distance for distance, _, _ in choices)
+        _, a, b = rand.choice([entry for entry in choices if entry[0] == longest])
+        edges.append((a, b))
+        adjacency[a].add(b)
+        adjacency[b].add(a)
+
+
 def generate_floor_field(
     up_point: d.Point | None,
     down_point: d.Point | None,
@@ -38,6 +68,7 @@ def generate_floor_field(
     split_room_graph: bool = False,
     detach_leaf_room: bool = False,
     tile_width: int = d.TILE_WIDTH,
+    extra_corridors: int = 0,
 ) -> tuple[
     list[list[str]],
     d.Point,
@@ -157,6 +188,8 @@ def generate_floor_field(
                 edges.remove(split_edge)
                 room_components = (first_component, second_component)
 
+        _add_long_loop_edges(edges, connected_rooms, extra_corridors)
+
         for room in sealed_rooms:
             left = d.FIELD_X_MARGIN + room[0] * (tile_width + 1) + 1
             top = room[1] * (d.TILE_HEIGHT + 1) + 1
@@ -164,7 +197,7 @@ def generate_floor_field(
                 for x in range(left, left + tile_width):
                     field[y][x] = d.CHAR_WALL
 
-        # Rebuild internal partitions, opening only the accepted room tree.
+        # Rebuild internal partitions, opening only the accepted room graph.
         for ty in range(d.TILE_NUM_Y):
             for tx in range(d.TILE_NUM_X - 1):
                 x = d.FIELD_X_MARGIN + (tx + 1) * (tile_width + 1)

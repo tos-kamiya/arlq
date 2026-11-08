@@ -29,7 +29,7 @@ MONSTER_PARTY_LIMIT = 5
 MEMBER_STAGE_MONSTER_PARTY_LIMIT = 3
 MEMBER_STAGE_JESTER_EXP_MULTIPLIER = 1.5
 JESTER_EXPERIENCE_WEIGHT = 0.0
-KNIGHT_INITIAL_LEVEL = 80
+KNIGHT_INITIAL_LEVEL = 40
 JESTER_DEPARTURE_LEVEL = 80
 FLAME_COBRA_EXPERIENCE = 5
 PARTY_EXPERIENCE_MEMBER_WEIGHTS = {
@@ -916,7 +916,9 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
 STAGE4_FLOORS = len(STAGE4_ROSTER)
 
 # Stage 6 dungeon and monster-party settings.
-STAGE6_FLOORS = 3
+STAGE6_FLOORS = 4
+STAGE6_EXTRA_CORRIDORS = 2
+STAGE6_TAVERN_KNOWN_VORTEX_RATIO = 0.3
 STAGE6_INITIAL_PARTY_ROOMS: Tuple[Point, ...] = (
     (0, 0), (2, 0), (4, 0), (0, 2), (2, 2), (4, 2),
 )
@@ -926,43 +928,54 @@ STAGE6_PARTY_SIZE_WEIGHTS = (
     (78, 21, 1, 0, 0),
     (60, 30, 10, 0, 0),
     (45, 30, 25, 0, 0),
+    (45, 30, 25, 0, 0),
 )
 # Each roster entry (character, count, rank) supplies party leaders.
-# Normal and empowered f party leaders appear on floors 2–3.
-STAGE6_EXTRA_BISON_RANKS = (1, None, None)
+# Sword carriers stay scarce; deeper floors progress to rank 2 and 3.
+STAGE6_EXTRA_BISON_RANKS = (1, None, None, None)
 STAGE6_ROSTER = (
     (
-        ("a", 16, 1), ("A", 2, 1), ("b", 5, 1), ("B", 1, 1), ("c", 5, 1),
-        ("f", 2, 1),
+        ("a", 16, 1), ("A", 2, 1), ("b", 5, 1), ("B", 1, 1), ("c", 1, 1),
+        ("f", 1, 1),
         ("d", 4, 1), ("e", 1, 1), ("g", 1, 1),
     ),
     (
-        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 1), ("c", 5, 2),
+        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 1), ("c", 1, 1),
         ("d", 2, 1), ("d", 2, 2), ("f", 1, 1), ("f", 1, 2), ("w", 1, 2), ("g", 3, 1),
-        ("C", 1, 1), ("k", 2, 1), ("X", 1, 1), ("E", 1, 1),
+        ("k", 1, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 2), ("c", 7, 2),
-        ("d", 4, 2), ("f", 1, 1), ("f", 1, 2), ("w", 3, 2), ("g", 3, 1),
-        ("k", 1, 1), ("X", 1, 2),
+        ("a", 1, 2), ("A", 2, 1), ("b", 3, 2), ("b", 2, 3), ("B", 1, 2), ("c", 1, 1),
+        ("d", 3, 2), ("f", 1, 1), ("f", 1, 2), ("w", 3, 2), ("g", 3, 1),
+        ("k", 2, 1), ("X", 1, 2),
+    ),
+)
+STAGE6_ROSTER += (
+    (
+        ("a", 4, 3), ("A", 3, 1), ("b", 5, 3), ("B", 1, 3),
+        ("c", 1, 1), ("d", 1, 2), ("f", 1, 1), ("f", 2, 2),
+        ("w", 1, 1), ("w", 2, 2), ("g", 3, 1),
+        ("k", 3, 1), ("X", 1, 2),
     ),
 )
 STAGE6_BOSS_PARTY = (("W", 1), ("V", 1))
-STAGE6_BOSS_ESCORTS = (("f", 1), ("k", 1), ("w", 1))
+STAGE6_BOSS_ESCORTS = (("w", 1),)
 _STAGE6_DEEP_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("e", 1), ("e", 1),
     ("b", 1), ("w", 2), ("k", 1),
 )
 _STAGE6_FLOOR2_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("a", 1),
-    ("f", 1), ("f", 1),
     ("b", 1), ("b", 1),
     ("e", 1), ("e", 1),
 )
 STAGE6_SUPPORT_POOLS = (
     (("a", 1),), _STAGE6_FLOOR2_SUPPORT_POOL
-) + (_STAGE6_DEEP_SUPPORT_POOL,)
-STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2))
+) + (
+    _STAGE6_DEEP_SUPPORT_POOL,
+    (("a", 3), ("b", 2), ("b", 3)),
+)
+STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
 STAGE6_FINAL_FLOOR_BARRIER_PERCENT = 5
 STAGE6_BARRIER_VORTEX_RADIUS_MULTIPLIER = 1.5
 
@@ -1163,10 +1176,7 @@ def experience_multiplier(player: Player) -> float:
 
 
 def experience_share_count(player: Player) -> float:
-    return 1 + sum(
-        PARTY_EXPERIENCE_MEMBER_WEIGHTS.get(member.role, 0.0)
-        for member in player.members
-    )
+    return 1
 
 
 def movement_lp_cost(player: Player) -> float:

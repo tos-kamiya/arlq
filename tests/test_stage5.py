@@ -52,13 +52,14 @@ def test_boss_route_avoids_pits_and_hidden_passages_and_uses_stairs():
     assert (2, 1) not in boss_route(upper)
     assert (3, 1) not in boss_route(upper)
     assert boss_route(upper) == {(1, 1), (3, 2)}
-    assert boss_route(lower) == {(5, 1)}
+    assert not boss_route(lower)
 
 
 def test_generated_boss_route_reaches_all_floors():
     floors, player = stage6.build()
     assert (player.x, player.y) in boss_route(floors[0])
-    assert all(boss_route(floor) for floor in floors)
+    assert all(boss_route(floor) for floor in floors[:-1])
+    assert not boss_route(floors[-1])
 
 
 def test_stage6_floors_have_no_loop_companions():

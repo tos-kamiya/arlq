@@ -52,7 +52,7 @@ arlq-cli
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a compact member-ability trial; Stage 6 is a three-floor boss and treasure dungeon. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a compact member-ability trial; Stage 6 is a four-floor boss and treasure dungeon. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -301,9 +301,9 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
-Each Stage 6 floor has two A party leaders. Normal f party leaders number two on floor 1 and one each on floors 2–3; floors 2–3 also each have one empowered f leader. Floor 2 has one C, providing a cursed sword for the boss fight.
+Each Stage 6 floor has two A party leaders. Normal f party leaders number two on floor 1 and one each on floors 2–3; floors 2–3 also each have one empowered f leader. C does not appear; use ordinary swords from c for the boss fight.
 
-Stage 6 is a three-floor dungeon starting at level 1. There is one pair of ordinary stairs between floors 1 and 2; between floors 2 and 3 there are one or two pairs, with equal probability. The player fights with party members, and monsters also form parties. Defeat the Dread Wyrm (`W`) on floor 3 and claim the treasure. Four of seven candidates are chosen at random and start near taverns on floors 1 and 2, near the starting position and the stairs from floor 1 respectively. H and D appear near the floor 1 tavern, K and G near the floor 2 tavern, and J, R and Y near either tavern; the HUD shows discovered roles and floors. The first time you leave floor 1, waiting candidates relocate to taverns according to the same rules. You can recruit up to two members; a third replaces the earliest recruit. Departing members reappear near a tavern according to the same rules. Yellow dots spaced about three steps apart on explored floors mark a shortest route from the starting position to the boss (in `arlq-sprites`, floor tiles with a diamond of yellow light instead), calculated at the start using ordinary stairs and avoiding pits and hidden passages. The route does not change as the dungeon changes. In `arlq-sprites`, taverns and the Yawning Cat use their own artwork.
+Stage 6 is a four-floor dungeon starting at level 1. There is one pair of ordinary stairs between floors 1 and 2; between floors 2 and 3 there are one or two pairs, with equal probability. The player fights with party members, and monsters also form parties. Defeat the Dread Wyrm (`W`) on floor 4 and claim the treasure. Four of seven candidates are chosen at random and start near taverns on floors 1 and 2, near the starting position and the stairs from floor 1 respectively. H and D appear near the floor 1 tavern, K and G near the floor 2 tavern, and J, R and Y near either tavern; the HUD shows discovered roles and floors. The area around each tavern, within 0.3 times the Vortex radius, is mapped from the start. The first time you leave floor 1, waiting candidates relocate to taverns according to the same rules. You can recruit up to two members; a third replaces the earliest recruit. Departing members reappear near a tavern according to the same rules. Yellow dots spaced about three steps apart on explored floors mark a shortest route from the starting position to the boss (in `arlq-sprites`, floor tiles with a diamond of yellow light instead), calculated at the start using ordinary stairs and avoiding pits and hidden passages. The final floor has no route markers. The route does not change as the dungeon changes. In `arlq-sprites`, taverns and the Yawning Cat use their own artwork.
 
 An empowered Caltrop Plant (`X'`) appears on floor 3.
 
@@ -314,16 +314,16 @@ An empowered Caltrop Plant (`X'`) appears on floor 3.
 | **J** Jester | Multiplies your shared experience by 1.5 and leaves when your level reaches 80 (permanently in Stage 5). |
 | **H** Healer | Reduces movement LP cost to one-third and the defeat cost to 2, including when rewinding. |
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
-| **K** Knight | Adds a fixed 80 to your attack power. |
+| **K** Knight | Adds a fixed 40 to your attack power. |
 | **D** Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Both require D in the party to use, even after discovery. Climb through an entrance and leave the pit on the next move. In sprite mode, discovered passages are marked by green light on the floor instead of a `.`; entrance discs appear only while D is in the party. |
 | **G** Guardian | Prevents barrier and caltrop damage. |
 | **Y** Yawning Cat | Every 20 accompanying turns, explores a 2×2 area starting at a random unexplored floor cell within an ellipse around the player on the current floor (vertical radius 10 cells, horizontal radius ×1.4, about 50% of a normal Vortex; independently configured). The 2×2 area shifts inward at map edges; if no nearby unexplored floor remains, nothing happens. Uses normal explored-map display, including unidentified monsters (`?`), without identifying them or stopping movement repeat. The counter resets on recruitment. |
 
 Monsters are placed without horizontal adjacency; party members line up vertically.
 
-Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. Experience sharing counts the player, K, H and G as 1 each, and J, R, D and Y as 0. J's multiplier applies to the player's share.
+Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. The player receives all experience in Stages 5 and 6, regardless of members. J multiplies this by 1.5.
 
-The isolated rooms on floors 1–2 each contain two monsters drawn without replacement from `b`, `b'`, `c`, `f` and `A`; additional Bison parties may also appear there. Floor 3 has no isolated room.
+The isolated rooms on floors 1–3 each contain two monsters drawn without replacement from `b`, `b'`, `c`, `f` and `A`; additional Bison parties may also appear there. Floor 4 has no isolated room.
 
 Bison and Buffalo parties are preferentially distributed across alternating sections. If a preferred section is unavailable, the section immediately to its right is tried.
 
@@ -334,7 +334,7 @@ Bison and Buffalo parties are preferentially distributed across alternating sect
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **f** / **f'** Flame cobra | Defeating either grants 5 base experience. The empowered form `f'` places barriers on available adjacent cells in the four cardinal directions. |
 
-The floor 3 boss party consists of `W`, `V`, and one escort chosen from `f`, `k`, and `w`; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
+The floor 4 boss party consists of `W`, `V`, and `w` (total attack 230); a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
 ## Development commands
 
@@ -352,3 +352,13 @@ ChatGPT, Gemini, Claude, and Grok contributed to the design and implementation o
 ## License
 
 This project is licensed under the BSD-2 license.
+
+Stage 6 balance is experimental. Floors 3–4 use the deep-floor roster; floors 1–3 have isolated rooms. Equal-sized enemy parties on each floor are ordered by initial boss-route progress and walking distance from that route. Isolated rooms retain separate spawns.
+
+Stage 6 adds up to two extra corridors per floor. Each joins adjacent rooms with the longest current path between them, creating loops while preserving isolated areas. Distances are recalculated after each addition.
+
+Sword carriers c are solitary, normal-rank monsters limited to one per floor, including isolated-room spawns; they do not participate in strength-based placement. Floor 3 introduces rank-3 Bison, and floor 4 adds rank-3 Buffalo. Other deep-floor enemies use rank 2; c is not used to scale difficulty.
+
+Stage 6 normal f spawns are reduced to one party leader per floor, with none in support pools or isolated-room draws. Empowered f counts are unchanged.
+
+Stage 6 d/d' party leaders total 4, 4, 3, 1 by floor; k leaders total 0, 1, 2, 3. Support pools and respawn rules are unchanged.

@@ -71,7 +71,7 @@ def _place_detached_room_monsters(
     if not point_pairs:
         raise RuntimeError("detached Stage 6 room needs two separated open cells")
     points = rand.choice(point_pairs)
-    candidates = [("b", 1), ("b", 2), ("c", 1), ("f", 1), ("A", 1)]
+    candidates = [("b", 1), ("b", 2), ("A", 1)]
     roster = []
     for _ in range(2):
         choice = rand.choice(candidates)
@@ -168,7 +168,8 @@ def _place_party(
 
 def _party_roster(char: str, rank: int, floor_index: int) -> list[tuple[str, int]]:
     size = (
-        1 if char == "g" or (floor_index > 0 and char == "k")
+        1 if char in ("g", "c") or (char == "B" and rank == 3)
+        or (floor_index > 0 and char == "k")
         else sample_party_size(floor_index)
     )
     return [(char, rank)] + [
@@ -285,6 +286,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             config.corridor_v_width,
             0,
             filled_counts_by_floor[index],
+            extra_corridors=d.STAGE6_EXTRA_CORRIDORS,
             split_room_graph=index < d.STAGE6_FLOORS - 1,
             detach_leaf_room=index < d.STAGE6_FLOORS - 1,
             tile_width=d.TILE_WIDTH,
@@ -424,7 +426,6 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         normalize_parties(current, d.MEMBER_STAGE_MONSTER_PARTY_LIMIT)
         if current is floors[-1]:
             current.entities.extend(initial_boss_party)
-        stage56.initialize_monster_barriers(current)
     for x, y in boss_entrance:
         floors[-1].field[y][x] = d.CHAR_FLOOR
     floors[-1].respawn_exclusions.difference_update(boss_reserved)
@@ -432,6 +433,13 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     player.stage6_candidates = True
     for current in floors[:2]:
         _place_tavern(current, current.up)
+        horizontal_radius = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
+        vortex_radius = round(horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO)
+        radius = round(vortex_radius * d.STAGE6_TAVERN_KNOWN_VORTEX_RATIO)
+        for x, y in iterate_ellipse_points(
+            *current.tavern, radius, d.FOV_WIDTH_EXPANSION_RATIO
+        ):
+            current.seen[y][x] = 1
     for role in member_roles:
         if role in (d.MEMBER_HEALER, d.MEMBER_DUNGEON_EXPLORER):
             floor_index = 0
@@ -443,6 +451,8 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         point = _candidate_near_tavern(current, current.up)
         current.entities.append(d.PartyMember(*point, role, origin_floor=floor_index))
     _mark_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
+    for current in floors:
+        stage56.initialize_monster_barriers(current)
     player.rescue_stage = True
     player.treasure_stage = True
     return floors, player
@@ -525,9 +535,59 @@ def _mark_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None
         route.append(state)
         link = previous[state]
         state = link[0] if link is not None else None
-    for index, (x, y) in list(reversed(route))[::3]:
+    route.reverse()
+    _balance_route_parties(floors, route)
+    for index, (x, y) in route[::3]:
+        if index == len(floors) - 1:
+            continue
         if floors[index].decor[y][x] == d.DECOR_NONE and not _in_tavern(floors[index], (x, y)):
             floors[index].decor[y][x] = d.DECOR_BOSS_ROUTE
+
+
+
+def _balance_route_parties(floors, route):
+    """Order equal-sized parties by initial walking progress and detour distance."""
+    for index, current in enumerate(floors):
+        distances = {}
+        pending = deque()
+        for step, (floor_index, point) in enumerate(route):
+            if floor_index == index:
+                distances[point] = (0, step / max(1, len(route) - 1))
+                pending.append(point)
+        while pending:
+            x, y = pending.popleft()
+            distance, progress = distances[x, y]
+            for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+                point = (x + dx, y + dy)
+                px, py = point
+                if (point not in distances and 0 <= py < len(current.field)
+                        and 0 <= px < len(current.field[py])
+                        and current.field[py][px] not in (
+                            *d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE, d.CHAR_D_GATE)):
+                    distances[point] = (distance + 1, progress)
+                    pending.append(point)
+        groups = {}
+        checked = set()
+        for entity in current.entities:
+            if not isinstance(entity, d.Monster) or entity in checked:
+                continue
+            party = stage56.monster_party(current, entity)
+            checked.update(party)
+            if (not party or any(e.tribe.char in ("W", "V", "M", "c", d.CHAR_COLLAPSE)
+                                 or not e.active for e in party)
+                    or any((e.x, e.y) not in distances for e in party)):
+                continue
+            party.sort(key=lambda e: (e.x, e.y))
+            groups.setdefault(len(party), []).append(party)
+        for parties in groups.values():
+            slots = [[(e.x, e.y) for e in party] for party in parties]
+            slots.sort(key=lambda cells: sum(
+                distances[p][1] * 180 + min(distances[p][0], 40) * 3
+                for p in cells) / len(cells))
+            parties.sort(key=lambda party: sum(d.monster_level(e) for e in party))
+            for party, cells in zip(parties, slots):
+                for entity, (x, y) in zip(party, cells):
+                    entity.x, entity.y = x, y
 
 
 def relocate_candidates(floors, player, candidates=None, player_floor=None):
