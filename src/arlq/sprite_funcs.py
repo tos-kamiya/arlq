@@ -298,8 +298,10 @@ THEME_SPRITES = {'training': {'T': 'T-toy'}}
 # inside (two variants with different shimmer and sparks, laid out as a
 # checkerboard), added onto the floor; the back sheet reaches a little into the
 # cell above. While the amulet or Guardian protects against barriers, the cells
-# within one cell of the player (its own and the eight around it) show only
-# faint grey smoke of the same shape.
+# within one cell of the player (its own and the eight around it) change: with
+# the damage reduced (Guardian), a small barrier, its plate half as wide and
+# deep in the middle of the cell and its sheets half as high; with no damage,
+# only faint grey smoke of the same shape as the full barrier.
 # Barriers outside the current view are
 # darkened like the floor. Sizes are in cell widths/heights.
 BARRIER_TEXELS = (48, 96)
@@ -319,6 +321,8 @@ BARRIER_SEAM = 0.6
 BARRIER_SHIMMER = (0.0, 0.5)
 BARRIER_SPARKS = (((0.3, 0.45), (0.62, 0.8), (0.78, 0.3)),
                   ((0.22, 0.7), (0.5, 0.35), (0.72, 0.6)))
+# Size of the reduced barrier, relative to the full one.
+BARRIER_REDUCED_SCALE = 0.5
 SMOKE_TINT = (150, 150, 156)
 SMOKE_OPACITY = 140
 # Rocks fallen through a pit (d.DECOR_FALLEN_ROCKS) are hidden where the
@@ -436,7 +440,7 @@ def smoke_image(barrier):
     return pyglet.image.ImageData(width, height, 'RGBA', bytes(rgba), pitch=width * 4)
 
 
-def barrier_image(variant):
+def barrier_image(variant, scale=1.0):
     """A magic barrier: a glowing plate on the floor with light rising from it.
 
     Seen at the sprites' 60-degree view, the plate covers the cell inside a
@@ -446,14 +450,15 @@ def barrier_image(variant):
     combine like light so the back sheet shows through the front one. The
     image is drawn additively from the cell's bottom; `variant` (0 or 1)
     shifts the shimmer and sparks so neighbouring cells do not repeat.
+    `scale` shrinks the plate about the cell's centre and the sheets' height.
     """
     width, height = BARRIER_TEXELS
     cell = 1 / BARRIER_HEIGHT  # one cell height, in image fractions
-    inset = BARRIER_INSET
+    inset = 0.5 - (0.5 - BARRIER_INSET) * scale
     near, far = inset * cell, (1 - inset) * cell
-    sheet = BARRIER_SHEET_HEIGHT * cell
+    sheet = BARRIER_SHEET_HEIGHT * scale * cell
     phase = BARRIER_SHIMMER[variant]
-    sparks = BARRIER_SPARKS[variant]
+    sparks = [(0.5 + (u - 0.5) * scale, t) for u, t in BARRIER_SPARKS[variant]]
     plate_color, low, high = (255, 125, 30), (255, 150, 45), (255, 85, 10)
     rgba = bytearray()
     for row in range(height):
@@ -469,7 +474,8 @@ def barrier_image(variant):
                 parts.append((inner + (edge - inner) * max(0.0, 1 - rim / 0.06), 0.0))
             elif rim > -0.05:
                 parts.append((BARRIER_PLATE[1] * (1 + rim / 0.05) ** 2, 0.0))
-            shimmer = 0.75 + 0.25 * math.sin(2 * math.pi * (u * 3 + phase))
+            wave_u = 0.5 + (u - 0.5) / scale  # across the full-size plate
+            shimmer = 0.75 + 0.25 * math.sin(2 * math.pi * (wave_u * 3 + phase))
             for base, peak in ((near, BARRIER_SHEETS[0]), (far, BARRIER_SHEETS[1])):
                 t = (v - base) / sheet
                 if inside_u and 0 <= t < 1:
@@ -619,6 +625,7 @@ class SpriteUI(PygletUI):
     # cools the barrier stones around it.
     _cur_torched = None
     _cooling_center = None
+    _cooling_damage = None
     # The field being drawn, for stairs and pits that spread over neighbouring floor.
     _stage_field = None
     _stage_discovered_at = None
@@ -747,6 +754,8 @@ class SpriteUI(PygletUI):
         self._landing_image = (mipmapped(pyglet.image.load(str(assets / LANDING_FILE)))
                                if (assets / LANDING_FILE).is_file() else None)
         self._barrier_images = [barrier_image(variant) for variant in (0, 1)]
+        self._reduced_barrier_images = [barrier_image(variant, BARRIER_REDUCED_SCALE)
+                                        for variant in (0, 1)]
         self._smoke_images = [smoke_image(barrier) for barrier in self._barrier_images]
         self._floor_group = pyglet.graphics.Group(order=-1)
         self._floor_backdrop_group = pyglet.graphics.Group(order=-2)
@@ -924,6 +933,7 @@ class SpriteUI(PygletUI):
             if player is not None and not kwargs.get('floor_view') and barrier_lp_damage(player) < d.BARRIER_LP_DAMAGE
             else None
         )
+        self._cooling_damage = barrier_lp_damage(player) if self._cooling_center else None
         result = super().draw_stage(decor=decor, **kwargs)
         return result
 
@@ -1116,12 +1126,22 @@ class SpriteUI(PygletUI):
         cx, cy = self._cooling_center
         return max(abs(x - cx), abs(y - cy)) <= 1
 
+    def _barrier_look(self, x, y):
+        """'light', or near the player while weakened, 'reduced' or 'smoke'."""
+        if not self._near_cooling_center(x, y):
+            return 'light'
+        return 'reduced' if self._cooling_damage else 'smoke'
+
     def _draw_barrier(self, x, y, field, discovered_at):
-        """Orange magic light rising from the floor, or faint smoke near the player while weakened."""
+        """Orange magic light rising from the floor; near the player while weakened,
+        a small barrier (reduced damage) or faint smoke (no damage)."""
         visible = self._cur_torched is not None and self._cur_torched[y][x]
         self._draw_floor(x, y, VISIBLE_FLOOR if visible else FLOOR, field, discovered_at)
-        cooled = self._near_cooling_center(x, y)
-        image = (self._smoke_images if cooled else self._barrier_images)[(x + y) % 2]
+        look = self._barrier_look(x, y)
+        cooled = look == 'smoke'
+        images = (self._smoke_images if cooled else self._reduced_barrier_images
+                  if look == 'reduced' else self._barrier_images)
+        image = images[(x + y) % 2]
         bottom = self.window_height - (y + 1 - BARRIER_BASE) * self.cell_size_y
         group = self._row_group(y, 'pillar-back')
         blend_dest = pyglet.gl.GL_ONE_MINUS_SRC_ALPHA if cooled else pyglet.gl.GL_ONE

@@ -857,6 +857,7 @@ def _barrier_ui(monkeypatch, cooling_center):
     image = lambda name: SimpleNamespace(name=name, width=48, height=96)
     ui._floor_images = [image('floor-a'), image('floor-b')]
     ui._barrier_images = [image('barrier-a'), image('barrier-b')]
+    ui._reduced_barrier_images = [image('reduced-a'), image('reduced-b')]
     ui._smoke_images = [image('smoke-a'), image('smoke-b')]
     ui._cooling_center = cooling_center
     ui._cur_torched = [[1] * 5 for _ in range(5)]
@@ -893,14 +894,15 @@ def test_barrier_glows_on_the_floor_and_only_smokes_near_a_protected_player(
     assert light.scale_y * 96 > ui.cell_size_y
 
 
-@pytest.mark.parametrize('guardian, amulet, floor_view, barrier_cooled, caltrop_cooled', [
-    (False, False, False, False, False),
-    (False, True, False, True, False),
-    (True, False, False, True, False),
-    (True, False, True, False, False),
+@pytest.mark.parametrize('guardian, amulet, floor_view, barrier_look, caltrop_cooled', [
+    (False, False, False, 'barrier', False),
+    (False, True, False, 'smoke', False),
+    (True, False, False, 'reduced', False),
+    (True, True, False, 'smoke', False),
+    (True, False, True, 'barrier', False),
 ])
 def test_guardian_cools_barriers_but_not_caltrops_near_player(
-    monkeypatch, guardian, amulet, floor_view, barrier_cooled, caltrop_cooled,
+    monkeypatch, guardian, amulet, floor_view, barrier_look, caltrop_cooled,
 ):
     ui, field = _barrier_ui(monkeypatch, None)
     ui.window_width = 300
@@ -915,7 +917,10 @@ def test_guardian_cools_barriers_but_not_caltrops_near_player(
     monkeypatch.setattr(PygletUI, 'draw_stage', lambda self, **kwargs: None)
     ui.draw_stage(player=player, floor_view=floor_view)
     ui._draw_tile(2, 2, sprite_funcs.VISIBLE_FLOOR, field, lambda x, y: True)
-    assert ui._drawables[-1].image.name.startswith('smoke' if barrier_cooled else 'barrier')
+    light = ui._drawables[-1]
+    assert light.image.name.startswith(barrier_look)
+    if barrier_look == 'reduced':
+        assert light.blend_dest == pyglet.gl.GL_ONE  # glows like the full barrier
 
     field[2][3] = field[2][4] = d.CHAR_CALTROP
     drawn = []
@@ -939,6 +944,20 @@ def test_barrier_image_glows_from_the_floor_and_fades_upward():
     # The plate is translucent inside, and the sheets fade before the top.
     assert alpha(width // 2, height // 3) < 200
     assert alpha(width // 2, height - 1) == 0 and alpha(0, 2) < 20
+
+
+def test_reduced_barrier_image_is_a_smaller_barrier_in_the_middle():
+    width, height = sprite_funcs.BARRIER_TEXELS
+    alpha = lambda image: image.get_data('RGBA', width * 4)[3::4]
+    full = alpha(sprite_funcs.barrier_image(0))
+    reduced = alpha(sprite_funcs.barrier_image(0, sprite_funcs.BARRIER_REDUCED_SCALE))
+    lit = lambda data: [(i % width, i // width) for i, a in enumerate(data) if a > 20]
+    full_cols = [col for col, _ in lit(full)]
+    cols, rows = zip(*lit(reduced))
+    # Narrower, centred across the cell, and lower than the full barrier.
+    assert max(cols) - min(cols) < (max(full_cols) - min(full_cols)) * 0.6
+    assert abs((max(cols) + min(cols)) / 2 - (width - 1) / 2) <= 1
+    assert max(rows) < max(row for _, row in lit(full)) * 0.75
 
 
 def test_barrier_glyph_is_left_to_the_barrier_light(sprite_ui):

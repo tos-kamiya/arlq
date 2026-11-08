@@ -266,6 +266,8 @@ bonuses stack with item modifiers, including swords and poison.
 
 In `arlq` and `arlq-cli`, barriers have a red background and black glyph when they deal 30 LP damage. With G they have a red glyph on the normal background; when the amulet prevents their damage, the glyph is dim red.
 
+In `arlq-sprites`, barriers are drawn as orange light rising from the floor. Around the player (their own cell and the eight around it), barriers shrink to about a quarter of the area with lower light when G reduces their damage, and turn into faint grey smoke when the amulet prevents their damage.
+
 ### Stage 4: Deep Labyrinth
 
 Stage 4 has five connected floors and features elves, including some new ones. New monsters and traps also appear. The boss is the empowered Fire Drake (`F'`).
