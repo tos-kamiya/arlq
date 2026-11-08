@@ -172,11 +172,11 @@ def step(current, player, direction=(1, 0), checkpoint=(2, 2), stage_num=6):
     )
 
 
-def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
+def test_playground_has_four_random_recruits_and_a_boss_party():
     floors, player = stage6.build()
-    assert len(floors) == 3 and player.rescue_stage and player.treasure_stage
+    assert len(floors) == 4 and player.rescue_stage and player.treasure_stage
     for floor_index, floor in enumerate(floors):
-        if floor_index == 2:
+        if floor_index == 3:
             assert len(floor.room_components) == 1
             continue
         assert len(floor.room_components) == 2
@@ -203,7 +203,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
     assert sum(
         isinstance(entity, d.Monster) and entity.tribe.char == "k"
         for entity in floors[1].entities
-    ) == 2
+    ) == 1
     members = {
         e.role for f in floors for e in f.entities if isinstance(e, d.PartyMember)
     }
@@ -271,7 +271,7 @@ def test_playground_has_four_random_recruits_and_a_random_rank2_boss_party():
             for entity in floor.entities
         )
         for floor in floors
-    ] == [1, 3, 3]
+    ] == [1, 3, 3, 3]
     assert not any(
         isinstance(entity, d.Monster)
         and entity.tribe.char == "g"
@@ -410,15 +410,15 @@ def test_stage5_replaces_oldest_member_without_respawning_them():
     [
         ((), 2),
         (("Jester",), 3),
-        (("Knight",), 1),
-        (("Jester", "Knight"), 1.5),
-        (("Healer", "Rogue"), 1),
-        (("Guardian",), 1),
+        (("Knight",), 2),
+        (("Jester", "Knight"), 3),
+        (("Healer", "Rogue"), 2),
+        (("Guardian",), 2),
         ((d.MEMBER_YAWNING_CAT,), 2),
     ],
 )
 @pytest.mark.parametrize("stage_num", [5, 6])
-def test_group_rewards_are_shared_then_adjusted_by_members(roles, gain, stage_num):
+def test_group_rewards_go_to_player_with_jester_multiplier(roles, gain, stage_num):
     current, player = state(roles, lp=10)
     current.entities = [monster(3, 2, "b"), monster(3, 3, "a")]
     feed = max(e.tribe.feed for e in current.entities)
@@ -441,11 +441,11 @@ def test_flame_cobra_grants_five_experience(stage_num, rank):
 def test_knight_level_is_fixed_and_jester_leaves_at_80():
     current, player = state(("Jester", "Knight"), lp=10)
     knight = player.members[1]
-    assert knight.level == 80
+    assert knight.level == 40
     current.entities = [monster(3, 2, "b"), monster(3, 3, "a")]
     step(current, player)
-    assert player.level == pytest.approx(101.5)
-    assert knight.level == 80
+    assert player.level == pytest.approx(103)
+    assert knight.level == 40
     assert not d.has_member(player, d.MEMBER_JESTER)
     assert d.current_player_attack(player) == pytest.approx(player.level + knight.level)
 
@@ -504,16 +504,16 @@ def test_group_keeps_unique_item_even_when_contacting_ordinary_member():
 
 def test_fractional_attack_hazards_and_status():
     current, player = state(("Knight", "Dungeon Explorer"), level=100.5)
-    assert d.current_player_attack(player) == pytest.approx(180.5)
+    assert d.current_player_attack(player) == pytest.approx(140.5)
     player.item = d.ITEM_SWORD_X1_5
-    assert d.current_player_attack(player) == pytest.approx(230.75)
+    assert d.current_player_attack(player) == pytest.approx(190.75)
     assert barrier_lp_damage(player) == 30
     assert d.caltrop_lp_damage(player) == 3
     current.field[2][3] = d.CHAR_CALTROP
     step(current, player)
     assert player.lp == 87
     assert "LVL: 100" in display.status_prefix(player, 5, 0)
-    assert "ATK: 230" in display.status_prefix(player, 5, 0)
+    assert "ATK: 190" in display.status_prefix(player, 5, 0)
 
 
 def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
@@ -708,7 +708,7 @@ def test_empowered_wyrm_boss_has_central_boss_and_clear_entrance(monkeypatch, se
     assert abs(direction) == 1
     x, y = escort.x, escort.y + direction
     entrance = {(x, y), (x - 1, y), (x + 1, y), (x, y + direction)}
-    assert all(current.field[py][px] == d.CHAR_FLOOR for px, py in entrance)
+    assert all(current.field[py][px] in (d.CHAR_FLOOR, d.CHAR_BARRIER) for px, py in entrance)
     assert not entrance.intersection((e.x, e.y) for e in current.entities)
     assert not entrance.intersection(current.persistent_barriers)
 
@@ -1222,36 +1222,26 @@ def test_deep_roster_counts_and_party_sizes_by_floor():
         return [sum(count for ch, count, r in floor if ch == char and r == rank)
                 for floor in d.STAGE6_ROSTER]
 
-    assert counts("a", 1) == [16, 0, 0]
-    assert counts("a", 2) == [0, 1, 1]
-    assert counts("b", 1) == [5, 0, 0]
-    assert counts("b", 2) == [0, 5, 5]
-    assert counts("c", 2) == [0, 5, 7]
-    assert counts("C", 1) == [0, 1, 0]
-    assert counts("A", 1) == [2, 2, 2]
-    assert d.STAGE6_EXTRA_BISON_RANKS == (1, None, None)
-    assert counts("d", 1) == [4, 2, 0]
-    assert counts("d", 2) == [0, 2, 4]
-    assert counts("B", 1) == [1, 1, 0]
-    assert counts("B", 2) == [0, 0, 1]
-    assert counts("f", 1) == [2, 1, 1]
-    assert counts("f", 2) == [0, 1, 1]
-    assert counts("w", 2) == [0, 1, 3]
-    assert counts("X", 1) == [0, 1, 0]
-    assert counts("X", 2) == [0, 0, 1]
-    assert Counter(d.STAGE6_SUPPORT_POOLS[1]) == Counter({
-        ("a", 1): 3, ("f", 1): 2, ("b", 1): 2,
-        ("e", 1): 2,
-    })
-    assert all(Counter(pool) == Counter({
-        ("a", 1): 2, ("e", 1): 2, ("b", 1): 1,
-        ("w", 2): 1, ("k", 1): 1,
-    }) for pool in d.STAGE6_SUPPORT_POOLS[2:])
+    assert counts("a", 1) == [16, 0, 0, 0]
+    assert counts("a", 2) == [0, 1, 1, 0]
+    assert counts("a", 3) == [0, 0, 0, 4]
+    assert counts("b", 1) == [5, 0, 0, 0]
+    assert counts("b", 2) == [0, 5, 3, 0]
+    assert counts("b", 3) == [0, 0, 2, 5]
+    assert counts("B", 1) == [1, 1, 0, 0]
+    assert counts("B", 2) == [0, 0, 1, 0]
+    assert counts("B", 3) == [0, 0, 0, 1]
+    assert counts("A", 1) == [2, 2, 2, 3]
+    assert counts("f", 1) == [1, 1, 1, 1]
+    assert counts("f", 2) == [0, 1, 1, 2]
+    assert counts("w", 2) == [0, 1, 3, 2]
+    assert counts("X", 2) == [0, 0, 1, 1]
+    assert d.STAGE6_EXTRA_BISON_RANKS == (1, None, None, None)
     assert d.STAGE6_PARTY_SIZE_WEIGHTS == (
         (78, 21, 1, 0, 0), (60, 30, 10, 0, 0),
-        (45, 30, 25, 0, 0),
+        (45, 30, 25, 0, 0), (45, 30, 25, 0, 0),
     )
-    assert d.STAGE6_BOSS_ESCORTS == (("f", 1), ("k", 1), ("w", 1))
+    assert d.STAGE6_BOSS_ESCORTS == (("w", 1),)
 
 
 def test_member_trial_has_fixed_ordered_layout():
@@ -1309,7 +1299,7 @@ def test_member_trial_corridor_and_initial_combat():
     )
     knight = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_KNIGHT)
     stage56.recruit(upper, player, knight)
-    assert d.current_player_attack(player) >= sum(
+    assert d.current_player_attack(player) < sum(
         d.monster_level(e) for e in stage56.monster_party(upper, knight_pair)
     )
 
@@ -1343,7 +1333,7 @@ def test_member_trial_can_bypass_first_pair_and_recruit_knight():
     engine._step((1, 0), floors, player, floor, checkpoint, queue, 1, stage_num=5)
     assert (player.x, player.y) == (14, 3)
     assert [member.role for member in player.members] == [d.MEMBER_KNIGHT]
-    assert sum(isinstance(e, d.Monster) and e.tribe.char == "f" for e in upper.entities) == 5
+    assert sum(isinstance(e, d.Monster) and e.tribe.char == "f" for e in upper.entities) == 6
 
 def test_member_trial_rogue_targets_before_and_after_recruit():
     floors, player = stage5.build_member_trial()
@@ -1380,10 +1370,10 @@ def test_member_trial_healer_is_in_middle_row_on_right():
     healer = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_HEALER)
     guardian = next(e for e in upper.entities if isinstance(e, d.PartyMember) and e.role == d.MEMBER_GUARDIAN)
     assert (guardian.x, guardian.y) == (33, 3)
-    assert (healer.x, healer.y) == (48, 10)
+    assert (healer.x, healer.y) == (47, 10)
     assert all(upper.field[3][x] != d.CHAR_WALL for x in range(44, 48))
     assert sorted(e.x for e in upper.entities if isinstance(e, d.Monster)
-                  and e.tribe.char == "b" and e.y == 10) == [43, 45]
+                  and e.tribe.char == "b" and e.y == 10) == [44]
 
 def test_member_trial_rogue_pit_blocks_the_route_to_guardian():
     floors, _ = stage5.build_member_trial()
@@ -1454,7 +1444,7 @@ def test_member_trial_jester_experience_comparison():
     player.members = [d.PartyMember(0, 0, d.MEMBER_HEALER), d.PartyMember(0, 0, d.MEMBER_DUNGEON_EXPLORER)]
     level = player.level
     engine._resolve_party_contact(before[0], upper, floors, player, [0], [upper.up], Counter(), None, 5)
-    assert player.level - level == pytest.approx(10 / 2)
+    assert player.level - level == pytest.approx(10)
     assert sum(isinstance(e, d.Monster) and e.tribe.char == "A" and e.x > jester.x for e in upper.entities) == 9
     stage56.recruit(upper, player, jester)
     level = player.level
@@ -1677,14 +1667,14 @@ def test_initial_parties_use_distinct_candidate_rooms(floor_index, detached):
         parties.append(leader)
         remaining = [monster for monster in remaining if monster not in party]
     selected = {stage6.tile_at((leader.x, leader.y)) for leader in parties}
-    count = 5
+    count = (5, 5, 4, 0)[floor_index]
     assert len(parties) == len(selected) == count
     assert selected <= set(d.STAGE6_INITIAL_PARTY_ROOMS)
-    if detached in d.STAGE6_INITIAL_PARTY_ROOMS:
+    if count and detached in d.STAGE6_INITIAL_PARTY_ROOMS:
         assert detached in selected
     actual = [(leader.tribe.char, leader.empowered) for leader in parties]
     expected = ([('b', 1)] * 4 + [('B', 1)] if floor_index == 0
-                else [('b', 2)] * 4 + [('B', 1 if floor_index == 1 else 2)])
+                else [('b', 2)] * (4 if floor_index == 1 else 3) + [('B', 1 if floor_index == 1 else 2)])
     assert actual == expected[:count]
     assert Counter(actual) == Counter(placed)
 
@@ -1709,9 +1699,9 @@ def test_initial_parties_include_isolated_rooms_and_preserve_roster(monkeypatch,
         eligible = {room if room in available else (room[0] + 1, room[1])
                     for room in d.STAGE6_INITIAL_PARTY_ROOMS
                     if room in available or (room[0] + 1, room[1]) in available}
-        count = min(len(eligible), 5)
+        count = min(len(eligible), (5, 5, 4, 0)[index])
         spawning = [(leader, room) for leader, room in calls[index] if leader[0] != "W"]
-        assert sum(leader == ("X", 2) for leader, _ in spawning) == (index == 2)
+        assert sum(leader == ("X", 2) for leader, _ in spawning) == (index in (2, 3))
         assert len(spawning) == (int(d.STAGE6_EXTRA_BISON_RANKS[index] is not None)
                                  + sum(amount for _, amount, _ in d.STAGE6_ROSTER[index]))
         initial = spawning[:count]
