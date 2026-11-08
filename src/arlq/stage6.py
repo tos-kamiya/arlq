@@ -432,22 +432,15 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     player = d.Player(*floors[0].up, 1, d.LP_INIT)
     player.stage6_candidates = True
     radius = _tavern_known_radius()
-    for index, current in enumerate(floors[:2]):
-        _place_tavern(current, current.up, avoid_anchor=index == 1)
-        for x, y in iterate_ellipse_points(
-            *current.tavern, radius, d.FOV_WIDTH_EXPANSION_RATIO
-        ):
-            current.seen[y][x] = 1
+    current = floors[0]
+    _place_tavern(current, current.up)
+    for x, y in iterate_ellipse_points(
+        *current.tavern, radius, d.FOV_WIDTH_EXPANSION_RATIO
+    ):
+        current.seen[y][x] = 1
     for role in member_roles:
-        if role in (d.MEMBER_HEALER, d.MEMBER_DUNGEON_EXPLORER):
-            floor_index = 0
-        elif role in (d.MEMBER_KNIGHT, d.MEMBER_GUARDIAN):
-            floor_index = 1
-        else:
-            floor_index = rand.randrange(2)
-        current = floors[floor_index]
         point = _candidate_near_tavern(current, current.up)
-        current.entities.append(d.PartyMember(*point, role, origin_floor=floor_index))
+        current.entities.append(d.PartyMember(*point, role, origin_floor=0))
     _mark_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
     for current in floors:
         stage56.initialize_monster_barriers(current)
@@ -462,16 +455,12 @@ def _tavern_known_radius() -> int:
     return round(vortex_radius * d.STAGE6_TAVERN_KNOWN_VORTEX_RATIO)
 
 
-def _place_tavern(current: Floor, anchor: d.Point, *, avoid_anchor: bool = False) -> None:
+def _place_tavern(current: Floor, anchor: d.Point) -> None:
     reachable = _reachable_floor_points(current, anchor)
     open_points = set(_open_points(current)) & reachable
-    excluded = set(iterate_ellipse_points(
-        *anchor, _tavern_known_radius(), d.FOV_WIDTH_EXPANSION_RATIO
-    )) if avoid_anchor else set()
     choices = [
         (x, y) for x, y in open_points
-        if (x, y) not in excluded
-        and all((x + dx, y) in open_points for dx in range(2))
+        if all((x + dx, y) in open_points for dx in range(2))
     ]
     if not choices:
         raise RuntimeError("no space for stage 6 tavern")
@@ -598,32 +587,17 @@ def _balance_route_parties(floors, route):
                     entity.x, entity.y = x, y
 
 
-def relocate_candidates(floors, player, candidates=None, player_floor=None):
-    if candidates is None:
-        candidates = []
-        for current in floors:
-            for entity in list(current.entities):
-                if isinstance(entity, d.PartyMember):
-                    current.entities.remove(entity)
-                    candidates.append(entity)
+def relocate_candidates(floors, player, candidates, player_floor=None):
     for member in candidates:
-        fixed_floor = {
-            d.MEMBER_HEALER: 0, d.MEMBER_DUNGEON_EXPLORER: 0,
-            d.MEMBER_KNIGHT: 1, d.MEMBER_GUARDIAN: 1,
-        }.get(member.role)
-        index = fixed_floor if fixed_floor is not None else rand.randrange(2)
-        current = floors[index]
-        excluded = (player.x, player.y) if index == player_floor else None
+        if member.role == d.MEMBER_JESTER and player.level >= d.JESTER_DEPARTURE_LEVEL:
+            player.known_member_floors.pop(member.role, None)
+            continue
+        current = floors[0]
+        excluded = (player.x, player.y) if player_floor == 0 else None
         member.x, member.y = _candidate_near_tavern(current, current.up, excluded)
-        member.origin_floor = index
+        member.origin_floor = 0
         player.known_member_floors.pop(member.role, None)
-        floors[index].entities.append(member)
-
-
-def record_transition(floors, player, source_floor, source, destination_floor, destination):
-    if destination_floor != 0 and not getattr(player, "stage6_candidates_relocated", False):
-        relocate_candidates(floors, player, player_floor=destination_floor)
-        player.stage6_candidates_relocated = True
+        current.entities.append(member)
 
 
 def _reachable_floor_points(current: Floor, entry: d.Point) -> set[d.Point]:

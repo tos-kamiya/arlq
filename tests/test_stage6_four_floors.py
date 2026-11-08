@@ -52,26 +52,12 @@ def test_tavern_neighborhood_is_initially_mapped():
     radius = round(vortex_radius * d.STAGE6_TAVERN_KNOWN_VORTEX_RATIO)
     assert radius == 4
     assert round(radius * d.FOV_WIDTH_EXPANSION_RATIO) == 6
-    for floor in floors[:2]:
-        expected = set(iterate_ellipse_points(
-            *floor.tavern, radius, d.FOV_WIDTH_EXPANSION_RATIO
-        ))
-        actual = {(x, y) for y, row in enumerate(floor.seen)
-                  for x, seen in enumerate(row) if seen}
-        assert actual == expected
-    assert all(not any(map(any, floor.seen)) for floor in floors[2:])
-
-
-def test_second_floor_tavern_does_not_reveal_entry_stairs():
-    from arlq import game_engine
-    from arlq.utils import rand
-
-    for seed in range(20):
-        rand.set_seed(seed)
-        floors, player = stage6.build()
-        upper, lower = floors[:2]
-        ux, uy = upper.down
-        lx, ly = lower.up
-        assert not lower.seen[ly][lx]
-        game_engine.observe_world(floors, player, 0, d.TORCH_RADIUS)
-        assert not upper.seen[uy][ux]
+    floor = floors[0]
+    expected = set(iterate_ellipse_points(
+        *floor.tavern, radius, d.FOV_WIDTH_EXPANSION_RATIO
+    ))
+    actual = {(x, y) for y, row in enumerate(floor.seen)
+              for x, seen in enumerate(row) if seen}
+    assert actual == expected
+    assert all(floor.tavern is None and not any(map(any, floor.seen))
+               for floor in floors[1:])

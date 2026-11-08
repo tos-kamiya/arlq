@@ -333,61 +333,55 @@ def test_stage6_departed_member_does_not_reappear():
     )
 
 
-def test_stage6_candidates_start_near_eligible_taverns():
+def test_stage6_candidates_start_near_first_floor_tavern():
     for seed in range(5):
         engine.rand.set_seed(seed)
         floors, player = stage6.build()
-        assert len(floors[0].down_stairs) == len(floors[1].up_stairs) == 1
-        for floor in floors[:2]:
-            x, y = floor.tavern
-            for dx, char in enumerate("/\\"):
-                assert floor.decor[y][x + dx] == d.DECOR_TAVERN_PREFIX + char
-            assert abs(x - floor.up[0]) + abs(y - floor.up[1]) <= 15
+        first = floors[0]
+        x, y = first.tavern
+        for dx, char in enumerate("/\\"):
+            assert first.decor[y][x + dx] == d.DECOR_TAVERN_PREFIX + char
+        assert all(floor.tavern is None for floor in floors[1:])
         members = [(index, e) for index, floor in enumerate(floors)
                    for e in floor.entities if isinstance(e, d.PartyMember)]
         assert len(members) == 4
         assert len({member.role for _, member in members}) == 4
         for index, member in members:
-            assert index in (0, 1) and member.origin_floor == index
-            if member.role in (d.MEMBER_HEALER, d.MEMBER_DUNGEON_EXPLORER):
-                assert index == 0
-            if member.role in (d.MEMBER_KNIGHT, d.MEMBER_GUARDIAN):
-                assert index == 1
-            assert (member.x, member.y) in stage6._reachable_floor_points(floors[index], floors[index].up)
-            assert index != 0 or (member.x, member.y) != (player.x, player.y)
-            tavern = floors[index].tavern
-            assert abs(member.x - tavern[0]) + abs(member.y - tavern[1]) <= 7
+            assert index == member.origin_floor == 0
+            assert (member.x, member.y) in stage6._reachable_floor_points(first, first.up)
+            assert (member.x, member.y) != (player.x, player.y)
+            assert abs(member.x - x) + abs(member.y - y) <= 7
 
 
-def test_stage6_only_first_departure_from_floor_one_relocates_candidates(monkeypatch):
+def test_stage6_leaving_first_floor_keeps_candidates_in_place():
+    upper, player = state()
+    lower, _ = state()
+    upper.down = lower.up = (3, 2)
+    upper.field[2][3] = d.CHAR_STAIRS_DOWN
+    lower.field[2][3] = d.CHAR_STAIRS_UP
+    candidate = d.PartyMember(10, 10, d.MEMBER_SEER, origin_floor=0)
+    upper.entities.append(candidate)
+    player.known_member_floors[candidate.role] = 1
+    floor = [0]
+
+    engine._step((1, 0), [upper, lower], player, floor, [(2, 2)], Counter(), 1, stage_num=6)
+
+    assert floor == [1]
+    assert candidate in upper.entities and (candidate.x, candidate.y) == (10, 10)
+    assert player.known_member_floors[candidate.role] == 1
+
+
+def test_stage6_departed_members_return_to_first_floor_tavern():
     floors, player = stage6.build()
-    calls = []
-    monkeypatch.setattr(stage6, "relocate_candidates", lambda *args, **kwargs: calls.append(1))
-    stage6.record_transition(floors, player, 0, (1, 1), 1, (2, 2))
-    stage6.record_transition(floors, player, 1, (2, 2), 0, (1, 1))
-    assert len(calls) == 1
-    stage6.record_transition(floors, player, 0, (3, 3), 1, (4, 4))
-    assert len(calls) == 1
+    member = next(e for e in floors[0].entities if isinstance(e, d.PartyMember))
+    stage56.recruit(floors[0], player, member)
+    player.members.remove(member)
+    stage6.relocate_candidates(floors, player, [member], player_floor=1)
 
-
-def test_stage6_relocation_respects_taverns_and_preserves_joined_members(monkeypatch):
-    floors, player = stage6.build()
-    floor = next(f for f in floors if any(isinstance(e, d.PartyMember) for e in f.entities))
-    member = next(e for e in floor.entities if isinstance(e, d.PartyMember))
-    stage56.recruit(floor, player, member)
-    waiting = {e.role for f in floors for e in f.entities if isinstance(e, d.PartyMember)}
-    player.known_member_floors.update(dict.fromkeys(waiting, 1))
-    monkeypatch.setattr(stage6.rand, "choice", lambda choices: choices[-1])
-
-    stage6.record_transition(floors, player, 0, (1, 1), 1, (2, 2))
-
-    relocated = [e for f in floors[:2] for e in f.entities if isinstance(e, d.PartyMember)]
-    assert {e.role for e in relocated} == waiting
-    assert not any(isinstance(e, d.PartyMember) for e in floors[-1].entities)
-    assert all(e.origin_floor == 0 for e in relocated if e.role in (d.MEMBER_HEALER, d.MEMBER_DUNGEON_EXPLORER))
-    assert all(e.origin_floor == 1 for e in relocated if e.role in (d.MEMBER_KNIGHT, d.MEMBER_GUARDIAN))
-    assert member in player.members
-    assert not waiting & player.known_member_floors.keys()
+    assert member in floors[0].entities and member.origin_floor == 0
+    assert member.role not in player.known_member_floors
+    x, y = floors[0].tavern
+    assert abs(member.x - x) + abs(member.y - y) <= 7
 
 
 def test_stage5_replaces_oldest_member_without_respawning_them():
@@ -467,7 +461,26 @@ def test_jester_leaves_when_experience_crosses_level_80(stage_num):
     step(current, player, stage_num=stage_num)
     assert player.level == pytest.approx(81)
     assert not d.has_member(player, d.MEMBER_JESTER)
-    assert sum(isinstance(e, d.PartyMember) for e in current.entities) == (stage_num == 6)
+    assert not any(isinstance(e, d.PartyMember) for e in current.entities)
+
+
+@pytest.mark.parametrize("level, returns", [(79, True), (80, False), (81, False)])
+def test_jester_reappears_only_below_departure_level(level, returns):
+    floors, player = stage6.build()
+    player.level = level
+    jester = d.PartyMember(0, 0, d.MEMBER_JESTER, origin_floor=0)
+    player.known_member_floors[d.MEMBER_JESTER] = 1
+    stage6.relocate_candidates(floors, player, [jester], player_floor=1)
+    assert (jester in floors[0].entities) is returns
+    assert d.MEMBER_JESTER not in player.known_member_floors
+
+
+def test_recruiting_jester_at_level_80_does_not_respawn_him():
+    current, player = state(level=80)
+    jester = d.PartyMember(3, 2, d.MEMBER_JESTER, origin_floor=0)
+    current.entities.append(jester)
+    step(current, player)
+    assert jester not in player.members and jester not in current.entities
 
 
 def test_group_strength_defeat_preserves_party_and_healer_penalty():

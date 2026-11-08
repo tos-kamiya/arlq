@@ -1229,12 +1229,9 @@ def _resolve_party_contact(
         player, d.MEMBER_JESTER
     )
     if jester_departed:
-        departed = next(member for member in player.members if member.role == d.MEMBER_JESTER)
         player.members[:] = [member for member in player.members
                              if member.role != d.MEMBER_JESTER]
         player.known_member_floors.pop(d.MEMBER_JESTER, None)
-        if stage_num == 6:
-            stage6.relocate_candidates(floors, player, [departed], floor[0])
     player.lp = old_lp
     d.apply_feed(player, feed, lp_overcharge)
     if any(monster.tribe.char == "M" for monster in party):
@@ -1327,8 +1324,6 @@ def _resolve_contact(
         if entity.role == d.MEMBER_JESTER and player.level >= d.JESTER_DEPARTURE_LEVEL:
             player.members.remove(entity)
             player.known_member_floors.pop(d.MEMBER_JESTER, None)
-            if stage_num == 6:
-                stage6.relocate_candidates(floors, player, [entity], floor[0])
             result = trp("-- Jester left the party.", 5)
         if trace is not None:
             trace.record_contact({"type": "member", "id": entity.role,
@@ -1793,10 +1788,6 @@ def _process_multi_floor_turn(
             current.seen[collapse_hit.y][collapse_hit.x] = 1
         current.seen[collapse_point[1]][collapse_point[0]] = 1
         floor[0] += 1
-        if stage_num == 6:
-            stage6.record_transition(
-                floors, player, from_floor, collapse_point, floor[0], (player.x, player.y)
-            )
         checkpoint[0] = (player.x, player.y)
         if trace is not None:
             trace.record_checkpoint("trap_fall", (player.x, player.y), floor[0])
@@ -1938,11 +1929,6 @@ def _process_multi_floor_turn(
         else _handle_floor_transition(current, floors, player, floor, checkpoint)
     )
     if transition_message is not None:
-        if stage_num == 6:
-            stage6.record_transition(
-                floors, player, floor_before, movement_destination, floor[0],
-                (player.x, player.y),
-            )
         player.floor_exit = movement_destination
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("floor_transition")
