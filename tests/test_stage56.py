@@ -518,14 +518,37 @@ def test_fractional_attack_hazards_and_status():
 
 def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
     _, player = state(("Guardian",))
-    assert barrier_lp_damage(player) == 0
-    assert d.caltrop_lp_damage(player) == 0
+    assert barrier_lp_damage(player) == 5
+    assert d.caltrop_lp_damage(player) == 3
     assert d.movement_lp_cost(player) == 1
 
     player.members.append(d.PartyMember(player.x, player.y, "Healer"))
+    assert barrier_lp_damage(player) == 5
+    assert d.caltrop_lp_damage(player) == 3
+    assert d.movement_lp_cost(player) == pytest.approx(3 / 4)
+
+    player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
     assert barrier_lp_damage(player) == 0
-    assert d.caltrop_lp_damage(player) == 0
-    assert d.movement_lp_cost(player) == pytest.approx(1 / 2)
+    player.item = d.ITEM_SWORD_CURSED
+    assert barrier_lp_damage(player) == 5
+
+
+@pytest.mark.parametrize("cell, hazard_cost", [(d.CHAR_CALTROP, 3), (d.CHAR_BARRIER, 5)])
+def test_guardian_and_healer_terrain_costs(cell, hazard_cost):
+    current, player = state(("Guardian", "Healer"))
+    current.field[2][3] = cell
+    step(current, player)
+    assert player.lp == pytest.approx(90 - hazard_cost)
+
+
+def test_guardian_pegasus_barrier_landing_costs_five_lp():
+    current, player = state(("Guardian",))
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
+    current.field[2][3] = d.CHAR_WALL
+    current.field[2][2 + d.PEGASUS_STEP_X] = d.CHAR_BARRIER
+    step(current, player)
+    assert player.x == 2 + d.PEGASUS_STEP_X
+    assert player.lp == 85
 
 
 def test_rogue_does_not_preannounce_marksman_shooting_lane():
@@ -951,8 +974,8 @@ def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):
     engine.run_game(ui, "test", stage_num=6)
     assert ui.frames[0] == (0, 90, (2, 2))
     assert ui.frames[1][0::2] == (1, (3, 2))
-    assert ui.frames[1][1] == pytest.approx(90 - 1 / 2)
-    assert player.lp == pytest.approx(90 - 1 / 2)
+    assert ui.frames[1][1] == pytest.approx(90 - 3 / 4)
+    assert player.lp == pytest.approx(90 - 3 / 4)
     assert (player.x, player.y) == (3, 2)
     assert player.current_floor == 1
     assert ui.stops == 2
@@ -998,7 +1021,7 @@ def test_live_loop_rewind_preserves_target_lp(monkeypatch, roles):
         map_mode=False,
     )
     engine.run_game(ui, "test", stage_num=6)
-    assert frames[:3] == pytest.approx([90, 90 - (1 / 2 if roles else 1), 90])
+    assert frames[:3] == pytest.approx([90, 90 - (3 / 4 if roles else 1), 90])
 
 
 def test_candidate_glyph_is_known_on_first_sighting():

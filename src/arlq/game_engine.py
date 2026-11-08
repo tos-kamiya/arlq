@@ -337,8 +337,7 @@ def _apply_terrain_hazards(
         player.lp -= d.caltrop_lp_damage(player)
         damage = max(0, old_lp - player.lp)
         if damage:
-            tone = "green" if d.has_member(player, d.MEMBER_GUARDIAN) else "default"
-            _set_status_popup(player, f"LP-{_format_popup_amount(damage)}", tone)
+            _set_status_popup(player, f"LP-{_format_popup_amount(damage)}", "default")
         field[player.y][player.x] = d.CHAR_FLOOR
         if trace is not None:
             trace.record_damage("caltrop")
@@ -1812,7 +1811,7 @@ def _process_multi_floor_turn(
         current = floors[floor[0]]
         collapse_transition = True
     guardian_reduced_hazard = d.has_member(player, d.MEMBER_GUARDIAN) and (
-        current.field[player.y][player.x] in (d.CHAR_BARRIER, d.CHAR_CALTROP)
+        current.field[player.y][player.x] == d.CHAR_BARRIER
     )
     old_hazard_lp = player.lp
     hazard_message = _apply_terrain_hazards(

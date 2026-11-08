@@ -942,7 +942,7 @@ def test_stage3_world_respawn_event_includes_floor(monkeypatch):
     (d.ELF_STAGE_H_FLAG, d.ITEM_SWORD_CURSED, False, False),
     (0, None, True, True),
 ])
-def test_pegasus_barrier_landing_requires_immunity(flags, item, guardian, allowed):
+def test_pegasus_barrier_landing_requires_protection(flags, item, guardian, allowed):
     player = d.Player(2, 2, 1, 90)
     player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
     player.elf_stage_flags = flags

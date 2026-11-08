@@ -896,10 +896,10 @@ def test_barrier_glows_on_the_floor_and_only_smokes_near_a_protected_player(
 @pytest.mark.parametrize('guardian, amulet, floor_view, barrier_cooled, caltrop_cooled', [
     (False, False, False, False, False),
     (False, True, False, True, False),
-    (True, False, False, True, True),
+    (True, False, False, True, False),
     (True, False, True, False, False),
 ])
-def test_guardian_cools_barriers_and_caltrops_near_player(
+def test_guardian_cools_barriers_but_not_caltrops_near_player(
     monkeypatch, guardian, amulet, floor_view, barrier_cooled, caltrop_cooled,
 ):
     ui, field = _barrier_ui(monkeypatch, None)

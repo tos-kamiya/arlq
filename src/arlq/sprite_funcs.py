@@ -297,9 +297,9 @@ THEME_SPRITES = {'training': {'T': 'T-toy'}}
 # orange light rising from its edges, fading upward, with a few sparks drifting
 # inside (two variants with different shimmer and sparks, laid out as a
 # checkerboard), added onto the floor; the back sheet reaches a little into the
-# cell above. While the protective amulet makes barriers harmless, the cells
+# cell above. While the amulet or Guardian protects against barriers, the cells
 # within one cell of the player (its own and the eight around it) show only
-# faint grey smoke of the same shape. A Guardian also cools nearby caltrops.
+# faint grey smoke of the same shape.
 # Barriers outside the current view are
 # darkened like the floor. Sizes are in cell widths/heights.
 BARRIER_TEXELS = (48, 96)
@@ -615,11 +615,10 @@ class SpriteUI(PygletUI):
     _enlarge_neighbors = True
     # Monster types the player has identified, for the strength column.
     _known_types = frozenset()
-    # Current view and, while barriers are harmless, the player's cell that
+    # Current view and, while barriers are weakened, the player's cell that
     # cools the barrier stones around it.
     _cur_torched = None
     _cooling_center = None
-    _guardian_protection = False
     # The field being drawn, for stairs and pits that spread over neighbouring floor.
     _stage_field = None
     _stage_discovered_at = None
@@ -922,12 +921,8 @@ class SpriteUI(PygletUI):
                 self._center_camera_on_player(player.x)
         self._cooling_center = (
             (player.x, player.y)
-            if player is not None and not kwargs.get('floor_view') and barrier_lp_damage(player) == 0
+            if player is not None and not kwargs.get('floor_view') and barrier_lp_damage(player) < d.BARRIER_LP_DAMAGE
             else None
-        )
-        self._guardian_protection = (
-            self._cooling_center is not None
-            and d.has_member(player, d.MEMBER_GUARDIAN)
         )
         result = super().draw_stage(decor=decor, **kwargs)
         return result
@@ -1122,7 +1117,7 @@ class SpriteUI(PygletUI):
         return max(abs(x - cx), abs(y - cy)) <= 1
 
     def _draw_barrier(self, x, y, field, discovered_at):
-        """Orange magic light rising from the floor, or faint smoke near the player while harmless."""
+        """Orange magic light rising from the floor, or faint smoke near the player while weakened."""
         visible = self._cur_torched is not None and self._cur_torched[y][x]
         self._draw_floor(x, y, VISIBLE_FLOOR if visible else FLOOR, field, discovered_at)
         cooled = self._near_cooling_center(x, y)
@@ -1293,9 +1288,7 @@ class SpriteUI(PygletUI):
     def _draw_tile(self, x, y, tile_color, field, discovered_at):
         # Stairs and pits drawn after this cell look at their neighbours through these.
         self._stage_field, self._stage_discovered_at = field, discovered_at
-        if ((field[y][x] == d.CHAR_BARRIER
-             or (field[y][x] == d.CHAR_CALTROP and self._guardian_protection
-                 and self._near_cooling_center(x, y))) and discovered_at(x, y)
+        if (field[y][x] == d.CHAR_BARRIER and discovered_at(x, y)
                 and tile_color != REACHABLE_CELL_COLOR and self._floor_images is not None):
             return self._draw_barrier(x, y, field, discovered_at)
         if (self._decor_at(x, y) in (d.DECOR_FALLEN_ROCKS, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)

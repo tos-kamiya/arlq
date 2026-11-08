@@ -649,7 +649,8 @@ def move_player(
                  or (field[jump_y][jump_x] == d.CHAR_GOLEM_WALL
                      and break_golem_walls))
             and (field[jump_y][jump_x] != d.CHAR_BARRIER
-                 or barrier_lp_damage(player) == 0)
+                 or barrier_lp_damage(player) == 0
+                 or d.has_member(player, d.MEMBER_GUARDIAN))
             and (field[jump_y][jump_x] != d.CHAR_D_GATE
                  or d.has_member(player, d.MEMBER_DUNGEON_EXPLORER))
         ):
@@ -686,7 +687,7 @@ def barrier_lp_damage(player: d.Player) -> int:
         )
         else d.BARRIER_LP_DAMAGE
     )
-    return 0 if d.has_member(player, d.MEMBER_GUARDIAN) else damage
+    return min(damage, d.GUARDIAN_BARRIER_LP_DAMAGE) if d.has_member(player, d.MEMBER_GUARDIAN) else damage
 
 
 def apply_barrier_damage(

@@ -195,7 +195,7 @@ Controls, rules, FOV and menus are shared with the original Pyglet GUI. Use
 | **l** Loop Fairy | Appears in Stages 3–4. Rewinds up to 80 turns on contact, or to the start if fewer turns have elapsed. |
 | **n** Nomicon  | Reveals the type of every active monster and elf within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
-| **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. Barrier landings require barrier immunity; R clears Golem walls at the landing point. |
+| **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. Barrier landings require barrier immunity or G; R clears Golem walls at the landing point. |
 
 Note on the Loop Fairy: The destination becomes the new anchor, and subsequent rewinds cannot go earlier than that anchor, even when using a Loop Fairy on another floor. Explored maps, monster identities, and learned elf and member locations remain known. Map knowledge is carried over as it stands immediately before the rewind, including any areas erased by a Vortex. The path from the discarded future appears as cyan dots for 10 turns after the rewind.
 
@@ -264,7 +264,7 @@ Entering a barrier (`=`) costs an extra 30 LP. The protective amulet removes
 this cost unless you are holding the cursed sword. Collector and Javelin
 bonuses stack with item modifiers, including swords and poison.
 
-In `arlq` and `arlq-cli`, barriers and caltrops appear dimmer while their damage is prevented.
+In `arlq` and `arlq-cli`, barriers appear dimmer while their damage is reduced or prevented.
 
 ### Stage 4: Deep Labyrinth
 
@@ -313,11 +313,11 @@ An empowered Caltrop Plant (`X'`) appears on floor 3.
 | Display & Profession | Ability |
 | --- | --- |
 | **J** Jester | Multiplies your shared experience by 1.5 and leaves permanently when your level reaches 80, or immediately if recruited at level 80 or higher. |
-| **H** Healer | Reduces movement LP cost to one-half and the defeat cost to 3, including when rewinding. |
+| **H** Healer | Reduces movement LP cost to three-quarters and the defeat cost to 3, including when rewinding. |
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **K** Knight | Adds a fixed 40 to your attack power. |
 | **D** Dungeon Explorer | Reveals pit entrances (green `^`) and hidden passages (`.`) in explored areas. Both require D in the party to use, even after discovery. Climb through an entrance and leave the pit on the next move. In sprite mode, discovered passages are marked by green light on the floor instead of a `.`; entrance discs appear only while D is in the party. |
-| **G** Guardian | Prevents barrier and caltrop damage. |
+| **G** Guardian | Reduces barrier damage from 30 LP to 5 LP. |
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. Identified fairies remain known after S leaves; newly discovered fairies remain unidentified. |
 | **Y** Yawning Cat | Every 20 accompanying turns, explores a 2×2 area starting at a random unexplored floor cell within an ellipse around the player on the current floor (vertical radius 10 cells, horizontal radius ×1.4, about 50% of a normal Vortex; independently configured). The 2×2 area shifts inward at map edges; if no nearby unexplored floor remains, nothing happens. Uses normal explored-map display, including unidentified monsters (`?`), without identifying them or stopping movement repeat. The counter resets on recruitment. |
 

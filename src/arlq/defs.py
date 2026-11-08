@@ -43,7 +43,7 @@ PARTY_EXPERIENCE_MEMBER_WEIGHTS = {
     MEMBER_YAWNING_CAT: 0.0,
     MEMBER_FAIRY_SEER: 0.0,
 }
-HEALER_MOVE_COST = 1 / 2
+HEALER_MOVE_COST = 3 / 4
 HEALER_RESPAWN_COST = 3
 RECRUITABLE_MEMBER_ROLES = (
     MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT,
@@ -182,6 +182,7 @@ CALTROP_WIDTH_EXPANSION_RATIO: float = 1.0
 CALTROP_LP_DAMAGE: int = 3
 MARKSMAN_LP_DAMAGE: int = 4
 BARRIER_LP_DAMAGE: int = 30
+GUARDIAN_BARRIER_LP_DAMAGE: int = 5
 
 ROCK_SPREAD_OFFSETS: List[Tuple[int, int]] = [
     (-2, -2),
@@ -938,17 +939,17 @@ STAGE6_PARTY_SIZE_WEIGHTS = (
 STAGE6_EXTRA_BISON_RANKS = (1, None, None, None)
 STAGE6_ROSTER = (
     (
-        ("a", 16, 1), ("A", 2, 1), ("b", 5, 1), ("B", 1, 1), ("c", 3, 1),
+        ("a", 16, 1), ("A", 2, 1), ("b", 5, 1), ("B", 1, 1), ("c", 2, 1),
         ("f", 1, 1),
         ("d", 4, 1), ("e", 1, 1), ("g", 1, 1),
     ),
     (
-        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 1), ("c", 3, 1),
+        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 1), ("c", 2, 1),
         ("d", 2, 1), ("d", 2, 2), ("f", 1, 1), ("f", 1, 2), ("w", 1, 2), ("g", 3, 1),
         ("k", 1, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 1, 2), ("A", 2, 1), ("b", 3, 2), ("b", 2, 3), ("B", 1, 2), ("c", 3, 1),
+        ("a", 1, 2), ("A", 2, 1), ("b", 3, 2), ("b", 2, 3), ("B", 1, 2), ("c", 2, 1),
         ("d", 3, 2), ("f", 1, 1), ("f", 1, 2), ("w", 3, 2), ("g", 3, 1),
         ("k", 2, 1), ("X", 1, 2),
     ),
@@ -956,7 +957,7 @@ STAGE6_ROSTER = (
 STAGE6_ROSTER += (
     (
         ("a", 4, 3), ("A", 3, 1), ("b", 5, 3), ("B", 1, 3),
-        ("c", 3, 1), ("d", 1, 2), ("f", 1, 1), ("f", 2, 2),
+        ("c", 2, 1), ("d", 1, 2), ("f", 1, 1), ("f", 2, 2),
         ("w", 1, 1), ("w", 2, 2), ("g", 3, 1),
         ("k", 3, 1), ("X", 1, 2),
     ),
@@ -1187,11 +1188,7 @@ def movement_lp_cost(player: Player) -> float:
 
 
 def caltrop_lp_damage(player: Player) -> float:
-    return (
-        0
-        if has_member(player, MEMBER_GUARDIAN)
-        else CALTROP_LP_DAMAGE
-    )
+    return CALTROP_LP_DAMAGE
 
 
 def current_player_attack(player: Player) -> float:

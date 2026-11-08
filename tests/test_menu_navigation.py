@@ -283,9 +283,9 @@ def test_terminal_boss_route_only_marks_explored_floor(monkeypatch):
     ('none', (False, False)),
     ('amulet', (True, False)),
     ('cursed_amulet', (False, False)),
-    ('guardian', (True, True)),
+    ('guardian', (True, False)),
 ])
-def test_terminal_dims_only_harmless_hazards(monkeypatch, dots, protection, expected):
+def test_terminal_dims_protected_barriers(monkeypatch, dots, protection, expected):
     from arlq import defs as d, display
     ui = BlessedUI.__new__(BlessedUI)
     ui.term = SimpleNamespace(home='', clear='', normal='', move_xy=lambda x, y: f'<{x},{y}>')

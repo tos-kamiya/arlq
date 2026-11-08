@@ -190,8 +190,7 @@ class BlessedUI:
                 discovered = bool(torched[y][x] or show_entities)
                 visible = bool(cur_torched[y][x])
                 harmless = (
-                    cell == d.CHAR_BARRIER and barrier_lp_damage(player) == 0
-                    or cell == d.CHAR_CALTROP and d.caltrop_lp_damage(player) == 0
+                    cell == d.CHAR_BARRIER and barrier_lp_damage(player) < d.BARRIER_LP_DAMAGE
                 )
                 if discovered and cell in d.SCHOLAR_STAIR_CHARS:
                     stair_glyph = (
