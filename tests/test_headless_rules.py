@@ -2034,6 +2034,8 @@ def test_golem_rocks_mark_golem_walls_in_terrain_and_decor():
         island=None,
     )
     floor.field[8][8] = d.CHAR_WALL  # an existing wall becomes Golem rubble
+    floor.field[8][12] = d.CHAR_BARRIER
+    floor.persistent_barriers.add((12, 8))
     before = deepcopy(floor.field)
     game_engine_module._defeat_monster(
         golem, floor, player, [0], [(10, 10)], Counter(), floors=[floor], stage_num=2
@@ -2049,6 +2051,18 @@ def test_golem_rocks_mark_golem_walls_in_terrain_and_decor():
         (9, 11), (11, 11), (8, 12), (12, 12),
     }
     assert all(decor == d.DECOR_NONE for row in floor.decor for decor in row)
+    assert (12, 8) not in floor.persistent_barriers
+
+
+def test_legacy_golem_rocks_replace_barriers():
+    player = d.Player(10, 10, 100, d.LP_INIT)
+    golem = d.Monster(11, 10, d.CHAR_TO_MONSTER_TRIBE["g"])
+    field = blank_field()
+    field[8][9] = d.CHAR_BARRIER
+
+    update_entities(KEYS["R"], field, player, [player, golem], respawn_point=(10, 10))
+
+    assert field[8][9] == d.CHAR_GOLEM_WALL
 
 
 def test_collapse_pits_leave_fallen_rocks_decor_on_the_floor_below():

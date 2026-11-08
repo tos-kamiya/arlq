@@ -900,7 +900,7 @@ def update_entities(
                         d.ROCK_SPREAD_OFFSETS,
                         except_for_entities=entities,
                     ):
-                        if field[y][x] == d.CHAR_FLOOR:
+                        if field[y][x] in (d.CHAR_FLOOR, d.CHAR_BARRIER):
                             field[y][x] = d.CHAR_GOLEM_WALL
 
                 d.apply_feed(
