@@ -143,7 +143,7 @@ Hover over a character to enlarge it and display its name. Unidentified characte
   | --- | --- |
   | Movement repeat | Holding a direction repeats movement when enabled. Automatic stopping is on by default near known hazards and after encounters or special movement; release and press the direction again to resume. Change it in `Settings` or with `--no-auto-repeat-stop`. |
   | Overshoot assist | Cancels movement and LP use when you return to the same position within five turns without gaining map or monster information, encountering an entity, taking damage, or changing floors. Possible return cells are marked with a dark gray `.`. |
-  | Reachable area preview | Press `F` to highlight explored cells reachable with your remaining LP. A gamepad button can show the preview while held or toggle it. While viewing the preview, Up or Down inspects another floor in Stages 3 and 4; moving closes the keyboard preview. Unexplored cells and routes remain hidden. The estimate avoids displayed entities and stairs, does not break walls or count LP recovery, and excludes Marksman damage, so actual reach may differ. |
+  | Reachable area preview | Press `F` to highlight explored cells reachable with your remaining LP. A gamepad button can show the preview while held or toggle it. While viewing the preview, Up or Down inspects another floor in Stages 3 and 4; moving closes the keyboard preview. Unexplored cells and routes remain hidden. The estimate avoids displayed entities and stairs, does not break walls or count LP recovery, and excludes Marksman and Ivy damage, so actual reach may differ. |
 
 * **Monsters, Fairies, and Elves**
 
@@ -227,8 +227,8 @@ hidden; moving returns the display to the player's floor.
 | Display & Name | Description |
 | -------------- | ----------- |
 | **m** Spore | Defeating it gives you Spores and clouds your vision. |
-| **w** Wyrm | Protected by a barrier. |
-| **W** Dread Wyrm | Protected by a barrier and unlocks the treasure chest when defeated. |
+| **w** Wyrm | Worth 5 experience at every rank. Protected by a barrier. |
+| **W** Dread Wyrm | Worth 5 experience at every rank. Protected by a barrier and unlocks the treasure chest when defeated. |
 
 #### Elves
 
@@ -314,6 +314,7 @@ Some rooms may be sealed by walls, but D can discover passages into them.
 | --- | --- |
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **f** / **f'** Flame cobra | Worth 5 experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
+| **i** Ivy | Attack power 50. On floors 2 and 3, each active Ivy deals 4 LP damage every turn when the player is directly above, below, left, or right of it. Rogue does not block this damage. |
 
 The floor 3 boss party consists of `F'`, `V`, and `k`; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 

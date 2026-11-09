@@ -369,6 +369,19 @@ def _reveal_collapse_pits(
                 )
 
 
+def _ivy_attack(current: Floor, player: d.Player, trace: Optional[TraceRecorder] = None) -> bool:
+    hit = False
+    for entity in current.entities:
+        if (isinstance(entity, d.Monster) and entity.active and entity.tribe.char == "i"
+                and abs(player.x - entity.x) + abs(player.y - entity.y) == 1):
+            player.lp -= d.IVY_LP_DAMAGE
+            player.known_monsters.add(d.monster_type_key(entity))
+            if trace is not None:
+                trace.record_damage("ivy")
+            hit = True
+    return hit
+
+
 def _marksman_shoot(
     current: Floor, player: d.Player, trace: Optional[TraceRecorder] = None
 ) -> bool:
@@ -1799,6 +1812,9 @@ def _process_multi_floor_turn(
         marksman_hit = _marksman_shoot(current, player, trace)
         if marksman_hit and repeat_stop_reasons is not None:
             repeat_stop_reasons.add("marksman_hit")
+    if stage_num == 6 and _ivy_attack(current, player, trace):
+        if repeat_stop_reasons is not None:
+            repeat_stop_reasons.add("ivy_hit")
     hazard_damage = max(0, old_hazard_lp - player.lp)
     if hazard_damage or player.marksman_damage_prevented:
         tone = (

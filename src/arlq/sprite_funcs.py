@@ -109,7 +109,7 @@ SPRITE_NAMES = {
     'B': 'Buffalo', 'c': 'Chimera', 'C': 'Rare Chimera', 'd': 'Komodo Dragon',
     'D': 'Dragon', 'T': 'Treasure', 'M': 'Mimic', 'l': 'Loop Fairy',
     'n': 'Nomicon', 'o': 'Ocular', 'F': 'Fire Drake', 'f': 'Flame Cobra',
-    'g': 'Golem', 'k': 'Marksman', 'V': 'Vortex', 'w': 'Wyrm',
+    'g': 'Golem', 'i': 'Ivy', 'k': 'Marksman', 'V': 'Vortex', 'w': 'Wyrm',
     'W': 'Dread Wyrm', 'm': 'Spore', 'e': 'Erebus', 'E': 'Rare Erebus',
     'X': 'Caltrop Plant', 'p': 'Pegasus', 'H': 'High Elf', 'I': 'Isolated Elf',
     'J': 'Javelin Elf', 'K': 'Collector Elf', 'L': 'Lifebringer Elf',

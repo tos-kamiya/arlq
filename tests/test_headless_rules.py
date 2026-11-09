@@ -471,7 +471,7 @@ def test_stage3_wyrm_combat_updates_message_position_and_state(
         assert not queue
     else:
         assert floors[0].entities == [treasure]
-        assert player.level == 201
+        assert player.level == 205
         assert player.karma == 1
         assert treasure.unlocked
         assert not queue

@@ -412,6 +412,16 @@ def test_flame_cobra_grants_five_experience(stage_num, rank):
 
 
 @pytest.mark.parametrize("stage_num", [3, 5, 6])
+@pytest.mark.parametrize("char", ["w", "W"])
+@pytest.mark.parametrize("rank", [1, 2, 3])
+def test_wyrms_grant_five_experience(stage_num, char, rank):
+    current, player = state(level=2000)
+    current.entities = [monster(3, 2, char, rank)]
+    step(current, player, stage_num=stage_num)
+    assert player.level == 2005
+
+
+@pytest.mark.parametrize("stage_num", [3, 5, 6])
 def test_marksman_grants_three_experience(stage_num):
     current, player = state(level=100)
     current.entities = [monster(3, 2, "k")]

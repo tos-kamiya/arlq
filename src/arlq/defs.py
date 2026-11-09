@@ -221,6 +221,7 @@ CALTROP_SPREAD_RADIUS: int = 3
 CALTROP_WIDTH_EXPANSION_RATIO: float = 1.0
 CALTROP_LP_DAMAGE: int = 3
 MARKSMAN_LP_DAMAGE: int = 4
+IVY_LP_DAMAGE: int = 4
 BARRIER_LP_DAMAGE: int = 30
 GUARDIAN_BARRIER_LP_DAMAGE: int = 5
 
@@ -705,6 +706,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         ),
         event_message_importance=7,
     ),
+    _MT("i", 50, MIN_FOOD),  # Ivy
     _MT("k", 80, MIN_FOOD, experience=3),  # Marksman
     _MT(
         "M",
@@ -719,11 +721,12 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         item=ITEM_SPORES,
         event_message="-- Spores cloud your vision!",
     ),
-    _MT("w", 50, MIN_FOOD),
+    _MT("w", 50, MIN_FOOD, experience=5),
     _MT(
         "W",
         150,
         MIN_FOOD,
+        experience=5,
         event_message=">> Dread Wyrm (W) defeated! <<",
         event_message_importance=9,
     ),

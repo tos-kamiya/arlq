@@ -379,7 +379,7 @@ def test_spore_monsters_and_rare_erebus_spawn_weights(monkeypatch):
         totals.append(len(pools[0]))
         m_weights.append(pools[0].count(("m", 1)))
         assert pools[0].count(("E", 1)) == (1 if floor_index == 1 else 0)
-    assert totals == [59, 36, 54]
+    assert totals == [59, 38, 60]
     assert m_weights == [2, 1, 2]
 
 
