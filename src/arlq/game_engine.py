@@ -1798,6 +1798,8 @@ def _process_multi_floor_turn(
         ).format(n=floor[0] + 1, total=len(floors))
         current = floors[floor[0]]
         collapse_transition = True
+        if stage_num == 6 and from_floor == 0:
+            stage6.scatter_waiting_members(floors, player, floor[0])
     guardian_reduced_hazard = d.has_member(player, d.MEMBER_GUARDIAN) and (
         current.field[player.y][player.x] == d.CHAR_BARRIER
     )
@@ -1919,6 +1921,8 @@ def _process_multi_floor_turn(
         else _handle_floor_transition(current, floors, player, floor, checkpoint)
     )
     if transition_message is not None:
+        if stage_num == 6 and floor_before == 0 and floor[0] != 0:
+            stage6.scatter_waiting_members(floors, player, floor[0])
         player.floor_exit = movement_destination
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("floor_transition")

@@ -729,6 +729,30 @@ def _balance_route_parties(floors, route):
                     entity.x, entity.y = x, y
 
 
+def scatter_waiting_members(floors, player, player_floor):
+    waiting = [(index, entity) for index, current in enumerate(floors)
+               for entity in current.entities if isinstance(entity, d.PartyMember)]
+    for old_index, member in waiting:
+        options = []
+        for index, current in enumerate(floors):
+            reachable = _reachable_floor_points(current, current.up)
+            reserved = set(current.up_stairs) | set(current.down_stairs)
+            points = [point for point in _open_points(current)
+                      if point in reachable and point not in reserved
+                      and not _in_tavern(current, point)
+                      and (index != player_floor or point != (player.x, player.y))]
+            if points:
+                options.append((index, points))
+        if not options:
+            continue
+        index, points = rand.choice(options)
+        floors[old_index].entities.remove(member)
+        member.x, member.y = rand.choice(points)
+        member.origin_floor = index
+        player.known_member_floors.pop(member.role, None)
+        floors[index].entities.append(member)
+
+
 def relocate_candidates(floors, player, candidates, player_floor=None):
     for member in candidates:
         if member.role == d.MEMBER_JESTER and player.level >= d.JESTER_DEPARTURE_LEVEL:

@@ -326,7 +326,7 @@ def test_stage6_candidates_start_near_first_floor_tavern():
             assert abs(member.x - x) + abs(member.y - y) <= 7
 
 
-def test_stage6_leaving_first_floor_keeps_candidates_in_place():
+def test_stage6_leaving_first_floor_scatters_waiting_candidates(monkeypatch):
     upper, player = state()
     lower, _ = state()
     upper.down = lower.up = (3, 2)
@@ -336,12 +336,40 @@ def test_stage6_leaving_first_floor_keeps_candidates_in_place():
     upper.entities.append(candidate)
     player.known_member_floors[candidate.role] = 1
     floor = [0]
+    monkeypatch.setattr(stage6.rand, "choice", lambda choices: choices[-1])
 
     engine._step((1, 0), [upper, lower], player, floor, [(2, 2)], Counter(), 1, stage_num=6)
 
     assert floor == [1]
-    assert candidate in upper.entities and (candidate.x, candidate.y) == (10, 10)
-    assert player.known_member_floors[candidate.role] == 1
+    assert candidate in lower.entities and candidate not in upper.entities
+    assert candidate.origin_floor == 1
+    assert (candidate.x, candidate.y) != (player.x, player.y)
+    assert candidate.role not in player.known_member_floors
+
+
+def test_stage6_falling_from_first_floor_scatters_members_on_all_floors(monkeypatch):
+    upper, player = state(roles=(d.MEMBER_KNIGHT,))
+    lower, _ = state()
+    upper.field[2][3] = d.CHAR_COLLAPSE
+    lower.field[2][3] = d.CHAR_PIT_LANDING
+    first = d.PartyMember(10, 10, d.MEMBER_HEALER, origin_floor=0)
+    second = d.PartyMember(11, 10, d.MEMBER_ROGUE, origin_floor=1)
+    upper.entities.append(first)
+    lower.entities.append(second)
+    player.known_member_floors.update({first.role: 1, second.role: 2})
+    monkeypatch.setattr(stage6.rand, "choice", lambda choices: choices[0])
+    floor_index = [0]
+
+    engine._step((1, 0), [upper, lower], player, floor_index, [(2, 2)],
+                 Counter(), 1, stage_num=6)
+
+    assert floor_index == [1]
+    assert first in upper.entities and second in upper.entities
+    assert first.origin_floor == second.origin_floor == 0
+    assert first.role not in player.known_member_floors
+    assert second.role not in player.known_member_floors
+    assert [member.role for member in player.members] == [d.MEMBER_KNIGHT]
+    assert (first.x, first.y) != (second.x, second.y)
 
 
 def test_stage6_departed_members_return_to_first_floor_tavern():
