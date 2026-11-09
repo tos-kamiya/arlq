@@ -47,6 +47,7 @@ class TraceRecorder:
         self.outcome: Optional[str] = None
         self._current: Optional[Dict[str, Any]] = None
         self._turn_no = 0
+        self._overshoot_history_start = 0
 
     def begin_turn(self, input_key: str) -> None:
         self._turn_no += 1
@@ -182,6 +183,10 @@ class TraceRecorder:
         self.turns.append(turn)
         self._current = None
 
+    def clear_overshoot_history(self) -> None:
+        """Start a new overshoot history at the current turn, retaining the trace."""
+        self._overshoot_history_start = len(self.turns) + (self._current is not None)
+
     def truncate_after_turn(self, retained_turns: int) -> None:
         """Drop turns after a rewind target and reset the turn counter."""
         if self._current is not None:
@@ -190,6 +195,7 @@ class TraceRecorder:
             raise ValueError("retained_turns is outside the recorded trace")
         del self.turns[retained_turns:]
         self._turn_no = retained_turns
+        self._overshoot_history_start = min(self._overshoot_history_start, retained_turns)
 
     def find_overshoot_rewind_target(
         self, max_turns: int = d.OVERSHOOT_REWIND_TURNS
@@ -212,7 +218,7 @@ class TraceRecorder:
             return None
 
         turn_count = len(self.turns)
-        first_target = max(0, turn_count - max_turns)
+        first_target = max(self._overshoot_history_start, turn_count - max_turns)
         for retained_turns in range(turn_count - 1, first_target - 1, -1):
             if retained_turns == 0:
                 target_floor = self.start.get("floor")
@@ -268,7 +274,7 @@ class TraceRecorder:
             return set()
 
         turn_count = len(self.turns)
-        first_target = max(0, turn_count + 1 - max_turns)
+        first_target = max(self._overshoot_history_start, turn_count + 1 - max_turns)
         markers: Set[d.Point] = set()
         for retained_turns in range(turn_count - 1, first_target - 1, -1):
             if retained_turns == 0:

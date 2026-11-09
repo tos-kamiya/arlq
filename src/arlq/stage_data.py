@@ -218,6 +218,10 @@ STAGE6_INITIAL_MONSTERS = 18
 STAGE6_ACTIVE_SPAWN_CHANCE = 12
 STAGE6_OTHER_SPAWN_CHANCE = 60
 STAGE6_SPAWN_ATTEMPTS = 5
+STAGE6_SPAWN_BLOCKED_PERCENT = 30
+STAGE6_SPAWN_ROOM_RATES = (40, 60)
+STAGE6_REDUCED_SPAWN_VARIANTS = (("A", 1), ("b", 1), ("b", 2), ("b", 3))
+STAGE6_FLOOR2_REDUCED_SPAWN_VARIANTS = (("g", 1),)
 STAGE6_MONSTER_PARTY_LIMIT = 8
 STAGE6_TAVERN_KNOWN_VORTEX_RATIO = 0.2
 STAGE6_INITIAL_PARTY_ROOMS: Tuple[Point, ...] = (
@@ -236,12 +240,12 @@ STAGE6_PARTY_SIZE_WEIGHTS = (
 STAGE6_EXTRA_BISON_RANKS = (1, None, None, None)
 STAGE6_ROSTER = (
     (
-        ("a", 13, 1), ("a", 3, 2), ("A", 2, 1), ("b", 5, 1), ("B", 1, 1), ("c", 1, 1),
-        ("f", 1, 1),
+        ("a", 12, 1), ("a", 3, 2), ("A", 2, 1), ("b", 5, 1), ("B", 1, 1), ("c", 1, 1),
+        ("f", 2, 1),
         ("d", 4, 1), ("e", 1, 1), ("g", 1, 1),
     ),
     (
-        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 1), ("c", 1, 1),
+        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 2), ("c", 1, 1),
         ("d", 2, 1), ("d", 2, 2), ("f", 1, 1), ("f", 1, 2), ("w", 1, 2), ("g", 3, 1),
         ("k", 1, 1), ("X", 1, 1), ("E", 1, 1),
     ),

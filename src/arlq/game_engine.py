@@ -2366,6 +2366,7 @@ def run_game(
                 effect((player.x, player.y), False)
 
         floor_before_step = floor[0]
+        point_before_step = (player.x, player.y)
         step_result = _process_multi_floor_turn(
             move,
             floors,
@@ -2464,6 +2465,12 @@ def run_game(
 
         turn += 1
         player.lp -= d.movement_lp_cost(player)
+        if stage_num == 6 and not isinstance(step_result, _RewindRequest):
+            entered_tavern = stage6.recover_at_tavern(
+                floors, player, floor[0], floor_before_step, point_before_step
+            )
+            if trace is not None and entered_tavern:
+                trace.clear_overshoot_history()
         if trace is not None:
             trace.set_turn_end_lp(player.lp)
             trace.commit_turn()

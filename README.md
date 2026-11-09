@@ -280,7 +280,7 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
-Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the tavern and face monsters that also form parties. Follow the route markers, defeat the empowered Fire Drake (`F'`) on the final floor, and claim the treasure.
+Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the tavern and face monsters that also form parties. Returning to the floor 1 tavern restores LP to 50 if it is lower. Follow the route markers, defeat the empowered Fire Drake (`F'`) on the final floor, and claim the treasure.
 
 Each floor starts with a number of monsters, including a sword-carrying `c`. More appear over time, especially on the current floor, and stronger types appear on deeper floors. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
 
@@ -297,7 +297,7 @@ Each floor starts with a number of monsters, including a sword-carrying `c`. Mor
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
 
-Monsters spawn individually and form parties when vertically adjacent. Ordinary monsters are more likely to spawn above or below another monster. Monsters with special effects spawn alone.
+Monsters spawn individually and form parties when vertically adjacent. At the start, about 30% of each floor’s sections are excluded from ordinary monster spawns; the remaining sections accept each placement attempt with a 40% or 60% chance. The detached room’s special initial monsters are an exception. Ordinary monsters spawning over time are more likely to appear above or below another monster. Monsters with special effects spawn alone.
 
 Vertically adjacent monsters fight in parties of up to eight, combining their strength and experience; the highest LP reward applies. The player receives the monsters' combined experience.
 

@@ -114,6 +114,8 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
         for destination in replay.rogue_checks.get(index, ()):
             stage56.rogue_danger(floors[floor[0]], destination)
             observe()
+        previous_floor = floor[0]
+        previous_point = (player.x, player.y)
         result = _step(
             direction, floors, player, floor, checkpoint, queue, index,
             stage_num=replay.stage_num,
@@ -125,6 +127,10 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
             )
         else:
             player.lp -= d.movement_lp_cost(player)
+            if replay.stage_num == 6:
+                stage6.recover_at_tavern(
+                    floors, player, floor[0], previous_floor, previous_point
+                )
         if index + 1 in replay.ration_uses:
             player.lp = d.STAGE6_RATION_LP if replay.stage_num == 6 else d.RATION_LP
             player.rations -= 1

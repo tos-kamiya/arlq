@@ -68,12 +68,16 @@ def _place_detached_room_monsters(
     if not point_pairs:
         raise RuntimeError("detached Stage 6 room needs two separated open cells")
     points = rand.choice(point_pairs)
-    candidates = [("b", 1), ("b", 2), ("A", 1), ("f", 1)]
+    candidates = [("b", 1), ("b", 2), ("f", 1)]
+    if rand.randrange(2) == 0:
+        candidates.append(("A", 1))
     if rand.randrange(2) == 0:
         candidates.append(("c", 1))
     roster = []
     for _ in range(2):
-        choice = rand.choice(candidates)
+        weighted = [variant for variant in candidates
+                    for _ in range(1 if variant[0] == "b" else 2)]
+        choice = rand.choice(weighted)
         candidates.remove(choice)
         roster.append(choice)
     monsters = [
@@ -90,6 +94,7 @@ def _place_party(
     floor_index: int = 0,
     *,
     room: d.Point | None = None,
+    respect_spawn_blocks: bool = False,
 ) -> None:
     # Keep parties separate horizontally and vertically. Members of each
     # party are placed vertically; walls and narrow corridors may be blocked.
@@ -106,6 +111,9 @@ def _place_party(
             *(component for component in current.room_components if len(component) > 1)
         )
         candidates = {point for point in candidates if tile_at(point) in connected_rooms}
+    if respect_spawn_blocks:
+        candidates = {point for point in candidates
+                      if tile_at(point) not in current.monster_spawn_blocked_rooms}
     if room is not None:
         candidates = {point for point in candidates if tile_at(point) == room}
     candidates = {
@@ -227,29 +235,39 @@ def _place_initial_parties(
 def spawn_monster(current: Floor, floor_index: int, *,
                   avoid: set[d.Point] | None = None,
                   variant: tuple[str, int] | None = None,
-                  isolated: bool = False) -> bool:
+                  isolated: bool = False,
+                  prefer_adjacent: bool = True) -> bool:
     """Try distinct positions for one independently drawn monster."""
     if variant is None:
+        # Doubling the other weights lets odd weights be halved exactly.
+        reduced = set(d.STAGE6_REDUCED_SPAWN_VARIANTS)
+        if floor_index == 1:
+            reduced.update(d.STAGE6_FLOOR2_REDUCED_SPAWN_VARIANTS)
         pool = [(char, rank) for char, count, rank in d.STAGE6_ROSTER[floor_index]
-                for _ in range(count)]
+                for _ in range(count * (1 if (char, rank) in reduced else 2))]
         variant = rand.choice(pool)
     char, rank = variant
     candidates = [point for point in _open_points(current)
-                  if point not in (avoid or set()) and point not in current.decor]
+                  if point not in (avoid or set()) and point not in current.decor
+                  and tile_at(point) not in current.monster_spawn_blocked_rooms]
     positions = stage56.monster_positions(current.entities)
-    prefer_neighbors = not isolated and not stage56.special_monster(
+    prefer_neighbors = prefer_adjacent and not isolated and not stage56.special_monster(
         d.Monster(0, 0, d.CHAR_TO_MONSTER_TRIBE[char], rank)
     )
     for _ in range(min(d.STAGE6_SPAWN_ATTEMPTS, len(candidates))):
         nearby = [point for point in candidates
                   if (point[0], point[1] - 1) in positions
                   or (point[0], point[1] + 1) in positions] if prefer_neighbors else []
-        if nearby and rand.randrange(10) < 3:
+        if nearby and rand.randrange(10) < 4:
             point = rand.choice(nearby)
             candidates.remove(point)
         else:
             point = candidates.pop(rand.randrange(len(candidates)))
         x, y = point
+        if current.monster_spawn_room_rates:
+            rate = current.monster_spawn_room_rates.get(tile_at(point), 0)
+            if rand.randrange(100) >= rate:
+                continue
         monster = d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[char], rank)
         if any((x + dx, y + dy) in positions
                for dx in (-1, 1) for dy in (-1, 0, 1)):
@@ -340,6 +358,18 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             down_stairs=[down] if index < d.STAGE6_FLOORS - 1 else [],
             room_components=room_components,
         )
+        available_rooms = sorted(set().union(*room_components))
+        blocked_count = (len(available_rooms) * d.STAGE6_SPAWN_BLOCKED_PERCENT + 50) // 100
+        for _ in range(blocked_count):
+            current.monster_spawn_blocked_rooms.add(
+                available_rooms.pop(rand.randrange(len(available_rooms)))
+            )
+        low_count = len(available_rooms) // 2
+        for _ in range(low_count):
+            room = available_rooms.pop(rand.randrange(len(available_rooms)))
+            current.monster_spawn_room_rates[room] = d.STAGE6_SPAWN_ROOM_RATES[0]
+        for room in available_rooms:
+            current.monster_spawn_room_rates[room] = d.STAGE6_SPAWN_ROOM_RATES[1]
         if split_edge is not None:
             (x1, y1), (x2, y2) = split_edge
             if y1 == y2:
@@ -384,7 +414,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             }
             current.respawn_exclusions.update(boss_reserved)
         # Reserve a sword carrier on each floor, then seed the detached room.
-        _place_party(current, [("c", 1)], index)
+        _place_party(current, [("c", 1)], index, respect_spawn_blocks=True)
         detached_count = 0
         if index < d.STAGE6_FLOORS - 1:
             detached_count = len(_place_detached_room_monsters(current, room_components))
@@ -410,7 +440,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             mimic.active = False
             current.entities.append(mimic)
         for _ in range(d.STAGE6_INITIAL_MONSTERS - 1 - detached_count):
-            spawn_monster(current, index)
+            spawn_monster(current, index, prefer_adjacent=False)
         if index == d.STAGE6_FLOORS - 1:
             boss = next(
                 entity
@@ -511,6 +541,19 @@ def _in_tavern(current: Floor, point: d.Point) -> bool:
         return False
     x, y = current.tavern
     return x <= point[0] < x + 2 and point[1] == y
+
+
+def recover_at_tavern(
+    floors: list[Floor], player: d.Player, floor_index: int,
+    previous_floor: int, previous_point: d.Point,
+) -> bool:
+    """Restore LP on entry and report whether the player entered the tavern."""
+    entered = (floor_index == 0
+               and _in_tavern(floors[0], (player.x, player.y))
+               and (previous_floor != 0 or not _in_tavern(floors[0], previous_point)))
+    if entered:
+        player.lp = max(player.lp, d.STAGE6_TAVERN_RECOVERY_LP)
+    return entered
 
 
 def _mark_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None:

@@ -1168,6 +1168,7 @@ def test_seed_reproduces_layout_and_groups():
 
 def test_stage6_spawn_roster_scales_by_floor():
     assert len(d.STAGE6_ROSTER) == d.STAGE6_FLOORS == 3
+    assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[1] if char == "B"] == [(1, 2)]
     for roster in d.STAGE6_ROSTER:
         assert sum(count for char, count, rank in roster if char == "c" and rank == 1) == 1
         assert any(char == "a" and rank == 2 for char, _, rank in roster)
@@ -1607,7 +1608,7 @@ def test_initial_parties_use_distinct_candidate_rooms(floor_index, detached):
         assert detached in selected
     actual = [(leader.tribe.char, leader.empowered) for leader in parties]
     expected = ([('b', 1)] * 4 + [('B', 1)] if floor_index == 0
-                else [('b', 2)] * (4 if floor_index == 1 else 3) + [('B', 1 if floor_index == 1 else 2)])
+                else [('b', 2)] * (4 if floor_index == 1 else 3) + [('B', 2)])
     assert actual == expected[:count]
     assert Counter(actual) == Counter(placed)
 

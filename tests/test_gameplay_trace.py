@@ -972,3 +972,16 @@ def test_pegasus_landing_on_golem_wall(rogue):
     assert ((player.x, player.y) == target) == rogue
     assert (target in floor.broken_walls) == rogue
     assert floor.field[target[1]][target[0]] == (d.CHAR_FLOOR if rogue else d.CHAR_GOLEM_WALL)
+
+
+def test_clearing_overshoot_history_preserves_trace_and_allows_new_targets():
+    trace = TraceRecorder(params={})
+    trace.set_start_state(d.Player(2, 2, 1, 90), floor_index=0)
+    record_assist_test_turn(trace, "R", (3, 2), lp=89)
+    trace.clear_overshoot_history()
+    assert trace.overshoot_rewind_markers(0) == set()
+    assert len(trace.turns) == 1
+    record_assist_test_turn(trace, "R", (4, 2), lp=88)
+    assert trace.overshoot_rewind_markers(0) == {(3, 2)}
+    record_assist_test_turn(trace, "L", (3, 2), lp=87)
+    assert trace.find_overshoot_rewind_target() == (1, 0, (3, 2), 88)
