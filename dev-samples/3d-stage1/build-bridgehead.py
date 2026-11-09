@@ -7,8 +7,8 @@ two cells side by side on the floor and is drawn with the same 60-degree
 orthographic camera, turn and fit to the cells' width. The outpost is a low
 curtain of grey stone blocks with battlements around a packed-earth yard,
 a gatehouse in the front wall with a barred plank gate, a round watchtower
-at the back west corner flying a plain blue banner, a campfire in the
-yard, and a crate and a barrel; the whole raised on a low earth mound. Like the characters, it is drawn
+at the back west corner flying a plain blue banner, and only a campfire
+in the yard; the whole raised on a low earth mound. Like the characters, it is drawn
 simplified and exaggerated: big stones, merlons, gate and banner.
 
 Writes to OUT (BRIDGEHEAD_OUT in the environment, else
@@ -39,7 +39,7 @@ YAW = math.radians(35)
 
 # The outpost before it is fitted to the cells: its walls' half width, south
 # and north faces, height and thickness, and the merlons along their tops.
-HALF_W, SOUTH, NORTH = 0.68, 0.0, 0.90
+HALF_W, SOUTH, NORTH = 0.52, 0.0, 0.90
 MID = (SOUTH + NORTH) / 2
 WALL_H, T = 0.42, 0.11
 MERLON_W, MERLON_H, MERLON_STEP = 0.13, 0.11, 0.24
@@ -290,9 +290,8 @@ faces = [(u * (NV + 1) + v, u * (NV + 1) + v + 1, (u + 1) * (NV + 1) + v + 1,
 flag = mesh('Banner', vertices, faces, banner_cloth)
 solid = flag.modifiers.new('Cloth thickness', 'SOLIDIFY')
 solid.thickness = 0.012
-# In the yard: a campfire ringed with stones, and a crate and a barrel by
-# the back east corner.
-FX, FY = -0.06, 0.55
+# In the yard, alone: a campfire ringed with stones.
+FX, FY = 0.04, 0.50
 for k in range(7):
     a = 2 * math.pi * k / 7
     bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.045,
@@ -316,13 +315,6 @@ bpy.ops.object.light_add(type='POINT', location=(FX, FY, 0.25))
 fire_light = bpy.context.object
 fire_light.data.energy, fire_light.data.color = 1.2, (1.0, 0.55, 0.2)
 fire_light.data.shadow_soft_size = 0.05
-
-CY = NORTH - T - 0.13
-box('Crate', HALF_W - T - 0.22, HALF_W - T - 0.02, CY - 0.10, CY + 0.10, 0.01, 0.21, wood,
-    0.01)
-cylinder('Barrel', HALF_W - T - 0.36, CY + 0.02, 0.01, 0.25, 0.09, wood, 16, 0.01)
-for z in (0.05, 0.21):
-    cylinder('Barrel hoop', HALF_W - T - 0.36, CY + 0.02, z, z + 0.02, 0.093, dark_iron, 16)
 
 # Everything stands on a low earth mound, a little wider than the walls,
 # reaching out in front just past the gatehouse.

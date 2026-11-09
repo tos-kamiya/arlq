@@ -3,8 +3,8 @@ labelled, in three rows: the two floor tiles, a wall of marble columns, and
 the up and down stairs; a golem rock, a pit, and the rocks fallen from a pit
 on the floor above; the barrier (both checkerboard variants), the reduced
 barrier shown near the player while Guardian lowers its damage, and the
-Stage 6 tavern. The tavern image is laid over its two cells here, at the
-game's scale, placed by tavern.json.
+trial Stage 6 bridgehead (build-bridgehead.py). The bridgehead image is laid
+over its two cells here, at the game's scale, placed by bridgehead.json.
 
     PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py [--stage N]
 
@@ -37,13 +37,14 @@ ROWS = [
     (4, [('FLOOR A / B', 2, 3), ('WALL (COLUMNS)', 6, 8), ('STAIRS UP', 11, 11),
          ('STAIRS DOWN', 14, 14)]),
     (7, [('GOLEM ROCK', 2, 2), ('PIT', 5, 5), ('FALLEN ROCKS', 8, 8)]),
-    (10, [('BARRIER', 2, 3), ('BARRIER (GUARDIAN)', 6, 7), ('TAVERN', 10, 11)]),
+    (10, [('BARRIER', 2, 3), ('BARRIER (GUARDIAN)', 6, 7), ('BRIDGEHEAD', 10, 11)]),
 ]
 LEFT, RIGHT = 1, 15
-TAVERN_ROW, TAVERN_COLUMN = 10, 10
 # Barrier cells drawn as when Guardian reduces their damage near the player.
 REDUCED_BARRIERS = {(6, 10), (7, 10)}
-TAVERN = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets' / 'tavern'
+ASSETS = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets'
+# Images laid over cells: (asset name, field row, first column).
+OVERLAYS = [('bridgehead', 10, 10)]
 
 ui = SpriteUI(scale=4)
 field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
@@ -71,15 +72,16 @@ with tempfile.TemporaryDirectory() as work:
     full = Path(work) / 'full.png'
     pyglet.image.get_buffer_manager().get_color_buffer().save(str(full))
     cx, cy = ui.cell_size_x, ui.cell_size_y
-    placing = json.loads((TAVERN / 'tavern.json').read_text())
-    tavern_left = round(ui._field_col_x(TAVERN_COLUMN))
-    tavern_bottom = round((TAVERN_ROW + 1 + placing['under']) * cy)
-    tavern_width = round(placing['cells'] * cx)
-    tavern_height = round((placing['under'] + 1 + placing['overhang']) * cy)
-    subprocess.run(['convert', str(full), '(', str(TAVERN / 'tavern.png'), '-resize',
-                    '%dx%d!' % (tavern_width, tavern_height), ')', '-geometry',
-                    '+%d+%d' % (tavern_left, tavern_bottom - tavern_height), '-composite',
-                    str(full)], check=True)
+    for name, row, column in OVERLAYS:
+        placing = json.loads((ASSETS / name / (name + '.json')).read_text())
+        image_left = round(ui._field_col_x(column))
+        image_bottom = round((row + 1 + placing['under']) * cy)
+        image_width = round(placing['cells'] * cx)
+        image_height = round((placing['under'] + 1 + placing['overhang']) * cy)
+        subprocess.run(['convert', str(full), '(', str(ASSETS / name / (name + '.png')),
+                        '-resize', '%dx%d!' % (image_width, image_height), ')',
+                        '-geometry', '+%d+%d' % (image_left, image_bottom - image_height),
+                        '-composite', str(full)], check=True)
     left = round(ui._field_col_x(LEFT))
     width, height = round((RIGHT - LEFT + 1) * cx), round(3 * cy)
     strips = []
