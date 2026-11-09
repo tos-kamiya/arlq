@@ -25,7 +25,7 @@ models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treas
            ('C', 'rare-chimera', (0, 0)), ('F', 'fire-drake', (0, 0)), ('f', 'flame-cobra', (0, 0)),
            ("'", 'mark-rank2', (0, 0)), ('"', 'mark-rank3', (0, 0)),
            ('g', 'golem', (0, 0)), ('B', 'buffalo', (0, 0)), ('m', 'spore', (0, 0)), ('k', 'marksman', (0, 0)), ('V', 'vortex', (0, 0)), ('w', 'wyrm', (0, 0)), ('W', 'dread-wyrm', (0, 0)), ('e', 'erebus', (0, 0)), ('E', 'rare-erebus', (0, 0)),
-           ('X', 'caltrop-plant', (0, 0)), ('p', 'pegasus', (0, 0)),
+           ('X', 'caltrop-plant', (0, 0)), ('i', 'ivy', (0, 0)), ('p', 'pegasus', (0, 0)),
            ('H', 'high-elf', (0, 0)), ('I', 'isolated-elf', (0, 0)),
            ('J', 'javelin-elf', (0, 0)), ('K', 'collector-elf', (0, 0)),
            ('L', 'lifebringer-elf', (0, 0)), ('S', 'sylvan-elf', (0, 0)),

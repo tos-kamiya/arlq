@@ -60,6 +60,7 @@ SPRITE_FILES = {
     'e': 'erebus.png',
     'E': 'rare-erebus.png',
     'X': 'caltrop-plant.png',
+    'i': 'ivy.png',
     'p': 'pegasus.png',
     'H': 'high-elf.png',
     'I': 'isolated-elf.png',

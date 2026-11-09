@@ -63,7 +63,7 @@ GRID_COLS, GRID_ROWS = 14, 7
 # the fairies and elves; monsters in stage order, then the party members in
 # the medium skin tone in the order J, H, R, K, G, D (Explorer), S (Fairy
 # Seer), Y (female and male for the Healer, Dungeon Explorer and Fairy Seer,
-# whose hair shows), and last the Stage 5 toy chest.
+# whose hair shows), the Stage 5 toy chest, and last the Stage 6 ivy.
 MEMBER_LABELS = {'jester': 'JESTER', 'healer': 'HEALER', 'rogue': 'ROGUE', 'knight': 'KNIGHT',
                  'guardian': 'GUARDIAN', 'explorer': 'EXPLORER', 'seer': 'FAIRY SEER'}
 GENDER_LABELS = {'f': ' FEMALE', 'm': ' MALE', 'n': ''}
@@ -76,10 +76,10 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('C', 'RARE CHIMERA'), ('F', 'FIRE DRAKE'), ('g', 'GOLEM'), ('rock', 'GOLEM ROCK'),
          ('X', 'CALTROP PLANT'), ('e', 'EREBUS'), ('w', 'WYRM'), ('W', 'DREAD WYRM'),
          ('E', 'RARE EREBUS'), ('m', 'SPORE'), ('k', 'MARKSMAN'), ('V', 'VORTEX'),
-         ('f', 'FLAME COBRA'), ('B', 'BUFFALO'), ('i', 'IVY'),
+         ('f', 'FLAME COBRA'), ('B', 'BUFFALO'),
          *[(f'{job}-{gender}-m', MEMBER_LABELS[job] + GENDER_LABELS[gender])
            for job, gender in MEMBER_VARIANTS],
-         ('cat', 'YAWNING CAT'), ('T-toy', 'TOY CHEST')]
+         ('cat', 'YAWNING CAT'), ('T-toy', 'TOY CHEST'), ('i', 'IVY')]
 # The members in the light and dark skin tones are built for sprite export
 # only, off the preview grid like the marks and rations below.
 OTHER_TONES = [(f'{job}-{gender}-{tone}', f'{job}-{gender}-{tone}'.upper())
