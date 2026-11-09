@@ -291,7 +291,10 @@ def test_stage4_final_floor_barriers_cover_ten_percent_of_open_cells():
 
 
 def test_final_floor_barriers_respect_allowed_area_and_protected_cells(monkeypatch):
-    monkeypatch.setattr(stage_world_module.rand, "_value", 123)
+    monkeypatch.setattr(stage_world_module.rand, "_state", stage_world_module.rand._state[:])
+    monkeypatch.setattr(stage_world_module.rand, "_index", stage_world_module.rand._index)
+    monkeypatch.setattr(stage_world_module.rand, "seed", stage_world_module.rand.seed)
+    stage_world_module.rand.set_seed(123)
     floor = Floor(
         field=blank_field(), entities=[],
         seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
@@ -701,14 +704,12 @@ def test_marksman_spawn_chooses_best_of_three_candidates(monkeypatch):
 
 
 def test_stage3_build_places_assigned_elves_and_wyrm_treasure():
-    random_state = game_engine_module.rand._value
-    random_seed = game_engine_module.rand.seed
+    random_state = game_engine_module.rand.getstate()
     try:
         game_engine_module.rand.set_seed(12345)
         floors, player = game_engine_module.build(stage_num=3)
     finally:
-        game_engine_module.rand._value = random_state
-        game_engine_module.rand.seed = random_seed
+        game_engine_module.rand.setstate(random_state)
 
     boss_floor = next(
         floor

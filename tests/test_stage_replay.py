@@ -87,7 +87,7 @@ def signature(player, entities, field, seen):
             entity_states,
             field,
             seen,
-            engine.rand._value,
+            engine.rand.getstate(),
         )
     )
 

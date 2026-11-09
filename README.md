@@ -62,6 +62,11 @@ selector. It cannot be combined with `--seed`. You may also specify `--stage`
 if it matches the saved stage. Keep the other layout options unchanged to
 reproduce the same layout.
 
+The game uses its own MT19937 generator, so the same game version, seed, and
+options reproduce layouts across Python versions. The switch from the previous
+generator changes layouts and means older recorded traces may not replay correctly.
+Integer seeds use their low 32 bits.
+
 #### Difficulty options
 
 | Option | Description |
@@ -282,7 +287,7 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the tavern and face monsters that also form parties. Returning to the floor 1 tavern restores LP to 50 if it is lower. Follow the route markers, defeat the empowered Fire Drake (`F'`) on the final floor, and claim the treasure.
 
-Each floor starts with monsters, including a sword-carrying `c`; 50 additional spawn draws are made during setup. Every 8 turns, a spawn is attempted on a randomly selected floor, with the current floor twice as likely as each other floor. Every 8 turns, one existing monster is selected across all floors and moves one cell if it is alone and can move. Stronger types appear on deeper floors. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
+Each floor starts with monsters, including a sword-carrying `c`; 50 additional spawn draws are made during setup. Every 8 turns, a spawn is attempted on a randomly selected floor, with the current floor twice as likely as each other floor. Every 8 turns, one existing monster is selected across all floors and moves one cell if it is alone and can move. Stronger types appear on deeper floors. Spore monsters (`m`) can appear on every floor; Rare Erebus (`E`) can appear on floor 2. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
 
 #### Party members
 

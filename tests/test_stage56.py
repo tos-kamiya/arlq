@@ -12,9 +12,11 @@ from arlq.stage_types import Floor
 
 
 @pytest.fixture(autouse=True)
-def fixed_rearrangement_seed(monkeypatch):
-    monkeypatch.setattr(engine.rand, "_value", 123)
-    monkeypatch.setattr(engine.rand, "seed", 123)
+def fixed_rearrangement_seed():
+    state = engine.rand.getstate()
+    engine.rand.set_seed(123)
+    yield
+    engine.rand.setstate(state)
 
 
 def state(roles=(), level=100, lp=90):
@@ -102,7 +104,7 @@ def test_indexed_neighbors_preserve_generation_and_random_state(monkeypatch, see
                  getattr(e, 'empowered', None))
                 for e in floor.entities
             ]) for floor in floors],
-            engine.rand._value,
+            engine.rand.getstate(),
         )
 
     indexed = snapshot()
@@ -199,15 +201,7 @@ def test_playground_has_four_random_recruits_and_a_boss_party():
         e.role for f in floors for e in f.entities if isinstance(e, d.PartyMember)
     }
     assert len(members) == 4
-    assert members <= {
-        "Jester",
-        "Healer",
-        "Rogue",
-        "Knight",
-        "Dungeon Explorer",
-        "Guardian",
-        "Yawning Cat",
-    }
+    assert members <= set(d.RECRUITABLE_MEMBER_ROLES)
     assert not any(
         isinstance(e, d.PartyMember)
         for floor in floors[3:]

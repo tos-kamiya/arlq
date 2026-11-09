@@ -364,3 +364,45 @@ def test_spawn_does_not_place_monster_on_tavern(monkeypatch):
     monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10), (11, 10)])
     assert not stage6.spawn_monster(current, 0, variant=("a", 1))
     assert not current.entities
+
+
+def test_spore_monsters_and_rare_erebus_spawn_weights(monkeypatch):
+    totals = []
+    m_weights = []
+    for floor_index in range(3):
+        current = floor()
+        pools = []
+        monkeypatch.setattr(stage6.rand, "choice", lambda pool: pools.append(pool[:]) or pool[0])
+        monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
+        monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10)])
+        assert stage6.spawn_monster(current, floor_index)
+        totals.append(len(pools[0]))
+        m_weights.append(pools[0].count(("m", 1)))
+        assert pools[0].count(("E", 1)) == (1 if floor_index == 1 else 0)
+    assert totals == [59, 36, 54]
+    assert m_weights == [2, 1, 2]
+
+
+def test_second_floor_monster_draw_can_select_e_and_m(monkeypatch):
+    floors = [floor() for _ in range(3)]
+    player = d.Player(4, 4, 1, d.LP_INIT)
+    counts = Counter()
+    reduced = set(d.STAGE6_REDUCED_SPAWN_VARIANTS) | set(d.STAGE6_FLOOR2_REDUCED_SPAWN_VARIANTS)
+    pool = [(char, rank) for char, weight, rank in d.STAGE6_ROSTER[1]
+            for _ in range(weight * (1 if (char, rank) in reduced else 2))]
+
+    def sample(current, index, **kwargs):
+        if index == 1:
+            counts[stage6.rand.choice(pool)] += 1
+        return False
+
+    monkeypatch.setattr(stage6, "spawn_monster", sample)
+    monkeypatch.setattr(stage6.rand, "_state", stage6.rand._state[:])
+    monkeypatch.setattr(stage6.rand, "_index", stage6.rand._index)
+    monkeypatch.setattr(stage6.rand, "seed", stage6.rand.seed)
+    stage6.rand.set_seed(37318)
+    for turn in range(7, 8 * 20000, 8):
+        stage6.advance_spawns(floors, player, 0, turn)
+    assert counts[("E", 1)] > 50
+    assert counts[("m", 1)] > 50
+    assert 0.6 < counts[("E", 1)] / counts[("m", 1)] < 1.6
