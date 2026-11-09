@@ -13,6 +13,7 @@ rim light, sharper features and stronger poses.
 """
 from pathlib import Path
 import math
+import random
 import subprocess
 import sys
 
@@ -3836,11 +3837,27 @@ def ivy(x, y):
     path = [(0.08, 0.04, 0.08), (0.20, 0.16, 0.11), (0.25, 0.32, 0.11), (0.17, 0.52, 0.075),
             (0.10, 0.70, 0.05), (0.14, 0.88, 0.06), (0.25, 1.00, 0.05), (0.36, 0.99, 0.032),
             (0.42, 0.90, 0.016), (0.40, 0.81, 0.006), (0.35, 0.79, 0.0)]
-    # (direction in degrees, height scale, radial scale, mouth curl scale).
-    # Roughly the four cardinal directions, each a little different so they
-    # do not read as a badge.
-    leaves = ((-6, 1.0, 1.0, 1.0), (84, 0.92, 0.95, 0.85), (186, 1.06, 1.05, 1.15),
-              (271, 0.96, 0.98, 0.9))
+    # (direction in degrees, height scale, radial scale, mouth curl scale,
+    # sideways sway, sway phase in degrees). Roughly the four cardinal
+    # directions, each a little different so they do not read as a badge.
+    leaves = ((-6, 1.0, 1.0, 1.0, 0.0, 30), (84, 0.92, 0.95, 0.85, 0.0, 120),
+              (186, 1.06, 1.05, 1.15, 0.0, 250), (271, 0.96, 0.98, 0.9, 0.0, 320))
+    # Irregularities so the plant does not look made: each stalk differs
+    # more in reach and bends sideways in its own S-curve, and the leaflets
+    # vary. `warp` scales them all; 1 looked too twisted, so a quarter.
+    warp = 0.25
+    irregular = ((-6, 0.0, 0.0, 0.0, 0.07), (-4, -0.08, -0.03, -0.1, -0.09),
+                 (7, 0.04, 0.03, 0.1, 0.06), (-3, -0.03, -0.01, 0.0, -0.05))
+    leaves = [(a + warp * da, tall + warp * dt, wide + warp * dw, curl + warp * dc,
+               warp * ds, phase)
+              for (a, tall, wide, curl, _, phase), (da, dt, dw, dc, ds)
+              in zip(leaves, irregular)]
+
+    def vary(plain, low, high):
+        return plain + warp * (rng.uniform(low, high) - plain)
+
+    # Fixed seed: the leaflets vary irregularly, the same on every build.
+    rng = random.Random(6)
 
     def catmull(points, samples):
         points = [points[0], *points, points[-1]]
@@ -3855,7 +3872,7 @@ def ivy(x, y):
         return out
 
     steps, across = 40, 9
-    for a, tall, wide, curl in leaves:
+    for a, tall, wide, curl, sway, phase in leaves:
         a = math.radians(a)
         radial = Vector((math.cos(a), math.sin(a), 0))
         side = Vector((-math.sin(a), math.cos(a), 0))
@@ -3884,7 +3901,9 @@ def ivy(x, y):
             norm = math.hypot(dr, dz)
             # The side of the stalk facing the axis.
             normals.append((radial * -dz + up * dr) / norm)
-            centre.append(Vector((x, y, 0)) + radial * r + up * z)
+            bend = sway * math.sin(math.pi * 1.5 * k / steps + math.radians(phase))
+            bend -= sway * math.sin(math.radians(phase))
+            centre.append(Vector((x, y, 0)) + radial * r + side * bend + up * z)
             widths.append(max(w, 0.0))
         # A thick fleshy stalk like a leaf's midrib, thickest at the foot and
         # thinning toward the curled tip, so it reads as a tentacle.
@@ -3899,31 +3918,30 @@ def ivy(x, y):
                 if (k + (flank > 0)) % 2:
                     continue
                 c, n, w = centre[k], normals[k], widths[k]
-                if w < 0.012:
+                if w < 0.004 or rng.random() < 0.12 * warp:
                     continue
                 tangent = (centre[k + 1] - centre[k - 1]).normalized()
-                length = 0.035 + 0.75 * w
-                out = (side * flank * math.cos(math.radians(40))
-                       + tangent * math.sin(math.radians(40))
-                       + n * 0.25).normalized()
+                length = (0.03 + 0.9 * w) * vary(1.0, 0.7, 1.25)
+                slant = math.radians(vary(40, 28, 52))
+                out = (side * flank * math.cos(slant) + tangent * math.sin(slant)
+                       + n * vary(0.25, 0.0, 0.5)).normalized()
                 flat = tangent - out * tangent.dot(out)
                 flat.normalize()
                 lift = out.cross(flat).normalized()
                 if lift.dot(n) < 0:
                     lift = -lift
                 ring = 6
+                curve = vary(0.25, 0.05, 0.4)
                 start = len(verts)
                 base = c + out * 0.02
                 verts.append(tuple(base))
                 for t in range(1, ring):
                     f = t / ring
-                    # Lance-shaped: widest a quarter of the way out, then
-                    # tapering to a sharp point.
-                    half = 0.16 * length * math.sin(math.pi * f ** 0.5)
-                    p = base + out * (length * f) + lift * (0.25 * length * f * f)
+                    half = 0.28 * length * math.sin(math.pi * f ** 0.8)
+                    p = base + out * (length * f) + lift * (curve * length * f * f)
                     verts.append(tuple(p + flat * half))
                     verts.append(tuple(p - flat * half))
-                verts.append(tuple(base + out * length + lift * (0.3 * length)))
+                verts.append(tuple(base + out * length + lift * (1.2 * curve * length)))
                 tip = len(verts) - 1
                 faces.append((start, start + 1, start + 2))
                 for t in range(ring - 2):
