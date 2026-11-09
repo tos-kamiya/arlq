@@ -318,7 +318,8 @@ Some rooms may be sealed by walls, but D can discover passages into them.
 | --- | --- |
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **f** / **f'** Flame cobra | Worth 5 experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
-| **i** Ivy | Attack power 50. On floors 2 and 3, each active Ivy deals 4 LP damage every turn when the player is directly above, below, left, or right of it. Rogue does not block this damage. |
+| **i** Ivy | Base attack power 50. Rank 1 and 2 Ivies appear on floors 2 and 3. Each active Ivy deals 4 LP damage every turn when the player is directly above, below, left, or right of it. Rogue does not block this damage. |
+| **g** / **g'** Golem | Rank 1 Golems appear on every floor, and rank 2 Golems also appear on floor 3. |
 | **w** / **w'** Wyrm | Floor 2 has `w`; floor 3 has both `w` and `w'`. |
 
 The floor 3 boss party consists of `F'`, `V`, and `k`; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.

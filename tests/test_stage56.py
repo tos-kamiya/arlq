@@ -249,7 +249,7 @@ def test_playground_has_four_random_recruits_and_a_boss_party():
         isinstance(entity, d.Monster)
         and entity.tribe.char == "g"
         and entity.empowered > 1
-        for floor in floors
+        for floor in floors[:2]
         for entity in floor.entities
     )
     assert len([e for e in current.entities if isinstance(e, d.Treasure)]) == 1

@@ -50,9 +50,9 @@ def test_ivy_attacks_every_turn_even_without_movement(monkeypatch):
     assert "ivy_hit" in reasons
 
 
-def test_ivy_has_same_roster_weights_as_marksman():
+def test_ivy_roster_includes_both_ranks_on_deeper_floors():
     assert all(char != "i" for char, _, _ in d.STAGE6_ROSTER[0])
     for roster in d.STAGE6_ROSTER[1:]:
-        weights = {char: count for char, count, rank in roster if rank == 1}
-        assert weights["i"] == weights["k"]
+        assert all(any(char == "i" and rank == expected_rank and count > 0
+                       for char, count, rank in roster) for expected_rank in (1, 2))
     assert d.CHAR_TO_MONSTER_TRIBE["i"].level == 50
