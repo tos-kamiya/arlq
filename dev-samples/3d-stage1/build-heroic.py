@@ -3712,10 +3712,19 @@ def caltrop_plant(x, y):
     and buds are melted into one smooth metaball surface so it reads as a
     plant rather than plastic. The leaves and stem are a reddish olive.
     """
-    leaf = material('Caltrop plant olive-red leaves', (0.21, 0.22, 0.05), 0.3, 0.3,
-                    rim=(0.75, 0.9, 0.4), rim_strength=1.0, coat=0.4)
-    stem = material('Caltrop plant olive-red stem', (0.25, 0.23, 0.06), 0.25, 0.3,
-                    rim=(0.8, 0.9, 0.45), rim_strength=0.8)
+    # The leaves and stem are matte with a fine grain and a little light
+    # scattering inside, like real leaves; glossy and see-through they
+    # looked like plastic.
+    leaf = textured(material('Caltrop plant olive-red leaves', (0.21, 0.22, 0.05), 0.05, 0.6,
+                             rim=(0.75, 0.9, 0.4), rim_strength=0.8),
+                    80, 0.08)
+    stem = textured(material('Caltrop plant olive-red stem', (0.25, 0.23, 0.06), 0.05, 0.6,
+                             rim=(0.8, 0.9, 0.45), rim_strength=0.7),
+                    80, 0.08)
+    for mat in (leaf, stem):
+        bsdf = mat.node_tree.nodes['Principled BSDF']
+        bsdf.inputs['Subsurface Weight'].default_value = 0.15
+        bsdf.inputs['Subsurface Radius'].default_value = (0.05, 0.08, 0.02)
     head = textured(material('Caltrop plant matte brick red', (0.78, 0.19, 0.13), 0.1, 0.6,
                              rim=(0.95, 0.42, 0.3), rim_strength=0.6),
                     60, 0.12)
