@@ -52,7 +52,7 @@ arlq-cli
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a compact member-ability trial; Stage 6 is a four-floor boss and treasure dungeon. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a compact member-ability trial; Stage 6 is a three-floor boss and treasure dungeon. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -280,9 +280,9 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
-Stage 6 is a four-floor dungeon starting at level 1. Recruit party members near the tavern and face monsters that also form parties. Follow the route markers, defeat the Dread Wyrm (`W`) on the final floor, and claim the treasure.
+Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the tavern and face monsters that also form parties. Follow the route markers, defeat the empowered Fire Drake (`F'`) on the final floor, and claim the treasure.
 
-An empowered Caltrop Plant (`X'`) appears on floor 3.
+Each floor starts with a number of monsters, including a sword-carrying `c`. More appear over time, especially on the current floor, and stronger types appear on deeper floors. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
 
 #### Party members
 
@@ -297,9 +297,9 @@ An empowered Caltrop Plant (`X'`) appears on floor 3.
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
 
-Monsters are placed without horizontal adjacency; party members line up vertically.
+Monsters spawn individually and form parties when vertically adjacent. Ordinary monsters are more likely to spawn above or below another monster. Monsters with special effects spawn alone.
 
-Vertically adjacent monsters fight in parties of up to three, combining their strength and experience; the highest LP reward applies. The player receives the monsters' combined experience.
+Vertically adjacent monsters fight in parties of up to eight, combining their strength and experience; the highest LP reward applies. The player receives the monsters' combined experience.
 
 Some rooms may be sealed by walls, but D can discover passages into them.
 
@@ -310,7 +310,7 @@ Some rooms may be sealed by walls, but D can discover passages into them.
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **f** / **f'** Flame cobra | Worth 5 experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
 
-The floor 4 boss party consists of `W`, `V`, and `w` (total attack 230); a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
+The floor 3 boss party consists of `F'`, `V`, and `k`; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
 ## Development commands
 

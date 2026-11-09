@@ -212,8 +212,13 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
 STAGE4_FLOORS = len(STAGE4_ROSTER)
 
 # Stage 6 dungeon and monster-party settings.
-STAGE6_FLOORS = 4
-STAGE6_EXTRA_CORRIDORS = 2
+STAGE6_FLOORS = 3
+STAGE6_EXTRA_CORRIDORS = 0
+STAGE6_INITIAL_MONSTERS = 18
+STAGE6_ACTIVE_SPAWN_CHANCE = 12
+STAGE6_OTHER_SPAWN_CHANCE = 60
+STAGE6_SPAWN_ATTEMPTS = 5
+STAGE6_MONSTER_PARTY_LIMIT = 8
 STAGE6_TAVERN_KNOWN_VORTEX_RATIO = 0.2
 STAGE6_INITIAL_PARTY_ROOMS: Tuple[Point, ...] = (
     (0, 0), (2, 0), (4, 0), (0, 2), (2, 2), (4, 2),
@@ -231,30 +236,23 @@ STAGE6_PARTY_SIZE_WEIGHTS = (
 STAGE6_EXTRA_BISON_RANKS = (1, None, None, None)
 STAGE6_ROSTER = (
     (
-        ("a", 16, 1), ("A", 2, 1), ("b", 5, 1), ("B", 1, 1), ("c", 2, 1),
+        ("a", 13, 1), ("a", 3, 2), ("A", 2, 1), ("b", 5, 1), ("B", 1, 1), ("c", 1, 1),
         ("f", 1, 1),
         ("d", 4, 1), ("e", 1, 1), ("g", 1, 1),
     ),
     (
-        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 1), ("c", 2, 1),
+        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 1), ("c", 1, 1),
         ("d", 2, 1), ("d", 2, 2), ("f", 1, 1), ("f", 1, 2), ("w", 1, 2), ("g", 3, 1),
         ("k", 1, 1), ("X", 1, 1), ("E", 1, 1),
     ),
     (
-        ("a", 1, 2), ("A", 2, 1), ("b", 3, 2), ("b", 2, 3), ("B", 1, 2), ("c", 2, 1),
-        ("d", 3, 2), ("f", 1, 1), ("f", 1, 2), ("w", 3, 2), ("g", 3, 1),
-        ("k", 2, 1), ("X", 1, 2),
-    ),
-)
-STAGE6_ROSTER += (
-    (
-        ("a", 4, 3), ("A", 3, 1), ("b", 5, 3), ("B", 1, 3),
-        ("c", 2, 1), ("d", 1, 2), ("f", 1, 1), ("f", 2, 2),
+        ("a", 2, 2), ("a", 4, 3), ("A", 3, 1), ("b", 5, 3), ("B", 1, 3),
+        ("c", 1, 1), ("d", 1, 2), ("f", 1, 1), ("f", 2, 2),
         ("w", 1, 1), ("w", 2, 2), ("g", 3, 1),
         ("k", 3, 1), ("X", 1, 2),
     ),
 )
-STAGE6_BOSS_PARTY = (("W", 1), ("V", 1))
+STAGE6_BOSS_PARTY = (("F", 2), ("V", 1), ("k", 1))
 STAGE6_BOSS_ESCORTS = (("w", 1),)
 _STAGE6_DEEP_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("e", 1), ("e", 1),
@@ -272,7 +270,7 @@ STAGE6_SUPPORT_POOLS = (
     (("a", 3), ("b", 2), ("b", 3)),
 )
 STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
-STAGE6_FINAL_FLOOR_BARRIER_PERCENT = 5
+STAGE6_FINAL_FLOOR_BARRIER_PERCENT = 7
 STAGE6_BARRIER_VORTEX_RADIUS_MULTIPLIER = 1.5
 
 # Elves placed by the multi-floor builder instead of the static floor rosters.

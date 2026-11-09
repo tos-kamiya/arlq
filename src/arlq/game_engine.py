@@ -452,6 +452,7 @@ def _vortex_rearrange(
     center: d.Point,
     floors: Optional[List[Floor]] = None,
     include_treasures: bool = True,
+    bounded_relocation: bool = False,
 ) -> None:
     """Reposition entities and forget explored floor and barrier cells."""
     # Keep the horizontal reach while matching the FOV ellipse's proportions.
@@ -594,6 +595,26 @@ def _vortex_rearrange(
             if lower is not None:
                 lower.collapse_landings.difference_update(old_footprint)
                 lower.collapse_landings.update(new_footprint)
+            continue
+
+        if bounded_relocation:
+            reserved = avoid | reserved_collapse_cells | set(
+                current.up_stairs + current.down_stairs
+                + current.scholar_up_stairs + current.scholar_down_stairs
+            )
+            occupied = {(other.x, other.y) for other in current.entities}
+            candidates = [
+                (x, y) for x, y in affected_points
+                if 0 < x < len(current.field[0]) - 1
+                and 0 < y < len(current.field) - 1
+                and (x, y) not in reserved
+                and not _inside_island((x, y), current.island)
+                and all(cell == d.CHAR_FLOOR for cell in current.field[y][x - 1:x + 2])
+                and all(abs(x - px) > 2 or abs(y - py) > 2 for px, py in occupied)
+            ]
+            if candidates:
+                entity.x, entity.y = rand.choice(candidates)
+            current.entities.append(entity)
             continue
 
         if isinstance(entity, d.Treasure):
@@ -774,10 +795,12 @@ def _defeat_monster(
     elif entity.tribe.effect == d.EFFECT_VORTEX:
         _vortex_rearrange(
             current, player, floor[0], (entity.x, entity.y), floors=floors,
+            bounded_relocation=stage_num == 6,
         )
 
     if (
-        d.monster_level(entity) > 0
+        stage_num != 6
+        and d.monster_level(entity) > 0
         and ch not in d.MONSTERS_EXCLUDED_FROM_RESPAWN
         and entity.tribe.effect != d.EFFECT_UNLOCK_TREASURE
     ):
@@ -1230,10 +1253,11 @@ def _resolve_party_contact(
         if isinstance(monster, d.Monster)
         and stage56._barrier_offsets(monster)
     }
-    stage56.normalize_parties(
-        current,
-        d.MEMBER_STAGE_MONSTER_PARTY_LIMIT,
-    )
+    if stage_num != 6:
+        stage56.normalize_parties(
+            current,
+            d.MEMBER_STAGE_MONSTER_PARTY_LIMIT,
+        )
     for monster in current.entities:
         previous_source = barrier_source_positions.get(id(monster))
         if (
@@ -1617,7 +1641,7 @@ def _process_respawn_queue(
                     "floor": spawn_floor,
                 }
             )
-    if stage_num in (5, 6):
+    if stage_num == 5:
         for changed_floor in changed_floors:
             current = floors[changed_floor]
             stage56.normalize_parties(
@@ -1927,6 +1951,8 @@ def _process_multi_floor_turn(
     _process_respawn_queue(
         floors, player, floor, queue, turn, trace=trace, stage_num=stage_num
     )
+    if stage_num == 6:
+        stage6.advance_spawns(floors, player, floor[0])
     if player.rescue_stage:
         stage56.sync_members(player, previous, direction)
         stage56.explore_with_cat(floors[floor[0]], player)
