@@ -3810,11 +3810,12 @@ def caltrop_plant(x, y):
 
 
 def ivy(x, y):
-    """Stage 6 ivy (i): four tall, thick tulip-like leaves rising from a
-    slightly swollen foot toward the four cells it strikes (up, down, left
-    and right). Together they make a pitcher-plant silhouette: wide and
-    bulging at the bottom, narrowing to a waist, then flaring at the top,
-    where their tips curl out like tentacles about to reach out.
+    """Stage 6 ivy (i): four tall, thick fleshy stalks, each fringed on
+    both sides with many small pointed leaflets, rising from a slightly
+    swollen foot toward the four cells it strikes (up, down, left and right).
+    Together they make a pitcher-plant silhouette: wide and bulging at the
+    bottom, narrowing to a waist, then flaring at the top, where their tips
+    curl out like tentacles about to reach out.
 
     The leaves are a waxy, glaucous blue-green, opaque and darker than the
     glowing green of the fairies; the swollen foot is a dark brown.
@@ -3829,7 +3830,7 @@ def ivy(x, y):
                               (x, y, 0.19), (x, y, 0.24)],
          [0.0, 0.15, 0.17, 0.14, 0.08, 0.0], bulb, sides=28, smooth=True)
     up = Vector((0, 0, 1))
-    # One leaf's path as (distance from the axis, height, half width): it
+    # One stalk's path as (distance from the axis, height, leaflet scale): it
     # bulges out low down, narrows to the pitcher's waist, flares at the
     # mouth and curls its tip out and down.
     path = [(0.08, 0.04, 0.08), (0.20, 0.16, 0.11), (0.25, 0.32, 0.11), (0.17, 0.52, 0.075),
@@ -3881,34 +3882,59 @@ def ivy(x, y):
             r1, z1, _ = samples[min(k + 1, steps)]
             dr, dz = r1 - r0, z1 - z0
             norm = math.hypot(dr, dz)
-            # The upper face, toward the axis, folded into a channel like a
-            # tulip leaf. The leaves are narrow enough to stay apart, so each
-            # looks free to move on its own.
+            # The side of the stalk facing the axis.
             normals.append((radial * -dz + up * dr) / norm)
             centre.append(Vector((x, y, 0)) + radial * r + up * z)
             widths.append(max(w, 0.0))
+        # A thick fleshy stalk like a leaf's midrib, thickest at the foot and
+        # thinning toward the curled tip, so it reads as a tentacle.
+        tube('Ivy stalk', [tuple(c) for c in centre],
+             [0.05 * (1 - k / steps) ** 1.2 + 0.006 for k in range(steps + 1)], leaf,
+             sides=12, smooth=True, up=[tuple(side)] * (steps + 1))
+        # Many small pointed leaflets along both sides of the stalk, slanting
+        # toward its tip, longer where the old leaf was wide.
         verts, faces = [], []
-        for k, (c, n, w) in enumerate(zip(centre, normals, widths)):
-            twist = 0.25 * k / steps
-            s = side * math.cos(twist) + n * math.sin(twist)
-            m = n * math.cos(twist) - side * math.sin(twist)
-            for j in range(across):
-                u = -1 + 2 * j / (across - 1)
-                verts.append(tuple(c + s * (w * u) + m * (w * 0.35 * u * u)))
-        for k in range(steps):
-            for j in range(across - 1):
-                i = k * across + j
-                faces.append((i, i + 1, i + across + 1, i + across))
-        blade = mesh_object('Ivy leaf', verts, faces, leaf, True)
-        solid = blade.modifiers.new('Leaf thickness', 'SOLIDIFY')
-        solid.thickness = 0.025
+        for k in range(2, steps - 1):
+            for flank in (-1, 1):
+                if (k + (flank > 0)) % 2:
+                    continue
+                c, n, w = centre[k], normals[k], widths[k]
+                if w < 0.012:
+                    continue
+                tangent = (centre[k + 1] - centre[k - 1]).normalized()
+                length = 0.035 + 0.75 * w
+                out = (side * flank * math.cos(math.radians(40))
+                       + tangent * math.sin(math.radians(40))
+                       + n * 0.25).normalized()
+                flat = tangent - out * tangent.dot(out)
+                flat.normalize()
+                lift = out.cross(flat).normalized()
+                if lift.dot(n) < 0:
+                    lift = -lift
+                ring = 6
+                start = len(verts)
+                base = c + out * 0.02
+                verts.append(tuple(base))
+                for t in range(1, ring):
+                    f = t / ring
+                    # Lance-shaped: widest a quarter of the way out, then
+                    # tapering to a sharp point.
+                    half = 0.16 * length * math.sin(math.pi * f ** 0.5)
+                    p = base + out * (length * f) + lift * (0.25 * length * f * f)
+                    verts.append(tuple(p + flat * half))
+                    verts.append(tuple(p - flat * half))
+                verts.append(tuple(base + out * length + lift * (0.3 * length)))
+                tip = len(verts) - 1
+                faces.append((start, start + 1, start + 2))
+                for t in range(ring - 2):
+                    i = start + 1 + 2 * t
+                    faces.append((i, i + 2, i + 3, i + 1))
+                last = start + 1 + 2 * (ring - 2)
+                faces.append((last, tip, last + 1))
+        leaflets = mesh_object('Ivy leaflets', verts, faces, leaf, True)
+        solid = leaflets.modifiers.new('Leaflet thickness', 'SOLIDIFY')
+        solid.thickness = 0.012
         solid.offset = 0
-        # A fleshy midrib behind the leaf, thick at the foot and thinning
-        # toward the tip, so each leaf reads as a tentacle.
-        count = int(steps * 0.85)
-        tube('Ivy leaf midrib', [tuple(c - n * 0.015) for c, n in zip(centre[:count], normals)],
-             [0.045 * (1 - k / count) ** 1.5 + 0.008 for k in range(count)], leaf, sides=12,
-             smooth=True, up=[tuple(side)] * count)
 
 
 def flame_cobra(x, y):
