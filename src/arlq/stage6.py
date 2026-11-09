@@ -232,6 +232,27 @@ def _place_initial_parties(
     return placed
 
 
+def _can_join_at(current: Floor, monster: d.Monster, point: d.Point, *,
+                 isolated: bool = False) -> bool:
+    positions = stage56.monster_positions(current.entities)
+    positions = {pos: other for pos, other in positions.items() if other is not monster}
+    x, y = point
+    if any((x + dx, y + dy) in positions
+           for dx in (-1, 1) for dy in (-1, 0, 1)):
+        return False
+    party = set()
+    for neighbor_point in ((x, y - 1), (x, y + 1)):
+        neighbor = positions.get(neighbor_point)
+        if neighbor is not None:
+            party.update(stage56.monster_party_entities(current.entities, neighbor, positions=positions))
+    return not party or not (
+        isolated or stage56.special_monster(monster)
+        or any(stage56.special_monster(other) or other.tribe.char == d.STAGE6_BOSS_PARTY[0][0]
+               for other in party)
+        or len(party) + 1 > d.STAGE6_MONSTER_PARTY_LIMIT
+    )
+
+
 def spawn_monster(current: Floor, floor_index: int, *,
                   avoid: set[d.Point] | None = None,
                   variant: tuple[str, int] | None = None,
@@ -269,18 +290,7 @@ def spawn_monster(current: Floor, floor_index: int, *,
             if rand.randrange(100) >= rate:
                 continue
         monster = d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[char], rank)
-        if any((x + dx, y + dy) in positions
-               for dx in (-1, 1) for dy in (-1, 0, 1)):
-            continue
-        adjacent = [positions[p] for p in ((x, y - 1), (x, y + 1))
-                    if p in positions]
-        party = set()
-        for neighbor in adjacent:
-            party.update(stage56.monster_party(current, neighbor))
-        if party and (isolated or stage56.special_monster(monster)
-                      or any(stage56.special_monster(other) or other.tribe.char == d.STAGE6_BOSS_PARTY[0][0]
-                             for other in party)
-                      or len(party) + 1 > d.STAGE6_MONSTER_PARTY_LIMIT):
+        if not _can_join_at(current, monster, point, isolated=isolated):
             continue
         current.entities.append(monster)
         if stage56._barrier_offsets(monster):
@@ -317,7 +327,6 @@ def advance_monster_movement(
     other_barriers = {point for entity in current.entities
                       if isinstance(entity, d.Monster) and entity is not monster and entity.active
                       for point in stage56.barrier_cells(current, entity)}
-    other_monsters = set(stage56.monster_positions(current.entities)) - {(monster.x, monster.y)}
     old = (monster.x, monster.y)
     direction = rand.choice(((0, -1), (1, 0), (0, 1), (-1, 0)))
     fallback = ((0, -1), (0, 1)) if direction[0] else ((1, 0), (-1, 0))
@@ -328,7 +337,7 @@ def advance_monster_movement(
             point = (x, y)
             if (not 0 <= y < len(current.field) or not 0 <= x < len(current.field[y])
                     or point in occupied or point in reserved or _in_tavern(current, point)
-                    or (x - 1, y) in other_monsters or (x + 1, y) in other_monsters):
+                    or not _can_join_at(current, monster, point)):
                 continue
             cell = current.field[y][x]
             own_barrier = (cell == d.CHAR_BARRIER and point in own_barriers

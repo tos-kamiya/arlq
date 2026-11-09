@@ -1190,9 +1190,13 @@ def _resolve_party_contact(
         if any(monster.tribe.char == "B" for monster in party)
         else 0
     )
-    # Resolve ordinary drops first, the unique item/effect last. All defeated
-    # entities must be removed before V can rearrange the survivors.
-    party.sort(key=lambda monster: stage56.special_monster(monster))
+    # Resolve ordinary drops first and swords last, so another party member's
+    # item cannot immediately overwrite a sword. Remove all before V acts.
+    party.sort(key=lambda monster: (
+        stage56.special_monster(monster),
+        monster.tribe.char in ("c", "C"),
+        monster.tribe.char == "C",
+    ))
     for monster in party:
         current.entities.remove(monster)
     for monster in party:

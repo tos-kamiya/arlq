@@ -1,5 +1,7 @@
 from collections import Counter
 
+import pytest
+
 from arlq import defs as d, game_engine, stage6, stage56
 from arlq.stage_types import Floor
 from arlq.trace import TraceRecorder
@@ -101,6 +103,42 @@ def test_blocked_vertical_direction_falls_back_to_horizontal(monkeypatch):
     monkeypatch.setattr(stage6.rand, "choice", lambda options: options[0])
     stage6.advance_monster_movement([current], player, 0, 7)
     assert (enemy.x, enemy.y) == (6, 5)
+
+
+@pytest.mark.parametrize("moving,neighbor,can_join", [
+    ("a", "a", True), ("c", "a", False), ("m", "a", False),
+    ("a", "c", False), ("a", "m", False), ("a", "F", False),
+])
+def test_movement_follows_spawn_party_rules(monkeypatch, moving, neighbor, can_join):
+    current, player = floor(), d.Player(1, 1, 1, 100)
+    enemy = monster(5, 5, moving)
+    current.entities = [enemy, monster(5, 3, neighbor)]
+    current.field[4][5] = d.CHAR_FLOOR
+    monkeypatch.setattr(stage6.rand, "choice", lambda options: options[0])
+    stage6.advance_monster_movement([current], player, 0, 3)
+    assert (enemy.x, enemy.y) == ((5, 4) if can_join else (5, 5))
+
+
+def test_movement_does_not_join_full_party(monkeypatch):
+    current, player = floor(), d.Player(1, 1, 1, 100)
+    enemy = monster(5, 11)
+    current.entities = [enemy] + [monster(5, y) for y in range(1, 9)]
+    current.field[10][5] = d.CHAR_FLOOR
+    monkeypatch.setattr(stage6.rand, "choice", lambda options: options[0])
+    # Moving to y=10 leaves a gap; y=9 would be adjacent to the full party.
+    current.entities[0].y = 10
+    current.field[9][5] = d.CHAR_FLOOR
+    stage6.advance_monster_movement([current], player, 0, 3)
+    assert (enemy.x, enemy.y) == (5, 10)
+
+
+def test_movement_avoids_diagonal_neighbors_like_spawn(monkeypatch):
+    current, player = floor(), d.Player(1, 1, 1, 100)
+    enemy = monster(5, 5)
+    current.entities = [enemy, monster(6, 3)]
+    current.field[4][5] = d.CHAR_FLOOR
+    monkeypatch.setattr(stage6.rand, "choice", lambda options: options[0])
+    assert stage6.advance_monster_movement([current], player, 0, 3) is None
 
 
 def test_move_is_recorded_for_overshoot_rewind(monkeypatch):

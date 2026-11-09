@@ -493,6 +493,17 @@ def test_group_keeps_unique_item_even_when_contacting_ordinary_member():
     assert player.item == d.ITEM_SWORD_X1_5
 
 
+@pytest.mark.parametrize("stage_num", [5, 6])
+@pytest.mark.parametrize("chars", [("c", "m"), ("m", "c")])
+def test_group_sword_is_not_overwritten_by_spores(stage_num, chars):
+    current, player = state()
+    current.entities = [monster(3, 2, chars[0]), monster(3, 3, chars[1])]
+    step(current, player, stage_num=stage_num)
+    assert player.item == d.ITEM_SWORD_X1_5
+    assert player.item_taken_from == "c"
+    assert d.current_player_attack(player) == pytest.approx(player.level * 1.5)
+
+
 def test_fractional_attack_hazards_and_status():
     current, player = state(("Knight", "Dungeon Explorer"), level=100.5)
     assert d.current_player_attack(player) == pytest.approx(140.5)
