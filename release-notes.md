@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 6.5.0 - 2026-11-10
+
+- Redesign Stage 6 as a three-floor dungeon with periodically spawning and
+  moving monsters that can form parties, a revised monster roster, and an
+  empowered Fire Drake boss party.
+- Restore LP to 50 when returning to the first-floor tavern, and make entering
+  the tavern a new rewind point.
+- Apply terrain placement priorities to barriers, walls, caltrops, and Golem
+  rocks, protecting hidden passages and pit landings. Vortex no longer moves
+  Collapse terrain.
+- Replace the game's random generator with an independent MT19937
+  implementation. Existing seeds generate different layouts, and older traces
+  may no longer replay correctly.
+
 ## 6.4.2 - 2026-11-09
 
 - Give ordinary Flame Cobras barriers on their left and right.
