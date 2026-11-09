@@ -43,6 +43,12 @@ def test_spawn_tries_at_most_five_distinct_positions(monkeypatch):
     assert len(current.entities) == 5
 
 
+def test_wyrm_spawn_ranks_by_floor():
+    assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[0] if char == "w"] == []
+    assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[1] if char == "w"] == [(1, 1)]
+    assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[2] if char == "w"] == [(1, 1), (2, 2)]
+
+
 def test_spawn_attempts_once_every_ten_turns_on_one_chosen_floor(monkeypatch):
     floors = [floor() for _ in range(3)]
     player = d.Player(4, 4, 1, d.LP_INIT)

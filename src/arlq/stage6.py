@@ -729,6 +729,14 @@ def _balance_route_parties(floors, route):
                     entity.x, entity.y = x, y
 
 
+def scatter_members_on_new_route(floors, player, from_floor, from_point, to_floor):
+    route = tuple(sorted(((from_floor, from_point), (to_floor, (player.x, player.y)))))
+    if route == player.last_member_scatter_route:
+        return
+    player.last_member_scatter_route = route
+    scatter_waiting_members(floors, player, to_floor)
+
+
 def scatter_waiting_members(floors, player, player_floor):
     waiting = [(index, entity) for index, current in enumerate(floors)
                for entity in current.entities if isinstance(entity, d.PartyMember)]

@@ -372,6 +372,54 @@ def test_stage6_falling_from_first_floor_scatters_members_on_all_floors(monkeypa
     assert (first.x, first.y) != (second.x, second.y)
 
 
+def test_stage6_scatter_when_route_differs_from_previous(monkeypatch):
+    upper, player = state()
+    lower, _ = state()
+    upper.down = (3, 2)
+    lower.up = (8, 8)
+    upper.field[2][3] = d.CHAR_STAIRS_DOWN
+    lower.field[8][8] = d.CHAR_STAIRS_UP
+    floor_index = [0]
+    calls = []
+    monkeypatch.setattr(stage6, "scatter_waiting_members",
+                        lambda floors, player, index: calls.append(index))
+
+    engine._step((1, 0), [upper, lower], player, floor_index, [(2, 2)], Counter(), 1, stage_num=6)
+    assert floor_index == [1] and calls == [1]
+    player.x, player.y = 7, 8
+    engine._step((1, 0), [upper, lower], player, floor_index, [(7, 8)], Counter(), 2, stage_num=6)
+    assert floor_index == [0] and calls == [1]
+    player.x, player.y = 2, 2
+    engine._step((1, 0), [upper, lower], player, floor_index, [(2, 2)], Counter(), 3, stage_num=6)
+    assert floor_index == [1] and calls == [1]
+    player.x, player.y = 12, 12
+    stage6.scatter_members_on_new_route([upper, lower], player, 0, (4, 2), 1)
+    assert calls == [1, 1]
+    player.x, player.y = 3, 2
+    stage6.scatter_members_on_new_route([upper, lower], player, 1, (8, 8), 0)
+    assert calls == [1, 1, 0]
+    player.x, player.y = 8, 8
+    stage6.scatter_members_on_new_route([upper, lower], player, 0, (3, 2), 1)
+    assert calls == [1, 1, 0]
+
+
+def test_stage6_new_route_scatter_including_pit_climb(monkeypatch):
+    upper, player = state(roles=(d.MEMBER_DUNGEON_EXPLORER,))
+    lower, _ = state()
+    upper.field[5][5] = d.CHAR_COLLAPSE
+    lower.field[5][5] = d.CHAR_PIT_LANDING
+    player.x, player.y = 5, 6
+    floor_index = [1]
+    calls = []
+    monkeypatch.setattr(stage6, "scatter_waiting_members",
+                        lambda floors, player, index: calls.append(index))
+    engine._step((0, -1), [upper, lower], player, floor_index, [(5, 6)], Counter(), 1, stage_num=6)
+    assert floor_index == [0] and calls == [0]
+    player.x, player.y = 5, 4
+    engine._step((0, 1), [upper, lower], player, floor_index, [(5, 4)], Counter(), 2, stage_num=6)
+    assert floor_index == [1] and calls == [0]
+
+
 def test_stage6_departed_members_return_to_first_floor_tavern():
     floors, player = stage6.build()
     member = next(e for e in floors[0].entities if isinstance(e, d.PartyMember))

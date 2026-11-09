@@ -287,7 +287,7 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the tavern and face monsters that also form parties. Returning to the floor 1 tavern restores LP to 50 if it is lower. Follow the route markers, defeat the empowered Fire Drake (`F'`) on the final floor, and claim the treasure.
 
-Each time you leave floor 1, all unrecruited members are scattered independently to random floors, including floor 1. Their previously known locations are cleared.
+When you use a different staircase or pit from the one used for your previous floor change, all unrecruited members are scattered independently to random floors, and their previously known locations are cleared. Reusing the same staircase or pit consecutively, in either direction, does not scatter them again.
 
 Each floor starts with monsters, including a sword-carrying `c`; 50 additional spawn draws are made during setup. Every 10 turns, a spawn is attempted on a randomly selected floor, with the current floor twice as likely as each other floor. Every 4 turns, one existing monster is selected across all floors and, if alone, attempts to move one cell in a randomly chosen cardinal direction. If blocked, it tries the two perpendicular directions; it follows the same party restrictions as spawning and cannot move alongside or diagonally next to another monster. Stronger types appear on deeper floors. Spore monsters (`m`) can appear on every floor; Rare Erebus (`E`) can appear on floor 2. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
 
@@ -319,6 +319,7 @@ Some rooms may be sealed by walls, but D can discover passages into them.
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **f** / **f'** Flame cobra | Worth 5 experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
 | **i** Ivy | Attack power 50. On floors 2 and 3, each active Ivy deals 4 LP damage every turn when the player is directly above, below, left, or right of it. Rogue does not block this damage. |
+| **w** / **w'** Wyrm | Floor 2 has `w`; floor 3 has both `w` and `w'`. |
 
 The floor 3 boss party consists of `F'`, `V`, and `k`; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
