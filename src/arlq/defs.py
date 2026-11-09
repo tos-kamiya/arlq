@@ -285,10 +285,12 @@ class Entity:
 class Treasure(Entity):
     """A chest whose unlock state is part of the chest instance."""
 
-    def __init__(self, x, y, encounter_type, unlock_key: Optional[str] = None):
+    def __init__(self, x, y, encounter_type, unlock_key: Optional[str] = None,
+                 boss_id: Optional[int] = None):
         super().__init__(x, y)
         self.encounter_type = encounter_type
         self.unlock_key = unlock_key or encounter_type
+        self.boss_id = boss_id
         self.unlocked: bool = False
 
 
@@ -442,6 +444,7 @@ class Monster(Entity):
         empowered: int = 1,
         mimic_boss_char: Optional[str] = None,
         mimic_boss_empowered: Optional[int] = None,
+        boss_id: Optional[int] = None,
     ):
         super().__init__(x, y)
         self.tribe: MonsterTribe = tribe
@@ -451,6 +454,7 @@ class Monster(Entity):
         # Mimics are identified by the boss whose treasure they imitate.
         self.mimic_boss_char: Optional[str] = mimic_boss_char
         self.mimic_boss_empowered: Optional[int] = mimic_boss_empowered
+        self.boss_id: Optional[int] = boss_id
         self.revealed: bool = False
         self.met: bool = False
         self.active: bool = True

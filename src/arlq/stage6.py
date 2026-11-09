@@ -179,6 +179,7 @@ def _party_roster(char: str, rank: int, floor_index: int) -> list[tuple[str, int
 def _place_initial_boss_party(current: Floor) -> tuple[list[d.Monster], set[d.Point]]:
     """Choose the boss layout before reserving its room for ordinary spawns."""
     _place_party(current, list(d.STAGE6_BOSS_PARTY), d.STAGE6_FLOORS - 1)
+    current.entities[-len(d.STAGE6_BOSS_PARTY)].boss_id = 1
     return current.entities[-len(d.STAGE6_BOSS_PARTY):], set()
 
 
@@ -404,6 +405,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                 d.CHAR_TO_MONSTER_TRIBE["M"],
                 mimic_boss_char=d.STAGE6_BOSS_PARTY[0][0],
                 mimic_boss_empowered=d.STAGE6_BOSS_PARTY[0][1],
+                boss_id=1,
             )
             mimic.active = False
             current.entities.append(mimic)
@@ -419,7 +421,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             treasure_points = [
                 point for point in _open_points(current) if tile_at(point) != boss_zone
             ]
-            current.entities.append(d.Treasure(*rand.choice(treasure_points), "T" + d.STAGE6_BOSS_PARTY[0][0]))
+            current.entities.append(d.Treasure(*rand.choice(treasure_points), "T" + d.STAGE6_BOSS_PARTY[0][0], boss_id=1))
         for char, count in zip(
             (d.CHAR_CALTROP, d.CHAR_BARRIER), d.STAGE6_HAZARD_COUNTS[index]
         ):

@@ -551,9 +551,14 @@ def unlock_treasure_for_defeat(
     entities: List[d.Entity],
 ) -> None:
     """Unlock chests whose key is T followed by the defeated tribe's char."""
+    if monster.tribe.char == "M":
+        return
     treasure_key = d.CHAR_TREASURE + monster.tribe.char
     for entity in entities:
-        if isinstance(entity, d.Treasure) and entity.unlock_key == treasure_key:
+        if isinstance(entity, d.Treasure) and (
+            entity.boss_id == monster.boss_id if monster.boss_id is not None
+            else entity.boss_id is None and entity.unlock_key == treasure_key
+        ):
             entity.unlocked = True
 
 
@@ -562,15 +567,19 @@ def activate_mimic_for_defeat(
     entities: List[d.Entity],
 ) -> None:
     """Activate mimics disguised as the defeated monster's treasure."""
+    if monster.tribe.char == "M":
+        return
     boss_char = monster.tribe.char
     for entity in entities:
         if (
             isinstance(entity, d.Monster)
             and entity.tribe.char == "M"
-            and entity.mimic_boss_char == boss_char
             and (
-                entity.mimic_boss_empowered is None
-                or entity.mimic_boss_empowered == monster.empowered
+                entity.boss_id == monster.boss_id if monster.boss_id is not None
+                else entity.boss_id is None
+                and entity.mimic_boss_char == boss_char
+                and (entity.mimic_boss_empowered is None
+                     or entity.mimic_boss_empowered == monster.empowered)
             )
         ):
             entity.active = True

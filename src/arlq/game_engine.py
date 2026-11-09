@@ -521,7 +521,8 @@ def _vortex_rearrange(
         ):
             current.field[y][x] = d.CHAR_FLOOR
 
-    def relocate(char: str, origin_floor: Optional[int], empowered: int = 1) -> None:
+    def relocate(char: str, origin_floor: Optional[int], empowered: int = 1,
+                 boss_id: Optional[int] = None) -> None:
         x, y = find_random_place(
             current.entities,
             current.field,
@@ -531,7 +532,7 @@ def _vortex_rearrange(
             or point in reserved_collapse_cells
             or _inside_island(point, current.island),
         )
-        spawn_at(
+        relocated = spawn_at(
             current.entities,
             x,
             y,
@@ -539,6 +540,8 @@ def _vortex_rearrange(
             empowered=empowered,
             origin_floor=origin_floor,
         )
+        if isinstance(relocated, d.Monster):
+            relocated.boss_id = boss_id
 
     for entity in movable:
         if isinstance(entity, d.Collapse):
@@ -639,7 +642,8 @@ def _vortex_rearrange(
             origin_floor = (
                 entity.origin_floor if isinstance(entity, d.Fairy) else floor_index
             )
-            relocate(char, origin_floor, empowered)
+            relocate(char, origin_floor, empowered,
+                     entity.boss_id if isinstance(entity, d.Monster) else None)
 
     occupied = {(entity.x, entity.y) for entity in current.entities}
     for current_entity in current.entities:
@@ -737,15 +741,26 @@ def _defeat_monster(
                 {"type": "item_expired", "item": old_source, "reason": "overwritten"}
             )
 
-    unlock_treasure_for_defeat(entity, current.entities)
-    activate_mimic_for_defeat(entity, current.entities)
-    if entity.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
+    linked_entities = (
+        [linked for linked_floor in floors for linked in linked_floor.entities]
+        if floors is not None else current.entities
+    )
+    unlock_treasure_for_defeat(entity, linked_entities)
+    activate_mimic_for_defeat(entity, linked_entities)
+    has_linked_targets = any(
+        isinstance(target, (d.Treasure, d.Monster))
+        and target.boss_id is not None
+        and (isinstance(target, d.Treasure) or target.tribe.char == "M")
+        for target in linked_entities
+    )
+    is_boss = entity.boss_id is not None or not has_linked_targets
+    if is_boss and entity.tribe.effect == d.EFFECT_UNLOCK_TREASURE:
         player.boss_defeated = True
-    if ch == "W":
+    if is_boss and ch == "W":
         player.elf_stage_flags |= d.STAGE3_W_FLAG
         player.known_monsters.add(d.monster_type_key(entity))
         player.boss_defeated = True
-    elif ch == d.CHAR_FIRE_DRAKE and entity.empowered == 2:
+    elif is_boss and ch == d.CHAR_FIRE_DRAKE and entity.empowered == 2:
         player.known_monsters.add(d.monster_type_key(entity))
         player.boss_defeated = True
     if ch == "K":

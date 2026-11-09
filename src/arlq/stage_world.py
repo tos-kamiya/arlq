@@ -330,6 +330,7 @@ def _place_roster_treasures_and_mimics(
     entities: List[d.Entity],
     field: List[List[str]],
     reserved: Container[d.Point],
+    floor_index: int = 0,
 ) -> None:
     treasure_bosses = list(
         dict.fromkeys(
@@ -346,11 +347,19 @@ def _place_roster_treasures_and_mimics(
             )
         )
     )
-    for boss_char, _ in treasure_bosses:
+    boss_ids = {}
+    for offset, (boss_char, rank) in enumerate(treasure_bosses, 1):
+        boss_id = floor_index * 1000 + offset
+        boss_ids[boss_char, rank] = boss_id
+        boss = next(entity for entity in entities
+                    if isinstance(entity, d.Monster) and entity.tribe.char == boss_char
+                    and entity.empowered == rank)
+        boss.boss_id = boss_id
         entities.append(
             d.Treasure(
                 *_treasure_spot(entities, field, reserved),
                 d.CHAR_TREASURE + boss_char,
+                boss_id=boss_id,
             )
         )
     mimic_index = 0
@@ -369,6 +378,7 @@ def _place_roster_treasures_and_mimics(
                     d.CHAR_TO_MONSTER_TRIBE["M"],
                     mimic_boss_char=mimic_boss_char,
                     mimic_boss_empowered=mimic_boss_empowered,
+                    boss_id=boss_ids.get((mimic_boss_char, mimic_boss_empowered)),
                 )
                 mimic.active = False
                 entities.append(mimic)
@@ -553,7 +563,7 @@ def _build_floor(
         elf_roster, elf_floors, index, entities, field, reserved, island_tile
     )
     _spawn_monsters_with_barriers(wyrm_roster, entities, field, reserved, down, index)
-    _place_roster_treasures_and_mimics(roster, entities, field, reserved)
+    _place_roster_treasures_and_mimics(roster, entities, field, reserved, index)
 
     for ch, assigned_floor in special_floors.items():
         if index == assigned_floor:
@@ -936,11 +946,15 @@ def build_single_floor(
         d.Treasure(
             *treasure_point,
             d.CHAR_TREASURE + treasure_tribes[0].char,
+            boss_id=1,
         )
     )
     player = d.Player(*entry, 1, d.LP_INIT)
     entities.append(player)
     spawn_entities(entities, field, spawn_config)
+    boss = next(entity for entity in entities if isinstance(entity, d.Monster)
+                and entity.tribe.char == treasure_tribes[0].char)
+    boss.boss_id = 1
     if stage_num == 1:
         player_tile = place_to_tile(*entry)
         amoeba_point = find_random_place(

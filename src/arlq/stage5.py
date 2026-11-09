@@ -169,9 +169,12 @@ def build_member_trial(
                         d.PartyMember(x, y, member_roles[glyph], origin_floor=floor_index)
                     )
                 elif glyph == "T":
-                    entities.append(d.Treasure(x, y, "TF"))
+                    entities.append(d.Treasure(x, y, "TF", boss_id=1))
                 elif glyph in d.CHAR_TO_MONSTER_TRIBE:
-                    entities.append(d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[glyph]))
+                    entities.append(d.Monster(
+                        x, y, d.CHAR_TO_MONSTER_TRIBE[glyph],
+                        boss_id=1 if glyph == d.CHAR_FIRE_DRAKE else None,
+                    ))
                 elif glyph != d.CHAR_FLOOR:
                     raise ValueError(f"Unsupported Stage 5 floor {floor_index + 1} glyph: {glyph!r}")
 
