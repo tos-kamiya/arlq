@@ -14,15 +14,16 @@ def monster(x, y, char="a", rank=1):
     return d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[char], rank)
 
 
-def test_only_eighth_turn_moves_solo_monster(monkeypatch):
+def test_fourth_turn_moves_solo_monster(monkeypatch):
     current, player = floor(), d.Player(1, 1, 1, 100)
     current.field[5][5] = current.field[5][6] = d.CHAR_FLOOR
     enemy = monster(5, 5)
     current.entities.append(enemy)
     monkeypatch.setattr(stage6.rand, "choice", lambda options: options[0])
-    assert stage6.advance_monster_movement([current], player, 0, 6) is None
-    assert (enemy.x, enemy.y) == (5, 5)
-    assert stage6.advance_monster_movement([current], player, 0, 7) == (0, enemy, (5, 5))
+    for turn in range(3):
+        assert stage6.advance_monster_movement([current], player, 0, turn) is None
+        assert (enemy.x, enemy.y) == (5, 5)
+    assert stage6.advance_monster_movement([current], player, 0, 3) == (0, enemy, (5, 5))
     assert (enemy.x, enemy.y) == (6, 5)
 
 
@@ -48,6 +49,7 @@ def test_barrier_moves_with_monster_and_glow(monkeypatch):
     for y in range(3, 8):
         for x in range(3, 9):
             current.field[y][x] = d.CHAR_FLOOR
+    current.field[5][4] = current.field[5][6] = d.CHAR_WALL
     enemy = monster(5, 5, "f", 2)
     current.entities = [enemy]
     stage56.initialize_monster_barriers(current)
@@ -59,6 +61,46 @@ def test_barrier_moves_with_monster_and_glow(monkeypatch):
     assert current.field[6][5] == d.CHAR_FLOOR
     assert current.field[3][5] == d.CHAR_BARRIER
     assert current.field[4][5] == d.CHAR_FLOOR
+
+
+def test_movement_uses_randomly_selected_direction(monkeypatch):
+    current, player = floor(), d.Player(1, 1, 1, 100)
+    enemy = monster(5, 5)
+    current.entities = [enemy]
+    current.field[5][6] = current.field[4][5] = d.CHAR_FLOOR
+    monkeypatch.setattr(stage6.rand, "choice", lambda options: options[1] if len(options) == 4 else options[0])
+    stage6.advance_monster_movement([current], player, 0, 7)
+    assert (enemy.x, enemy.y) == (6, 5)
+
+
+def test_movement_tries_vertical_when_horizontal_would_neighbor_monsters(monkeypatch):
+    current, player = floor(), d.Player(1, 1, 1, 100)
+    enemy = monster(5, 5)
+    current.entities = [enemy, monster(7, 5), monster(3, 5)]
+    current.field[5][4] = current.field[5][6] = current.field[4][5] = d.CHAR_FLOOR
+    monkeypatch.setattr(stage6.rand, "choice", lambda options: options[1] if len(options) == 4 else options[0])
+    stage6.advance_monster_movement([current], player, 0, 7)
+    assert (enemy.x, enemy.y) == (5, 4)
+
+
+def test_movement_stays_put_when_vertical_would_also_neighbor_monsters(monkeypatch):
+    current, player = floor(), d.Player(1, 1, 1, 100)
+    enemy = monster(5, 5)
+    current.entities = [enemy, monster(7, 5), monster(3, 5), monster(6, 4)]
+    current.field[5][4] = current.field[5][6] = current.field[4][5] = d.CHAR_FLOOR
+    monkeypatch.setattr(stage6.rand, "choice", lambda options: options[0])
+    assert stage6.advance_monster_movement([current], player, 0, 7) is None
+    assert (enemy.x, enemy.y) == (5, 5)
+
+
+def test_blocked_vertical_direction_falls_back_to_horizontal(monkeypatch):
+    current, player = floor(), d.Player(1, 1, 1, 100)
+    enemy = monster(5, 5)
+    current.entities = [enemy, monster(6, 4)]
+    current.field[4][5] = current.field[5][6] = d.CHAR_FLOOR
+    monkeypatch.setattr(stage6.rand, "choice", lambda options: options[0])
+    stage6.advance_monster_movement([current], player, 0, 7)
+    assert (enemy.x, enemy.y) == (6, 5)
 
 
 def test_move_is_recorded_for_overshoot_rewind(monkeypatch):

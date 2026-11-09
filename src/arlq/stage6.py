@@ -317,19 +317,26 @@ def advance_monster_movement(
     other_barriers = {point for entity in current.entities
                       if isinstance(entity, d.Monster) and entity is not monster and entity.active
                       for point in stage56.barrier_cells(current, entity)}
+    other_monsters = set(stage56.monster_positions(current.entities)) - {(monster.x, monster.y)}
     old = (monster.x, monster.y)
-    candidates = []
-    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
-        x, y = monster.x + dx, monster.y + dy
-        point = (x, y)
-        if (not 0 <= y < len(current.field) or not 0 <= x < len(current.field[y])
-                or point in occupied or point in reserved or _in_tavern(current, point)):
-            continue
-        cell = current.field[y][x]
-        own_barrier = (cell == d.CHAR_BARRIER and point in own_barriers
-                       and point not in other_barriers and point not in current.persistent_barriers)
-        if cell == d.CHAR_FLOOR or own_barrier:
-            candidates.append(point)
+    direction = rand.choice(((0, -1), (1, 0), (0, 1), (-1, 0)))
+    fallback = ((0, -1), (0, 1)) if direction[0] else ((1, 0), (-1, 0))
+    for directions in ((direction,), fallback):
+        candidates = []
+        for dx, dy in directions:
+            x, y = monster.x + dx, monster.y + dy
+            point = (x, y)
+            if (not 0 <= y < len(current.field) or not 0 <= x < len(current.field[y])
+                    or point in occupied or point in reserved or _in_tavern(current, point)
+                    or (x - 1, y) in other_monsters or (x + 1, y) in other_monsters):
+                continue
+            cell = current.field[y][x]
+            own_barrier = (cell == d.CHAR_BARRIER and point in own_barriers
+                           and point not in other_barriers and point not in current.persistent_barriers)
+            if cell == d.CHAR_FLOOR or own_barrier:
+                candidates.append(point)
+        if candidates:
+            break
     if not candidates:
         return None
     monster.x, monster.y = rand.choice(candidates)

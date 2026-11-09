@@ -43,15 +43,16 @@ def test_spawn_tries_at_most_five_distinct_positions(monkeypatch):
     assert len(current.entities) == 5
 
 
-def test_spawn_attempts_once_every_eight_turns_on_one_chosen_floor(monkeypatch):
+def test_spawn_attempts_once_every_ten_turns_on_one_chosen_floor(monkeypatch):
     floors = [floor() for _ in range(3)]
     player = d.Player(4, 4, 1, d.LP_INIT)
     spawned = []
     choices = iter([2, 1])
     monkeypatch.setattr(stage6.rand, "randrange", lambda n: next(choices))
     monkeypatch.setattr(stage6, "spawn_monster", lambda current, index, **kw: spawned.append((index, kw)))
-    for turn in range(16):
+    for turn in range(20):
         stage6.advance_spawns(floors, player, 2, turn)
+        assert len(spawned) == (turn + 1) // 10
     assert [index for index, _ in spawned] == [2, 1]
     assert spawned[0][1]["avoid"] == {(4, 4)}
     assert spawned[1][1]["avoid"] == set()
@@ -105,7 +106,7 @@ def test_timed_spawn_glows_but_initial_spawn_does_not(monkeypatch):
     assert stage6.spawn_monster(current, 0, variant=("a", 1))
     assert current.respawn_glows == {}
     current.entities.clear()
-    stage6.advance_spawns([current], player, 0, 7)
+    stage6.advance_spawns([current], player, 0, d.STAGE6_SPAWN_INTERVAL - 1)
     assert current.respawn_glows == {(10, 10): d.RESPAWN_GLOW_TURNS}
     assert game_engine.respawn_glow_cells(current) == {(10, 10)}
     current.entities.clear()
@@ -117,7 +118,7 @@ def test_failed_timed_spawn_does_not_glow(monkeypatch):
     player = d.Player(4, 4, 1, d.LP_INIT)
     monkeypatch.setattr(stage6, "_open_points", lambda _: [])
     monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
-    stage6.advance_spawns([current], player, 0, 7)
+    stage6.advance_spawns([current], player, 0, d.STAGE6_SPAWN_INTERVAL - 1)
     assert current.respawn_glows == {}
 
 
@@ -353,7 +354,7 @@ def test_spawn_floor_weights_current_floor_twice(monkeypatch):
         selected.clear()
         for draw in range(4):
             monkeypatch.setattr(stage6.rand, "randrange", lambda n: draw)
-            stage6.advance_spawns(floors, player, active, 7)
+            stage6.advance_spawns(floors, player, active, d.STAGE6_SPAWN_INTERVAL - 1)
         assert selected.count(active) == 2
         assert all(selected.count(i) == (2 if i == active else 1) for i in range(3))
 
@@ -401,7 +402,8 @@ def test_second_floor_monster_draw_can_select_e_and_m(monkeypatch):
     monkeypatch.setattr(stage6.rand, "_index", stage6.rand._index)
     monkeypatch.setattr(stage6.rand, "seed", stage6.rand.seed)
     stage6.rand.set_seed(37318)
-    for turn in range(7, 8 * 20000, 8):
+    for turn in range(d.STAGE6_SPAWN_INTERVAL - 1, d.STAGE6_SPAWN_INTERVAL * 20000,
+                      d.STAGE6_SPAWN_INTERVAL):
         stage6.advance_spawns(floors, player, 0, turn)
     assert counts[("E", 1)] > 50
     assert counts[("m", 1)] > 50
