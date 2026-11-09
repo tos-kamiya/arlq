@@ -43,16 +43,18 @@ def test_spawn_tries_at_most_five_distinct_positions(monkeypatch):
     assert len(current.entities) == 5
 
 
-def test_all_floors_draw_with_active_floor_preferred(monkeypatch):
-    floors = [floor() for _ in range(4)]
+def test_spawn_attempts_once_every_eight_turns_on_one_chosen_floor(monkeypatch):
+    floors = [floor() for _ in range(3)]
     player = d.Player(4, 4, 1, d.LP_INIT)
-    chances, spawned = [], []
-    monkeypatch.setattr(stage6.rand, "randrange", lambda n: chances.append(n) or 0)
+    spawned = []
+    choices = iter([2, 1])
+    monkeypatch.setattr(stage6.rand, "randrange", lambda n: next(choices))
     monkeypatch.setattr(stage6, "spawn_monster", lambda current, index, **kw: spawned.append((index, kw)))
-    stage6.advance_spawns(floors, player, 2)
-    assert chances == [d.STAGE6_OTHER_SPAWN_CHANCE] * 2 + [d.STAGE6_ACTIVE_SPAWN_CHANCE, d.STAGE6_OTHER_SPAWN_CHANCE]
-    assert [index for index, _ in spawned] == [0, 1, 2, 3]
-    assert spawned[2][1]["avoid"] == {(4, 4)}
+    for turn in range(16):
+        stage6.advance_spawns(floors, player, 2, turn)
+    assert [index for index, _ in spawned] == [2, 1]
+    assert spawned[0][1]["avoid"] == {(4, 4)}
+    assert spawned[1][1]["avoid"] == set()
 
 
 def test_defeat_does_not_queue_monster_respawn():
@@ -103,7 +105,7 @@ def test_timed_spawn_glows_but_initial_spawn_does_not(monkeypatch):
     assert stage6.spawn_monster(current, 0, variant=("a", 1))
     assert current.respawn_glows == {}
     current.entities.clear()
-    stage6.advance_spawns([current], player, 0)
+    stage6.advance_spawns([current], player, 0, 7)
     assert current.respawn_glows == {(10, 10): d.RESPAWN_GLOW_TURNS}
     assert game_engine.respawn_glow_cells(current) == {(10, 10)}
     current.entities.clear()
@@ -115,7 +117,7 @@ def test_failed_timed_spawn_does_not_glow(monkeypatch):
     player = d.Player(4, 4, 1, d.LP_INIT)
     monkeypatch.setattr(stage6, "_open_points", lambda _: [])
     monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
-    stage6.advance_spawns([current], player, 0)
+    stage6.advance_spawns([current], player, 0, 7)
     assert current.respawn_glows == {}
 
 
@@ -298,3 +300,67 @@ def test_tavern_entry_clears_overshoot_history_without_healing(monkeypatch):
     assert frames == [(9, 90), (10, 89), (9, 88)]
     assert not trace.turns[0].get("world")
     assert len(trace.turns) == 3
+
+
+def test_timed_spawn_is_recorded_as_world_change(monkeypatch):
+    from arlq.trace import TraceRecorder
+
+    current = floor()
+    player = d.Player(4, 4, 1, d.LP_INIT)
+    spawned = monster(10, 10)
+    monkeypatch.setattr(stage6, "advance_spawns", lambda *_: (0, spawned))
+    trace = TraceRecorder(params={})
+    trace.begin_turn("R")
+    game_engine._step((1, 0), [current], player, [0], [(4, 4)], Counter(), 9,
+                      stage_num=6, trace=trace)
+    trace.commit_turn()
+    assert trace.turns[0]["world"] == [{
+        "type": "spawn", "kind": "monster", "id": "a", "at": [10, 10], "floor": 0,
+    }]
+
+
+def test_stage_setup_performs_fifty_regular_spawn_draws(monkeypatch):
+    original = stage6.advance_spawns
+    draws = []
+
+    def record(floors, player, floor_index, turn):
+        draws.append((floor_index, turn))
+        return original(floors, player, floor_index, turn)
+
+    monkeypatch.setattr(stage6, "advance_spawns", record)
+    floors, _ = stage6.build()
+    assert draws == [(0, (i + 1) * d.STAGE6_SPAWN_INTERVAL - 1)
+                     for i in range(d.STAGE6_INITIAL_SPAWN_DRAWS)]
+    assert all(not current.respawn_glows for current in floors)
+
+
+def test_first_floor_amoeba_uses_roster_weight(monkeypatch):
+    pools = []
+    monkeypatch.setattr(stage6.rand, "choice", lambda pool: pools.append(pool[:]) or pool[0])
+    monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10)])
+    assert stage6.spawn_monster(floor(), 0)
+    assert pools[0].count(("a", 1)) == 24
+    assert pools[0].count(("f", 1)) == 4
+
+
+def test_spawn_floor_weights_current_floor_twice(monkeypatch):
+    floors = [floor() for _ in range(3)]
+    player = d.Player(4, 4, 1, d.LP_INIT)
+    selected = []
+    monkeypatch.setattr(stage6, "spawn_monster", lambda current, index, **kw: selected.append(index))
+    for active in range(3):
+        selected.clear()
+        for draw in range(4):
+            monkeypatch.setattr(stage6.rand, "randrange", lambda n: draw)
+            stage6.advance_spawns(floors, player, active, 7)
+        assert selected.count(active) == 2
+        assert all(selected.count(i) == (2 if i == active else 1) for i in range(3))
+
+
+def test_spawn_does_not_place_monster_on_tavern(monkeypatch):
+    current = floor()
+    current.tavern = (10, 10)
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10), (11, 10)])
+    assert not stage6.spawn_monster(current, 0, variant=("a", 1))
+    assert not current.entities

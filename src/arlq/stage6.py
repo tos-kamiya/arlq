@@ -248,7 +248,7 @@ def spawn_monster(current: Floor, floor_index: int, *,
         variant = rand.choice(pool)
     char, rank = variant
     candidates = [point for point in _open_points(current)
-                  if point not in (avoid or set()) and point not in current.decor
+                  if point not in (avoid or set()) and not _in_tavern(current, point)
                   and tile_at(point) not in current.monster_spawn_blocked_rooms]
     positions = stage56.monster_positions(current.entities)
     prefer_neighbors = prefer_adjacent and not isolated and not stage56.special_monster(
@@ -289,16 +289,73 @@ def spawn_monster(current: Floor, floor_index: int, *,
     return False
 
 
-def advance_spawns(floors: list[Floor], player: d.Player, floor_index: int) -> None:
-    """Draw independently on every floor, favoring the active one."""
-    for index, current in enumerate(floors):
-        chance = (d.STAGE6_ACTIVE_SPAWN_CHANCE if index == floor_index
-                  else d.STAGE6_OTHER_SPAWN_CHANCE)
-        if rand.randrange(chance) == 0:
-            avoid = {(player.x, player.y)} if index == floor_index else set()
-            if spawn_monster(current, index, avoid=avoid):
-                monster = current.entities[-1]
-                current.respawn_glows[monster.x, monster.y] = d.RESPAWN_GLOW_TURNS
+def advance_monster_movement(
+    floors: list[Floor], player: d.Player, floor_index: int, turn: int,
+) -> tuple[int, d.Monster, d.Point] | None:
+    """Try to move one randomly selected solo monster at fixed intervals."""
+    if (turn + 1) % d.STAGE6_MONSTER_MOVE_INTERVAL:
+        return None
+    monsters = [(index, entity) for index, current in enumerate(floors)
+                for entity in current.entities
+                if isinstance(entity, d.Monster) and entity.active
+                and not isinstance(entity, d.Collapse) and not entity.tribe.is_elf]
+    if not monsters:
+        return None
+    index, monster = rand.choice(monsters)
+    current = floors[index]
+    if len(stage56.monster_party(current, monster)) != 1:
+        return None
+    occupied = {(entity.x, entity.y) for entity in current.entities}
+    player_position = (player.x, player.y) if index == floor_index else None
+    if player_position is not None:
+        occupied.add(player_position)
+    reserved = current.collapse_landings | set().union(*(
+        d.collapse_footprint((entity.x, entity.y)) for entity in current.entities
+        if isinstance(entity, d.Collapse)
+    ))
+    own_barriers = set(stage56.barrier_cells(current, monster))
+    other_barriers = {point for entity in current.entities
+                      if isinstance(entity, d.Monster) and entity is not monster and entity.active
+                      for point in stage56.barrier_cells(current, entity)}
+    old = (monster.x, monster.y)
+    candidates = []
+    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+        x, y = monster.x + dx, monster.y + dy
+        point = (x, y)
+        if (not 0 <= y < len(current.field) or not 0 <= x < len(current.field[y])
+                or point in occupied or point in reserved or _in_tavern(current, point)):
+            continue
+        cell = current.field[y][x]
+        own_barrier = (cell == d.CHAR_BARRIER and point in own_barriers
+                       and point not in other_barriers and point not in current.persistent_barriers)
+        if cell == d.CHAR_FLOOR or own_barrier:
+            candidates.append(point)
+    if not candidates:
+        return None
+    monster.x, monster.y = rand.choice(candidates)
+    if monster.tribe.char == "k":
+        monster.arrow_marks.clear()
+    if old in current.respawn_glows:
+        current.respawn_glows[(monster.x, monster.y)] = current.respawn_glows.pop(old)
+    stage56.update_moved_monster_barriers(current, monster, old, player_position)
+    return index, monster, old
+
+
+def advance_spawns(
+    floors: list[Floor], player: d.Player, floor_index: int, turn: int,
+) -> tuple[int, d.Monster] | None:
+    """Attempt a spawn at fixed intervals, favoring the player's floor."""
+    if (turn + 1) % d.STAGE6_SPAWN_INTERVAL:
+        return None
+    draw = rand.randrange(len(floors) + 1)
+    index = floor_index if draw == len(floors) else draw
+    current = floors[index]
+    avoid = {(player.x, player.y)} if index == floor_index else set()
+    if spawn_monster(current, index, avoid=avoid):
+        monster = current.entities[-1]
+        current.respawn_glows[monster.x, monster.y] = d.RESPAWN_GLOW_TURNS
+        return index, monster
+    return None
 
 
 def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
@@ -360,10 +417,11 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         )
         available_rooms = sorted(set().union(*room_components))
         blocked_count = (len(available_rooms) * d.STAGE6_SPAWN_BLOCKED_PERCENT + 50) // 100
+        block_candidates = available_rooms.copy()
         for _ in range(blocked_count):
-            current.monster_spawn_blocked_rooms.add(
-                available_rooms.pop(rand.randrange(len(available_rooms)))
-            )
+            room = block_candidates.pop(rand.randrange(len(block_candidates)))
+            current.monster_spawn_blocked_rooms.add(room)
+            available_rooms.remove(room)
         low_count = len(available_rooms) // 2
         for _ in range(low_count):
             room = available_rooms.pop(rand.randrange(len(available_rooms)))
@@ -479,7 +537,6 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
             floors[-1].field[y][x] = d.CHAR_FLOOR
     for x, y in boss_entrance:
         floors[-1].field[y][x] = d.CHAR_FLOOR
-    floors[-1].respawn_exclusions.difference_update(boss_reserved)
     player = d.Player(*floors[0].up, 1, d.LP_INIT)
     player.stage6_candidates = True
     radius = _tavern_known_radius()
@@ -495,6 +552,12 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     _mark_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
     for current in floors:
         stage56.initialize_monster_barriers(current)
+    for draw in range(d.STAGE6_INITIAL_SPAWN_DRAWS):
+        turn = (draw + 1) * d.STAGE6_SPAWN_INTERVAL - 1
+        advance_spawns(floors, player, 0, turn)
+    for current in floors:
+        current.respawn_glows.clear()
+    floors[-1].respawn_exclusions.difference_update(boss_reserved)
     player.rescue_stage = True
     player.treasure_stage = True
     return floors, player

@@ -1722,6 +1722,7 @@ def test_stage6_uses_centered_narrow_sections_without_changing_field_size():
 @pytest.mark.parametrize("stage_num", [5, 6])
 def test_cat_explores_after_twenty_turns_without_identifying_or_stopping(monkeypatch, stage_num):
     monkeypatch.setattr(stage6, "advance_spawns", lambda *_args: None)
+    monkeypatch.setattr(stage6, "advance_monster_movement", lambda *_args: None)
     current, player = state((d.MEMBER_YAWNING_CAT,))
     enemy = monster(10, 6, "b")
     waiting = d.PartyMember(11, 6, d.MEMBER_HEALER)

@@ -192,7 +192,7 @@ Note on the Loop Fairy: The destination becomes the new anchor, and subsequent r
 
 In addition to the monsters from Stage 1 except for Dragon, the following appear:
 
-Stage 2 also features empowered Bison (`b'`). Stage 6 features Buffalo (`B`) alongside Bison (`b`); on floor 3, Buffalo appear as empowered `B'`. Floor 1 has 16 `a`, five `b`, and two `f` party leaders; floors 2–3 each have one `a'` and five empowered Bison (`b'`) party leaders. Floor 1 also has an additional solitary `b`. Floors 2–3 also each have one normal `f` and one empowered `f'` as party leaders.
+Stage 2 also features empowered Bison (`b'`). Stage 6 has Bison and Buffalo variants whose ranks vary by floor.
 
 | Display & Name      | Description                                                                                                             |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -282,7 +282,7 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the tavern and face monsters that also form parties. Returning to the floor 1 tavern restores LP to 50 if it is lower. Follow the route markers, defeat the empowered Fire Drake (`F'`) on the final floor, and claim the treasure.
 
-Each floor starts with a number of monsters, including a sword-carrying `c`. More appear over time, especially on the current floor, and stronger types appear on deeper floors. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
+Each floor starts with monsters, including a sword-carrying `c`; 50 additional spawn draws are made during setup. Every 8 turns, a spawn is attempted on a randomly selected floor, with the current floor twice as likely as each other floor. Every 8 turns, one existing monster is selected across all floors and moves one cell if it is alone and can move. Stronger types appear on deeper floors. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
 
 #### Party members
 

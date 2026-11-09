@@ -13,7 +13,7 @@ def test_three_floor_dungeon(seed):
     for floor in floors:
         monsters = [e for e in floor.entities if isinstance(e, d.Monster)
                     and e.active and not isinstance(e, d.Collapse)]
-        assert d.STAGE6_INITIAL_MONSTERS // 2 <= len(monsters) <= d.STAGE6_INITIAL_MONSTERS + len(d.STAGE6_BOSS_PARTY)
+        assert len(monsters) >= d.STAGE6_INITIAL_MONSTERS // 2
         if floor.room_components and len(floor.room_components) == 2:
             detached = next(component for component in floor.room_components if len(component) == 1)
             isolated = [e for e in monsters if stage6.tile_at((e.x, e.y)) in detached]
