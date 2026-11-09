@@ -3818,14 +3818,21 @@ def ivy(x, y):
     bottom, narrowing to a waist, then flaring at the top, where their tips
     curl out like tentacles about to reach out.
 
-    The leaves are a waxy, glaucous blue-green, opaque and darker than the
-    glowing green of the fairies; the swollen foot is a dark brown.
+    As the stalks move and strike, they look muscular: each is a bundle of
+    twisted muscle strands swelling here and there, in a wet dark wine-red
+    flesh, as is the foot. The leaflets are a poisonous acid yellow-green
+    with dark maroon spots, apart from the glowing green of the fairies, the
+    matte brick red of the caltrop plant and the violet of the spore.
     """
-    leaf = textured(material('Ivy glaucous leaves', (0.07, 0.20, 0.15), 0.05, 0.55,
-                             rim=(0.55, 0.95, 0.85), rim_strength=0.9, coat=0.1),
-                    40, 0.08)
-    bulb = material('Ivy dark swollen foot', (0.10, 0.07, 0.05), 0.05, 0.5,
-                    rim=(0.7, 0.8, 0.6), rim_strength=0.5, coat=0.2)
+    leaf = amphibian_skin('Ivy acid leaflets', (0.38, 0.62, 0.02), (0.12, 0.03, 0.04),
+                          spots=40.0, transmission=0.1, rim=(0.85, 1.0, 0.3),
+                          rim_strength=0.9)
+    bulb = textured(material('Ivy wine-red muscle', (0.22, 0.02, 0.05), 0.0, 0.3,
+                             rim=(1.0, 0.45, 0.5), rim_strength=0.8, coat=0.7),
+                    30, 0.05, 'noise')
+    flesh = bulb.node_tree.nodes['Principled BSDF']
+    flesh.inputs['Subsurface Weight'].default_value = 0.25
+    flesh.inputs['Subsurface Radius'].default_value = (0.1, 0.03, 0.03)
     # The leaves' joined foot swells a little just above the floor.
     tube('Ivy swollen foot', [(x, y, -0.02), (x, y, 0.02), (x, y, 0.07), (x, y, 0.13),
                               (x, y, 0.19), (x, y, 0.24)],
@@ -3905,11 +3912,22 @@ def ivy(x, y):
             bend -= sway * math.sin(math.radians(phase))
             centre.append(Vector((x, y, 0)) + radial * r + side * bend + up * z)
             widths.append(max(w, 0.0))
-        # A thick fleshy stalk like a leaf's midrib, thickest at the foot and
-        # thinning toward the curled tip, so it reads as a tentacle.
-        tube('Ivy stalk', [tuple(c) for c in centre],
-             [0.05 * (1 - k / steps) ** 1.2 + 0.006 for k in range(steps + 1)], leaf,
+        # A thick stalk like a leaf's midrib, thickest at the foot and
+        # thinning toward the curled tip, so it reads as a tentacle: a core
+        # wrapped in three twisted muscle strands, each swelling in its own
+        # places like flexed muscles.
+        radii = [0.05 * (1 - k / steps) ** 1.2 + 0.006 for k in range(steps + 1)]
+        tube('Ivy stalk core', [tuple(c) for c in centre], [0.75 * r for r in radii], bulb,
              sides=12, smooth=True, up=[tuple(side)] * (steps + 1))
+        for j in range(3):
+            points, sizes = [], []
+            for k, (c, n, r) in enumerate(zip(centre, normals, radii)):
+                f = k / steps
+                turn = 2 * math.pi * (j / 3 + 1.2 * f)
+                points.append(tuple(c + (side * math.cos(turn) + n * math.sin(turn)) * (0.42 * r)))
+                sizes.append(0.58 * r * (1 + 0.2 * math.sin(2 * math.pi * (2.5 * f + j / 3))))
+            tube('Ivy stalk muscle', points, sizes, bulb, sides=10, smooth=True,
+                 up=[tuple(side)] * (steps + 1))
         # Many small pointed leaflets along both sides of the stalk, slanting
         # toward its tip, longer where the old leaf was wide.
         verts, faces = [], []
