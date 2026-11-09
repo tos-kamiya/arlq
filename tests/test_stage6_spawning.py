@@ -244,29 +244,29 @@ def test_generated_section_rates_partition_available_rooms():
         assert abs(list(rates.values()).count(40) - list(rates.values()).count(60)) <= 1
 
 
-def test_tavern_restores_only_on_entry_and_preserves_higher_lp():
+def test_bridgehead_restores_only_on_entry_and_preserves_higher_lp():
     first, second = floor(), floor()
-    first.tavern = (10, 10)
+    first.bridgehead = (10, 10)
     player = d.Player(10, 10, 1, 25)
-    stage6.recover_at_tavern([first, second], player, 0, 0, (9, 10))
+    stage6.recover_at_bridgehead([first, second], player, 0, 0, (9, 10))
     assert player.lp == 50
     player.lp = 90
-    stage6.recover_at_tavern([first, second], player, 0, 0, (9, 10))
+    stage6.recover_at_bridgehead([first, second], player, 0, 0, (9, 10))
     assert player.lp == 90
     player.lp = 20
-    stage6.recover_at_tavern([first, second], player, 0, 0, (11, 10))
+    stage6.recover_at_bridgehead([first, second], player, 0, 0, (11, 10))
     assert player.lp == 20
-    stage6.recover_at_tavern([first, second], player, 1, 1, (9, 10))
+    stage6.recover_at_bridgehead([first, second], player, 1, 1, (9, 10))
     assert player.lp == 20
-    stage6.recover_at_tavern([first, second], player, 0, 1, (10, 10))
+    stage6.recover_at_bridgehead([first, second], player, 0, 1, (10, 10))
     assert player.lp == 50
 
 
-def test_tavern_healing_persists_after_leaving_in_game_loop(monkeypatch):
+def test_bridgehead_healing_persists_after_leaving_in_game_loop(monkeypatch):
     from types import SimpleNamespace
 
     current = floor()
-    current.tavern = (10, 10)
+    current.bridgehead = (10, 10)
     current.seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
     player = d.Player(9, 10, 1, 25)
     monkeypatch.setattr(stage6, "build", lambda *_: ([current], player))
@@ -286,12 +286,12 @@ def test_tavern_healing_persists_after_leaving_in_game_loop(monkeypatch):
     assert len(trace.turns) == 3
 
 
-def test_tavern_entry_clears_overshoot_history_without_healing(monkeypatch):
+def test_bridgehead_entry_clears_overshoot_history_without_healing(monkeypatch):
     from types import SimpleNamespace
     from arlq.trace import TraceRecorder
 
     current = floor()
-    current.tavern = (10, 10)
+    current.bridgehead = (10, 10)
     current.seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
     player = d.Player(9, 10, 1, 90)
     monkeypatch.setattr(stage6, "build", lambda *_: ([current], player))
@@ -365,9 +365,9 @@ def test_spawn_floor_weights_current_floor_twice(monkeypatch):
         assert all(selected.count(i) == (2 if i == active else 1) for i in range(3))
 
 
-def test_spawn_does_not_place_monster_on_tavern(monkeypatch):
+def test_spawn_does_not_place_monster_on_bridgehead(monkeypatch):
     current = floor()
-    current.tavern = (10, 10)
+    current.bridgehead = (10, 10)
     monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10), (11, 10)])
     assert not stage6.spawn_monster(current, 0, variant=("a", 1))
     assert not current.entities

@@ -47,21 +47,21 @@ def test_member_rewards_and_knight():
     assert d.current_player_attack(player) == 41
 
 
-def test_tavern_neighborhood_is_initially_mapped():
+def test_bridgehead_neighborhood_is_initially_mapped():
     from arlq.arlq import iterate_ellipse_points
 
     floors, _ = stage6.build()
     horizontal_radius = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
     vortex_radius = round(horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO)
-    radius = round(vortex_radius * d.STAGE6_TAVERN_KNOWN_VORTEX_RATIO)
+    radius = round(vortex_radius * d.STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO)
     assert radius == 4
     assert round(radius * d.FOV_WIDTH_EXPANSION_RATIO) == 6
     floor = floors[0]
     expected = set(iterate_ellipse_points(
-        *floor.tavern, radius, d.FOV_WIDTH_EXPANSION_RATIO
+        *floor.bridgehead, radius, d.FOV_WIDTH_EXPANSION_RATIO
     ))
     actual = {(x, y) for y, row in enumerate(floor.seen)
               for x, seen in enumerate(row) if seen}
     assert actual == expected
-    assert all(floor.tavern is None and not any(map(any, floor.seen))
+    assert all(floor.bridgehead is None and not any(map(any, floor.seen))
                for floor in floors[1:])

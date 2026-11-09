@@ -306,15 +306,15 @@ def test_stage6_departed_member_does_not_reappear():
     )
 
 
-def test_stage6_candidates_start_near_first_floor_tavern():
+def test_stage6_candidates_start_near_first_floor_bridgehead():
     for seed in range(5):
         engine.rand.set_seed(seed)
         floors, player = stage6.build()
         first = floors[0]
-        x, y = first.tavern
+        x, y = first.bridgehead
         for dx, char in enumerate("/\\"):
-            assert first.decor[y][x + dx] == d.DECOR_TAVERN_PREFIX + char
-        assert all(floor.tavern is None for floor in floors[1:])
+            assert first.decor[y][x + dx] == d.DECOR_BRIDGEHEAD_PREFIX + char
+        assert all(floor.bridgehead is None for floor in floors[1:])
         members = [(index, e) for index, floor in enumerate(floors)
                    for e in floor.entities if isinstance(e, d.PartyMember)]
         assert len(members) == 4
@@ -420,7 +420,7 @@ def test_stage6_new_route_scatter_including_pit_climb(monkeypatch):
     assert floor_index == [1] and calls == [0]
 
 
-def test_stage6_departed_members_return_to_first_floor_tavern():
+def test_stage6_departed_members_return_to_first_floor_bridgehead():
     floors, player = stage6.build()
     member = next(e for e in floors[0].entities if isinstance(e, d.PartyMember))
     stage56.recruit(floors[0], player, member)
@@ -429,7 +429,7 @@ def test_stage6_departed_members_return_to_first_floor_tavern():
 
     assert member in floors[0].entities and member.origin_floor == 0
     assert member.role not in player.known_member_floors
-    x, y = floors[0].tavern
+    x, y = floors[0].bridgehead
     assert abs(member.x - x) + abs(member.y - y) <= 7
 
 

@@ -2462,10 +2462,10 @@ def run_game(
         turn += 1
         player.lp -= d.movement_lp_cost(player)
         if stage_num == 6 and not isinstance(step_result, _RewindRequest):
-            entered_tavern = stage6.recover_at_tavern(
+            entered_bridgehead = stage6.recover_at_bridgehead(
                 floors, player, floor[0], floor_before_step, point_before_step
             )
-            if trace is not None and entered_tavern:
+            if trace is not None and entered_bridgehead:
                 trace.clear_overshoot_history()
         if trace is not None:
             trace.set_turn_end_lp(player.lp)

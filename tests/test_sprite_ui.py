@@ -1831,13 +1831,22 @@ def test_cat_member_uses_its_sprite(sprite_ui):
     assert len(ui.outlines) == 1
 
 
-def test_tavern_parts_are_aligned_and_dim_when_explored(sprite_ui):
+def test_ivy_uses_its_sprite(sprite_ui):
+    assert SPRITE_FILES['i'] == 'ivy.png'
+    sprite_ui._draw_field_text((4, 5), 'i', (220, 82, 82), True)
+    assert sprite_ui._drawables[0].image is sprite_ui._sprite_images['i']
+
+
+def test_bridgehead_parts_are_aligned_and_dim_when_explored(sprite_ui):
     ui = sprite_ui
-    ui._tavern_images = {part: SimpleNamespace(width=320, height=620) for part in ('/', '\\')}
-    ui._draw_tavern((4, 5), '/', True)
-    ui._draw_tavern((5, 5), '\\', False)
+    ui._bridgehead_under = 0.4
+    ui._bridgehead_height = 1.75
+    ui._bridgehead_images = {part: SimpleNamespace(width=320, height=620) for part in ('/', '\\')}
+    ui._draw_bridgehead((4, 5), '/', True)
+    ui._draw_bridgehead((5, 5), '\\', False)
     left, right = ui._drawables
     assert right.x == left.x + ui.cell_size_x
-    assert left.scale_y * left.image.height == pytest.approx(1.55 * ui.cell_size_y)
+    assert left.scale_y * left.image.height == pytest.approx(1.75 * ui.cell_size_y)
+    assert left.y == pytest.approx(ui.window_height - 6.4 * ui.cell_size_y)
     assert left.color == (255, 255, 255)
     assert right.color == (140, 140, 140)

@@ -116,7 +116,7 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "adjacent_monster_exemptions",
         "room_components",
         "decor",
-        "tavern",
+        "bridgehead",
         "player_respawn_glow",
         "respawn_glows",
     }

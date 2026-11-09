@@ -1076,7 +1076,7 @@ class PygletUI:
     def _draw_d_gate(self, pos: d.Point, glyph: str):
         self._draw_field_text(pos, glyph, COLOR_MAP[CI_GREEN], bold=True)
 
-    def _draw_tavern(self, pos, part, visible):
+    def _draw_bridgehead(self, pos, part, visible):
         self._draw_field_text(pos, part, COLOR_MAP[CI_YELLOW], bold=True)
 
     def _draw_boss_route_marker(self, pos, visible: bool, under_player: bool) -> None:
@@ -1298,8 +1298,8 @@ class PygletUI:
 
         for y, row in enumerate(decor or ()):
             for x, value in enumerate(row):
-                if value.startswith(d.DECOR_TAVERN_PREFIX) and torched[y][x]:
-                    self._draw_tavern((x, y), value[len(d.DECOR_TAVERN_PREFIX):],
+                if value.startswith(d.DECOR_BRIDGEHEAD_PREFIX) and torched[y][x]:
+                    self._draw_bridgehead((x, y), value[len(d.DECOR_BRIDGEHEAD_PREFIX):],
                                       bool(cur_torched[y][x]))
                 elif (value in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
                         and torched[y][x] and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)):

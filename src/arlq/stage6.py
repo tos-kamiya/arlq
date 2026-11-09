@@ -269,7 +269,7 @@ def spawn_monster(current: Floor, floor_index: int, *,
         variant = rand.choice(pool)
     char, rank = variant
     candidates = [point for point in _open_points(current)
-                  if point not in (avoid or set()) and not _in_tavern(current, point)
+                  if point not in (avoid or set()) and not _in_bridgehead(current, point)
                   and tile_at(point) not in current.monster_spawn_blocked_rooms]
     positions = stage56.monster_positions(current.entities)
     prefer_neighbors = prefer_adjacent and not isolated and not stage56.special_monster(
@@ -336,7 +336,7 @@ def advance_monster_movement(
             x, y = monster.x + dx, monster.y + dy
             point = (x, y)
             if (not 0 <= y < len(current.field) or not 0 <= x < len(current.field[y])
-                    or point in occupied or point in reserved or _in_tavern(current, point)
+                    or point in occupied or point in reserved or _in_bridgehead(current, point)
                     or not _can_join_at(current, monster, point)):
                 continue
             cell = current.field[y][x]
@@ -554,15 +554,15 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
         floors[-1].field[y][x] = d.CHAR_FLOOR
     player = d.Player(*floors[0].up, 1, d.LP_INIT)
     player.stage6_candidates = True
-    radius = _tavern_known_radius()
+    radius = _bridgehead_known_radius()
     current = floors[0]
-    _place_tavern(current, current.up)
+    _place_bridgehead(current, current.up)
     for x, y in iterate_ellipse_points(
-        *current.tavern, radius, d.FOV_WIDTH_EXPANSION_RATIO
+        *current.bridgehead, radius, d.FOV_WIDTH_EXPANSION_RATIO
     ):
         current.seen[y][x] = 1
     for role in member_roles:
-        point = _candidate_near_tavern(current, current.up)
+        point = _candidate_near_bridgehead(current, current.up)
         current.entities.append(d.PartyMember(*point, role, origin_floor=0))
     _mark_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
     for current in floors:
@@ -578,13 +578,13 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     return floors, player
 
 
-def _tavern_known_radius() -> int:
+def _bridgehead_known_radius() -> int:
     horizontal_radius = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
     vortex_radius = round(horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO)
-    return round(vortex_radius * d.STAGE6_TAVERN_KNOWN_VORTEX_RATIO)
+    return round(vortex_radius * d.STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO)
 
 
-def _place_tavern(current: Floor, anchor: d.Point) -> None:
+def _place_bridgehead(current: Floor, anchor: d.Point) -> None:
     reachable = _reachable_floor_points(current, anchor)
     open_points = set(_open_points(current)) & reachable
     choices = [
@@ -592,45 +592,45 @@ def _place_tavern(current: Floor, anchor: d.Point) -> None:
         if all((x + dx, y) in open_points for dx in range(2))
     ]
     if not choices:
-        raise RuntimeError("no space for stage 6 tavern")
+        raise RuntimeError("no space for stage 6 bridgehead")
     x, y = min(choices, key=lambda p: (abs(p[0] - anchor[0]) + abs(p[1] - anchor[1]), p))
-    current.tavern = (x, y)
+    current.bridgehead = (x, y)
     for dx, char in enumerate("/\\"):
-        current.decor[y][x + dx] = d.DECOR_TAVERN_PREFIX + char
+        current.decor[y][x + dx] = d.DECOR_BRIDGEHEAD_PREFIX + char
 
 
-def _candidate_near_tavern(
+def _candidate_near_bridgehead(
     current: Floor, anchor: d.Point, excluded: d.Point | None = None
 ) -> d.Point:
-    tavern = current.tavern or anchor
+    bridgehead = current.bridgehead or anchor
     reachable = _reachable_floor_points(current, anchor)
     points = [p for p in _open_points(current) if p in reachable and p != excluded
-              and not _in_tavern(current, p)]
+              and not _in_bridgehead(current, p)]
     if not points:
-        raise RuntimeError("no space near stage 6 tavern")
-    nearby = [p for p in points if abs(p[0] - tavern[0]) + abs(p[1] - tavern[1]) <= 7]
+        raise RuntimeError("no space near stage 6 bridgehead")
+    nearby = [p for p in points if abs(p[0] - bridgehead[0]) + abs(p[1] - bridgehead[1]) <= 7]
     if nearby:
         return rand.choice(nearby)
-    return min(points, key=lambda p: (abs(p[0] - tavern[0]) + abs(p[1] - tavern[1]), p))
+    return min(points, key=lambda p: (abs(p[0] - bridgehead[0]) + abs(p[1] - bridgehead[1]), p))
 
 
-def _in_tavern(current: Floor, point: d.Point) -> bool:
-    if current.tavern is None:
+def _in_bridgehead(current: Floor, point: d.Point) -> bool:
+    if current.bridgehead is None:
         return False
-    x, y = current.tavern
+    x, y = current.bridgehead
     return x <= point[0] < x + 2 and point[1] == y
 
 
-def recover_at_tavern(
+def recover_at_bridgehead(
     floors: list[Floor], player: d.Player, floor_index: int,
     previous_floor: int, previous_point: d.Point,
 ) -> bool:
-    """Restore LP on entry and report whether the player entered the tavern."""
+    """Restore LP on entry and report whether the player entered the bridgehead."""
     entered = (floor_index == 0
-               and _in_tavern(floors[0], (player.x, player.y))
-               and (previous_floor != 0 or not _in_tavern(floors[0], previous_point)))
+               and _in_bridgehead(floors[0], (player.x, player.y))
+               and (previous_floor != 0 or not _in_bridgehead(floors[0], previous_point)))
     if entered:
-        player.lp = max(player.lp, d.STAGE6_TAVERN_RECOVERY_LP)
+        player.lp = max(player.lp, d.STAGE6_BRIDGEHEAD_RECOVERY_LP)
     return entered
 
 
@@ -679,7 +679,7 @@ def _mark_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None
     for index, (x, y) in route[::3]:
         if index == len(floors) - 1:
             continue
-        if floors[index].decor[y][x] == d.DECOR_NONE and not _in_tavern(floors[index], (x, y)):
+        if floors[index].decor[y][x] == d.DECOR_NONE and not _in_bridgehead(floors[index], (x, y)):
             floors[index].decor[y][x] = d.DECOR_BOSS_ROUTE
 
 
@@ -747,7 +747,7 @@ def scatter_waiting_members(floors, player, player_floor):
             reserved = set(current.up_stairs) | set(current.down_stairs)
             points = [point for point in _open_points(current)
                       if point in reachable and point not in reserved
-                      and not _in_tavern(current, point)
+                      and not _in_bridgehead(current, point)
                       and (index != player_floor or point != (player.x, player.y))]
             if points:
                 options.append((index, points))
@@ -768,7 +768,7 @@ def relocate_candidates(floors, player, candidates, player_floor=None):
             continue
         current = floors[0]
         excluded = (player.x, player.y) if player_floor == 0 else None
-        member.x, member.y = _candidate_near_tavern(current, current.up, excluded)
+        member.x, member.y = _candidate_near_bridgehead(current, current.up, excluded)
         member.origin_floor = 0
         player.known_member_floors.pop(member.role, None)
         current.entities.append(member)

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 6.5.1 - 2026-11-10
+
+- Replace the Stage 6 tavern with a bridgehead and its new sprite artwork;
+  add Ivy artwork and refine the Caltrop Plant sprite.
+- Add Ivy to Stage 6, adjust Wyrm experience and encounters, and revise monster
+  spawning, movement, and party formation.
+- Scatter unrecruited members after changing floors by a different staircase
+  or pit, and preserve sword drops when defeating monster parties.
+
 ## 6.5.0 - 2026-11-10
 
 - Redesign Stage 6 as a three-floor dungeon with periodically spawning and

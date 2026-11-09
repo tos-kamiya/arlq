@@ -244,7 +244,7 @@ Rogue の服とズボンは青みのある黒に近い色にし、縁の光で�
 
 ### ステージ6の橋頭堡
 
-ステージ6の酒場（床の横2マスの飾り）を、酒場ではなく橋頭堡として描く試作。画像 `src/arlq/assets/bridgehead/bridgehead.png` と `bridgehead.json` を `build-bridgehead.py` で作る（ゲームへの組み込みはまだ）。カメラ・回転（`YAW`）・2マスへの合わせ方・`bridgehead.json` の書き出しは、下の酒場と同じ。
+ステージ6の酒場（床の横2マスの飾り）を、酒場ではなく橋頭堡として描く試作。画像 `src/arlq/assets/bridgehead/bridgehead.png` と `bridgehead.json` を `build-bridgehead.py` で作り、ゲームで使用する。カメラ・回転（`YAW`）・2マスへの合わせ方・`bridgehead.json` の書き出しは、下の酒場と同じ。
 
 ```bash
 blender --background --threads 4 --python dev-samples/3d-stage1/build-bridgehead.py

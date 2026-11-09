@@ -128,7 +128,7 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
         else:
             player.lp -= d.movement_lp_cost(player)
             if replay.stage_num == 6:
-                stage6.recover_at_tavern(
+                stage6.recover_at_bridgehead(
                     floors, player, floor[0], previous_floor, previous_point
                 )
         if index + 1 in replay.ration_uses:

@@ -1,5 +1,6 @@
 """Pyglet frontend with character sprites and the original text fallback."""
 
+import json
 import math
 import random
 import time
@@ -741,14 +742,17 @@ class SpriteUI(PygletUI):
         self._terrain_images = {char: mipmapped(pyglet.image.load(str(assets / filename)))
                                 for char, filename in TERRAIN_FILES.items()
                                 if (assets / filename).is_file()}
-        tavern_path = assets / 'tavern' / 'tavern.png'
-        if tavern_path.is_file():
-            tavern = mipmapped(pyglet.image.load(str(tavern_path)))
-            half = tavern.width // 2
-            self._tavern_images = {part: tavern.get_region(i * half, 0, half, tavern.height)
-                                   for i, part in enumerate(('/', '\\'))}
+        bridgehead_path = assets / 'bridgehead' / 'bridgehead.png'
+        if bridgehead_path.is_file():
+            placement = json.loads((bridgehead_path.parent / 'bridgehead.json').read_text())
+            self._bridgehead_under = placement['under']
+            self._bridgehead_height = 1 + placement['under'] + placement['overhang']
+            bridgehead = mipmapped(pyglet.image.load(str(bridgehead_path)))
+            half = bridgehead.width // 2
+            self._bridgehead_images = {part: bridgehead.get_region(i * half, 0, half, bridgehead.height)
+                                       for i, part in enumerate(('/', '\\'))}
         else:
-            self._tavern_images = {}
+            self._bridgehead_images = {}
         self._terrain_regions = {}
         self._route_mark_image = (mipmapped(pyglet.image.load(str(assets / ROUTE_MARK_FILE)))
                                   if (assets / ROUTE_MARK_FILE).is_file() else None)
@@ -1205,19 +1209,19 @@ class SpriteUI(PygletUI):
             pos, char, 'column' if char == d.CHAR_STAIRS_UP else 'wall'
         )
 
-    def _draw_tavern(self, pos, part, visible):
-        image = self._tavern_images.get(part)
+    def _draw_bridgehead(self, pos, part, visible):
+        image = self._bridgehead_images.get(part)
         if image is None:
-            return super()._draw_tavern(pos, part, visible)
+            return super()._draw_bridgehead(pos, part, visible)
         x, y = pos
         left = self._field_col_x(x)
-        bottom = self.window_height - (y + 1) * self.cell_size_y
+        bottom = self.window_height - (y + 1 + self._bridgehead_under) * self.cell_size_y
         scale_x = self.cell_size_x / image.width
-        scale_y = 1.55 * self.cell_size_y / image.height
+        scale_y = self._bridgehead_height * self.cell_size_y / image.height
         shade = 1 if visible else TERRAIN_EXPLORED_SHADE
         tint = self._display_color((round(255 * shade),) * 3)
         group = self._row_group(y, 'column')
-        signature = ('terrain-cell', 'tavern', x, y, id(image), bottom,
+        signature = ('terrain-cell', 'bridgehead', x, y, id(image), bottom,
                      scale_x, scale_y, id(group), tint)
         sprite = self._draw_bounded_object(
             left, image.width * scale_x, signature,
