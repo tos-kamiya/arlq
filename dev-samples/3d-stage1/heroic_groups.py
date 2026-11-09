@@ -10,7 +10,7 @@ from pathlib import Path
 HEROIC = Path(__file__).resolve().parent / 'heroic'
 GROUPS = ('monsters', 'members', 'others')
 MONSTERS = {'a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'F', 'f', 'g', 'rock', 'X', 'e', 'E',
-            'w', 'W', 'm', 'k', 'V', 'T', 'T-toy', 'M', "'", '"'}
+            'w', 'W', 'm', 'k', 'V', 'i', 'T', 'T-toy', 'M', "'", '"'}
 # Party member models are named '<job>-<gender>-<tone>', like their sprite
 # files: gender f(emale), m(ale), or n for a job with one build for both;
 # tone l(ight), m(edium) or d(ark) skin.

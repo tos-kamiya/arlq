@@ -75,7 +75,7 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('C', 'RARE CHIMERA'), ('F', 'FIRE DRAKE'), ('g', 'GOLEM'), ('rock', 'GOLEM ROCK'),
          ('X', 'CALTROP PLANT'), ('e', 'EREBUS'), ('w', 'WYRM'), ('W', 'DREAD WYRM'),
          ('E', 'RARE EREBUS'), ('m', 'SPORE'), ('k', 'MARKSMAN'), ('V', 'VORTEX'),
-         ('f', 'FLAME COBRA'), ('B', 'BUFFALO'),
+         ('f', 'FLAME COBRA'), ('B', 'BUFFALO'), ('i', 'IVY'),
          *[(f'{job}-{gender}-m', MEMBER_LABELS[job] + GENDER_LABELS[gender])
            for job, gender in MEMBER_VARIANTS],
          ('cat', 'YAWNING CAT'), ('T-toy', 'TOY CHEST')]
@@ -122,7 +122,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # much (BOVINE_EYE) so these stay as large on screen.
 SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09 * 0.95, 'B': 1.13 * 0.95, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
-         'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
+         'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'i': 1.3, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5,
          '?': 1.3, '!': 1.3, '&': 1.3,
          'ration-hyorogan': 1.4, 'ration-hardtack': 1.3, 'ration-jerky': 1.45,
@@ -3809,6 +3809,108 @@ def caltrop_plant(x, y):
 
 
 
+def ivy(x, y):
+    """Stage 6 ivy (i): four tall, thick tulip-like leaves rising from a
+    slightly swollen foot toward the four cells it strikes (up, down, left
+    and right). Together they make a pitcher-plant silhouette: wide and
+    bulging at the bottom, narrowing to a waist, then flaring at the top,
+    where their tips curl out like tentacles about to reach out.
+
+    The leaves are a waxy, glaucous blue-green, opaque and darker than the
+    glowing green of the fairies; the swollen foot is a dark brown.
+    """
+    leaf = textured(material('Ivy glaucous leaves', (0.07, 0.20, 0.15), 0.05, 0.55,
+                             rim=(0.55, 0.95, 0.85), rim_strength=0.9, coat=0.1),
+                    40, 0.08)
+    bulb = material('Ivy dark swollen foot', (0.10, 0.07, 0.05), 0.05, 0.5,
+                    rim=(0.7, 0.8, 0.6), rim_strength=0.5, coat=0.2)
+    # The leaves' joined foot swells a little just above the floor.
+    tube('Ivy swollen foot', [(x, y, -0.02), (x, y, 0.02), (x, y, 0.07), (x, y, 0.13),
+                              (x, y, 0.19), (x, y, 0.24)],
+         [0.0, 0.15, 0.17, 0.14, 0.08, 0.0], bulb, sides=28, smooth=True)
+    up = Vector((0, 0, 1))
+    # One leaf's path as (distance from the axis, height, half width): it
+    # bulges out low down, narrows to the pitcher's waist, flares at the
+    # mouth and curls its tip out and down.
+    path = [(0.08, 0.04, 0.08), (0.20, 0.16, 0.11), (0.25, 0.32, 0.11), (0.17, 0.52, 0.075),
+            (0.10, 0.70, 0.05), (0.14, 0.88, 0.06), (0.25, 1.00, 0.05), (0.36, 0.99, 0.032),
+            (0.42, 0.90, 0.016), (0.40, 0.81, 0.006), (0.35, 0.79, 0.0)]
+    # (direction in degrees, height scale, radial scale, mouth curl scale).
+    # Roughly the four cardinal directions, each a little different so they
+    # do not read as a badge.
+    leaves = ((-6, 1.0, 1.0, 1.0), (84, 0.92, 0.95, 0.85), (186, 1.06, 1.05, 1.15),
+              (271, 0.96, 0.98, 0.9))
+
+    def catmull(points, samples):
+        points = [points[0], *points, points[-1]]
+        out = []
+        for i in range(1, len(points) - 2):
+            p0, p1, p2, p3 = (Vector(p) for p in points[i - 1:i + 3])
+            for k in range(samples):
+                t = k / samples
+                out.append(0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t
+                                  + (3 * p1 - p0 - 3 * p2 + p3) * t ** 3))
+        out.append(Vector(points[-2]))
+        return out
+
+    steps, across = 40, 9
+    for a, tall, wide, curl in leaves:
+        a = math.radians(a)
+        radial = Vector((math.cos(a), math.sin(a), 0))
+        side = Vector((-math.sin(a), math.cos(a), 0))
+        shaped = []
+        for k, (r, z, w) in enumerate(path):
+            mouth = max(0, k - 5)
+            shaped.append((r * wide * (1 + 0.25 * (curl - 1) * mouth), z * tall, w))
+        dense = catmull(shaped, 12)
+        # Resample evenly along the leaf.
+        lengths = [0.0]
+        for p, q in zip(dense, dense[1:]):
+            lengths.append(lengths[-1] + (q.xy - p.xy).length)
+        samples = []
+        j = 0
+        for k in range(steps + 1):
+            target = lengths[-1] * k / steps
+            while j < len(lengths) - 2 and lengths[j + 1] < target:
+                j += 1
+            f = (target - lengths[j]) / max(lengths[j + 1] - lengths[j], 1e-9)
+            samples.append(dense[j].lerp(dense[j + 1], min(f, 1.0)))
+        centre, normals, widths = [], [], []
+        for k, (r, z, w) in enumerate(samples):
+            r0, z0, _ = samples[max(k - 1, 0)]
+            r1, z1, _ = samples[min(k + 1, steps)]
+            dr, dz = r1 - r0, z1 - z0
+            norm = math.hypot(dr, dz)
+            # The upper face, toward the axis, folded into a channel like a
+            # tulip leaf. The leaves are narrow enough to stay apart, so each
+            # looks free to move on its own.
+            normals.append((radial * -dz + up * dr) / norm)
+            centre.append(Vector((x, y, 0)) + radial * r + up * z)
+            widths.append(max(w, 0.0))
+        verts, faces = [], []
+        for k, (c, n, w) in enumerate(zip(centre, normals, widths)):
+            twist = 0.25 * k / steps
+            s = side * math.cos(twist) + n * math.sin(twist)
+            m = n * math.cos(twist) - side * math.sin(twist)
+            for j in range(across):
+                u = -1 + 2 * j / (across - 1)
+                verts.append(tuple(c + s * (w * u) + m * (w * 0.35 * u * u)))
+        for k in range(steps):
+            for j in range(across - 1):
+                i = k * across + j
+                faces.append((i, i + 1, i + across + 1, i + across))
+        blade = mesh_object('Ivy leaf', verts, faces, leaf, True)
+        solid = blade.modifiers.new('Leaf thickness', 'SOLIDIFY')
+        solid.thickness = 0.025
+        solid.offset = 0
+        # A fleshy midrib behind the leaf, thick at the foot and thinning
+        # toward the tip, so each leaf reads as a tentacle.
+        count = int(steps * 0.85)
+        tube('Ivy leaf midrib', [tuple(c - n * 0.015) for c, n in zip(centre[:count], normals)],
+             [0.045 * (1 - k / count) ** 1.5 + 0.008 for k in range(count)], leaf, sides=12,
+             smooth=True, up=[tuple(side)] * count)
+
+
 def flame_cobra(x, y):
     """A coiled cobra with a fiery hood in the Fire Drake's palette, its
     body built from octagonal tubes like the drake's, subdivided once into
@@ -5046,7 +5148,7 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             '?': lambda x, y: unknown_mark(x, y, '?'), '!': lambda x, y: unknown_mark(x, y, '!'),
             '&': lambda x, y: unknown_mark(x, y, '&'),
             'g': golem, 'w': wyrm, 'W': lambda x, y: wyrm(x, y, True), 'V': vortex, 'k': marksman, 'm': spore, 'f': flame_cobra, 'e': lambda x, y: erebus(x, y, False),
-            'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'p': pegasus,
+            'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'i': ivy, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock,
             'cat': yawning_cat,
