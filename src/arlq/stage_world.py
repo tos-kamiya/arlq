@@ -918,7 +918,9 @@ def _place_collapses(floors: List[Floor], tile_width: int = d.TILE_WIDTH) -> Non
         point = rand.choice(candidates)
         upper, lower = floors[index], floors[index + 1]
         upper.entities.append(d.Collapse(*point))
-        lower.collapse_landings.update(d.collapse_footprint(point))
+        for x, y in d.collapse_footprint(point):
+            if lower.field[y][x] == d.CHAR_FLOOR:
+                lower.field[y][x] = d.CHAR_PIT_LANDING
         used_transitions.add(index)
 
 

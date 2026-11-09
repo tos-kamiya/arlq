@@ -82,7 +82,6 @@ def test_world_discoveries_depend_on_joined_members(rogue, explorer):
     current, player = state(roles)
     current.entities = [monster(3, 2, 'X')]
     current.field[3][2] = d.CHAR_HIDDEN_D_GATE
-    current.d_gates[(2, 3)] = d.CHAR_D_GATE
 
     engine.observe_world([current], player, 0, d.TORCH_RADIUS)
 
@@ -798,7 +797,7 @@ def test_generated_pit_landings_are_floor_for_reported_seed():
         for collapse in (e for e in upper.entities if isinstance(e, d.Collapse)):
             for x, y in d.collapse_footprint((collapse.x, collapse.y)):
                 if upper.field[y][x] == d.CHAR_FLOOR:
-                    assert lower.field[y][x] == d.CHAR_FLOOR
+                    assert lower.field[y][x] == d.CHAR_PIT_LANDING
 
 
 def test_collapse_placement_rejects_wall_below_reachable_pit():
@@ -1208,14 +1207,14 @@ def test_member_trial_pit_lands_on_floor_without_return_stairs():
     assert not upper.scholar_down_stairs
     assert not lower.scholar_up_stairs
     assert fall_point in lower.collapse_landings
-    assert lower.field[fall_point[1]][fall_point[0]] == d.CHAR_FLOOR
+    assert lower.field[fall_point[1]][fall_point[0]] == d.CHAR_PIT_LANDING
     player.x, player.y = pit
     floor, checkpoint = [0], [pit]
     engine._reveal_collapse_pits(floors, 0, collapse)
     engine._step((0, -1), floors, player, floor, checkpoint, Counter(), 1, stage_num=5)
     assert floor == [1]
     assert (player.x, player.y) == fall_point
-    assert lower.field[fall_point[1]][fall_point[0]] == d.CHAR_FLOOR
+    assert lower.field[fall_point[1]][fall_point[0]] == d.CHAR_PIT_LANDING
     assert engine._handle_floor_transition(lower, floors, player, floor, checkpoint) is None
     assert floor == [1]
 

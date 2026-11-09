@@ -361,7 +361,7 @@ def _reveal_collapse_pits(
         ):
             current.field[y][x] = d.CHAR_COLLAPSE
             current.seen[y][x] = 1
-            if lower is not None and lower.field[y][x] == d.CHAR_FLOOR:
+            if lower is not None and lower.field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING):
                 lower.decor[y][x] = (
                     d.DECOR_BOSS_ROUTE_FALLEN_ROCKS
                     if lower.decor[y][x] in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
@@ -474,11 +474,9 @@ def _vortex_rearrange(
                 isinstance(entity, d.Monster)
                 and entity.active
                 and (
-                    isinstance(entity, d.Collapse)
-                    or (
-                        not entity.tribe.is_elf
-                        and entity.tribe.effect != d.EFFECT_VORTEX
-                    )
+                    not isinstance(entity, d.Collapse)
+                    and not entity.tribe.is_elf
+                    and entity.tribe.effect != d.EFFECT_VORTEX
                 )
             )
         )
@@ -544,62 +542,6 @@ def _vortex_rearrange(
             relocated.boss_id = boss_id
 
     for entity in movable:
-        if isinstance(entity, d.Collapse):
-            old_footprint = d.collapse_footprint((entity.x, entity.y))
-            destination = None
-            if lower is not None:
-                occupied = {
-                    (other.x, other.y)
-                    for other in (*current.entities, *lower.entities)
-                } | avoid
-                fixed = {
-                    current.up,
-                    current.down,
-                    *current.up_stairs,
-                    *current.down_stairs,
-                    lower.up,
-                    lower.down,
-                    *lower.up_stairs,
-                    *lower.down_stairs,
-                    *current.scholar_up_stairs,
-                    *current.scholar_down_stairs,
-                    *lower.scholar_up_stairs,
-                    *lower.scholar_down_stairs,
-                }
-                for point in sorted(affected_points, key=lambda item: (item[1], item[0])):
-                    footprint = d.collapse_footprint(point)
-                    if (
-                        footprint & reserved_collapse_cells
-                        or footprint & occupied
-                        or footprint & fixed
-                    ):
-                        continue
-                    if (
-                        current.field[point[1]][point[0]] != d.CHAR_FLOOR
-                        or lower.field[point[1]][point[0]] != d.CHAR_FLOOR
-                    ):
-                        continue
-                    if not d.collapse_placement_cells_valid(
-                        point, current.field, lower.field
-                    ):
-                        continue
-                    destination = point
-                    break
-            if destination is None:
-                current.entities.append(entity)
-                continue
-
-            entity.x, entity.y = destination
-            current.entities.append(entity)
-            new_footprint = d.collapse_footprint(destination)
-            reserved_collapse_cells.difference_update(old_footprint)
-            reserved_collapse_cells.update(new_footprint)
-            avoid.update(new_footprint)
-            if lower is not None:
-                lower.collapse_landings.difference_update(old_footprint)
-                lower.collapse_landings.update(new_footprint)
-            continue
-
         if bounded_relocation:
             reserved = avoid | reserved_collapse_cells | set(
                 current.up_stairs + current.down_stairs
@@ -1449,7 +1391,7 @@ def _handle_floor_transition(
     point = (player.x, player.y)
     if (
         floor[0] > 0
-        and current.field[player.y][player.x] == d.CHAR_SCHOLAR_STAIRS_UP
+        and current.field[player.y][player.x] in (d.CHAR_PIT_LANDING, d.CHAR_SCHOLAR_STAIRS_UP)
         and floors[floor[0] - 1].field[player.y][player.x] == d.CHAR_COLLAPSE
     ):
         if not d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
@@ -2033,13 +1975,6 @@ def observe_world(
     stage56.reveal_rogue_monsters(current, player, visible)
     if d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
         stage56.reveal_scholar_features(current, current.seen)
-        if floor_index > 0:
-            upper = floors[floor_index - 1]
-            for y, row in enumerate(current.field):
-                for x, cell in enumerate(row):
-                    if (current.seen[y][x] and cell == d.CHAR_FLOOR
-                            and upper.field[y][x] == d.CHAR_COLLAPSE):
-                        current.field[y][x] = d.CHAR_SCHOLAR_STAIRS_UP
     _reveal_paired_stair_cells(floors, player)
     if d.has_member(player, d.MEMBER_FAIRY_SEER):
         for known_floor in floors:
@@ -2047,6 +1982,21 @@ def observe_world(
                 if (isinstance(entity, d.Fairy)
                         and known_floor.seen[entity.y][entity.x]):
                     entity.revealed = True
+    return visible
+
+
+def _field_for_display(floors: List[Floor], floor_index: int, player: d.Player) -> List[List[str]]:
+    """Render open pit landings for D without changing their terrain identity."""
+    current = floors[floor_index]
+    if floor_index == 0 or not d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
+        return current.field
+    upper = floors[floor_index - 1]
+    visible = [row.copy() for row in current.field]
+    for y, row in enumerate(visible):
+        for x, cell in enumerate(row):
+            if (cell == d.CHAR_PIT_LANDING and current.seen[y][x]
+                    and upper.field[y][x] == d.CHAR_COLLAPSE):
+                row[x] = d.CHAR_SCHOLAR_STAIRS_UP
     return visible
 
 
@@ -2207,7 +2157,7 @@ def run_game(
             game_start_turn=game_start_turn if has_rewound else None,
             player=render_player,
             entities=render_entities,
-            field=display_floor.field,
+            field=_field_for_display(floors, view_floor, render_player),
             cur_torched=no_current_visibility if floor_view else cur,
             torched=display_floor.seen,
             known_types=known_types,
@@ -2367,7 +2317,7 @@ def run_game(
             )
             ui.draw_stage(
                 turn=turn, player=player, entities=[player, *active.entities],
-                field=active.field, cur_torched=visible, torched=active.seen,
+                field=_field_for_display(floors, floor[0], player), cur_torched=visible, torched=active.seen,
                 known_types=player.known_monsters,
                 show_entities=debug_show_entities or getattr(ui, "map_mode", False),
                 debug_show_entities=debug_show_entities, stage_num=stage_num,
@@ -2569,7 +2519,7 @@ def run_game(
             game_start_turn=game_start_turn if has_rewound else None,
             player=render_player,
             entities=render_entities,
-            field=display_floor.field,
+            field=_field_for_display(floors, view_floor, render_player),
             cur_torched=(
                 [[0] * len(display_floor.field[0]) for _ in display_floor.field]
                 if floor_view else cur

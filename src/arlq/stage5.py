@@ -206,7 +206,6 @@ def build_member_trial(
         None,
         up_stairs=[start],
         down_stairs=[upper_stair],
-        d_gates=upper_gates,
         persistent_barriers=upper_barriers,
         adjacent_monster_exemptions={
             (x, y)
@@ -223,12 +222,12 @@ def build_member_trial(
         lower_stair,
         None,
         up_stairs=[lower_stair],
-        collapse_landings=set().union(
-            *(d.collapse_footprint(point) for point in upper_pits)
-        ),
-        d_gates=lower_gates,
         persistent_barriers=lower_barriers,
     )
+    for point in upper_pits:
+        for x, y in d.collapse_footprint(point):
+            if lower.field[y][x] == d.CHAR_FLOOR:
+                lower.field[y][x] = d.CHAR_PIT_LANDING
     player = d.Player(*start, 25, d.LP_INIT)
     player.rescue_stage = True
     player.treasure_stage = True

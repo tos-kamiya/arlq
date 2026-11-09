@@ -26,9 +26,7 @@ class Floor:
     scholar_up_stairs: List[d.Point] = dataclass_field(default_factory=list)
     scholar_down_stairs: List[d.Point] = dataclass_field(default_factory=list)
     contact_reveal: Optional[d.Point] = None
-    collapse_landings: set[d.Point] = dataclass_field(default_factory=set)
     room_components: Tuple[set[d.Point], ...] = ()
-    d_gates: Dict[d.Point, str] = dataclass_field(default_factory=dict)
     persistent_barriers: set[d.Point] = dataclass_field(default_factory=set)
     broken_walls: set[d.Point] = dataclass_field(default_factory=set)
     respawn_exclusions: set[d.Point] = dataclass_field(default_factory=set)
@@ -48,6 +46,18 @@ class Floor:
 
     # Tutorial monsters allowed to remain horizontally or diagonally adjacent.
     adjacent_monster_exemptions: set[d.Point] = dataclass_field(default_factory=set)
+
+    @property
+    def collapse_landings(self) -> set[d.Point]:
+        """Derive pit landing positions from terrain."""
+        return {(x, y) for y, row in enumerate(self.field)
+                for x, cell in enumerate(row) if cell == d.CHAR_PIT_LANDING}
+
+    @property
+    def d_gates(self) -> Dict[d.Point, str]:
+        """Derive hidden-passage positions and their display glyph from terrain."""
+        return {(x, y): "." for y, row in enumerate(self.field)
+                for x, cell in enumerate(row) if cell in d.HIDDEN_PASSAGE_CHARS}
 
     def __post_init__(self) -> None:
         if self.decor is None:

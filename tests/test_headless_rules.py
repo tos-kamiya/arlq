@@ -108,7 +108,6 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "scholar_up_stairs",
         "scholar_down_stairs",
         "contact_reveal",
-        "collapse_landings",
         "persistent_barriers",
         "broken_walls",
         "respawn_exclusions",
@@ -120,7 +119,6 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "tavern",
         "player_respawn_glow",
         "respawn_glows",
-        "d_gates",
     }
 
 
@@ -1470,7 +1468,8 @@ def test_stage4_respawn_avoids_collapse_landings(monkeypatch, char):
     player = d.Player(2, 2, 10, 90)
     floors, _ = stage3_state(player, [])
     landing = {(5, 5), (5, 4), (6, 5), (5, 6), (4, 5)}
-    floors[0].collapse_landings.update(landing)
+    for x, y in landing:
+        floors[0].field[y][x] = d.CHAR_PIT_LANDING
     seen = []
 
     def spawn(entities, field, ch, avoid, island, floor_index):

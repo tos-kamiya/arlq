@@ -286,7 +286,7 @@ class BlessedUI:
                     put(x, y, value[len(d.DECOR_TAVERN_PREFIX):], "yellow",
                         bold=True, bg=cell_background(x, y))
                 elif (value in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
-                        and torched[y][x] and field[y][x] == d.CHAR_FLOOR
+                        and torched[y][x] and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)
                         and (floor_view or (x, y) != (px, py))):
                     put(x, y, ".", "yellow", bg=cell_background(x, y))
 
@@ -296,7 +296,7 @@ class BlessedUI:
                     0 <= y < len(field)
                     and 0 <= x < len(field[y])
                     and torched[y][x]
-                    and field[y][x] == d.CHAR_FLOOR
+                    and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)
                     and (x, y) != (px, py)
                 ):
                     put(
@@ -312,7 +312,7 @@ class BlessedUI:
                     0 <= y < len(field)
                     and 0 <= x < len(field[y])
                     and torched[y][x]
-                    and field[y][x] == d.CHAR_FLOOR
+                    and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)
                     and (x, y) != (px, py)
                 ):
                     put(

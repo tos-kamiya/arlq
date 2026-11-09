@@ -204,7 +204,6 @@ def test_repeated_rewinds_replay_rogue_checks_and_scholar_discoveries(
             (70, 18),
             None,
         )
-        current.d_gates[(3, 3)] = d.CHAR_D_GATE
         upper_field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
         upper_field[3][2] = d.CHAR_COLLAPSE
         upper = Floor(upper_field, [], [[0] * len(row) for row in upper_field],
@@ -309,7 +308,6 @@ def test_rewind_keeps_current_knowledge_after_vortex_erasure(monkeypatch):
         current = Floor(
             field, entities, [[0] * len(row) for row in field], (2, 2), (70, 18), None
         )
-        current.d_gates[(12, 3)] = d.CHAR_D_GATE
         return [current], player
 
     def disturb_map(current, *_args, **_kwargs):

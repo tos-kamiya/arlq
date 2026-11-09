@@ -1256,7 +1256,8 @@ class SpriteUI(PygletUI):
     def _open_floor(self, x, y):
         field = self._stage_field
         return (field is not None and 0 <= y < len(field) and 0 <= x < len(field[y])
-                and field[y][x] == d.CHAR_FLOOR and self._stage_discovered_at(x, y))
+                and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)
+                and self._stage_discovered_at(x, y))
 
     def _draw_pit(self, pos):
         if d.CHAR_COLLAPSE not in self._terrain_images:

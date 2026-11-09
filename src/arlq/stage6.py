@@ -446,7 +446,6 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
                     + config.corridor_v_width // 2,
                     max(y1, y2) * (d.TILE_HEIGHT + 1),
                 )
-            current.d_gates[gate] = "."
             current.field[gate[1]][gate[0]] = d.CHAR_HIDDEN_D_GATE
         boss_room = None
         if index == d.STAGE6_FLOORS - 1:

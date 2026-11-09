@@ -61,15 +61,15 @@ def test_secret_passages_and_pit_landings_survive_scatter():
         current.field[9][9] = d.CHAR_HIDDEN_D_GATE
         current.field[9][11] = d.CHAR_D_GATE
         current.field[11][9] = d.CHAR_SCHOLAR_STAIRS_UP
-        current.collapse_landings.add((11, 11))
-        current.d_gates[(12, 10)] = "."
+        current.field[11][11] = d.CHAR_PIT_LANDING
+        current.field[10][12] = d.CHAR_HIDDEN_D_GATE
         current.scholar_up_stairs.append((8, 10))
         defeat(current, char)
         assert current.field[9][9] == d.CHAR_HIDDEN_D_GATE
         assert current.field[9][11] == d.CHAR_D_GATE
         assert current.field[11][9] == d.CHAR_SCHOLAR_STAIRS_UP
-        assert current.field[11][11] == d.CHAR_FLOOR
-        assert current.field[10][12] == d.CHAR_FLOOR
+        assert current.field[11][11] == d.CHAR_PIT_LANDING
+        assert current.field[10][12] == d.CHAR_HIDDEN_D_GATE
         assert current.field[10][8] == d.CHAR_FLOOR
 
 
@@ -84,10 +84,57 @@ def test_barriers_preserve_hidden_passage_and_pit_landing():
     current = floor()
     cobra = d.Monster(10, 10, d.CHAR_TO_MONSTER_TRIBE["f"], empowered=2)
     current.entities.append(cobra)
-    current.collapse_landings.add((10, 9))
-    current.d_gates[(11, 10)] = "."
+    current.field[9][10] = d.CHAR_PIT_LANDING
+    current.field[10][11] = d.CHAR_HIDDEN_D_GATE
     current.scholar_up_stairs.append((10, 11))
     stage56.place_monster_barriers(current, cobra)
-    assert all(current.field[y][x] == d.CHAR_FLOOR
-               for x, y in ((10, 9), (11, 10), (10, 11)))
+    assert current.field[9][10] == d.CHAR_PIT_LANDING
+    assert current.field[10][11] == d.CHAR_HIDDEN_D_GATE
+    assert current.field[11][10] == d.CHAR_FLOOR
     assert current.field[10][9] == d.CHAR_BARRIER
+
+
+def test_vortex_keeps_collapse_and_landing_terrain_fixed(monkeypatch):
+    upper, lower = floor(), floor()
+    collapse = d.Collapse(10, 10)
+    upper.entities.append(collapse)
+    footprint = d.collapse_footprint((10, 10))
+    for x, y in footprint:
+        lower.field[y][x] = d.CHAR_PIT_LANDING
+    player = d.Player(1, 1, 100, d.LP_INIT)
+    monkeypatch.setattr(game_engine, "iterate_ellipse_points", lambda *_: list(footprint))
+    game_engine._vortex_rearrange(upper, player, 0, (10, 10), floors=[upper, lower],
+                                  bounded_relocation=True)
+    assert collapse in upper.entities
+    assert (collapse.x, collapse.y) == (10, 10)
+    assert lower.collapse_landings == footprint
+
+
+def test_pit_landing_uses_one_terrain_symbol_and_d_controls_display_and_climb():
+    upper, lower = floor(), floor()
+    upper.field[10][10] = d.CHAR_COLLAPSE
+    lower.field[10][10] = d.CHAR_PIT_LANDING
+    lower.seen[10][10] = 1
+    player = d.Player(10, 10, 1, d.LP_INIT)
+    floors = [upper, lower]
+    assert game_engine._field_for_display(floors, 1, player)[10][10] == d.CHAR_PIT_LANDING
+    assert game_engine._handle_floor_transition(lower, floors, player, [1], [(10, 10)]) is None
+    player.members.append(d.PartyMember(10, 10, d.MEMBER_DUNGEON_EXPLORER))
+    assert game_engine._field_for_display(floors, 1, player)[10][10] == d.CHAR_SCHOLAR_STAIRS_UP
+    assert lower.field[10][10] == d.CHAR_PIT_LANDING
+    floor_index = [1]
+    assert game_engine._handle_floor_transition(lower, floors, player, floor_index, [(10, 10)])
+    assert floor_index == [0]
+    player.members.clear()
+    assert game_engine._field_for_display(floors, 1, player)[10][10] == d.CHAR_PIT_LANDING
+    assert lower.field[10][10] == d.CHAR_PIT_LANDING
+
+
+def test_secret_passage_is_derived_from_terrain_and_disappears_if_broken():
+    current = floor()
+    current.field[10][10] = d.CHAR_HIDDEN_D_GATE
+    assert (10, 10) in current.d_gates
+    current.field[10][10] = d.CHAR_D_GATE
+    assert (10, 10) in current.d_gates
+    current.field[10][10] = d.CHAR_FLOOR
+    assert (10, 10) not in current.d_gates

@@ -105,13 +105,16 @@ CHAR_STAIRS_DOWN: str = "v"
 # Hidden terrain markers are rendered as ordinary floor or wall until found.
 CHAR_HIDDEN_STAIRS_UP: str = "u"
 CHAR_HIDDEN_STAIRS_DOWN: str = "w"
+# A pit landing is always floor-like; D can climb when the pit above is open.
+CHAR_PIT_LANDING: str = "j"
 CHAR_SCHOLAR_STAIRS_UP: str = "↑"
 CHAR_SCHOLAR_STAIRS_DOWN: str = "↓"
 CHAR_HIDDEN_D_GATE: str = "|"
 CHAR_D_GATE: str = "."
-HIDDEN_STAIRS_CHARS: Tuple[str, str] = (
+HIDDEN_STAIRS_CHARS: Tuple[str, ...] = (
     CHAR_HIDDEN_STAIRS_UP,
     CHAR_HIDDEN_STAIRS_DOWN,
+    CHAR_PIT_LANDING,
 )
 HIDDEN_PASSAGE_CHARS: Tuple[str, str] = (CHAR_HIDDEN_D_GATE, CHAR_D_GATE)
 SCHOLAR_STAIR_CHARS: Tuple[str, str] = (

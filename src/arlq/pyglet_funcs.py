@@ -1302,7 +1302,7 @@ class PygletUI:
                     self._draw_tavern((x, y), value[len(d.DECOR_TAVERN_PREFIX):],
                                       bool(cur_torched[y][x]))
                 elif (value in (d.DECOR_BOSS_ROUTE, d.DECOR_BOSS_ROUTE_FALLEN_ROCKS)
-                        and torched[y][x] and field[y][x] == d.CHAR_FLOOR):
+                        and torched[y][x] and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)):
                     self._draw_boss_route_marker(
                         (x, y), bool(cur_torched[y][x]), not floor_view and (x, y) == (px, py)
                     )
@@ -1313,7 +1313,7 @@ class PygletUI:
                     0 <= y < len(field)
                     and 0 <= x < len(field[y])
                     and torched[y][x]
-                    and field[y][x] == d.CHAR_FLOOR
+                    and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)
                     and (x, y) != (px, py)
                 ):
                     self._draw_field_text((x, y), ".", (112, 120, 130))
@@ -1322,7 +1322,7 @@ class PygletUI:
                     0 <= y < len(field)
                     and 0 <= x < len(field[y])
                     and torched[y][x]
-                    and field[y][x] == d.CHAR_FLOOR
+                    and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)
                     and (x, y) != (px, py)
                 ):
                     self._draw_field_text((x, y), ".", COLOR_MAP[CI_CYAN])
