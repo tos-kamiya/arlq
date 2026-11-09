@@ -199,9 +199,9 @@ Stage 2 also features empowered Bison (`b'`). Stage 6 has Bison and Buffalo vari
 | **C** Rare Chimera  | Its Cursed Sword gives 3x attack power. Each monster or elf contact and each wall broken costs an extra 10 LP. Like the normal sword, it can break up to three walls. |
 | **e** Erebus        | Battling it drains your vitality by a small amount.                                                                     |
 | **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
-| **g** Golem         | When defeated, rocks scatter up to two tiles in each of the four diagonal directions around you, replacing any walls or barriers there. It yields no food.                                                                        |
+| **g** Golem         | When defeated, rocks scatter up to two tiles in each of the four diagonal directions around you, replacing any walls, barriers, or caltrops there. It yields no food.                                                                        |
 | **H** High Elf      | In Stage 2, a passive elf: contact reveals it without combat or a reward. |
-| **X** Caltrop Plant | Contacting it scatters caltrops (`x`) around you in a checkerboard pattern centered on the contact cell, consistent at every location. The rank-2 form `X'` scatters them one tile farther. |
+| **X** Caltrop Plant | Contacting it scatters caltrops (`x`) around you in a checkerboard pattern centered on the contact cell, consistent at every location. It replaces walls and barriers but not Golem rubble. Hidden passages and pit climb points are protected from caltrops, rubble, and barriers. The rank-2 form `X'` scatters them one tile farther. |
 
 Queued respawns are processed every 65 turns. Rare Erebus (`E`) and the Vortex
 (`V`) can return on any Stage 4 floor. The Caltrop Plant (`X`), which appears

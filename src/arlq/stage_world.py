@@ -148,6 +148,7 @@ def _place_final_floor_barriers(
         *floor.scholar_up_stairs,
         *floor.scholar_down_stairs,
         *floor.collapse_landings,
+        *floor.d_gates,
         *protected_points,
         *occupied,
     }

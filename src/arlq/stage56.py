@@ -375,6 +375,7 @@ def initialize_monster_barriers(current: Floor) -> None:
         *current.scholar_up_stairs,
         *current.scholar_down_stairs,
         *current.collapse_landings,
+        *current.d_gates,
     }
     ring_cells = set()
     for entity in current.entities:
@@ -422,6 +423,7 @@ def place_monster_barriers(
         *current.scholar_up_stairs,
         *current.scholar_down_stairs,
         *current.collapse_landings,
+        *current.d_gates,
     }
     for point in barrier_cells(current, entity):
         x, y = point

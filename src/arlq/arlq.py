@@ -492,7 +492,8 @@ def spread_caltrops(
     entities: List[d.Entity],
     protected_points: Container[d.Point] = (),
     radius: int = d.CALTROP_SPREAD_RADIUS,
-) -> None:
+) -> set[d.Point]:
+    placed: set[d.Point] = set()
     ox, oy = origin
     for x, y in iterate_ellipse_points(
         ox,
@@ -505,9 +506,11 @@ def spread_caltrops(
         if (
             (x, y) not in protected_points
             and ((x - ox) + (y - oy)) % 2 == 0
-            and field[y][x] in (d.CHAR_FLOOR, d.CHAR_WALL)
+            and field[y][x] in (d.CHAR_FLOOR, d.CHAR_WALL, d.CHAR_BARRIER)
         ):
             field[y][x] = d.CHAR_CALTROP
+            placed.add((x, y))
+    return placed
 
 
 def iterate_offsets(
@@ -909,7 +912,9 @@ def update_entities(
                         d.ROCK_SPREAD_OFFSETS,
                         except_for_entities=entities,
                     ):
-                        if field[y][x] in (d.CHAR_FLOOR, d.CHAR_BARRIER):
+                        if field[y][x] in (
+                            d.CHAR_FLOOR, d.CHAR_BARRIER, *d.WALL_CHARS, d.CHAR_CALTROP
+                        ):
                             field[y][x] = d.CHAR_GOLEM_WALL
 
                 d.apply_feed(

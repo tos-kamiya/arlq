@@ -651,7 +651,7 @@ def _vortex_rearrange(
             isinstance(current_entity, d.Monster)
             and stage56._barrier_offsets(current_entity)
         ):
-            protected = current.collapse_landings | scholar_stairs | set().union(
+            protected = current.collapse_landings | scholar_stairs | set(current.d_gates) | set().union(
                 *(
                     d.collapse_footprint((fixed.x, fixed.y))
                     for fixed in current.entities
@@ -777,15 +777,7 @@ def _defeat_monster(
         d.BISON_LP_OVERCHARGE if entity.tribe.char == "B" else 0,
     )
 
-    if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
-        spread_caltrops(
-            current.field,
-            (player.x, player.y),
-            current.entities,
-            set(current.scholar_up_stairs + current.scholar_down_stairs),
-            radius=d.CALTROP_SPREAD_RADIUS + (entity.empowered == 2),
-        )
-    elif entity.tribe.effect == d.EFFECT_ROCK_SPREAD:
+    if entity.tribe.effect in (d.EFFECT_CALTROP_SPREAD, d.EFFECT_ROCK_SPREAD):
         protected_collapse_cells = current.collapse_landings | set().union(
             *(
                 d.collapse_footprint((collapse.x, collapse.y))
@@ -796,6 +788,18 @@ def _defeat_monster(
         protected_collapse_cells.update(
             current.scholar_up_stairs + current.scholar_down_stairs
         )
+        protected_collapse_cells.update(current.d_gates)
+
+    if entity.tribe.effect == d.EFFECT_CALTROP_SPREAD:
+        placed_caltrops = spread_caltrops(
+            current.field,
+            (player.x, player.y),
+            current.entities,
+            protected_collapse_cells,
+            radius=d.CALTROP_SPREAD_RADIUS + (entity.empowered == 2),
+        )
+        current.persistent_barriers.difference_update(placed_caltrops)
+    elif entity.tribe.effect == d.EFFECT_ROCK_SPREAD:
         for x, y in iterate_offsets(
             player.x,
             player.y,
@@ -804,7 +808,7 @@ def _defeat_monster(
         ):
             if (x, y) not in protected_collapse_cells and current.field[y][
                 x
-            ] in (d.CHAR_FLOOR, d.CHAR_BARRIER, *d.WALL_CHARS):
+            ] in (d.CHAR_FLOOR, d.CHAR_BARRIER, *d.WALL_CHARS, d.CHAR_CALTROP):
                 current.field[y][x] = d.CHAR_GOLEM_WALL
                 current.persistent_barriers.discard((x, y))
     elif entity.tribe.effect == d.EFFECT_VORTEX:
