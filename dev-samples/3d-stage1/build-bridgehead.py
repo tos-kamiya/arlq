@@ -7,9 +7,8 @@ two cells side by side on the floor and is drawn with the same 60-degree
 orthographic camera, turn and fit to the cells' width. The outpost is a low
 curtain of grey stone blocks with battlements around a packed-earth yard,
 a gatehouse in the front wall with a barred plank gate, a round watchtower
-at the back west corner flying a blue banner, a canvas tent and a campfire
-in the yard, crates and a barrel, and sharpened stakes before the wall;
-the whole raised on a low earth mound. Like the characters, it is drawn
+at the back west corner flying a plain blue banner, a campfire in the
+yard, and a crate and a barrel; the whole raised on a low earth mound. Like the characters, it is drawn
 simplified and exaggerated: big stones, merlons, gate and banner.
 
 Writes to OUT (BRIDGEHEAD_OUT in the environment, else
@@ -40,12 +39,12 @@ YAW = math.radians(35)
 
 # The outpost before it is fitted to the cells: its walls' half width, south
 # and north faces, height and thickness, and the merlons along their tops.
-HALF_W, SOUTH, NORTH = 1.0, 0.0, 1.3
+HALF_W, SOUTH, NORTH = 0.68, 0.0, 0.90
 MID = (SOUTH + NORTH) / 2
 WALL_H, T = 0.42, 0.11
 MERLON_W, MERLON_H, MERLON_STEP = 0.13, 0.11, 0.24
 # The gatehouse: the gate's half width and height, and the gatehouse's.
-GATE_HALF, GATE_H, GATEHOUSE_H, PIER = 0.20, 0.50, 0.78, 0.14
+GATE_HALF, GATE_H, GATEHOUSE_H, PIER = 0.20, 0.48, 0.68, 0.14
 # The watchtower at the back west corner.
 TOWER_X, TOWER_Y, TOWER_R, TOWER_H = -HALF_W + 0.06, NORTH - 0.06, 0.30, 1.15
 MOUND = 0.08
@@ -192,10 +191,8 @@ yard = material('Trodden yard', (0.26, 0.20, 0.14), roughness=0.95)
 wood = material('Weathered oak', (0.22, 0.11, 0.05), roughness=0.75, rim_strength=0.1)
 timber = material('Dark timber', (0.12, 0.06, 0.03), roughness=0.8, rim_strength=0.1)
 dark_iron = material('Black iron fittings', (0.03, 0.03, 0.035), roughness=0.4, metallic=0.9)
-dark = material('Dark opening', (0.01, 0.01, 0.012), roughness=1.0)
-canvas = material('Canvas', (0.58, 0.50, 0.36), roughness=0.9, rim_strength=0.12)
 banner_cloth = material('Banner cloth', (0.08, 0.22, 0.60), roughness=0.7, rim_strength=0.2)
-gold = material('Banner trim', (0.80, 0.60, 0.18), roughness=0.4, metallic=0.6)
+gold = material('Brass finial', (0.80, 0.60, 0.18), roughness=0.4, metallic=0.6)
 glow = material('Firelight', (0.9, 0.5, 0.15), emission=(1.0, 0.45, 0.10), strength=3.0)
 slit_glow = material('Lamplit slit', (0.8, 0.45, 0.18), emission=(1.0, 0.50, 0.16),
                      strength=1.2)
@@ -271,7 +268,8 @@ for a, z in ((math.radians(-120), 0.55), (math.radians(-170), 0.75)):
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     finish(obj, 'Arrow slit', slit_glow)
 
-# A flagpole on the tower flying a blue banner with a gold edge, rippling.
+# A flagpole on the tower flying a plain blue banner, rippling; plain so it
+# reads as no real country's flag.
 POLE_TOP = TOWER_H + 0.62
 cylinder('Flagpole', TOWER_X, TOWER_Y, TOWER_H, POLE_TOP, 0.018, timber, 12)
 bpy.ops.mesh.primitive_uv_sphere_add(radius=0.035, location=(TOWER_X, TOWER_Y, POLE_TOP))
@@ -292,31 +290,9 @@ faces = [(u * (NV + 1) + v, u * (NV + 1) + v + 1, (u + 1) * (NV + 1) + v + 1,
 flag = mesh('Banner', vertices, faces, banner_cloth)
 solid = flag.modifiers.new('Cloth thickness', 'SOLIDIFY')
 solid.thickness = 0.012
-for v_edge in (0, NV):
-    edge = [flag_point(u, v_edge) for u in range(NU + 1)]
-    for p, q in zip(edge, edge[1:]):
-        mid_p = Vector(p).lerp(Vector(q), 0.5)
-        length = (Vector(q) - Vector(p)).length
-        bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.012, depth=length,
-                                            location=mid_p)
-        obj = bpy.context.object
-        obj.rotation_euler = (Vector(q) - Vector(p)).to_track_quat('Z', 'Y').to_euler()
-        finish(obj, 'Banner trim', gold)
-
-# In the yard: a canvas tent at the back east, a campfire ringed with stones,
-# and crates and a barrel by the front east wall.
-TX, TY0, TY1, TW, TH = 0.50, 0.62, 1.12, 0.26, 0.38
-vertices = [(TX - TW, TY0, 0.01), (TX + TW, TY0, 0.01), (TX, TY0, TH),
-            (TX - TW, TY1, 0.01), (TX + TW, TY1, 0.01), (TX, TY1, TH)]
-mesh('Tent', vertices, [(0, 2, 1), (3, 4, 5), (0, 3, 5, 2), (1, 2, 5, 4)], canvas)
-mesh('Tent opening', [(TX - 0.10, TY0 - 0.004, 0.01), (TX + 0.10, TY0 - 0.004, 0.01),
-                      (TX, TY0 - 0.004, TH * 0.62)], [(0, 2, 1)], dark)
-bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.014, depth=TY1 - TY0 + 0.10,
-                                    location=(TX, (TY0 + TY1) / 2, TH + 0.008),
-                                    rotation=(math.pi / 2, 0, 0))
-finish(bpy.context.object, 'Tent ridge pole', timber)
-
-FX, FY = -0.32, 0.62
+# In the yard: a campfire ringed with stones, and a crate and a barrel by
+# the back east corner.
+FX, FY = -0.06, 0.55
 for k in range(7):
     a = 2 * math.pi * k / 7
     bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.045,
@@ -341,29 +317,22 @@ fire_light = bpy.context.object
 fire_light.data.energy, fire_light.data.color = 1.2, (1.0, 0.55, 0.2)
 fire_light.data.shadow_soft_size = 0.05
 
-box('Crate', 0.64, 0.84, SOUTH + T + 0.02, SOUTH + T + 0.22, 0.01, 0.21, wood, 0.01)
-box('Crate', 0.68, 0.84, SOUTH + T + 0.04, SOUTH + T + 0.20, 0.21, 0.36, wood, 0.01,
-    rotation=(0, 0, 0.2))
-cylinder('Barrel', 0.48, SOUTH + T + 0.13, 0.01, 0.25, 0.09, wood, 16, 0.01)
+CY = NORTH - T - 0.13
+box('Crate', HALF_W - T - 0.22, HALF_W - T - 0.02, CY - 0.10, CY + 0.10, 0.01, 0.21, wood,
+    0.01)
+cylinder('Barrel', HALF_W - T - 0.36, CY + 0.02, 0.01, 0.25, 0.09, wood, 16, 0.01)
 for z in (0.05, 0.21):
-    cylinder('Barrel hoop', 0.48, SOUTH + T + 0.13, z, z + 0.02, 0.093, dark_iron, 16)
-
-# Sharpened stakes before the wall either side of the gate, leaning out.
-for x in (-0.86, -0.70, -0.54, 0.54, 0.70, 0.86):
-    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.035, depth=0.34,
-                                    location=(x, SOUTH - 0.16, 0.12),
-                                    rotation=(math.radians(-35), 0, 0))
-    finish(bpy.context.object, 'Stake', wood, 0.004)
+    cylinder('Barrel hoop', HALF_W - T - 0.36, CY + 0.02, z, z + 0.02, 0.093, dark_iron, 16)
 
 # Everything stands on a low earth mound, a little wider than the walls,
-# reaching out in front under the stakes and the gate.
+# reaching out in front just past the gatehouse.
 lift = Matrix.Translation((0, 0, MOUND))
 bpy.context.view_layer.update()
 for obj in scene.objects:
     if obj.type == 'MESH':
         obj.matrix_world = lift @ obj.matrix_world
 fire_light.location.z += MOUND
-box('Earth mound', -HALF_W - 0.10, HALF_W + 0.10, SOUTH - 0.30, NORTH + 0.10, 0, MOUND,
+box('Earth mound', -HALF_W - 0.10, HALF_W + 0.10, SOUTH - 0.12, NORTH + 0.10, 0, MOUND,
     earth, 0.03)
 
 # Turn the outpost toward screen right, as the tavern.
@@ -387,8 +356,11 @@ for obj in scene.objects:
 fire_light.data.energy *= fit * fit
 ups = [(shrink @ p).y * math.sin(ELEVATION) + (shrink @ p).z * math.cos(ELEVATION)
        for p in points]
-UNDER = math.ceil(max(0.0, -min(ups)) / CELL_UP * 20) / 20
-OVERHANG = math.ceil(max(0.0, max(ups) / CELL_UP - 1) * 20) / 20
+# A little room past the model for the ink outline and the banner's
+# thickness, so neither is cut at the canvas edge.
+MARGIN = 0.03
+UNDER = math.ceil(max(0.0, -min(ups) / CELL_UP + MARGIN) * 20) / 20
+OVERHANG = math.ceil(max(0.0, max(ups) / CELL_UP - 1 + MARGIN) * 20) / 20
 print(f'bridgehead: scale {fit:.3f}, UNDER {UNDER}, OVERHANG {OVERHANG}')
 (OUT / 'bridgehead.json').write_text(json.dumps({'cells': CELLS, 'under': UNDER,
                                                  'overhang': OVERHANG}) + '\n')
