@@ -281,9 +281,21 @@ def spawn_monster(current: Floor, floor_index: int, *,
         reduced = set(d.STAGE6_REDUCED_SPAWN_VARIANTS)
         if floor_index == 1:
             reduced.update(d.STAGE6_FLOOR2_REDUCED_SPAWN_VARIANTS)
-        pool = [(char, rank) for char, count, rank in d.STAGE6_ROSTER[floor_index]
-                for _ in range(count * (1 if (char, rank) in reduced else 2))]
-        variant = rand.choice(pool)
+        if current.monster_spawn_queue_index >= len(current.monster_spawn_queue):
+            current.monster_spawn_queue = [
+                (char, rank)
+                for char, count, rank in d.STAGE6_ROSTER[floor_index]
+                for _ in range(count * (1 if (char, rank) in reduced
+                                        or (floor_index == 2 and char == "c") else 2))
+            ]
+            for index in range(len(current.monster_spawn_queue) - 1, 0, -1):
+                swap = rand.randrange(index + 1)
+                current.monster_spawn_queue[index], current.monster_spawn_queue[swap] = (
+                    current.monster_spawn_queue[swap], current.monster_spawn_queue[index]
+                )
+            current.monster_spawn_queue_index = 0
+        variant = current.monster_spawn_queue[current.monster_spawn_queue_index]
+        current.monster_spawn_queue_index += 1
     char, rank = variant
     barrier_points = [point for point in stage56._open_points(current, include_barriers=True)
                       if current.field[point[1]][point[0]] == d.CHAR_BARRIER]
