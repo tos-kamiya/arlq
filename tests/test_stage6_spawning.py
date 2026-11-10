@@ -341,14 +341,14 @@ def test_second_floor_monster_draw_can_select_e_and_m(monkeypatch):
     assert 0.6 < counts[("E", 1)] / counts[("m", 1)] < 1.6
 
 
-def test_every_floor_spawned_every_eighteen_turns(monkeypatch):
+def test_every_floor_spawned_every_twenty_turns(monkeypatch):
     floors = [floor() for _ in range(3)]
     player = d.Player(4, 4, 1, d.LP_INIT)
     calls = []
     monkeypatch.setattr(stage6, "spawn_monster", lambda current, index, **kw: calls.append((index, kw)) or False)
-    for turn in range(36):
+    for turn in range(40):
         stage6.advance_spawns(floors, player, 1, turn)
-        assert len(calls) == 3 * ((turn + 1) // 18)
+        assert len(calls) == 3 * ((turn + 1) // 20)
     assert [index for index, _ in calls] == [0, 1, 2, 0, 1, 2]
     assert calls[1][1]["avoid"] == {(x, y) for x in range(2, 7) for y in range(2, 7)}
     assert calls[0][1]["avoid"] == set()
@@ -376,14 +376,14 @@ def test_initial_monsters_avoid_player_square():
                 assert abs(entity.x - player.x) > 2 or abs(entity.y - player.y) > 2
 
 
-def test_neighbor_preference_has_forty_percent_threshold(monkeypatch):
+def test_neighbor_preference_has_forty_five_percent_threshold(monkeypatch):
     monkeypatch.setattr(stage6, "_open_points", lambda _: [(20, 10), (10, 9)])
-    for roll in range(10):
+    for roll in range(100):
         current = floor()
         current.entities = [monster(10, 10)]
-        monkeypatch.setattr(stage6.rand, "randrange", lambda n: roll if n == 10 else 0)
+        monkeypatch.setattr(stage6.rand, "randrange", lambda n: roll if n == 100 else 0)
         assert stage6.spawn_monster(current, 0, variant=("a", 1))
-        assert (current.entities[-1].x, current.entities[-1].y) == ((10, 9) if roll < 4 else (20, 10))
+        assert (current.entities[-1].x, current.entities[-1].y) == ((10, 9) if roll < 45 else (20, 10))
 
 
 def test_party_preference_falls_back_after_five_failures(monkeypatch):
@@ -465,11 +465,11 @@ def test_initial_spawn_attempts_can_access_boss_room(monkeypatch):
 
     monkeypatch.setattr(stage6, "spawn_monster", record)
     stage6.build()
-    assert len(eligible) == d.STAGE6_INITIAL_SPAWN_DRAWS
+    assert len(eligible) == 30
     assert eligible[0]
 
 
-def test_stage_setup_attempts_forty_random_spawns_per_floor(monkeypatch):
+def test_stage_setup_attempts_random_spawns_per_floor(monkeypatch):
     original = stage6.spawn_monster
     draws = []
     def record(current, index, **kwargs):
@@ -478,5 +478,5 @@ def test_stage_setup_attempts_forty_random_spawns_per_floor(monkeypatch):
         return original(current, index, **kwargs)
     monkeypatch.setattr(stage6, "spawn_monster", record)
     floors, _ = stage6.build()
-    assert draws == [index for index in range(len(floors)) for _ in range(40)]
+    assert draws == [index for index, count in enumerate((40, 35, 30)) for _ in range(count)]
     assert all(not current.respawn_glows for current in floors)

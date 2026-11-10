@@ -289,7 +289,7 @@ Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near
 
 When you use a different staircase or pit from the one used for your previous floor change, all unrecruited members are scattered independently to random floors, and their previously known locations are cleared. Reusing the same staircase or pit consecutively, in either direction, does not scatter them again.
 
-Each floor starts with a sword-carrying `c` and 40 random monster spawn attempts. Every 18 turns, a spawn is attempted on each floor. Solo monsters do not move on their own. Stronger types appear on deeper floors. Spore monsters (`m`) can appear on every floor; Rare Erebus (`E`) can appear on floor 2. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
+Each floor starts with a sword-carrying `c`, followed by 40, 35, and 30 random monster spawn attempts on floors 1, 2, and 3 respectively. Every 20 turns, a spawn is attempted on each floor. Solo monsters do not move on their own. Stronger types appear on deeper floors. Spore monsters (`m`) can appear on every floor; Rare Erebus (`E`) can appear on floor 2. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
 
 #### Party members
 
@@ -304,7 +304,7 @@ Each floor starts with a sword-carrying `c` and 40 random monster spawn attempts
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
 
-Monsters spawn individually and form parties when vertically adjacent. Ordinary spawns avoid the starting section and otherwise use the same rates across sections, including the boss section. Normal monsters can join the boss party, up to the eight-member limit. After setup, normal monsters have a 40% chance to try up to five positions above or below existing monsters, followed by up to five random positions if needed. Otherwise, up to ten random positions are tried. If none is valid, the spawn is skipped. Monsters with special effects spawn alone.
+Monsters spawn individually and form parties when vertically adjacent. Ordinary spawns avoid the starting section and otherwise use the same rates across sections, including the boss section. Normal monsters can join the boss party, up to the eight-member limit. After setup, normal monsters have a 45% chance to try up to five positions above or below existing monsters, followed by up to five random positions if needed. Otherwise, up to ten random positions are tried. If none is valid, the spawn is skipped. Monsters with special effects spawn alone.
 
 Vertically adjacent monsters fight in parties of up to eight, combining their strength and experience; the highest LP reward applies. The player receives the monsters' combined experience.
 

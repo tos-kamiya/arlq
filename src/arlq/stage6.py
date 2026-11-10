@@ -291,7 +291,7 @@ def spawn_monster(current: Floor, floor_index: int, *,
     monster = d.Monster(0, 0, d.CHAR_TO_MONSTER_TRIBE[char], rank)
     positions = stage56.monster_positions(current.entities)
     prioritize = (prefer_adjacent and not isolated and not stage56.special_monster(monster)
-                  and bool(candidates) and rand.randrange(10) < 4)
+                  and bool(candidates) and rand.randrange(100) < d.STAGE6_PARTY_SPAWN_PERCENT)
     if prioritize:
         nearby = [point for point in candidates
                   if ((point[0], point[1] - 1) in positions
@@ -530,7 +530,7 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
         stage56.initialize_monster_barriers(current)
     floors[-1].respawn_exclusions.difference_update(boss_reserved)
     for index, current in enumerate(floors):
-        for _ in range(d.STAGE6_INITIAL_SPAWN_DRAWS):
+        for _ in range(d.STAGE6_INITIAL_SPAWN_DRAWS[index]):
             avoid = player_spawn_exclusion((player.x, player.y)) if index == 0 else set()
             spawn_monster(current, index, avoid=avoid, prefer_adjacent=False,
                           player_position=(player.x, player.y) if index == 0 else None)
