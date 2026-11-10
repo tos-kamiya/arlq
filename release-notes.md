@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 6.6.1 - 2026-11-10
+
 - Restore Loop Fairy rewinds from saved game states while continuing the
   current random sequence. Older traces containing Loop rewinds may replay
   differently.
