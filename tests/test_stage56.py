@@ -39,7 +39,7 @@ def boss_route(floor):
             for x, value in enumerate(row) if value == d.DECOR_BOSS_ROUTE}
 
 
-def test_boss_route_avoids_pits_and_hidden_passages_and_uses_stairs():
+def test_boss_route_avoids_pits_and_hidden_passages_and_uses_stairs(monkeypatch):
     def corridor():
         field = [list("#######"), list("#     #"), list("#     #"), list("#######")]
         return Floor(field, [], [[0] * 7 for _ in field], (1, 1), (5, 1), None)
@@ -49,19 +49,59 @@ def test_boss_route_avoids_pits_and_hidden_passages_and_uses_stairs():
     lower.up_stairs = [(5, 1)]
     upper.entities.append(d.Collapse(2, 1))
     upper.field[1][3] = d.CHAR_HIDDEN_D_GATE
-    stage6._mark_boss_route([upper, lower], (1, 1), (4, 1))
+    routes = []
+    monkeypatch.setattr(stage6, "_balance_route_parties", lambda floors, route: routes.append(route))
+    stage6._balance_boss_route([upper, lower], (1, 1), (4, 1))
 
-    assert (2, 1) not in boss_route(upper)
-    assert (3, 1) not in boss_route(upper)
-    assert boss_route(upper) == {(1, 1), (3, 2)}
+    assert (0, (2, 1)) not in routes[0]
+    assert (0, (3, 1)) not in routes[0]
+    assert (0, (3, 2)) in routes[0]
+    assert (1, (5, 1)) in routes[0]
+    assert not boss_route(upper)
     assert not boss_route(lower)
 
 
-def test_generated_boss_route_reaches_all_floors():
-    floors, player = stage6.build()
-    assert (player.x, player.y) in boss_route(floors[0])
-    assert all(boss_route(floor) for floor in floors[:-1])
-    assert not boss_route(floors[-1])
+def test_generated_stage6_has_no_boss_route_markers():
+    floors, _ = stage6.build()
+    assert all(not boss_route(floor) for floor in floors)
+
+
+def test_stage6_retries_missing_boss_route_without_resetting_random_state(monkeypatch):
+    original = stage6._balance_boss_route
+    states = []
+
+    def fail_once(floors, start, boss):
+        states.append(engine.rand.getstate())
+        if len(states) == 1:
+            raise stage6._BossRouteNotFound()
+        return original(floors, start, boss)
+
+    monkeypatch.setattr(stage6, "_balance_boss_route", fail_once)
+    floors, _ = stage6.build()
+    assert len(floors) == d.STAGE6_FLOORS
+    assert len(states) == 2
+    assert states[0] != states[1]
+
+
+def test_stage6_retry_limit_and_other_errors(monkeypatch):
+    monkeypatch.setattr(stage6, "MAX_STAGE_GENERATION_RETRIES", 2)
+    attempts = []
+
+    def fail(config):
+        attempts.append(config)
+        raise stage6._BossRouteNotFound()
+
+    monkeypatch.setattr(stage6, "_build_once", fail)
+    with pytest.raises(RuntimeError, match="could not generate a Stage 6 route.*after 2 retries"):
+        stage6.build()
+    assert len(attempts) == 3
+
+    def unexpected(config):
+        raise RuntimeError("unrelated failure")
+
+    monkeypatch.setattr(stage6, "_build_once", unexpected)
+    with pytest.raises(RuntimeError, match="unrelated failure"):
+        stage6.build()
 
 
 def test_stage6_floors_have_no_loop_fairies():

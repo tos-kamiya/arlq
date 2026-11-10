@@ -16,6 +16,13 @@ from .stage_world import (
 from .utils import rand
 
 
+MAX_STAGE_GENERATION_RETRIES = 5
+
+
+class _BossRouteNotFound(RuntimeError):
+    pass
+
+
 def tile_at(point: d.Point) -> d.Point:
     return maze_tile_at(point, d.TILE_WIDTH)
 
@@ -375,6 +382,17 @@ def advance_spawns(
 
 
 def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
+    for _ in range(MAX_STAGE_GENERATION_RETRIES + 1):
+        try:
+            return _build_once(config)
+        except _BossRouteNotFound:
+            continue
+    raise RuntimeError(
+        f"could not generate a Stage 6 route to the boss after {MAX_STAGE_GENERATION_RETRIES} retries"
+    )
+
+
+def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     config = config or GameConfig()
     floors = []
     initial_boss_party = []
@@ -564,7 +582,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     for role in member_roles:
         point = _candidate_near_bridgehead(current, current.up)
         current.entities.append(d.PartyMember(*point, role, origin_floor=0))
-    _mark_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
+    _balance_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
     for current in floors:
         stage56.initialize_monster_barriers(current)
     for draw in range(d.STAGE6_INITIAL_SPAWN_DRAWS):
@@ -634,8 +652,8 @@ def recover_at_bridgehead(
     return entered
 
 
-def _mark_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None:
-    """Mark a shortest initial walking route using ordinary stairs."""
+def _balance_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None:
+    """Balance parties along a shortest initial route using ordinary stairs."""
     origin = (0, start)
     goal = (len(floors) - 1, boss)
     previous = {origin: None}
@@ -667,7 +685,7 @@ def _mark_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None
                 previous[next_state] = ((index, (x, y)), point)
                 pending.append(next_state)
     if goal not in previous:
-        raise RuntimeError("no initial route to the Stage 6 boss")
+        raise _BossRouteNotFound("no initial route to the Stage 6 boss")
     route = []
     state = goal
     while state is not None:
@@ -676,13 +694,6 @@ def _mark_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None
         state = link[0] if link is not None else None
     route.reverse()
     _balance_route_parties(floors, route)
-    for index, (x, y) in route[::3]:
-        if index == len(floors) - 1:
-            continue
-        if floors[index].decor[y][x] == d.DECOR_NONE and not _in_bridgehead(floors[index], (x, y)):
-            floors[index].decor[y][x] = d.DECOR_BOSS_ROUTE
-
-
 
 def _balance_route_parties(floors, route):
     """Order equal-sized parties by initial walking progress and detour distance."""

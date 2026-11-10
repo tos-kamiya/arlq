@@ -285,7 +285,7 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
-Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the bridgehead and face monsters that also form parties. Returning to the floor 1 bridgehead restores LP to 50 if it is lower. Follow the route markers, defeat the empowered Fire Drake (`F'`) on the final floor, and claim the treasure.
+Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the bridgehead and face monsters that also form parties. Returning to the floor 1 bridgehead restores LP to 50 if it is lower. Defeat the empowered Fire Drake (`F'`) on the final floor and claim the treasure.
 
 When you use a different staircase or pit from the one used for your previous floor change, all unrecruited members are scattered independently to random floors, and their previously known locations are cleared. Reusing the same staircase or pit consecutively, in either direction, does not scatter them again.
 
