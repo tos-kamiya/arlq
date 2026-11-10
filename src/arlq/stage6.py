@@ -27,16 +27,6 @@ def tile_at(point: d.Point) -> d.Point:
     return maze_tile_at(point, d.TILE_WIDTH)
 
 
-def sample_party_size(floor_index: int) -> int:
-    weights = d.STAGE6_PARTY_SIZE_WEIGHTS[floor_index]
-    roll = rand.randrange(sum(weights))
-    for size, weight in enumerate(weights, 1):
-        if roll < weight:
-            return size
-        roll -= weight
-    raise AssertionError("invalid party weights")
-
-
 def _in_detached_terminal_room(current: Floor, point: d.Point) -> bool:
     return any(
         len(component) == 1 and tile_at(point) in component
@@ -187,63 +177,12 @@ def _place_party(
     raise RuntimeError("could not place Stage 6 monster party")
 
 
-def _party_roster(char: str, rank: int, floor_index: int) -> list[tuple[str, int]]:
-    size = (
-        1 if char in ("g", "c") or (char == "B" and rank == 3)
-        or (floor_index > 0 and char == "k")
-        else sample_party_size(floor_index)
-    )
-    return [(char, rank)] + [
-        rand.choice(d.STAGE6_SUPPORT_POOLS[floor_index]) for _ in range(size - 1)
-    ]
-
 
 def _place_initial_boss_party(current: Floor) -> tuple[list[d.Monster], set[d.Point]]:
     """Choose the boss layout before placing other entities."""
     _place_party(current, list(d.STAGE6_BOSS_PARTY), d.STAGE6_FLOORS - 1)
     current.entities[-len(d.STAGE6_BOSS_PARTY)].boss_id = 1
     return current.entities[-len(d.STAGE6_BOSS_PARTY):], set()
-
-
-def _place_initial_parties(
-    current: Floor, floor_index: int, excluded_room: d.Point | None = None
-) -> dict[tuple[str, int], int]:
-    available = set().union(*current.room_components) - {excluded_room}
-    rooms = [
-        room for room in d.STAGE6_INITIAL_PARTY_ROOMS
-        if room in available or (room[0] + 1, room[1]) in available
-    ]
-    shuffled = []
-    while rooms:
-        shuffled.append(rooms.pop(rand.randrange(len(rooms))))
-    shuffled.sort(key=lambda room: not any(
-        len(component) == 1 and room in component for component in current.room_components
-    ))
-    leaders = [
-        (char, rank)
-        for char, rank in d.STAGE6_INITIAL_PARTY_PRIORITY
-        for roster_char, count, roster_rank in d.STAGE6_ROSTER[floor_index]
-        if (char, rank) == (roster_char, roster_rank)
-        for _ in range(min(count, 4 if char == "b" else count))
-    ]
-    placed = {}
-    used_rooms = set()
-    for room in shuffled:
-        if sum(placed.values()) >= len(leaders):
-            break
-        char, rank = leaders[sum(placed.values())]
-        roster = _party_roster(char, rank, floor_index)
-        for candidate in (room, (room[0] + 1, room[1])):
-            if candidate not in available or candidate in used_rooms:
-                continue
-            try:
-                _place_party(current, roster, floor_index, room=candidate)
-            except RuntimeError:
-                continue
-            used_rooms.add(candidate)
-            placed[(char, rank)] = placed.get((char, rank), 0) + 1
-            break
-    return placed
 
 
 def _can_join_at(current: Floor, monster: d.Monster, point: d.Point, *,

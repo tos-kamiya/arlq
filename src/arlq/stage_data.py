@@ -224,18 +224,6 @@ STAGE6_REDUCED_SPAWN_VARIANTS = (("A", 1), ("b", 1), ("b", 2), ("b", 3), ("i", 2
 STAGE6_FLOOR2_REDUCED_SPAWN_VARIANTS = (("g", 1), ("E", 1), ("m", 1))
 STAGE6_MONSTER_PARTY_LIMIT = 8
 STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO = 0.2
-STAGE6_INITIAL_PARTY_ROOMS: Tuple[Point, ...] = (
-    (0, 0), (2, 0), (4, 0), (0, 2), (2, 2), (4, 2),
-)
-STAGE6_INITIAL_PARTY_PRIORITY = (("b", 2), ("b", 1), ("B", 2), ("B", 1))
-# Weights for parties of 1, 2, and 3 monsters, by floor; larger sizes are disabled.
-STAGE6_PARTY_SIZE_WEIGHTS = (
-    (78, 21, 1, 0, 0),
-    (60, 30, 10, 0, 0),
-    (45, 30, 25, 0, 0),
-    (45, 30, 25, 0, 0),
-)
-# Each roster entry (character, count, rank) supplies party leaders.
 # Sword carriers stay scarce; deeper floors progress to rank 2 and 3.
 STAGE6_EXTRA_BISON_RANKS = (1, None, None, None)
 STAGE6_ROSTER = (
