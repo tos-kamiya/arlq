@@ -40,7 +40,6 @@ def test_ivy_attacks_every_turn_even_without_movement(monkeypatch):
     ivy = d.Monster(5, 5, d.CHAR_TO_MONSTER_TRIBE["i"])
     player = d.Player(5, 4, 1, 100)
     current = make_floor([ivy])
-    monkeypatch.setattr(stage6, "advance_monster_movement", lambda *args: None)
     monkeypatch.setattr(stage6, "advance_spawns", lambda *args: None)
     reasons = set()
     for turn in (1, 2):

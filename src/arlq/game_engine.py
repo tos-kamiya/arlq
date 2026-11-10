@@ -1941,21 +1941,14 @@ def _process_multi_floor_turn(
         floors, player, floor, queue, turn, trace=trace, stage_num=stage_num
     )
     if stage_num == 6:
-        moved = stage6.advance_monster_movement(floors, player, floor[0], turn)
-        if trace is not None and moved is not None:
-            moved_floor, monster, old = moved
-            trace.add_world_event({
-                "type": "monster_move", "id": d.monster_type_key(monster),
-                "from": list(old), "at": [monster.x, monster.y], "floor": moved_floor,
-            })
         spawned = stage6.advance_spawns(floors, player, floor[0], turn)
-        if trace is not None and spawned is not None:
-            spawned_floor, monster = spawned
-            trace.add_world_event({
-                "type": "spawn", "kind": "monster",
-                "id": d.monster_type_key(monster),
-                "at": [monster.x, monster.y], "floor": spawned_floor,
-            })
+        if trace is not None:
+            for spawned_floor, monster in spawned or ():
+                trace.add_world_event({
+                    "type": "spawn", "kind": "monster",
+                    "id": d.monster_type_key(monster),
+                    "at": [monster.x, monster.y], "floor": spawned_floor,
+                })
     if player.rescue_stage:
         stage56.sync_members(player, previous, direction)
         stage56.explore_with_cat(floors[floor[0]], player)

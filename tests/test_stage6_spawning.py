@@ -34,34 +34,19 @@ def test_spawn_checks_both_sides_and_special_monsters(monkeypatch):
     assert not stage6.spawn_monster(current, 0, variant=("c", 1))
 
 
-def test_spawn_tries_at_most_five_distinct_positions(monkeypatch):
+def test_spawn_tries_at_most_ten_distinct_positions(monkeypatch):
     current = floor()
-    current.entities = [monster(10, y, "c") for y in range(2, 12, 2)]
-    monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, y) for y in (3, 5, 7, 9, 11, 15)])
+    current.entities = [monster(10, y, "c") for y in range(2, 22, 2)]
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, y) for y in range(3, 24, 2)])
     monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
-    assert not stage6.spawn_monster(current, 0, variant=("a", 1))
-    assert len(current.entities) == 5
+    assert not stage6.spawn_monster(current, 0, variant=("a", 1), prefer_adjacent=False)
+    assert len(current.entities) == 10
 
 
 def test_wyrm_spawn_ranks_by_floor():
     assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[0] if char == "w"] == []
     assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[1] if char == "w"] == [(1, 1)]
     assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[2] if char == "w"] == [(1, 1), (2, 2)]
-
-
-def test_spawn_attempts_once_every_ten_turns_on_one_chosen_floor(monkeypatch):
-    floors = [floor() for _ in range(3)]
-    player = d.Player(4, 4, 1, d.LP_INIT)
-    spawned = []
-    choices = iter([2, 1])
-    monkeypatch.setattr(stage6.rand, "randrange", lambda n: next(choices))
-    monkeypatch.setattr(stage6, "spawn_monster", lambda current, index, **kw: spawned.append((index, kw)))
-    for turn in range(20):
-        stage6.advance_spawns(floors, player, 2, turn)
-        assert len(spawned) == (turn + 1) // 10
-    assert [index for index, _ in spawned] == [2, 1]
-    assert spawned[0][1]["avoid"] == {(4, 4)}
-    assert spawned[1][1]["avoid"] == set()
 
 
 def test_defeat_does_not_queue_monster_respawn():
@@ -137,18 +122,6 @@ def test_initial_spawn_does_not_prefer_neighbors(monkeypatch):
     assert (current.entities[-1].x, current.entities[-1].y) == (20, 10)
 
 
-def test_spawn_prefers_neighbor_for_four_of_ten_draws(monkeypatch):
-    monkeypatch.setattr(stage6, "_open_points", lambda _: [(20, 10), (10, 9)])
-    monkeypatch.setattr(stage6.rand, "choice", lambda values: values[0])
-    for roll in range(10):
-        current = floor()
-        current.entities = [monster(10, 10)]
-        monkeypatch.setattr(stage6.rand, "randrange", lambda n: roll if n == 10 else 0)
-        assert stage6.spawn_monster(current, 0, variant=("a", 1))
-        expected = (10, 9) if roll < 4 else (20, 10)
-        assert (current.entities[-1].x, current.entities[-1].y) == expected
-
-
 def test_spawn_excludes_blocked_sections(monkeypatch):
     current = floor()
     current.monster_spawn_blocked_rooms = {stage6.tile_at((10, 10))}
@@ -156,23 +129,6 @@ def test_spawn_excludes_blocked_sections(monkeypatch):
     monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
     assert stage6.spawn_monster(current, 0, variant=("a", 1), prefer_adjacent=False)
     assert (current.entities[-1].x, current.entities[-1].y) == (40, 10)
-
-
-def test_generated_spawn_exclusions_and_initial_exceptions():
-    floors, _ = stage6.build()
-    for current in floors:
-        rooms = set().union(*current.room_components)
-        assert len(current.monster_spawn_blocked_rooms) == (len(rooms) * 30 + 50) // 100
-        assert current.monster_spawn_blocked_rooms <= rooms
-        detached = set().union(*(component for component in current.room_components
-                                 if len(component) == 1))
-        for entity in current.entities:
-            if not isinstance(entity, d.Monster) or not entity.active:
-                continue
-            if isinstance(entity, d.Collapse) or entity.tribe.char in ("F", "V", "k"):
-                continue
-            room = stage6.tile_at((entity.x, entity.y))
-            assert room in detached or room not in current.monster_spawn_blocked_rooms
 
 
 def test_rare_amoeba_spawn_weight_is_half_of_roster_weight(monkeypatch):
@@ -221,27 +177,6 @@ def test_first_floor_doubles_cobra_weight_using_amoeba_weight():
     roster = d.STAGE6_ROSTER[0]
     assert next(count for char, count, rank in roster if (char, rank) == ("f", 1)) == 2
     assert next(count for char, count, rank in roster if (char, rank) == ("a", 1)) == 12
-
-
-def test_section_spawn_rates_accept_and_reject_at_threshold(monkeypatch):
-    monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10)])
-    for rate, roll, expected in ((40, 39, True), (40, 40, False),
-                                 (60, 59, True), (60, 60, False)):
-        current = floor()
-        current.monster_spawn_room_rates = {stage6.tile_at((10, 10)): rate}
-        monkeypatch.setattr(stage6.rand, "randrange", lambda n: roll if n == 100 else 0)
-        assert stage6.spawn_monster(current, 0, variant=("a", 1)) is expected
-
-
-def test_generated_section_rates_partition_available_rooms():
-    floors, _ = stage6.build()
-    for current in floors:
-        rooms = set().union(*current.room_components)
-        rates = current.monster_spawn_room_rates
-        assert set(rates) | current.monster_spawn_blocked_rooms == rooms
-        assert not set(rates) & current.monster_spawn_blocked_rooms
-        assert set(rates.values()) == {40, 60}
-        assert abs(list(rates.values()).count(40) - list(rates.values()).count(60)) <= 1
 
 
 def test_bridgehead_restores_only_on_entry_and_preserves_higher_lp():
@@ -315,7 +250,7 @@ def test_timed_spawn_is_recorded_as_world_change(monkeypatch):
     current = floor()
     player = d.Player(4, 4, 1, d.LP_INIT)
     spawned = monster(10, 10)
-    monkeypatch.setattr(stage6, "advance_spawns", lambda *_: (0, spawned))
+    monkeypatch.setattr(stage6, "advance_spawns", lambda *_: [(0, spawned)])
     trace = TraceRecorder(params={})
     trace.begin_turn("R")
     game_engine._step((1, 0), [current], player, [0], [(4, 4)], Counter(), 9,
@@ -326,19 +261,21 @@ def test_timed_spawn_is_recorded_as_world_change(monkeypatch):
     }]
 
 
-def test_stage_setup_performs_fifty_regular_spawn_draws(monkeypatch):
-    original = stage6.advance_spawns
-    draws = []
+def test_simultaneous_spawns_are_all_recorded(monkeypatch):
+    from arlq.trace import TraceRecorder
 
-    def record(floors, player, floor_index, turn):
-        draws.append((floor_index, turn))
-        return original(floors, player, floor_index, turn)
-
-    monkeypatch.setattr(stage6, "advance_spawns", record)
-    floors, _ = stage6.build()
-    assert draws == [(0, (i + 1) * d.STAGE6_SPAWN_INTERVAL - 1)
-                     for i in range(d.STAGE6_INITIAL_SPAWN_DRAWS)]
-    assert all(not current.respawn_glows for current in floors)
+    floors = [floor() for _ in range(3)]
+    player = d.Player(4, 4, 1, d.LP_INIT)
+    monsters = [monster(10 + index, 10) for index in range(3)]
+    monkeypatch.setattr(stage6, "advance_spawns", lambda *_: list(enumerate(monsters)))
+    trace = TraceRecorder(params={})
+    trace.begin_turn("R")
+    game_engine._step((1, 0), floors, player, [0], [(4, 4)], Counter(), 14,
+                      stage_num=6, trace=trace)
+    trace.commit_turn()
+    assert [(event["floor"], event["at"]) for event in trace.turns[0]["world"]] == [
+        (0, [10, 10]), (1, [11, 10]), (2, [12, 10]),
+    ]
 
 
 def test_first_floor_amoeba_uses_roster_weight(monkeypatch):
@@ -349,20 +286,6 @@ def test_first_floor_amoeba_uses_roster_weight(monkeypatch):
     assert stage6.spawn_monster(floor(), 0)
     assert pools[0].count(("a", 1)) == 24
     assert pools[0].count(("f", 1)) == 4
-
-
-def test_spawn_floor_weights_current_floor_twice(monkeypatch):
-    floors = [floor() for _ in range(3)]
-    player = d.Player(4, 4, 1, d.LP_INIT)
-    selected = []
-    monkeypatch.setattr(stage6, "spawn_monster", lambda current, index, **kw: selected.append(index))
-    for active in range(3):
-        selected.clear()
-        for draw in range(4):
-            monkeypatch.setattr(stage6.rand, "randrange", lambda n: draw)
-            stage6.advance_spawns(floors, player, active, d.STAGE6_SPAWN_INTERVAL - 1)
-        assert selected.count(active) == 2
-        assert all(selected.count(i) == (2 if i == active else 1) for i in range(3))
 
 
 def test_spawn_does_not_place_monster_on_bridgehead(monkeypatch):
@@ -416,3 +339,79 @@ def test_second_floor_monster_draw_can_select_e_and_m(monkeypatch):
     assert counts[("E", 1)] > 50
     assert counts[("m", 1)] > 50
     assert 0.6 < counts[("E", 1)] / counts[("m", 1)] < 1.6
+
+
+def test_every_floor_spawned_every_eighteen_turns(monkeypatch):
+    floors = [floor() for _ in range(3)]
+    player = d.Player(4, 4, 1, d.LP_INIT)
+    calls = []
+    monkeypatch.setattr(stage6, "spawn_monster", lambda current, index, **kw: calls.append((index, kw)) or False)
+    for turn in range(36):
+        stage6.advance_spawns(floors, player, 1, turn)
+        assert len(calls) == 3 * ((turn + 1) // 18)
+    assert [index for index, _ in calls] == [0, 1, 2, 0, 1, 2]
+    assert calls[1][1]["avoid"] == {(4, 4)}
+    assert calls[0][1]["avoid"] == set()
+
+
+def test_neighbor_preference_has_forty_percent_threshold(monkeypatch):
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [(20, 10), (10, 9)])
+    for roll in range(10):
+        current = floor()
+        current.entities = [monster(10, 10)]
+        monkeypatch.setattr(stage6.rand, "randrange", lambda n: roll if n == 10 else 0)
+        assert stage6.spawn_monster(current, 0, variant=("a", 1))
+        assert (current.entities[-1].x, current.entities[-1].y) == ((10, 9) if roll < 4 else (20, 10))
+
+
+def test_party_preference_falls_back_after_five_failures(monkeypatch):
+    current = floor()
+    current.entities = [monster(x, 10) for x in (10, 12, 14, 16, 18)]
+    nearby = [(x, 9) for x in (10, 12, 14, 16, 18)]
+    random_points = [(30 + x, 10) for x in range(5)]
+    attempts = []
+    monkeypatch.setattr(stage6, "_open_points", lambda _: nearby + random_points)
+    monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
+
+    def can_join(current, monster, point, **kwargs):
+        attempts.append(point)
+        return point == random_points[-1]
+
+    monkeypatch.setattr(stage6, "_can_join_at", can_join)
+    assert stage6.spawn_monster(current, 0, variant=("a", 1))
+    assert attempts == nearby + random_points
+
+
+def test_party_preference_without_neighbors_falls_back(monkeypatch):
+    current = floor()
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [(20, 10)])
+    monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
+    assert stage6.spawn_monster(current, 0, variant=("a", 1))
+    assert (current.entities[-1].x, current.entities[-1].y) == (20, 10)
+
+
+def test_generated_spawn_exclusions_are_start_and_boss_rooms():
+    floors, player = stage6.build()
+    boss = next(e for e in floors[-1].entities if isinstance(e, d.Monster) and e.tribe.char == "F")
+    assert floors[0].monster_spawn_blocked_rooms == {stage6.tile_at((player.x, player.y))}
+    assert not floors[1].monster_spawn_blocked_rooms
+    assert floors[-1].monster_spawn_blocked_rooms == {stage6.tile_at((boss.x, boss.y))}
+    for index, current in enumerate(floors):
+        for entity in current.entities:
+            if isinstance(entity, d.Monster) and not isinstance(entity, d.Collapse):
+                if index == len(floors) - 1 and entity.tribe.char in ("F", "V", "k"):
+                    continue
+                assert stage6.tile_at((entity.x, entity.y)) not in current.monster_spawn_blocked_rooms
+
+
+def test_stage_setup_attempts_forty_random_spawns_per_floor(monkeypatch):
+    original = stage6.spawn_monster
+    draws = []
+    def record(current, index, **kwargs):
+        if kwargs.get("prefer_adjacent") is False:
+            draws.append(index)
+        return original(current, index, **kwargs)
+    monkeypatch.setattr(stage6, "spawn_monster", record)
+    floors, _ = stage6.build()
+    assert draws == [index for index in range(len(floors)) for _ in range(40)]
+    assert all(not current.respawn_glows for current in floors)
