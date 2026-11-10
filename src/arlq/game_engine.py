@@ -1549,6 +1549,9 @@ def _process_respawn_queue(
         if not count:
             continue
         ch = type_key[:-1] if type_key[-1].isdigit() else type_key
+        if (stage_num == 6 and ch in ("l", "n", "o", "p")
+                and ch not in floors[queued_floor].stage6_fairy_chars):
+            continue
         if ch == "k" and turn % d.MARKSMAN_RESPAWN_INTERVAL:
             continue
         tribe = d.CHAR_TO_TRIBE[ch]

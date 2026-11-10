@@ -46,6 +46,7 @@ class Floor:
     respawn_glows: Dict[d.Point, int] = dataclass_field(default_factory=dict)
     monster_spawn_queue: List[Tuple[str, int]] = dataclass_field(default_factory=list)
     monster_spawn_queue_index: int = 0
+    stage6_fairy_chars: Tuple[str, ...] = ()
 
     # Tutorial monsters allowed to remain horizontally or diagonally adjacent.
     adjacent_monster_exemptions: set[d.Point] = dataclass_field(default_factory=set)

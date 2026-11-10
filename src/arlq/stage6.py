@@ -472,9 +472,11 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
             pass
         if index < d.STAGE6_FLOORS - 1:
             _place_detached_room_monsters(current, room_components, avoid=initial_avoid)
-        # Retain the former Loop Fairy's random draw for seeded generation.
-        rand.choice(_open_points(current))
-        for char in ("n", "o", "p"):
+        fairy_pool = ["l", "n", "o", "p"]
+        current.stage6_fairy_chars = tuple(
+            fairy_pool.pop(rand.randrange(len(fairy_pool))) for _ in range(3)
+        )
+        for char in current.stage6_fairy_chars:
             current.entities.append(
                 d.Fairy(
                     *rand.choice(_open_points(current)),
