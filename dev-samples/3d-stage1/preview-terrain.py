@@ -2,9 +2,10 @@
 labelled, in three rows: the two floor tiles, a wall of marble columns, and
 the up and down stairs; a golem rock, a pit, and the rocks fallen from a pit
 on the floor above; the barrier (both checkerboard variants), the reduced
-barrier shown near the player while Guardian lowers its damage, and the
-trial Stage 6 bridgehead (build-bridgehead.py). The bridgehead image is laid
-over its two cells here, at the game's scale, placed by bridgehead.json.
+barrier shown near the player while Guardian lowers its damage, the trial
+Stage 6 bridgehead (build-bridgehead.py) and the trial Stage 6 Dungeon Core
+(build-dungeon-core.py). The bridgehead and Dungeon Core images are laid over
+their two and three cells here, at the game's scale, placed by their JSON.
 
     PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py [--stage N]
 
@@ -37,14 +38,15 @@ ROWS = [
     (4, [('FLOOR A / B', 2, 3), ('WALL (COLUMNS)', 6, 8), ('STAIRS UP', 11, 11),
          ('STAIRS DOWN', 14, 14)]),
     (7, [('GOLEM ROCK', 2, 2), ('PIT', 5, 5), ('FALLEN ROCKS', 8, 8)]),
-    (10, [('BARRIER', 2, 3), ('BARRIER (GUARDIAN)', 6, 7), ('BRIDGEHEAD', 10, 11)]),
+    (10, [('BARRIER', 2, 3), ('BARRIER (GUARDIAN)', 6, 7), ('BRIDGEHEAD', 10, 11),
+          ('DUNGEON CORE', 13, 15)]),
 ]
 LEFT, RIGHT = 1, 15
 # Barrier cells drawn as when Guardian reduces their damage near the player.
 REDUCED_BARRIERS = {(6, 10), (7, 10)}
 ASSETS = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets'
 # Images laid over cells: (asset name, field row, first column).
-OVERLAYS = [('bridgehead', 10, 10)]
+OVERLAYS = [('bridgehead', 10, 10), ('dungeon-core', 10, 13)]
 
 ui = SpriteUI(scale=4)
 field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]

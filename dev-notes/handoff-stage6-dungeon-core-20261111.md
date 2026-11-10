@@ -67,5 +67,5 @@ DUNGEON_CORE_OUT=<出力先> blender --background --threads 4 --python dev-sampl
 - 黒っぽい光は、水晶からいろいろな方向へ伸びる四角錐のトゲで表す。中心は黒く、縁は紫で、先ほど薄い。目を隠さないよう、カメラへまっすぐ向かうトゲは除く。
 - 台座はなし。
 - 柱の並びの横幅を1.7マス（`FRAME_CELLS`）に合わせる。画像は3マス幅（`CELLS`）で、その中央に置く。はみ出しはマスの上へ0.45マス、下へ0.65マス。
-- 画像の書き出し先の既定は `src/arlq/assets/dungeon-core/`（`dungeon-core.png` と、`cells`・`under`・`overhang` を書いた `dungeon-core.json`）。ただし、まだ書き出していない。
+- 画像の書き出し先の既定は `src/arlq/assets/dungeon-core/`（`dungeon-core.png` と、`cells`・`under`・`overhang` を書いた `dungeon-core.json`）。書き出し済みで、`preview-terrain.py` の右端に表示される。ゲームではまだ使っていない。
 - 検討の経緯: 自然の岩の柱と岩の台座から始め、四角い柱、上下の梁でつないだ枠、枠を斜めにした形、枠を90度回した形を経て、今の十字の4本柱になった。
