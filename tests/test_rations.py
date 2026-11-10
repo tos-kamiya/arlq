@@ -67,7 +67,8 @@ def test_gui_ration_keys(symbols, expected):
 
 def test_replay_applies_ration_before_next_operation(monkeypatch):
     player = d.Player(2, 2, 1, 0)
-    floor = SimpleNamespace(up=(2, 2), update_outer_wall_decor=lambda: None)
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    floor = Floor(field, [], [[0] * d.FIELD_WIDTH for _ in field], (2, 2), (3, 3), None)
     monkeypatch.setattr(stage_replay, 'build', lambda *_: ([floor], player))
     monkeypatch.setattr(game_engine, 'observe_world', lambda *_: None)
     observed = []

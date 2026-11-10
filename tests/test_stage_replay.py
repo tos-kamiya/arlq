@@ -336,16 +336,87 @@ def test_rewind_restores_membership_but_keeps_discoveries(monkeypatch):
     player.seen_members = {"Healer"}
     player.known_member_floors = {"Healer": 1}
     restored = d.Player(2, 2, 1, 120)
-    monkeypatch.setattr(stage_replay, "replay_to_operation", lambda *_: (
-        [deepcopy(current)], restored, 0, (2, 2), Counter()
-    ))
     monkeypatch.setattr(stage_replay, "_spawn", lambda *_: (3, 3))
     context = ReplayContext(6, 123, GameConfig())
+    context.save_snapshot(0, [current], restored, [0], [(2, 2)], Counter())
     stage_replay.rewind([current], player, [0], [(2, 2)], Counter(), context,
                         operation_count=1)
     assert player.joined_members == set()
     assert player.seen_members == {"Healer"}
     assert player.known_member_floors == {"Healer": 1}
+
+
+def test_loop_rewind_keeps_current_random_state_and_only_respawn_consumes_it(monkeypatch):
+    from arlq.utils import MyRandom
+
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    current = Floor(field, [], [[0] * d.FIELD_WIDTH for _ in field], (2, 2), (3, 3), None)
+    saved_player = d.Player(2, 2, 1, 120)
+    current.entities.append(d.Fairy(4, 4, d.CHAR_TO_FAIRY_TRIBE["l"]))
+    context = ReplayContext(3, 123, GameConfig())
+    context.save_snapshot(0, [current], saved_player, [0], [(2, 2)], Counter())
+    player = d.Player(8, 8, 3, 50)
+    floors = [deepcopy(current)]
+    expected = MyRandom(321)
+    engine.rand.set_seed(321)
+    for _ in range(7):
+        assert engine.rand.randrange(1000) == expected.randrange(1000)
+    expected_respawn = expected.randrange(1000)
+    expected_next = expected.randrange(1000)
+    draws = []
+
+    def spawn(entities, field, char, avoid, island, floor_index):
+        draws.append(engine.rand.randrange(1000))
+        entities.append(d.Fairy(5, 5, d.CHAR_TO_FAIRY_TRIBE["l"]))
+        return (5, 5)
+
+    monkeypatch.setattr(stage_replay, "_spawn", spawn)
+    monkeypatch.setattr(engine.rand, "set_seed", lambda *_: pytest.fail("rewind reset the seed"))
+    monkeypatch.setattr(engine.rand, "setstate", lambda *_: pytest.fail("rewind restored random state"))
+    stage_replay.rewind(floors, player, [0], [(8, 8)], Counter(), context, operation_count=1)
+    assert draws == [expected_respawn]
+    assert engine.rand.randrange(1000) == expected_next
+    assert (player.x, player.y, player.lp) == (2, 2, 120)
+
+
+def test_live_and_trace_replay_match_after_long_loop_rewind(monkeypatch):
+    from arlq.trace import ReplayUI, TraceRecorder
+
+    def build(*_):
+        player = d.Player(20, 10, 1, 200)
+        field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+        loop = d.Fairy(21, 10, d.CHAR_TO_FAIRY_TRIBE["l"])
+        current = Floor(field, [loop], [[1] * d.FIELD_WIDTH for _ in field],
+                        (20, 10), (60, 18), None)
+        return [current], player
+
+    def spawn(entities, field, char, avoid, island, floor_index):
+        x = 30 + engine.rand.randrange(10)
+        entities.append(d.Fairy(x, 15, d.CHAR_TO_FAIRY_TRIBE["l"], origin_floor=floor_index))
+        return x, 15
+
+    monkeypatch.setattr(engine, "build", build)
+    monkeypatch.setattr(stage_replay, "_spawn", spawn)
+    inputs = iter([(0, 1), (0, -1)] * 45 + [(1, 0), (0, 1), None])
+    frames = []
+    def draw(**kwargs):
+        player = kwargs["player"]
+        fairies = [(e.x, e.y) for e in kwargs["entities"] if isinstance(e, d.Fairy)]
+        frames.append((player.x, player.y, player.lp, fairies, engine.rand.getstate()))
+    ui = SimpleNamespace(draw_stage=draw, input_direction=inputs.__next__, map_mode=False)
+    engine.rand.set_seed(4321)
+    trace = TraceRecorder(params={})
+    engine.run_game(ui, "test", stage_num=3, trace=trace)
+    expected = frames[-1]
+    assert len(trace.turns) == 93
+    assert expected[:3] == (20, 12, 188)
+
+    frames.clear()
+    engine.rand.set_seed(4321)
+    replay_ui = ReplayUI(trace.turns, 3)
+    replay_ui.draw_stage = draw
+    engine.run_game(replay_ui, "test", stage_num=3)
+    assert frames[-1] == expected
 
 
 def test_rewind_keeps_pit_entrances_only_when_the_restored_pit_is_open():

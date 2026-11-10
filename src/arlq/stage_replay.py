@@ -100,6 +100,8 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
     floor = [0]
     checkpoint = [floors[0].up]
     queue: Counter[Tuple[int, str]] = Counter()
+    replay_state = ReplayContext(replay.stage_num, replay.seed, replay.config)
+    replay_state.rewind_targets = replay.rewind_targets.copy()
 
     def observe() -> None:
         observe_world(
@@ -114,6 +116,7 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
         for destination in replay.rogue_checks.get(index, ()):
             stage56.rogue_danger(floors[floor[0]], destination)
             observe()
+        replay_state.save_snapshot(index, floors, player, floor, checkpoint, queue)
         previous_floor = floor[0]
         previous_point = (player.x, player.y)
         result = _step(
@@ -122,7 +125,7 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
         )
         if isinstance(result, _RewindRequest):
             rewind(
-                floors, player, floor, checkpoint, queue, replay,
+                floors, player, floor, checkpoint, queue, replay_state,
                 operation_count=index + 1, loop_floor_index=result.floor_index,
             )
         else:
@@ -150,7 +153,7 @@ def rewind(
     operation_count: int,
     loop_floor_index: Optional[int] = None,
 ) -> str:
-    """Replay to the rewind target and carry over the player's current knowledge."""
+    """Restore a saved state and carry over the player's current knowledge."""
     remaining_rations = player.rations
     knowledge = _RewindKnowledge.capture(floors, player)
 
@@ -160,7 +163,7 @@ def rewind(
     (
         restored_floors, restored_player_state, restored_floor,
         restored_checkpoint, restored_queue,
-    ) = replay_to_operation(replay_context, target_count)
+    ) = replay_context.load_snapshot(target_count)
     floors[:] = restored_floors
     floor[0] = restored_floor
     checkpoint[0] = restored_checkpoint

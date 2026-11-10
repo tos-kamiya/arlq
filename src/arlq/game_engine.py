@@ -2347,6 +2347,10 @@ def run_game(
             trace.begin_turn(key)
 
         if replay_context is not None:
+            replay_context.save_snapshot(
+                len(replay_context.operations), floors, player, floor, checkpoint, queue
+            )
+            replay_context.prune_snapshots(game_start_turn)
             replay_context.operations.append(move)
             game_start_turn += 1
             replay_context.turn_to_operation[game_start_turn] = len(

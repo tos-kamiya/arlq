@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Restore Loop Fairy rewinds from saved game states while continuing the
+  current random sequence. Older traces containing Loop rewinds may replay
+  differently.
+
 ## 6.6.0 - 2026-11-10
 
 - Revise Stage 6 monster ranks, initial and periodic spawns, and party formation;

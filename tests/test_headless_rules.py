@@ -1688,6 +1688,7 @@ def test_loop_fairy_rewinds_world_and_per_instance_fairy_knowledge(monkeypatch):
     old_floors[0].up = (4, 5)
     monkeypatch.setattr(stage_replay_module, "build", lambda *_: deepcopy((old_floors, old_player)))
     replay = game_engine_module.ReplayContext(3, 123, GameConfig())
+    replay.save_snapshot(0, old_floors, old_player, [0], [old_floors[0].up], Counter())
     current_queue = Counter({(0, "X"): 3})
     floor = [0]
     checkpoint = [(2, 2)]
@@ -1756,6 +1757,7 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     old_floors, _ = stage3_state(old_player, [old_loop, old_high_elf, old_sylvan_elf])
     monkeypatch.setattr(stage_replay_module, "build", lambda *_: deepcopy((old_floors, old_player)))
     replay = game_engine_module.ReplayContext(3, 123, GameConfig())
+    replay.save_snapshot(0, old_floors, old_player, [0], [old_floors[0].up], Counter())
     floor = [0]
     checkpoint = [(2, 2)]
     queue: "Counter" = Counter()
@@ -1833,6 +1835,7 @@ def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
     queue = Counter()
     monkeypatch.setattr(stage_replay_module, "build", lambda *_: deepcopy((saved_floors, saved_player)))
     replay = game_engine_module.ReplayContext(3, 123, GameConfig(), operations=[KEYS["R"]])
+    replay.save_snapshot(0, saved_floors, saved_player, [0], [saved_floors[0].up], Counter())
     respawn_position = (6, 6)
 
     def spawn_loop(entities, _field, char, _avoid, _island, floor_index=None):
@@ -1933,6 +1936,8 @@ def test_replay_rewind_restores_world_state_and_preserves_current_knowledge(
         config=GameConfig(),
         operations=[(1, 0), (0, 1)],
     )
+    initial_floors, initial_player = initial_state()
+    context.save_snapshot(0, initial_floors, initial_player, [0], [initial_floors[0].up], Counter())
     floor_index = [0]
     checkpoint = [(2, 2)]
     queue = Counter()
@@ -1994,13 +1999,12 @@ def test_rewind_uses_chronological_inputs_and_recorded_branch_target(monkeypatch
     floors, _ = stage3_state(player, [])
     floors[0].seen[10][20] = 17
     targets = []
-    replay_prefix = stage_replay_module.replay_to_operation
-
-    def record_target(context, target_count):
+    def record_target(target_count):
         targets.append(target_count)
-        return replay_prefix(context, target_count)
+        saved_floors, saved_player = initial_state()
+        return saved_floors, saved_player, 0, saved_floors[0].up, Counter()
 
-    monkeypatch.setattr(stage_replay_module, "replay_to_operation", record_target)
+    monkeypatch.setattr(replay, "load_snapshot", record_target)
     game_engine_module._rewind(
         floors, player, [0], [(2, 2)], Counter(), replay, operation_count=111,
     )

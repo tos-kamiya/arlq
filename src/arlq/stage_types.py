@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
+import pickle
 from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from . import defs as d
@@ -100,7 +101,7 @@ class Floor:
 
 @dataclass
 class ReplayContext:
-    """Seed and player inputs needed to reconstruct rewindable game state."""
+    """History and saved game states for Loop Fairy rewinds."""
 
     stage_num: int
     seed: int
@@ -113,9 +114,27 @@ class ReplayContext:
     ration_uses: set[int] = dataclass_field(default_factory=set)
     # Non-turn Rogue checks, indexed by the next committed operation.
     rogue_checks: Dict[int, List[d.Point]] = dataclass_field(default_factory=dict)
+    snapshots: Dict[int, bytes] = dataclass_field(default_factory=dict, repr=False)
+
+    def save_snapshot(self, operation_count, floors, player, floor, checkpoint, queue) -> None:
+        """Save game state without capturing or changing the random generator."""
+        self.snapshots[operation_count] = pickle.dumps(
+            (floors, player, floor[0], checkpoint[0], queue), protocol=pickle.HIGHEST_PROTOCOL
+        )
+
+    def load_snapshot(self, operation_count):
+        return pickle.loads(self.snapshots[operation_count])
+
+    def prune_snapshots(self, game_turn: int) -> None:
+        """Retain only states reachable within the Loop Fairy's time limit."""
+        oldest_turn = max(0, game_turn - d.LOOP_TURNS)
+        keep = {operation for turn, operation in self.turn_to_operation.items()
+                if turn >= oldest_turn}
+        self.snapshots = {index: snapshot for index, snapshot in self.snapshots.items()
+                          if index in keep}
 
     def prepare_loop_rewind(self, game_turn: int, anchor_turn: int) -> Tuple[int, int]:
-        """Record the operation target before reconstructing a Loop rewind."""
+        """Record the operation target before restoring a Loop rewind."""
         rewind_turn = max(anchor_turn, game_turn - d.LOOP_TURNS)
         rewind_operation = self.turn_to_operation.get(rewind_turn, 0)
         self.rewind_targets[len(self.operations)] = rewind_operation
