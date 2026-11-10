@@ -1,23 +1,21 @@
-"""The Stage 6 Dungeon Core for the sprite GUI: an eye in a crystal between
-two pillars.
+"""The Stage 6 Dungeon Core for the sprite GUI: an eye in a crystal among
+four pillars.
 
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-dungeon-core.py
 
 A trial for the core shown as `[*]` on three cells side by side. A large
-clear violet octahedron floats over the middle cell with an eye hanging
-inside it, looking at the camera: an almond-shaped lens with a glowing
-magenta iris and a black slit pupil in a pale violet-grey white. Two
-unnatural pillars, square in plan, and thick beams at the top and the foot
-make one seamless frame of polished violet-black stone in an upright plane,
-with glowing violet grooves down each pillar face and a glowing line along
-the front and back of each beam; the frame is turned
-toward screen right (YAW, as the bridgehead) so it is seen at a slant. The
-crystal gives off a dark glow:
-spikes of smoky light, black at heart and violet at their edges, fading
-toward their tips, radiating from it in every direction. There is no base.
-It uses the bridgehead's 60-degree orthographic camera and ink outline and
-is fitted so the turned frame spans the cells' width (the rays may run past
-it); the pillars need not sit exactly on the `[` and `]` cells.
+clear violet octahedron floats in the middle with an eye hanging inside it,
+looking at the camera: an almond-shaped lens with a glowing magenta iris and
+a black slit pupil in a pale violet-grey white. Four unnatural pillars stand
+round it in a cross, the whole cross turned 30 degrees clockwise seen from
+above (YAW) so it does not face straight ahead: square in plan,
+polished violet-black, flat-topped, with glowing violet grooves down each
+face and glowing bands near the top and foot. The crystal gives off a dark
+glow: spikes of smoky light, black at heart and violet at their edges,
+fading toward their tips, radiating from it in every direction. There is no
+base. It uses the bridgehead's 60-degree orthographic camera and ink
+outline, and is fitted so the pillars span FRAME_CELLS cells,
+centred on a canvas CELLS wide that leaves room for the rays.
 
 Writes to OUT (DUNGEON_CORE_OUT in the environment, else
 src/arlq/assets/dungeon-core):
@@ -41,13 +39,14 @@ CELL_PIXELS = (320, 400)
 UNIT_PIXELS = 300
 CELL_W = CELL_PIXELS[0] / UNIT_PIXELS
 CELLS = 3
+FRAME_CELLS = 1.7
 WIDTH = CELL_PIXELS[0] * CELLS
 ELEVATION = math.radians(60)
 CELL_UP = CELL_PIXELS[1] / UNIT_PIXELS
 
 # The model before it is fitted to the cells.
-PILLAR_X, PILLAR_HALF, PILLAR_H, BEAM_H = 1.0, 0.17, 2.9, 0.30
-YAW = math.radians(35)
+PILLAR_D, PILLAR_HALF, PILLAR_H = 0.95, 0.17, 2.6
+YAW = math.radians(-30)
 CRYSTAL_R, CRYSTAL_H, CRYSTAL_Z = 0.62, 0.95, 1.45
 EYE_W, EYE_TALL, EYE_DEPTH = 0.34, 0.58, 0.40
 RAYS, RAY_MIN, RAY_MAX = 22, 0.75, 1.30
@@ -244,32 +243,21 @@ def box(name, x0, x1, y0, y1, z0, z1, mat, bevel=0.0):
     return finish(obj, name, mat, bevel)
 
 
-def frame(stone, glow):
-    """The pillars and beams as one block of stone with the opening cut out,
-    so the beams run seamlessly into the pillars; glowing grooves down each
-    face of the pillars between the beams, and a glowing line along the
-    front and back of each beam."""
-    h, outer, inner = PILLAR_HALF, PILLAR_X + PILLAR_HALF, PILLAR_X - PILLAR_HALF
-    block = box('Pillar frame', -outer, outer, -h, h, 0, PILLAR_H, stone)
-    hole = box('Opening', -inner, inner, -h - 0.1, h + 0.1, BEAM_H, PILLAR_H - BEAM_H, stone)
-    cut = block.modifiers.new('Opening', 'BOOLEAN')
-    cut.operation, cut.object = 'DIFFERENCE', hole
-    bpy.context.view_layer.objects.active = block
-    bpy.ops.object.modifier_apply(modifier=cut.name)
-    bpy.data.objects.remove(hole)
-    bevel = block.modifiers.new('Soft edges', 'BEVEL')
-    bevel.width, bevel.segments = 0.012, 2
-    groove, proud = 0.022, 0.006
-    z0, z1 = BEAM_H + 0.12, PILLAR_H - BEAM_H - 0.12
-    for x in (-PILLAR_X, PILLAR_X):
+def pillars(stone, glow):
+    """Four square, flat-topped pillars in a cross round the crystal, with
+    glowing grooves down each face and glowing bands near the top and foot."""
+    h, groove, proud = PILLAR_HALF, 0.022, 0.006
+    z0, z1 = 0.42, PILLAR_H - 0.42
+    for x, y in ((0, -PILLAR_D), (PILLAR_D, 0), (0, PILLAR_D), (-PILLAR_D, 0)):
+        box('Pillar', x - h, x + h, y - h, y + h, 0, PILLAR_H, stone, 0.012)
         for x0, x1, y0, y1 in ((-groove, groove, -h - proud, -h + 0.01),
                                (-groove, groove, h - 0.01, h + proud),
                                (-h - proud, -h + 0.01, -groove, groove),
                                (h - 0.01, h + proud, -groove, groove)):
-            box('Pillar groove', x + x0, x + x1, y0, y1, z0, z1, glow)
-    for z in (BEAM_H / 2, PILLAR_H - BEAM_H / 2):
-        for y0, y1 in ((-h - proud, -h + 0.01), (h - 0.01, h + proud)):
-            box('Pillar beam line', -inner, inner, y0, y1, z - 0.018, z + 0.018, glow)
+            box('Pillar groove', x + x0, x + x1, y + y0, y + y1, z0, z1, glow)
+        for z in (0.20, PILLAR_H - 0.24):
+            box('Pillar band', x - h - proud, x + h + proud, y - h - proud,
+                y + h + proud, z, z + 0.035, glow)
 
 
 def eye():
@@ -329,7 +317,7 @@ stone = material('Polished black-violet stone', (0.035, 0.025, 0.05), roughness=
 groove = material('Violet glow', (0.4, 0.15, 0.7), emission=(0.60, 0.20, 1.0), strength=3.0)
 dark_light = dark_light_material()
 
-frame(stone, groove)
+pillars(stone, groove)
 
 # The octahedron, taller than wide, floating and turned a little.
 top, bottom = CRYSTAL_Z + CRYSTAL_H, CRYSTAL_Z - CRYSTAL_H
@@ -342,11 +330,11 @@ octa.visible_shadow = False
 core_eye = eye()
 core_eye.visible_shadow = False
 
-# Turn the frame of pillars and beams about the crystal toward screen right.
+# Turn the cross of pillars about the crystal.
 bpy.context.view_layer.update()
-pillars = [obj for obj in scene.objects if obj.name.startswith('Pillar')]
+pillar_parts = [obj for obj in scene.objects if obj.name.startswith('Pillar')]
 turn = Matrix.Rotation(YAW, 4, 'Z')
-for obj in pillars:
+for obj in pillar_parts:
     obj.matrix_world = turn @ obj.matrix_world
 
 # Spikes of dark light in every direction, spread evenly over a sphere,
@@ -367,13 +355,13 @@ core_light = bpy.context.object
 core_light.data.energy, core_light.data.color = 8.0, (0.6, 0.25, 1.0)
 core_light.data.shadow_soft_size = 0.2
 
-# Fit so the pillars span the cells' width and find the overhangs.
+# Fit so the pillars span FRAME_CELLS cells and find the overhangs.
 bpy.context.view_layer.update()
-pillar_points = [obj.matrix_world @ v.co for obj in pillars for v in obj.data.vertices]
+pillar_points = [obj.matrix_world @ v.co for obj in pillar_parts for v in obj.data.vertices]
 all_points = [obj.matrix_world @ v.co for obj in scene.objects if obj.type == 'MESH'
               for v in obj.data.vertices]
 x_lo, x_hi = min(p.x for p in pillar_points), max(p.x for p in pillar_points)
-fit = CELLS * CELL_W / (x_hi - x_lo)
+fit = FRAME_CELLS * CELL_W / (x_hi - x_lo)
 shrink = Matrix.Scale(fit, 4) @ Matrix.Translation(-Vector(((x_lo + x_hi) / 2, 0, 0)))
 for obj in scene.objects:
     obj.matrix_world = shrink @ obj.matrix_world
