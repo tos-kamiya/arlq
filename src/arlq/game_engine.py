@@ -57,6 +57,10 @@ ELF_REPEAT_MESSAGES = {
     "S": "-- The Sylvan Elf replenished your fairy nectar.",
 }
 STATUS_POPUP_TICKS = 2
+_VORTEX_HATCH_RANKS = (
+    (0, 2),
+    (3, 1),
+)
 
 
 def _set_status_popup(player: d.Player, text: str, tone: str = "default") -> None:
@@ -531,6 +535,8 @@ def _vortex_rearrange(
     ]
 
     # Clear and rebuild only barriers inside the Vortex's affected area.
+    horizontal_radius = max(1.0, radius * d.FOV_WIDTH_EXPANSION_RATIO)
+    vertical_radius = max(1, radius)
     for x, y in affected_points:
         if (
             current.field[y][x] == d.CHAR_BARRIER
@@ -670,8 +676,21 @@ def _vortex_rearrange(
         if (
             current.field[y][x] in (d.CHAR_FLOOR, d.CHAR_BARRIER)
             and (x, y) not in current.persistent_barriers
+            and current.seen[y][x]
         ):
-            current.seen[y][x] = 0
+            normalized_distance = min(
+                1.0,
+                math.hypot(
+                    (x - center[0]) / horizontal_radius,
+                    (y - center[1]) / vertical_radius,
+                ),
+            )
+            erased_cells_per_block = (
+                4 if normalized_distance <= 0.9 else 3
+            )
+            hatch_rank = _VORTEX_HATCH_RANKS[y % 2][x % 2]
+            if hatch_rank < erased_cells_per_block:
+                current.seen[y][x] = 0
 
 
 def _defeat_monster(

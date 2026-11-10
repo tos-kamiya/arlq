@@ -268,7 +268,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 | -------------- | ----------- |
 | **T** Mimic | Appears as a treasure chest after the stage boss is defeated. It has level 1; defeating it moves the player to a random position on the same floor. |
 | **?** / **O** Collapse | When a Rogue is in the party and its `?` cell enters the field of view, pits (`O`) open in the four adjacent cells, except where a wall already exists. Otherwise, entering its `?` cell opens the pits. On the next move, entering a pit drops the player to the next floor. Defeating Collapse removes the `?`; it does not respawn. |
-| **V** Vortex | Repositions nearby monsters, fairies, and treasure chests when defeated, and erases map memory in the affected area. Collapses remain in place. Map memory lost to a Vortex is not restored by the Loop Fairy's rewind. |
+| **V** Vortex | Repositions nearby monsters, fairies, and treasure chests when defeated, and erases map memory in the affected area. A repeating 2×2 hatch pattern erases 100% of eligible cells within 90% of the radius and 75% from 90% to the edge. Collapses remain in place. Map memory lost to a Vortex is not restored by the Loop Fairy's rewind. |
 
 #### Elves
 
