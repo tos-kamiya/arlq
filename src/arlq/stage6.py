@@ -198,12 +198,11 @@ def _can_join_at(current: Floor, monster: d.Monster, point: d.Point, *,
         neighbor = positions.get(neighbor_point)
         if neighbor is not None:
             party.update(stage56.monster_party_entities(current.entities, neighbor, positions=positions))
-    boss_party = any(other.tribe.char == d.STAGE6_BOSS_PARTY[0][0] for other in party)
+    special_count = sum(stage56.special_monster(other) for other in party)
+    special_count += stage56.special_monster(monster)
     return not party or not (
-        isolated or stage56.special_monster(monster)
-        or any(stage56.special_monster(other)
-               and not (boss_party and other.tribe.char in (d.STAGE6_BOSS_PARTY[0][0], "V"))
-               for other in party)
+        isolated
+        or special_count > 1
         or len(party) + 1 > d.STAGE6_MONSTER_PARTY_LIMIT
     )
 
