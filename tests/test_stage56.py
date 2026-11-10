@@ -279,7 +279,8 @@ def test_playground_has_four_random_recruits_and_a_boss_party():
     vortex = next(e for e in party if e.tribe.char == "V")
     assert vortex.empowered == 1
     escorts = [e for e in party if e not in (boss, vortex)]
-    assert [(e.tribe.char, e.empowered) for e in escorts] == [("k", 1)]
+    assert ("k", 1) in [(e.tribe.char, e.empowered) for e in escorts]
+    assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
     mimics = [
         e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "M"
     ]

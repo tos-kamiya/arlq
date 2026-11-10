@@ -18,6 +18,21 @@ def test_sprite_gui_option_and_terminal_conflict(monkeypatch):
     assert error.value.code == 2
 
 
+@pytest.mark.parametrize("option", ["-n", "--narrower-corridors"])
+def test_narrow_corridor_option_is_not_available(monkeypatch, option):
+    monkeypatch.setattr(sys, "argv", ["arlq", option])
+    with pytest.raises(SystemExit) as error:
+        _prepare_cli_session()
+    assert error.value.code == 2
+
+
+def test_legacy_narrow_corridor_seed_still_restores_its_configuration(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["arlq", "--seed", f"v{__about__.__version__}-n-3-123"])
+    args, _, _, config, _ = _prepare_cli_session()
+    assert args.narrower_corridors
+    assert (config.corridor_h_width, config.corridor_v_width) == (1, 2)
+
+
 @pytest.mark.parametrize(
     ("option", "expected"),
     [("--auto-repeat-stop", True), ("--no-auto-repeat-stop", False)],

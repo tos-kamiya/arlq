@@ -47,9 +47,7 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
     g = general.add_mutually_exclusive_group()
     g.add_argument("-T", "--large-torch", action="store_true", help="Large torch.")
     g.add_argument("-t", "--small-torch", action="store_true", help="Small torch.")
-    general.add_argument(
-        "-n", "--narrower-corridors", action="store_true", help="Narrower corridors."
-    )
+    parser.set_defaults(narrower_corridors=False)
     if not terminal_only and not sprites_only:
         terminal.add_argument(
             "--terminal",
@@ -191,10 +189,9 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
             or args.stage
             or args.large_torch
             or args.small_torch
-            or args.narrower_corridors
         ):
             parser.error(
-                "--trace cannot be combined with --seed, --stage, --rematch, -T, -t, or -n"
+                "--trace cannot be combined with --seed, --stage, --rematch, -T, or -t"
             )
 
         requested_trace_path = (
@@ -256,11 +253,10 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
                     args.stage,
                     args.large_torch,
                     args.small_torch,
-                    args.narrower_corridors,
                 ]
             ):
                 exit(
-                    "Error: option --seed is mutually exclusive to options --stage, -T, -t, -n"
+                    "Error: option --seed is mutually exclusive to options --stage, -T, -t"
                 )
             if isinstance(args.seed, str) and args.seed.startswith("v"):
                 game.parse_seed_string(args, args.seed)

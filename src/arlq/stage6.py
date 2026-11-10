@@ -285,7 +285,9 @@ def spawn_monster(current: Floor, floor_index: int, *,
                 for _ in range(count * (1 if (char, rank) in reduced else 2))]
         variant = rand.choice(pool)
     char, rank = variant
-    candidates = [point for point in _open_points(current)
+    barrier_points = [point for point in stage56._open_points(current, include_barriers=True)
+                      if current.field[point[1]][point[0]] == d.CHAR_BARRIER]
+    candidates = [point for point in _open_points(current) + barrier_points
                   if point not in (avoid or set()) and not _in_bridgehead(current, point)
                   and tile_at(point) not in current.monster_spawn_blocked_rooms]
     monster = d.Monster(0, 0, d.CHAR_TO_MONSTER_TRIBE[char], rank)
@@ -309,6 +311,9 @@ def spawn_monster(current: Floor, floor_index: int, *,
             monster = d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[char], rank)
             if not _can_join_at(current, monster, point, isolated=isolated):
                 continue
+            if current.field[y][x] == d.CHAR_BARRIER:
+                current.field[y][x] = d.CHAR_FLOOR
+                current.persistent_barriers.discard(point)
             current.entities.append(monster)
             if stage56._barrier_offsets(monster):
                 stage56.place_monster_barriers(current, monster, player_position)
@@ -346,6 +351,8 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
 
 def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     config = config or GameConfig()
+    corridor_h_width = config.corridor_h_width + 1
+    corridor_v_width = config.corridor_v_width + 1
     floors = []
     initial_boss_party = []
     boss_entrance = set()
@@ -371,8 +378,8 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
         ) = generate_floor_field(
             entry,
             None,
-            config.corridor_h_width,
-            config.corridor_v_width,
+            corridor_h_width,
+            corridor_v_width,
             0,
             filled_counts_by_floor[index],
             extra_corridors=d.STAGE6_EXTRA_CORRIDORS,
@@ -532,7 +539,7 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
     for index, current in enumerate(floors):
         for _ in range(d.STAGE6_INITIAL_SPAWN_DRAWS[index]):
             avoid = player_spawn_exclusion((player.x, player.y)) if index == 0 else set()
-            spawn_monster(current, index, avoid=avoid, prefer_adjacent=False,
+            spawn_monster(current, index, avoid=avoid, prefer_adjacent=index > 0,
                           player_position=(player.x, player.y) if index == 0 else None)
     for current in floors:
         current.respawn_glows.clear()

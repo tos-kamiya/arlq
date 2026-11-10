@@ -354,7 +354,7 @@ def rogue_danger(current: Floor, destination: d.Point) -> str | None:
     return None
 
 
-def _open_points(current: Floor) -> list[d.Point]:
+def _open_points(current: Floor, *, include_barriers: bool = False) -> list[d.Point]:
     occupied = {(entity.x, entity.y) for entity in current.entities}
     reserved = {
         current.up,
@@ -371,7 +371,8 @@ def _open_points(current: Floor) -> list[d.Point]:
         (x, y)
         for y, row in enumerate(current.field)
         for x, cell in enumerate(row)
-        if cell == d.CHAR_FLOOR and (x, y) not in occupied | reserved
+        if (cell == d.CHAR_FLOOR or (include_barriers and cell == d.CHAR_BARRIER))
+        and (x, y) not in occupied | reserved
     ]
 
 

@@ -1,5 +1,7 @@
 from collections import Counter
 
+import pytest
+
 from arlq import defs as d, game_engine, stage6, stage56
 from arlq.stage_types import Floor
 
@@ -78,6 +80,38 @@ def test_spawn_can_prefer_vertical_neighbor(monkeypatch):
     monkeypatch.setattr(stage6.rand, "choice", lambda values: values[0])
     assert stage6.spawn_monster(current, 0, variant=("a", 1))
     assert (current.entities[-1].x, current.entities[-1].y) == (10, 9)
+
+
+@pytest.mark.parametrize("char,rank", [("w", 1), ("w", 2), ("f", 2)])
+def test_spawn_joins_barrier_monster_and_clears_spawn_cell(monkeypatch, char, rank):
+    current = floor()
+    source = d.Monster(10, 10, d.CHAR_TO_MONSTER_TRIBE[char], rank)
+    current.entities.append(source)
+    stage56.place_monster_barriers(current, source)
+    current.persistent_barriers.add((10, 9))
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [])
+    monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
+
+    assert stage6.spawn_monster(current, 2, variant=("a", 1))
+    joined = current.entities[-1]
+    assert (joined.x, joined.y) == (10, 9)
+    assert len(stage56.monster_party(current, source)) == 2
+    assert current.field[9][10] == d.CHAR_FLOOR
+    assert (10, 9) not in current.persistent_barriers
+    assert current.field[10][11] == d.CHAR_BARRIER
+
+
+def test_failed_spawn_does_not_remove_barrier(monkeypatch):
+    current = floor()
+    current.entities = [monster(10, 10, "c")]
+    current.field[9][10] = d.CHAR_BARRIER
+    current.persistent_barriers.add((10, 9))
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [])
+    monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
+
+    assert not stage6.spawn_monster(current, 0, variant=("a", 1))
+    assert current.field[9][10] == d.CHAR_BARRIER
+    assert (10, 9) in current.persistent_barriers
 
 
 def test_special_spawn_does_not_prefer_neighbors(monkeypatch):
@@ -473,10 +507,10 @@ def test_stage_setup_attempts_random_spawns_per_floor(monkeypatch):
     original = stage6.spawn_monster
     draws = []
     def record(current, index, **kwargs):
-        if kwargs.get("prefer_adjacent") is False:
-            draws.append(index)
+        draws.append((index, kwargs.get("prefer_adjacent")))
         return original(current, index, **kwargs)
     monkeypatch.setattr(stage6, "spawn_monster", record)
     floors, _ = stage6.build()
-    assert draws == [index for index, count in enumerate((40, 35, 30)) for _ in range(count)]
+    assert draws == [(index, index > 0) for index, count in enumerate((40, 35, 30))
+                     for _ in range(count)]
     assert all(not current.respawn_glows for current in floors)

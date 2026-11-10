@@ -1,7 +1,50 @@
 import pytest
 
 from arlq import defs as d, stage6
+from arlq.arlq import GameConfig
 from arlq.utils import rand
+
+
+@pytest.mark.parametrize("config, expected_h, expected_v", [
+    (GameConfig(), 3, 4),
+    (GameConfig(corridor_h_width=1, corridor_v_width=2), 2, 3),
+])
+def test_stage6_opens_wider_corridors_but_keeps_one_hidden_gate(
+    monkeypatch, config, expected_h, expected_v
+):
+    original = stage6.generate_floor_field
+    observed = []
+
+    def generate(*args, **kwargs):
+        result = original(*args, **kwargs)
+        field = result[0]
+        horizontal, vertical = set(), set()
+        for ty in range(d.TILE_NUM_Y):
+            for tx in range(1, d.TILE_NUM_X):
+                x = d.FIELD_X_MARGIN + tx * (d.TILE_WIDTH + 1)
+                cells = [field[y][x] for y in range(ty * (d.TILE_HEIGHT + 1) + 1,
+                                                     (ty + 1) * (d.TILE_HEIGHT + 1))]
+                count = cells.count(d.CHAR_FLOOR)
+                if count:
+                    horizontal.add(count)
+        for ty in range(1, d.TILE_NUM_Y):
+            y = ty * (d.TILE_HEIGHT + 1)
+            for tx in range(d.TILE_NUM_X):
+                left = d.FIELD_X_MARGIN + tx * (d.TILE_WIDTH + 1) + 1
+                cells = field[y][left:left + d.TILE_WIDTH]
+                count = cells.count(d.CHAR_FLOOR)
+                if count:
+                    vertical.add(count)
+        observed.append((horizontal, vertical))
+        return result
+
+    monkeypatch.setattr(stage6, "generate_floor_field", generate)
+    floors, _ = stage6.build(config)
+    assert len(observed) == d.STAGE6_FLOORS
+    assert all(horizontal == {expected_h} and vertical == {expected_v}
+               for horizontal, vertical in observed)
+    for current in floors[:-1]:
+        assert sum(row.count(d.CHAR_HIDDEN_D_GATE) for row in current.field) == 1
 
 
 @pytest.mark.parametrize("seed", [0, 123, 789])
@@ -28,9 +71,10 @@ def test_three_floor_dungeon(seed):
                 if isinstance(e, d.Monster) and e.tribe.char == "F")
     from arlq.stage56 import monster_party
     party = monster_party(floors[-1], boss)
-    assert {e.tribe.char for e in party} == {"F", "V", "k"}
+    assert {"F", "V", "k"} <= {e.tribe.char for e in party}
+    assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
     assert boss.empowered == 2
-    assert sum(d.monster_level(e) for e in party) == 300
+    assert sum(d.monster_level(e) for e in party) >= 300
     mimic = next(e for e in floors[-1].entities
                  if isinstance(e, d.Monster) and e.tribe.char == "M")
     assert (mimic.mimic_boss_char, mimic.mimic_boss_empowered) == ("F", 2)
