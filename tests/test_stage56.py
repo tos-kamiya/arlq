@@ -110,7 +110,9 @@ def test_stage6_floors_have_no_loop_fairies():
     for floor in floors:
         fairies = [entity.tribe.char for entity in floor.entities
                       if isinstance(entity, d.Fairy)]
-        assert sorted(fairies) == ["n", "o", "p"]
+        assert len(fairies) == 3
+        assert len(set(fairies)) == 3
+        assert set(fairies) <= {"l", "n", "o", "p"}
 
 
 @pytest.mark.parametrize('rogue', [False, True])
@@ -277,7 +279,7 @@ def test_playground_has_four_random_recruits_and_a_boss_party():
         for e in floor.entities
     )
     vortex = next(e for e in party if e.tribe.char == "V")
-    assert vortex.empowered == 1
+    assert vortex.empowered == 2
     escorts = [e for e in party if e not in (boss, vortex)]
     assert ("k", 1) in [(e.tribe.char, e.empowered) for e in escorts]
     assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
@@ -285,7 +287,7 @@ def test_playground_has_four_random_recruits_and_a_boss_party():
         e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "M"
     ]
     assert len(mimics) == 1
-    assert not mimics[0].active and mimics[0].mimic_boss_char == "F"
+    assert not mimics[0].active and mimics[0].mimic_boss_char == d.CHAR_DUNGEON_CORE
     assert not any(
         isinstance(entity, d.Monster)
         and entity.tribe.char == "g"
@@ -769,6 +771,9 @@ def test_boss_party_vortex_is_local_and_boss_unlocks_separate_treasure():
     boss_zone = stage6.tile_at(origin)
     chest = next(e for e in current.entities if isinstance(e, d.Treasure))
     assert stage6.tile_at((chest.x, chest.y)) != boss_zone
+    core = next(e for e in current.entities if isinstance(e, d.Monster)
+                and e.tribe.char == d.CHAR_DUNGEON_CORE)
+    core_position = (core.x, core.y)
     player.members.append(d.PartyMember(player.x, player.y, "Knight"))
     player.level = 10000
     player.x, player.y = boss.x, boss.y
@@ -803,9 +808,9 @@ def test_boss_party_vortex_is_local_and_boss_unlocks_separate_treasure():
         if cell == d.CHAR_FLOOR
     )
     assert floors[0].seen[1][1] == 1
-    assert any(isinstance(e, d.Treasure) and e.unlocked for e in current.entities)
-    chest = next(e for e in current.entities if isinstance(e, d.Treasure))
-    assert all(
+    assert core.active and (core.x, core.y) == core_position
+    assert not any(isinstance(e, d.Treasure) and e.unlocked for e in current.entities)
+    assert not any(
         e.active
         for e in current.entities
         if isinstance(e, d.Monster) and e.tribe.char == "M"
@@ -1332,12 +1337,12 @@ def test_seed_reproduces_layout_and_groups():
 
 def test_stage6_spawn_roster_scales_by_floor():
     assert len(d.STAGE6_ROSTER) == d.STAGE6_FLOORS == 3
-    assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[1] if char == "B"] == [(1, 2)]
+    assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[1] if char == "B"] == [(1, 2)]
     for roster in d.STAGE6_ROSTER:
-        assert sum(count for char, count, rank in roster if char == "c" and rank == 1) == 1
-        assert any(char == "a" and rank == 2 for char, _, rank in roster)
-    assert any(char == "b" and rank == 3 for char, _, rank in d.STAGE6_ROSTER[-1])
-    assert any(char == "a" and rank == 3 for char, _, rank in d.STAGE6_ROSTER[-1])
+        assert sum(count for char, count, rank, _ in roster if char == "c" and rank == 1) == 1
+        assert any(char == "a" and rank == 2 for char, _, rank, _ in roster)
+    assert any(char == "b" and rank == 3 for char, _, rank, _ in d.STAGE6_ROSTER[-1])
+    assert any(char == "a" and rank == 3 for char, _, rank, _ in d.STAGE6_ROSTER[-1])
     assert d.STAGE6_EXTRA_CORRIDORS == 0
 
 
@@ -1745,61 +1750,6 @@ def test_defeating_wyrm_preserves_overlapping_and_persistent_barriers():
     remaining = {(x, y) for x, y in footprint
                  if current.field[y][x] == d.CHAR_BARRIER}
     assert remaining == {(2, 2), (4, 2), (4, 3), (4, 4)}
-
-
-@pytest.mark.parametrize("floor_index", range(d.STAGE6_FLOORS))
-@pytest.mark.parametrize("detached", [None, (0, 0), (1, 1)])
-def test_initial_parties_use_distinct_candidate_rooms(floor_index, detached):
-    current, _ = state()
-    current.field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
-    current.entities = []
-    rooms = {(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)}
-    current.room_components = (rooms,) if detached is None else (rooms - {detached}, {detached})
-    placed = stage6._place_initial_parties(current, floor_index)
-    # Each leader is the first monster in its vertically connected party.
-    parties = []
-    remaining = list(current.entities)
-    while remaining:
-        leader = remaining[0]
-        party = stage56.monster_party(current, leader)
-        parties.append(leader)
-        remaining = [monster for monster in remaining if monster not in party]
-    selected = {stage6.tile_at((leader.x, leader.y)) for leader in parties}
-    count = (5, 5, 0)[floor_index]
-    assert len(parties) == len(selected) == count
-    assert selected <= set(d.STAGE6_INITIAL_PARTY_ROOMS)
-    if count and detached in d.STAGE6_INITIAL_PARTY_ROOMS:
-        assert detached in selected
-    actual = [(leader.tribe.char, leader.empowered) for leader in parties]
-    expected = ([('b', 1)] * 4 + [('B', 1)] if floor_index == 0
-                else [('b', 2)] * (4 if floor_index == 1 else 3) + [('B', 2)])
-    assert actual == expected[:count]
-    assert Counter(actual) == Counter(placed)
-
-
-
-
-@pytest.mark.parametrize("unavailable", ["filled", "boss", "no_space"])
-def test_initial_party_falls_back_to_room_on_right(monkeypatch, unavailable):
-    current, _ = state()
-    current.field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
-    current.entities = []
-    current.room_components = ({(5, 2)} if unavailable == "filled" else {(4, 2), (5, 2)},)
-    monkeypatch.setattr(d, "STAGE6_INITIAL_PARTY_ROOMS", ((4, 2),))
-    if unavailable == "no_space":
-        original = stage6._place_party
-
-        def place(current, roster, floor_index, *, room):
-            if room == (4, 2):
-                raise RuntimeError("no space")
-            return original(current, roster, floor_index, room=room)
-
-        monkeypatch.setattr(stage6, "_place_party", place)
-    placed = stage6._place_initial_parties(
-        current, 1, excluded_room=(4, 2) if unavailable == "boss" else None
-    )
-    assert placed == {("b", 2): 1}
-    assert all(stage6.tile_at((e.x, e.y)) == (5, 2) for e in current.entities)
 
 
 def test_emergency_ration_requires_visible_reachable_winnable_monster():

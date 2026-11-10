@@ -31,24 +31,37 @@ def test_spawn_checks_both_sides_and_special_monsters(monkeypatch):
     monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 6)])
     assert not stage6.spawn_monster(current, 0, variant=("a", 1))
     current.entities = [monster(10, 5, "c")]
-    assert not stage6.spawn_monster(current, 0, variant=("a", 1))
+    assert stage6.spawn_monster(current, 0, variant=("a", 1))
     current.entities = [monster(10, 5)]
-    assert not stage6.spawn_monster(current, 0, variant=("c", 1))
+    assert stage6.spawn_monster(current, 0, variant=("c", 1))
 
 
 def test_spawn_tries_at_most_ten_distinct_positions(monkeypatch):
     current = floor()
-    current.entities = [monster(10, y, "c") for y in range(2, 22, 2)]
+    current.entities = [monster(10, y) for y in range(2, 22, 2)]
     monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, y) for y in range(3, 24, 2)])
     monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
+    attempts = []
+    monkeypatch.setattr(stage6, "_can_join_at", lambda *args, **kwargs: attempts.append(args[2]) or False)
     assert not stage6.spawn_monster(current, 0, variant=("a", 1), prefer_adjacent=False)
+    assert len(attempts) == d.STAGE6_SPAWN_ATTEMPTS
     assert len(current.entities) == 10
 
 
+def test_floor2_spawn_queue_has_one_vortex_slot(monkeypatch):
+    current = floor()
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [])
+    monkeypatch.setattr(stage56, "_open_points", lambda *_args, **_kwargs: [])
+
+    assert not stage6.spawn_monster(current, 1)
+
+    assert current.monster_spawn_queue.count(("V", 1)) == 1
+
+
 def test_wyrm_spawn_ranks_by_floor():
-    assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[0] if char == "w"] == []
-    assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[1] if char == "w"] == [(1, 1)]
-    assert [(count, rank) for char, count, rank in d.STAGE6_ROSTER[2] if char == "w"] == [(1, 1), (2, 2)]
+    assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[0] if char == "w"] == []
+    assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[1] if char == "w"] == [(1, 1)]
+    assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[2] if char == "w"] == [(1, 1), (2, 2)]
 
 
 def test_defeat_does_not_queue_monster_respawn():
@@ -107,6 +120,7 @@ def test_failed_spawn_does_not_remove_barrier(monkeypatch):
     current.field[9][10] = d.CHAR_BARRIER
     current.persistent_barriers.add((10, 9))
     monkeypatch.setattr(stage6, "_open_points", lambda _: [])
+    monkeypatch.setattr(stage56, "_open_points", lambda *_args, **_kwargs: [])
     monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
 
     assert not stage6.spawn_monster(current, 0, variant=("a", 1))
@@ -167,29 +181,22 @@ def test_spawn_excludes_blocked_sections(monkeypatch):
 
 def test_rare_amoeba_spawn_weight_is_half_of_roster_weight(monkeypatch):
     current = floor()
-    captured = []
-
-    def choose(pool):
-        captured.extend(pool)
-        return pool[0]
-
-    monkeypatch.setattr(stage6.rand, "choice", choose)
     monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
     monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10)])
     assert stage6.spawn_monster(current, 2)
-    for char, count, rank in d.STAGE6_ROSTER[2]:
-        assert captured.count((char, rank)) == count * (1 if (char, rank) in d.STAGE6_REDUCED_SPAWN_VARIANTS else 2)
+    captured = current.monster_spawn_queue
+    for char, count, rank, spawn_weight in d.STAGE6_ROSTER[2]:
+        assert captured.count((char, rank)) == count * spawn_weight
 
 
 def test_bison_variants_have_halved_weights(monkeypatch):
     for floor_index, rank in ((0, 1), (1, 2), (2, 3)):
         current = floor()
-        captured = []
-        monkeypatch.setattr(stage6.rand, "choice", lambda pool: captured.extend(pool) or pool[0])
         monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
         monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10)])
         assert stage6.spawn_monster(current, floor_index)
-        weight = next(count for char, count, r in d.STAGE6_ROSTER[floor_index]
+        captured = current.monster_spawn_queue
+        weight = next(count for char, count, r, _ in d.STAGE6_ROSTER[floor_index]
                       if char == "b" and r == rank)
         assert captured.count(("b", rank)) == weight
 
@@ -197,20 +204,22 @@ def test_bison_variants_have_halved_weights(monkeypatch):
 def test_golem_weight_is_halved_only_on_second_floor(monkeypatch):
     for floor_index in range(3):
         current = floor()
-        captured = []
-        monkeypatch.setattr(stage6.rand, "choice", lambda pool: captured.extend(pool) or pool[0])
         monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
         monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10)])
         assert stage6.spawn_monster(current, floor_index)
-        weight = next(count for char, count, rank in d.STAGE6_ROSTER[floor_index]
-                      if char == "g" and rank == 1)
-        assert captured.count(("g", 1)) == weight * (1 if floor_index == 1 else 2)
+        captured = current.monster_spawn_queue
+        weight, spawn_weight = next(
+            (count, spawn_weight)
+            for char, count, rank, spawn_weight in d.STAGE6_ROSTER[floor_index]
+            if char == "g" and rank == 1
+        )
+        assert captured.count(("g", 1)) == weight * spawn_weight
 
 
 def test_first_floor_doubles_cobra_weight_using_amoeba_weight():
     roster = d.STAGE6_ROSTER[0]
-    assert next(count for char, count, rank in roster if (char, rank) == ("f", 1)) == 2
-    assert next(count for char, count, rank in roster if (char, rank) == ("a", 1)) == 12
+    assert next(count for char, count, rank, _ in roster if (char, rank) == ("f", 1)) == 2
+    assert next(count for char, count, rank, _ in roster if (char, rank) == ("a", 1)) == 12
 
 
 def test_bridgehead_restores_only_on_entry_and_preserves_higher_lp():
@@ -313,13 +322,12 @@ def test_simultaneous_spawns_are_all_recorded(monkeypatch):
 
 
 def test_first_floor_amoeba_uses_roster_weight(monkeypatch):
-    pools = []
-    monkeypatch.setattr(stage6.rand, "choice", lambda pool: pools.append(pool[:]) or pool[0])
     monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
     monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10)])
-    assert stage6.spawn_monster(floor(), 0)
-    assert pools[0].count(("a", 1)) == 24
-    assert pools[0].count(("f", 1)) == 4
+    current = floor()
+    assert stage6.spawn_monster(current, 0)
+    assert current.monster_spawn_queue.count(("a", 1)) == 24
+    assert current.monster_spawn_queue.count(("f", 1)) == 4
 
 
 def test_spawn_does_not_place_monster_on_bridgehead(monkeypatch):
@@ -335,17 +343,16 @@ def test_spore_monsters_and_rare_erebus_spawn_weights(monkeypatch):
     m_weights = []
     for floor_index in range(3):
         current = floor()
-        pools = []
-        monkeypatch.setattr(stage6.rand, "choice", lambda pool: pools.append(pool[:]) or pool[0])
         monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
         monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 10)])
         assert stage6.spawn_monster(current, floor_index)
-        totals.append(len(pools[0]))
-        m_weights.append(pools[0].count(("m", 1)))
-        assert pools[0].count(("E", 1)) == (1 if floor_index == 1 else 0)
-        assert sum(char == "i" for char, _ in pools[0]) == (0, 3, 5)[floor_index]
-        assert pools[0].count(("g", 2)) == (0, 0, 2)[floor_index]
-    assert totals == [59, 39, 59]
+        queue = current.monster_spawn_queue
+        totals.append(len(queue))
+        m_weights.append(queue.count(("m", 1)))
+        assert queue.count(("E", 1)) == (0, 1, 0)[floor_index]
+        assert sum(char == "i" for char, _ in queue) == (0, 3, 5)[floor_index]
+        assert queue.count(("g", 2)) == (0, 0, 2)[floor_index]
+    assert totals == [59, 40, 58]
     assert m_weights == [2, 1, 2]
 
 
@@ -353,9 +360,8 @@ def test_second_floor_monster_draw_can_select_e_and_m(monkeypatch):
     floors = [floor() for _ in range(3)]
     player = d.Player(4, 4, 1, d.LP_INIT)
     counts = Counter()
-    reduced = set(d.STAGE6_REDUCED_SPAWN_VARIANTS) | set(d.STAGE6_FLOOR2_REDUCED_SPAWN_VARIANTS)
-    pool = [(char, rank) for char, weight, rank in d.STAGE6_ROSTER[1]
-            for _ in range(weight * (1 if (char, rank) in reduced else 2))]
+    pool = [(char, rank) for char, count, rank, spawn_weight in d.STAGE6_ROSTER[1]
+            for _ in range(count * spawn_weight)]
 
     def sample(current, index, **kwargs):
         if index == 1:

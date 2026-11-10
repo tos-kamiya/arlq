@@ -119,6 +119,9 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "bridgehead",
         "player_respawn_glow",
         "respawn_glows",
+        "monster_spawn_queue",
+        "monster_spawn_queue_index",
+        "stage6_fairy_chars",
     }
 
 
