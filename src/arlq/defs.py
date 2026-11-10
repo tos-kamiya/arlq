@@ -554,6 +554,7 @@ class Player(Entity):
         self.last_member_scatter_route: Optional[Tuple[Tuple[int, Point], ...]] = None
         self.persistent_followers: List[Tuple[int, int, int, str]] = []
         self.members: List[PartyMember] = []
+        self.jester_retired = False
         self.facing: Point = (0, -1)
         self.rescue_stage = False
         self.treasure_stage = False

@@ -1212,15 +1212,26 @@ def _resolve_party_contact(
             stage_num=stage_num,
         )
     player.level = old_level + experience
+    if player.level >= d.JESTER_DEPARTURE_LEVEL:
+        player.jester_retired = True
     if any(monster.tribe.effect == d.EFFECT_LEVEL_REDUCE for monster in party):
         player.level = max(1, math.floor(player.level * 2 / 3))
-    jester_departed = player.level >= d.JESTER_DEPARTURE_LEVEL and d.has_member(
+    jester_departed = player.jester_retired and d.has_member(
         player, d.MEMBER_JESTER
     )
     if jester_departed:
+        jester = next(member for member in player.members if member.role == d.MEMBER_JESTER)
         player.members[:] = [member for member in player.members
                              if member.role != d.MEMBER_JESTER]
         player.known_member_floors.pop(d.MEMBER_JESTER, None)
+        available = [point for point in stage56._open_points(current)
+                     if point != (player.x, player.y)]
+        if available:
+            jester.x, jester.y = min(
+                available, key=lambda point: abs(point[0] - jester.x) + abs(point[1] - jester.y)
+            )
+            jester.origin_floor = floor[0]
+            current.entities.append(jester)
     player.lp = old_lp
     d.apply_feed(player, feed, lp_overcharge)
     if any(monster.tribe.char == "M" for monster in party):
@@ -1303,15 +1314,17 @@ def _resolve_contact(
     entity = current.entities[hit]
 
     if isinstance(entity, d.PartyMember):
-        departed = (player.members[0] if stage_num == 6
+        if (entity.role == d.MEMBER_JESTER
+                and (player.jester_retired or player.level >= d.JESTER_DEPARTURE_LEVEL)):
+            player.jester_retired = True
+            if trace is not None:
+                trace.record_contact({"type": "member", "id": entity.role, "joined": False})
+            return _ContactResult(trp("-- Jester cannot join your party.", 5))
+        departed = (player.members[1] if stage_num == 6
                     and len(player.members) == d.PARTY_LIMIT else None)
         result = stage56.recruit(current, player, entity)
         if departed is not None:
             stage6.relocate_candidates(floors, player, [departed], floor[0])
-        if entity.role == d.MEMBER_JESTER and player.level >= d.JESTER_DEPARTURE_LEVEL:
-            player.members.remove(entity)
-            player.known_member_floors.pop(d.MEMBER_JESTER, None)
-            result = trp("-- Jester left the party.", 5)
         if trace is not None:
             trace.record_contact({"type": "member", "id": entity.role,
                                   "joined": entity in player.members})
@@ -1674,6 +1687,7 @@ def _process_multi_floor_turn(
     current = floors[floor[0]]
 
     previous = (player.x, player.y)
+    initial_floor = floor[0]
     just_climbed_pit = player.just_climbed_pit
     player.just_climbed_pit = False
     standing_on_collapse = (
@@ -1859,9 +1873,7 @@ def _process_multi_floor_turn(
                     if won
                     else [
                         previous,
-                        *((glyph.x + previous[0] - player.x,
-                           glyph.y + previous[1] - player.y)
-                          for glyph in ui_display.member_glyphs(player)),
+                        *((member.x, member.y) for member in player.members),
                     ]
                 )
                 combat_effect(positions, won)
@@ -1950,7 +1962,10 @@ def _process_multi_floor_turn(
                     "at": [monster.x, monster.y], "floor": spawned_floor,
                 })
     if player.rescue_stage:
-        stage56.sync_members(player, previous, direction)
+        stage56.sync_members(
+            player, previous, direction,
+            reset=(floor[0] != initial_floor or (player.x, player.y) != movement_destination),
+        )
         stage56.explore_with_cat(floors[floor[0]], player)
     if (
         stage_num == 5

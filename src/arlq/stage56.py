@@ -218,11 +218,12 @@ def recruit(
     player.seen_members.add(member.role)
     if member.origin_floor is not None:
         player.known_member_floors.setdefault(member.role, member.origin_floor + 1)
-    departed = player.members.pop(0) if len(player.members) == d.PARTY_LIMIT else None
+    departed = player.members.pop(1) if len(player.members) == d.PARTY_LIMIT else None
     if departed is not None:
         player.seen_members.add(departed.role)
         player.known_member_floors.pop(departed.role, None)
     current.entities.remove(member)
+    member.x, member.y = player.x, player.y
     player.members.append(member)
     member.exploration_turns = 0
     if departed is not None:
@@ -277,11 +278,19 @@ def reveal_scholar_features(current: Floor, known: list[list[int]]) -> None:
         current.update_outer_wall_decor()
 
 
-def sync_members(player: d.Player, previous: d.Point, direction: d.Point) -> None:
+def sync_members(player: d.Player, previous: d.Point, direction: d.Point, *, reset: bool = False) -> None:
     if (player.x, player.y) != previous:
         player.facing = direction
+    if reset:
+        for member in player.members:
+            member.x, member.y = player.x, player.y
+        return
+    if (player.x, player.y) == previous:
+        return
     for member in player.members:
-        member.x, member.y = player.x, player.y
+        position = (member.x, member.y)
+        member.x, member.y = previous
+        previous = position
 
 
 def reveal_rogue_monsters(

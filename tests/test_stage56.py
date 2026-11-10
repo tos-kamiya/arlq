@@ -332,16 +332,16 @@ def test_fairy_seer_identifies_fairies_in_explored_areas_on_every_floor():
     assert not newcomer.revealed
 
 
-def test_stage6_departed_member_does_not_reappear():
+def test_stage5_second_member_does_not_reappear():
     current, player = state(("Jester", "Healer"))
     recruit = d.PartyMember(3, 2, "Rogue")
     current.entities.append(recruit)
 
     step(current, player, stage_num=5)
 
-    assert [member.role for member in player.members] == ["Healer", "Rogue"]
+    assert [member.role for member in player.members] == ["Jester", "Rogue"]
     assert not any(
-        isinstance(entity, d.PartyMember) and entity.role == "Jester"
+        isinstance(entity, d.PartyMember) and entity.role == "Healer"
         for entity in current.entities
     )
 
@@ -473,7 +473,7 @@ def test_stage6_departed_members_return_to_first_floor_bridgehead():
     assert abs(member.x - x) + abs(member.y - y) <= 7
 
 
-def test_stage5_replaces_oldest_member_without_respawning_them():
+def test_stage5_replaces_second_member_without_respawning_them():
     current, player = state(("Jester", "Healer"))
     fairy = d.Fairy(2, 2, d.CHAR_TO_TRIBE["n"])
     player.fairy = fairy
@@ -483,14 +483,14 @@ def test_stage5_replaces_oldest_member_without_respawning_them():
 
     step(current, player, stage_num=5)
 
-    assert [member.role for member in player.members] == ["Healer", "Rogue"]
+    assert [member.role for member in player.members] == ["Jester", "Rogue"]
     assert recruit not in current.entities
     assert player.joined_members == {"Jester", "Healer", "Rogue"}
     assert not any(
-        isinstance(entity, d.PartyMember) and entity.role == "Jester"
+        isinstance(entity, d.PartyMember) and entity.role == "Healer"
         for entity in current.entities
     )
-    assert display.stage5_member_progress_marks(player)[0] == ("J-", False)
+    assert ("H-", False) in display.stage5_member_progress_marks(player)
     assert player.fairy is fairy
 
 
@@ -568,7 +568,8 @@ def test_jester_leaves_when_experience_crosses_level_80(stage_num):
     step(current, player, stage_num=stage_num)
     assert player.level == pytest.approx(81)
     assert not d.has_member(player, d.MEMBER_JESTER)
-    assert not any(isinstance(e, d.PartyMember) for e in current.entities)
+    assert any(isinstance(e, d.PartyMember) and e.role == d.MEMBER_JESTER for e in current.entities)
+    assert player.jester_retired
 
 
 @pytest.mark.parametrize("level, returns", [(79, True), (80, False), (81, False)])
@@ -582,12 +583,41 @@ def test_jester_reappears_only_below_departure_level(level, returns):
     assert d.MEMBER_JESTER not in player.known_member_floors
 
 
-def test_recruiting_jester_at_level_80_does_not_respawn_him():
+def test_recruiting_jester_at_level_80_is_refused():
     current, player = state(level=80)
     jester = d.PartyMember(3, 2, d.MEMBER_JESTER, origin_floor=0)
     current.entities.append(jester)
     step(current, player)
-    assert jester not in player.members and jester not in current.entities
+    assert jester not in player.members and jester in current.entities
+
+
+@pytest.mark.parametrize("stage_num", [5, 6])
+def test_retired_jester_refuses_after_level_loss_without_displacing_members(stage_num):
+    current, player = state(("Healer", "Rogue"), level=80)
+    jester = d.PartyMember(3, 2, d.MEMBER_JESTER, origin_floor=0)
+    current.entities.append(jester)
+    step(current, player, stage_num=stage_num)
+    assert player.jester_retired
+    assert [m.role for m in player.members] == ["Healer", "Rogue"]
+    assert jester in current.entities
+    player.level = 50
+    player.x, player.y = 2, 2
+    step(current, player, stage_num=stage_num)
+    assert [m.role for m in player.members] == ["Healer", "Rogue"]
+    assert jester in current.entities
+
+
+def test_stage6_new_member_replaces_second_and_relocates_them(monkeypatch):
+    current, player = state(("Healer", "Rogue"), level=20)
+    first, second = player.members
+    recruit = d.PartyMember(3, 2, "Knight")
+    current.entities.append(recruit)
+    relocated = []
+    monkeypatch.setattr(stage6, "relocate_candidates",
+                        lambda floors, player, candidates, index: relocated.extend(candidates))
+    step(current, player)
+    assert player.members == [first, recruit]
+    assert relocated == [second]
 
 
 def test_group_strength_defeat_preserves_party_and_healer_penalty():
@@ -890,15 +920,22 @@ def test_normalize_limits_and_protects_boss_pair():
         assert sum(stage56.special_monster(e) for e in party) <= 1
 
 
-def test_followers_use_join_order_relative_to_direction():
+def test_followers_trace_player_path_in_join_order():
     _, player = state(("Jester", "Knight"))
-    player.facing = (0, -1)
-    assert [(g.x, g.y, g.char) for g in display.member_glyphs(player)] == [
-        (1, 3, "J"),
-        (3, 3, "K"),
-    ]
-    player.facing = (1, 0)
-    assert [(g.x, g.y) for g in display.member_glyphs(player)] == [(1, 1), (1, 3)]
+    player.x, player.y = 3, 2
+    stage56.sync_members(player, (2, 2), (1, 0))
+    player.x, player.y = 3, 3
+    stage56.sync_members(player, (3, 2), (0, 1))
+    assert [(m.x, m.y) for m in player.members] == [(3, 2), (2, 2)]
+    assert {(g.x, g.y, g.char) for g in display.member_glyphs(player)} == {
+        (3, 2, "J"), (2, 2, "K"),
+    }
+    stage56.sync_members(player, (3, 3), (0, 0))
+    assert [(m.x, m.y) for m in player.members] == [(3, 2), (2, 2)]
+    player.x, player.y = 3, 2
+    stage56.sync_members(player, (3, 3), (0, -1))
+    assert [(m.x, m.y) for m in player.members] == [(3, 3), (3, 2)]
+    assert [(g.x, g.y, g.char) for g in display.member_glyphs(player)] == [(3, 3, "J")]
 
 
 def test_pit_falls_to_next_floor_with_members():
@@ -1160,13 +1197,13 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions():
         engine._handle_floor_transition(
             current, floors, player, floor_index, checkpoint
         )
-        stage56.sync_members(player, exit_point, (1, 0))
+        stage56.sync_members(player, exit_point, (1, 0), reset=True)
         assert floor_index[0] == index + 1
         assert [member.role for member in player.members] == [
             "Dungeon Explorer",
             "Noble",
         ]
-        assert all((e.x, e.y) == exit_point for e in player.members)
+        assert all((e.x, e.y) == (player.x, player.y) for e in player.members)
 
 
 def test_parties_extend_vertically_and_accept_rank_two_and_three():
@@ -1324,7 +1361,7 @@ def test_member_trial_has_fixed_ordered_layout():
     for member in members:
         stage56.recruit(floors[0], player, member)
     assert [m.role for m in player.members] == [
-        d.MEMBER_DUNGEON_EXPLORER, d.MEMBER_JESTER,
+        d.MEMBER_KNIGHT, d.MEMBER_JESTER,
     ]
 
 

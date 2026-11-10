@@ -210,16 +210,11 @@ class FieldGlyph(NamedTuple):
 
 
 def member_glyphs(player: d.Player) -> List[FieldGlyph]:
-    dx, dy = player.facing
-    # Screen coordinates: for north, left-back is (-1, +1).
-    left_x, left_y = dy, -dx
     return [
-        FieldGlyph(player.x - dx + side * left_x,
-                   player.y - dy + side * left_y,
-                   d.MEMBER_GLYPHS[member.role], "member")
-        for member, side in zip(player.members, (1, -1))
-        if 0 <= player.x - dx + side * left_x < d.FIELD_WIDTH
-        and 0 <= player.y - dy + side * left_y < d.FIELD_HEIGHT
+        FieldGlyph(member.x, member.y, d.MEMBER_GLYPHS[member.role], "member")
+        for member in reversed(player.members)
+        if (member.x, member.y) != (player.x, player.y)
+        and 0 <= member.x < d.FIELD_WIDTH and 0 <= member.y < d.FIELD_HEIGHT
     ]
 
 
