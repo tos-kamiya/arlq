@@ -588,6 +588,19 @@ def activate_mimic_for_defeat(
             entity.active = True
 
 
+def activate_dungeon_core_for_defeat(
+    monster: d.Monster,
+    entities: List[d.Entity],
+) -> None:
+    """Reveal the Stage 6 Dungeon Core after its empowered Fire Drake falls."""
+    if monster.tribe.char != d.CHAR_FIRE_DRAKE or monster.empowered != 2:
+        return
+    for entity in entities:
+        if isinstance(entity, d.Monster) and entity.tribe.char == d.CHAR_DUNGEON_CORE:
+            entity.active = True
+            entity.revealed = True
+
+
 def reveal_entities_in_fov(
     player: d.Player,
     entities: List[d.Entity],

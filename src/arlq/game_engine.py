@@ -12,6 +12,7 @@ from . import stage5
 from . import stage56
 from . import stage6
 from .arlq import (
+    activate_dungeon_core_for_defeat,
     MESSAGE_TICKS,
     PLAYER_PASSABLE_CELLS,
     GameConfig,
@@ -493,6 +494,7 @@ def _vortex_rearrange(
                 and (
                     not isinstance(entity, d.Collapse)
                     and not entity.tribe.is_elf
+                    and entity.tribe.char != d.CHAR_DUNGEON_CORE
                     and entity.tribe.effect != d.EFFECT_VORTEX
                 )
             )
@@ -576,6 +578,31 @@ def _vortex_rearrange(
             ]
             if candidates:
                 entity.x, entity.y = rand.choice(candidates)
+            current.entities.append(entity)
+            continue
+
+        reserved = avoid | reserved_collapse_cells
+        if isinstance(entity, d.Treasure):
+            reserved |= set(
+                current.up_stairs
+                + current.down_stairs
+                + current.scholar_up_stairs
+                + current.scholar_down_stairs
+            )
+        occupied = [(other.x, other.y) for other in current.entities]
+        has_destination = any(
+            all(cell == d.CHAR_FLOOR for cell in current.field[y][x - 1 : x + 2])
+            and all(
+                abs(px - x) > 2 or abs(py - y) > 2
+                for px, py in occupied
+            )
+            and (x, y) not in reserved
+            and not _inside_island((x, y), current.island)
+            for x, y in affected_points
+            if 0 < x < len(current.field[0]) - 1
+            and 0 < y < len(current.field) - 1
+        )
+        if not has_destination:
             current.entities.append(entity)
             continue
 
@@ -706,6 +733,7 @@ def _defeat_monster(
     )
     unlock_treasure_for_defeat(entity, linked_entities)
     activate_mimic_for_defeat(entity, linked_entities)
+    activate_dungeon_core_for_defeat(entity, linked_entities)
     has_linked_targets = any(
         isinstance(target, (d.Treasure, d.Monster))
         and target.boss_id is not None
@@ -1265,11 +1293,16 @@ def _resolve_party_contact(
             )
     player.last_contact_monster = contact_key
     party_chars = {monster.tribe.char for monster in party}
-    boss_message = (
-        trp(boss.tribe.event_message, boss.tribe.event_message_importance)
-        if boss is not None and boss.tribe.event_message
-        else None
-    )
+    boss_message = None
+    if boss is not None and boss.tribe.event_message:
+        message = boss.tribe.event_message
+        if (
+            stage_num == 6
+            and boss.tribe.char == d.CHAR_FIRE_DRAKE
+            and boss.empowered == 2
+        ):
+            message = "-- The Dungeon Core has appeared!"
+        boss_message = trp(message, boss.tribe.event_message_importance)
     popup = None
     popup_tone = "default"
     if "A" in party_chars and player.level > old_level:
@@ -1382,7 +1415,7 @@ def _resolve_contact(
         )
 
     assert isinstance(entity, d.Monster)
-    if entity.tribe.char == "M" and not entity.active:
+    if not entity.active:
         return _ContactResult(None)
     if stage_num in (5, 6):
         return _resolve_party_contact(
@@ -1880,7 +1913,7 @@ def _process_multi_floor_turn(
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("entity_contact")
         entity = current.entities[hit]
-        if (combat_effect is not None and isinstance(entity, d.Monster)
+        if (combat_effect is not None and isinstance(entity, d.Monster) and entity.active
                 and not entity.tribe.is_elf
                 and not entity.tribe.passive
                 and (entity.tribe.char != "M" or entity.active)):

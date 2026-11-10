@@ -215,34 +215,35 @@ STAGE4_FLOORS = len(STAGE4_ROSTER)
 STAGE6_FLOORS = 3
 STAGE6_EXTRA_CORRIDORS = 0
 STAGE6_INITIAL_MONSTERS = 18
-STAGE6_INITIAL_SPAWN_DRAWS = (40, 35, 30)
+STAGE6_INITIAL_SPAWN_DRAWS = (45, 45, 45)
 STAGE6_SPAWN_INTERVAL = 24
-STAGE6_PARTY_SPAWN_PERCENT = 45
+STAGE6_PARTY_SPAWN_PERCENT = 50
 STAGE6_SPAWN_ATTEMPTS = 10
 STAGE6_PARTY_SPAWN_ATTEMPTS = 5
-STAGE6_REDUCED_SPAWN_VARIANTS = (("A", 1), ("b", 1), ("b", 2), ("b", 3), ("i", 2))
-STAGE6_FLOOR2_REDUCED_SPAWN_VARIANTS = (("g", 1), ("E", 1), ("m", 1))
 STAGE6_MONSTER_PARTY_LIMIT = 8
 STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO = 0.2
 # Sword carriers stay scarce; deeper floors progress to rank 2 and 3.
 STAGE6_EXTRA_BISON_RANKS = (1, None, None, None)
+# Stage 6 roster entries are (char, count, rank, spawn-weight multiplier).
 STAGE6_ROSTER = (
     (
-        ("a", 12, 1), ("a", 3, 2), ("A", 2, 1), ("b", 5, 1), ("B", 1, 1), ("c", 1, 1),
-        ("f", 2, 1),
-        ("d", 4, 1), ("e", 1, 1), ("g", 1, 1), ("m", 1, 1),
+        ("a", 12, 1, 2), ("a", 3, 2, 2), ("A", 2, 1, 1), ("b", 5, 1, 1),
+        ("B", 1, 1, 2), ("c", 1, 1, 2), ("f", 2, 1, 2), ("d", 4, 1, 2),
+        ("e", 1, 1, 2), ("g", 1, 1, 2), ("m", 1, 1, 2),
     ),
     (
-        ("a", 1, 2), ("A", 2, 1), ("b", 5, 2), ("B", 1, 2), ("c", 1, 1),
-        ("d", 2, 1), ("d", 2, 2), ("f", 1, 1), ("f", 1, 2), ("w", 1, 1), ("g", 3, 1),
-        ("k", 1, 1), ("i", 1, 1), ("i", 1, 2), ("X", 1, 1), ("E", 1, 1), ("m", 1, 1),
-        ("V", 1, 1),
+        ("a", 1, 2, 2), ("A", 2, 1, 1), ("b", 5, 2, 1), ("B", 1, 2, 2),
+        ("c", 1, 1, 2), ("d", 2, 1, 2), ("d", 2, 2, 2), ("f", 1, 1, 2),
+        ("f", 1, 2, 2), ("w", 1, 1, 2), ("g", 3, 1, 1), ("k", 1, 1, 2),
+        ("i", 1, 1, 2), ("i", 1, 2, 1), ("X", 1, 1, 2), ("E", 1, 1, 1),
+        ("m", 1, 1, 1), ("V", 1, 1, 1),
     ),
     (
-        ("a", 2, 2), ("a", 4, 3), ("A", 3, 1), ("b", 5, 3), ("B", 1, 3),
-        ("c", 1, 1), ("d", 1, 2), ("f", 1, 1), ("f", 2, 2),
-        ("w", 1, 1), ("w", 2, 2), ("g", 2, 1), ("g", 1, 2),
-        ("k", 3, 1), ("i", 2, 1), ("i", 1, 2), ("X", 1, 2), ("m", 1, 1),
+        ("a", 2, 2, 2), ("a", 4, 3, 2), ("A", 3, 1, 1), ("b", 5, 3, 1),
+        ("B", 1, 3, 2), ("c", 1, 1, 1), ("d", 1, 2, 2), ("f", 1, 1, 2),
+        ("f", 2, 2, 2), ("w", 1, 1, 2), ("w", 2, 2, 2), ("g", 2, 1, 2),
+        ("g", 1, 2, 2), ("k", 3, 1, 2), ("i", 2, 1, 2), ("i", 1, 2, 1),
+        ("X", 1, 2, 2), ("m", 1, 1, 2),
     ),
 )
 STAGE6_BOSS_PARTY = (("F", 2), ("V", 2), ("k", 1))
@@ -284,6 +285,6 @@ STAGE_START_MESSAGES: Dict[int, Tuple[int, str]] = {
     3: (5, "-- The King has ordered the Dread Wyrm (W) slain."),
     4: (5, "-- The King has ordered the Strong Fire Drake (F') slain."),
     5: (12, "-- Explore the training ground and claim the Fire Drake’s treasure."),
-    6: (12, "-- Defeat the Wyrm on the final floor, then take the treasure."),
+    6: (12, "-- At the king’s request, seek out and destroy the Dungeon Core."),
 }
 

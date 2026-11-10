@@ -18,7 +18,13 @@ def monster_party_entities(
     positions: dict[d.Point, d.Monster] | None = None,
 ) -> list[d.Monster]:
     """Return the active vertically connected party containing ``first``."""
+    if first.tribe.char == d.CHAR_DUNGEON_CORE:
+        return [first]
     candidates = monster_positions(entities) if positions is None else positions
+    candidates = {
+        point: monster for point, monster in candidates.items()
+        if monster.tribe.char != d.CHAR_DUNGEON_CORE
+    }
     party = []
     pending = [first]
     visited = set()
@@ -46,7 +52,7 @@ def monster_positions(entities: list[d.Entity]) -> dict[d.Point, d.Monster]:
 
 def special_monster(entity: d.Monster) -> bool:
     # Unlocking the objective is not a combat ability; W can accompany V.
-    return bool(
+    return entity.tribe.char == d.CHAR_DUNGEON_CORE or bool(
         entity.tribe.item or entity.tribe.effect not in (None, d.EFFECT_UNLOCK_TREASURE)
     )
 
@@ -182,7 +188,9 @@ def _separate_diagonal_monsters(current: Floor, *, avoid: set[d.Point] | None = 
 
 
 def _fixed_boss(monster: d.Monster) -> bool:
-    return (monster.tribe.char == "W" and monster.empowered == 1) or (
+    return monster.tribe.char == d.CHAR_DUNGEON_CORE or (
+        monster.tribe.char == "W" and monster.empowered == 1
+    ) or (
         monster.tribe.char == "V" and monster.empowered == 1
     )
 
@@ -354,7 +362,9 @@ def rogue_danger(current: Floor, destination: d.Point) -> str | None:
     return None
 
 
-def _open_points(current: Floor, *, include_barriers: bool = False) -> list[d.Point]:
+def _open_points(
+    current: Floor, *, include_barriers: bool = False, include_caltrops: bool = False,
+) -> list[d.Point]:
     occupied = {(entity.x, entity.y) for entity in current.entities}
     reserved = {
         current.up,
@@ -371,7 +381,11 @@ def _open_points(current: Floor, *, include_barriers: bool = False) -> list[d.Po
         (x, y)
         for y, row in enumerate(current.field)
         for x, cell in enumerate(row)
-        if (cell == d.CHAR_FLOOR or (include_barriers and cell == d.CHAR_BARRIER))
+        if (
+            cell == d.CHAR_FLOOR
+            or (include_barriers and cell == d.CHAR_BARRIER)
+            or (include_caltrops and cell == d.CHAR_CALTROP)
+        )
         and (x, y) not in occupied | reserved
     ]
 
@@ -511,7 +525,12 @@ def respawn(
     avoid: set[d.Point],
     floor_index: int = 0,
 ) -> d.Point | None:
-    candidates = [point for point in _open_points(current) if point not in avoid]
+    is_monster = isinstance(d.CHAR_TO_TRIBE[char], d.MonsterTribe)
+    candidates = [
+        point for point in _open_points(
+            current, include_barriers=is_monster, include_caltrops=is_monster,
+        ) if point not in avoid
+    ]
     monsters = [entity for entity in current.entities if isinstance(entity, d.Monster)]
     if isinstance(d.CHAR_TO_TRIBE[char], d.MonsterTribe):
         monster_positions = {(entity.x, entity.y) for entity in monsters}
@@ -572,6 +591,9 @@ def respawn(
     tribe = d.CHAR_TO_TRIBE[char]
     if isinstance(tribe, d.MonsterTribe):
         entity = d.Monster(*point, tribe, rank)
+        if current.field[point[1]][point[0]] in (d.CHAR_CALTROP, d.CHAR_BARRIER):
+            current.field[point[1]][point[0]] = d.CHAR_FLOOR
+            current.persistent_barriers.discard(point)
     else:
         entity = d.Fairy(*point, tribe, origin_floor=origin_floor)
     current.entities.append(entity)

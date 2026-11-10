@@ -756,6 +756,14 @@ class SpriteUI(PygletUI):
         self._terrain_regions = {}
         self._route_mark_image = (mipmapped(pyglet.image.load(str(assets / ROUTE_MARK_FILE)))
                                   if (assets / ROUTE_MARK_FILE).is_file() else None)
+        core_path = assets / 'dungeon-core' / 'dungeon-core.png'
+        self._dungeon_core_image = None
+        self._dungeon_core_under = self._dungeon_core_overhang = 0.0
+        if core_path.is_file():
+            placement = json.loads(core_path.with_suffix('.json').read_text())
+            self._dungeon_core_under = placement['under']
+            self._dungeon_core_overhang = placement['overhang']
+            self._dungeon_core_image = mipmapped(pyglet.image.load(str(core_path)))
         self._landing_image = (mipmapped(pyglet.image.load(str(assets / LANDING_FILE)))
                                if (assets / LANDING_FILE).is_file() else None)
         self._barrier_images = [barrier_image(variant) for variant in (0, 1)]
@@ -2277,6 +2285,9 @@ class SpriteUI(PygletUI):
 
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
+        if text == d.CHAR_DUNGEON_CORE and self._dungeon_core_image is not None:
+            self._draw_dungeon_core(pos)
+            return
         if text == d.CHAR_BARRIER and self._floor_images is not None:
             return  # shown by the barrier light itself
         if text in self._mark_images and (x - 1, y) in self._sprite_cells:
@@ -2293,6 +2304,34 @@ class SpriteUI(PygletUI):
         tribe = d.CHAR_TO_MONSTER_TRIBE.get(text)
         met_elf = tribe is not None and tribe.is_elf and not bold
         self._draw_sprite(pos, text, color, shade=MET_ELF_SHADE if met_elf else 1.0)
+
+    def _draw_dungeon_core(self, pos):
+        x, y = pos
+        image = self._dungeon_core_image
+        left = self._field_col_x(x - 1)
+        bottom = self.window_height - (
+            y + 1 + self._dungeon_core_under
+        ) * self.cell_size_y
+        scale_x = 3 * self.cell_size_x / image.width
+        scale_y = (
+            (1 + self._dungeon_core_under + self._dungeon_core_overhang)
+            * self.cell_size_y
+            / image.height
+        )
+        visible = self._cur_torched is not None and self._cur_torched[y][x]
+        shade = 1.0 if visible else TERRAIN_EXPLORED_SHADE
+        tint = self._display_color(tuple(round(255 * shade) for _ in range(3)))
+        group = self._row_group(y, 'wall')
+        signature = ('dungeon-core', id(image), left, bottom, scale_x, scale_y,
+                     id(group), tint)
+        sprite = self._draw_bounded_object(
+            left, 3 * self.cell_size_x, signature,
+            lambda: pyglet.sprite.Sprite(image, x=left, y=bottom,
+                                         batch=self.batch, group=group),
+        )
+        self._set_drawable_attribute(sprite, 'scale_x', scale_x)
+        self._set_drawable_attribute(sprite, 'scale_y', scale_y)
+        self._set_drawable_attribute(sprite, 'color', tint)
 
     def _draw_rank_mark(self, pos, mark, color):
         """Tinted 3D apostrophe(s) at the upper right of the sprite in `pos`."""

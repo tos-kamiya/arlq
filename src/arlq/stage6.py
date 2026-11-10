@@ -185,6 +185,47 @@ def _place_initial_boss_party(current: Floor) -> tuple[list[d.Monster], set[d.Po
     return current.entities[-len(d.STAGE6_BOSS_PARTY):], set()
 
 
+def _place_dungeon_core(current: Floor, boss: d.Monster) -> d.Monster:
+    """Reserve a central-cell position for the dormant core on this floor."""
+    def candidates() -> list[d.Point]:
+        occupied = {(entity.x, entity.y) for entity in current.entities}
+        return [
+            point for point in _open_points(current)
+            if 0 < point[0] < d.FIELD_WIDTH - 1
+            and current.field[point[1]][point[0] - 1] == d.CHAR_FLOOR
+            and current.field[point[1]][point[0] + 1] == d.CHAR_FLOOR
+            and (point[0] - 1, point[1]) not in occupied
+            and (point[0] + 1, point[1]) not in occupied
+        ]
+
+    available = candidates()
+    boss_party = set(stage56.monster_party(current, boss))
+    while not available:
+        removable = [
+            entity for entity in current.entities
+            if isinstance(entity, d.Monster)
+            and not isinstance(entity, d.Collapse)
+            and not entity.tribe.is_elf
+            and entity.boss_id is None
+            and entity.tribe.char not in (d.CHAR_DUNGEON_CORE, "V")
+            and entity not in boss_party
+        ]
+        if not removable:
+            raise RuntimeError("could not reserve a position for the Stage 6 Dungeon Core")
+        victim = rand.choice(removable)
+        current.entities.remove(victim)
+        available = candidates()
+
+    core = d.Monster(
+        *rand.choice(available),
+        d.CHAR_TO_MONSTER_TRIBE[d.CHAR_DUNGEON_CORE],
+        boss_id=2,
+    )
+    core.active = False
+    current.entities.append(core)
+    return core
+
+
 def _can_join_at(current: Floor, monster: d.Monster, point: d.Point, *,
                  isolated: bool = False) -> bool:
     positions = stage56.monster_positions(current.entities)
@@ -215,16 +256,11 @@ def spawn_monster(current: Floor, floor_index: int, *,
                   prefer_adjacent: bool = True) -> bool:
     """Try distinct positions for one independently drawn monster."""
     if variant is None:
-        # Doubling the other weights lets odd weights be halved exactly.
-        reduced = set(d.STAGE6_REDUCED_SPAWN_VARIANTS)
-        if floor_index == 1:
-            reduced.update(d.STAGE6_FLOOR2_REDUCED_SPAWN_VARIANTS)
         if current.monster_spawn_queue_index >= len(current.monster_spawn_queue):
             current.monster_spawn_queue = [
                 (char, rank)
-                for char, count, rank in d.STAGE6_ROSTER[floor_index]
-                for _ in range(count * (1 if (char, rank) in reduced
-                                        or (floor_index == 2 and char == "c") else 2))
+                for char, count, rank, spawn_weight in d.STAGE6_ROSTER[floor_index]
+                for _ in range(count * spawn_weight)
             ]
             for index in range(len(current.monster_spawn_queue) - 1, 0, -1):
                 swap = rand.randrange(index + 1)
@@ -235,9 +271,10 @@ def spawn_monster(current: Floor, floor_index: int, *,
         variant = current.monster_spawn_queue[current.monster_spawn_queue_index]
         current.monster_spawn_queue_index += 1
     char, rank = variant
-    barrier_points = [point for point in stage56._open_points(current, include_barriers=True)
-                      if current.field[point[1]][point[0]] == d.CHAR_BARRIER]
-    candidates = [point for point in _open_points(current) + barrier_points
+    spawn_points = stage56._open_points(
+        current, include_barriers=True, include_caltrops=True,
+    )
+    candidates = [point for point in spawn_points
                   if point not in (avoid or set()) and not _in_bridgehead(current, point)
                   and tile_at(point) not in current.monster_spawn_blocked_rooms]
     monster = d.Monster(0, 0, d.CHAR_TO_MONSTER_TRIBE[char], rank)
@@ -261,7 +298,7 @@ def spawn_monster(current: Floor, floor_index: int, *,
             monster = d.Monster(x, y, d.CHAR_TO_MONSTER_TRIBE[char], rank)
             if not _can_join_at(current, monster, point, isolated=isolated):
                 continue
-            if current.field[y][x] == d.CHAR_BARRIER:
+            if current.field[y][x] in (d.CHAR_CALTROP, d.CHAR_BARRIER):
                 current.field[y][x] = d.CHAR_FLOOR
                 current.persistent_barriers.discard(point)
             current.entities.append(monster)
@@ -428,9 +465,8 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
                               if not _in_detached_terminal_room(current, point)
                               and tile_at(point) not in current.monster_spawn_blocked_rooms]),
                 d.CHAR_TO_MONSTER_TRIBE["M"],
-                mimic_boss_char=d.STAGE6_BOSS_PARTY[0][0],
-                mimic_boss_empowered=d.STAGE6_BOSS_PARTY[0][1],
-                boss_id=1,
+                mimic_boss_char=d.CHAR_DUNGEON_CORE,
+                boss_id=2,
             )
             mimic.active = False
             current.entities.append(mimic)
@@ -440,11 +476,12 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
                 for entity in current.entities
                 if isinstance(entity, d.Monster) and entity.tribe.char == d.STAGE6_BOSS_PARTY[0][0]
             )
+            _place_dungeon_core(current, boss)
             boss_zone = tile_at((boss.x, boss.y))
             treasure_points = [
                 point for point in _open_points(current) if tile_at(point) != boss_zone
             ]
-            current.entities.append(d.Treasure(*rand.choice(treasure_points), "T" + d.STAGE6_BOSS_PARTY[0][0], boss_id=1))
+            current.entities.append(d.Treasure(*rand.choice(treasure_points), "T" + d.CHAR_DUNGEON_CORE, boss_id=2))
         for char, count in zip(
             (d.CHAR_CALTROP, d.CHAR_BARRIER), d.STAGE6_HAZARD_COUNTS[index]
         ):

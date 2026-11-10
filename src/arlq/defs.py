@@ -21,8 +21,6 @@ from .stage_data import (
     STAGE6_PARTY_SPAWN_PERCENT as STAGE6_PARTY_SPAWN_PERCENT,
     STAGE6_SPAWN_ATTEMPTS as STAGE6_SPAWN_ATTEMPTS,
     STAGE6_PARTY_SPAWN_ATTEMPTS as STAGE6_PARTY_SPAWN_ATTEMPTS,
-    STAGE6_REDUCED_SPAWN_VARIANTS as STAGE6_REDUCED_SPAWN_VARIANTS,
-    STAGE6_FLOOR2_REDUCED_SPAWN_VARIANTS as STAGE6_FLOOR2_REDUCED_SPAWN_VARIANTS,
     STAGE6_MONSTER_PARTY_LIMIT as STAGE6_MONSTER_PARTY_LIMIT,
     STAGE6_EXTRA_CORRIDORS as STAGE6_EXTRA_CORRIDORS,
     STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO as STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO,
@@ -148,7 +146,7 @@ RATIONS_ENABLED: bool = False
 RATIONS = ("hardtack", "jerky", "hyorogan")
 RATION_LP: int = 100
 STAGE6_RATION_LP: int = 30
-STAGE6_BRIDGEHEAD_RECOVERY_LP: int = 50
+STAGE6_BRIDGEHEAD_RECOVERY_LP: int = 60
 LP_INIT: int = LP_OVERCHARGE_MAX
 LP_RESPAWN_MIN: int = 20
 LP_RESPAWN_COST: int = 6
@@ -233,6 +231,7 @@ ROCK_SPREAD_OFFSETS: List[Tuple[int, int]] = [
 
 
 CHAR_TREASURE: str = "T"
+CHAR_DUNGEON_CORE: str = "*"
 CHAR_CALTROP: str = "x"
 CHAR_BARRIER: str = "="
 
@@ -711,6 +710,7 @@ MONSTER_TRIBES: List[MonsterTribe] = [
         1,
         event_message="-- You defeated the Mimic, but were sent somewhere else.",
     ),  # Mimic
+    _MT(CHAR_DUNGEON_CORE, 1, 0, experience=0),  # Stage 6's stationary objective
     _MT(
         "m",
         5,
@@ -861,7 +861,7 @@ def _get_member_stage_roster_tribes() -> List[MonsterTribe]:
     variants = {
         (char, rank)
         for floor in STAGE6_ROSTER
-        for char, _, rank in floor
+        for char, _, rank, _ in floor
     }
     variants.update(
         variant for floor_pool in STAGE6_SUPPORT_POOLS for variant in floor_pool

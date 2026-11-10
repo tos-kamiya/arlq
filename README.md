@@ -285,7 +285,7 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 Ordinary openings between sections are one cell wider than in the other generated stages; hidden passages remain one cell wide.
 
-Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the bridgehead and face monsters that also form parties. Returning to the floor 1 bridgehead restores LP to 50 if it is lower. Defeat the empowered Fire Drake (`F'`) on the final floor and claim the treasure.
+Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the bridgehead and face monsters that also form parties. Returning to the floor 1 bridgehead restores LP to 50 if it is lower. Defeat the empowered Fire Drake (`F'`) on the final floor to reveal the Dungeon Core. Destroy the core to unseal its treasure chest and awaken the Mimic, then claim the treasure.
 
 When you use a different staircase or pit from the one used for your previous floor change, all unrecruited members are scattered independently to random floors, and their previously known locations are cleared. Reusing the same staircase or pit consecutively, in either direction, does not scatter them again.
 

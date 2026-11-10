@@ -77,7 +77,13 @@ def test_three_floor_dungeon(seed):
     assert sum(d.monster_level(e) for e in party) >= 300
     mimic = next(e for e in floors[-1].entities
                  if isinstance(e, d.Monster) and e.tribe.char == "M")
-    assert (mimic.mimic_boss_char, mimic.mimic_boss_empowered) == ("F", 2)
+    assert (mimic.mimic_boss_char, mimic.mimic_boss_empowered) == (d.CHAR_DUNGEON_CORE, None)
+    core = next(e for e in floors[-1].entities
+                if isinstance(e, d.Monster) and e.tribe.char == d.CHAR_DUNGEON_CORE)
+    assert not core.active
+    assert 0 < core.x < d.FIELD_WIDTH - 1
+    assert core.boss_id == 2
+    assert all(tribe.char != d.CHAR_DUNGEON_CORE for tribe in d.MEMBER_STAGE_ROSTER_TRIBES)
     assert all(not isinstance(e, d.PartyMember)
                for floor in floors[2:] for e in floor.entities)
 

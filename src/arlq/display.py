@@ -269,6 +269,12 @@ def preview_entity_glyphs(
     char = None
     if isinstance(entity, d.Monster):
         char = entity.tribe.char
+        if char == d.CHAR_DUNGEON_CORE and entity.active:
+            return [
+                FieldGlyph(entity.x - 1, entity.y, "[", "yellow", bold=True),
+                FieldGlyph(entity.x, entity.y, char, "yellow", bold=True),
+                FieldGlyph(entity.x + 1, entity.y, "]", "yellow", bold=True),
+            ]
         if (
             char == "M"
             and d.monster_type_key(entity) not in known_types
@@ -358,6 +364,12 @@ def revealed_entity_glyphs(
         char = entity.tribe.char
         if not entity.active:
             return []
+        if char == d.CHAR_DUNGEON_CORE:
+            return [
+                FieldGlyph(entity.x - 1, entity.y, "[", "yellow", bold=True),
+                FieldGlyph(entity.x, entity.y, char, "yellow", bold=True),
+                FieldGlyph(entity.x + 1, entity.y, "]", "yellow", bold=True),
+            ]
         if entity.tribe.passive:
             known = entity.revealed or d.monster_type_key(entity) in known_types
         elif entity.tribe.is_elf:
