@@ -289,7 +289,7 @@ Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near
 
 When you use a different staircase or pit from the one used for your previous floor change, all unrecruited members are scattered independently to random floors, and their previously known locations are cleared. Reusing the same staircase or pit consecutively, in either direction, does not scatter them again.
 
-Each floor starts with a sword-carrying `c` and three fairies selected from `l`, `n`, `o`, and `p`. A fairy that leaves returns only to its original floor. The dungeon then makes 40, 35, and 30 monster spawn attempts on floors 1, 2, and 3 respectively. Initial spawns on floor 1 use random positions; floors 2 and 3 use the same party preference as later spawns. Every 20 turns, a spawn is attempted on each floor. Solo monsters do not move on their own. Stronger types appear on deeper floors. Spore monsters (`m`) can appear on every floor; Rare Erebus (`E`) can appear on floor 2. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
+Each floor starts with a sword-carrying `c` and three fairies selected from `l`, `n`, `o`, and `p`. A fairy that leaves returns only to its original floor. The dungeon then makes 40, 35, and 30 monster spawn attempts on floors 1, 2, and 3 respectively. Initial spawns on floor 1 use random positions; floors 2 and 3 use the same party preference as later spawns. Every 20 turns, a spawn is attempted on each floor. Solo monsters do not move on their own. Stronger types appear on deeper floors. Spore monsters (`m`) can appear on every floor; Rare Erebus (`E`) and Vortex (`V`) can appear on floor 2. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
 
 #### Party members
 
@@ -322,7 +322,7 @@ Some rooms may be sealed by walls, but D can discover passages into them.
 | **g** / **g'** Golem | Rank 1 Golems appear on every floor, and rank 2 Golems also appear on floor 3. |
 | **w** / **w'** Wyrm | Floor 2 has `w`; floor 3 has both `w` and `w'`. |
 
-The floor 3 boss party starts with `F'`, `V`, and `k` and may gain more members; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
+The floor 3 boss party starts with `F'`, `V'`, and `k` and may gain more members; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
 ## Development commands
 

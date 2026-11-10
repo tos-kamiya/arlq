@@ -467,11 +467,14 @@ def _vortex_rearrange(
     floors: Optional[List[Floor]] = None,
     include_treasures: bool = True,
     bounded_relocation: bool = False,
+    radius_multiplier: float = 1.0,
 ) -> None:
     """Reposition entities and forget explored floor and barrier cells."""
     # Keep the horizontal reach while matching the FOV ellipse's proportions.
     horizontal_radius = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
-    radius = round(horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO)
+    radius = round(
+        horizontal_radius / d.FOV_WIDTH_EXPANSION_RATIO * radius_multiplier
+    )
     affected_points = set(
         iterate_ellipse_points(
             center[0], center[1], radius, d.FOV_WIDTH_EXPANSION_RATIO
@@ -771,6 +774,7 @@ def _defeat_monster(
         _vortex_rearrange(
             current, player, floor[0], (entity.x, entity.y), floors=floors,
             bounded_relocation=stage_num == 6,
+            radius_multiplier=1.2 if entity.empowered == 2 else 1.0,
         )
 
     if (
