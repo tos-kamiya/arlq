@@ -255,7 +255,7 @@ def test_bridgehead_healing_persists_after_leaving_in_game_loop(monkeypatch):
     assert len(trace.turns) == 3
 
 
-def test_bridgehead_entry_clears_overshoot_history_without_healing(monkeypatch):
+def test_bridgehead_entry_does_not_heal_above_fifty(monkeypatch):
     from types import SimpleNamespace
     from arlq.trace import TraceRecorder
 

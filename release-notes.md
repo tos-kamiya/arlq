@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 6.6.0 - 2026-11-10
+
+- Revise Stage 6 monster ranks, initial and periodic spawns, and party formation;
+  monsters can join the boss party and spawn on barriers, clearing those cells.
+- Keep monster spawns and respawns away from the player's immediate vicinity.
+- Keep the first recruited party member, replace the second when recruiting
+  another, and show members following the player's path. The Jester leaves
+  at level 80 and cannot rejoin.
+- Widen Stage 6's ordinary openings, remove boss route markers and the narrow
+  corridor command-line option, and mark explored Golem rubble with `+` in
+  the character GUI and terminal.
+- Remove overshoot assist so movement and LP costs remain in the trace. Older
+  traces that omitted actions during overshoot assist may not replay exactly.
+
 ## 6.5.1 - 2026-11-10
 
 - Replace the Stage 6 tavern with a bridgehead and its new sprite artwork;

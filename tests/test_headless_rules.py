@@ -414,13 +414,11 @@ def test_game_loop_draws_with_keyword_arguments_only():
         "respawn_glows",
         "d_gates",
         "reachable_cells",
-        "overshoot_markers",
         "loop_trail_markers",
     }
     assert draws[0]["game_start_turn"] is None
     assert draws[0]["stage_num"] == 1
     assert draws[0]["reachable_cells"] == set()
-    assert draws[0]["overshoot_markers"] == set()
 
 
 def test_reachable_cells_do_not_estimate_marksman_damage():

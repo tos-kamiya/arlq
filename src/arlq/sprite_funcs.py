@@ -2262,6 +2262,9 @@ class SpriteUI(PygletUI):
             ),
         )
 
+    def _draw_golem_rubble(self, pos, visible):
+        pass
+
     def _draw_member(self, glyph):
         name = self._member_variants.get(glyph.char)
         key = (CAT_SPRITE if glyph.char == 'Y' else

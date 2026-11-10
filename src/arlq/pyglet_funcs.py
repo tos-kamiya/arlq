@@ -1065,6 +1065,10 @@ class PygletUI:
         """Draws a Stage 3 follower (such as the Javelin Elf) walking with the player."""
         self._draw_field_text(pos, char, COLOR_MAP["default"])
 
+    def _draw_golem_rubble(self, pos: d.Point, visible: bool) -> None:
+        color = COLOR_MAP[CI_GREEN]
+        self._draw_field_text(pos, "+", color if visible else self._dim_color(color))
+
     def _draw_member(self, glyph):
         self._draw_text((glyph.x, glyph.y), glyph.char, self._tone_color("default"),
                         bold=glyph.bold, x_offset=self._field_text_x_offset())
@@ -1222,7 +1226,6 @@ class PygletUI:
         floor_view: bool = False,
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
-        overshoot_markers: Optional[Set[d.Point]] = None,
         loop_trail_markers: Optional[Set[d.Point]] = None,
         decor: Optional[List[List[str]]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
@@ -1280,6 +1283,8 @@ class PygletUI:
 
                 if discovered and cell in d.STAIR_CHARS:
                     self._draw_stairs((x, y), cell)
+                elif discovered and cell == d.CHAR_GOLEM_WALL:
+                    self._draw_golem_rubble((x, y), bool(cur_torched[y][x]))
                 elif discovered and cell == d.CHAR_BARRIER:
                     damage = barrier_lp_damage(player)
                     dimmed = self.dim_protected_hazards and damage == 0
@@ -1308,15 +1313,6 @@ class PygletUI:
                     )
 
         if not floor_view:
-            for x, y in overshoot_markers or set():
-                if (
-                    0 <= y < len(field)
-                    and 0 <= x < len(field[y])
-                    and torched[y][x]
-                    and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)
-                    and (x, y) != (px, py)
-                ):
-                    self._draw_field_text((x, y), ".", (112, 120, 130))
             for x, y in loop_trail_markers or set():
                 if (
                     0 <= y < len(field)

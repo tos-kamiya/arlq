@@ -116,7 +116,6 @@ class BlessedUI:
         floor_view: bool = False,
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
-        overshoot_markers: Optional[Set[d.Point]] = None,
         loop_trail_markers: Optional[Set[d.Point]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
         message=None,
@@ -125,7 +124,6 @@ class BlessedUI:
         output = [self.term.home + self.term.clear]
         reveal_disguises = debug_show_entities or monochrome
         highlighted_cells = reachable_cells or set()
-        rewind_markers = overshoot_markers or set()
         loop_markers = loop_trail_markers or set()
         render_monochrome = monochrome and not highlighted_cells
 
@@ -188,8 +186,9 @@ class BlessedUI:
         for y, row in enumerate(field):
             for x, cell in enumerate(row):
                 display_cell = (
-                    d.CHAR_WALL
-                    if cell in (d.CHAR_GOLEM_WALL, d.CHAR_HIDDEN_D_GATE)
+                    "+" if cell == d.CHAR_GOLEM_WALL
+                    else d.CHAR_WALL
+                    if cell == d.CHAR_HIDDEN_D_GATE
                     else d.CHAR_FLOOR
                     if cell in d.HIDDEN_STAIRS_CHARS
                     else cell
@@ -291,22 +290,6 @@ class BlessedUI:
                     put(x, y, ".", "yellow", bg=cell_background(x, y))
 
         if not floor_view:
-            for x, y in rewind_markers:
-                if (
-                    0 <= y < len(field)
-                    and 0 <= x < len(field[y])
-                    and torched[y][x]
-                    and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)
-                    and (x, y) != (px, py)
-                ):
-                    put(
-                        x,
-                        y,
-                        ".",
-                        "white",
-                        dim=True,
-                        bg=cell_background(x, y),
-                    )
             for x, y in loop_markers:
                 if (
                     0 <= y < len(field)
@@ -591,7 +574,6 @@ class BlessedUI:
         floor_view: bool = False,
         floor_label: Optional[str] = None,
         reachable_cells: Optional[Set[d.Point]] = None,
-        overshoot_markers: Optional[Set[d.Point]] = None,
         loop_trail_markers: Optional[Set[d.Point]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
         decor: Optional[List[List[str]]] = None,
@@ -604,7 +586,7 @@ class BlessedUI:
             entities, field, cur_torched, torched, known_types, show_entities,
             debug_show_entities, checkpoint, self.map_mode, dim_types,
             stage_num, stage_roster, floor_view, floor_label, reachable_cells,
-            overshoot_markers, loop_trail_markers,
+            loop_trail_markers,
             d_gates,
             message,
             decor,

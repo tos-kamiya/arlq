@@ -92,110 +92,7 @@ def test_recorder_fills_in_defaults_and_tracks_turn_numbers():
     assert trace.to_dict()["start"] == {"floor": 0, "position": [2, 2], "lp": 90}
 
 
-def test_recorder_tracks_rewind_relevant_changes_and_truncates_turns():
-    trace = TraceRecorder(params={})
-    player = d.Player(4, 5, 1, 90)
-    trace.set_start_state(player, floor_index=2)
-    trace.begin_turn("R")
-    trace.set_player(player, floor_index=2)
-    trace.record_damage("barrier")
-    trace.record_state_changes(2, ["b", "k"])
-    trace.set_turn_end_lp(88)
-    trace.commit_turn()
-    trace.begin_turn("L")
-    trace.set_player(player, floor_index=2)
-    trace.commit_turn()
-
-    trace.truncate_after_turn(1)
-
-    assert len(trace.turns) == 1
-    assert trace.to_dict()["final"]["turns"] == 1
-    assert trace.turns[0]["damage"] == [{"source": "barrier"}]
-    assert trace.turns[0]["seen_added_count"] == 2
-    assert trace.turns[0]["known_monsters_added"] == ["b", "k"]
-
-
-def record_assist_test_turn(trace, key, position, lp=90, floor=0, **events):
-    player = d.Player(*position, 1, lp)
-    trace.begin_turn(key)
-    trace.set_player(player, floor_index=floor)
-    trace.set_turn_end_lp(lp - 1)
-    for name, value in events.items():
-        if name == "contact":
-            trace.record_contact(value)
-        elif name == "damage":
-            for source in value:
-                trace.record_damage(source)
-        elif name == "state_changes":
-            trace.record_state_changes(*value)
-        elif name == "expired":
-            trace.add_expired(value)
-        elif name == "world":
-            trace.add_world_event(value)
-        elif name == "wall":
-            trace.record_wall(SimpleNamespace(**value))
-    trace.commit_turn()
-
-
-def test_assist_rewind_target_allows_locked_treasure_contact():
-    trace = TraceRecorder(params={})
-    player = d.Player(2, 2, 1, 90)
-    trace.set_start_state(player, floor_index=0)
-    record_assist_test_turn(
-        trace,
-        "R",
-        (3, 2),
-        lp=89,
-        contact={"type": "treasure", "id": "TW", "collected": False},
-    )
-    record_assist_test_turn(trace, "L", (2, 2), lp=88)
-
-    assert trace.find_overshoot_rewind_target() == (0, 0, (2, 2), 90)
-
-
-def test_assist_rewind_markers_show_only_recent_safe_return_cells():
-    trace = TraceRecorder(params={})
-    trace.set_start_state(d.Player(2, 2, 1, 90), floor_index=0)
-    record_assist_test_turn(trace, "R", (3, 2), lp=89)
-    assert trace.overshoot_rewind_markers(0) == {(2, 2)}
-
-    record_assist_test_turn(trace, "R", (4, 2), lp=88)
-    assert trace.overshoot_rewind_markers(0) == {(2, 2), (3, 2)}
-
-    record_assist_test_turn(
-        trace,
-        "R",
-        (5, 2),
-        lp=87,
-        contact={"type": "monster", "id": "M", "outcome": "win"},
-    )
-    assert trace.overshoot_rewind_markers(0) == set()
-
-
-@pytest.mark.parametrize(
-    "event",
-    [
-        {"contact": {"type": "treasure", "id": "TW", "collected": True}},
-        {"contact": {"type": "monster", "id": "M", "outcome": "win"}},
-        {"damage": ["barrier"]},
-        {"state_changes": (1, ["b"])},
-        {"expired": {"type": "companion_departed", "id": "p"}},
-        {"world": {"type": "respawn", "kind": "monster", "id": "b", "at": [8, 8]}},
-        {"wall": {"result": "sword_break", "item_uses_left": 2}},
-    ],
-)
-def test_assist_rewind_target_rejects_state_changing_events(event):
-    trace = TraceRecorder(params={})
-    player = d.Player(2, 2, 1, 90)
-    trace.set_start_state(player, floor_index=0)
-    record_assist_test_turn(trace, "R", (3, 2), lp=89, **event)
-    record_assist_test_turn(trace, "L", (2, 2), lp=88)
-
-    assert trace.find_overshoot_rewind_target() is None
-    assert trace.overshoot_rewind_markers(0) == {(3, 2)}
-
-
-def test_engine_records_assist_disqualifying_damage_sources(monkeypatch):
+def test_engine_records_damage_sources(monkeypatch):
     player = d.Player(3, 3, 100, 90)
     floor = one_floor([player])
     trace = TraceRecorder(params={})
@@ -261,7 +158,7 @@ def test_run_game_trace_records_start_position_and_end_of_turn_state(monkeypatch
     assert data["turns"][0]["seen_added_count"] > 0
 
 
-def test_run_game_applies_assist_rewind_and_truncates_trace(monkeypatch):
+def test_returning_to_previous_cell_preserves_moves_and_cost(monkeypatch):
     player = d.Player(2, 2, 1, 90)
     floor = one_floor([], up=(2, 2), down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2))
     floor.field = [
@@ -285,11 +182,8 @@ def test_run_game_applies_assist_rewind_and_truncates_trace(monkeypatch):
         game_engine_module, "reveal_entities_in_fov", lambda *_args, **_kwargs: None
     )
     inputs = iter([(1, 0), (-1, 0), None])
-    drawn_markers = []
     ui = SimpleNamespace(
-        draw_stage=lambda **kwargs: drawn_markers.append(
-            kwargs.get("overshoot_markers", set())
-        ),
+        draw_stage=lambda **kwargs: None,
         input_direction=inputs.__next__,
         input_alphabet=lambda: None,
         map_mode=False,
@@ -298,10 +192,49 @@ def test_run_game_applies_assist_rewind_and_truncates_trace(monkeypatch):
 
     run_game(ui, "seed", stage_num=1, trace=trace)
 
-    assert (player.x, player.y, player.lp) == (2, 2, 90)
-    assert trace.turns == [{"turn": 1, "input": "Q"}]
-    assert trace.to_dict()["final"]["turns"] == 1
-    assert drawn_markers == [set(), {(2, 2)}, set()]
+    assert (player.x, player.y, player.lp) == (2, 2, 88)
+    assert [turn["input"] for turn in trace.turns] == ["R", "L", "Q"]
+    assert trace.to_dict()["final"]["turns"] == 3
+
+
+def test_replay_preserves_random_state_after_returning_to_previous_cell(monkeypatch):
+    def build(*_):
+        player = d.Player(10, 10, 1, 100)
+        player.rescue_stage = True
+        player.members.append(d.PartyMember(10, 10, d.MEMBER_YAWNING_CAT))
+        current = one_floor([], up=(1, 1), down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2))
+        current.seen = [[1] * d.FIELD_WIDTH for _ in current.field]
+        return [current], player
+
+    monkeypatch.setattr(game_engine_module.stage6, "build", build)
+    monkeypatch.setattr(game_engine_module.stage6, "advance_spawns", lambda *_: [])
+
+    def explore(current, player):
+        player.members[0].exploration_turns += 1
+        game_engine_module.rand.randrange(100)
+
+    monkeypatch.setattr(game_engine_module.stage56, "explore_with_cat", explore)
+    states = []
+    inputs = iter([(1, 0), (-1, 0), (0, 1), None])
+    ui = SimpleNamespace(draw_stage=lambda **kw: states.append(
+        (kw["player"].x, kw["player"].y, kw["player"].lp,
+         kw["player"].members[0].exploration_turns, game_engine_module.rand.getstate())
+    ), input_direction=inputs.__next__, map_mode=False)
+    game_engine_module.rand.set_seed(17)
+    recorded = TraceRecorder(params={})
+    run_game(ui, "seed", stage_num=6, trace=recorded)
+    expected = states[-1]
+    assert [turn["input"] for turn in recorded.turns] == ["R", "L", "D", "Q"]
+
+    replay_states = []
+    replay = ReplayUI(recorded.turns, 6)
+    replay.draw_stage = lambda **kw: replay_states.append(
+        (kw["player"].x, kw["player"].y, kw["player"].lp,
+         kw["player"].members[0].exploration_turns, game_engine_module.rand.getstate())
+    )
+    game_engine_module.rand.set_seed(17)
+    run_game(replay, "seed", stage_num=6)
+    assert replay_states[-1] == expected
 
 
 def test_recorder_quit_turn_has_only_input_and_bumps_turn_count():
@@ -972,16 +905,3 @@ def test_pegasus_landing_on_golem_wall(rogue):
     assert ((player.x, player.y) == target) == rogue
     assert (target in floor.broken_walls) == rogue
     assert floor.field[target[1]][target[0]] == (d.CHAR_FLOOR if rogue else d.CHAR_GOLEM_WALL)
-
-
-def test_clearing_overshoot_history_preserves_trace_and_allows_new_targets():
-    trace = TraceRecorder(params={})
-    trace.set_start_state(d.Player(2, 2, 1, 90), floor_index=0)
-    record_assist_test_turn(trace, "R", (3, 2), lp=89)
-    trace.clear_overshoot_history()
-    assert trace.overshoot_rewind_markers(0) == set()
-    assert len(trace.turns) == 1
-    record_assist_test_turn(trace, "R", (4, 2), lp=88)
-    assert trace.overshoot_rewind_markers(0) == {(3, 2)}
-    record_assist_test_turn(trace, "L", (3, 2), lp=87)
-    assert trace.find_overshoot_rewind_target() == (1, 0, (3, 2), 88)

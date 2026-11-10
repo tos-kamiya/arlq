@@ -2221,11 +2221,6 @@ def run_game(
             respawn_glows=respawn_glow_cells(display_floor),
             d_gates=display_floor.d_gates,
             reachable_cells=reachable_cells,
-            overshoot_markers=(
-                trace.overshoot_rewind_markers(floor[0])
-                if trace is not None and not floor_view
-                else set()
-            ),
             loop_trail_markers=(
                 loop_trail_by_floor.get(floor[0], set())
                 if not floor_view and turn < loop_trail_expires_at
@@ -2485,63 +2480,12 @@ def run_game(
         turn += 1
         player.lp -= d.movement_lp_cost(player)
         if stage_num == 6 and not isinstance(step_result, _RewindRequest):
-            entered_bridgehead = stage6.recover_at_bridgehead(
+            stage6.recover_at_bridgehead(
                 floors, player, floor[0], floor_before_step, point_before_step
             )
-            if trace is not None and entered_bridgehead:
-                trace.clear_overshoot_history()
         if trace is not None:
             trace.set_turn_end_lp(player.lp)
             trace.commit_turn()
-            overshoot_target = trace.find_overshoot_rewind_target()
-            if overshoot_target is not None and not player.stage_won:
-                retained_turns, target_floor, target_position, target_lp = (
-                    overshoot_target
-                )
-                _stop_movement_repeat(ui)
-                floor[0] = target_floor
-                player.x, player.y = target_position
-                player.current_floor = target_floor
-                player.lp = target_lp
-                view_floor = target_floor
-
-                if replay_context is not None:
-                    target_game_turn = max(
-                        (
-                            game_turn
-                            for game_turn, operation_count
-                            in replay_context.turn_to_operation.items()
-                            if operation_count == retained_turns
-                        ),
-                        default=retained_turns,
-                    )
-                    replay_context.operations[:] = replay_context.operations[
-                        :retained_turns
-                    ]
-                    operation_path[:] = operation_path[: retained_turns + 1]
-                    for game_turn, operation_count in tuple(
-                        replay_context.turn_to_operation.items()
-                    ):
-                        if (
-                            game_turn > target_game_turn
-                            or operation_count > retained_turns
-                        ):
-                            del replay_context.turn_to_operation[game_turn]
-                    replay_context.turn_to_operation[target_game_turn] = (
-                        retained_turns
-                    )
-                    for operation_count in tuple(replay_context.rewind_targets):
-                        if operation_count > retained_turns:
-                            del replay_context.rewind_targets[operation_count]
-                    replay_context.rogue_checks = {
-                        index: checks
-                        for index, checks in replay_context.rogue_checks.items()
-                        if index < retained_turns
-                    }
-                    game_start_turn = target_game_turn
-
-                turn = retained_turns
-                trace.truncate_after_turn(retained_turns)
         if player.stage_won:
             break
 

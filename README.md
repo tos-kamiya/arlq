@@ -141,7 +141,6 @@ Hover over a character to enlarge it and display its name. Unidentified characte
   | Feature | Description |
   | --- | --- |
   | Movement repeat | Holding a direction repeats movement when enabled. Automatic stopping is on by default near known hazards and after encounters or special movement; release and press the direction again to resume. Change it in `Settings` or with `--no-auto-repeat-stop`. |
-  | Overshoot assist | Cancels movement and LP use when you return to the same position within five turns without gaining map or monster information, encountering an entity, taking damage, or changing floors. Possible return cells are marked with a dark gray `.`. |
   | Reachable area preview | Press `F` to highlight explored cells reachable with your remaining LP. A gamepad button can show the preview while held or toggle it. While viewing the preview, Up or Down inspects another floor in Stages 3 and 4; moving closes the keyboard preview. Unexplored cells and routes remain hidden. The estimate avoids displayed entities and stairs, does not break walls or count LP recovery, and excludes Marksman and Ivy damage, so actual reach may differ. |
 
 * **Monsters, Fairies, and Elves**
@@ -203,7 +202,7 @@ Stage 2 also features empowered Bison (`b'`). Stage 6 has Bison and Buffalo vari
 | **C** Rare Chimera  | Its Cursed Sword gives 3x attack power. Each monster or elf contact and each wall broken costs an extra 10 LP. Like the normal sword, it can break up to three walls. |
 | **e** Erebus        | Battling it drains your vitality by a small amount.                                                                     |
 | **F** Fire Drake    | Extremely powerful; defeating it unseals the Fire Drake's treasure chest.                                               |
-| **g** Golem         | When defeated, rocks scatter up to two tiles in each of the four diagonal directions around you, replacing any walls, barriers, or caltrops there. It yields no food.                                                                        |
+| **g** Golem         | When defeated, rocks scatter up to two tiles in each of the four diagonal directions around you, replacing any walls, barriers, or caltrops there. It yields no food. In the character GUI and terminal, explored rubble is marked with `+`. |
 | **H** High Elf      | In Stage 2, a passive elf: contact reveals it without combat or a reward. |
 | **X** Caltrop Plant | Contacting it scatters caltrops (`x`) around you in a checkerboard pattern centered on the contact cell, consistent at every location. It replaces walls and barriers but not Golem rubble. Hidden passages and pit climb points are protected from caltrops, rubble, and barriers. The rank-2 form `X'` scatters them one tile farther. |
 

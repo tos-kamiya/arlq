@@ -841,6 +841,8 @@ def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
     ui._decor = [[d.DECOR_NONE] * 3 for _ in range(3)]
     ui._draw_tile(1, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: True)
     assert [piece.image for piece in ui._drawables] == [ui._sprite_images[sprite_funcs.ROCK_SPRITE]]
+    ui._draw_golem_rubble((1, 1), True)
+    assert len(ui._drawables) == 1
     ui._drawables.clear()
     ui._draw_tile(1, 1, sprite_funcs.WALL, field, lambda x, y: True)
     shade = round(255 * sprite_funcs.ROCK_EXPLORED_SHADE)

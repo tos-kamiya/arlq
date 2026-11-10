@@ -279,6 +279,58 @@ def test_terminal_boss_route_only_marks_explored_floor(monkeypatch):
 
 
 @pytest.mark.parametrize('dots', [False, True])
+@pytest.mark.parametrize('monochrome', [False, True])
+def test_terminal_marks_explored_golem_rubble(monkeypatch, dots, monochrome):
+    from arlq import defs as d, display
+    ui = BlessedUI.__new__(BlessedUI)
+    ui.term = SimpleNamespace(home='', clear='', normal='', move_xy=lambda x, y: f'<{x},{y}>')
+    ui.dots = dots
+    ui._style = lambda text, *args, **kwargs: text
+    monkeypatch.setattr(display, 'build_strength_column', lambda *_: [])
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    field[2][3] = field[2][4] = d.CHAR_GOLEM_WALL
+    field[2][5] = d.CHAR_WALL
+    seen = [[0] * d.FIELD_WIDTH for _ in field]
+    seen[2][3] = seen[2][5] = 1
+    player = d.Player(2, 2, 1, 100)
+    output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[],
+                            monochrome=monochrome)
+    assert '<3,2>+' in output
+    assert '<4,2>+' not in output
+    assert f'<5,2>{d.CHAR_WALL}' in output
+
+
+@pytest.mark.parametrize('visible', [False, True])
+def test_gui_marks_explored_golem_rubble(visible):
+    from arlq import defs as d
+    from arlq import pyglet_funcs
+    ui = PygletUI.__new__(PygletUI)
+    ui._initialize_state()
+    ui.map_mode = False
+    ui._clear_drawables = lambda: None
+    ui._field_draw_columns = lambda width: range(width)
+    tiles, labels = [], []
+    ui._draw_tile = lambda x, y, color, *_: tiles.append(color)
+
+    class Drawn(Exception):
+        pass
+
+    def capture(pos, char, color, bold=False):
+        labels.append((pos, char, color))
+        raise Drawn
+
+    ui._draw_field_text = capture
+    player = d.Player(0, 0, 1, 100)
+    with pytest.raises(Drawn):
+        ui.draw_stage(turn=0, player=player, entities=[], field=[[d.CHAR_GOLEM_WALL]],
+                      cur_torched=[[int(visible)]], torched=[[1]], known_types=set(),
+                      show_entities=False)
+    color = pyglet_funcs.COLOR_MAP[pyglet_funcs.CI_GREEN]
+    assert labels == [((0, 0), '+', color if visible else ui._dim_color(color))]
+    assert tiles == [pyglet_funcs.VISIBLE_WALL if visible else pyglet_funcs.WALL]
+
+
+@pytest.mark.parametrize('dots', [False, True])
 @pytest.mark.parametrize('protection,expected', [
     ('none', ('black', False, 'red')),
     ('amulet', ('red', True, None)),
