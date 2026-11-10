@@ -41,13 +41,14 @@ from .stage_types import (
     _RewindRequest,
 )
 from .stage_world import (
+    _has_spawn_position,
     _inside_island,
     _spawn,
     build,
     build_single_floor,
 )
 from .trace import DIR_TO_KEY, TraceRecorder
-from .utils import rand
+from .utils import player_spawn_exclusion, rand
 
 ELF_REPEAT_MESSAGES = {
     "K": "-- The Collector Elf (K) looks satisfied.",
@@ -1563,7 +1564,11 @@ def _process_respawn_queue(
                 if isinstance(monster, d.Monster)
                 and stage56._barrier_offsets(monster)
             }
-        avoid = {(player.x, player.y)} if spawn_floor == floor[0] else set()
+        is_monster = isinstance(tribe, d.MonsterTribe) and not isinstance(tribe, d.ElfTribe)
+        avoid = (
+            player_spawn_exclusion((player.x, player.y)) if is_monster
+            else {(player.x, player.y)}
+        ) if spawn_floor == floor[0] else set()
         avoid.update(floors[spawn_floor].collapse_landings)
         if type_key[-1].isdigit():
             ch = type_key[:-1]
@@ -1582,10 +1587,18 @@ def _process_respawn_queue(
         previous_entity_count = len(floors[spawn_floor].entities)
         respawned = None
         if stage_num in (5, 6):
-            x, y = stage56.respawn(
+            point = stage56.respawn(
                 floors[spawn_floor], ch, empowered, spawn_floor, avoid,
                 floor_index=spawn_floor,
             )
+            if point is None:
+                continue
+            x, y = point
+        elif is_monster and not _has_spawn_position(
+            floors[spawn_floor].entities, floors[spawn_floor].field,
+            avoid, floors[spawn_floor].island,
+        ):
+            continue
         elif empowered == 1:
             x, y = _spawn(*args)
         else:
@@ -1636,7 +1649,9 @@ def _process_respawn_queue(
         for changed_floor in changed_floors:
             current = floors[changed_floor]
             stage56.normalize_parties(
-                current, d.MEMBER_STAGE_MONSTER_PARTY_LIMIT
+                current, d.MEMBER_STAGE_MONSTER_PARTY_LIMIT,
+                avoid=(player_spawn_exclusion((player.x, player.y))
+                       if changed_floor == floor[0] else None),
             )
             player_position = (
                 (player.x, player.y) if changed_floor == floor[0] else None

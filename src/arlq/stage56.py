@@ -52,7 +52,8 @@ def special_monster(entity: d.Monster) -> bool:
 
 
 def normalize_parties(
-    current: Floor, party_limit: int = d.MONSTER_PARTY_LIMIT
+    current: Floor, party_limit: int = d.MONSTER_PARTY_LIMIT, *,
+    avoid: set[d.Point] | None = None,
 ) -> None:
     """Enforce party limits after spawning or rearranging; retain W and V."""
     glowing = [
@@ -61,7 +62,7 @@ def normalize_parties(
         if isinstance(entity, d.Monster)
         and (entity.x, entity.y) in current.respawn_glows
     ]
-    _separate_golems(current)
+    _separate_golems(current, avoid=avoid)
     positions = monster_positions(current.entities)
     checked = set()
     for entity in list(current.entities):
@@ -90,7 +91,7 @@ def normalize_parties(
             else:
                 kept += 1
                 special |= is_special
-    _separate_diagonal_monsters(current)
+    _separate_diagonal_monsters(current, avoid=avoid)
     current.respawn_glows = {
         (entity.x, entity.y): turns
         for entity, turns in glowing
@@ -114,7 +115,7 @@ def _neighbor_pairs(monsters: list[d.Monster], offsets: tuple[d.Point, ...]):
             yield first, monsters[other]
 
 
-def _separate_golems(current: Floor) -> None:
+def _separate_golems(current: Floor, *, avoid: set[d.Point] | None = None) -> None:
     """Keep each Golem out of every other monster's cardinal adjacency."""
     while True:
         monsters = [
@@ -142,11 +143,11 @@ def _separate_golems(current: Floor) -> None:
         other_is_fixed = isinstance(other, d.Collapse) or _fixed_boss(other)
         mover = golem if other_is_fixed or other.tribe.char == "g" else other
 
-        if not _relocate_isolated_monster(current, mover, include_collapses=True):
+        if not _relocate_isolated_monster(current, mover, include_collapses=True, avoid=avoid):
             return
 
 
-def _separate_diagonal_monsters(current: Floor) -> None:
+def _separate_diagonal_monsters(current: Floor, *, avoid: set[d.Point] | None = None) -> None:
     """Move non-boss monsters away from horizontal and diagonal neighbors."""
     while True:
         monsters = [
@@ -176,7 +177,7 @@ def _separate_diagonal_monsters(current: Floor) -> None:
         if mover is None:
             return
 
-        if not _relocate_isolated_monster(current, mover, include_collapses=False):
+        if not _relocate_isolated_monster(current, mover, include_collapses=False, avoid=avoid):
             return
 
 
@@ -187,7 +188,8 @@ def _fixed_boss(monster: d.Monster) -> bool:
 
 
 def _relocate_isolated_monster(
-    current: Floor, mover: d.Monster, *, include_collapses: bool
+    current: Floor, mover: d.Monster, *, include_collapses: bool,
+    avoid: set[d.Point] | None = None,
 ) -> bool:
     current.entities.remove(mover)
     other_monsters = [
@@ -198,7 +200,7 @@ def _relocate_isolated_monster(
     ]
     candidates = [
         point for point in _open_points(current)
-        if all(
+        if point not in (avoid or set()) and all(
             abs(point[0] - other.x) > 1 or abs(point[1] - other.y) > 1
             for other in other_monsters
         )
@@ -507,7 +509,7 @@ def respawn(
     origin_floor: int,
     avoid: set[d.Point],
     floor_index: int = 0,
-) -> d.Point:
+) -> d.Point | None:
     candidates = [point for point in _open_points(current) if point not in avoid]
     monsters = [entity for entity in current.entities if isinstance(entity, d.Monster)]
     if isinstance(d.CHAR_TO_TRIBE[char], d.MonsterTribe):
@@ -563,6 +565,8 @@ def respawn(
                     for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
                 )
             ]
+    if not candidates:
+        return None
     point = rand.choice(candidates)
     tribe = d.CHAR_TO_TRIBE[char]
     if isinstance(tribe, d.MonsterTribe):

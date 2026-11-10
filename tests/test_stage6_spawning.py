@@ -350,8 +350,30 @@ def test_every_floor_spawned_every_eighteen_turns(monkeypatch):
         stage6.advance_spawns(floors, player, 1, turn)
         assert len(calls) == 3 * ((turn + 1) // 18)
     assert [index for index, _ in calls] == [0, 1, 2, 0, 1, 2]
-    assert calls[1][1]["avoid"] == {(4, 4)}
+    assert calls[1][1]["avoid"] == {(x, y) for x in range(2, 7) for y in range(2, 7)}
     assert calls[0][1]["avoid"] == set()
+
+
+def test_spawn_avoids_player_square_only_on_active_floor(monkeypatch):
+    floors = [floor(), floor()]
+    player = d.Player(10, 10, 1, d.LP_INIT)
+    points = [(8, 8), (12, 12), (13, 10)]
+    monkeypatch.setattr(stage6, "_open_points", lambda _: points.copy())
+    monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
+    monkeypatch.setattr(stage6.rand, "choice", lambda pool: ("a", 1))
+    spawned = stage6.advance_spawns(floors, player, 0, d.STAGE6_SPAWN_INTERVAL - 1)
+    assert [(index, (entity.x, entity.y)) for index, entity in spawned] == [
+        (0, (13, 10)), (1, (8, 8)),
+    ]
+
+
+def test_initial_monsters_avoid_player_square():
+    for seed in range(5):
+        stage6.rand.set_seed(seed)
+        floors, player = stage6.build()
+        for entity in floors[0].entities:
+            if isinstance(entity, d.Monster) and not isinstance(entity, d.Collapse):
+                assert abs(entity.x - player.x) > 2 or abs(entity.y - player.y) > 2
 
 
 def test_neighbor_preference_has_forty_percent_threshold(monkeypatch):
@@ -390,18 +412,61 @@ def test_party_preference_without_neighbors_falls_back(monkeypatch):
     assert (current.entities[-1].x, current.entities[-1].y) == (20, 10)
 
 
-def test_generated_spawn_exclusions_are_start_and_boss_rooms():
+def test_generated_spawn_exclusions_only_include_start_room():
     floors, player = stage6.build()
-    boss = next(e for e in floors[-1].entities if isinstance(e, d.Monster) and e.tribe.char == "F")
     assert floors[0].monster_spawn_blocked_rooms == {stage6.tile_at((player.x, player.y))}
     assert not floors[1].monster_spawn_blocked_rooms
-    assert floors[-1].monster_spawn_blocked_rooms == {stage6.tile_at((boss.x, boss.y))}
+    assert not floors[-1].monster_spawn_blocked_rooms
     for index, current in enumerate(floors):
         for entity in current.entities:
             if isinstance(entity, d.Monster) and not isinstance(entity, d.Collapse):
                 if index == len(floors) - 1 and entity.tribe.char in ("F", "V", "k"):
                     continue
                 assert stage6.tile_at((entity.x, entity.y)) not in current.monster_spawn_blocked_rooms
+
+
+def test_monster_can_spawn_in_boss_room_and_join_boss_party(monkeypatch):
+    current = floor()
+    boss = monster(10, 10, "F")
+    vortex = monster(10, 11, "V")
+    marksman = monster(10, 12, "k")
+    current.entities = [boss, vortex, marksman]
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 13)])
+    monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
+    assert stage6.spawn_monster(current, 2, variant=("a", 1))
+    assert len(stage56.monster_party(current, boss)) == 4
+    assert stage6.tile_at((10, 13)) == stage6.tile_at((boss.x, boss.y))
+
+
+def test_boss_party_still_obeys_limit_and_special_monster_rules(monkeypatch):
+    current = floor()
+    boss = monster(10, 3, "F")
+    current.entities = [boss, monster(10, 4, "V"), monster(10, 5, "k")]
+    current.entities.extend(monster(10, y) for y in range(6, 11))
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 11)])
+    assert not stage6.spawn_monster(current, 2, variant=("a", 1))
+    current.entities = current.entities[:3]
+    monkeypatch.setattr(stage6, "_open_points", lambda _: [(10, 6)])
+    assert not stage6.spawn_monster(current, 2, variant=("c", 1))
+
+
+def test_initial_spawn_attempts_can_access_boss_room(monkeypatch):
+    stage6.rand.set_seed(123)
+    original = stage6.spawn_monster
+    eligible = []
+
+    def record(current, index, **kwargs):
+        if index == d.STAGE6_FLOORS - 1:
+            boss = next(e for e in current.entities
+                        if isinstance(e, d.Monster) and e.tribe.char == "F")
+            room = stage6.tile_at((boss.x, boss.y))
+            eligible.append(any(stage6.tile_at(point) == room for point in stage6._open_points(current)))
+        return original(current, index, **kwargs)
+
+    monkeypatch.setattr(stage6, "spawn_monster", record)
+    stage6.build()
+    assert len(eligible) == d.STAGE6_INITIAL_SPAWN_DRAWS
+    assert eligible[0]
 
 
 def test_stage_setup_attempts_forty_random_spawns_per_floor(monkeypatch):

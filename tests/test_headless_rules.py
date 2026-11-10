@@ -1464,6 +1464,39 @@ def test_marksman_respawns_on_a_195_turn_cycle_in_every_stage(stage_num):
     ) == 1
 
 
+@pytest.mark.parametrize("stage_num", [1, 2, 3, 4, 5])
+def test_monster_respawn_waits_if_only_player_neighborhood_is_available(stage_num):
+    field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    for x in range(9, 12):
+        field[10][x] = d.CHAR_FLOOR
+    current = Floor(field, [], [[0] * d.FIELD_WIDTH for _ in field], (1, 1), (2, 2), None)
+    player = d.Player(10, 10, 1, 90)
+    queue = Counter({(0, "a"): 1})
+    game_engine_module._process_respawn_queue([current], player, [0], queue, 65, stage_num=stage_num)
+    assert not current.entities
+    assert queue[(0, "a")] == 1
+    player.x, player.y = 20, 10
+    game_engine_module._process_respawn_queue([current], player, [0], queue, 130, stage_num=stage_num)
+    assert queue[(0, "a")] == 0
+    assert len(current.entities) == 1
+
+
+@pytest.mark.parametrize("stage_num", [1, 2, 3, 4, 5])
+def test_monster_respawn_exclusion_does_not_apply_to_other_floors(stage_num):
+    field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    for x in range(9, 12):
+        field[10][x] = d.CHAR_FLOOR
+    floors = [Floor([row[:] for row in field], [], [[0] * d.FIELD_WIDTH for _ in field],
+                    (1, 1), (2, 2), None) for _ in range(2)]
+    player = d.Player(10, 10, 1, 90)
+    queue = Counter({(1, "a"): 1})
+    game_engine_module._process_respawn_queue(floors, player, [0], queue, 65, stage_num=stage_num)
+    assert queue[(1, "a")] == 0
+    assert len(floors[1].entities) == 1
+    assert abs(floors[1].entities[0].x - player.x) <= 2
+    assert abs(floors[1].entities[0].y - player.y) <= 2
+
+
 @pytest.mark.parametrize("char", ["a", "k"])
 def test_stage4_respawn_avoids_collapse_landings(monkeypatch, char):
     player = d.Player(2, 2, 10, 90)

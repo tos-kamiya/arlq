@@ -246,6 +246,17 @@ def _spawn(
     return x, y
 
 
+def _has_spawn_position(entities, field, avoid, island_tile) -> bool:
+    occupied = [(entity.x, entity.y) for entity in entities]
+    return any(
+        all(cell == d.CHAR_FLOOR for cell in field[y][x - 1:x + 2])
+        and (x, y) not in avoid and not _inside_island((x, y), island_tile)
+        and all(abs(px - x) > 2 or abs(py - y) > 2 for px, py in occupied)
+        for y in range(1, len(field) - 1)
+        for x in range(1, len(field[y]) - 1)
+    )
+
+
 def _split_floor_roster(
     roster: List[Tuple[str, int, int]], elf_floors: Dict[str, int]
 ) -> Tuple[

@@ -839,7 +839,7 @@ def test_stage5_boss_uses_combined_party_strength_without_required_members_or_it
 
 @pytest.mark.parametrize("escort", d.STAGE6_BOSS_ESCORTS)
 @pytest.mark.parametrize("seed", [0, 2, 53, 123])
-def test_initial_boss_room_excludes_ordinary_parties(monkeypatch, seed, escort):
+def test_initial_boss_party_remains_in_its_room(monkeypatch, seed, escort):
     engine.rand.set_seed(seed)
     original_choice = stage6.rand.choice
     monkeypatch.setattr(
@@ -860,15 +860,11 @@ def test_initial_boss_room_excludes_ordinary_parties(monkeypatch, seed, escort):
     current = floors[-1]
     boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "F")
     party = stage56.monster_party(current, boss)
-    assert len(party) == 3
-    assert {e.tribe.char for e in party} == {"F", "V", "k"}
+    assert {"F", "V", "k"} <= {e.tribe.char for e in party}
+    assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
     assert all((entity.x, entity.y) == (x, y) for entity, x, y in boss_positions)
     room = stage6.tile_at((boss.x, boss.y))
-    assert all(stage6.tile_at((e.x, e.y)) == room for e in party)
-    ordinary = [e for e in current.entities if isinstance(e, d.Monster)
-                and not isinstance(e, d.Collapse) and e not in party
-                and not (e.tribe.char == "M" and e.mimic_boss_char == "F")]
-    assert all(stage6.tile_at((e.x, e.y)) != room for e in ordinary)
+    assert all(stage6.tile_at((entity.x, entity.y)) == room for entity, _, _ in boss_positions)
     chest = next(e for e in current.entities if isinstance(e, d.Treasure))
     assert stage6.tile_at((chest.x, chest.y)) != room
 

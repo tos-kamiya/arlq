@@ -1,3 +1,8 @@
+def player_spawn_exclusion(point):
+    x, y = point
+    return {(x + dx, y + dy) for dx in range(-2, 3) for dy in range(-2, 3)}
+
+
 class MyRandom:
     """MT19937 with 32-bit integer seeds and fixed, unbiased range sampling."""
 

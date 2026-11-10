@@ -13,7 +13,7 @@ from .stage_world import (
     _place_collapses,
     _place_final_floor_barriers,
 )
-from .utils import rand
+from .utils import player_spawn_exclusion, rand
 
 
 MAX_STAGE_GENERATION_RETRIES = 5
@@ -45,15 +45,19 @@ def _in_detached_terminal_room(current: Floor, point: d.Point) -> bool:
 
 
 def _place_detached_room_monsters(
-    current: Floor, room_components: tuple[set[d.Point], ...]
+    current: Floor, room_components: tuple[set[d.Point], ...], *,
+    avoid: set[d.Point] | None = None,
 ) -> list[d.Monster]:
     detached = next(
         (component for component in room_components if len(component) == 1), None
     )
     if detached is None:
         raise ValueError("Stage 6 floor needs one detached terminal room")
-    points = [point for point in _open_points(current) if tile_at(point) in detached]
+    points = [point for point in _open_points(current)
+              if tile_at(point) in detached and point not in (avoid or set())]
     if len(points) < 2:
+        if avoid:
+            return []
         raise RuntimeError("detached Stage 6 room needs two open cells")
     existing_monsters = [
         entity for entity in current.entities if isinstance(entity, d.Monster)
@@ -73,6 +77,8 @@ def _place_detached_room_monsters(
         if max(abs(first[0] - second[0]), abs(first[1] - second[1])) > 1
     ]
     if not point_pairs:
+        if avoid:
+            return []
         raise RuntimeError("detached Stage 6 room needs two separated open cells")
     points = rand.choice(point_pairs)
     candidates = [("b", 1), ("b", 2), ("f", 1)]
@@ -102,6 +108,7 @@ def _place_party(
     *,
     room: d.Point | None = None,
     respect_spawn_blocks: bool = False,
+    avoid: set[d.Point] | None = None,
 ) -> None:
     # Keep parties separate horizontally and vertically. Members of each
     # party are placed vertically; walls and narrow corridors may be blocked.
@@ -111,7 +118,7 @@ def _place_party(
         for entity in current.entities
         if isinstance(entity, d.Monster)
     }
-    candidates = {point for point in _open_points(current)
+    candidates = {point for point in _open_points(current) if point not in (avoid or set())
                   if roster[0][0] == "b" or not _in_detached_terminal_room(current, point)}
     if any(char == d.STAGE6_BOSS_PARTY[0][0] for char, _ in roster):
         connected_rooms = set().union(
@@ -192,7 +199,7 @@ def _party_roster(char: str, rank: int, floor_index: int) -> list[tuple[str, int
 
 
 def _place_initial_boss_party(current: Floor) -> tuple[list[d.Monster], set[d.Point]]:
-    """Choose the boss layout before reserving its room for ordinary spawns."""
+    """Choose the boss layout before placing other entities."""
     _place_party(current, list(d.STAGE6_BOSS_PARTY), d.STAGE6_FLOORS - 1)
     current.entities[-len(d.STAGE6_BOSS_PARTY)].boss_id = 1
     return current.entities[-len(d.STAGE6_BOSS_PARTY):], set()
@@ -252,9 +259,11 @@ def _can_join_at(current: Floor, monster: d.Monster, point: d.Point, *,
         neighbor = positions.get(neighbor_point)
         if neighbor is not None:
             party.update(stage56.monster_party_entities(current.entities, neighbor, positions=positions))
+    boss_party = any(other.tribe.char == d.STAGE6_BOSS_PARTY[0][0] for other in party)
     return not party or not (
         isolated or stage56.special_monster(monster)
-        or any(stage56.special_monster(other) or other.tribe.char == d.STAGE6_BOSS_PARTY[0][0]
+        or any(stage56.special_monster(other)
+               and not (boss_party and other.tribe.char in (d.STAGE6_BOSS_PARTY[0][0], "V"))
                for other in party)
         or len(party) + 1 > d.STAGE6_MONSTER_PARTY_LIMIT
     )
@@ -262,6 +271,7 @@ def _can_join_at(current: Floor, monster: d.Monster, point: d.Point, *,
 
 def spawn_monster(current: Floor, floor_index: int, *,
                   avoid: set[d.Point] | None = None,
+                  player_position: d.Point | None = None,
                   variant: tuple[str, int] | None = None,
                   isolated: bool = False,
                   prefer_adjacent: bool = True) -> bool:
@@ -301,7 +311,7 @@ def spawn_monster(current: Floor, floor_index: int, *,
                 continue
             current.entities.append(monster)
             if stage56._barrier_offsets(monster):
-                stage56.place_monster_barriers(current, monster, next(iter(avoid), None) if avoid else None)
+                stage56.place_monster_barriers(current, monster, player_position)
             return True
     return False
 
@@ -314,8 +324,9 @@ def advance_spawns(
     if (turn + 1) % d.STAGE6_SPAWN_INTERVAL:
         return spawned
     for index, current in enumerate(floors):
-        avoid = {(player.x, player.y)} if index == floor_index else set()
-        if spawn_monster(current, index, avoid=avoid):
+        avoid = player_spawn_exclusion((player.x, player.y)) if index == floor_index else set()
+        if spawn_monster(current, index, avoid=avoid,
+                         player_position=(player.x, player.y) if index == floor_index else None):
             monster = current.entities[-1]
             current.respawn_glows[monster.x, monster.y] = d.RESPAWN_GLOW_TURNS
             spawned.append((index, monster))
@@ -429,16 +440,19 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
             ))
             boss_barrier_half_density = middle_area - inner_area
             boss_room = tile_at((boss.x, boss.y))
-            current.monster_spawn_blocked_rooms.add(boss_room)
             boss_reserved = {
                 (x, y) for y, row in enumerate(current.field) for x in range(len(row))
                 if tile_at((x, y)) == boss_room
             }
             current.respawn_exclusions.update(boss_reserved)
         # Reserve a sword carrier on each floor, then seed the detached room.
-        _place_party(current, [("c", 1)], index, respect_spawn_blocks=True)
+        initial_avoid = player_spawn_exclusion(up) if index == 0 else set()
+        try:
+            _place_party(current, [("c", 1)], index, respect_spawn_blocks=True, avoid=initial_avoid)
+        except RuntimeError:
+            pass
         if index < d.STAGE6_FLOORS - 1:
-            _place_detached_room_monsters(current, room_components)
+            _place_detached_room_monsters(current, room_components, avoid=initial_avoid)
         # Retain the former Loop Fairy's random draw for seeded generation.
         rand.choice(_open_points(current))
         for char in ("n", "o", "p"):
@@ -514,13 +528,14 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
     _balance_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
     for current in floors:
         stage56.initialize_monster_barriers(current)
+    floors[-1].respawn_exclusions.difference_update(boss_reserved)
     for index, current in enumerate(floors):
         for _ in range(d.STAGE6_INITIAL_SPAWN_DRAWS):
-            avoid = {(player.x, player.y)} if index == 0 else set()
-            spawn_monster(current, index, avoid=avoid, prefer_adjacent=False)
+            avoid = player_spawn_exclusion((player.x, player.y)) if index == 0 else set()
+            spawn_monster(current, index, avoid=avoid, prefer_adjacent=False,
+                          player_position=(player.x, player.y) if index == 0 else None)
     for current in floors:
         current.respawn_glows.clear()
-    floors[-1].respawn_exclusions.difference_update(boss_reserved)
     player.rescue_stage = True
     player.treasure_stage = True
     return floors, player

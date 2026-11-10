@@ -156,7 +156,7 @@ Hover over a character to enlarge it and display its name. Unidentified characte
 
   Defeating another ordinary monster replaces your held item, even if it carries nothing. This also removes poison or Spores. In Stages 3 and 4, contact with an elf you have not yet met clears Spores; Lifebringer also cures poison.
 
-  Some monsters, such as `d`, respawn. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked `T` clears the stage.
+  Some monsters, such as `d`, respawn. Monster spawns and respawns avoid the 5×5 cells centered on the player on the current floor. If no position is available, that attempt is skipped. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked `T` clears the stage.
 
   Fairies provide a temporary benefit, with one fairy at a time. Each monster combat encounter consumes one unit of its duration; a party encounter counts once regardless of its size. Each Pegasus jump also consumes one unit. For example, the Nomicon identifies nearby monsters and elves.
 
@@ -304,7 +304,7 @@ Each floor starts with a sword-carrying `c` and 40 random monster spawn attempts
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
 
-Monsters spawn individually and form parties when vertically adjacent. Ordinary spawns avoid the starting section and boss section, and otherwise use the same rates across sections. After setup, normal monsters have a 40% chance to try up to five positions above or below existing monsters, followed by up to five random positions if needed. Otherwise, up to ten random positions are tried. If none is valid, the spawn is skipped. Monsters with special effects spawn alone.
+Monsters spawn individually and form parties when vertically adjacent. Ordinary spawns avoid the starting section and otherwise use the same rates across sections, including the boss section. Normal monsters can join the boss party, up to the eight-member limit. After setup, normal monsters have a 40% chance to try up to five positions above or below existing monsters, followed by up to five random positions if needed. Otherwise, up to ten random positions are tried. If none is valid, the spawn is skipped. Monsters with special effects spawn alone.
 
 Vertically adjacent monsters fight in parties of up to eight, combining their strength and experience; the highest LP reward applies. The player receives the monsters' combined experience.
 
@@ -322,7 +322,7 @@ Some rooms may be sealed by walls, but D can discover passages into them.
 | **g** / **g'** Golem | Rank 1 Golems appear on every floor, and rank 2 Golems also appear on floor 3. |
 | **w** / **w'** Wyrm | Floor 2 has `w`; floor 3 has both `w` and `w'`. |
 
-The floor 3 boss party consists of `F'`, `V`, and `k`; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
+The floor 3 boss party starts with `F'`, `V`, and `k` and may gain more members; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
 ## Development commands
 

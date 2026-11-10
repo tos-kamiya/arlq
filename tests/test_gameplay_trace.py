@@ -654,19 +654,19 @@ def test_current_stage1_turn_records_respawn_created_by_the_same_turn(monkeypatc
     floors = [one_floor([monster])]
     trace = TraceRecorder(params={})
     monkeypatch.setattr(
-        "arlq.stage_world.find_random_place", lambda *_a, **_k: (5, 2)
+        "arlq.stage_world.find_random_place", lambda *_a, **_k: (6, 2)
     )
 
     turn = process_engine_turn(trace, "R", floors, player, stage_num=1, turn=65)
 
     assert turn["contact"] == {"type": "monster", "id": "d", "outcome": "win"}
     assert turn["world"] == [
-        {"type": "respawn", "kind": "monster", "id": "d", "at": [5, 2], "floor": 0}
+        {"type": "respawn", "kind": "monster", "id": "d", "at": [6, 2], "floor": 0}
     ]
     assert any(
         isinstance(entity, d.Monster)
         and entity.tribe.char == "d"
-        and (entity.x, entity.y) == (5, 2)
+        and (entity.x, entity.y) == (6, 2)
         for entity in floors[0].entities
     )
 
