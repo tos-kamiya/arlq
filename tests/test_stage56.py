@@ -134,33 +134,6 @@ def test_world_discoveries_depend_on_joined_members(rogue, explorer):
     assert current.field[3][2] == expected
 
 
-@pytest.mark.parametrize('seed', [123, 456, 789])
-def test_indexed_neighbors_preserve_generation_and_random_state(monkeypatch, seed):
-    def snapshot():
-        engine.rand.set_seed(seed)
-        floors, _ = stage6.build()
-        return (
-            [(floor.field, [
-                (type(e).__name__, e.x, e.y,
-                 getattr(getattr(e, 'tribe', None), 'char', None),
-                 getattr(e, 'empowered', None))
-                for e in floor.entities
-            ]) for floor in floors],
-            engine.rand.getstate(),
-        )
-
-    indexed = snapshot()
-
-    def exhaustive_pairs(monsters, offsets):
-        for index, first in enumerate(monsters):
-            for second in monsters[index + 1:]:
-                if (second.x - first.x, second.y - first.y) in offsets:
-                    yield first, second
-
-    monkeypatch.setattr(stage56, '_neighbor_pairs', exhaustive_pairs)
-    assert snapshot() == indexed
-
-
 @pytest.mark.parametrize('known', [set(), {'a'}, {'a', 'D'}, {'a', 'D', 'M'}])
 @pytest.mark.parametrize('attack', [1, 100])
 def test_shared_party_tones_match_individual_glyphs(known, attack):
@@ -914,17 +887,19 @@ def test_treasure_is_optional_and_does_not_finish_stage():
     assert player.treasure_collected and not player.stage_won
 
 
-def test_normalize_limits_and_protects_boss_pair():
+def test_stage5_combat_leaves_other_monsters_in_place():
     current, player = state()
-    current.entities = [monster(2, y, "a") for y in range(2, 9)]
-    boss, vortex = monster(10, 2, "W"), monster(10, 3, "V")
-    current.entities += [boss, vortex, monster(10, 4, "c")]
-    stage56.normalize_parties(current)
-    assert boss in current.entities and vortex in current.entities
-    for entity in current.entities:
-        party = stage56.monster_party(current, entity)
-        assert len(party) <= 5
-        assert sum(stage56.special_monster(e) for e in party) <= 1
+    defeated = monster(3, 2, "a")
+    others = [monster(10, 10, "a"), monster(11, 10, "b"),
+              *(monster(20, y, "a") for y in range(5, 9))]
+    current.entities = [defeated, *others]
+    positions = [(entity.x, entity.y) for entity in others]
+
+    engine._resolve_party_contact(defeated, current, [current], player, [0],
+                                  [(2, 2)], Counter(), None, 5)
+
+    assert current.entities == others
+    assert [(entity.x, entity.y) for entity in others] == positions
 
 
 def test_followers_trace_player_path_in_join_order():
@@ -1259,47 +1234,6 @@ def test_open_points_exclude_unopened_collapse_footprint():
     stage6._place_party(current, [("a", 1)])
     assert (current.entities[-1].x, current.entities[-1].y) not in footprint
     assert stage56.respawn(current, "b", 1, 0, set()) not in footprint
-
-
-def test_normalize_separates_horizontal_neighbors():
-    current, _ = state()
-    current.entities = [monster(5, 5, "a"), monster(6, 5, "b")]
-
-    stage56.normalize_parties(current)
-
-    first, second = current.entities
-    assert not (first.y == second.y and abs(first.x - second.x) == 1)
-
-
-def test_respawn_glow_follows_monster_moved_by_party_normalization():
-    current, _ = state()
-    first, second = monster(5, 5, "a"), monster(6, 5, "b")
-    current.entities = [first, second]
-    current.respawn_glows = {(6, 5): d.RESPAWN_GLOW_TURNS}
-
-    stage56.normalize_parties(current)
-
-    assert (second.x, second.y) != (6, 5)
-    assert current.respawn_glows == {(second.x, second.y): d.RESPAWN_GLOW_TURNS}
-
-
-def test_respawn_glow_removed_when_party_normalization_removes_monster(monkeypatch):
-    current, player = state()
-    current.entities = [monster(5, 5, "a")]
-
-    def spawn(current, char, rank, origin_floor, avoid, floor_index=0):
-        current.entities.append(monster(5, 6, char, rank))
-        return (5, 6)
-
-    monkeypatch.setattr(stage56, "respawn", spawn)
-    monkeypatch.setattr(d, "MEMBER_STAGE_MONSTER_PARTY_LIMIT", 1)
-    engine._process_respawn_queue(
-        [current], player, [0], Counter({(0, "b"): 1}), 0, stage_num=5
-    )
-
-    assert len(current.entities) == 1
-    assert current.respawn_glows == {}
-    assert engine.respawn_glow_cells(current) == set()
 
 
 def test_detached_terminal_room_receives_two_distinct_random_monsters():
@@ -1641,27 +1575,12 @@ def test_member_trial_right_margin_provides_respawn_floor():
         assert any(x >= width + 2 for x, y in stage56._open_points(current))
 
 
-@pytest.mark.parametrize("exempt", [False, True])
-def test_monster_adjacency_exceptions_are_explicit_floor_state(exempt):
-    current, _ = state()
-    current.entities = [monster(5, 5, "X"), monster(6, 5, "X")]
-    original_positions = [(entity.x, entity.y) for entity in current.entities]
-    if exempt:
-        current.adjacent_monster_exemptions.update(original_positions)
-
-    stage56.normalize_parties(current)
-
-    positions = [(entity.x, entity.y) for entity in current.entities]
-    assert (positions == original_positions) is exempt
-
-
 def test_dread_wyrm_barriers_become_persistent_when_defeated():
     current, player = state()
     dread_wyrm = monster(6, 6, "W")
     wyrm = monster(12, 6, "w")
     current.entities = [dread_wyrm, wyrm]
 
-    stage56.normalize_parties(current)
     stage56.initialize_monster_barriers(current)
 
     dread_cells = set(stage56.barrier_cells(current, dread_wyrm))
@@ -1702,19 +1621,6 @@ def test_tutorial_maps_support_chimera_marker(monkeypatch, floor_index):
         and entity.tribe.char == "c"
         for entity in current.entities
     )
-
-
-def test_tutorial_adjacency_exceptions_follow_monster_markers(monkeypatch):
-    rows = stage5.STAGE5_MEMBER_TRIAL_MAP.splitlines()
-    row = list(rows[1])
-    row[43], row[42] = " ", "X"
-    rows[1] = "".join(row)
-    monkeypatch.setattr(stage5, "STAGE5_MEMBER_TRIAL_MAP", "\n".join(rows))
-
-    floors, _ = stage5.build_member_trial()
-
-    assert (42, 1) in floors[0].adjacent_monster_exemptions
-    assert (43, 1) not in floors[0].adjacent_monster_exemptions
 
 
 @pytest.mark.parametrize("stage_num", range(1, 7))

@@ -207,12 +207,6 @@ def build_member_trial(
         up_stairs=[start],
         down_stairs=[upper_stair],
         persistent_barriers=upper_barriers,
-        adjacent_monster_exemptions={
-            (x, y)
-            for y, row in enumerate(upper_rows)
-            for x, glyph in enumerate(row)
-            if glyph == "X"
-        },
     )
     lower = Floor(
         lower_field,

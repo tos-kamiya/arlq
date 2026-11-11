@@ -32,24 +32,6 @@ def test_filled_room_notches_visit_rooms_in_stable_order(monkeypatch):
     assert visited == first_visit
 
 
-def test_respawn_normalizes_changed_floors_in_order(monkeypatch):
-    floors = [Floor([[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-                    [], [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-                    (1, 1), (2, 2), None) for _ in range(3)]
-    player = d.Player(1, 1, 1, d.LP_INIT)
-    normalized = []
-
-    def respawn(current, char, rank, origin_floor, avoid, floor_index=0):
-        current.entities.append(d.Monster(10, 10, d.CHAR_TO_MONSTER_TRIBE[char], rank))
-        return (10, 10)
-
-    monkeypatch.setattr(stage56, "respawn", respawn)
-    monkeypatch.setattr(stage56, "normalize_parties", lambda current, *args, **kwargs: normalized.append(floors.index(current)))
-    queue = Counter({(2, "a"): 1, (0, "a"): 1})
-    game_engine._process_respawn_queue(floors, player, [1], queue, 0, stage_num=5)
-    assert normalized == [0, 2]
-
-
 def test_maze_random_candidates_have_stable_room_order(monkeypatch):
     monkeypatch.setattr(stage_maze.rand, "_state", stage_maze.rand._state[:])
     monkeypatch.setattr(stage_maze.rand, "_index", stage_maze.rand._index)

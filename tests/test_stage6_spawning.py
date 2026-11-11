@@ -64,13 +64,14 @@ def test_wyrm_spawn_ranks_by_floor():
     assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[2] if char == "w"] == [(2, 1), (1, 2)]
 
 
-def test_defeat_does_not_queue_monster_respawn():
+@pytest.mark.parametrize("stage_num", [5, 6])
+def test_defeat_does_not_queue_monster_respawn(stage_num):
     current = floor()
     enemy = monster(5, 5, "b")
     current.entities.append(enemy)
     player = d.Player(5, 5, 100, d.LP_INIT)
     queue = Counter()
-    game_engine._resolve_party_contact(enemy, current, [current], player, [0], [(1, 1)], queue, None, 6)
+    game_engine._resolve_party_contact(enemy, current, [current], player, [0], [(1, 1)], queue, None, stage_num)
     assert not queue
 
 

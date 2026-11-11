@@ -715,7 +715,7 @@ def _defeat_monster(
         )
 
     if (
-        stage_num != 6
+        stage_num not in (5, 6)
         and d.monster_level(entity) > 0
         and ch not in d.MONSTERS_EXCLUDED_FROM_RESPAWN
         and entity.tribe.effect != d.EFFECT_UNLOCK_TREASURE
@@ -1178,28 +1178,6 @@ def _resolve_party_contact(
     d.apply_feed(player, feed, lp_overcharge)
     if any(monster.tribe.char == "M" for monster in party):
         player.x, player.y = _find_escape_place(current)
-    barrier_source_positions = {
-        id(monster): (monster, (monster.x, monster.y))
-        for monster in current.entities
-        if isinstance(monster, d.Monster)
-        and stage56._barrier_offsets(monster)
-    }
-    if stage_num != 6:
-        stage56.normalize_parties(
-            current,
-            d.MEMBER_STAGE_MONSTER_PARTY_LIMIT,
-        )
-    for monster in current.entities:
-        previous_source = barrier_source_positions.get(id(monster))
-        if (
-            isinstance(monster, d.Monster)
-            and previous_source is not None
-            and previous_source[1] != (monster.x, monster.y)
-        ):
-            stage56.update_moved_monster_barriers(
-                current, monster, previous_source[1],
-                (player.x, player.y),
-            )
     player.last_contact_monster = contact_key
     party_chars = {monster.tribe.char for monster in party}
     boss_message = None
@@ -1462,9 +1440,6 @@ def _process_respawn_queue(
 ) -> None:
     if turn % d.MONSTER_RESPAWN_INTERVAL != 0:
         return
-    changed_floors = set()
-    respawned_barrier_sources = {}
-    barrier_source_positions = {}
     for (queued_floor, type_key), count in list(queue.items()):
         if not count:
             continue
@@ -1480,13 +1455,6 @@ def _process_respawn_queue(
             if isinstance(tribe, d.MonsterTribe) and tribe.respawn_on_random_floor
             else queued_floor
         )
-        if stage_num in (5, 6) and spawn_floor not in barrier_source_positions:
-            barrier_source_positions[spawn_floor] = {
-                id(monster): (monster, (monster.x, monster.y))
-                for monster in floors[spawn_floor].entities
-                if isinstance(monster, d.Monster)
-                and stage56._barrier_offsets(monster)
-            }
         is_monster = isinstance(tribe, d.MonsterTribe) and not isinstance(tribe, d.ElfTribe)
         avoid = (
             player_spawn_exclusion((player.x, player.y)) if is_monster
@@ -1509,7 +1477,7 @@ def _process_respawn_queue(
         )
         previous_entity_count = len(floors[spawn_floor].entities)
         respawned = None
-        if stage_num in (5, 6):
+        if stage_num == 6:
             point = stage56.respawn(
                 floors[spawn_floor], ch, empowered, spawn_floor, avoid,
                 floor_index=spawn_floor,
@@ -1544,14 +1512,6 @@ def _process_respawn_queue(
                 else:
                     respawned.met = True
         queue[(queued_floor, type_key)] -= 1
-        if isinstance(respawned, d.Monster):
-            changed_floors.add(spawn_floor)
-        if (
-            stage_num in (5, 6)
-            and isinstance(respawned, d.Monster)
-            and stage56._barrier_offsets(respawned)
-        ):
-            respawned_barrier_sources.setdefault(spawn_floor, []).append(respawned)
         if trace is not None:
             if isinstance(respawned, d.Elf):
                 kind = "elf"
@@ -1568,35 +1528,6 @@ def _process_respawn_queue(
                     "floor": spawn_floor,
                 }
             )
-    if stage_num == 5:
-        for changed_floor in sorted(changed_floors):
-            current = floors[changed_floor]
-            stage56.normalize_parties(
-                current, d.MEMBER_STAGE_MONSTER_PARTY_LIMIT,
-                avoid=(player_spawn_exclusion((player.x, player.y))
-                       if changed_floor == floor[0] else None),
-            )
-            player_position = (
-                (player.x, player.y) if changed_floor == floor[0] else None
-            )
-            for monster in current.entities:
-                previous_source = barrier_source_positions.get(
-                    changed_floor, {}
-                ).get(id(monster))
-                if (
-                    isinstance(monster, d.Monster)
-                    and previous_source is not None
-                    and previous_source[1] != (monster.x, monster.y)
-                ):
-                    stage56.update_moved_monster_barriers(
-                        current, monster, previous_source[1],
-                        player_position,
-                    )
-            for entity in respawned_barrier_sources.get(changed_floor, ()):
-                if entity in current.entities:
-                    stage56.place_monster_barriers(
-                        current, entity, player_position
-                    )
 
 
 def _process_multi_floor_turn(
