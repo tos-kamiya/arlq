@@ -443,15 +443,7 @@ def revealed_entity_glyphs(
     return []
 
 
-RATION_NAMES = {"hardtack": "Hardtack", "jerky": "Jerky", "hyorogan": "Hyorogan"}
-
-
-def ration_prompt(player: d.Player) -> str:
-    from .i18n import t as tr
-    return tr("Eat your emergency ration and get back up?")
-
-
-def ration_options(yes: bool) -> List[Tuple[str, bool]]:
+def choice_options(yes: bool) -> List[Tuple[str, bool]]:
     from .i18n import t as tr
     return [
         (f"{'>' if yes else ' '} {tr('Yes (y)')}", yes),
@@ -459,8 +451,8 @@ def ration_options(yes: bool) -> List[Tuple[str, bool]]:
     ]
 
 
-def ration_choices(yes: bool) -> str:
-    return "    ".join(text for text, _ in ration_options(yes))
+def choice_labels(yes: bool) -> str:
+    return "    ".join(text for text, _ in choice_options(yes))
 
 
 def wrap_prompt(text, measure, width):

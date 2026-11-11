@@ -36,7 +36,8 @@ def test_ivy_attacks_stack_and_ignore_inactive_monsters():
     assert "i" in player.known_monsters
 
 
-def test_ivy_attacks_every_turn_even_without_movement(monkeypatch):
+@pytest.mark.parametrize("stage_num", range(1, 7))
+def test_ivy_attacks_every_turn_even_without_movement(monkeypatch, stage_num):
     ivy = d.Monster(5, 5, d.CHAR_TO_MONSTER_TRIBE["i"])
     player = d.Player(5, 4, 1, 100)
     current = make_floor([ivy])
@@ -44,7 +45,7 @@ def test_ivy_attacks_every_turn_even_without_movement(monkeypatch):
     reasons = set()
     for turn in (1, 2):
         game_engine._step((0, 0), [current], player, [0], [(5, 4)], Counter(),
-                          turn, stage_num=6, repeat_stop_reasons=reasons)
+                          turn, stage_num=stage_num, repeat_stop_reasons=reasons)
     assert player.lp == 92
     assert "ivy_hit" in reasons
 

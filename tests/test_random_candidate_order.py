@@ -92,5 +92,5 @@ def test_vortex_random_candidates_have_stable_order(monkeypatch):
         return candidates[0]
 
     monkeypatch.setattr(game_engine.rand, "choice", choice)
-    game_engine._vortex_rearrange(current, player, 0, (10, 8), bounded_relocation=True)
+    game_engine._vortex_rearrange(current, player, 0, (10, 8))
     assert choices

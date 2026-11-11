@@ -80,9 +80,22 @@ def test_vortex_keeps_monster_when_no_safe_destination(monkeypatch):
     current.entities.append(enemy)
     player = d.Player(1, 1, 1, d.LP_INIT)
     monkeypatch.setattr(game_engine, "iterate_ellipse_points", lambda *_: [(10, 8)])
-    game_engine._vortex_rearrange(current, player, 0, (10, 8), bounded_relocation=True)
+    game_engine._vortex_rearrange(current, player, 0, (10, 8))
     assert enemy in current.entities
     assert (enemy.x, enemy.y) == (10, 8)
+
+
+@pytest.mark.parametrize("stage_num", [3, 4, 5, 6])
+@pytest.mark.parametrize("rank, expected_radius", [(1, 1.0), (2, 1.2)])
+def test_vortex_uses_same_rearrangement_for_every_stage(monkeypatch, stage_num, rank, expected_radius):
+    current = floor()
+    player = d.Player(1, 1, 100, d.LP_INIT)
+    vortex = d.Monster(10, 8, d.CHAR_TO_MONSTER_TRIBE["V"], rank)
+    calls = []
+    monkeypatch.setattr(game_engine, "_vortex_rearrange", lambda *args, **kwargs: calls.append(kwargs))
+    game_engine._defeat_monster(vortex, current, player, [0], [(1, 1)], Counter(),
+                                floors=[current], stage_num=stage_num)
+    assert calls == [{"floors": [current], "radius_multiplier": expected_radius}]
 
 
 def test_spawn_can_prefer_vertical_neighbor(monkeypatch):
@@ -238,6 +251,46 @@ def test_bridgehead_restores_only_on_entry_and_preserves_higher_lp():
     assert player.lp == 20
     stage6.recover_at_bridgehead([first, second], player, 0, 1, (10, 10))
     assert player.lp == 60
+
+
+def test_bridgehead_on_another_floor_restores_on_entry():
+    from arlq import bridgehead
+
+    first, second = floor(), floor()
+    second.bridgehead = (10, 10)
+    player = d.Player(10, 10, 1, 25)
+    assert bridgehead.recover_at_bridgehead([first, second], player, 1, 0, (10, 10))
+    assert player.lp == 60
+    player.lp = 20
+    assert not bridgehead.recover_at_bridgehead([first, second], player, 1, 1, (11, 10))
+    assert player.lp == 20
+
+
+def test_bridgehead_in_stage3_works_in_game_and_replay(monkeypatch):
+    from types import SimpleNamespace
+    from arlq import stage_replay
+    from arlq.arlq import GameConfig
+    from arlq.stage_types import ReplayContext
+
+    def build(*_args):
+        current = floor()
+        current.bridgehead = (10, 10)
+        return [current], d.Player(9, 10, 1, 25)
+
+    monkeypatch.setattr(game_engine, "build", build)
+    monkeypatch.setattr(stage_replay, "build", build)
+    frames = []
+    moves = iter([(1, 0), None])
+    ui = SimpleNamespace(
+        draw_stage=lambda **kwargs: frames.append(kwargs["player"].lp),
+        input_direction=lambda: next(moves), map_mode=False,
+    )
+    game_engine.run_game(ui, "test", stage_num=3)
+    replay = ReplayContext(3, 123, GameConfig())
+    replay.operations.append((1, 0))
+    _, replayed_player, *_ = stage_replay.replay_to_operation(replay, 1)
+    assert frames == [25, 60]
+    assert replayed_player.lp == 60
 
 
 def test_bridgehead_healing_persists_after_leaving_in_game_loop(monkeypatch):

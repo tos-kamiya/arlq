@@ -7,6 +7,7 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from . import defs as d
+from . import bridgehead
 from . import display as ui_display
 from . import stage5
 from . import stage56
@@ -26,7 +27,6 @@ from .arlq import (
     move_player,
     prefer_event_message,
     reveal_entities_in_fov,
-    spawn_at,
     spread_caltrops,
     tick_message,
     unlock_treasure_for_defeat,
@@ -168,33 +168,6 @@ def reachable_known_cells(
     return set(distances)
 
 
-
-def _ration_available(current: Floor, player: d.Player, visible: List[List[int]]) -> bool:
-    """Check for a beatable monster reachable with the emergency LP."""
-    targets = {
-        (entity.x, entity.y) for entity in current.entities
-        if isinstance(entity, d.Monster)
-        and not entity.tribe.is_elf and not entity.tribe.passive
-        and (entity.tribe.char != "M" or entity.active)
-        and any(monster.tribe.feed > 0 for monster in stage56.monster_party(current, entity))
-        and d.current_player_attack(player) >= sum(
-            d.monster_level(monster)
-            for monster in stage56.monster_party(current, entity)
-        )
-    }
-    if not targets:
-        return False
-    restored = deepcopy(player)
-    restored.lp = d.STAGE6_RATION_LP
-    phase_walls = {
-        (x, y) for y, row in enumerate(current.field)
-        for x, cell in enumerate(row) if cell == d.CHAR_D_GATE
-    }
-    reachable = reachable_known_cells(
-        current.field, current.seen, visible, current.entities, restored,
-        phase_walls, terminal_targets=targets,
-    )
-    return bool(targets & reachable)
 
 def _move_player(
     direction: d.Point,
@@ -464,7 +437,6 @@ def _vortex_rearrange(
     center: d.Point,
     floors: Optional[List[Floor]] = None,
     include_treasures: bool = True,
-    bounded_relocation: bool = False,
     radius_multiplier: float = 1.0,
 ) -> None:
     """Reposition entities and forget explored floor and barrier cells."""
@@ -537,98 +509,24 @@ def _vortex_rearrange(
         ):
             current.field[y][x] = d.CHAR_FLOOR
 
-    def relocate(char: str, origin_floor: Optional[int], empowered: int = 1,
-                 boss_id: Optional[int] = None) -> None:
-        x, y = find_random_place(
-            current.entities,
-            current.field,
-            distance=2,
-            avoid=lambda point: point not in affected_points
-            or point in avoid
-            or point in reserved_collapse_cells
-            or _inside_island(point, current.island),
-        )
-        relocated = spawn_at(
-            current.entities,
-            x,
-            y,
-            d.CHAR_TO_TRIBE[char],
-            empowered=empowered,
-            origin_floor=origin_floor,
-        )
-        if isinstance(relocated, d.Monster):
-            relocated.boss_id = boss_id
-
     for entity in movable:
-        if bounded_relocation:
-            reserved = avoid | reserved_collapse_cells | set(
-                current.up_stairs + current.down_stairs
-                + current.scholar_up_stairs + current.scholar_down_stairs
-            )
-            occupied = {(other.x, other.y) for other in current.entities}
-            candidates = [
-                (x, y) for x, y in sorted(affected_points)
-                if 0 < x < len(current.field[0]) - 1
-                and 0 < y < len(current.field) - 1
-                and (x, y) not in reserved
-                and not _inside_island((x, y), current.island)
-                and all(cell == d.CHAR_FLOOR for cell in current.field[y][x - 1:x + 2])
-                and all(abs(x - px) > 2 or abs(y - py) > 2 for px, py in occupied)
-            ]
-            if candidates:
-                entity.x, entity.y = rand.choice(candidates)
-            current.entities.append(entity)
-            continue
-
-        reserved = avoid | reserved_collapse_cells
-        if isinstance(entity, d.Treasure):
-            reserved |= set(
-                current.up_stairs
-                + current.down_stairs
-                + current.scholar_up_stairs
-                + current.scholar_down_stairs
-            )
-        occupied = [(other.x, other.y) for other in current.entities]
-        has_destination = any(
-            all(cell == d.CHAR_FLOOR for cell in current.field[y][x - 1 : x + 2])
-            and all(
-                abs(px - x) > 2 or abs(py - y) > 2
-                for px, py in occupied
-            )
-            and (x, y) not in reserved
-            and not _inside_island((x, y), current.island)
-            for x, y in affected_points
+        reserved = avoid | reserved_collapse_cells | set(
+            current.up_stairs + current.down_stairs
+            + current.scholar_up_stairs + current.scholar_down_stairs
+        )
+        occupied = {(other.x, other.y) for other in current.entities}
+        candidates = [
+            (x, y) for x, y in sorted(affected_points)
             if 0 < x < len(current.field[0]) - 1
             and 0 < y < len(current.field) - 1
-        )
-        if not has_destination:
-            current.entities.append(entity)
-            continue
-
-        if isinstance(entity, d.Treasure):
-            reserved = avoid | set(
-                current.up_stairs
-                + current.down_stairs
-                + current.scholar_up_stairs
-                + current.scholar_down_stairs
-            )
-            entity.x, entity.y = find_random_place(
-                current.entities,
-                current.field,
-                distance=2,
-                avoid=lambda point: point not in affected_points
-                or point in reserved
-                or _inside_island(point, current.island),
-            )
-            current.entities.append(entity)
-        else:
-            char = entity.tribe.char
-            empowered = entity.empowered if isinstance(entity, d.Monster) else 1
-            origin_floor = (
-                entity.origin_floor if isinstance(entity, d.Fairy) else floor_index
-            )
-            relocate(char, origin_floor, empowered,
-                     entity.boss_id if isinstance(entity, d.Monster) else None)
+            and (x, y) not in reserved
+            and not _inside_island((x, y), current.island)
+            and all(cell == d.CHAR_FLOOR for cell in current.field[y][x - 1:x + 2])
+            and all(abs(x - px) > 2 or abs(y - py) > 2 for px, py in occupied)
+        ]
+        if candidates:
+            entity.x, entity.y = rand.choice(candidates)
+        current.entities.append(entity)
 
     occupied = {(entity.x, entity.y) for entity in current.entities}
     for current_entity in current.entities:
@@ -813,7 +711,6 @@ def _defeat_monster(
     elif entity.tribe.effect == d.EFFECT_VORTEX:
         _vortex_rearrange(
             current, player, floor[0], (entity.x, entity.y), floors=floors,
-            bounded_relocation=stage_num == 6,
             radius_multiplier=1.2 if entity.empowered == 2 else 1.0,
         )
 
@@ -1901,7 +1798,7 @@ def _process_multi_floor_turn(
         marksman_hit = _marksman_shoot(current, player, trace)
         if marksman_hit and repeat_stop_reasons is not None:
             repeat_stop_reasons.add("marksman_hit")
-    if stage_num == 6 and _ivy_attack(current, player, trace):
+    if _ivy_attack(current, player, trace):
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("ivy_hit")
     hazard_damage = max(0, old_hazard_lp - player.lp)
@@ -2283,28 +2180,7 @@ def run_game(
 
         if player.lp <= 0:
             _stop_movement_repeat(ui)
-            confirm = getattr(ui, "confirm_ration", None)
-            eligible = d.RATIONS_ENABLED and (
-                stage_num != 6 or _ration_available(current, player, cur)
-            )
-            if not eligible or not player.rations or confirm is None:
-                break
-            decision = confirm(player)
-            if decision is None:
-                if trace is not None:
-                    trace.record_quit()
-                    trace.set_outcome("quit")
-                return
-            if not decision:
-                break
-            if trace is not None:
-                trace.turns[-1]["ration_used"] = True
-            player.rations -= 1
-            player.lp = d.STAGE6_RATION_LP if stage_num == 6 else d.RATION_LP
-            if replay_context is not None:
-                replay_context.ration_uses.add(len(replay_context.operations))
-            message = (-1, "")
-            continue
+            break
 
         move = ui.input_direction()
         if move is None:
@@ -2535,8 +2411,8 @@ def run_game(
 
         turn += 1
         player.lp -= d.movement_lp_cost(player)
-        if stage_num == 6 and not isinstance(step_result, _RewindRequest):
-            stage6.recover_at_bridgehead(
+        if not isinstance(step_result, _RewindRequest):
+            bridgehead.recover_at_bridgehead(
                 floors, player, floor[0], floor_before_step, point_before_step
             )
         if trace is not None:

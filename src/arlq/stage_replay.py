@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
 from . import defs as d
+from . import bridgehead
 from . import stage5
 from . import stage56
 from . import stage6
@@ -108,9 +109,6 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
             floors, player, floor[0], replay.config.torch_radius,
         )
 
-    if 0 in replay.ration_uses:
-        player.lp = d.STAGE6_RATION_LP if replay.stage_num == 6 else d.RATION_LP
-        player.rations -= 1
     for index, direction in enumerate(replay.operations[:operation_count]):
         observe()
         for destination in replay.rogue_checks.get(index, ()):
@@ -130,13 +128,9 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
             )
         else:
             player.lp -= d.movement_lp_cost(player)
-            if replay.stage_num == 6:
-                stage6.recover_at_bridgehead(
-                    floors, player, floor[0], previous_floor, previous_point
-                )
-        if index + 1 in replay.ration_uses:
-            player.lp = d.STAGE6_RATION_LP if replay.stage_num == 6 else d.RATION_LP
-            player.rations -= 1
+            bridgehead.recover_at_bridgehead(
+                floors, player, floor[0], previous_floor, previous_point
+            )
         player.current_floor = floor[0]
     observe()
     return floors, player, floor[0], checkpoint[0], queue
@@ -154,7 +148,6 @@ def rewind(
     loop_floor_index: Optional[int] = None,
 ) -> str:
     """Restore a saved state and carry over the player's current knowledge."""
-    remaining_rations = player.rations
     knowledge = _RewindKnowledge.capture(floors, player)
 
     target_count = replay_context.rewind_targets.get(
@@ -171,7 +164,6 @@ def rewind(
     queue.update(restored_queue)
 
     player.__dict__.update(restored_player_state.__dict__)
-    player.rations = remaining_rations
     knowledge.restore(floors, player)
 
     respawn_floor = floor[0] if loop_floor_index is None else loop_floor_index

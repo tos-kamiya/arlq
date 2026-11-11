@@ -1,7 +1,6 @@
 import locale
 import json
 import math
-import random
 import sys
 import time
 from functools import wraps
@@ -1520,9 +1519,7 @@ class PygletUI:
         lp_width = self._text_width(lp_str, size_scale=hud_scale)
         x_offset = lp_text_x_offset + lp_width
 
-        extra = (f"RATION: {player.rations}  " if d.RATIONS_ENABLED and stage_num != 6 else "") + (
-            "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
-        )
+        extra = "/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit"
         if not self._status_shows_lp_gauge():
             bar_width = 0
             item_x_offset = x_offset + round(10 * hud_scale)
@@ -1892,30 +1889,21 @@ class PygletUI:
 
             time.sleep(1 / 30)
 
-    def _draw_ration_image(self, ration, x, y, size, dim=False):
-        pass
-
     def confirm_game_over(self):
-        return self._confirm_choice(None, tr("No reachable encounters or exits. End the game?"))
+        return self._confirm_choice(tr("No reachable encounters or exits. End the game?"))
 
-    def confirm_ration(self, player):
-        return self._confirm_choice(player)
-
-    def _confirm_choice(self, player, prompt=None):
+    def _confirm_choice(self, prompt):
         """Ask for an explicit continuation without consuming a game turn."""
         self.stop_movement_repeat()
         self._key_queue.clear()
-        yes = prompt is None
-        ration = random.choice(d.RATIONS) if player is not None else None
+        yes = False
         while True:
             self._clear_drawables()
             width = self.field_pixel_width
             height = self.field_height * self.cell_size_y
             self._draw_rect(0, 0, width, height, (0, 0, 0, 255))
-            if ration is not None:
-                self._draw_ration_image(ration, width / 2, height * .32, height * .18)
             lines = ui_display.wrap_prompt(
-                prompt or ui_display.ration_prompt(player),
+                prompt,
                 lambda value: self._text_width(value, bold=True), width * .9,
             )
             group = self._text_overlay_group
@@ -1925,7 +1913,7 @@ class PygletUI:
                     line, COLOR_MAP["default"], bold=True, group=group,
                     x_offset=max(0, (width - self._text_width(line, bold=True)) // 2),
                 )
-            options = ui_display.ration_options(yes)
+            options = ui_display.choice_options(yes)
             gap = self._text_width("    ")
             widths = [self._text_width(text, bold=selected) for text, selected in options]
             x = max(0, (width - sum(widths) - gap) // 2)
@@ -1936,8 +1924,8 @@ class PygletUI:
                 )
                 x += option_width + gap
             self._draw_text(
-                (0, self.field_height * .48 + len(lines) + 4), tr("Esc / q: cancel") if prompt else tr("Esc / q: quit"), COLOR_MAP["default"],
-                x_offset=max(0, (width - self._text_width(tr("Esc / q: cancel") if prompt else tr("Esc / q: quit"))) // 2),
+                (0, self.field_height * .48 + len(lines) + 4), tr("Esc / q: cancel"), COLOR_MAP["default"],
+                x_offset=max(0, (width - self._text_width(tr("Esc / q: cancel"))) // 2),
                 group=self._text_overlay_group,
             )
             self._flip()

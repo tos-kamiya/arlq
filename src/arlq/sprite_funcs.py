@@ -647,7 +647,6 @@ class SpriteUI(PygletUI):
         self._use_floor_backdrop = False
         self._floor_backdrop_pending = False
         self._edge_shade_pending = False
-        self._ration_images = None
         self._sprite_images = {}
         self._sprite_head_room = {}
         self._theme_floor_tiles = {}
@@ -1840,39 +1839,12 @@ class SpriteUI(PygletUI):
             ),
         )
 
-    def _draw_ration_image(self, ration, x, y, size, dim=False):
-        images = self._ration_images
-        if images is None:
-            self._ration_images = images = {
-                name: pyglet.image.load(str(Path(__file__).parent / 'assets' / 'rations' / f'ration-{name}.png'))
-                for name in d.RATIONS
-            }
-        picture = images[ration]
-        scale = size / max(picture.width, picture.height)
-        left = x - picture.width * scale / 2
-        bottom = self.window_height - y - picture.height * scale / 2
-        sprite = self._draw_object(
-            ('ration', ration, left, bottom, scale, dim),
-            lambda: pyglet.sprite.Sprite(picture, x=left, y=bottom, batch=self.batch,
-                                         group=self._text_overlay_group),
-        )
-        sprite.scale = scale
-        sprite.opacity = 60 if dim else 255
-
     def draw_status_bar(self, turn, player, stage_num, message, extra_keys, game_start_turn=None):
         self._drawing_hud = True
         try:
             result = super().draw_status_bar(
                 turn, player, stage_num, message, extra_keys, game_start_turn,
             )
-            if d.RATIONS_ENABLED and stage_num != 6 and player is not None:
-                size = self._status_row_height() * 1.6
-                for index, ration in enumerate(d.RATIONS):
-                    self._draw_ration_image(
-                        ration, self.window_width - size * (3 - index - .5),
-                        self.field_height * self.cell_size_y + self._status_row_height() / 2,
-                        size, index < len(d.RATIONS) - player.rations,
-                    )
             return result
         finally:
             self._drawing_hud = False

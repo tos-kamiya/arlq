@@ -143,11 +143,7 @@ LP_MAX_LIFEBRINGER: int = 120
 LIFEBRINGER_LP_MAX_INCREASE: int = 5
 BISON_LP_OVERCHARGE: int = 5
 LP_OVERCHARGE_MAX: int = 120
-RATIONS_ENABLED: bool = False
-RATIONS = ("hardtack", "jerky", "hyorogan")
-RATION_LP: int = 100
-STAGE6_RATION_LP: int = 30
-STAGE6_BRIDGEHEAD_RECOVERY_LP: int = 60
+BRIDGEHEAD_RECOVERY_LP: int = 60
 LP_INIT: int = LP_OVERCHARGE_MAX
 LP_RESPAWN_MIN: int = 20
 LP_RESPAWN_COST: int = 6
@@ -524,7 +520,6 @@ class Player(Entity):
         super().__init__(x, y)
         self.level: float = level
         self.lp: float = lp
-        self.rations: int = 1
         self.item: Optional[str] = None
         self.item_uses: int = 0
         self.item_taken_from: Optional[str] = None

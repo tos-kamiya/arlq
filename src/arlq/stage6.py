@@ -4,6 +4,10 @@ from collections import deque
 
 from . import defs as d, stage56
 from .arlq import GameConfig, iterate_ellipse_points
+from .bridgehead import in_bridgehead as _in_bridgehead
+from .bridgehead import place_bridgehead as _place_bridgehead
+from .bridgehead import reachable_floor_points as _reachable_floor_points
+from .bridgehead import recover_at_bridgehead as recover_at_bridgehead
 from .stage56 import _open_points
 from .stage_maze import generate_floor_field, tile_at as maze_tile_at
 from .stage_types import Floor
@@ -545,21 +549,6 @@ def _bridgehead_known_radius() -> int:
     return round(vortex_radius * d.STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO)
 
 
-def _place_bridgehead(current: Floor, anchor: d.Point) -> None:
-    reachable = _reachable_floor_points(current, anchor)
-    open_points = set(_open_points(current)) & reachable
-    choices = [
-        (x, y) for x, y in open_points
-        if all((x + dx, y) in open_points for dx in range(2))
-    ]
-    if not choices:
-        raise RuntimeError("no space for stage 6 bridgehead")
-    x, y = min(choices, key=lambda p: (abs(p[0] - anchor[0]) + abs(p[1] - anchor[1]), p))
-    current.bridgehead = (x, y)
-    for dx, char in enumerate("/\\"):
-        current.decor[y][x + dx] = d.DECOR_BRIDGEHEAD_PREFIX + char
-
-
 def _candidate_near_bridgehead(
     current: Floor, anchor: d.Point, excluded: d.Point | None = None
 ) -> d.Point:
@@ -573,26 +562,6 @@ def _candidate_near_bridgehead(
     if nearby:
         return rand.choice(nearby)
     return min(points, key=lambda p: (abs(p[0] - bridgehead[0]) + abs(p[1] - bridgehead[1]), p))
-
-
-def _in_bridgehead(current: Floor, point: d.Point) -> bool:
-    if current.bridgehead is None:
-        return False
-    x, y = current.bridgehead
-    return x <= point[0] < x + 2 and point[1] == y
-
-
-def recover_at_bridgehead(
-    floors: list[Floor], player: d.Player, floor_index: int,
-    previous_floor: int, previous_point: d.Point,
-) -> bool:
-    """Restore LP on entry and report whether the player entered the bridgehead."""
-    entered = (floor_index == 0
-               and _in_bridgehead(floors[0], (player.x, player.y))
-               and (previous_floor != 0 or not _in_bridgehead(floors[0], previous_point)))
-    if entered:
-        player.lp = max(player.lp, d.STAGE6_BRIDGEHEAD_RECOVERY_LP)
-    return entered
 
 
 def _balance_boss_route(floors: list[Floor], start: d.Point, boss: d.Point) -> None:
@@ -727,25 +696,6 @@ def relocate_candidates(floors, player, candidates, player_floor=None):
         member.origin_floor = 0
         player.known_member_floors.pop(member.role, None)
         current.entities.append(member)
-
-
-def _reachable_floor_points(current: Floor, entry: d.Point) -> set[d.Point]:
-    reachable = {entry}
-    pending = [entry]
-    while pending:
-        x, y = pending.pop()
-        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
-            point = (x + dx, y + dy)
-            px, py = point
-            if (
-                point not in reachable
-                and 0 <= py < len(current.field)
-                and 0 <= px < len(current.field[py])
-                and current.field[py][px] not in (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
-            ):
-                reachable.add(point)
-                pending.append(point)
-    return reachable
 
 
 def _choose_stair_point(

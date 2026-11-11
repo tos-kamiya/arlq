@@ -532,8 +532,6 @@ class BlessedUI:
         )
         add("#" * filled + "-" * (bar_len - filled), bar_color)
         add("]  ")
-        if d.RATIONS_ENABLED and stage_num != 6:
-            add(f"RATION: {player.rations}  ")
         add("/ [q]uit/[m]ap/[s]eed" if extra_keys else "/ [q]uit")
 
         y += 1
@@ -667,27 +665,24 @@ class BlessedUI:
         return str(key).lower()
 
     def confirm_game_over(self):
-        return self._confirm_choice(None, tr("No reachable encounters or exits. End the game?"))
+        return self._confirm_choice(tr("No reachable encounters or exits. End the game?"))
 
-    def confirm_ration(self, player):
-        return self._confirm_choice(player)
-
-    def _confirm_choice(self, player, prompt=None):
-        yes = prompt is None
+    def _confirm_choice(self, prompt):
+        yes = False
         while True:
             self._wait_for_terminal_size()
             width = min(d.FIELD_WIDTH - 3, self.term.width)
             middle = min(d.FIELD_HEIGHT, self.term.height) // 2
             output = [self.term.home + self.term.clear]
-            lines = ui_display.wrap_prompt(prompt or ui_display.ration_prompt(player), self.term.length, width)
-            lines += ["", ui_display.ration_choices(yes), "", tr("Esc / q: cancel") if prompt else tr("Esc / q: quit")]
+            lines = ui_display.wrap_prompt(prompt, self.term.length, width)
+            lines += ["", ui_display.choice_labels(yes), "", tr("Esc / q: cancel")]
             for offset, text in enumerate(lines):
                 x = max(0, (width - self.term.length(text)) // 2)
                 output.append(self.term.move_xy(x, middle - len(lines) // 2 + offset))
                 if offset == len(lines) - 3:
                     output.append(self._style("    ", bg="black").join(
                         self._style(label, color="white", bold=selected, bg="black")
-                        for label, selected in ui_display.ration_options(yes)
+                        for label, selected in ui_display.choice_options(yes)
                     ))
                 else:
                     output.append(self._style(text, color="white", bold=True, bg="black"))

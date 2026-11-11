@@ -845,9 +845,9 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
     )
     positions = iter([(30, 16), (30, 8), (30, 12), (40, 16)])
     monkeypatch.setattr(
-        game_engine_module,
-        "find_random_place",
-        lambda *_args, **_kwargs: next(positions),
+        game_engine_module.rand,
+        "choice",
+        lambda _candidates: next(positions),
     )
     player = d.Player(1, 1, 1, 90)
 
@@ -859,9 +859,9 @@ def test_vortex_moves_wyrms_and_treasure_with_barriers_hidden(monkeypatch):
     relocated_boss = next(
         e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "W"
     )
-    assert relocated_wyrm is not wyrm
+    assert relocated_wyrm is wyrm
     assert (relocated_wyrm.x, relocated_wyrm.y) == (30, 8)
-    assert relocated_boss is not dread_wyrm
+    assert relocated_boss is dread_wyrm
     assert (relocated_boss.x, relocated_boss.y) == (30, 16)
     assert treasure in current.entities
     assert (treasure.x, treasure.y) == (40, 16)
@@ -1662,7 +1662,6 @@ def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypat
 
 def test_loop_fairy_rewinds_world_and_per_instance_fairy_knowledge(monkeypatch):
     player = d.Player(2, 2, 100, 90)
-    player.rations = 1
     player.known_monsters = {"a", "W"}
     player.known_c_floors = {2}
     player.elf_stage_flags |= d.STAGE3_W_FLAG
@@ -1711,7 +1710,6 @@ def test_loop_fairy_rewinds_world_and_per_instance_fairy_knowledge(monkeypatch):
     assert checkpoint == [(4, 5)]
     assert current_queue == Counter()
     assert current_floors[0].field[10][10] == " "
-    assert player.rations == 1
     assert current_floors[0].seen[1][1] == 9
     assert player.known_monsters == {"a", "W"}
     assert player.known_c_floors == {2}

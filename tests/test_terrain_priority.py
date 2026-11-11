@@ -103,8 +103,7 @@ def test_vortex_keeps_collapse_and_landing_terrain_fixed(monkeypatch):
         lower.field[y][x] = d.CHAR_PIT_LANDING
     player = d.Player(1, 1, 100, d.LP_INIT)
     monkeypatch.setattr(game_engine, "iterate_ellipse_points", lambda *_: list(footprint))
-    game_engine._vortex_rearrange(upper, player, 0, (10, 10), floors=[upper, lower],
-                                  bounded_relocation=True)
+    game_engine._vortex_rearrange(upper, player, 0, (10, 10), floors=[upper, lower])
     assert collapse in upper.entities
     assert (collapse.x, collapse.y) == (10, 10)
     assert lower.collapse_landings == footprint
