@@ -2211,14 +2211,21 @@ class SpriteUI(PygletUI):
         pass
 
     def _draw_member(self, glyph):
-        name = self._member_variants.get(glyph.char)
-        key = (CAT_SPRITE if glyph.char == 'Y' else
+        name = (None if glyph.member_role == d.MEMBER_JAVELIN_ELF
+                else self._member_variants.get(glyph.char))
+        key = ("J" if glyph.member_role == d.MEMBER_JAVELIN_ELF else
+               CAT_SPRITE if glyph.char == 'Y' else
                f'{name}-{self._member_skins[glyph.char]}' if name else None)
         if key not in self._sprite_images:
             return super()._draw_member(glyph)
         color = self._tone_color('default')
-        self._draw_sprite((glyph.x, glyph.y), key, color,
-                          disc_scale=0.0 if glyph.tone == 'member' else 1.0)
+        if glyph.member_role == d.MEMBER_JAVELIN_ELF:
+            self._enlarge_neighbors = False
+        try:
+            self._draw_sprite((glyph.x, glyph.y), key, color,
+                              disc_scale=0.0 if glyph.tone == 'member' else 1.0)
+        finally:
+            self._enlarge_neighbors = True
 
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
@@ -2296,16 +2303,6 @@ class SpriteUI(PygletUI):
         )
         self._set_drawable_attribute(sprite, 'scale', scale)
         self._set_drawable_attribute(sprite, 'color', tint)
-
-    def _draw_follower(self, pos, char):
-        self._enlarge_neighbors = False
-        try:
-            if char == 'J' and char in self._sprite_images:
-                self._draw_sprite(pos, char, COLOR_MAP['default'], disc_scale=0.0)
-            else:
-                super()._draw_follower(pos, char)
-        finally:
-            self._enlarge_neighbors = True
 
     def _draw_fairy_slot(self, pos, char):
         if char not in self._sprite_images:

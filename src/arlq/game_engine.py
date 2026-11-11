@@ -791,7 +791,7 @@ def _resolve_elf_contact(
             trace.record_contact({"type": "monster", "id": "I", "outcome": "granted"})
     elif ch == "J":
         player.elf_stage_flags |= d.ELF_STAGE_J_FLAG
-        player.persistent_followers.append((player.x, player.y, floor[0], "J"))
+        player.members.append(d.PartyMember(player.x, player.y, d.MEMBER_JAVELIN_ELF))
         if trace is not None:
             trace.record_contact({"type": "monster", "id": "J", "outcome": "granted"})
     elif ch == "K" and not (player.elf_stage_flags & d.ELF_STAGE_C_FLAG):
@@ -1344,20 +1344,6 @@ def _resolve_contact(
     )
 
 
-def _advance_persistent_followers(
-    player: d.Player, floor_index: int, moved: bool, previous: d.Point
-) -> None:
-    """The Javelin Elf follows one step behind; keep its recorded position in sync."""
-    for i, follower in enumerate(player.persistent_followers):
-        if follower[2] == floor_index and moved:
-            player.persistent_followers[i] = (
-                previous[0],
-                previous[1],
-                follower[2],
-                follower[3],
-            )
-
-
 def _handle_floor_transition(
     current: Floor,
     floors: List[Floor],
@@ -1376,10 +1362,6 @@ def _handle_floor_transition(
         floor[0] -= 1
         player.just_climbed_pit = True
         checkpoint[0] = point
-        player.persistent_followers = [
-            (player.x, player.y, floor[0], ch)
-            for _, _, _, ch in player.persistent_followers
-        ]
         return trp("-- Ascended to floor {n}/{total}.", 1).format(
             n=floor[0] + 1, total=len(floors)
         )
@@ -1421,10 +1403,6 @@ def _handle_floor_transition(
             destination_floor.field[y][x] = d.CHAR_SCHOLAR_STAIRS_UP
             destination_floor.seen[y][x] = 1
         checkpoint[0] = (player.x, player.y)
-        player.persistent_followers = [
-            (player.x, player.y, floor[0], ch)
-            for _, _, _, ch in player.persistent_followers
-        ]
         return trp("-- Descended to floor {n}/{total}.", 1).format(
             n=floor[0] + 1, total=floor_count
         )
@@ -1449,10 +1427,6 @@ def _handle_floor_transition(
             destination_floor.field[y][x] = d.CHAR_SCHOLAR_STAIRS_DOWN
             destination_floor.seen[y][x] = 1
         checkpoint[0] = (player.x, player.y)
-        player.persistent_followers = [
-            (player.x, player.y, floor[0], ch)
-            for _, _, _, ch in player.persistent_followers
-        ]
         return trp("-- Ascended to floor {n}/{total}.", 1).format(
             n=floor[0] + 1, total=floor_count
         )
@@ -1756,10 +1730,6 @@ def _process_multi_floor_turn(
         checkpoint[0] = (player.x, player.y)
         if trace is not None:
             trace.record_checkpoint("trap_fall", (player.x, player.y), floor[0])
-        player.persistent_followers = [
-            (player.x, player.y, floor[0], char)
-            for _, _, _, char in player.persistent_followers
-        ]
         if trace is not None:
             trace.record_contact(
                 {
@@ -1884,9 +1854,6 @@ def _process_multi_floor_turn(
             trace.add_expired({"type": "companion_departed", "id": ch})
 
     reveal_entities_in_fov(player, current.entities, floor_index=floor[0])
-    _advance_persistent_followers(
-        player, floor[0], (player.x, player.y) != previous, previous
-    )
 
     floor_before = floor[0]
     transition_message = (
@@ -1925,11 +1892,12 @@ def _process_multi_floor_turn(
                     "id": d.monster_type_key(monster),
                     "at": [monster.x, monster.y], "floor": spawned_floor,
                 })
-    if player.rescue_stage:
+    if player.rescue_stage or player.members:
         stage56.sync_members(
             player, previous, direction,
             reset=(floor[0] != initial_floor or (player.x, player.y) != movement_destination),
         )
+    if player.rescue_stage:
         stage56.explore_with_cat(floors[floor[0]], player)
     if (
         stage_num == 5

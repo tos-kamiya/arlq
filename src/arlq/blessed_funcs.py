@@ -374,24 +374,6 @@ class BlessedUI:
             ):
                 paint(glyph)
 
-        for fx, fy, ffloor, fchar in player.persistent_followers:
-            if (
-                not floor_view
-                and ffloor == player.current_floor
-                and 0 <= fy < len(torched)
-                and 0 <= fx < len(torched[fy])
-                and torched[fy][fx]
-                and (fx, fy) != (px, py)
-            ):
-                background = cell_background(fx, fy)
-                put(
-                    fx,
-                    fy,
-                    fchar,
-                    visible_default_foreground(None, background),
-                    bg=background,
-                )
-
         if not floor_view:
             for glyph in ui_display.member_glyphs(player):
                 paint(glyph)

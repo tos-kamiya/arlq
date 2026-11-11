@@ -1060,10 +1060,6 @@ class PygletUI:
             ),
         )
 
-    def _draw_follower(self, pos: d.Point, char: str):
-        """Draws a Stage 3 follower (such as the Javelin Elf) walking with the player."""
-        self._draw_field_text(pos, char, COLOR_MAP["default"])
-
     def _draw_golem_rubble(self, pos: d.Point, visible: bool) -> None:
         color = COLOR_MAP[CI_GREEN]
         self._draw_field_text(pos, "+", color if visible else self._dim_color(color))
@@ -1376,12 +1372,6 @@ class PygletUI:
                 party_tones=party_tones,
             ):
                 paint(glyph)
-
-        # Stage 3 followers persist across floor changes and are rendered
-        # independently of the temporary fairy slot.
-        for fx, fy, ffloor, fchar in player.persistent_followers:
-            if not floor_view and ffloor == player.current_floor and 0 <= fy < len(torched) and 0 <= fx < len(torched[0]) and torched[fy][fx] and (fx, fy) != (px, py):
-                self._draw_follower((fx, fy), fchar)
 
         if not floor_view:
             for glyph in ui_display.member_glyphs(player):

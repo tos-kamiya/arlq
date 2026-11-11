@@ -2405,7 +2405,7 @@ def test_elf_encounters_apply_their_conditions(
     assert messages == [expected_message]
     assert player.elf_stage_flags == expected_flags
     if elf == "J":
-        assert player.persistent_followers == [(2, 2, 0, "J")]
+        assert [(m.x, m.y, m.role) for m in player.members] == [(2, 2, d.MEMBER_JAVELIN_ELF)]
         assert floors[0].entities == []
     elif elf == "H":
         assert player.elf_stage_flags & d.ELF_STAGE_H_FLAG
@@ -2418,10 +2418,43 @@ def test_elf_encounters_apply_their_conditions(
             assert player.item_taken_from is None
 
 
+def test_javelin_elf_follows_and_changes_floor_with_player():
+    player = d.Player(2, 2, 100, 90)
+    upper, _ = stage3_state(player, [d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["J"])])
+    lower, _ = stage3_state(player, [])
+    upper[0].down_stairs = [(5, 2)]
+    lower[0].up_stairs = [(7, 2)]
+    floors = upper + lower
+    floor = [0]
+    checkpoint = [(2, 2)]
+    queue = Counter()
+
+    run_stage3_keys("R", floors, player, floor, checkpoint, queue, stage_num=4)
+    elf = player.members[0]
+    assert (elf.role, elf.x, elf.y) == (d.MEMBER_JAVELIN_ELF, 2, 2)
+    run_stage3_keys("R", floors, player, floor, checkpoint, queue, stage_num=4)
+    assert (elf.x, elf.y) == (3, 2)
+    run_stage3_keys("R", floors, player, floor, checkpoint, queue, stage_num=4)
+    assert floor == [1]
+    assert (elf.x, elf.y) == (player.x, player.y) == (7, 2)
+    run_stage3_keys("R", floors, player, floor, checkpoint, queue, stage_num=4)
+    assert (elf.x, elf.y) == (7, 2)
+
+
+def test_javelin_elf_returns_with_player_after_defeat():
+    player = d.Player(10, 10, 1, 90)
+    elf = d.PartyMember(9, 10, d.MEMBER_JAVELIN_ELF)
+    player.members.append(elf)
+    floors, _ = stage3_state(player, [d.Monster(11, 10, d.CHAR_TO_MONSTER_TRIBE["W"])])
+    run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter(), stage_num=4)
+    assert (player.x, player.y) == (2, 2)
+    assert (elf.x, elf.y) == (2, 2)
+
+
 def test_collector_and_javelin_elves_increase_elf_stage_attack():
     player = d.Player(2, 2, 100, 90)
     player.elf_stage_flags = d.ELF_STAGE_K_FLAG
-    player.persistent_followers = [(2, 2, 0, "J")]
+    player.members.append(d.PartyMember(2, 2, d.MEMBER_JAVELIN_ELF))
 
     assert d.current_player_attack(player) == 150
 
@@ -2443,7 +2476,7 @@ def test_knight_attack_bonus_depends_on_membership(rescue_stage):
 def test_knight_bonus_is_added_after_permanent_elf_bonuses():
     player = d.Player(2, 2, 100, 90)
     player.elf_stage_flags = d.ELF_STAGE_K_FLAG
-    player.persistent_followers = [(2, 2, 0, "J")]
+    player.members.append(d.PartyMember(2, 2, d.MEMBER_JAVELIN_ELF))
 
     assert d.current_player_attack(player) == 150
     knight = d.PartyMember(2, 2, d.MEMBER_KNIGHT)
@@ -2771,7 +2804,7 @@ def test_level_item_labels_follow_permanent_elf_attack_bonuses():
     assert d.level_item_labels(player, 1) == ("LVL: 100 /3", "d-")
 
     player.elf_stage_flags = d.ELF_STAGE_K_FLAG
-    player.persistent_followers.append((1, 1, 0, "J"))
+    player.members.append(d.PartyMember(1, 1, d.MEMBER_JAVELIN_ELF))
     assert d.level_item_labels(player, 3) == ("LVL: 100 /3 x1.2 x1.25", "d-")
     assert d.level_item_labels(player, 2) == ("LVL: 100 /3 x1.2 x1.25", "d-")
 

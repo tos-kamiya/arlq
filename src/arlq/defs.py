@@ -56,6 +56,7 @@ FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 # Stages available from the game's UI and command line.
 PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5, 6)
 MEMBER_JESTER = "Jester"
+MEMBER_JAVELIN_ELF = "Javelin Elf"
 MEMBER_HEALER = "Healer"
 MEMBER_ROGUE = "Rogue"
 MEMBER_KNIGHT = "Knight"
@@ -544,7 +545,6 @@ class Player(Entity):
         # The cell the player last left a floor from (stairs or pit), for the UI.
         self.floor_exit: Optional[Point] = None
         self.last_member_scatter_route: Optional[Tuple[Tuple[int, Point], ...]] = None
-        self.persistent_followers: List[Tuple[int, int, int, str]] = []
         self.members: List[PartyMember] = []
         self.jester_retired = False
         self.facing: Point = (0, -1)
@@ -879,7 +879,7 @@ MEMBER_STAGE_ROSTER_TRIBES: List[MonsterTribe] = _get_member_stage_roster_tribes
 
 
 def _javelin_follower_active(player: Player) -> bool:
-    return any(follower[3] == "J" for follower in player.persistent_followers)
+    return has_member(player, MEMBER_JAVELIN_ELF)
 
 
 def player_lp_max(player: Player) -> int:

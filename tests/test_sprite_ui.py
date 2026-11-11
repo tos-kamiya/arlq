@@ -646,7 +646,7 @@ def test_character_next_to_player_is_enlarged_with_disc_unchanged(sprite_ui, pos
 def test_follower_next_to_player_keeps_its_size(sprite_ui):
     ui = sprite_ui
     ui._player_cell = (4, 6)
-    ui._draw_follower((4, 5), 'J')
+    ui._draw_member(display.FieldGlyph(4, 5, 'J', 'member', member_role=d.MEMBER_JAVELIN_ELF))
     assert ui._drawables[0].image is ui._sprite_images['J']
     assert ui._drawables[0].scale == pytest.approx(1.8 * 11 / SPRITE_REFERENCE_PIXELS)
     assert not ui.outlines

@@ -207,11 +207,14 @@ class FieldGlyph(NamedTuple):
     tone: str
     bold: bool = False
     dim: bool = False
+    member_role: Optional[str] = None
 
 
 def member_glyphs(player: d.Player) -> List[FieldGlyph]:
     return [
-        FieldGlyph(member.x, member.y, d.MEMBER_GLYPHS[member.role], "member")
+        FieldGlyph(member.x, member.y,
+                   "J" if member.role == d.MEMBER_JAVELIN_ELF else d.MEMBER_GLYPHS[member.role],
+                   "member", member_role=member.role)
         for member in reversed(player.members)
         if (member.x, member.y) != (player.x, player.y)
         and 0 <= member.x < d.FIELD_WIDTH and 0 <= member.y < d.FIELD_HEIGHT
