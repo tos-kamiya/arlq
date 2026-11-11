@@ -350,12 +350,6 @@ TERRAIN_OVERHANG = {d.CHAR_STAIRS_UP: 0.5, d.CHAR_STAIRS_DOWN: 0.5,
 TERRAIN_EXPLORED_SHADE = 0.55
 # Opacity of the yellow ground disc that marks each stair.
 STAIR_DISC_OPACITY = 90
-# Stage 6's route to the boss: yellow light leaking from a diamond slit in the
-# middle of each marked floor stone, added onto the stone's own color and
-# shape. It shows under the player and characters too and dims outside the
-# current view.
-ROUTE_MARK_FILE = 'floor/route-mark.png'
-ROUTE_MARK_SHADE = {True: 1.0, False: TERRAIN_EXPLORED_SHADE}  # in / outside the view
 # Between floors (draw_floor_transition): a near-black field with only the
 # player, standing on the landing of a floating switchback when taking stairs
 # (gold), both the size they are in play and on the cell the player left
@@ -754,8 +748,6 @@ class SpriteUI(PygletUI):
         else:
             self._bridgehead_images = {}
         self._terrain_regions = {}
-        self._route_mark_image = (mipmapped(pyglet.image.load(str(assets / ROUTE_MARK_FILE)))
-                                  if (assets / ROUTE_MARK_FILE).is_file() else None)
         core_path = assets / 'dungeon-core' / 'dungeon-core.png'
         self._dungeon_core_image = None
         self._dungeon_core_under = self._dungeon_core_overhang = 0.0
@@ -772,8 +764,6 @@ class SpriteUI(PygletUI):
         self._smoke_images = [smoke_image(barrier) for barrier in self._barrier_images]
         self._floor_group = pyglet.graphics.Group(order=-1)
         self._floor_backdrop_group = pyglet.graphics.Group(order=-2)
-        # Over the floor, under the edge fade.
-        self._route_mark_group = pyglet.graphics.Group(order=-0.5)
         # Between the floor and the ground discs.
         self._edge_shade_group = pyglet.graphics.Group(order=0)
         self._edge_shade_image = None
@@ -1241,30 +1231,6 @@ class SpriteUI(PygletUI):
         self._set_drawable_attribute(sprite, 'scale_x', scale_x)
         self._set_drawable_attribute(sprite, 'scale_y', scale_y)
         self._set_drawable_attribute(sprite, 'color', tint)
-
-    def _draw_boss_route_marker(self, pos, visible, under_player):
-        image = self._route_mark_image
-        if image is None:
-            return super()._draw_boss_route_marker(pos, visible, under_player)
-        x, y = pos
-        left = self._field_col_x(x)
-        bottom = self.window_height - (y + 1) * self.cell_size_y
-        # Exactly one cell, aligned with the floor stone.
-        scale_x = self.cell_size_x / image.width
-        scale_y = self.cell_size_y / image.height
-        tint = (round(255 * ROUTE_MARK_SHADE[visible]),) * 3
-        group = self._route_mark_group
-        signature = ('route-mark', x, y, bottom, scale_x, scale_y, tint, id(group))
-        mark = self._draw_bounded_object(
-            left, image.width * scale_x, signature,
-            lambda: pyglet.sprite.Sprite(image, x=left, y=bottom, batch=self.batch,
-                                         group=group, blend_dest=pyglet.gl.GL_ONE),
-        )
-        if mark is not None and mark.x != left:
-            mark.x = left
-        self._set_drawable_attribute(mark, 'scale_x', scale_x)
-        self._set_drawable_attribute(mark, 'scale_y', scale_y)
-        self._set_drawable_attribute(mark, 'color', tint)
 
     def _open_floor(self, x, y):
         field = self._stage_field
@@ -2113,7 +2079,7 @@ class SpriteUI(PygletUI):
     def _retain_drawable(self, signature):
         return signature[0] in {
             'tile', 'floor-copy', 'floor-backdrop', 'terrain-cell',
-            'wall-cell', 'barrier-cell', 'edge-shade', 'route-mark',
+            'wall-cell', 'barrier-cell', 'edge-shade',
         }
 
     def _draw_object(self, signature, factory):
