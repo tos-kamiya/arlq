@@ -114,12 +114,12 @@ again. `arlq --terminal` also starts the terminal interface.
 ### Sprite GUI: `arlq-sprites`
 
 Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
-through `arlq --sprites`. Its window opens at about 16:9 and shows part of the
-field, scrolling with the player. The window can be resized in both dimensions.
-Changing the window height zooms the field while keeping its rendering detail
-consistent.
-If the field is wider than the view, the camera follows the player;
-Shift+Left/Right scrolls the view three cells at a time without moving.
+through `arlq --sprites`. Its window opens wide enough to show the complete
+field and strength column without scrolling. The window can be resized in both
+dimensions. Changing the window height zooms the field while keeping its
+rendering detail consistent. If the window is resized narrower than the field,
+the camera follows the player; Shift+Left/Right scrolls the view three cells at
+a time without moving.
 
 The player is shown holding a sword when carrying one. The LP gauge appears just above the player, as in a fighting game. Ground discs show whether monsters are identified, their strength, and the player's status.
 

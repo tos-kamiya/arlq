@@ -148,9 +148,7 @@ FIELD_TEXT_RAISE = 0.1
 # overflow their row).
 STRENGTH_SPRITE_CELLS = 2
 MAX_WINDOW_WIDTH = 32767
-# A new (or rescaled) window is at most this wide relative to its height, so
-# the field is usually wider than the view and scrolls with the player.
-DEFAULT_WINDOW_ASPECT = 16 / 9
+# Keep the complete field and strength column in the initial window.
 HORIZONTAL_VIEW_SCROLL_CELLS = 3
 HOVER_SCALE = 2.0
 MOUSE_CURSOR_SECONDS = 3.0
@@ -680,6 +678,8 @@ class SpriteUI(PygletUI):
         )
         self._text_batch = pyglet.graphics.Batch()
         self._hud_row_height = self._menu_cell_size_y
+        self._set_scaled_dimensions()
+        self.window.set_size(self.window_width, self.window_height)
         self._drawing_hud = False
         self.window.set_caption(self.window.caption.replace('Pyglet mix', 'Sprite mix'))
         self._update_minimum_window_size()
@@ -1730,10 +1730,9 @@ class SpriteUI(PygletUI):
             self.window_height = round(
                 self.field_height * self.cell_size_y + 2 * self._hud_row_height
             )
-        self.window_width = min(
+        self.window_width = (
             self._map_pixel_width + FIELD_SIDEBAR_GAP * self.cell_size_x
-            + self.strength_column_width,
-            round(self.window_height * DEFAULT_WINDOW_ASPECT) - self.cell_size_x,
+            + self.strength_column_width
         )
         self.field_pixel_width = max(
             self.cell_size_x, self.window_width - self.strength_column_width
