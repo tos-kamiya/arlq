@@ -1,4 +1,6 @@
-from arlq import arlq, defs as d, game_engine, stage_maze
+from collections import Counter
+
+from arlq import arlq, defs as d, game_engine, stage56, stage_maze, stage_world
 from arlq.stage_types import Floor
 
 
@@ -16,6 +18,36 @@ def test_generate_maze_initial_choices_have_stable_order(monkeypatch):
     assert choices[:2] == [expected, expected]
     assert first == expected[0]
     assert len(edges) == len(expected) - 1
+
+
+def test_filled_room_notches_visit_rooms_in_stable_order(monkeypatch):
+    visited = []
+    monkeypatch.setattr(stage_world, "_is_wall_notch_point", lambda point: visited.append(point) or False)
+    field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    rooms = [(2, 1), (0, 1), (1, 1)]
+    stage_world._add_filled_room_wall_notches(field, rooms)
+    first_visit = visited.copy()
+    visited.clear()
+    stage_world._add_filled_room_wall_notches(field, reversed(rooms))
+    assert visited == first_visit
+
+
+def test_respawn_normalizes_changed_floors_in_order(monkeypatch):
+    floors = [Floor([[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+                    [], [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+                    (1, 1), (2, 2), None) for _ in range(3)]
+    player = d.Player(1, 1, 1, d.LP_INIT)
+    normalized = []
+
+    def respawn(current, char, rank, origin_floor, avoid, floor_index=0):
+        current.entities.append(d.Monster(10, 10, d.CHAR_TO_MONSTER_TRIBE[char], rank))
+        return (10, 10)
+
+    monkeypatch.setattr(stage56, "respawn", respawn)
+    monkeypatch.setattr(stage56, "normalize_parties", lambda current, *args, **kwargs: normalized.append(floors.index(current)))
+    queue = Counter({(2, "a"): 1, (0, "a"): 1})
+    game_engine._process_respawn_queue(floors, player, [1], queue, 0, stage_num=5)
+    assert normalized == [0, 2]
 
 
 def test_maze_random_candidates_have_stable_room_order(monkeypatch):

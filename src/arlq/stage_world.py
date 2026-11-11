@@ -84,7 +84,7 @@ def _add_filled_room_wall_notches(
 ) -> None:
     """Open irregularly spaced blocks along the outer edge of each filled room."""
     height, width = len(field), len(field[0])
-    for tx, ty in filled_rooms:
+    for tx, ty in sorted(filled_rooms):
         left = d.FIELD_X_MARGIN + tx * (tile_width + 1) + 1
         top = ty * (d.TILE_HEIGHT + 1) + 1
         right = left + tile_width - 1

@@ -1705,7 +1705,7 @@ def _process_respawn_queue(
                 }
             )
     if stage_num == 5:
-        for changed_floor in changed_floors:
+        for changed_floor in sorted(changed_floors):
             current = floors[changed_floor]
             stage56.normalize_parties(
                 current, d.MEMBER_STAGE_MONSTER_PARTY_LIMIT,
