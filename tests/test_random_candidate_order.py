@@ -1,5 +1,21 @@
-from arlq import defs as d, game_engine, stage_maze
+from arlq import arlq, defs as d, game_engine, stage_maze
 from arlq.stage_types import Floor
+
+
+def test_generate_maze_initial_choices_have_stable_order(monkeypatch):
+    choices = []
+
+    def choice(candidates):
+        choices.append(candidates.copy())
+        return candidates[0]
+
+    monkeypatch.setattr(arlq.rand, "choice", choice)
+    monkeypatch.setattr(arlq.rand, "randrange", lambda _: 0)
+    edges, first, _ = arlq.generate_maze(3, 3, excluded_tile=(1, 1))
+    expected = [(x, y) for x in range(3) for y in range(3) if (x, y) != (1, 1)]
+    assert choices[:2] == [expected, expected]
+    assert first == expected[0]
+    assert len(edges) == len(expected) - 1
 
 
 def test_maze_random_candidates_have_stable_room_order(monkeypatch):

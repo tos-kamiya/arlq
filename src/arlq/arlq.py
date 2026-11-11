@@ -106,7 +106,7 @@ def generate_maze(
     edges = []
 
     # Choose a random starting point
-    unconnected_nps = list(unconnected_point_set)
+    unconnected_nps = sorted(unconnected_point_set)
     first_point = cur_p = rand.choice(unconnected_nps)
     last_point = rand.choice(unconnected_nps)  # dummy
     unconnected_point_set.remove(cur_p)
