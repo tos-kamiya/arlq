@@ -52,7 +52,7 @@ arlq-cli
 | `--version` | Show the version. |
 | `--rematch` | Replay the most recently started stage with the same seed. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
-| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a compact member-ability trial; Stage 6 is a three-floor boss and treasure dungeon. |
+| `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a compact member-ability trial; Stage 6 is a four-floor boss and treasure dungeon. |
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
@@ -165,7 +165,7 @@ Hover over a character to enlarge it and display its name. Unidentified characte
 
 * **Party Members**
 
-  In Stages 5 and 6, you can recruit up to two party members whose abilities support combat and exploration. The first stays with you; each later recruit replaces the second member. Jester is an exception: J leaves when you reach level 80 and cannot join again. Members follow the path you take, in joining order.
+  In Stages 5 and 6, you can recruit up to two party members whose abilities support combat and exploration. The first stays with you; each later recruit replaces the second member. Jester is an exception: J leaves when you reach level 100 and cannot join again. Members follow the path you take, in joining order.
 
 ## Fairy List
 
@@ -285,17 +285,17 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 Ordinary openings between sections are one cell wider than in the other generated stages; hidden passages remain one cell wide.
 
-Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the bridgehead and face monsters that also form parties. Returning to the floor 1 bridgehead restores LP to 50 if it is lower. Defeat the empowered Fire Drake (`F'`) on the final floor to reveal the Dungeon Core. Destroy the core to unseal its treasure chest and awaken the Mimic, then claim the treasure.
+Stage 6 is a four-floor dungeon starting at level 1. Recruit party members near the bridgehead and face monsters that also form parties. Returning to the floor 1 bridgehead restores LP to 50 if it is lower. Monster rosters grow stronger on each deeper floor. The final-floor boss party starts with the empowered Fire Drake (`F'`), empowered Vortex (`V'`), and one randomly selected monster. Defeat the Fire Drake to reveal the Dungeon Core. Destroy the core to unseal its treasure chest and awaken the Mimic, then claim the treasure.
 
 When you use a different staircase or pit from the one used for your previous floor change, all unrecruited members are scattered independently to random floors, and their previously known locations are cleared. Reusing the same staircase or pit consecutively, in either direction, does not scatter them again.
 
-Each floor starts with a sword-carrying `c` and three fairies selected from `l`, `n`, `o`, and `p`. A fairy that leaves returns only to its original floor. The dungeon then makes 40, 35, and 30 monster spawn attempts on floors 1, 2, and 3 respectively. Initial spawns on floor 1 use random positions; floors 2 and 3 use the same party preference as later spawns. Every 24 turns, a spawn is attempted on each floor. Solo monsters do not move on their own. Stronger types appear on deeper floors. Spore monsters (`m`) can appear on every floor; Rare Erebus (`E`) and Vortex (`V`) can appear on floor 2. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
+Each floor starts with a sword-carrying `c` and three fairies selected from `l`, `n`, `o`, and `p`. A fairy that leaves returns only to its original floor. The dungeon then makes 40, 35, 30, and 25 monster spawn attempts on floors 1 through 4 respectively. Initial spawns on floor 1 use random positions; deeper floors use the same party preference as later spawns. Every 36 turns, a spawn is attempted on each floor. Solo monsters do not move on their own. Spore monsters (`m`) can appear on every floor; Rare Erebus (`E`) and Vortex (`V`) can appear on floor 2. Defeated monsters do not respawn. Use the sword from `c` to shape passages and reach the boss before monsters accumulate.
 
 #### Party members
 
 | Display & Profession | Ability |
 | --- | --- |
-| **J** Jester | Multiplies your experience by 1.5, leaves when your level reaches 80, and cannot join afterward. |
+| **J** Jester | Multiplies your experience by 1.5, leaves when your level reaches 100, and cannot join afterward. |
 | **H** Healer | Reduces movement LP cost to three-quarters and the defeat cost to 3. |
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **K** Knight | Adds a fixed 40 to your attack power. |
@@ -318,11 +318,11 @@ Some rooms may be sealed by walls, but D can discover passages into them.
 | --- | --- |
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **f** / **f'** Flame cobra | Worth 5 experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
-| **i** Ivy | Base attack power 50. Rank 1 and 2 Ivies appear on floors 2 and 3. Each active Ivy deals 4 LP damage every turn when the player is directly above, below, left, or right of it. Rogue does not block this damage. |
-| **g** / **g'** Golem | Rank 1 Golems appear on every floor, and rank 2 Golems also appear on floor 3. |
-| **w** / **w'** Wyrm | Floor 2 has `w`; floor 3 has both `w` and `w'`. |
+| **i** Ivy | Base attack power 50. Ivies appear from floor 2, with higher ranks deeper in the dungeon. Each active Ivy deals 4 LP damage every turn when the player is directly above, below, left, or right of it. Rogue does not block this damage. |
+| **g** / **g'** Golem | Rank 1 Golems appear on every floor; higher ranks appear on deeper floors. |
+| **w** / **w'** Wyrm | Wyrms appear from floor 2, with higher ranks deeper in the dungeon. |
 
-The floor 3 boss party starts with `F'` and `V` and may gain more members; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
+The floor 4 boss party starts with `F'`, `V'`, and one randomly selected monster; other monsters may join it. A Mimic also impersonates the Dungeon Core. Pits drop you to the next floor. On defeat, your members respawn with you.
 
 ## Development commands
 

@@ -548,7 +548,7 @@ def test_marksman_grants_three_experience(stage_num):
     assert player.level == 103
 
 
-def test_knight_level_is_fixed_and_jester_leaves_at_80():
+def test_knight_level_is_fixed_and_jester_leaves_at_100():
     current, player = state(("Jester", "Knight"), lp=10)
     knight = player.members[1]
     assert knight.level == 40
@@ -561,21 +561,21 @@ def test_knight_level_is_fixed_and_jester_leaves_at_80():
 
 
 @pytest.mark.parametrize("stage_num", [5, 6])
-def test_jester_leaves_when_experience_crosses_level_80(stage_num):
-    current, player = state(("Jester",), level=78)
+def test_jester_leaves_when_experience_crosses_level_100(stage_num):
+    current, player = state(("Jester",), level=98)
     current.entities = [monster(3, 2, "a")]
     step(current, player, stage_num=stage_num)
-    assert player.level == pytest.approx(79.5)
+    assert player.level == pytest.approx(99.5)
     assert d.has_member(player, d.MEMBER_JESTER)
     current.entities = [monster(4, 2, "a")]
     step(current, player, stage_num=stage_num)
-    assert player.level == pytest.approx(81)
+    assert player.level == pytest.approx(101)
     assert not d.has_member(player, d.MEMBER_JESTER)
     assert any(isinstance(e, d.PartyMember) and e.role == d.MEMBER_JESTER for e in current.entities)
     assert player.jester_retired
 
 
-@pytest.mark.parametrize("level, returns", [(79, True), (80, False), (81, False)])
+@pytest.mark.parametrize("level, returns", [(99, True), (100, False), (101, False)])
 def test_jester_reappears_only_below_departure_level(level, returns):
     floors, player = stage6.build()
     player.level = level
@@ -586,8 +586,8 @@ def test_jester_reappears_only_below_departure_level(level, returns):
     assert d.MEMBER_JESTER not in player.known_member_floors
 
 
-def test_recruiting_jester_at_level_80_is_refused():
-    current, player = state(level=80)
+def test_recruiting_jester_at_level_100_is_refused():
+    current, player = state(level=100)
     jester = d.PartyMember(3, 2, d.MEMBER_JESTER, origin_floor=0)
     current.entities.append(jester)
     step(current, player)
@@ -596,7 +596,7 @@ def test_recruiting_jester_at_level_80_is_refused():
 
 @pytest.mark.parametrize("stage_num", [5, 6])
 def test_retired_jester_refuses_after_level_loss_without_displacing_members(stage_num):
-    current, player = state(("Healer", "Rogue"), level=80)
+    current, player = state(("Healer", "Rogue"), level=100)
     jester = d.PartyMember(3, 2, d.MEMBER_JESTER, origin_floor=0)
     current.entities.append(jester)
     step(current, player, stage_num=stage_num)
@@ -1338,7 +1338,7 @@ def test_seed_reproduces_layout_and_groups():
 
 
 def test_stage6_spawn_roster_scales_by_floor():
-    assert len(d.STAGE6_ROSTER) == d.STAGE6_FLOORS == 3
+    assert len(d.STAGE6_ROSTER) == d.STAGE6_FLOORS == 4
     assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[1] if char == "B"] == [(1, 2)]
     for roster in d.STAGE6_ROSTER:
         assert sum(count for char, count, rank, _ in roster if char == "c" and rank == 1) == 1

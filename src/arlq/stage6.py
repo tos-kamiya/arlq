@@ -180,9 +180,11 @@ def _place_party(
 
 def _place_initial_boss_party(current: Floor) -> tuple[list[d.Monster], set[d.Point]]:
     """Choose the boss layout before placing other entities."""
-    _place_party(current, list(d.STAGE6_BOSS_PARTY), d.STAGE6_FLOORS - 1)
-    current.entities[-len(d.STAGE6_BOSS_PARTY)].boss_id = 1
-    return current.entities[-len(d.STAGE6_BOSS_PARTY):], set()
+    roster = list(d.STAGE6_BOSS_PARTY)
+    roster.append(rand.choice(d.STAGE6_BOSS_PARTY_ADDITIONS))
+    _place_party(current, roster, d.STAGE6_FLOORS - 1)
+    current.entities[-len(roster)].boss_id = 1
+    return current.entities[-len(roster):], set()
 
 
 def _place_dungeon_core(current: Floor, boss: d.Monster) -> d.Monster:

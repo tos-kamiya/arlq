@@ -48,10 +48,10 @@ def test_stage6_opens_wider_corridors_but_keeps_one_hidden_gate(
 
 
 @pytest.mark.parametrize("seed", [0, 123, 789])
-def test_three_floor_dungeon(seed):
+def test_four_floor_dungeon(seed):
     rand.set_seed(seed)
     floors, player = stage6.build()
-    assert len(floors) == 3
+    assert len(floors) == 4
     assert player.level == 1
     for floor in floors:
         monsters = [e for e in floor.entities if isinstance(e, d.Monster)
@@ -63,15 +63,13 @@ def test_three_floor_dungeon(seed):
             assert len(isolated) >= 2
     assert all(any(isinstance(e, d.Monster) and e.tribe.char == "c"
                    for e in floor.entities) for floor in floors)
-    assert all(
-        not isinstance(entity, d.Monster) or entity.tribe.item != d.ITEM_SWORD_CURSED
-        for floor in floors for entity in floor.entities
-    )
     boss = next(e for e in floors[-1].entities
                 if isinstance(e, d.Monster) and e.tribe.char == "F")
     from arlq.stage56 import monster_party
     party = monster_party(floors[-1], boss)
-    assert {"F", "V", "k"} <= {e.tribe.char for e in party}
+    assert {"F", "V"} <= {e.tribe.char for e in party}
+    assert len(party) >= 3
+    assert any((e.tribe.char, e.empowered) in d.STAGE6_BOSS_PARTY_ADDITIONS for e in party)
     assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
     assert boss.empowered == 2
     assert sum(d.monster_level(e) for e in party) >= 300

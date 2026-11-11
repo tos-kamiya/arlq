@@ -381,15 +381,15 @@ def test_second_floor_monster_draw_can_select_e_and_m(monkeypatch):
     assert 0.6 < counts[("E", 1)] / counts[("m", 1)] < 1.6
 
 
-def test_every_floor_spawned_every_twenty_turns(monkeypatch):
-    floors = [floor() for _ in range(3)]
+def test_every_floor_spawned_every_thirty_six_turns(monkeypatch):
+    floors = [floor() for _ in range(4)]
     player = d.Player(4, 4, 1, d.LP_INIT)
     calls = []
     monkeypatch.setattr(stage6, "spawn_monster", lambda current, index, **kw: calls.append((index, kw)) or False)
-    for turn in range(40):
+    for turn in range(72):
         stage6.advance_spawns(floors, player, 1, turn)
-        assert len(calls) == 3 * ((turn + 1) // 20)
-    assert [index for index, _ in calls] == [0, 1, 2, 0, 1, 2]
+        assert len(calls) == 4 * ((turn + 1) // 36)
+    assert [index for index, _ in calls] == [0, 1, 2, 3, 0, 1, 2, 3]
     assert calls[1][1]["avoid"] == {(x, y) for x in range(2, 7) for y in range(2, 7)}
     assert calls[0][1]["avoid"] == set()
 
