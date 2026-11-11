@@ -217,7 +217,7 @@ def step(current, player, direction=(1, 0), checkpoint=(2, 2), stage_num=6):
 
 def test_playground_has_four_random_recruits_and_a_boss_party():
     floors, player = stage6.build()
-    assert len(floors) == 3 and player.rescue_stage and player.treasure_stage
+    assert len(floors) == 4 and player.rescue_stage and player.treasure_stage
     for floor_index, floor in enumerate(floors):
         if floor_index == len(floors) - 1:
             assert len(floor.room_components) == 1
@@ -281,7 +281,7 @@ def test_playground_has_four_random_recruits_and_a_boss_party():
     vortex = next(e for e in party if e.tribe.char == "V")
     assert vortex.empowered == 2
     escorts = [e for e in party if e not in (boss, vortex)]
-    assert ("k", 1) in [(e.tribe.char, e.empowered) for e in escorts]
+    assert any((e.tribe.char, e.empowered) in d.STAGE6_BOSS_PARTY_ADDITIONS for e in escorts)
     assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
     mimics = [
         e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "M"
@@ -843,14 +843,14 @@ def test_stage5_boss_uses_combined_party_strength_without_required_members_or_it
 
 
 
-@pytest.mark.parametrize("escort", d.STAGE6_BOSS_ESCORTS)
+@pytest.mark.parametrize("escort", d.STAGE6_BOSS_PARTY_ADDITIONS)
 @pytest.mark.parametrize("seed", [0, 2, 53, 123])
 def test_initial_boss_party_remains_in_its_room(monkeypatch, seed, escort):
     engine.rand.set_seed(seed)
     original_choice = stage6.rand.choice
     monkeypatch.setattr(
         stage6.rand, "choice",
-        lambda values: escort if values is d.STAGE6_BOSS_ESCORTS else original_choice(values),
+        lambda values: escort if values is d.STAGE6_BOSS_PARTY_ADDITIONS else original_choice(values),
     )
     original_boss = stage6._place_initial_boss_party
     boss_positions = []
@@ -867,8 +867,9 @@ def test_initial_boss_party_remains_in_its_room(monkeypatch, seed, escort):
     boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "F")
     party = stage56.monster_party(current, boss)
     assert {"F", "V"} <= {e.tribe.char for e in party}
-    assert next(e for e in party if e.tribe.char == "F").rank == 2
-    assert next(e for e in party if e.tribe.char == "V").rank == 1
+    assert next(e for e in party if e.tribe.char == "F").empowered == 2
+    assert next(e for e in party if e.tribe.char == "V").empowered == 2
+    assert escort in [(entity.tribe.char, entity.empowered) for entity, _, _ in boss_positions]
     assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
     assert all((entity.x, entity.y) == (x, y) for entity, x, y in boss_positions)
     room = stage6.tile_at((boss.x, boss.y))
@@ -878,15 +879,17 @@ def test_initial_boss_party_remains_in_its_room(monkeypatch, seed, escort):
 
 
 
-@pytest.mark.parametrize("escort", d.STAGE6_BOSS_ESCORTS)
 @pytest.mark.parametrize("seed", [0, 53, 123])
-def test_final_floor_random_barriers_stay_near_boss(monkeypatch, seed, escort):
+def test_final_floor_random_barriers_stay_near_boss(monkeypatch, seed):
     engine.rand.set_seed(seed)
-    original_choice = stage6.rand.choice
-    monkeypatch.setattr(
-        stage6.rand, "choice",
-        lambda values: escort if values is d.STAGE6_BOSS_ESCORTS else original_choice(values),
-    )
+    original_spawn = stage6.spawn_monster
+    initial_barriers = {}
+
+    def spawn(current, index, **kwargs):
+        initial_barriers.setdefault(index, current.persistent_barriers.copy())
+        return original_spawn(current, index, **kwargs)
+
+    monkeypatch.setattr(stage6, "spawn_monster", spawn)
     floors, _ = stage6.build()
     current = floors[-1]
     boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "F")
@@ -897,8 +900,8 @@ def test_final_floor_random_barriers_stay_near_boss(monkeypatch, seed, escort):
     assert current.persistent_barriers
     assert current.persistent_barriers <= allowed
     assert all(current.field[y][x] == d.CHAR_BARRIER for x, y in current.persistent_barriers)
-    for index in (1,):
-        assert len(floors[index].persistent_barriers) == d.STAGE6_HAZARD_COUNTS[index][1]
+    assert len(initial_barriers[1]) == d.STAGE6_HAZARD_COUNTS[1][1]
+    assert floors[1].persistent_barriers <= initial_barriers[1]
 
 
 def test_treasure_is_optional_and_does_not_finish_stage():

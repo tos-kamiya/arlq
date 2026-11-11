@@ -51,7 +51,8 @@ def test_ivy_attacks_every_turn_even_without_movement(monkeypatch):
 
 def test_ivy_roster_includes_both_ranks_on_deeper_floors():
     assert all(char != "i" for char, _, _, _ in d.STAGE6_ROSTER[0])
-    for roster in d.STAGE6_ROSTER[1:]:
+    for roster in d.STAGE6_ROSTER[1:3]:
         assert all(any(char == "i" and rank == expected_rank and count > 0
                        for char, count, rank, _ in roster) for expected_rank in (1, 2))
+    assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[3] if char == "i"] == [(3, 2)]
     assert d.CHAR_TO_MONSTER_TRIBE["i"].level == 50

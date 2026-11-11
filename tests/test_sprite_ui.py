@@ -438,7 +438,7 @@ def test_sprite_maximize_restore_accepts_window_manager_size(
     assert size_requests == []
 
 
-def test_sprite_default_window_is_one_cell_narrower_and_field_overflows():
+def test_sprite_default_window_fits_field_and_sidebar():
     ui = SpriteUI.__new__(SpriteUI)
     ui._initialize_state()
     ui.field_width, ui.field_height = d.FIELD_WIDTH, d.FIELD_HEIGHT
@@ -450,9 +450,9 @@ def test_sprite_default_window_is_one_cell_narrower_and_field_overflows():
     ui._set_scaled_dimensions()
 
     assert ui.window_height == d.FIELD_HEIGHT * 20 + 2 * 20
-    assert ui.window_width == round(ui.window_height * 16 / 9) - ui.cell_size_x
-    assert ui.field_pixel_width == ui.window_width - 60
-    assert ui.field_pixel_width < ui._map_pixel_width == d.FIELD_WIDTH * 15
+    assert ui._map_pixel_width == d.FIELD_WIDTH * 15
+    assert ui.field_pixel_width == ui._map_pixel_width + sprite_funcs.FIELD_SIDEBAR_GAP * ui.cell_size_x
+    assert ui.window_width == ui.field_pixel_width + 60
     assert ui._horizontal_scroll_px == 0 and ui._camera_follow_player
 
 
