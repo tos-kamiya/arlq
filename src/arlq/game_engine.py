@@ -574,7 +574,7 @@ def _vortex_rearrange(
             )
             occupied = {(other.x, other.y) for other in current.entities}
             candidates = [
-                (x, y) for x, y in affected_points
+                (x, y) for x, y in sorted(affected_points)
                 if 0 < x < len(current.field[0]) - 1
                 and 0 < y < len(current.field) - 1
                 and (x, y) not in reserved

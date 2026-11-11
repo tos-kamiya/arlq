@@ -98,14 +98,14 @@ def generate_floor_field(
             if not available_columns:
                 break
             column = available_columns.pop(rand.randrange(len(available_columns)))
-            row_candidates = [room for room in empty_candidates if room[0] == column]
+            row_candidates = sorted(room for room in empty_candidates if room[0] == column)
             if row_candidates:
                 island_rooms.add(rand.choice(row_candidates))
         for _ in range(filled_room_count):
             if not available_columns:
                 break
             column = available_columns.pop(rand.randrange(len(available_columns)))
-            row_candidates = [room for room in empty_candidates if room[0] == column]
+            row_candidates = sorted(room for room in empty_candidates if room[0] == column)
             if row_candidates:
                 filled_rooms.add(rand.choice(row_candidates))
         if (
@@ -122,7 +122,7 @@ def generate_floor_field(
         while connected != connected_rooms:
             options = [
                 (room, neighbor)
-                for room in connected
+                for room in sorted(connected)
                 for neighbor in (
                     (room[0] - 1, room[1]),
                     (room[0] + 1, room[1]),
