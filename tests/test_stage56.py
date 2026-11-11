@@ -866,7 +866,9 @@ def test_initial_boss_party_remains_in_its_room(monkeypatch, seed, escort):
     current = floors[-1]
     boss = next(e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "F")
     party = stage56.monster_party(current, boss)
-    assert {"F", "V", "k"} <= {e.tribe.char for e in party}
+    assert {"F", "V"} <= {e.tribe.char for e in party}
+    assert next(e for e in party if e.tribe.char == "F").rank == 2
+    assert next(e for e in party if e.tribe.char == "V").rank == 1
     assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
     assert all((entity.x, entity.y) == (x, y) for entity, x, y in boss_positions)
     room = stage6.tile_at((boss.x, boss.y))

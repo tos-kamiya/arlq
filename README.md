@@ -322,7 +322,7 @@ Some rooms may be sealed by walls, but D can discover passages into them.
 | **g** / **g'** Golem | Rank 1 Golems appear on every floor, and rank 2 Golems also appear on floor 3. |
 | **w** / **w'** Wyrm | Floor 2 has `w`; floor 3 has both `w` and `w'`. |
 
-The floor 3 boss party starts with `F'`, `V'`, and `k` and may gain more members; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
+The floor 3 boss party starts with `F'` and `V` and may gain more members; a Mimic also impersonates the boss. Pits drop you to the next floor. On defeat, your members respawn with you.
 
 ## Development commands
 
