@@ -891,6 +891,8 @@ def _place_collapses(floors: List[Floor], tile_width: int = d.TILE_WIDTH) -> Non
                 )
             )
 
+            upper_landings = upper.collapse_landings
+            lower_landings = lower.collapse_landings
             candidates = []
             for point in _transition_candidates(upper, lower, stair_points, tile_width=tile_width):
                 footprint = d.collapse_footprint(point)
@@ -913,8 +915,8 @@ def _place_collapses(floors: List[Floor], tile_width: int = d.TILE_WIDTH) -> Non
                     or footprint & occupied_lower
                     or footprint & upper_fixed
                     or footprint & lower_fixed
-                    or footprint & upper.collapse_landings
-                    or footprint & lower.collapse_landings
+                    or footprint & upper_landings
+                    or footprint & lower_landings
                     or footprint & upper_collapse_cells
                     or footprint & lower_collapse_cells
                 ):

@@ -377,6 +377,7 @@ def _open_points(
     for entity in current.entities:
         if isinstance(entity, d.Collapse):
             reserved.update(d.collapse_footprint((entity.x, entity.y)))
+    unavailable = occupied | reserved
     return [
         (x, y)
         for y, row in enumerate(current.field)
@@ -386,7 +387,7 @@ def _open_points(
             or (include_barriers and cell == d.CHAR_BARRIER)
             or (include_caltrops and cell == d.CHAR_CALTROP)
         )
-        and (x, y) not in occupied | reserved
+        and (x, y) not in unavailable
     ]
 
 

@@ -203,12 +203,6 @@ def _move_player(
     trace: Optional[TraceRecorder] = None,
 ) -> Optional[WallEvent]:
     """Apply one step of player movement, including sword-breaking and Pegasus jumps."""
-    phase_walls = {
-        (x, y)
-        for y, row in enumerate(current.field)
-        for x, cell in enumerate(row)
-        if cell == d.CHAR_D_GATE
-    }
     jump_x = player.x + direction[0] * d.PEGASUS_STEP_X
     jump_y = player.y + direction[1] * d.PEGASUS_STEP_Y
     jump_golem_wall = (
@@ -221,7 +215,6 @@ def _move_player(
         current.field,
         player,
         PLAYER_PASSABLE_CELLS,
-        phase_walls=phase_walls,
         break_golem_walls=d.has_member(player, d.MEMBER_ROGUE),
     )
     if wall_result is not None and wall_result.result in {
