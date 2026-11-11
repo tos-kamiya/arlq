@@ -24,9 +24,9 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'walls'
 OUT.mkdir(parents=True, exist_ok=True)
-# Canvas aspect: one sprite-mode cell (16 x 20 px at scale 1) plus a
+# Canvas aspect: one sprite-mode cell (15 x 20 px at scale 1) plus a
 # 0.25-cell rise.
-WIDTH, HEIGHT = 320, 500
+WIDTH, HEIGHT = 300, 500
 ELEVATION = math.radians(60)
 DEPTH = 0.30  # half depth (north-south) of the plinth and abacus
 TOP = 2.81  # height of the abacus top, chosen so the column fills the canvas

@@ -3,7 +3,7 @@
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-floor-training.py
 
 Two near-white concrete slabs with different surface patterns, each filling
-one sprite-mode cell (16 x 20 px at scale 1), laid like the flagstones as a
+one sprite-mode cell (15 x 20 px at scale 1), laid like the flagstones as a
 checkerboard. As with the flagstones, the GUI tints them muted mint
 (sprite_funcs.TERRAIN_THEMES), slightly darker on alternate cells.
 """
@@ -16,7 +16,7 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'floor'
 OUT.mkdir(parents=True, exist_ok=True)
-WIDTH, HEIGHT = 160, 200
+WIDTH, HEIGHT = 150, 200
 # Seen with the walls' 60-degree orthographic camera, so the slab's south
 # edge shows its thickness. The canvas is 1 x HEIGHT / WIDTH on the image
 # plane; the cell's north-south depth on the ground follows from the angle.

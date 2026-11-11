@@ -2,10 +2,10 @@
 
 Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-bridgehead.py
 
-A trial replacing the tavern cottage (build-tavern.py). It takes the same
-two cells side by side on the floor and is drawn with the same 60-degree
-orthographic camera, turn and fit to the cells' width. The outpost is a low
-curtain of grey stone blocks with battlements around a packed-earth yard,
+It takes two cells side by side on the floor and is drawn with the stairs'
+60-degree orthographic camera, turned toward screen right (YAW) and fitted
+to the cells' width. The outpost is a low curtain of grey stone blocks
+with battlements around a packed-earth yard,
 a gatehouse in the front wall with a barred plank gate, a round watchtower
 at the back west corner flying a plain blue banner, and only a campfire
 in the yard; the whole raised on a low earth mound. Like the characters, it is drawn
@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent
 OUT = Path(os.environ.get('BRIDGEHEAD_OUT',
                           ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'bridgehead'))
 OUT.mkdir(parents=True, exist_ok=True)
-CELL_PIXELS = (320, 400)
+CELL_PIXELS = (300, 400)
 UNIT_PIXELS = 300
 CELL_W = CELL_PIXELS[0] / UNIT_PIXELS
 CELLS = 2
@@ -327,7 +327,7 @@ fire_light.location.z += MOUND
 box('Earth mound', -HALF_W - 0.10, HALF_W + 0.10, SOUTH - 0.12, NORTH + 0.10, 0, MOUND,
     earth, 0.03)
 
-# Turn the outpost toward screen right, as the tavern.
+# Turn the outpost toward screen right.
 pivot = Vector((0, MID, 0))
 turn = (Matrix.Translation(pivot) @ Matrix.Rotation(YAW, 4, 'Z')
         @ Matrix.Translation(-pivot))
@@ -335,7 +335,7 @@ bpy.context.view_layer.update()
 for obj in scene.objects:
     obj.matrix_world = turn @ obj.matrix_world
 
-# Fit to the cells' width and find the overhangs, as the tavern.
+# Fit to the cells' width and find the overhangs.
 bpy.context.view_layer.update()
 points = [obj.matrix_world @ v.co for obj in scene.objects if obj.type == 'MESH'
           for v in obj.data.vertices]

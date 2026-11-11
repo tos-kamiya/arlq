@@ -23,13 +23,13 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'pit'
 OUT.mkdir(parents=True, exist_ok=True)
-# The canvas covers one 16 x 20 px cell, 0.25 cells past each side (drawn by
+# The canvas covers one 15 x 20 px cell, 0.25 cells past each side (drawn by
 # the GUI only over explored floor) and the 0.25-cell band north of it
 # (sprite_funcs.TERRAIN_SIDE, TERRAIN_OVERHANG).
-CELL_PIXELS = (320, 400)  # 16 x 20 at 20 px per screen pixel
-# One world unit is 15 screen px, the cell width the models were made on, so
-# they keep their on-screen size on the wider cells. The cell is CELL_W units
-# wide, centred on x = 0.
+CELL_PIXELS = (300, 400)  # 15 x 20 at 20 px per screen pixel
+# One world unit is 15 screen px, the cell width the models were made on
+# (CELL_W is 1 on the current 15 px cells). The cell is CELL_W units wide,
+# centred on x = 0.
 UNIT_PIXELS = 300
 CELL_W = CELL_PIXELS[0] / UNIT_PIXELS
 SIDE, OVERHANG = 0.25, 0.25

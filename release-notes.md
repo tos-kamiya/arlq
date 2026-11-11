@@ -1,5 +1,11 @@
 # ARLQ Release Notes
 
+## Unreleased
+
+- Narrow sprite-mode field cells back to 15 px (from 16 px) at scale 1, and
+  redraw the floor, wall, stair, pit, bridgehead and Dungeon Core images for
+  the 3:4 cell shape.
+
 ## 6.6.2 - 2026-11-11
 
 - Add the Stage 6 Dungeon Core objective, activated after defeating the Fire
@@ -8,8 +14,6 @@
   them; place the core anywhere eligible on the final floor.
 - Make Vortex map-memory loss follow a repeating 2×2 hatch, erasing all cells
   within 90% of its radius and 75% of cells in the outer 10%.
-
-## Unreleased
 
 ## 6.6.1 - 2026-11-10
 

@@ -50,13 +50,13 @@ scene.world = world
 # The group shot lays the characters out on the game's own grid. Sprites are
 # exported at 256 px per 2.6 units and drawn so that 186 px span 1.8 times
 # 11 px (the 13 px sprite unit less 1 px padding each side), so one screen
-# pixel is 186 / 1.8 / 11 * 2.6 / 256 units. Sprite-mode cells are 16 px wide
-# (SPRITE_CELL_SIZE_X), 1.53 units, and 20 px tall; the 60-degree view
+# pixel is 186 / 1.8 / 11 * 2.6 / 256 units. Sprite-mode cells are 15 px wide
+# (SPRITE_CELL_SIZE_X), 1.43 units, and 20 px tall; the 60-degree view
 # shortens floor depth by sin 60, so a cell is 20 px / sin 60 = 2.20 units
 # deep. The models are built at their in-game size, so on these cells they
 # look as large as in the game.
 SCREEN_PIXEL = 186 / 1.8 / 11 * 2.6 / 256
-CELL_W = SCREEN_PIXEL * 16
+CELL_W = SCREEN_PIXEL * 15
 CELL_D = SCREEN_PIXEL * 20 / math.sin(math.radians(60))
 GRID_COLS, GRID_ROWS = 14, 7
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;

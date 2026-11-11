@@ -405,10 +405,10 @@ def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
 
     assert (ui.window_width, ui.window_height) == (200, 120)
     assert ui.scale == pytest.approx(2)
-    assert ui.cell_size_x == pytest.approx(32)
+    assert ui.cell_size_x == pytest.approx(30)
     assert ui.cell_size_y == pytest.approx(40)
     assert ui.field_pixel_width == pytest.approx(106)
-    assert ui._horizontal_scroll_px == pytest.approx(32)
+    assert ui._horizontal_scroll_px == pytest.approx(30)
 
 
 @pytest.mark.parametrize('maximized_height', [1080, 2160])
@@ -452,7 +452,7 @@ def test_sprite_default_window_is_one_cell_narrower_and_field_overflows():
     assert ui.window_height == d.FIELD_HEIGHT * 20 + 2 * 20
     assert ui.window_width == round(ui.window_height * 16 / 9) - ui.cell_size_x
     assert ui.field_pixel_width == ui.window_width - 60
-    assert ui.field_pixel_width < ui._map_pixel_width == d.FIELD_WIDTH * 16
+    assert ui.field_pixel_width < ui._map_pixel_width == d.FIELD_WIDTH * 15
     assert ui._horizontal_scroll_px == 0 and ui._camera_follow_player
 
 
@@ -473,7 +473,7 @@ def test_sprite_resize_constraints_allow_zoom_range():
 
     ui._update_minimum_window_size()
 
-    assert size_constraints[0][0:2] == ('minimum', 273)
+    assert size_constraints[0][0:2] == ('minimum', 269)
     assert size_constraints[0][2] == 250
     assert size_constraints[1] == ('maximum', sprite_funcs.MAX_WINDOW_WIDTH, 1720)
 
@@ -1037,7 +1037,7 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     ui._frame_drawable_cache = None
     ui._reused_drawable_ids = set()
     ui._display_color = lambda color: color
-    ui._terrain_images = {char: SimpleNamespace(width=480, height=600, char=char)
+    ui._terrain_images = {char: SimpleNamespace(width=450, height=600, char=char)
                           for char in sprite_funcs.TERRAIN_FILES}
     ui._terrain_regions = {}
     ui._stage_field = [[' ', ' ']]
@@ -1066,9 +1066,9 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     # quarter cell over the explored floor beside it and is cropped at the
     # map edge on its other side.
     assert visible.y == 480 and visible.image.height * visible.scale_y == pytest.approx(30)
-    assert visible.image.region == (80, 480) and visible.x == 0
+    assert visible.image.region == (75, 450) and visible.x == 0
     assert visible.image.width * visible.scale_x == pytest.approx(13 * 1.25)
-    assert explored.image.region == (0, 400)
+    assert explored.image.region == (0, 375)
     assert explored.x == pytest.approx(13 - 13 * sprite_funcs.TERRAIN_SIDE)
     assert visible.group is ui._row_group(0, layer)
 
@@ -1137,7 +1137,7 @@ def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui._frame_drawable_cache = None
     ui._reused_drawable_ids = set()
     ui._display_color = lambda color: color
-    ui._terrain_images = {char: SimpleNamespace(width=480, height=500, char=char)
+    ui._terrain_images = {char: SimpleNamespace(width=450, height=500, char=char)
                           for char in sprite_funcs.TERRAIN_FILES}
     ui._terrain_regions = {}
     ui._stage_field = [[' ', d.CHAR_COLLAPSE, ' ']]
@@ -1215,7 +1215,7 @@ def test_matching_floor_cells_are_copied_as_one_checkerboard(cached_floor_ui):
     sprite = ui._drawables[0]
     assert sprite.image is ui._floor_tiles[sprite_funcs.VISIBLE_FLOOR, False]
     assert (sprite.x, sprite.y) == (0, 420)
-    assert sprite.scale_x == pytest.approx(26 / 32)
+    assert sprite.scale_x == pytest.approx(26 / 30)
     assert sprite.scale_y == 1
     assert sprite.blend_src == pyglet.gl.GL_ONE
     assert sprite.blend_dest == pyglet.gl.GL_ZERO
@@ -1246,7 +1246,7 @@ def test_floor_backdrop_is_reused_and_follows_scroll(cached_floor_ui, monkeypatc
     ui._draw_floor_backdrop()
     assert len(uploads) == 1
     assert [sprite.x for sprite in ui._drawables] == [0, -26]
-    assert all(sprite.scale_x == pytest.approx(26 / 32) for sprite in ui._drawables)
+    assert all(sprite.scale_x == pytest.approx(26 / 30) for sprite in ui._drawables)
     assert all(sprite.scale_y == 1 for sprite in ui._drawables)
 
 
@@ -1469,7 +1469,7 @@ def test_offscreen_terrain_still_reads_neighbors(sprite_ui):
     ui = sprite_ui
     ui.window_width = 100
     ui._horizontal_scroll_px = 31
-    ui._terrain_images = {d.CHAR_COLLAPSE: SimpleNamespace(width=480, height=500)}
+    ui._terrain_images = {d.CHAR_COLLAPSE: SimpleNamespace(width=450, height=500)}
     ui._terrain_regions = {}
     ui._stage_field = [[d.CHAR_FLOOR, d.CHAR_COLLAPSE, d.CHAR_FLOOR]]
     ui._stage_discovered_at = lambda x, y: True
@@ -1713,7 +1713,7 @@ def test_floor_transition_shows_only_the_players_landing(sprite_ui, monkeypatch,
     ui.combat_effect_seconds = 0.3
     ui.field_height = 20
     ui.field_pixel_width = 26 * 13
-    ui._landing_image = SimpleNamespace(width=480, height=600)
+    ui._landing_image = SimpleNamespace(width=450, height=600)
     shown, deleted = [], []
     slept = []
     monkeypatch.setattr('arlq.sprite_funcs.time.sleep', slept.append)
@@ -1762,7 +1762,7 @@ def test_floor_transition_is_drawn_on_the_stairs_cell(sprite_ui, monkeypatch):
     ui.field_height = 20
     ui.field_pixel_width = 26 * 13
     ui._horizontal_scroll_px = 26
-    ui._landing_image = SimpleNamespace(width=480, height=600)
+    ui._landing_image = SimpleNamespace(width=450, height=600)
     made = []
     monkeypatch.setattr('arlq.sprite_funcs.time.sleep', lambda seconds: None)
     monkeypatch.setattr(ui, '_flip', lambda: None)
@@ -1791,13 +1791,13 @@ def test_boss_route_lights_a_diamond_on_the_floor_stone_even_under_the_player(
     ui = sprite_ui
     ui.window_width = None
     ui._horizontal_scroll_px = 0
-    ui._route_mark_image = SimpleNamespace(width=160, height=200)
+    ui._route_mark_image = SimpleNamespace(width=150, height=200)
     ui._route_mark_group = object()
     ui._draw_boss_route_marker((2, 3), visible, True)
     mark = ui._drawables[0]
     assert mark.image is ui._route_mark_image
     assert (mark.x, mark.y) == (2 * 13, 500 - 4 * 20)
-    assert (mark.scale_x, mark.scale_y) == pytest.approx((13 / 160, 20 / 200))
+    assert (mark.scale_x, mark.scale_y) == pytest.approx((13 / 150, 20 / 200))
     assert mark.color == (round(255 * sprite_funcs.ROUTE_MARK_SHADE[visible]),) * 3
     assert mark.group is ui._route_mark_group
     assert mark.blend_dest == pyglet.gl.GL_ONE  # light added onto the floor stone
@@ -1843,7 +1843,7 @@ def test_bridgehead_parts_are_aligned_and_dim_when_explored(sprite_ui):
     ui = sprite_ui
     ui._bridgehead_under = 0.4
     ui._bridgehead_height = 1.75
-    ui._bridgehead_images = {part: SimpleNamespace(width=320, height=620) for part in ('/', '\\')}
+    ui._bridgehead_images = {part: SimpleNamespace(width=300, height=620) for part in ('/', '\\')}
     ui._draw_bridgehead((4, 5), '/', True)
     ui._draw_bridgehead((5, 5), '\\', False)
     left, right = ui._drawables

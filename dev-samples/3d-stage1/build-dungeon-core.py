@@ -35,7 +35,7 @@ ROOT = Path(__file__).resolve().parent
 OUT = Path(os.environ.get('DUNGEON_CORE_OUT',
                           ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'dungeon-core'))
 OUT.mkdir(parents=True, exist_ok=True)
-CELL_PIXELS = (320, 400)
+CELL_PIXELS = (300, 400)
 UNIT_PIXELS = 300
 CELL_W = CELL_PIXELS[0] / UNIT_PIXELS
 CELLS = 3

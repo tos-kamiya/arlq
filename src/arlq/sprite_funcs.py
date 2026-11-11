@@ -155,8 +155,8 @@ MOUSE_CURSOR_SECONDS = 3.0
 STRENGTH_TEXT_SCALE = 0.7
 # Field cells are wider than the text GUI's (13) so characters overflow
 # their cells less; sprites and their discs keep the CELL_SIZE_X-based size.
-SPRITE_CELL_SIZE_X = 16
-# Keep an integer 32x40 pixel grid per field cell at every window size.
+SPRITE_CELL_SIZE_X = 15
+# Keep an integer 30x40 pixel grid per field cell at every window size.
 LOW_RESOLUTION_DETAIL_SCALE = 2.0
 MIPMAP_LOD_BIAS = -1.0
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
