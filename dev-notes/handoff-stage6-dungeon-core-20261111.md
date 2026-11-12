@@ -12,11 +12,13 @@
 
 > ダンジョンの奥に「ダンジョンコア」が出現した。ダンジョンコアは膨大な魔力を蓄えた結晶であり、魔物を呼び寄せ、また生み出す。それ自体に攻撃力はないが、周りに集まった多くの魔物によって守られている。
 > 王からダンジョンコアの破壊を依頼された冒険者が、前哨基地から討伐に向かう。
+> ダンジョンコアは成長を続け、2000ターンで暴走して地上の王都を崩壊させる。
 
 English:
 
 > Deep in the dungeon, a Dungeon Core has emerged. This crystal, brimming with vast magical power, draws monsters to it and spawns new ones. The core cannot attack, but it is shielded by the many monsters that gather around it.
 > At the king's request, an adventurer sets out from the outpost to destroy it.
+> The core keeps growing, and at 2,000 turns it runs wild and brings down the capital above.
 
 ## 名前の検討経緯
 
@@ -70,3 +72,25 @@ DUNGEON_CORE_OUT=<出力先> blender --background --threads 4 --python dev-sampl
 - 柱の並びの横幅を1.7マス（`FRAME_CELLS`）に合わせる。画像は3マス幅（`CELLS`）で、その中央に置く。はみ出しはマスの上へ0.45マス、下へ0.65マス。
 - 画像の書き出し先の既定は `src/arlq/assets/dungeon-core/`（`dungeon-core.png` と、`cells`・`under`・`overhang` を書いた `dungeon-core.json`）。書き出し済みで、`preview-terrain.py` の右端に表示される。ゲームではまだ使っていない。
 - 検討の経緯: 自然の岩の柱と岩の台座から始め、四角い柱、上下の梁でつないだ枠、枠を斜めにした形、枠を90度回した形を経て、今の十字の4本柱になった。
+
+## 成長する4段階のコア（2026-11-13）
+
+ストーリー上、コアはターンの経過とともに成長し、制限ターンで暴走するものとした。`build-dungeon-core.py` は小・中・大・特大の4枚（`dungeon-core-{small,medium,large,huge}.png`）を、特大に合わせた共通のキャンバスで書き出す（結果としてJSONの値は従来と同じ）。柱の形と大きさは4枚とも同じで、溝と帯の発光の強さだけが段階ごとに強くなる。
+
+- 小: 水晶は約0.6倍で、色が濃く透明度は低め。目は上まぶたが下がった半眼。トゲは短く少ない。
+- 中: 従来のモデル。
+- 大: 水晶は1.35倍で、柱の頂部を越える。ヒビはない。目は見開き、虹彩が広い。瞳孔の太さは中と同じ。トゲは多く長い。
+- 特大: 暴走寸前。水晶は横1.65倍・高さ1.45倍と横に膨らむ（横は約1.74倍で柱に、高さは約1.47倍で床に当たる）。ヒビは特大だけに入り、各面3本で明るく中心近くまで届く。目は苦しげに見開く: ほぼ円形に開き、虹彩（大と同程度の大きさ）の周りを白目が囲む。縦長の瞳孔は猫の目が見開いたときのように横に広がり、上下のとがったレモン型になる。白目には縁から充血した血管が入る。
+
+ゲームでは `d.dungeon_core_growth(turn)` で段階を決め、`STAGE6_CORE_GROWTH_TURNS`（500）ごとに1段階進む（0・500・1000・1500ターン目）。スプライトGUIのみの変更で、ターミナル表示は `[*]` のまま。暴走そのものの演出は未着手。
+
+黒い光のトゲは、トゲに見えないようにぼかした: 不透明度を下げ、先端へ早く薄れ、各側面の稜線（幅方向の両端）に向かっても透けるようにし、幅を1.5倍にした。
+
+## 暴走のストーリーとメッセージ（2026-11-13）
+
+時間切れを「コアが暴走して王都が崩壊する」ことにした。メッセージ（英語 / 日本語）:
+
+- 開始時: `-- To avert the Dungeon Core's rampage, the capital asks you to destroy it.` / `-- ダンジョンコア暴走の災厄を防ぐため、王都は冒険者に発見と破壊を依頼した。`
+- 残り500ターン（1500ターン目、特大になるのと同時）: `-- The Dungeon Core is swelling; its rampage draws near!` / `-- ダンジョンコアが膨れ上がり、暴走のときが近づいている！`。残り200・100ターンの警告はなくした。成長時（500・1000ターン目）のメッセージは出さない。
+- コア破壊時（新規）: `-- The Dungeon Core is destroyed! The capital is saved.` / `-- ダンジョンコアを破壊した！王都の崩壊は防がれた。`
+- 時間切れ: `>> The Dungeon Core ran wild and the capital fell! <<` / `>> ダンジョンコアが暴走し、王都が崩壊した！ <<`

@@ -106,7 +106,7 @@ def status_prefix(
     text = ""
     if stage_num != 0:
         text += f"ST: {stage_num}  "
-    if stage_num == 6:
+    if stage_num == 6 and not player.dungeon_core_destroyed:
         text += f"TURN: {turn}/{d.STAGE6_TURN_LIMIT}  "
     elif game_start_turn is None:
         text += f"TURN: {turn}  "

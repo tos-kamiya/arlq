@@ -747,14 +747,18 @@ class SpriteUI(PygletUI):
         else:
             self._bridgehead_images = {}
         self._terrain_regions = {}
-        core_path = assets / 'dungeon-core' / 'dungeon-core.png'
-        self._dungeon_core_image = None
+        core_dir = assets / 'dungeon-core'
+        core_paths = {growth: core_dir / f'dungeon-core-{growth}.png'
+                      for growth in d.DUNGEON_CORE_GROWTHS}
+        self._dungeon_core_images = {}
         self._dungeon_core_under = self._dungeon_core_overhang = 0.0
-        if core_path.is_file():
-            placement = json.loads(core_path.with_suffix('.json').read_text())
+        if all(path.is_file() for path in core_paths.values()):
+            placement = json.loads((core_dir / 'dungeon-core.json').read_text())
             self._dungeon_core_under = placement['under']
             self._dungeon_core_overhang = placement['overhang']
-            self._dungeon_core_image = mipmapped(pyglet.image.load(str(core_path)))
+            self._dungeon_core_images = {growth: mipmapped(pyglet.image.load(str(path)))
+                                         for growth, path in core_paths.items()}
+        self._dungeon_core_growth = 'small'
         self._landing_image = (mipmapped(pyglet.image.load(str(assets / LANDING_FILE)))
                                if (assets / LANDING_FILE).is_file() else None)
         self._barrier_images = [barrier_image(variant) for variant in (0, 1)]
@@ -916,6 +920,7 @@ class SpriteUI(PygletUI):
         self._respawn_glows = kwargs.get('respawn_glows') or set()
         self._known_types = kwargs.get('known_types') or set()
         self._cur_torched = kwargs.get('cur_torched')
+        self._dungeon_core_growth = d.dungeon_core_growth(kwargs.get('turn') or 0)
         player = kwargs.get('player')
         self._show_pit_up_marker = (
             player is not None and d.has_member(player, d.MEMBER_DUNGEON_EXPLORER)
@@ -2229,7 +2234,7 @@ class SpriteUI(PygletUI):
 
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
-        if text == d.CHAR_DUNGEON_CORE and self._dungeon_core_image is not None:
+        if text == d.CHAR_DUNGEON_CORE and self._dungeon_core_images:
             self._draw_dungeon_core(pos)
             return
         if text == d.CHAR_BARRIER and self._floor_images is not None:
@@ -2251,7 +2256,7 @@ class SpriteUI(PygletUI):
 
     def _draw_dungeon_core(self, pos):
         x, y = pos
-        image = self._dungeon_core_image
+        image = self._dungeon_core_images[self._dungeon_core_growth]
         left = self._field_col_x(x - 1)
         bottom = self.window_height - (
             y + 1 + self._dungeon_core_under

@@ -644,6 +644,8 @@ def _defeat_monster(
     unlock_treasure_for_defeat(entity, linked_entities)
     activate_mimic_for_defeat(entity, linked_entities)
     activate_dungeon_core_for_defeat(entity, linked_entities)
+    if ch == d.CHAR_DUNGEON_CORE:
+        player.dungeon_core_destroyed = True
     has_linked_targets = any(
         isinstance(target, (d.Treasure, d.Monster))
         and target.boss_id is not None
@@ -1190,6 +1192,8 @@ def _resolve_party_contact(
         ):
             message = "-- The Dungeon Core has appeared!"
         boss_message = trp(message, boss.tribe.event_message_importance)
+    if stage_num == 6 and d.CHAR_DUNGEON_CORE in party_chars:
+        boss_message = trp("-- The Dungeon Core is destroyed! The capital is saved.", 9)
     popup = None
     popup_tone = "default"
     if "A" in party_chars and player.level > old_level:
@@ -1979,6 +1983,7 @@ def run_game(
         floor_data.update_outer_wall_decor()
     player.known_monsters = set(d.INITIALLY_KNOWN_MONSTERS)
     player.boss_defeated = False
+    player.dungeon_core_destroyed = False
     player.treasure_collected = False
     replay_context = (
         ReplayContext(stage_num, initial_seed, config)
@@ -2319,18 +2324,20 @@ def run_game(
             trace.commit_turn()
         if player.stage_won:
             break
-        if stage_num == 6 and turn >= d.STAGE6_TURN_LIMIT:
+        if stage_num == 6 and not player.dungeon_core_destroyed and turn >= d.STAGE6_TURN_LIMIT:
             _stop_movement_repeat(ui)
             break
-        if stage_num == 6 and d.STAGE6_TURN_LIMIT - turn in (500, 200, 100):
-            message = (MESSAGE_TICKS, trp("-- Time is running out!", 7))
+        if (stage_num == 6 and not player.dungeon_core_destroyed
+                and d.STAGE6_TURN_LIMIT - turn == 500):
+            message = (MESSAGE_TICKS, trp("-- The Dungeon Core is swelling; its rampage draws near!", 7))
 
     won = player.stage_won
     if trace is not None:
         trace.set_outcome("win" if won else "lose")
 
-    if not won and stage_num == 6 and turn >= d.STAGE6_TURN_LIMIT:
-        message = (-1, trp(">> Time limit exceeded! <<", 9))
+    if (not won and stage_num == 6 and not player.dungeon_core_destroyed
+            and turn >= d.STAGE6_TURN_LIMIT):
+        message = (-1, trp(">> The Dungeon Core ran wild and the capital fell! <<", 9))
     elif not won:
         message = (-1, trp(">> Collapsed from hunger! <<", 9))
     else:

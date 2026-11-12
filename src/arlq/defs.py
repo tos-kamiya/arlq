@@ -16,6 +16,7 @@ from .stage_data import (
     STAGE4_FLOORS as STAGE4_FLOORS,
     STAGE6_FLOORS as STAGE6_FLOORS,
     STAGE6_TURN_LIMIT as STAGE6_TURN_LIMIT,
+    STAGE6_CORE_GROWTH_TURNS as STAGE6_CORE_GROWTH_TURNS,
     STAGE6_INITIAL_MONSTERS as STAGE6_INITIAL_MONSTERS,
     STAGE6_INITIAL_SPAWN_DRAWS as STAGE6_INITIAL_SPAWN_DRAWS,
     STAGE6_SPAWN_INTERVAL as STAGE6_SPAWN_INTERVAL,
@@ -242,6 +243,16 @@ COLLAPSE_FOOTPRINT_OFFSETS: Tuple[Point, ...] = (
     (0, 1),
     (-1, 0),
 )
+
+
+DUNGEON_CORE_GROWTHS: Tuple[str, ...] = ("small", "medium", "large", "huge")
+
+
+def dungeon_core_growth(turn: int) -> str:
+    """How far the Stage 6 Dungeon Core has grown at `turn`, one stage every
+    STAGE6_CORE_GROWTH_TURNS, staying at the last."""
+    stage = min(max(turn, 0) // STAGE6_CORE_GROWTH_TURNS, len(DUNGEON_CORE_GROWTHS) - 1)
+    return DUNGEON_CORE_GROWTHS[stage]
 
 
 def collapse_footprint(center: Point) -> Set[Point]:
@@ -526,6 +537,7 @@ class Player(Entity):
         self.fairy: Optional[Fairy] = fairy
         self.karma: int = 0
         self.boss_defeated: bool = False
+        self.dungeon_core_destroyed: bool = False
         self.treasure_collected: bool = False
         # Identified monster types are known across all floors.
         self.known_monsters: Set[str] = set(INITIALLY_KNOWN_MONSTERS)

@@ -42,14 +42,6 @@ def test_strength_label_identification_distinguishes_ranks(label, known_types, e
     assert display.strength_label_known(label, known_types) is expected
 
 
-@pytest.fixture(autouse=True)
-def english_messages():
-    previous_language = i18n.get_language()
-    i18n.set_language("en")
-    yield
-    i18n.set_language(previous_language)
-
-
 KEYS = {
     "U": (0, -1),
     "D": (0, 1),

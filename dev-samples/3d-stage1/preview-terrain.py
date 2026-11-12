@@ -1,11 +1,12 @@
 """Headless sample of the sprite GUI's terrain, each drawn as in the game and
-labelled, in three rows: the two floor tiles, a wall of marble columns, and
-the up and down stairs; a golem rock, a pit, and the rocks fallen from a pit
-on the floor above; the barrier (both checkerboard variants), the reduced
-barrier shown near the player while Guardian lowers its damage, the trial
-Stage 6 bridgehead (build-bridgehead.py) and the trial Stage 6 Dungeon Core
-(build-dungeon-core.py). The bridgehead and Dungeon Core images are laid over
-their two and three cells here, at the game's scale, placed by their JSON.
+labelled, in two rows: the two floor tiles, a wall of marble columns, the
+up and down stairs, a golem rock, a pit, and the rocks fallen from a pit on
+the floor above; the barrier (both checkerboard variants), the reduced
+barrier shown near the player while Guardian lowers its damage, the Stage 6
+bridgehead (build-bridgehead.py) and the Stage 6 Dungeon Core at each of its
+four growth stages (build-dungeon-core.py). The bridgehead and Dungeon Core
+images are laid over their two and three cells here, at the game's scale,
+placed by their JSON.
 
     PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py [--stage N]
 
@@ -34,19 +35,22 @@ OUT = Path(__file__).resolve().parent / 'heroic' / (
     'preview-terrain.jpg' if STAGE is None else 'preview-terrain-stage%d.jpg' % STAGE)
 # Field row of each preview row, and (label, first column, last column) of
 # each sample along it.
+# The Dungeon Core's growth stages, each on three cells from its column.
+CORES = [(growth, 14 + 4 * k) for k, growth in enumerate(d.DUNGEON_CORE_GROWTHS)]
 ROWS = [
     (4, [('FLOOR A / B', 2, 3), ('WALL (COLUMNS)', 6, 8), ('STAIRS UP', 11, 11),
-         ('STAIRS DOWN', 14, 14)]),
-    (7, [('GOLEM ROCK', 2, 2), ('PIT', 5, 5), ('FALLEN ROCKS', 8, 8)]),
-    (10, [('BARRIER', 2, 3), ('BARRIER (GUARDIAN)', 6, 7), ('BRIDGEHEAD', 10, 11),
-          ('DUNGEON CORE', 13, 15)]),
+         ('STAIRS DOWN', 14, 14), ('GOLEM ROCK', 17, 17), ('PIT', 20, 20),
+         ('FALLEN ROCKS', 23, 23)]),
+    (7, [('BARRIER', 2, 3), ('BARRIER (GUARDIAN)', 6, 7), ('BRIDGEHEAD', 10, 11)]
+     + [('CORE ' + growth.upper(), column, column + 2) for growth, column in CORES]),
 ]
-LEFT, RIGHT = 1, 15
+LEFT, RIGHT = 1, CORES[-1][1] + 3
 # Barrier cells drawn as when Guardian reduces their damage near the player.
-REDUCED_BARRIERS = {(6, 10), (7, 10)}
+REDUCED_BARRIERS = {(6, 7), (7, 7)}
 ASSETS = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets'
-# Images laid over cells: (asset name, field row, first column).
-OVERLAYS = [('bridgehead', 10, 10), ('dungeon-core', 10, 13)]
+# Images laid over cells: (asset folder, image name, field row, first column).
+OVERLAYS = [('bridgehead', 'bridgehead', 7, 10)] + [
+    ('dungeon-core', 'dungeon-core-' + growth, 7, column) for growth, column in CORES]
 
 ui = SpriteUI(scale=4)
 field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
@@ -55,11 +59,11 @@ for x in range(6, 9):
     field[4][x] = d.CHAR_WALL
 field[4][11] = d.CHAR_STAIRS_UP
 field[4][14] = d.CHAR_STAIRS_DOWN
-field[7][2] = d.CHAR_GOLEM_WALL
-field[7][5] = d.CHAR_COLLAPSE
-decor[7][8] = d.DECOR_FALLEN_ROCKS
+field[4][17] = d.CHAR_GOLEM_WALL
+field[4][20] = d.CHAR_COLLAPSE
+decor[4][23] = d.DECOR_FALLEN_ROCKS
 for x in (2, 3, 6, 7):
-    field[10][x] = d.CHAR_BARRIER
+    field[7][x] = d.CHAR_BARRIER
 ui._barrier_look = lambda x, y: 'reduced' if (x, y) in REDUCED_BARRIERS else 'light'
 seen = [[1] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
 # The player stands outside the cropped area.
@@ -74,13 +78,13 @@ with tempfile.TemporaryDirectory() as work:
     full = Path(work) / 'full.png'
     pyglet.image.get_buffer_manager().get_color_buffer().save(str(full))
     cx, cy = ui.cell_size_x, ui.cell_size_y
-    for name, row, column in OVERLAYS:
+    for name, image, row, column in OVERLAYS:
         placing = json.loads((ASSETS / name / (name + '.json')).read_text())
         image_left = round(ui._field_col_x(column))
         image_bottom = round((row + 1 + placing['under']) * cy)
         image_width = round(placing['cells'] * cx)
         image_height = round((placing['under'] + 1 + placing['overhang']) * cy)
-        subprocess.run(['convert', str(full), '(', str(ASSETS / name / (name + '.png')),
+        subprocess.run(['convert', str(full), '(', str(ASSETS / name / (image + '.png')),
                         '-resize', '%dx%d!' % (image_width, image_height), ')',
                         '-geometry', '+%d+%d' % (image_left, image_bottom - image_height),
                         '-composite', str(full)], check=True)

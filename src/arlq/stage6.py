@@ -720,22 +720,20 @@ def relocate_candidates(floors, player, candidates, player_floor=None):
         current.entities.append(member)
 
 
-def _choose_stair_point(
-    candidates: list[d.Point], used_sections: set[d.Point], retries: int = 20
-) -> d.Point:
-    """Prefer a new room section, retrying random choices before fallback."""
-    for _ in range(retries):
-        point = rand.choice(candidates)
-        if tile_at(point) not in used_sections:
-            return point
-    distinct_section_candidates = [
-        point for point in candidates if tile_at(point) not in used_sections
+def _choose_stair_point(candidates: list[d.Point], used_sections: set[d.Point]) -> d.Point | None:
+    """Prefer sections beyond the eight neighbors, then use an adjacent section."""
+    distinct = [point for point in candidates if tile_at(point) not in used_sections]
+    distant = [
+        point for point in distinct
+        if all(max(abs(tile_at(point)[0] - sx), abs(tile_at(point)[1] - sy)) > 1
+               for sx, sy in used_sections)
     ]
-    return rand.choice(distinct_section_candidates or candidates)
+    choices = distant or distinct
+    return rand.choice(choices) if choices else None
 
 
 def _place_additional_stairs(floors: list[Floor]) -> None:
-    """Add a second ordinary paired staircase to every floor transition."""
+    """Add a second paired staircase when another section is available."""
     for upper, lower in zip(floors, floors[1:]):
         occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
         occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
@@ -762,6 +760,7 @@ def _place_additional_stairs(floors: list[Floor]) -> None:
         entry = upper.up_stairs[-1] if upper.up_stairs else upper.up
         reachable = _reachable_floor_points(upper, entry)
         lower_reachable = _reachable_floor_points(lower, lower.up)
+        used_sections = {tile_at(point) for point in upper.down_stairs}
         candidates = [
             (x, y)
             for y, row in enumerate(upper.field)
@@ -779,10 +778,9 @@ def _place_additional_stairs(floors: list[Floor]) -> None:
                 for sx, sy in current.up_stairs + current.down_stairs
             )
         ]
-        used_sections = {tile_at(point) for point in upper.down_stairs}
-        if not candidates:
-            raise _BossRouteNotFound("no position for a second paired staircase")
         point = _choose_stair_point(candidates, used_sections)
+        if point is None:
+            continue
         upper.down_stairs.append(point)
         lower.up_stairs.append(point)
         x, y = point

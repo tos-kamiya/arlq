@@ -33,6 +33,7 @@ def test_boss_id_links_exact_individual_and_cross_floor_targets():
     game_engine._defeat_monster(boss, floors[0], player, [0], [(1, 1)], Counter(), floors=floors, stage_num=6)
     assert first.unlocked and mimic.active and not second.unlocked
     assert player.boss_defeated
+    assert not player.dungeon_core_destroyed
 
 
 def test_mimic_does_not_trigger_its_own_linked_targets():
@@ -60,16 +61,18 @@ def test_dungeon_core_activates_after_final_fire_drake_and_unlocks_its_reward():
     assert core.active and core.revealed
     glyphs = display.revealed_entity_glyphs(core, set(), False, 1, None)
     assert [(glyph.x, glyph.char) for glyph in glyphs] == [(9, "["), (10, "*"), (11, "]")]
+    player = d.Player(2, 2, 100, d.LP_INIT)
     game_engine._defeat_monster(
         core,
         floor(entities),
-        d.Player(2, 2, 100, d.LP_INIT),
+        player,
         [0],
         [(2, 2)],
         Counter(),
         stage_num=6,
     )
     assert chest.unlocked and mimic.active
+    assert player.dungeon_core_destroyed
 
 
 def test_generated_stages_assign_matching_boss_ids():
@@ -89,3 +92,28 @@ def test_generated_stages_assign_matching_boss_ids():
         assert all(chest.boss_id in {boss.boss_id for boss in bosses} for chest in chests)
         for mimic in (e for e in entities if isinstance(e, d.Monster) and e.tribe.char == "M"):
             assert mimic.boss_id in {boss.boss_id for boss in bosses}
+
+
+def test_dungeon_core_grows_with_turns_toward_the_limit():
+    assert d.STAGE6_CORE_GROWTH_TURNS == 500
+    assert d.dungeon_core_growth(0) == "small"
+    assert d.dungeon_core_growth(499) == "small"
+    assert d.dungeon_core_growth(500) == "medium"
+    assert d.dungeon_core_growth(999) == "medium"
+    assert d.dungeon_core_growth(1000) == "large"
+    assert d.dungeon_core_growth(1499) == "large"
+    assert d.dungeon_core_growth(1500) == "huge"
+    assert d.dungeon_core_growth(d.STAGE6_TURN_LIMIT) == "huge"
+
+
+def test_destroying_the_dungeon_core_announces_the_capital_is_saved():
+    core = d.Monster(10, 10, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_DUNGEON_CORE], boss_id=2)
+    chest = d.Treasure(20, 10, "T*", boss_id=2)
+    current = floor([core, chest])
+    player = d.Player(9, 10, 100, d.LP_INIT)
+    result = game_engine._resolve_party_contact(
+        core, current, [current], player, [0], [(2, 2)], Counter(), None, 6
+    )
+    assert result.message == "-- The Dungeon Core is destroyed! The capital is saved."
+    assert result.message.importance == 9
+    assert player.dungeon_core_destroyed and chest.unlocked

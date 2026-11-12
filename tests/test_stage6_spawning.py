@@ -607,8 +607,8 @@ def test_initial_monsters_are_alone_except_boss_party(seed):
                 assert len(party) == 1
 
 
-@pytest.mark.parametrize("win_on_last_turn", [False, True])
-def test_stage6_time_limit_allows_winning_on_last_turn(monkeypatch, win_on_last_turn):
+@pytest.mark.parametrize("destroy_core_on_last_turn", [False, True])
+def test_stage6_time_limit_allows_core_destruction_on_last_turn(monkeypatch, destroy_core_on_last_turn):
     from types import SimpleNamespace
     from arlq.trace import TraceRecorder
 
@@ -621,8 +621,10 @@ def test_stage6_time_limit_allows_winning_on_last_turn(monkeypatch, win_on_last_
 
     def step(*args, **kwargs):
         calls.append(1)
-        if len(calls) == 2 and win_on_last_turn:
+        if len(calls) == 2 and destroy_core_on_last_turn:
+            player.dungeon_core_destroyed = True
             player.boss_defeated = True
+        if len(calls) == 3:
             player.treasure_collected = True
         return None
 
@@ -636,8 +638,8 @@ def test_stage6_time_limit_allows_winning_on_last_turn(monkeypatch, win_on_last_
     )
     trace = TraceRecorder(params={})
     game_engine.run_game(ui, "test", stage_num=6, trace=trace)
-    assert len(calls) == 2
-    assert frames[-1]["turn"] == 2
-    assert ("Treasure chest obtained" in frames[-1]["message"]) == win_on_last_turn
-    if not win_on_last_turn:
-        assert "Time limit exceeded" in frames[-1]["message"]
+    assert len(calls) == (3 if destroy_core_on_last_turn else 2)
+    assert frames[-1]["turn"] == (3 if destroy_core_on_last_turn else 2)
+    assert ("Treasure chest obtained" in frames[-1]["message"]) == destroy_core_on_last_turn
+    if not destroy_core_on_last_turn:
+        assert "capital fell" in frames[-1]["message"]

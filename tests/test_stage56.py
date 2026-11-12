@@ -1122,12 +1122,33 @@ def test_candidate_glyph_is_known_on_first_sighting():
     )
 
 
+def test_additional_stairs_are_skipped_without_reachable_candidates(monkeypatch):
+    floors, _ = stage6.build()
+    before = [(list(floor.up_stairs), list(floor.down_stairs)) for floor in floors]
+    monkeypatch.setattr(stage6, "_reachable_floor_points", lambda *_: set())
+
+    stage6._place_additional_stairs(floors)
+
+    assert [(floor.up_stairs, floor.down_stairs) for floor in floors] == before
+
+
+def test_additional_stairs_prefer_distant_sections_and_fall_back(monkeypatch):
+    monkeypatch.setattr(stage6, "tile_at", lambda point: point)
+    monkeypatch.setattr(stage6.rand, "choice", lambda points: points[0])
+    used = {(1, 1)}
+    adjacent, distant = (2, 2), (3, 1)
+
+    assert stage6._choose_stair_point([(1, 1), adjacent, distant], used) == distant
+    assert stage6._choose_stair_point([(1, 1), adjacent], used) == adjacent
+    assert stage6._choose_stair_point([(1, 1)], used) is None
+
+
 @pytest.mark.parametrize("seed", range(20))
 def test_floor_connections_are_reachable_and_keep_members_on_transitions(seed):
     engine.rand.set_seed(seed)
     floors, player = stage6.build()
     for upper, lower in zip(floors, floors[1:]):
-        assert len(upper.down_stairs) == 2
+        assert len(upper.down_stairs) in (1, 2)
         assert len(lower.up_stairs) == len(upper.down_stairs)
         assert upper.down_stairs == lower.up_stairs
         assert set(upper.down_stairs) <= stage6._reachable_floor_points(upper, upper.up)

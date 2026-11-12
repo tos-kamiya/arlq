@@ -214,6 +214,9 @@ STAGE4_FLOORS = len(STAGE4_ROSTER)
 # Stage 6 dungeon and monster-party settings.
 STAGE6_FLOORS = 3
 STAGE6_TURN_LIMIT = 2000
+# Turns between the Dungeon Core's growth stages as it swells toward
+# running wild at the turn limit (sprite GUI only).
+STAGE6_CORE_GROWTH_TURNS = 500
 STAGE6_EXTRA_CORRIDORS = 0
 STAGE6_INITIAL_MONSTERS = 18
 STAGE6_INITIAL_SPAWN_DRAWS = (40, 35, 30)
@@ -285,6 +288,6 @@ STAGE_START_MESSAGES: Dict[int, Tuple[int, str]] = {
     3: (5, "-- The King has ordered the Dread Wyrm (W) slain."),
     4: (5, "-- The King has ordered the Strong Fire Drake (F') slain."),
     5: (12, "-- Explore the training ground and claim the Fire Drake’s treasure."),
-    6: (12, "-- At the king’s request, seek out and destroy the Dungeon Core."),
+    6: (12, "-- To avert the Dungeon Core's rampage, the capital asks you to destroy it."),
 }
 
