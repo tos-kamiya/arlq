@@ -45,6 +45,8 @@
 
     ">> The King's request is complete! <<": ">> 国王の依頼を達成した！ <<",
     ">> Collapsed from hunger! <<": ">> 飢えで倒れた！ <<",
+    ">> Time limit exceeded! <<": ">> 制限ターンを超えた！ <<",
+    "-- Time is running out!": "-- 残りターンが少なくなった！",
     ">> Dread Wyrm (W) defeated! <<": ">> ドレッドウィルム(W)を討伐！ <<",
     ">> Strong Fire Drake (F') defeated! <<": ">> 強火龍(F')を討伐！ <<",
     ">> Treasure chest obtained! <<": ">> 宝箱(T)を手に入れた！ <<",

@@ -212,55 +212,46 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
 STAGE4_FLOORS = len(STAGE4_ROSTER)
 
 # Stage 6 dungeon and monster-party settings.
-STAGE6_FLOORS = 4
+STAGE6_FLOORS = 3
+STAGE6_TURN_LIMIT = 2000
 STAGE6_EXTRA_CORRIDORS = 0
 STAGE6_INITIAL_MONSTERS = 18
-STAGE6_INITIAL_SPAWN_DRAWS = (40, 35, 30, 25)
-STAGE6_SPAWN_INTERVAL = 36
-STAGE6_PARTY_SPAWN_PERCENT = 50
+STAGE6_INITIAL_SPAWN_DRAWS = (40, 35, 30)
+STAGE6_SPAWN_INTERVAL = 60
+STAGE6_PARTY_SPAWN_PERCENT = 60
 STAGE6_SPAWN_ATTEMPTS = 10
 STAGE6_PARTY_SPAWN_ATTEMPTS = 5
 STAGE6_MONSTER_PARTY_LIMIT = 8
 STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO = 0.2
 # Sword carriers stay scarce; deeper floors progress to rank 2 and 3.
-STAGE6_EXTRA_BISON_RANKS = (1, None, None, None)
+STAGE6_EXTRA_BISON_RANKS = (1, None, None)
 # Stage 6 roster entries are (char, count, rank, spawn-weight multiplier).
 STAGE6_ROSTER = (
     (
-        ("a", 12, 1, 2), ("a", 3, 2, 2), ("A", 2, 1, 1), ("b", 5, 1, 1),
-        ("B", 1, 1, 2), ("c", 1, 1, 2), ("f", 2, 1, 2), ("d", 4, 1, 2),
-        ("e", 1, 1, 2), ("g", 1, 1, 2), ("m", 1, 1, 2),
+        ("a", 12, 1, 2), ("A", 2, 1, 1), ("b", 6, 1, 2),
+        ("B", 2, 1, 2), ("c", 1, 1, 2), ("m", 1, 1, 1),
     ),
     (
-        ("a", 1, 2, 2), ("A", 2, 1, 1), ("b", 5, 2, 1), ("B", 1, 2, 2),
-        ("c", 1, 1, 2), ("d", 1, 1, 2), ("d", 1, 2, 2), ("f", 1, 1, 2),
-        ("f", 1, 2, 2), ("w", 1, 1, 2), ("g", 3, 1, 1), ("k", 1, 1, 2),
-        ("i", 1, 1, 2), ("i", 1, 2, 1), ("X", 1, 1, 2), ("E", 1, 1, 1),
-        ("m", 1, 1, 1), ("V", 1, 1, 1),
+        ("a", 1, 2, 2), ("A", 6, 1, 1), ("b", 2, 2, 2), ("b", 1, 1, 2), ("B", 1, 1, 2),
+        ("c", 1, 1, 2), ("f", 3, 1, 1), ("f", 3, 2, 1), ("w", 1, 1, 2),
+        ("g", 2, 1, 1), ("k", 1, 1, 1), ("i", 1, 1, 1),
+        ("X", 1, 1, 1), ("m", 1, 1, 1), ("V", 1, 1, 1),
     ),
     (
-        ("a", 2, 2, 2), ("A", 2, 1, 1), ("b", 5, 2, 1), ("B", 1, 2, 2),
-        ("c", 1, 1, 2), ("d", 2, 2, 2), ("f", 2, 2, 2), ("w", 2, 1, 2),
-        ("w", 1, 2, 2), ("g", 2, 1, 2), ("g", 1, 2, 2), ("k", 2, 1, 2),
-        ("i", 2, 1, 2), ("i", 1, 2, 1), ("X", 1, 2, 2), ("E", 1, 1, 1),
-        ("m", 1, 1, 2), ("V", 1, 1, 1),
-    ),
-    (
-        ("a", 2, 2, 2), ("a", 4, 3, 2), ("A", 3, 1, 1), ("b", 5, 3, 1),
-        ("B", 1, 3, 2), ("c", 1, 1, 1), ("C", 1, 1, 1), ("d", 2, 2, 2),
-        ("f", 3, 2, 2), ("w", 3, 2, 2), ("g", 3, 2, 2), ("k", 3, 1, 2),
-        ("i", 3, 2, 2), ("X", 1, 2, 2), ("m", 1, 1, 2),
+        ("A", 2, 2, 1), ("b", 3, 2, 2), ("b", 1, 1, 2),
+        ("c", 1, 1, 1), ("f", 2, 2, 2), ("w", 3, 1, 2),
+        ("g", 2, 1, 2), ("g", 1, 2, 2), ("k", 2, 1, 2),
+        ("i", 2, 1, 2), ("X", 1, 2, 1), ("m", 1, 1, 1), ("V", 1, 1, 1),
     ),
 )
-STAGE6_BOSS_PARTY = (("F", 2), ("V", 2))
+STAGE6_BOSS_PARTY = (("F", 2), ("V", 1))
 STAGE6_BOSS_ESCORTS = (("w", 1),)
 _STAGE6_DEEP_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("e", 1), ("e", 1),
     ("b", 1), ("w", 2), ("k", 1),
 )
 STAGE6_BOSS_PARTY_ADDITIONS = (
-    ("b", 2), ("f", 2), ("d", 2), ("w", 1),
-    ("w", 2), ("k", 1),
+    ("f", 2), ("d", 1), ("w", 1),
 )
 _STAGE6_FLOOR2_SUPPORT_POOL = (
     ("a", 1), ("a", 1), ("a", 1),
@@ -271,9 +262,8 @@ STAGE6_SUPPORT_POOLS = (
     (("a", 1),), _STAGE6_FLOOR2_SUPPORT_POOL
 ) + (
     _STAGE6_DEEP_SUPPORT_POOL,
-    (("a", 3), ("b", 2), ("b", 3)),
 )
-STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2), (0, 2))
+STAGE6_HAZARD_COUNTS = ((0, 0), (0, 2), (0, 2))
 STAGE6_FINAL_FLOOR_BARRIER_PERCENT = 7
 STAGE6_BARRIER_VORTEX_RADIUS_MULTIPLIER = 1.5
 

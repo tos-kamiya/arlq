@@ -5,6 +5,43 @@ from arlq.arlq import GameConfig
 from arlq.utils import rand
 
 
+@pytest.mark.parametrize("seed", range(20))
+def test_boss_party_has_room_to_grow_to_eight(monkeypatch, seed):
+    from arlq import stage56
+
+    rand.set_seed(seed)
+    original = stage6._place_initial_boss_party
+    reserved = []
+
+    def place_boss(current):
+        party, line = original(current)
+        reserved.append(line)
+        return party, line
+
+    monkeypatch.setattr(stage6, "_place_initial_boss_party", place_boss)
+    floors, _ = stage6.build()
+    current = floors[-1]
+    boss = next(entity for entity in current.entities
+                if isinstance(entity, d.Monster) and entity.tribe.char == "F")
+    line = reserved[-1]
+    assert len(line) == d.STAGE6_MONSTER_PARTY_LIMIT
+    assert len({x for x, _ in line}) == 1
+    assert max(y for _, y in line) - min(y for _, y in line) == len(line) - 1
+    while len(stage56.monster_party(current, boss)) < len(line):
+        party = stage56.monster_party(current, boss)
+        occupied = {(entity.x, entity.y) for entity in party}
+        candidates = [point for point in line - occupied
+                      if (point[0], point[1] - 1) in occupied
+                      or (point[0], point[1] + 1) in occupied]
+        monster = d.Monster(0, 0, d.CHAR_TO_MONSTER_TRIBE["a"])
+        point = next(point for point in candidates
+                     if current.field[point[1]][point[0]] in (d.CHAR_FLOOR, d.CHAR_BARRIER)
+                     and stage6._can_join_at(current, monster, point))
+        monkeypatch.setattr(stage56, "_open_points", lambda *_, **__: [point])
+        assert stage6.spawn_monster(current, 2, variant=("a", 1), prefer_adjacent=False)
+    assert len(stage56.monster_party(current, boss)) == 8
+
+
 @pytest.mark.parametrize("config, expected_h, expected_v", [
     (GameConfig(), 3, 4),
     (GameConfig(corridor_h_width=1, corridor_v_width=2), 2, 3),
@@ -48,10 +85,10 @@ def test_stage6_opens_wider_corridors_but_keeps_one_hidden_gate(
 
 
 @pytest.mark.parametrize("seed", [0, 123, 789])
-def test_four_floor_dungeon(seed):
+def test_three_floor_dungeon(seed):
     rand.set_seed(seed)
     floors, player = stage6.build()
-    assert len(floors) == 4
+    assert len(floors) == 3
     assert player.level == 1
     for floor in floors:
         monsters = [e for e in floor.entities if isinstance(e, d.Monster)
@@ -72,7 +109,7 @@ def test_four_floor_dungeon(seed):
     assert any((e.tribe.char, e.empowered) in d.STAGE6_BOSS_PARTY_ADDITIONS for e in party)
     assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
     assert boss.empowered == 2
-    assert sum(d.monster_level(e) for e in party) >= 300
+    assert sum(d.monster_level(e) for e in party) >= 225
     mimic = next(e for e in floors[-1].entities
                  if isinstance(e, d.Monster) and e.tribe.char == "M")
     assert (mimic.mimic_boss_char, mimic.mimic_boss_empowered) == (d.CHAR_DUNGEON_CORE, None)

@@ -183,12 +183,27 @@ def _place_party(
 
 
 def _place_initial_boss_party(current: Floor) -> tuple[list[d.Monster], set[d.Point]]:
-    """Choose the boss layout before placing other entities."""
+    """Place the party within a clear vertical line that fits eight monsters."""
     roster = list(d.STAGE6_BOSS_PARTY)
     roster.append(rand.choice(d.STAGE6_BOSS_PARTY_ADDITIONS))
-    _place_party(current, roster, d.STAGE6_FLOORS - 1)
-    current.entities[-len(roster)].boss_id = 1
-    return current.entities[-len(roster):], set()
+    available = set(_open_points(current)) & _reachable_floor_points(current, current.up)
+    layouts = []
+    for x, y in sorted(available):
+        line = [(x, y + offset) for offset in range(d.STAGE6_MONSTER_PARTY_LIMIT)]
+        if not all(point in available for point in line):
+            continue
+        for start in range(len(line) - len(roster) + 1):
+            cells = line[start:start + len(roster)]
+            if len({tile_at(point) for point in cells}) == 1:
+                layouts.append((line, cells))
+    if not layouts:
+        raise _BossRouteNotFound("no vertical space for the Stage 6 boss party")
+    line, cells = rand.choice(layouts)
+    party = [d.Monster(*point, d.CHAR_TO_MONSTER_TRIBE[char], rank)
+             for point, (char, rank) in zip(cells, roster, strict=True)]
+    party[0].boss_id = 1
+    current.entities.extend(party)
+    return party, set(line)
 
 
 def _place_dungeon_core(current: Floor, boss: d.Monster) -> d.Monster:
@@ -249,7 +264,7 @@ def _can_join_at(current: Floor, monster: d.Monster, point: d.Point, *,
     special_count += stage56.special_monster(monster)
     return not party or not (
         isolated
-        or special_count > 1
+        or (stage56.special_monster(monster) and special_count > 1)
         or len(party) + 1 > d.STAGE6_MONSTER_PARTY_LIMIT
     )
 
@@ -350,6 +365,7 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
     initial_boss_party = []
     boss_entrance = set()
     boss_reserved = set()
+    boss_clearance = set()
     boss_barrier_area = None
     boss_barrier_half_density = set()
     entry = None
@@ -444,7 +460,12 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
                 (x, y) for y, row in enumerate(current.field) for x in range(len(row))
                 if tile_at((x, y)) == boss_room
             }
-            current.respawn_exclusions.update(boss_reserved)
+            boss_clearance = {
+                (x + dx, y + dy) for x, y in boss_entrance
+                for dx in (-1, 0, 1) for dy in (-1, 0, 1)
+                if 0 <= x + dx < d.FIELD_WIDTH and 0 <= y + dy < d.FIELD_HEIGHT
+            }
+            current.respawn_exclusions.update(boss_reserved | boss_clearance)
         # Reserve a sword carrier on each floor, then seed the detached room.
         initial_avoid = player_spawn_exclusion(up) if index == 0 else set()
         try:
@@ -530,12 +551,13 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
     _balance_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
     for current in floors:
         stage56.initialize_monster_barriers(current)
-    floors[-1].respawn_exclusions.difference_update(boss_reserved)
+    floors[-1].respawn_exclusions.difference_update(boss_reserved - boss_clearance)
     for index, current in enumerate(floors):
         for _ in range(d.STAGE6_INITIAL_SPAWN_DRAWS[index]):
             avoid = player_spawn_exclusion((player.x, player.y)) if index == 0 else set()
-            spawn_monster(current, index, avoid=avoid, prefer_adjacent=index > 0,
+            spawn_monster(current, index, avoid=avoid, isolated=True, prefer_adjacent=False,
                           player_position=(player.x, player.y) if index == 0 else None)
+    floors[-1].respawn_exclusions.difference_update(boss_clearance)
     for current in floors:
         current.respawn_glows.clear()
     player.rescue_stage = True
@@ -713,10 +735,8 @@ def _choose_stair_point(
 
 
 def _place_additional_stairs(floors: list[Floor]) -> None:
-    """Add a second ordinary paired staircase on half of floor transitions."""
-    for upper, lower in zip(floors[1:], floors[2:]):
-        if rand.randrange(2) == 0:
-            continue
+    """Add a second ordinary paired staircase to every floor transition."""
+    for upper, lower in zip(floors, floors[1:]):
         occupied_upper = {(entity.x, entity.y) for entity in upper.entities}
         occupied_lower = {(entity.x, entity.y) for entity in lower.entities}
         fixed = {
@@ -760,6 +780,8 @@ def _place_additional_stairs(floors: list[Floor]) -> None:
             )
         ]
         used_sections = {tile_at(point) for point in upper.down_stairs}
+        if not candidates:
+            raise _BossRouteNotFound("no position for a second paired staircase")
         point = _choose_stair_point(candidates, used_sections)
         upper.down_stairs.append(point)
         lower.up_stairs.append(point)

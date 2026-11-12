@@ -190,7 +190,7 @@ def step(current, player, direction=(1, 0), checkpoint=(2, 2), stage_num=6):
 
 def test_playground_has_four_random_recruits_and_a_boss_party():
     floors, player = stage6.build()
-    assert len(floors) == 4 and player.rescue_stage and player.treasure_stage
+    assert len(floors) == 3 and player.rescue_stage and player.treasure_stage
     for floor_index, floor in enumerate(floors):
         if floor_index == len(floors) - 1:
             assert len(floor.room_components) == 1
@@ -252,7 +252,7 @@ def test_playground_has_four_random_recruits_and_a_boss_party():
         for e in floor.entities
     )
     vortex = next(e for e in party if e.tribe.char == "V")
-    assert vortex.empowered == 2
+    assert vortex.empowered == 1
     escorts = [e for e in party if e not in (boss, vortex)]
     assert any((e.tribe.char, e.empowered) in d.STAGE6_BOSS_PARTY_ADDITIONS for e in escorts)
     assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
@@ -841,7 +841,7 @@ def test_initial_boss_party_remains_in_its_room(monkeypatch, seed, escort):
     party = stage56.monster_party(current, boss)
     assert {"F", "V"} <= {e.tribe.char for e in party}
     assert next(e for e in party if e.tribe.char == "F").empowered == 2
-    assert next(e for e in party if e.tribe.char == "V").empowered == 2
+    assert next(e for e in party if e.tribe.char == "V").empowered == 1
     assert escort in [(entity.tribe.char, entity.empowered) for entity, _, _ in boss_positions]
     assert len(party) <= d.STAGE6_MONSTER_PARTY_LIMIT
     assert all((entity.x, entity.y) == (x, y) for entity, x, y in boss_positions)
@@ -1122,11 +1122,16 @@ def test_candidate_glyph_is_known_on_first_sighting():
     )
 
 
-def test_floor_connections_are_reachable_and_keep_members_on_transitions():
+@pytest.mark.parametrize("seed", range(20))
+def test_floor_connections_are_reachable_and_keep_members_on_transitions(seed):
+    engine.rand.set_seed(seed)
     floors, player = stage6.build()
     for upper, lower in zip(floors, floors[1:]):
-        assert len(upper.down_stairs) in (1, 2)
+        assert len(upper.down_stairs) == 2
         assert len(lower.up_stairs) == len(upper.down_stairs)
+        assert upper.down_stairs == lower.up_stairs
+        assert set(upper.down_stairs) <= stage6._reachable_floor_points(upper, upper.up)
+        assert set(lower.up_stairs) <= stage6._reachable_floor_points(lower, lower.up)
         assert not upper.scholar_down_stairs
         assert not lower.scholar_up_stairs
         sections = {
@@ -1275,14 +1280,10 @@ def test_seed_reproduces_layout_and_groups():
 
 
 def test_stage6_spawn_roster_scales_by_floor():
-    assert len(d.STAGE6_ROSTER) == d.STAGE6_FLOORS == 4
-    assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[1] if char == "B"] == [(1, 2)]
-    for roster in d.STAGE6_ROSTER:
-        assert sum(count for char, count, rank, _ in roster if char == "c" and rank == 1) == 1
-        assert any(char == "a" and rank == 2 for char, _, rank, _ in roster)
-    assert any(char == "b" and rank == 3 for char, _, rank, _ in d.STAGE6_ROSTER[-1])
-    assert any(char == "a" and rank == 3 for char, _, rank, _ in d.STAGE6_ROSTER[-1])
-    assert d.STAGE6_EXTRA_CORRIDORS == 0
+    assert len(d.STAGE6_ROSTER) == d.STAGE6_FLOORS == 3
+    assert all(any(char == "c" for char, *_ in roster) for roster in d.STAGE6_ROSTER)
+    assert all(any(char == "A" for char, *_ in roster) for roster in d.STAGE6_ROSTER[:2])
+    assert all(any(char == "V" for char, *_ in roster) for roster in d.STAGE6_ROSTER[1:])
 
 
 def test_member_trial_has_fixed_ordered_layout():

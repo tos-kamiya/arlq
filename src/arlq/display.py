@@ -106,7 +106,9 @@ def status_prefix(
     text = ""
     if stage_num != 0:
         text += f"ST: {stage_num}  "
-    if game_start_turn is None:
+    if stage_num == 6:
+        text += f"TURN: {turn}/{d.STAGE6_TURN_LIMIT}  "
+    elif game_start_turn is None:
         text += f"TURN: {turn}  "
     else:
         text += f"TURN: {game_start_turn} (OP: {turn})  "

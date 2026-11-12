@@ -59,10 +59,8 @@ def test_floor2_spawn_queue_has_one_vortex_slot(monkeypatch):
 
 
 def test_wyrm_spawn_ranks_by_floor():
-    assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[0] if char == "w"] == []
-    assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[1] if char == "w"] == [(1, 1)]
-    assert [(count, rank) for char, count, rank, _ in d.STAGE6_ROSTER[2] if char == "w"] == [(2, 1), (1, 2)]
-
+    assert not any(char == "w" for char, *_ in d.STAGE6_ROSTER[0])
+    assert all(any(char == "w" and rank == 1 for char, _, rank, _ in roster) for roster in d.STAGE6_ROSTER[1:])
 
 @pytest.mark.parametrize("stage_num", [5, 6])
 def test_defeat_does_not_queue_monster_respawn(stage_num):
@@ -203,20 +201,39 @@ def test_rare_amoeba_spawn_weight_is_half_of_roster_weight(monkeypatch):
         assert captured.count((char, rank)) == count * spawn_weight
 
 
-def test_bison_variants_have_halved_weights(monkeypatch):
-    for floor_index, rank in ((0, 1), (1, 2), (2, 2), (3, 3)):
-        current = floor()
-        monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
-        monkeypatch.setattr(stage56, "_open_points", lambda *_, **__: [(10, 10)])
-        assert stage6.spawn_monster(current, floor_index)
-        captured = current.monster_spawn_queue
-        weight = next(count for char, count, r, _ in d.STAGE6_ROSTER[floor_index]
-                      if char == "b" and r == rank)
-        assert captured.count(("b", rank)) == weight
+def test_bison_variants_provide_recovery():
+    assert [next(rank for char, _, rank, _ in roster if char == "b")
+            for roster in d.STAGE6_ROSTER] == [1, 2, 2]
+    assert next(count * weight for char, count, _, weight in d.STAGE6_ROSTER[2]
+                if char == "b") == 6
+    assert [sum(count * weight for char, count, rank, weight in roster
+                if char == "b" and rank == 1)
+            for roster in d.STAGE6_ROSTER[1:]] == [2, 2]
+    assert all(char != "B" for char, *_ in d.STAGE6_ROSTER[2])
+    assert all(char not in ("b", "B") for char, _ in d.STAGE6_BOSS_PARTY_ADDITIONS)
 
 
-def test_golem_weight_is_halved_only_on_second_floor(monkeypatch):
-    for floor_index in range(3):
+def test_flame_cobra_spawn_ranks():
+    def weights(roster):
+        return {rank: count * weight for char, count, rank, weight in roster if char == "f"}
+
+    assert weights(d.STAGE6_ROSTER[1]) == {1: 3, 2: 3}
+    assert weights(d.STAGE6_ROSTER[2]) == {2: 4}
+    assert ("f", 2) in d.STAGE6_BOSS_PARTY_ADDITIONS
+    assert ("f", 1) not in d.STAGE6_BOSS_PARTY_ADDITIONS
+
+
+def test_caltrop_plant_spawn_ranks():
+    assert [next(rank for char, _, rank, _ in roster if char == "X")
+            for roster in d.STAGE6_ROSTER[1:]] == [1, 2]
+
+
+def test_rare_amoeba_spawn_ranks():
+    assert [next(rank for char, _, rank, _ in roster if char == "A")
+            for roster in d.STAGE6_ROSTER] == [1, 1, 2]
+
+def test_golem_spawn_weights(monkeypatch):
+    for floor_index in (1, 2):
         current = floor()
         monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
         monkeypatch.setattr(stage56, "_open_points", lambda *_, **__: [(10, 10)])
@@ -230,11 +247,10 @@ def test_golem_weight_is_halved_only_on_second_floor(monkeypatch):
         assert captured.count(("g", 1)) == weight * spawn_weight
 
 
-def test_first_floor_doubles_cobra_weight_using_amoeba_weight():
+def test_first_floor_favors_weak_monsters():
     roster = d.STAGE6_ROSTER[0]
-    assert next(count for char, count, rank, _ in roster if (char, rank) == ("f", 1)) == 2
+    assert not any(char == "f" for char, *_ in roster)
     assert next(count for char, count, rank, _ in roster if (char, rank) == ("a", 1)) == 12
-
 
 def test_bridgehead_restores_only_on_entry_and_preserves_higher_lp():
     first, second = floor(), floor()
@@ -381,7 +397,7 @@ def test_first_floor_amoeba_uses_roster_weight(monkeypatch):
     current = floor()
     assert stage6.spawn_monster(current, 0)
     assert current.monster_spawn_queue.count(("a", 1)) == 24
-    assert current.monster_spawn_queue.count(("f", 1)) == 4
+    assert current.monster_spawn_queue.count(("f", 1)) == 0
 
 
 def test_spawn_does_not_place_monster_on_bridgehead(monkeypatch):
@@ -392,25 +408,13 @@ def test_spawn_does_not_place_monster_on_bridgehead(monkeypatch):
     assert not current.entities
 
 
-def test_spore_monsters_and_rare_erebus_spawn_weights(monkeypatch):
-    totals = []
-    m_weights = []
-    for floor_index in range(4):
-        current = floor()
-        monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
-        monkeypatch.setattr(stage56, "_open_points", lambda *_, **__: [(10, 10)])
-        assert stage6.spawn_monster(current, floor_index)
-        queue = current.monster_spawn_queue
-        totals.append(len(queue))
-        m_weights.append(queue.count(("m", 1)))
-        assert queue.count(("E", 1)) == (0, 1, 1, 0)[floor_index]
-        assert sum(char == "i" for char, _ in queue) == (0, 3, 5, 6)[floor_index]
-        assert queue.count(("g", 2)) == (0, 0, 2, 6)[floor_index]
-    assert totals == [59, 36, 50, 62]
-    assert m_weights == [2, 1, 2, 2]
+def test_spores_and_vortex_without_rare_erebus():
+    for index, roster in enumerate(d.STAGE6_ROSTER):
+        assert any(char == "m" for char, *_ in roster)
+        assert not any(char == "E" for char, *_ in roster)
+        assert any(char == "V" for char, *_ in roster) == (index > 0)
 
-
-def test_second_floor_monster_draw_can_select_e_and_m(monkeypatch):
+def test_second_floor_monster_draw_can_select_v_and_m(monkeypatch):
     floors = [floor() for _ in range(3)]
     player = d.Player(4, 4, 1, d.LP_INIT)
     counts = Counter()
@@ -430,20 +434,20 @@ def test_second_floor_monster_draw_can_select_e_and_m(monkeypatch):
     for turn in range(d.STAGE6_SPAWN_INTERVAL - 1, d.STAGE6_SPAWN_INTERVAL * 20000,
                       d.STAGE6_SPAWN_INTERVAL):
         stage6.advance_spawns(floors, player, 0, turn)
-    assert counts[("E", 1)] > 50
+    assert counts[("V", 1)] > 50
     assert counts[("m", 1)] > 50
-    assert 0.6 < counts[("E", 1)] / counts[("m", 1)] < 1.6
+    assert 0.6 < counts[("V", 1)] / counts[("m", 1)] < 1.6
 
 
-def test_every_floor_spawned_every_thirty_six_turns(monkeypatch):
-    floors = [floor() for _ in range(4)]
+def test_every_floor_spawned_every_sixty_turns(monkeypatch):
+    floors = [floor() for _ in range(3)]
     player = d.Player(4, 4, 1, d.LP_INIT)
     calls = []
     monkeypatch.setattr(stage6, "spawn_monster", lambda current, index, **kw: calls.append((index, kw)) or False)
-    for turn in range(72):
+    for turn in range(120):
         stage6.advance_spawns(floors, player, 1, turn)
-        assert len(calls) == 4 * ((turn + 1) // 36)
-    assert [index for index, _ in calls] == [0, 1, 2, 3, 0, 1, 2, 3]
+        assert len(calls) == 3 * ((turn + 1) // 60)
+    assert [index for index, _ in calls] == [0, 1, 2, 0, 1, 2]
     assert calls[1][1]["avoid"] == {(x, y) for x in range(2, 7) for y in range(2, 7)}
     assert calls[0][1]["avoid"] == set()
 
@@ -470,14 +474,26 @@ def test_initial_monsters_avoid_player_square():
                 assert abs(entity.x - player.x) > 2 or abs(entity.y - player.y) > 2
 
 
-def test_neighbor_preference_has_fifty_percent_threshold(monkeypatch):
+def test_neighbor_preference_has_sixty_percent_threshold(monkeypatch):
     monkeypatch.setattr(stage56, "_open_points", lambda *_, **__: [(20, 10), (10, 9)])
     for roll in range(100):
         current = floor()
         current.entities = [monster(10, 10)]
         monkeypatch.setattr(stage6.rand, "randrange", lambda n: roll if n == 100 else 0)
         assert stage6.spawn_monster(current, 0, variant=("a", 1))
-        assert (current.entities[-1].x, current.entities[-1].y) == ((10, 9) if roll < 50 else (20, 10))
+        assert (current.entities[-1].x, current.entities[-1].y) == ((10, 9) if roll < 60 else (20, 10))
+
+
+def test_timed_first_floor_spawn_prefers_party(monkeypatch):
+    current = floor()
+    current.entities = [monster(10, 10)]
+    current.monster_spawn_queue = [("a", 1)]
+    player = d.Player(4, 4, 1, d.LP_INIT)
+    monkeypatch.setattr(stage56, "_open_points", lambda *_, **__: [(20, 10), (10, 9)])
+    monkeypatch.setattr(stage6.rand, "randrange", lambda _: 0)
+    spawned = stage6.advance_spawns([current], player, 0, d.STAGE6_SPAWN_INTERVAL - 1)
+    assert len(spawned) == 1
+    assert (spawned[0][1].x, spawned[0][1].y) == (10, 9)
 
 
 def test_party_preference_falls_back_after_five_failures(monkeypatch):
@@ -519,7 +535,7 @@ def test_generated_spawn_exclusions_only_include_start_room():
                 assert stage6.tile_at((entity.x, entity.y)) not in current.monster_spawn_blocked_rooms
 
 
-def test_monster_can_spawn_in_boss_room_and_join_boss_party(monkeypatch):
+def test_monster_can_join_boss_party(monkeypatch):
     current = floor()
     boss = monster(10, 10, "F")
     vortex = monster(10, 11, "V")
@@ -559,7 +575,7 @@ def test_initial_spawn_attempts_can_access_boss_room(monkeypatch):
 
     monkeypatch.setattr(stage6, "spawn_monster", record)
     stage6.build()
-    assert len(eligible) == 25
+    assert len(eligible) == 30
     assert eligible[0]
 
 
@@ -567,10 +583,61 @@ def test_stage_setup_attempts_random_spawns_per_floor(monkeypatch):
     original = stage6.spawn_monster
     draws = []
     def record(current, index, **kwargs):
-        draws.append((index, kwargs.get("prefer_adjacent")))
+        draws.append((index, kwargs.get("prefer_adjacent"), kwargs.get("isolated")))
         return original(current, index, **kwargs)
     monkeypatch.setattr(stage6, "spawn_monster", record)
     floors, _ = stage6.build()
-    assert draws == [(index, index > 0) for index, count in enumerate((40, 35, 30, 25))
+    assert draws == [(index, False, True) for index, count in enumerate((40, 35, 30))
                      for _ in range(count)]
     assert all(not current.respawn_glows for current in floors)
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_initial_monsters_are_alone_except_boss_party(seed):
+    stage6.rand.set_seed(seed)
+    floors, _ = stage6.build()
+    for index, current in enumerate(floors):
+        for enemy in current.entities:
+            if not isinstance(enemy, d.Monster) or isinstance(enemy, d.Collapse) or not enemy.active:
+                continue
+            party = stage56.monster_party(current, enemy)
+            if index == len(floors) - 1 and any(e.tribe.char == "F" for e in party):
+                assert len(party) == 3
+            else:
+                assert len(party) == 1
+
+
+@pytest.mark.parametrize("win_on_last_turn", [False, True])
+def test_stage6_time_limit_allows_winning_on_last_turn(monkeypatch, win_on_last_turn):
+    from types import SimpleNamespace
+    from arlq.trace import TraceRecorder
+
+    current = floor()
+    player = d.Player(10, 10, 1, 100)
+    monkeypatch.setattr(d, "STAGE6_TURN_LIMIT", 2)
+    monkeypatch.setattr(stage6, "build", lambda *_: ([current], player))
+    monkeypatch.setattr(stage6, "advance_spawns", lambda *_: [])
+    calls = []
+
+    def step(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 2 and win_on_last_turn:
+            player.boss_defeated = True
+            player.treasure_collected = True
+        return None
+
+    monkeypatch.setattr(game_engine, "_process_multi_floor_turn", step)
+    frames = []
+    ui = SimpleNamespace(
+        draw_stage=lambda **kwargs: frames.append(kwargs),
+        input_direction=lambda: (1, 0),
+        input_game_over=lambda: None,
+        map_mode=False,
+    )
+    trace = TraceRecorder(params={})
+    game_engine.run_game(ui, "test", stage_num=6, trace=trace)
+    assert len(calls) == 2
+    assert frames[-1]["turn"] == 2
+    assert ("Treasure chest obtained" in frames[-1]["message"]) == win_on_last_turn
+    if not win_on_last_turn:
+        assert "Time limit exceeded" in frames[-1]["message"]

@@ -2319,12 +2319,19 @@ def run_game(
             trace.commit_turn()
         if player.stage_won:
             break
+        if stage_num == 6 and turn >= d.STAGE6_TURN_LIMIT:
+            _stop_movement_repeat(ui)
+            break
+        if stage_num == 6 and d.STAGE6_TURN_LIMIT - turn in (500, 200, 100):
+            message = (MESSAGE_TICKS, trp("-- Time is running out!", 7))
 
     won = player.stage_won
     if trace is not None:
         trace.set_outcome("win" if won else "lose")
 
-    if not won:
+    if not won and stage_num == 6 and turn >= d.STAGE6_TURN_LIMIT:
+        message = (-1, trp(">> Time limit exceeded! <<", 9))
+    elif not won:
         message = (-1, trp(">> Collapsed from hunger! <<", 9))
     else:
         message = (-1, trp(">> Treasure chest obtained! <<", 9))
