@@ -764,7 +764,7 @@ def scatter_waiting_members(floors, player, player_floor):
 def relocate_candidates(floors, player, candidates, player_floor=None):
     for member in candidates:
         if (member.role == d.MEMBER_JESTER
-                and (player.jester_retired or player.level >= d.JESTER_DEPARTURE_LEVEL)):
+                and player.level >= d.JESTER_DEPARTURE_LEVEL):
             player.known_member_floors.pop(member.role, None)
             continue
         current = floors[0]

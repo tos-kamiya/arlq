@@ -844,12 +844,12 @@ def _resolve_elf_contact(
                 )
         old_lp_max = d.player_lp_max(player)
         player.lifebringer_lp_max = min(
-            player.lifebringer_lp_max + d.LIFEBRINGER_LP_MAX_INCREASE,
+            old_lp_max + d.LIFEBRINGER_LP_MAX_INCREASE,
             d.LP_MAX_LIFEBRINGER,
         )
         player.elf_stage_flags |= d.ELF_STAGE_L_FLAG
         player.lp = d.LP_OVERCHARGE_MAX
-        if d.player_lp_max(player) > old_lp_max:
+        if player.lifebringer_lp_max > old_lp_max:
             event_message = trp(
                 "-- The Lifebringer Elf restored your health and increased "
                 "your LP maximum!",
@@ -1156,11 +1156,9 @@ def _resolve_party_contact(
             stage_num=stage_num,
         )
     player.level = old_level + experience
-    if player.level >= d.JESTER_DEPARTURE_LEVEL:
-        player.jester_retired = True
     if any(monster.tribe.effect == d.EFFECT_LEVEL_REDUCE for monster in party):
         player.level = max(1, math.floor(player.level * 2 / 3))
-    jester_departed = player.jester_retired and d.has_member(
+    jester_departed = player.level >= d.JESTER_DEPARTURE_LEVEL and d.has_member(
         player, d.MEMBER_JESTER
     )
     if jester_departed:
@@ -1244,8 +1242,7 @@ def _resolve_contact(
 
     if isinstance(entity, d.PartyMember):
         if (entity.role == d.MEMBER_JESTER
-                and (player.jester_retired or player.level >= d.JESTER_DEPARTURE_LEVEL)):
-            player.jester_retired = True
+                and player.level >= d.JESTER_DEPARTURE_LEVEL):
             if trace is not None:
                 trace.record_contact({"type": "member", "id": entity.role, "joined": False})
             return _ContactResult(trp("-- Jester cannot join your party.", 5))
@@ -1830,7 +1827,11 @@ def _process_multi_floor_turn(
     if player.rescue_stage or player.members:
         stage56.sync_members(
             player, previous, direction,
-            reset=(floor[0] != initial_floor or (player.x, player.y) != movement_destination),
+            reset=(floor[0] != initial_floor
+                   or (player.x, player.y) != movement_destination
+                   or (wall_result is not None and wall_result.result == "pegasus_phase")),
+            current=floors[floor[0]] if stage_num == 6 else None,
+            floor_index=floor[0],
         )
     if player.rescue_stage:
         stage56.explore_with_cat(floors[floor[0]], player)

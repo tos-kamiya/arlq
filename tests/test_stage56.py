@@ -549,7 +549,6 @@ def test_jester_leaves_when_experience_crosses_level_100(stage_num):
     assert player.level == pytest.approx(101)
     assert not d.has_member(player, d.MEMBER_JESTER)
     assert any(isinstance(e, d.PartyMember) and e.role == d.MEMBER_JESTER for e in current.entities)
-    assert player.jester_retired
 
 
 @pytest.mark.parametrize("level, returns", [(99, True), (100, False), (101, False)])
@@ -572,19 +571,29 @@ def test_recruiting_jester_at_level_100_is_refused():
 
 
 @pytest.mark.parametrize("stage_num", [5, 6])
-def test_retired_jester_refuses_after_level_loss_without_displacing_members(stage_num):
+def test_jester_rejoins_after_erebus_reduces_level(stage_num):
     current, player = state(("Healer", "Rogue"), level=100)
     jester = d.PartyMember(3, 2, d.MEMBER_JESTER, origin_floor=0)
     current.entities.append(jester)
     step(current, player, stage_num=stage_num)
-    assert player.jester_retired
     assert [m.role for m in player.members] == ["Healer", "Rogue"]
     assert jester in current.entities
-    player.level = 50
+    player.x, player.y = 2, 2
+    current.entities.append(monster(2, 3, "E"))
+    step(current, player, direction=(0, 1), stage_num=stage_num)
+    assert player.level < 100
     player.x, player.y = 2, 2
     step(current, player, stage_num=stage_num)
-    assert [m.role for m in player.members] == ["Healer", "Rogue"]
-    assert jester in current.entities
+    assert jester in player.members
+
+
+@pytest.mark.parametrize("stage_num", [5, 6])
+def test_jester_stays_if_erebus_reduces_level_after_experience(stage_num):
+    current, player = state(("Jester",), level=99)
+    current.entities = [monster(3, 2, "E"), monster(3, 3, "a")]
+    step(current, player, stage_num=stage_num)
+    assert player.level < 100
+    assert d.has_member(player, d.MEMBER_JESTER)
 
 
 def test_stage6_new_member_replaces_second_and_relocates_them(monkeypatch):
@@ -600,14 +609,14 @@ def test_stage6_new_member_replaces_second_and_relocates_them(monkeypatch):
     assert relocated == [second]
 
 
-def test_group_strength_defeat_preserves_party_with_healer():
+def test_group_strength_defeat_preserves_party_and_healer_penalty():
     current, player = state(("Healer", "Rogue"), level=10)
     enemies = [monster(3, 2, "b", 2), monster(3, 3, "w")]
     current.entities = enemies.copy()
     before = player.members.copy()
     step(current, player, checkpoint=(1, 1))
     assert current.entities == enemies
-    assert player.level == 10 and player.lp == 84
+    assert player.level == 10 and player.lp == 87
     assert player.members == before
     assert all((member.x, member.y) == (1, 1) for member in player.members)
 
@@ -650,28 +659,12 @@ def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
 
     player.members.append(d.PartyMember(player.x, player.y, "Healer"))
     assert barrier_lp_damage(player) == 5
-    assert d.movement_lp_cost(player) == pytest.approx(0.8)
+    assert d.movement_lp_cost(player) == pytest.approx(0.75)
 
     player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
     assert barrier_lp_damage(player) == 0
     player.item = d.ITEM_SWORD_CURSED
     assert barrier_lp_damage(player) == 5
-
-
-def test_healer_lp_max_recovery_and_departure():
-    _, player = state(("Healer",), lp=99)
-    assert d.player_lp_max(player) == 105
-    assert d.movement_lp_cost(player) == pytest.approx(0.8)
-    d.apply_feed(player, 30)
-    assert player.lp == 105
-    player.members.clear()
-    assert d.player_lp_max(player) == 100
-    assert d.movement_lp_cost(player) == 1
-    d.apply_feed(player, 10)
-    assert player.lp == 105
-    player.lifebringer_lp_max = 110
-    player.members.append(d.PartyMember(player.x, player.y, "Healer"))
-    assert d.player_lp_max(player) == 110
 
 
 @pytest.mark.parametrize("cell, hazard_cost", [(d.CHAR_CALTROP, 3), (d.CHAR_BARRIER, 5)])
@@ -940,6 +933,71 @@ def test_followers_trace_player_path_in_join_order():
     assert [(g.x, g.y, g.char) for g in display.member_glyphs(player)] == [(3, 3, "J")]
 
 
+@pytest.mark.parametrize("role", [d.MEMBER_FAIRY_SEER, d.MEMBER_HEALER, d.MEMBER_JESTER])
+def test_member_stays_before_barrier_and_can_rejoin(role):
+    current, player = state((role,), level=10)
+    member = player.members[0]
+    current.field[2][3] = d.CHAR_BARRIER
+    step(current, player)
+    assert member in player.members
+    step(current, player)
+    assert member not in player.members
+    assert member in current.entities
+    assert (member.x, member.y) == (2, 2)
+    assert player.known_member_floors[role] == 1
+    step(current, player, direction=(-1, 0))
+    step(current, player, direction=(-1, 0))
+    assert member in player.members
+
+
+def test_overlapping_members_left_at_barrier_join_one_at_a_time():
+    current, player = state(("Healer", "Jester"), level=10)
+    healer, jester = player.members
+    current.field[2][3] = d.CHAR_BARRIER
+    player.x, player.y = 4, 2
+    stage56.sync_members(player, (3, 2), (1, 0), current=current)
+    assert not player.members
+    assert (healer.x, healer.y) == (jester.x, jester.y) == (2, 2)
+    assert display.entities_for_drawing(current.entities) == [healer]
+    step(current, player, direction=(-1, 0))
+    step(current, player, direction=(-1, 0))
+    assert player.members == [healer]
+    assert jester in current.entities
+    assert display.entities_for_drawing(current.entities) == [jester]
+
+
+def test_unrestricted_member_can_cross_barrier():
+    current, player = state(("Knight",), level=10)
+    member = player.members[0]
+    current.field[2][3] = d.CHAR_BARRIER
+    step(current, player)
+    step(current, player)
+    assert member in player.members
+    assert (member.x, member.y) == (3, 2)
+
+
+@pytest.mark.parametrize("stage_num", [5, 6])
+def test_pegasus_jump_brings_followers_to_landing_cell(stage_num):
+    current, player = state(("Healer", "Jester"), level=10)
+    player.members[1].x = 1
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
+    current.field[2][3] = d.CHAR_WALL
+    step(current, player, stage_num=stage_num)
+    assert (player.x, player.y) != (2, 2)
+    assert all((member.x, member.y) == (player.x, player.y) for member in player.members)
+
+
+def test_failed_pegasus_jump_does_not_move_followers():
+    current, player = state(("Healer", "Jester"), level=10)
+    player.members[1].x = 1
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
+    current.field[2][3] = d.CHAR_WALL
+    current.field[2][2 + d.PEGASUS_STEP_X] = d.CHAR_WALL
+    step(current, player)
+    assert (player.x, player.y) == (2, 2)
+    assert [(member.x, member.y) for member in player.members] == [(2, 2), (1, 2)]
+
+
 def test_pit_falls_to_next_floor_with_members():
     current, player = state(("Healer", "Rogue"))
     lower, _ = state()
@@ -1082,8 +1140,8 @@ def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):
     engine.run_game(ui, "test", stage_num=6)
     assert ui.frames[0] == (0, 90, (2, 2))
     assert ui.frames[1][0::2] == (1, (3, 2))
-    assert ui.frames[1][1] == pytest.approx(90 - 0.8)
-    assert player.lp == pytest.approx(90 - 0.8)
+    assert ui.frames[1][1] == pytest.approx(90 - 0.75)
+    assert player.lp == pytest.approx(90 - 0.75)
     assert (player.x, player.y) == (3, 2)
     assert player.current_floor == 1
     assert ui.stops == 2
@@ -1129,7 +1187,7 @@ def test_live_loop_rewind_preserves_target_lp(monkeypatch, roles):
         map_mode=False,
     )
     engine.run_game(ui, "test", stage_num=6)
-    assert frames[:3] == pytest.approx([90, 90 - (0.8 if roles else 1), 90])
+    assert frames[:3] == pytest.approx([90, 90 - (0.75 if roles else 1), 90])
 
 
 def test_candidate_glyph_is_known_on_first_sighting():
@@ -1456,7 +1514,7 @@ def test_member_trial_healer_is_in_middle_row_on_right():
     assert (healer.x, healer.y) == (47, 10)
     assert all(upper.field[3][x] != d.CHAR_WALL for x in range(44, 48))
     assert sorted(e.x for e in upper.entities if isinstance(e, d.Monster)
-                  and e.tribe.char == "b" and e.y == 10) == [41, 44]
+                  and e.tribe.char == "B" and e.y == 10) == [41, 44]
 
 def test_member_trial_rogue_pit_blocks_the_route_to_guardian():
     floors, _ = stage5.build_member_trial()
@@ -1605,7 +1663,7 @@ def test_wyrm_barrier_does_not_appear_under_player_after_wall_break():
     assert current.field[2][3] == d.CHAR_FLOOR
 
 
-def test_member_trial_right_margin_provides_respawn_floor():
+def test_member_trial_right_margin_is_wall():
     floors, _ = stage5.build_member_trial()
     for current, layout in zip(floors, (
         stage5.STAGE5_MEMBER_TRIAL_MAP, stage5.STAGE5_MEMBER_TRIAL_LOWER_MAP,
@@ -1613,8 +1671,8 @@ def test_member_trial_right_margin_provides_respawn_floor():
         width = max(map(len, layout.splitlines()))
         for row in current.field:
             assert row[width:width + 2] == [d.CHAR_WALL] * 2
-            assert row[width + 2:] == [d.CHAR_FLOOR] * (d.FIELD_WIDTH - width - 2)
-        assert any(x >= width + 2 for x, y in stage56._open_points(current))
+            assert row[width + 2:] == [d.CHAR_WALL] * (d.FIELD_WIDTH - width - 2)
+        assert all(x < width for x, y in stage56._open_points(current))
 
 
 def test_dread_wyrm_barriers_become_persistent_when_defeated():

@@ -252,6 +252,20 @@ def player_appearance(player: d.Player) -> Tuple[str, Optional[str]]:
     return foreground, background
 
 
+def entities_for_drawing(entities: List[d.Entity]) -> List[d.Entity]:
+    """Draw only the first waiting member at each position, matching contact order."""
+    seen_members: set[d.Point] = set()
+    result = []
+    for entity in entities:
+        if isinstance(entity, d.PartyMember):
+            position = (entity.x, entity.y)
+            if position in seen_members:
+                continue
+            seen_members.add(position)
+        result.append(entity)
+    return result
+
+
 def preview_entity_glyphs(
     entity: d.Entity,
     reveal_disguises: bool = False,

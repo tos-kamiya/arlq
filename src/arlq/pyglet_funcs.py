@@ -1352,8 +1352,9 @@ class PygletUI:
                 (glyph.x, glyph.y), glyph.char, self._tone_color(glyph.tone, glyph.dim), bold=glyph.bold
             )
 
+        drawing_entities = ui_display.entities_for_drawing(entities)
         if show_entities:
-            for entity in entities:
+            for entity in drawing_entities:
                 for glyph in ui_display.preview_entity_glyphs(
                     entity,
                     reveal_disguises=reveal_disguises,
@@ -1361,7 +1362,7 @@ class PygletUI:
                 ):
                     paint(glyph)
 
-        for entity in entities:
+        for entity in drawing_entities:
             if torched[entity.y][entity.x] == 0 or (entity.x, entity.y) == (px, py):
                 continue
             for glyph in ui_display.revealed_entity_glyphs(

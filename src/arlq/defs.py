@@ -68,6 +68,7 @@ MEMBER_GUARDIAN = "Guardian"
 MEMBER_NOBLE = "Noble"
 MEMBER_YAWNING_CAT = "Yawning Cat"
 MEMBER_FAIRY_SEER = "Fairy Seer"
+MEMBERS_BLOCKED_BY_BARRIERS = frozenset({MEMBER_FAIRY_SEER, MEMBER_HEALER, MEMBER_JESTER})
 CAT_EXPLORE_INTERVAL = 20
 CAT_EXPLORE_SIZE = 2
 CAT_EXPLORE_RADIUS = 10  # Vertical radius, tuned independently of Vortex.
@@ -76,8 +77,8 @@ PARTY_LIMIT = 2
 MEMBER_STAGE_JESTER_EXP_MULTIPLIER = 1.5
 KNIGHT_INITIAL_LEVEL = 40
 JESTER_DEPARTURE_LEVEL = 100
-HEALER_MOVE_COST = 0.8
-HEALER_LP_MAX = 105
+HEALER_MOVE_COST = 0.75
+HEALER_RESPAWN_COST = 3
 RECRUITABLE_MEMBER_ROLES = (
     MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT,
     MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN, MEMBER_YAWNING_CAT, MEMBER_FAIRY_SEER,
@@ -558,7 +559,6 @@ class Player(Entity):
         self.floor_exit: Optional[Point] = None
         self.last_member_scatter_route: Optional[Tuple[Tuple[int, Point], ...]] = None
         self.members: List[PartyMember] = []
-        self.jester_retired = False
         self.facing: Point = (0, -1)
         self.rescue_stage = False
         self.treasure_stage = False
@@ -896,9 +896,8 @@ def _javelin_follower_active(player: Player) -> bool:
 
 
 def player_lp_max(player: Player) -> int:
-    """Return the current LP maximum, including active member effects."""
-    permanent_max = min(player.lifebringer_lp_max, LP_MAX_LIFEBRINGER)
-    return max(permanent_max, HEALER_LP_MAX) if has_member(player, MEMBER_HEALER) else permanent_max
+    """Return the player's permanent LP maximum, including Lifebringer's bonus."""
+    return min(player.lifebringer_lp_max, LP_MAX_LIFEBRINGER)
 
 
 def apply_feed(player: Player, feed: int, lp_overcharge: int = 0) -> None:
@@ -912,7 +911,7 @@ def apply_feed(player: Player, feed: int, lp_overcharge: int = 0) -> None:
 
 
 def apply_respawn_penalty(player: Player) -> None:
-    player.lp -= LP_RESPAWN_COST
+    player.lp -= HEALER_RESPAWN_COST if has_member(player, MEMBER_HEALER) else LP_RESPAWN_COST
     player.lp = max(LP_RESPAWN_MIN, player.lp)
 
 

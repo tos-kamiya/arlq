@@ -120,16 +120,8 @@ def build_member_trial(
     check_map(upper_rows, "Stage 5 floor 1")
     check_map(lower_rows, "Stage 5 floor 2")
 
-    def blank_field(rows: list[str]) -> list[list[str]]:
-        wall_end = min(d.FIELD_WIDTH, max(map(len, rows)) + 2)
-        return [
-            [d.CHAR_WALL] * wall_end
-            + [d.CHAR_FLOOR] * (d.FIELD_WIDTH - wall_end)
-            for _ in range(d.FIELD_HEIGHT)
-        ]
-
     def parse_map(rows: list[str], floor_index: int):
-        field = blank_field(rows)
+        field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
         seen = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
         entities: list[d.Entity] = []
         barriers: set[d.Point] = set()

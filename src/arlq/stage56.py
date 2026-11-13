@@ -126,7 +126,8 @@ def reveal_scholar_features(current: Floor, known: list[list[int]]) -> None:
         current.update_outer_wall_decor()
 
 
-def sync_members(player: d.Player, previous: d.Point, direction: d.Point, *, reset: bool = False) -> None:
+def sync_members(player: d.Player, previous: d.Point, direction: d.Point, *, reset: bool = False,
+                 current: Floor | None = None, floor_index: int = 0) -> None:
     if (player.x, player.y) != previous:
         player.facing = direction
     if reset:
@@ -135,8 +136,20 @@ def sync_members(player: d.Player, previous: d.Point, direction: d.Point, *, res
         return
     if (player.x, player.y) == previous:
         return
-    for member in player.members:
+    for member in player.members[:]:
         position = (member.x, member.y)
+        if (current is not None and position == (player.x, player.y)
+                and current.field[previous[1]][previous[0]] == d.CHAR_BARRIER):
+            previous = position
+            continue
+        if (current is not None and member.role in d.MEMBERS_BLOCKED_BY_BARRIERS
+                and current.field[previous[1]][previous[0]] == d.CHAR_BARRIER
+                and position != previous):
+            player.members.remove(member)
+            member.origin_floor = floor_index
+            player.known_member_floors[member.role] = floor_index + 1
+            current.entities.append(member)
+            continue
         member.x, member.y = previous
         previous = position
 

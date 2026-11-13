@@ -165,7 +165,7 @@ Hover over a character to enlarge it and display its name. Unidentified characte
 
 * **Party Members**
 
-  In Stages 5 and 6, you can recruit up to two party members whose abilities support combat and exploration. The first stays with you; each later recruit replaces the second member. Jester is an exception: J leaves when you reach level 100 and cannot join again. Members follow the path you take, in joining order.
+  In Stages 5 and 6, you can recruit up to two party members whose abilities support combat and exploration. The first stays with you; each later recruit replaces the second member. Jester is an exception: J leaves at level 100 or above, but can rejoin if your level falls below 100. Members follow the path you take, in joining order, and move to your landing cell when you jump with Pegasus.
 
 ## Fairy List
 
@@ -299,10 +299,12 @@ The Rare Amoebas and Caltrop Plants on floor 3 are empowered (`A'` and `X'`).
 
 #### Party members
 
+In Stage 6, S, H, and J cannot cross barriers. If they would enter a barrier, they leave the party and wait on their current cell; contact them again to recruit them.
+
 | Display & Profession | Ability |
 | --- | --- |
-| **J** Jester | Multiplies your experience by 1.5, leaves when your level reaches 100, and cannot join afterward. |
-| **H** Healer | Raises the LP maximum to at least 105 and reduces the LP cost per turn to 0.8. |
+| **J** Jester | Multiplies your experience by 1.5, leaves at level 100 or above, and can rejoin below level 100. |
+| **H** Healer | Reduces the LP cost per turn to 0.75 and the defeat cost to 3. |
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **K** Knight | Adds a fixed 40 to your attack power. |
 | **D** Dungeon Explorer | Lets you climb pits using a rope and travel through hidden passages. These are shown with green characters or light. |
