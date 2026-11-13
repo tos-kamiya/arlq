@@ -335,6 +335,10 @@ def test_stage6_candidates_start_near_first_floor_bridgehead():
                    for e in floor.entities if isinstance(e, d.PartyMember)]
         assert len(members) == 4
         assert len({member.role for _, member in members}) == 4
+        positions = [(player.x, player.y)] + [(member.x, member.y) for _, member in members]
+        assert all(max(abs(x1 - x2), abs(y1 - y2)) > 1
+                   for i, (x1, y1) in enumerate(positions)
+                   for x2, y2 in positions[i + 1:])
         for index, member in members:
             assert index == member.origin_floor == 0
             assert (member.x, member.y) in stage6._reachable_floor_points(first, first.up)
@@ -596,14 +600,14 @@ def test_stage6_new_member_replaces_second_and_relocates_them(monkeypatch):
     assert relocated == [second]
 
 
-def test_group_strength_defeat_preserves_party_and_healer_penalty():
+def test_group_strength_defeat_preserves_party_with_healer():
     current, player = state(("Healer", "Rogue"), level=10)
     enemies = [monster(3, 2, "b", 2), monster(3, 3, "w")]
     current.entities = enemies.copy()
     before = player.members.copy()
     step(current, player, checkpoint=(1, 1))
     assert current.entities == enemies
-    assert player.level == 10 and player.lp == 87
+    assert player.level == 10 and player.lp == 84
     assert player.members == before
     assert all((member.x, member.y) == (1, 1) for member in player.members)
 
@@ -646,12 +650,28 @@ def test_guardian_reduces_hazard_damage_independently_of_movement_cost():
 
     player.members.append(d.PartyMember(player.x, player.y, "Healer"))
     assert barrier_lp_damage(player) == 5
-    assert d.movement_lp_cost(player) == pytest.approx(3 / 4)
+    assert d.movement_lp_cost(player) == pytest.approx(0.8)
 
     player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
     assert barrier_lp_damage(player) == 0
     player.item = d.ITEM_SWORD_CURSED
     assert barrier_lp_damage(player) == 5
+
+
+def test_healer_lp_max_recovery_and_departure():
+    _, player = state(("Healer",), lp=99)
+    assert d.player_lp_max(player) == 105
+    assert d.movement_lp_cost(player) == pytest.approx(0.8)
+    d.apply_feed(player, 30)
+    assert player.lp == 105
+    player.members.clear()
+    assert d.player_lp_max(player) == 100
+    assert d.movement_lp_cost(player) == 1
+    d.apply_feed(player, 10)
+    assert player.lp == 105
+    player.lifebringer_lp_max = 110
+    player.members.append(d.PartyMember(player.x, player.y, "Healer"))
+    assert d.player_lp_max(player) == 110
 
 
 @pytest.mark.parametrize("cell, hazard_cost", [(d.CHAR_CALTROP, 3), (d.CHAR_BARRIER, 5)])
@@ -1062,8 +1082,8 @@ def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):
     engine.run_game(ui, "test", stage_num=6)
     assert ui.frames[0] == (0, 90, (2, 2))
     assert ui.frames[1][0::2] == (1, (3, 2))
-    assert ui.frames[1][1] == pytest.approx(90 - 3 / 4)
-    assert player.lp == pytest.approx(90 - 3 / 4)
+    assert ui.frames[1][1] == pytest.approx(90 - 0.8)
+    assert player.lp == pytest.approx(90 - 0.8)
     assert (player.x, player.y) == (3, 2)
     assert player.current_floor == 1
     assert ui.stops == 2
@@ -1109,7 +1129,7 @@ def test_live_loop_rewind_preserves_target_lp(monkeypatch, roles):
         map_mode=False,
     )
     engine.run_game(ui, "test", stage_num=6)
-    assert frames[:3] == pytest.approx([90, 90 - (3 / 4 if roles else 1), 90])
+    assert frames[:3] == pytest.approx([90, 90 - (0.8 if roles else 1), 90])
 
 
 def test_candidate_glyph_is_known_on_first_sighting():
@@ -1303,8 +1323,8 @@ def test_seed_reproduces_layout_and_groups():
 def test_stage6_spawn_roster_scales_by_floor():
     assert len(d.STAGE6_ROSTER) == d.STAGE6_FLOORS == 3
     assert all(any(char == "c" for char, *_ in roster) for roster in d.STAGE6_ROSTER)
-    assert all(any(char == "A" for char, *_ in roster) for roster in d.STAGE6_ROSTER[:2])
-    assert all(any(char == "V" for char, *_ in roster) for roster in d.STAGE6_ROSTER[1:])
+    assert all(any(char == "A" for char, *_ in roster) for roster in d.STAGE6_FIXED_MONSTERS)
+    assert all(any(char == "V" for char, *_ in roster) for roster in d.STAGE6_FIXED_MONSTERS[1:])
 
 
 def test_member_trial_has_fixed_ordered_layout():

@@ -28,6 +28,7 @@ from .stage_data import (
     STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO as STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO,
     STAGE6_EXTRA_BISON_RANKS as STAGE6_EXTRA_BISON_RANKS,
     STAGE6_ROSTER as STAGE6_ROSTER,
+    STAGE6_FIXED_MONSTERS as STAGE6_FIXED_MONSTERS,
     STAGE6_BOSS_PARTY as STAGE6_BOSS_PARTY,
     STAGE6_BOSS_PARTY_ADDITIONS as STAGE6_BOSS_PARTY_ADDITIONS,
     STAGE6_BOSS_ESCORTS as STAGE6_BOSS_ESCORTS,
@@ -75,8 +76,8 @@ PARTY_LIMIT = 2
 MEMBER_STAGE_JESTER_EXP_MULTIPLIER = 1.5
 KNIGHT_INITIAL_LEVEL = 40
 JESTER_DEPARTURE_LEVEL = 100
-HEALER_MOVE_COST = 3 / 4
-HEALER_RESPAWN_COST = 3
+HEALER_MOVE_COST = 0.8
+HEALER_LP_MAX = 105
 RECRUITABLE_MEMBER_ROLES = (
     MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT,
     MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN, MEMBER_YAWNING_CAT, MEMBER_FAIRY_SEER,
@@ -874,6 +875,7 @@ def _get_member_stage_roster_tribes() -> List[MonsterTribe]:
         variant for floor_pool in STAGE6_SUPPORT_POOLS for variant in floor_pool
     )
     variants.update(STAGE6_BOSS_PARTY)
+    variants.update((char, rank) for floor in STAGE6_FIXED_MONSTERS for char, rank, _ in floor)
     variants.update(STAGE6_BOSS_ESCORTS)
     variants.add(("M", 1))
     return sorted(
@@ -894,8 +896,9 @@ def _javelin_follower_active(player: Player) -> bool:
 
 
 def player_lp_max(player: Player) -> int:
-    """Return the player's permanent LP maximum, including Lifebringer's bonus."""
-    return min(player.lifebringer_lp_max, LP_MAX_LIFEBRINGER)
+    """Return the current LP maximum, including active member effects."""
+    permanent_max = min(player.lifebringer_lp_max, LP_MAX_LIFEBRINGER)
+    return max(permanent_max, HEALER_LP_MAX) if has_member(player, MEMBER_HEALER) else permanent_max
 
 
 def apply_feed(player: Player, feed: int, lp_overcharge: int = 0) -> None:
@@ -909,7 +912,7 @@ def apply_feed(player: Player, feed: int, lp_overcharge: int = 0) -> None:
 
 
 def apply_respawn_penalty(player: Player) -> None:
-    player.lp -= HEALER_RESPAWN_COST if has_member(player, MEMBER_HEALER) else LP_RESPAWN_COST
+    player.lp -= LP_RESPAWN_COST
     player.lp = max(LP_RESPAWN_MIN, player.lp)
 
 

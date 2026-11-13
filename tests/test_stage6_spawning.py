@@ -48,14 +48,14 @@ def test_spawn_tries_at_most_ten_distinct_positions(monkeypatch):
     assert len(current.entities) == 10
 
 
-def test_floor2_spawn_queue_has_one_vortex_slot(monkeypatch):
+def test_floor2_spawn_queue_has_no_uppercase_monsters(monkeypatch):
     current = floor()
     monkeypatch.setattr(stage6, "_open_points", lambda _: [])
     monkeypatch.setattr(stage56, "_open_points", lambda *_args, **_kwargs: [])
 
     assert not stage6.spawn_monster(current, 1)
 
-    assert current.monster_spawn_queue.count(("V", 1)) == 1
+    assert all(not char.isupper() for char, _ in current.monster_spawn_queue)
 
 
 def test_wyrm_spawn_ranks_by_floor():
@@ -208,7 +208,7 @@ def test_bison_variants_provide_recovery():
                 if char == "b") == 6
     assert [sum(count * weight for char, count, rank, weight in roster
                 if char == "b" and rank == 1)
-            for roster in d.STAGE6_ROSTER[1:]] == [2, 2]
+            for roster in d.STAGE6_ROSTER[1:]] == [0, 0]
     assert all(char != "B" for char, *_ in d.STAGE6_ROSTER[2])
     assert all(char not in ("b", "B") for char, _ in d.STAGE6_BOSS_PARTY_ADDITIONS)
 
@@ -224,13 +224,13 @@ def test_flame_cobra_spawn_ranks():
 
 
 def test_caltrop_plant_spawn_ranks():
-    assert [next(rank for char, _, rank, _ in roster if char == "X")
-            for roster in d.STAGE6_ROSTER[1:]] == [1, 2]
+    assert [next(rank for char, rank, _ in roster if char == "X")
+            for roster in d.STAGE6_FIXED_MONSTERS[1:]] == [1, 2]
 
 
 def test_rare_amoeba_spawn_ranks():
-    assert [next(rank for char, _, rank, _ in roster if char == "A")
-            for roster in d.STAGE6_ROSTER] == [1, 1, 2]
+    assert [{rank for char, rank, _ in roster if char == "A"}
+            for roster in d.STAGE6_FIXED_MONSTERS] == [{1}, {1, 2}, {2}]
 
 def test_golem_spawn_weights(monkeypatch):
     for floor_index in (1, 2):
@@ -408,35 +408,28 @@ def test_spawn_does_not_place_monster_on_bridgehead(monkeypatch):
     assert not current.entities
 
 
-def test_spores_and_vortex_without_rare_erebus():
-    for index, roster in enumerate(d.STAGE6_ROSTER):
+def test_dynamic_roster_has_spores_and_no_uppercase_monsters():
+    for roster in d.STAGE6_ROSTER:
         assert any(char == "m" for char, *_ in roster)
-        assert not any(char == "E" for char, *_ in roster)
-        assert any(char == "V" for char, *_ in roster) == (index > 0)
+        assert all(not char.isupper() for char, *_ in roster)
 
-def test_second_floor_monster_draw_can_select_v_and_m(monkeypatch):
-    floors = [floor() for _ in range(3)]
-    player = d.Player(4, 4, 1, d.LP_INIT)
-    counts = Counter()
-    pool = [(char, rank) for char, count, rank, spawn_weight in d.STAGE6_ROSTER[1]
-            for _ in range(count * spawn_weight)]
 
-    def sample(current, index, **kwargs):
-        if index == 1:
-            counts[stage6.rand.choice(pool)] += 1
-        return False
-
-    monkeypatch.setattr(stage6, "spawn_monster", sample)
-    monkeypatch.setattr(stage6.rand, "_state", stage6.rand._state[:])
-    monkeypatch.setattr(stage6.rand, "_index", stage6.rand._index)
-    monkeypatch.setattr(stage6.rand, "seed", stage6.rand.seed)
-    stage6.rand.set_seed(37318)
-    for turn in range(d.STAGE6_SPAWN_INTERVAL - 1, d.STAGE6_SPAWN_INTERVAL * 20000,
-                      d.STAGE6_SPAWN_INTERVAL):
-        stage6.advance_spawns(floors, player, 0, turn)
-    assert counts[("V", 1)] > 50
-    assert counts[("m", 1)] > 50
-    assert 0.6 < counts[("V", 1)] / counts[("m", 1)] < 1.6
+def test_fixed_uppercase_monsters_are_placed_per_floor():
+    expected = [
+        Counter({("A", 1): 2, ("B", 1): 4}),
+        Counter({("A", 1): 4, ("A", 2): 6, ("B", 1): 2,
+                 ("C", 1): 1, ("X", 1): 1, ("V", 1): 1}),
+        Counter({("A", 2): 3, ("C", 1): 1, ("X", 2): 1,
+                 ("V", 1): 2, ("F", 2): 1}),
+    ]
+    for seed in (1, 19, 321):
+        stage6.rand.set_seed(seed)
+        floors, _ = stage6.build()
+        for current, wanted in zip(floors, expected):
+            actual = Counter((entity.tribe.char, entity.empowered)
+                             for entity in current.entities
+                             if isinstance(entity, d.Monster) and entity.tribe.char in "ABCXVF")
+            assert actual == wanted
 
 
 def test_every_floor_spawned_every_sixty_turns(monkeypatch):
@@ -575,7 +568,9 @@ def test_initial_spawn_attempts_can_access_boss_room(monkeypatch):
 
     monkeypatch.setattr(stage6, "spawn_monster", record)
     stage6.build()
-    assert len(eligible) == 30
+    assert len(eligible) == d.STAGE6_INITIAL_SPAWN_DRAWS[-1] - sum(
+        count for _, _, count in d.STAGE6_FIXED_MONSTERS[-1]
+    )
     assert eligible[0]
 
 
@@ -587,8 +582,9 @@ def test_stage_setup_attempts_random_spawns_per_floor(monkeypatch):
         return original(current, index, **kwargs)
     monkeypatch.setattr(stage6, "spawn_monster", record)
     floors, _ = stage6.build()
-    assert draws == [(index, False, True) for index, count in enumerate((40, 35, 30))
-                     for _ in range(count)]
+    assert draws == [(index, False, True)
+                     for index, count in enumerate(d.STAGE6_INITIAL_SPAWN_DRAWS)
+                     for _ in range(count - sum(n for _, _, n in d.STAGE6_FIXED_MONSTERS[index]))]
     assert all(not current.respawn_glows for current in floors)
 
 

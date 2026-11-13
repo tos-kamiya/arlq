@@ -844,12 +844,12 @@ def _resolve_elf_contact(
                 )
         old_lp_max = d.player_lp_max(player)
         player.lifebringer_lp_max = min(
-            old_lp_max + d.LIFEBRINGER_LP_MAX_INCREASE,
+            player.lifebringer_lp_max + d.LIFEBRINGER_LP_MAX_INCREASE,
             d.LP_MAX_LIFEBRINGER,
         )
         player.elf_stage_flags |= d.ELF_STAGE_L_FLAG
         player.lp = d.LP_OVERCHARGE_MAX
-        if player.lifebringer_lp_max > old_lp_max:
+        if d.player_lp_max(player) > old_lp_max:
             event_message = trp(
                 "-- The Lifebringer Elf restored your health and increased "
                 "your LP maximum!",

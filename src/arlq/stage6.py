@@ -38,6 +38,35 @@ def _in_detached_terminal_room(current: Floor, point: d.Point) -> bool:
     )
 
 
+def _add_second_detached_gate(current: Floor, split_edge: tuple[d.Point, d.Point]) -> None:
+    detached = next(component for component in current.room_components if len(component) == 1)
+    room = next(iter(detached))
+    connected = set().union(*(component for component in current.room_components if component != detached))
+    candidates = []
+    x, y = room
+    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        neighbor = (x + dx, y + dy)
+        if neighbor not in connected or neighbor in split_edge:
+            continue
+        if dx:
+            wall_x = d.FIELD_X_MARGIN + max(x, neighbor[0]) * (d.TILE_WIDTH + 1)
+            cells = [(wall_x, cy) for cy in range(y * (d.TILE_HEIGHT + 1) + 1,
+                                                  (y + 1) * (d.TILE_HEIGHT + 1))]
+        else:
+            wall_y = max(y, neighbor[1]) * (d.TILE_HEIGHT + 1)
+            cells = [(cx, wall_y) for cx in range(d.FIELD_X_MARGIN + x * (d.TILE_WIDTH + 1) + 1,
+                                                   d.FIELD_X_MARGIN + (x + 1) * (d.TILE_WIDTH + 1))]
+        valid = [(cx, cy) for cx, cy in cells
+                 if current.field[cy][cx] == d.CHAR_WALL
+                 and current.field[cy - dy][cx - dx] == d.CHAR_FLOOR
+                 and current.field[cy + dy][cx + dx] == d.CHAR_FLOOR]
+        if valid:
+            candidates.append(valid[len(valid) // 2])
+    if candidates:
+        gx, gy = rand.choice(candidates)
+        current.field[gy][gx] = d.CHAR_HIDDEN_D_GATE
+
+
 def _place_detached_room_monsters(
     current: Floor, room_components: tuple[set[d.Point], ...], *,
     avoid: set[d.Point] | None = None,
@@ -438,6 +467,7 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
                     max(y1, y2) * (d.TILE_HEIGHT + 1),
                 )
             current.field[gate[1]][gate[0]] = d.CHAR_HIDDEN_D_GATE
+            _add_second_detached_gate(current, split_edge)
         boss_room = None
         if index == d.STAGE6_FLOORS - 1:
             initial_boss_party, boss_entrance = _place_initial_boss_party(current)
@@ -546,14 +576,33 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
     ):
         current.seen[y][x] = 1
     for role in member_roles:
-        point = _candidate_near_bridgehead(current, current.up)
+        try:
+            point = _candidate_near_bridgehead(current, current.up, avoid_neighbors=True)
+        except RuntimeError as exc:
+            raise _BossRouteNotFound() from exc
         current.entities.append(d.PartyMember(*point, role, origin_floor=0))
+    for index, current in enumerate(floors):
+        avoid = player_spawn_exclusion((player.x, player.y)) if index == 0 else set()
+        for char, rank, count in d.STAGE6_FIXED_MONSTERS[index]:
+            existing = sum(
+                isinstance(entity, d.Monster) and entity.tribe.char == char
+                and entity.empowered == rank and entity.boss_id is None
+                and entity not in initial_boss_party
+                for entity in current.entities
+            )
+            for _ in range(count - existing):
+                try:
+                    _place_party(current, [(char, rank)], index,
+                                 respect_spawn_blocks=True, avoid=avoid | current.respawn_exclusions)
+                except RuntimeError as exc:
+                    raise _BossRouteNotFound() from exc
     _balance_boss_route(floors, (player.x, player.y), (boss.x, boss.y))
     for current in floors:
         stage56.initialize_monster_barriers(current)
     floors[-1].respawn_exclusions.difference_update(boss_reserved - boss_clearance)
     for index, current in enumerate(floors):
-        for _ in range(d.STAGE6_INITIAL_SPAWN_DRAWS[index]):
+        fixed_count = sum(count for _, _, count in d.STAGE6_FIXED_MONSTERS[index])
+        for _ in range(d.STAGE6_INITIAL_SPAWN_DRAWS[index] - fixed_count):
             avoid = player_spawn_exclusion((player.x, player.y)) if index == 0 else set()
             spawn_monster(current, index, avoid=avoid, isolated=True, prefer_adjacent=False,
                           player_position=(player.x, player.y) if index == 0 else None)
@@ -572,12 +621,18 @@ def _bridgehead_known_radius() -> int:
 
 
 def _candidate_near_bridgehead(
-    current: Floor, anchor: d.Point, excluded: d.Point | None = None
+    current: Floor, anchor: d.Point, excluded: d.Point | None = None, *,
+    avoid_neighbors: bool = False,
 ) -> d.Point:
     bridgehead = current.bridgehead or anchor
     reachable = _reachable_floor_points(current, anchor)
     points = [p for p in _open_points(current) if p in reachable and p != excluded
               and not _in_bridgehead(current, p)]
+    if avoid_neighbors:
+        occupied = [anchor] + [(entity.x, entity.y) for entity in current.entities
+                               if isinstance(entity, d.PartyMember)]
+        points = [p for p in points if all(max(abs(p[0] - x), abs(p[1] - y)) > 1
+                                           for x, y in occupied)]
     if not points:
         raise RuntimeError("no space near stage 6 bridgehead")
     nearby = [p for p in points if abs(p[0] - bridgehead[0]) + abs(p[1] - bridgehead[1]) <= 7]

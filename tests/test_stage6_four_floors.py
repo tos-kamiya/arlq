@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from arlq import defs as d, stage6
@@ -46,7 +48,7 @@ def test_boss_party_has_room_to_grow_to_eight(monkeypatch, seed):
     (GameConfig(), 3, 4),
     (GameConfig(corridor_h_width=1, corridor_v_width=2), 2, 3),
 ])
-def test_stage6_opens_wider_corridors_but_keeps_one_hidden_gate(
+def test_stage6_opens_wider_corridors_and_adds_hidden_gates(
     monkeypatch, config, expected_h, expected_v
 ):
     original = stage6.generate_floor_field
@@ -81,7 +83,21 @@ def test_stage6_opens_wider_corridors_but_keeps_one_hidden_gate(
     assert all(horizontal == {expected_h} and vertical == {expected_v}
                for horizontal, vertical in observed)
     for current in floors[:-1]:
-        assert sum(row.count(d.CHAR_HIDDEN_D_GATE) for row in current.field) == 1
+        assert sum(row.count(d.CHAR_HIDDEN_D_GATE) for row in current.field) in (1, 2)
+
+
+@pytest.mark.parametrize("available", [False, True])
+def test_second_detached_gate_requires_an_open_neighbor(available):
+    field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    room = (1, 1)
+    wall_x = d.FIELD_X_MARGIN + 2 * (d.TILE_WIDTH + 1)
+    y = d.TILE_HEIGHT + 2
+    field[y][wall_x - 1] = d.CHAR_FLOOR
+    if available:
+        field[y][wall_x + 1] = d.CHAR_FLOOR
+    current = SimpleNamespace(field=field, room_components=({(0, 1), (2, 1)}, {room}))
+    stage6._add_second_detached_gate(current, ((0, 1), room))
+    assert field[y][wall_x] == (d.CHAR_HIDDEN_D_GATE if available else d.CHAR_WALL)
 
 
 @pytest.mark.parametrize("seed", [0, 123, 789])
