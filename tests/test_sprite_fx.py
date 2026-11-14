@@ -215,3 +215,34 @@ def test_loss_only_flashes_visible_party_members():
     filtered = Presenter.visible_events(ui, result, {"cur_torched": [[1, 0]]})
     assert filtered[0].party_positions == [(0, 0)]
     assert combat.party_positions == [(0, 0), (1, 0), (-1, 0)]
+
+
+@pytest.mark.parametrize("attacker, target, facing", [
+    ((3, 4), (3, 3), "up"), ((3, 2), (3, 3), "down"),
+    ((4, 3), (3, 3), "left"), ((2, 3), (3, 3), "right"),
+])
+def test_attack_facing_points_from_player_to_monster(attacker, target, facing):
+    from arlq.sprite_fx import attack_facing
+
+    combat = Combat(0, attacker, [(EntityRef(1, "a", "monster"), target)], True, 0)
+    assert attack_facing(combat) == facing
+
+
+def test_attack_facing_uses_the_monster_run_into_for_a_party():
+    from arlq.sprite_fx import attack_facing
+
+    party = [(EntityRef(1, "a", "monster"), (4, 3)), (EntityRef(2, "b", "monster"), (4, 2))]
+    assert attack_facing(Combat(0, (3, 3), party, True, 0)) == "right"
+    assert attack_facing(Combat(0, (3, 3), [], False, 0)) is None
+
+
+def test_play_sets_the_attack_facing_before_each_fight():
+    ui = fake_ui()
+    view = {"cur_torched": [[1] * 5 for _ in range(5)],
+            "player": d.Player(2, 2, 10, 90), "stage_num": 1}
+    seen = []
+    ui.draw_combat_effect = lambda *args: seen.append(ui._attack_facing)
+    fights = [Combat(0, (2, 2), [(EntityRef(1, "a", "monster"), (1, 2))], True, 0),
+              Combat(0, (2, 2), [(EntityRef(2, "a", "monster"), (2, 3))], True, 0)]
+    Presenter().play(ui, TurnResult(True, None, False, 0, 0, fights), view)
+    assert seen == ["left", "down"]

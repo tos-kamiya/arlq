@@ -7,6 +7,18 @@ from .game_events import BarrierHit, Combat, FloorChanged, Rewound
 from .presentation import play_turn_events
 
 
+def attack_facing(event):
+    """The screen direction of a fight, from the player's cell toward the
+    monster it ran into (the first target), or None without one."""
+    if not event.targets:
+        return None
+    (tx, ty), (ax, ay) = event.targets[0][1], event.attacker
+    dx, dy = tx - ax, ty - ay
+    if abs(dx) >= abs(dy):
+        return 'right' if dx > 0 else 'left' if dx < 0 else None
+    return 'down' if dy > 0 else 'up'
+
+
 class Presenter:
     def __init__(self, *, clock=monotonic, wait=None):
         self.clock = clock
@@ -88,6 +100,9 @@ class Presenter:
                 # Dispatch one event at a time so closing a window stops the
                 # remaining effects, while queued keys stay for the next input.
                 single = replace(result, events=[event], floor_before=event.floor)
+                if isinstance(event, Combat):
+                    # The slash is cut the way the player attacked.
+                    ui._attack_facing = attack_facing(event) or 'up'
                 play_turn_events(ui, single, view["player"], view["stage_num"])
         finally:
             ui._stage_input_active = was_active

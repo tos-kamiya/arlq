@@ -2074,3 +2074,26 @@ def test_follower_image_is_made_once_per_map_mode(sprite_ui, monkeypatch):
 
 def test_follower_image_falls_back_without_image_data(sprite_ui):
     assert sprite_ui._follower_image('J') is sprite_ui._sprite_images['J']
+
+
+@pytest.mark.parametrize('facing, won, filename', [
+    ('up', True, 'slash.png'), ('down', True, 'slash-down.png'),
+    ('left', True, 'slash-left.png'), ('right', True, 'slash-right.png'),
+    ('left', False, 'splash.png'),
+])
+def test_combat_effect_slashes_the_way_the_player_attacked(sprite_ui, monkeypatch,
+                                                           facing, won, filename):
+    loaded = []
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.image.load',
+                        lambda path: loaded.append(Path(path).name))
+    monkeypatch.setattr(sprite_ui, '_play_effect', lambda seconds, create: None)
+    sprite_ui.combat_effect_seconds = 0.3
+    sprite_ui._attack_facing = facing
+    sprite_ui.draw_combat_effect((4, 5), won)
+    assert loaded == [filename]
+
+
+def test_directional_slashes_are_bundled():
+    effects = Path(sprite_funcs.__file__).parent / 'assets' / 'effects'
+    for filename in sprite_funcs.SLASH_FILES.values():
+        assert (effects / filename).is_file(), filename

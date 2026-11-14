@@ -107,6 +107,10 @@ SPRITE_FILES[CAT_SPRITE] = 'yawning-cat.png'
 # the plain image. Keys add the facing to the plain image's key, e.g.
 # 'player sword left' for player-sword-left.png.
 PLAYER_FACINGS = ('up', 'left', 'right')
+# The slash of a won fight, cut the way the player attacked: slash.png is
+# the cut of an attack up the screen (see build-slash.py).
+SLASH_FILES = {'up': 'slash.png', 'down': 'slash-down.png',
+               'left': 'slash-left.png', 'right': 'slash-right.png'}
 PLAYER_FACING_BY_MOVE = {(0, -1): 'up', (0, 1): 'down', (-1, 0): 'left', (1, 0): 'right'}
 SPRITE_FILES.update({f'{key} {facing}': f'{name}-{facing}.png'
                      for key, name in (('@', 'player'), ('player sword', 'player-sword'),
@@ -684,6 +688,9 @@ class SpriteUI(PygletUI):
     # The way the player last moved: 'down' (the camera), 'up', 'left' or
     # 'right'. Display only; no rule reads it.
     _player_facing = 'down'
+    # The way the player attacked in the fight being shown (see
+    # sprite_fx.Presenter); picks the slash image.
+    _attack_facing = 'up'
     _cooling_center = None
     _cooling_damage = None
     # The field being drawn, for stairs and pits that spread over neighbouring floor.
@@ -1660,10 +1667,12 @@ class SpriteUI(PygletUI):
         positions = [pos] if len(pos) == 2 and all(
             isinstance(value, (int, float)) for value in pos
         ) else pos
-        name = "slash" if won else "splash"
-        image = pyglet.image.load(str(
-            Path(__file__).parent / "assets" / "effects" / f"{name}.png"
-        ))
+        effects = Path(__file__).parent / "assets" / "effects"
+        path = effects / (SLASH_FILES.get(self._attack_facing, "slash.png") if won
+                          else "splash.png")
+        if not path.is_file():
+            path = effects / "slash.png"
+        image = pyglet.image.load(str(path))
 
         def create():
             padding = max(1, round(self.scale))

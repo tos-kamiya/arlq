@@ -16,9 +16,15 @@ Rendered with the character sprites' camera (60 degrees down, 256 px per
 can place it on the monster's cell like a character sprite, drawn
 additively. The colors are baked into the image.
 
+The crescent above is the cut of a player attacking up the screen from the
+cell in front of (south of) the monster. For the other attack directions
+the same crescent is turned about the monster, so the cylinder's axis
+stands on the player's side.
+
     blender --background --threads 4 --python dev-samples/3d-stage1/build-slash.py
 
-Writes src/arlq/assets/effects/slash.png, the image the GUI draws.
+Writes src/arlq/assets/effects/slash.png (attacking up) and slash-down.png,
+slash-left.png and slash-right.png, the images the GUI draws.
 """
 from pathlib import Path
 import math
@@ -26,7 +32,12 @@ import math
 import bpy
 from mathutils import Vector
 
-OUT = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets' / 'effects' / 'slash.png'
+OUT_DIR = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets' / 'effects'
+# Each attack direction's image and the crescent's turn about the monster:
+# the player stands south of the monster when attacking up, north when
+# attacking down, and west or east when attacking right or left.
+FACINGS = (('slash.png', 0.0), ('slash-down.png', math.pi),
+           ('slash-left.png', math.pi / 2), ('slash-right.png', -math.pi / 2))
 # The cylinder's radius; the cut's height at the centre, and how far it
 # rises toward 2:30 (seen from above, the far side at 12) and falls
 # toward 8:30, where the crescent ends.
@@ -139,25 +150,31 @@ scene.render.film_transparent = True
 scene.render.resolution_x = scene.render.resolution_y = round(256 * 4.6 / 2.6)
 scene.render.image_settings.file_format = 'PNG'
 scene.render.image_settings.color_mode = 'RGBA'
-scene.render.filepath = str(OUT)
-bpy.ops.render.render(write_still=True)
+for filename, yaw in FACINGS:
+    out = OUT_DIR / filename
+    # The mesh is built about the monster's ground origin, so turning the
+    # object turns the cut about the monster.
+    obj.rotation_euler.z = yaw
+    scene.render.filepath = str(out)
+    bpy.ops.render.render(write_still=True)
 
-# Crop symmetric about the render centre, as export-sprites.py does.
-image = bpy.data.images.load(str(OUT), check_existing=False)
-width, height = image.size
-pixels = list(image.pixels)
-occupied = [(i % width, i // width) for i in range(width * height) if pixels[i * 4 + 3] > 0.01]
-left = max(0, min(p[0] for p in occupied) - 2)
-right = min(width, max(p[0] for p in occupied) + 3)
-bottom = max(0, min(p[1] for p in occupied) - 2)
-top = min(height, max(p[1] for p in occupied) + 3)
-left = min(left, width - right)
-right = width - left
-bottom = min(bottom, height - top)
-top = height - bottom
-trimmed = bpy.data.images.new('slash', right - left, top - bottom, alpha=True)
-trimmed.pixels = [value for row in range(bottom, top)
-                  for value in pixels[(row * width + left) * 4:(row * width + right) * 4]]
-trimmed.filepath_raw = str(OUT)
-trimmed.file_format = 'PNG'
-trimmed.save()
+    # Crop symmetric about the render centre, as export-sprites.py does.
+    image = bpy.data.images.load(str(out), check_existing=False)
+    width, height = image.size
+    pixels = list(image.pixels)
+    occupied = [(i % width, i // width) for i in range(width * height)
+                if pixels[i * 4 + 3] > 0.01]
+    left = max(0, min(p[0] for p in occupied) - 2)
+    right = min(width, max(p[0] for p in occupied) + 3)
+    bottom = max(0, min(p[1] for p in occupied) - 2)
+    top = min(height, max(p[1] for p in occupied) + 3)
+    left = min(left, width - right)
+    right = width - left
+    bottom = min(bottom, height - top)
+    top = height - bottom
+    trimmed = bpy.data.images.new(filename, right - left, top - bottom, alpha=True)
+    trimmed.pixels = [value for row in range(bottom, top)
+                      for value in pixels[(row * width + left) * 4:(row * width + right) * 4]]
+    trimmed.filepath_raw = str(out)
+    trimmed.file_format = 'PNG'
+    trimmed.save()
