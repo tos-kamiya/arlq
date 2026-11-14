@@ -13,6 +13,7 @@ from . import defs as d
 from . import display as ui_display
 from .arlq import barrier_lp_damage
 from .i18n import t as tr
+from .game_events import FloorChanged, Rewound
 from .sprite_fx import Presenter
 from .pyglet_funcs import (
     CELL_SIZE_X,
@@ -102,6 +103,16 @@ MEMBER_SPRITES = {'J': ('jester-n',), 'H': ('healer-f', 'healer-m'),
                   'S': ('seer-f', 'seer-m')}
 CAT_SPRITE = 'yawning-cat'
 SPRITE_FILES[CAT_SPRITE] = 'yawning-cat.png'
+# The player's images facing up, left and right; facing down (the camera) is
+# the plain image. Keys add the facing to the plain image's key, e.g.
+# 'player sword left' for player-sword-left.png.
+PLAYER_FACINGS = ('up', 'left', 'right')
+PLAYER_FACING_BY_MOVE = {(0, -1): 'up', (0, 1): 'down', (-1, 0): 'left', (1, 0): 'right'}
+SPRITE_FILES.update({f'{key} {facing}': f'{name}-{facing}.png'
+                     for key, name in (('@', 'player'), ('player sword', 'player-sword'),
+                                       ('player cursed sword', 'player-cursed-sword'),
+                                       ('player blessed', 'player-blessed'))
+                     for facing in PLAYER_FACINGS})
 MEMBER_SKINS = ('l', 'm', 'd')
 SPRITE_FILES.update({f'{name}-{skin}': f'{name}-{skin}.png'
                      for names in MEMBER_SPRITES.values() for name in names
@@ -625,6 +636,9 @@ class SpriteUI(PygletUI):
     # Current view and, while barriers are weakened, the player's cell that
     # cools the barrier stones around it.
     _cur_torched = None
+    # The way the player last moved: 'down' (the camera), 'up', 'left' or
+    # 'right'. Display only; no rule reads it.
+    _player_facing = 'down'
     _cooling_center = None
     _cooling_damage = None
     # The field being drawn, for stairs and pits that spread over neighbouring floor.
@@ -646,6 +660,7 @@ class SpriteUI(PygletUI):
     def _initialize_state(self):
         super()._initialize_state()
         self._presenter = Presenter()
+        self._player_facing = 'down'
         # Sprites that hop while waiting for input, as (sprite, base y).
         self._bobbing = []
         self._bob_raised = False
@@ -925,6 +940,9 @@ class SpriteUI(PygletUI):
         if field:
             self._set_edge_shade_field(field)
         self._last_stage_draw = (decor, kwargs.copy())
+        if kwargs.get('turn') == 0:
+            # A stage starts with the player facing the camera.
+            self._player_facing = 'down'
         theme = STAGE_TERRAIN_THEMES.get(kwargs.get('stage_num'), 'ruins')
         if theme != self._terrain_theme and theme in self._theme_images:
             self._set_terrain_theme(theme)
@@ -1559,7 +1577,16 @@ class SpriteUI(PygletUI):
         )
 
     def present_turn(self, result, view):
+        self._update_player_facing(result)
         return self._presenter.play(self, result, view)
+
+    def _update_player_facing(self, result):
+        """Face the last move, even one that left the player in place; face
+        the camera again after stairs, a fall or a Loop rewind."""
+        if result.move is not None:
+            self._player_facing = PLAYER_FACING_BY_MOVE.get(result.move, self._player_facing)
+        if any(isinstance(event, (FloorChanged, Rewound)) for event in result.events):
+            self._player_facing = 'down'
 
     def _play_effect(self, seconds, create):
         self._presenter.hold(self, seconds, create)
@@ -1742,7 +1769,10 @@ class SpriteUI(PygletUI):
             sprite = 'player blessed'
         else:
             sprite = '@'
-        return sprite if sprite in self._sprite_images else '@'
+        if sprite not in self._sprite_images:
+            sprite = '@'
+        turned = f'{sprite} {self._player_facing}'
+        return turned if turned in self._sprite_images else sprite
 
     def _set_scaled_dimensions(self):
         super()._set_scaled_dimensions()

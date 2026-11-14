@@ -19,6 +19,9 @@ class TurnResult:
     floor_before: int
     floor_after: int
     events: list[GameEvent] = field(default_factory=list)
+    # The movement input of a consumed turn, whether or not the player moved
+    # (a wall or a lost fight keeps it in place); None when no turn passed.
+    move: tuple[int, int] | None = None
 
 
 class GameSession:
@@ -386,6 +389,7 @@ class GameSession:
                 floor_before,
                 self.floor[0],
                 events or [],
+                move,
             )
         if (
             self.stage_num == 6
@@ -401,6 +405,7 @@ class GameSession:
                 floor_before,
                 self.floor[0],
                 events or [],
+                move,
             )
         if (
             self.stage_num == 6
@@ -417,7 +422,8 @@ class GameSession:
             stop_repeat = True
             self._finish()
         return TurnResult(
-            True, self.message, stop_repeat, floor_before, self.floor[0], events or []
+            True, self.message, stop_repeat, floor_before, self.floor[0], events or [],
+            move,
         )
 
     def _finish(self):

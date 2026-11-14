@@ -8,6 +8,7 @@ import pytest
 from arlq import defs as d
 from arlq import display, sprite_funcs
 from arlq import i18n
+from arlq.game_events import FloorChanged, Rewound
 from arlq.pyglet_funcs import PygletUI
 from arlq.sprite_funcs import SPRITE_FILES, SPRITE_REFERENCE_PIXELS, SpriteUI
 
@@ -1949,3 +1950,70 @@ def test_menu_leaves_hopping_sprites_untouched(bob_ui):
     bob_ui.now = sprite_funcs.IDLE_BOB_INTERVAL * 1.5
     bob_ui._update_idle_bob()
     assert (_bobbing_ys(bob_ui), bob_ui.flips) == ([base], 0)
+
+
+def _turn(move=None, events=()):
+    from arlq.game_session import TurnResult
+
+    return TurnResult(move is not None, None, False, 0, 0, list(events), move)
+
+
+@pytest.mark.parametrize('move, facing', [
+    ((0, -1), 'up'), ((0, 1), 'down'), ((-1, 0), 'left'), ((1, 0), 'right'),
+])
+def test_player_faces_its_last_move(sprite_ui, move, facing):
+    sprite_ui._update_player_facing(_turn(move))
+    assert sprite_ui._player_facing == facing
+    sprite_ui._update_player_facing(_turn())
+    assert sprite_ui._player_facing == facing
+
+
+@pytest.mark.parametrize('event', [
+    FloorChanged(0, 'down', 1, (3, 3)), FloorChanged(0, 'fall', 1, (3, 3)),
+    Rewound(0, 'rewind', {}),
+])
+def test_player_faces_the_camera_after_stairs_falls_and_rewinds(sprite_ui, event):
+    sprite_ui._update_player_facing(_turn((-1, 0), [event]))
+    assert sprite_ui._player_facing == 'down'
+
+
+@pytest.mark.parametrize('item, flags, base', [
+    (None, 0, '@'),
+    (d.ITEM_SWORD_X1_5, 0, 'player sword'),
+    (d.ITEM_SWORD_CURSED, 0, 'player cursed sword'),
+    (None, d.ELF_STAGE_K_FLAG, 'player blessed'),
+])
+@pytest.mark.parametrize('facing', ['down', 'up', 'left', 'right'])
+def test_player_sprite_matches_sword_and_facing(sprite_ui, item, flags, base, facing):
+    player = d.Player(2, 2, 100, 90)
+    player.item = item
+    player.elf_stage_flags = flags
+    sprite_ui._player_facing = facing
+    expected = base if facing == 'down' else f'{base} {facing}'
+    assert sprite_ui._player_sprite(player) == expected
+    assert SPRITE_FILES[expected].startswith('player')
+
+
+def test_player_sprite_falls_back_to_facing_the_camera(sprite_ui):
+    del sprite_ui._sprite_images['@ left']
+    sprite_ui._player_facing = 'left'
+    assert sprite_ui._player_sprite(d.Player(2, 2, 100, 90)) == '@'
+
+
+def test_turned_player_sprites_are_bundled():
+    directory = Path(sprite_funcs.__file__).parent / 'assets' / 'characters'
+    for key, filename in SPRITE_FILES.items():
+        if key.split(' ')[-1] in sprite_funcs.PLAYER_FACINGS and filename.startswith('player'):
+            assert (directory / filename).is_file(), filename
+
+
+def test_stage_start_faces_the_camera(sprite_ui, monkeypatch):
+    monkeypatch.setattr(PygletUI, 'draw_stage', lambda self, **kwargs: None)
+    monkeypatch.setattr(sprite_ui, '_update_strength_column_width', lambda: None)
+    sprite_ui.window_width = 400
+    sprite_ui.strength_column_width = 0
+    sprite_ui._player_facing = 'left'
+    sprite_ui.draw_stage(turn=3, stage_num=1)
+    assert sprite_ui._player_facing == 'left'
+    sprite_ui.draw_stage(turn=0, stage_num=1)
+    assert sprite_ui._player_facing == 'down'

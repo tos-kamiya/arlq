@@ -111,3 +111,20 @@ def test_view_does_not_change_message(session):
     session.step((1, 0))
     assert session.phase == "game_over"
     assert session.game_over_message() == engine.trp(">> Collapsed from hunger! <<", 9)
+
+
+def test_consumed_turns_report_their_move(session):
+    floor = session.floors[0]
+    floor.field[2][1] = d.CHAR_WALL
+    floor.seen[2][1] = 1
+    assert session.step((0, 1)).move == (0, 1)
+    # A wall keeps the player in place but still uses the turn and the move.
+    assert session.step((-1, 0)).move == (-1, 0)
+    assert session.step((0, 0)).move is None
+
+
+def test_repeat_stop_reports_no_move(session):
+    floor = session.floors[0]
+    floor.field[2][3] = d.CHAR_WALL
+    floor.seen[2][3] = 1
+    assert session.step((1, 0), repeat=True).move is None
