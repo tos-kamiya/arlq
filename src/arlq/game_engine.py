@@ -436,7 +436,6 @@ def _vortex_rearrange(
     floor_index: int,
     center: d.Point,
     floors: Optional[List[Floor]] = None,
-    include_treasures: bool = True,
     radius_multiplier: float = 1.0,
 ) -> None:
     """Reposition entities and forget explored floor and barrier cells."""
@@ -456,7 +455,7 @@ def _vortex_rearrange(
         if (entity.x, entity.y) in affected_points
         and (
             isinstance(entity, d.Fairy)
-            or isinstance(entity, d.Treasure) and include_treasures
+            or isinstance(entity, d.Treasure)
             or (
                 isinstance(entity, d.Monster)
                 and entity.active
