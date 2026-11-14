@@ -146,10 +146,11 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("A", 1, 1),
         ("b", 3, 1),
         ("b", 3, 2),
+        ("b", 1, 3),
         ("b", 2, 1),
         ("c", 1, 1),
         ("g", 2, 1),
-        ("d", 6, 2),
+        ("d", 5, 2),
         ("k", 2, 1),
         ("l", 1, 1),
         ("n", 1, 1),
@@ -162,11 +163,13 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("a", 12, 1),
         ("X", 1, 1),
         ("A", 1, 1),
-        ("b", 6, 2),
+        ("b", 5, 2),
+        ("b", 1, 3),
         ("b", 2, 1),
         ("c", 1, 1),
         ("g", 2, 1),
-        ("d", 6, 2),
+        ("d", 3, 2),
+        ("d", 2, 3),
         ("k", 3, 1),
         ("l", 1, 1),
         ("n", 1, 1),
@@ -177,13 +180,11 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
         ("a", 8, 1),
         ("X", 1, 1),
         ("A", 1, 1),
-        ("b", 3, 2),
-        ("b", 3, 3),
-        ("b", 2, 1),
+        ("b", 4, 2),
+        ("b", 4, 3),
         ("c", 1, 1),
         ("g", 2, 1),
-        ("d", 4, 2),
-        ("d", 2, 3),
+        ("d", 5, 3),
         ("k", 3, 1),
         ("l", 1, 1),
         ("n", 1, 1),
@@ -194,11 +195,9 @@ STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
     [
         ("a", 4, 1),
         ("A", 1, 1),
-        ("b", 6, 3),
-        ("b", 2, 1),
+        ("b", 8, 3),
         ("c", 1, 1),
         ("g", 2, 1),
-        ("d", 2, 2),
         ("d", 4, 3),
         ("l", 1, 1),
         ("n", 1, 1),
@@ -219,7 +218,7 @@ STAGE6_TURN_LIMIT = 2000
 STAGE6_CORE_GROWTH_TURNS = 500
 STAGE6_EXTRA_CORRIDORS = 0
 STAGE6_INITIAL_MONSTERS = 18
-STAGE6_INITIAL_SPAWN_DRAWS = (40, 35, 30)
+STAGE6_INITIAL_SPAWN_DRAWS = (40, 35, 31)
 STAGE6_SPAWN_INTERVAL = 60
 STAGE6_PARTY_SPAWN_PERCENT = 60
 STAGE6_SPAWN_ATTEMPTS = 10
@@ -231,7 +230,7 @@ STAGE6_EXTRA_BISON_RANKS = (1, None, None)
 STAGE6_FIXED_MONSTERS = (
     (("A", 1, 2), ("B", 1, 4)),
     (("A", 1, 4), ("A", 2, 6), ("B", 1, 2), ("C", 1, 1), ("X", 1, 1), ("V", 1, 1)),
-    (("A", 2, 3), ("C", 1, 1), ("X", 2, 1), ("V", 1, 1)),
+    (("A", 2, 3), ("B", 1, 1), ("C", 1, 1), ("X", 2, 1), ("V", 1, 1)),
 )
 # Stage 6 roster entries are (char, count, rank, spawn-weight multiplier).
 STAGE6_ROSTER = (

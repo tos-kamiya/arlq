@@ -517,21 +517,31 @@ def test_stage4_has_independent_per_floor_roster():
     assert [
         sum(count for _, count, rank in floor if rank == 2 or rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [2, 9, 12, 12, 13]
+    ] == [2, 9, 11, 13, 13]
     assert [
         sum(count for _, count, rank in floor if rank == 3)
         for floor in d.STAGE4_ROSTER
-    ] == [0, 0, 0, 5, 10]
+    ] == [0, 1, 3, 9, 12]
     assert [
         sum(count for ch, count, _ in floor if ch == "d")
         for floor in d.STAGE4_ROSTER
-    ] == [6, 6, 6, 6, 6]
+    ] == [6, 5, 5, 5, 4]
+    assert [sum(count for ch, count, rank in floor if ch == "b" and rank == 2)
+            for floor in d.STAGE4_ROSTER] == [0, 3, 5, 4, 0]
+    assert [sum(count for ch, count, rank in floor if ch == "d" and rank == 1)
+            for floor in d.STAGE4_ROSTER] == [4, 0, 0, 0, 0]
     assert all(
         rank == 1
         for floor in d.STAGE4_ROSTER
         for ch, _, rank in floor
         if ch in {"a", "A", "c"}
     )
+    assert [sum(count for ch, count, rank in floor if ch == "b" and rank == 3)
+            for floor in d.STAGE4_ROSTER] == [0, 1, 1, 4, 8]
+    assert [sum(count for ch, count, rank in floor if ch == "d" and rank == 2)
+            for floor in d.STAGE4_ROSTER] == [2, 5, 3, 0, 0]
+    assert [sum(count for ch, count, rank in floor if ch == "d" and rank == 3)
+            for floor in d.STAGE4_ROSTER] == [0, 0, 2, 5, 4]
     assert d.MARKSMAN_LP_DAMAGE == 4
     assert not any(ch == "G" for floor in d.STAGE4_ROSTER for ch, _, _ in floor)
     assert sum(count for ch, count, _ in d.STAGE4_ROSTER[3] if ch == "w") == 2

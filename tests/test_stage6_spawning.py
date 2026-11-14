@@ -419,7 +419,7 @@ def test_fixed_uppercase_monsters_are_placed_per_floor():
         Counter({("A", 1): 2, ("B", 1): 4}),
         Counter({("A", 1): 4, ("A", 2): 6, ("B", 1): 2,
                  ("C", 1): 1, ("X", 1): 1, ("V", 1): 1}),
-        Counter({("A", 2): 3, ("C", 1): 1, ("X", 2): 1,
+        Counter({("A", 2): 3, ("B", 1): 1, ("C", 1): 1, ("X", 2): 1,
                  ("V", 1): 2, ("F", 2): 1}),
     ]
     for seed in (1, 19, 321):

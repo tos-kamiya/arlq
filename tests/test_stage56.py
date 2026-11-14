@@ -1514,7 +1514,7 @@ def test_member_trial_healer_is_in_middle_row_on_right():
     assert (healer.x, healer.y) == (47, 10)
     assert all(upper.field[3][x] != d.CHAR_WALL for x in range(44, 48))
     assert sorted(e.x for e in upper.entities if isinstance(e, d.Monster)
-                  and e.tribe.char == "B" and e.y == 10) == [41, 44]
+                  and e.tribe.char == "b" and e.y == 10) == [41, 44]
 
 def test_member_trial_rogue_pit_blocks_the_route_to_guardian():
     floors, _ = stage5.build_member_trial()
