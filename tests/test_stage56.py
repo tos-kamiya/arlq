@@ -281,6 +281,15 @@ def test_stage5_member_progress_shows_candidates_before_they_depart():
     assert display.stage5_member_progress_marks(player)[-2:] == [("Y", False), ("S", False)]
 
 
+def test_stage5_member_progress_marks_party_members_with_at():
+    _, player = state((d.MEMBER_JESTER, d.MEMBER_YAWNING_CAT))
+    player.known_member_floors = {d.MEMBER_JESTER: 1, d.MEMBER_YAWNING_CAT: 2, d.MEMBER_ROGUE: 3}
+    player.stage6_candidates = True
+    labels = [label for label, _ in display.stage5_member_progress_marks(player)]
+    assert labels[:3] == ["J@", "H", "R3"]
+    assert "Y@" in labels
+
+
 def test_fairy_seer_identifies_fairies_in_explored_areas_on_every_floor():
     upper, player = state((d.MEMBER_FAIRY_SEER,))
     lower, _ = state()

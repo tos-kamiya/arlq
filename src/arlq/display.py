@@ -174,7 +174,11 @@ def elf_stage_progress_marks(
 def stage5_member_progress_marks(
     player: d.Player,
 ) -> List[Tuple[str, bool]]:
-    """Return member labels and whether they should use the bold style."""
+    """Return member labels and whether they should use the bold style.
+
+    A label is the member's glyph followed by ``@`` while it is in the party,
+    the floor it was seen on while it waits, or ``-`` once it has left.
+    """
     roles = d.RECRUITABLE_MEMBER_ROLES
     marks = []
     current_roles = {member.role for member in player.members}
@@ -186,7 +190,9 @@ def stage5_member_progress_marks(
                     and role in player.joined_members and role not in current_roles)
         if departed:
             label += "-"
-        elif role not in current_roles:
+        elif role in current_roles:
+            label += "@"
+        else:
             known_floor = player.known_member_floors.get(role)
             if known_floor is not None:
                 label += str(known_floor)
