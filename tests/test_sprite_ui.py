@@ -6,7 +6,7 @@ import pyglet
 import pytest
 
 from arlq import defs as d
-from arlq import display, sprite_funcs
+from arlq import display, sprite_funcs, sprite_images
 from arlq import i18n
 from arlq.game_events import FloorChanged, Rewound
 from arlq.pyglet_funcs import PygletUI
@@ -200,7 +200,7 @@ def test_unknown_amoeba_does_not_disclose_model(sprite_ui, monkeypatch):
     # Its ground disc keeps the hue but is no brighter than a blue disc.
     disc = sprite_ui.outlines[0][3]
     blue = sprite_funcs.COLOR_MAP[sprite_funcs.CI_BLUE]
-    assert sprite_funcs._luminance(disc) == pytest.approx(sprite_funcs._luminance(blue), abs=1)
+    assert sprite_images._luminance(disc) == pytest.approx(sprite_images._luminance(blue), abs=1)
     assert disc[0] > disc[1] > disc[2]
 
 
@@ -271,7 +271,7 @@ def test_larger_sprite_image_is_drawn_larger_at_the_same_scale(sprite_ui):
 
 
 def test_ground_disc_is_tinted_ellipse_fading_outward(monkeypatch):
-    image = sprite_funcs.ground_disc_image()
+    image = sprite_images.ground_disc_image()
     data = image.get_data('RGBA', image.width * 4)
     alpha = lambda col, row: data[(row * image.width + col) * 4 + 3]
     mid = image.width // 2
@@ -290,7 +290,7 @@ def test_ground_disc_is_tinted_ellipse_fading_outward(monkeypatch):
     disc = ui._drawables[0]
     assert disc.group == 'disc' and disc.color == (82, 140, 220)
     assert disc.image.width * disc.scale_x == pytest.approx(20)
-    assert disc.image.height * disc.scale_y == pytest.approx(20 * sprite_funcs.GROUND_DISC_FLATTEN)
+    assert disc.image.height * disc.scale_y == pytest.approx(20 * sprite_images.GROUND_DISC_FLATTEN)
     assert disc.x == 40
 
 
@@ -588,7 +588,7 @@ def test_respawned_character_stands_in_swirled_column_of_its_disc_color(sprite_u
         images['back', False], images['back', True],
         images['front', False], images['front', True],
     ]
-    gap = tuple(round(c * sprite_funcs.RESPAWN_COLUMN_GAP_SHADE) for c in color)
+    gap = tuple(round(c * sprite_images.RESPAWN_COLUMN_GAP_SHADE) for c in color)
     assert [wall.color for wall in walls] == [color, gap, color, gap]
     assert ui.outlines[0][3] == color
     assert walls[0].group.order < sprite.group.order < walls[2].group.order
@@ -652,7 +652,7 @@ def test_follower_next_to_player_is_drawn_smaller_not_enlarged(sprite_ui, char, 
     ui._player_cell = (4, 6)
     ui._draw_member(display.FieldGlyph(4, 5, char, 'member', member_role=role))
     assert ui._drawables[0].scale == pytest.approx(
-        sprite_funcs.FOLLOWER_SCALE * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+        sprite_images.FOLLOWER_SCALE * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
     assert not ui.outlines
 
 
@@ -717,7 +717,7 @@ def test_strength_column_shows_sprites_of_identified_types_only(monkeypatch, lab
 
 
 def test_disc_halves_split_on_the_diagonal(monkeypatch):
-    lower, upper = (sprite_funcs.ground_disc_image(half)
+    lower, upper = (sprite_images.ground_disc_image(half)
                     for half in ('lower-left', 'upper-right'))
     size = lower.width
     alpha = lambda image, col, row: image.get_data('RGBA', size * 4)[(row * size + col) * 4 + 3]
@@ -948,12 +948,12 @@ def test_guardian_cools_barriers_but_not_caltrops_near_player(
 
 
 def test_barrier_image_glows_from_the_floor_and_fades_upward():
-    image = sprite_funcs.barrier_image(0)
-    width, height = sprite_funcs.BARRIER_TEXELS
+    image = sprite_images.barrier_image(0)
+    width, height = sprite_images.BARRIER_TEXELS
     data = image.get_data('RGBA', width * 4)
     alpha = lambda col, row: data[(row * width + col) * 4 + 3]
     pixel = lambda col, row: data[(row * width + col) * 4:(row * width + col) * 4 + 3]
-    near = round(sprite_funcs.BARRIER_INSET / sprite_funcs.BARRIER_HEIGHT * height)
+    near = round(sprite_images.BARRIER_INSET / sprite_images.BARRIER_HEIGHT * height)
     # The front sheet is bright where it leaves the floor and orange.
     r, g, b = pixel(width // 2, near + 1)
     assert alpha(width // 2, near + 1) > 120 and r > g > b
@@ -963,10 +963,10 @@ def test_barrier_image_glows_from_the_floor_and_fades_upward():
 
 
 def test_reduced_barrier_image_is_a_smaller_barrier_in_the_middle():
-    width, height = sprite_funcs.BARRIER_TEXELS
+    width, height = sprite_images.BARRIER_TEXELS
     alpha = lambda image: image.get_data('RGBA', width * 4)[3::4]
-    full = alpha(sprite_funcs.barrier_image(0))
-    reduced = alpha(sprite_funcs.barrier_image(0, sprite_funcs.BARRIER_REDUCED_SCALE))
+    full = alpha(sprite_images.barrier_image(0))
+    reduced = alpha(sprite_images.barrier_image(0, sprite_funcs.BARRIER_REDUCED_SCALE))
     lit = lambda data: [(i % width, i // width) for i, a in enumerate(data) if a > 20]
     full_cols = [col for col, _ in lit(full)]
     cols, rows = zip(*lit(reduced))
@@ -1572,11 +1572,11 @@ def test_lp_gauge_sits_over_player_head_scaled_to_its_disc(sprite_ui, lp, tone):
 
 
 def test_edge_floor_shade_fades_smoothly_from_the_outer_walls():
-    shade = sprite_funcs.edge_floor_shade
+    shade = sprite_images.edge_floor_shade
     width, height = d.FIELD_WIDTH, d.FIELD_HEIGHT
     middle_y = height / 2
-    side_edge, side_cells = sprite_funcs.EDGE_FLOOR_SIDE_FADE
-    end_edge, end_cells = sprite_funcs.EDGE_FLOOR_END_FADE
+    side_edge, side_cells = sprite_images.EDGE_FLOOR_SIDE_FADE
+    end_edge, end_cells = sprite_images.EDGE_FLOOR_END_FADE
     assert shade(1, middle_y, width, height) == pytest.approx(side_edge)
     assert shade(width - 1, middle_y, width, height) == pytest.approx(side_edge)
     assert shade(1 + side_cells, middle_y, width, height) == 1
@@ -1596,7 +1596,7 @@ def edge_shade_ui(ui, scroll):
     ui._horizontal_scroll_px = scroll
     ui._edge_shade_group = 'edge-shade'
     ui._edge_shade_bounds = None
-    texels = sprite_funcs.EDGE_FLOOR_TEXELS_PER_CELL
+    texels = sprite_images.EDGE_FLOOR_TEXELS_PER_CELL
     image = SimpleNamespace(width=d.FIELD_WIDTH * texels, height=d.FIELD_HEIGHT * texels)
     image.get_region = lambda *region: SimpleNamespace(region=region, width=region[2],
                                                        height=region[3])
@@ -1611,7 +1611,7 @@ def edge_shade_ui(ui, scroll):
 
 def test_edge_shade_strips_cover_each_fading_texel_once(cached_floor_ui):
     ui = edge_shade_ui(cached_floor_ui, 0)
-    texels = sprite_funcs.EDGE_FLOOR_TEXELS_PER_CELL
+    texels = sprite_images.EDGE_FLOOR_TEXELS_PER_CELL
     width, height = d.FIELD_WIDTH * texels, d.FIELD_HEIGHT * texels
     covered = {}
     for col, row, w, h in ui._edge_shade_strips():
@@ -1619,7 +1619,7 @@ def test_edge_shade_strips_cover_each_fading_texel_once(cached_floor_ui):
             for x in range(col, col + w):
                 covered[x, y] = covered.get((x, y), 0) + 1
     assert set(covered.values()) == {1}
-    shade = sprite_funcs.edge_floor_shade
+    shade = sprite_images.edge_floor_shade
     for y in range(height):
         for x in range(width):
             if (x, y) not in covered:
@@ -1642,7 +1642,7 @@ def test_edge_shade_multiplies_only_visible_strips_once_floor_is_drawn(cached_fl
     left = strips[0]
     assert (left.x, left.image.region[0]) == (0, 0)
     assert left.image.width * left.scale_x == pytest.approx(
-        (1 + sprite_funcs.EDGE_FLOOR_SIDE_FADE[1]) * ui.cell_size_x)
+        (1 + sprite_images.EDGE_FLOOR_SIDE_FADE[1]) * ui.cell_size_x)
     assert left.image.height * left.scale_y == d.FIELD_HEIGHT * ui.cell_size_y
     assert left.y == ui.window_height - d.FIELD_HEIGHT * ui.cell_size_y
 
@@ -1654,7 +1654,7 @@ def test_edge_shade_multiplies_only_visible_strips_once_floor_is_drawn(cached_fl
     strips = [obj for obj in ui._drawables if obj.group == 'edge-shade']
     assert len(strips) == 2
     assert {obj.y for obj in strips} == {
-        ui.window_height - ui.cell_size_y * (1 + sprite_funcs.EDGE_FLOOR_END_FADE[1]),
+        ui.window_height - ui.cell_size_y * (1 + sprite_images.EDGE_FLOOR_END_FADE[1]),
         ui.window_height - d.FIELD_HEIGHT * ui.cell_size_y,
     }
 
@@ -1664,11 +1664,11 @@ def test_edge_floor_shade_uses_first_non_wall_from_each_edge():
     for y in range(3, 9):
         for x in range(4, 15):
             field[y][x] = d.CHAR_FLOOR
-    bounds = sprite_funcs.edge_floor_bounds(field)
+    bounds = sprite_images.edge_floor_bounds(field)
     assert bounds == (4, 3, 15, 9)
-    shade = sprite_funcs.edge_floor_shade
-    side, side_width = sprite_funcs.EDGE_FLOOR_SIDE_FADE
-    end, end_width = sprite_funcs.EDGE_FLOOR_END_FADE
+    shade = sprite_images.edge_floor_shade
+    side, side_width = sprite_images.EDGE_FLOOR_SIDE_FADE
+    end, end_width = sprite_images.EDGE_FLOOR_END_FADE
     assert shade(0, 6, 18, 12, bounds) == side
     assert shade(4, 6, 18, 12, bounds) == side
     assert shade(4 + side_width, 6, 18, 12, bounds) == 1
@@ -1698,7 +1698,7 @@ def test_edge_shade_keeps_initial_bounds_when_returning_to_changed_floor(sprite_
 def test_edge_shade_strips_cover_shifted_fades(cached_floor_ui):
     ui = edge_shade_ui(cached_floor_ui, 0)
     ui._edge_shade_bounds = (3, 2, d.FIELD_WIDTH - 4, d.FIELD_HEIGHT - 3)
-    texels = sprite_funcs.EDGE_FLOOR_TEXELS_PER_CELL
+    texels = sprite_images.EDGE_FLOOR_TEXELS_PER_CELL
     covered = set()
     for col, row, width, height in ui._edge_shade_strips():
         for y in range(row, row + height):
@@ -1708,7 +1708,7 @@ def test_edge_shade_strips_cover_shifted_fades(cached_floor_ui):
     for y in range(d.FIELD_HEIGHT * texels):
         for x in range(d.FIELD_WIDTH * texels):
             if (x, y) not in covered:
-                assert sprite_funcs.edge_floor_shade(
+                assert sprite_images.edge_floor_shade(
                     (x + .5) / texels, (y + .5) / texels,
                     d.FIELD_WIDTH, d.FIELD_HEIGHT, ui._edge_shade_bounds,
                 ) == 1
@@ -2041,7 +2041,7 @@ def _image(rows):
 
 
 def test_soft_outline_fades_only_dark_pixels_near_the_edge(monkeypatch):
-    monkeypatch.setattr(sprite_funcs, 'FOLLOWER_OUTLINE_BAND', 1)
+    monkeypatch.setattr(sprite_images, 'FOLLOWER_OUTLINE_BAND', 1)
     ink, cloth, clear = (20, 20, 30, 255), (200, 150, 100, 255), (0, 0, 0, 0)
     size = 7
     rows = [[clear] * size for _ in range(size)]
@@ -2050,10 +2050,10 @@ def test_soft_outline_fades_only_dark_pixels_near_the_edge(monkeypatch):
             edge = x in (1, size - 2) or y in (1, size - 2)
             rows[y][x] = ink if edge else cloth
     rows[3][3] = ink  # a dark detail away from the edge
-    soft = sprite_funcs.soft_outline_image(_image(rows))
+    soft = sprite_images.soft_outline_image(_image(rows))
     alpha = soft.get_data('RGBA', size * 4)[3::4]
     at = lambda x, y: alpha[y * size + x]
-    assert at(1, 1) == at(1, 3) == round(255 * sprite_funcs.FOLLOWER_OUTLINE_KEEP)
+    assert at(1, 1) == at(1, 3) == round(255 * sprite_images.FOLLOWER_OUTLINE_KEEP)
     assert at(2, 2) == 255   # colored pixel near the edge
     assert at(3, 3) == 255   # dark pixel away from the edge
     assert at(0, 0) == 0
