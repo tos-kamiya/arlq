@@ -1,5 +1,13 @@
 # ARLQ Release Notes
 
+## 6.6.4 - 2026-11-15
+
+- Keep the sprite window responsive during combat and floor-transition effects,
+  queueing keyboard input for the next move and handling resizing and closing.
+- Hide sprite effects on other floors and unlit cells.
+- Play existing effects from turn events after each move is resolved across all
+  frontends, preserving gameplay rules and trace compatibility.
+
 ## 6.6.3 - 2026-11-14
 
 - Narrow sprite-mode field cells back to 15 px (from 16 px) at scale 1, and
