@@ -284,6 +284,36 @@ def _stop_movement_repeat(ui: Any) -> None:
         stop_repeat()
 
 
+def _quit_check(
+    floors: List[Floor], player: d.Player, floor_index: int,
+    visible: List[List[int]],
+) -> bool:
+    """Return whether quitting requires the stuck-player confirmation."""
+    active = floors[floor_index]
+    targets = {
+        (entity.x, entity.y) for entity in active.entities
+        if isinstance(entity, (d.Monster, d.Fairy, d.PartyMember))
+        and not (isinstance(entity, d.Monster)
+                 and entity.tribe.char == "M" and not entity.active)
+    }
+    explorer = d.has_member(player, d.MEMBER_DUNGEON_EXPLORER)
+    for y, row in enumerate(active.field):
+        for x, cell in enumerate(row):
+            if cell in (d.CHAR_STAIRS_UP, d.CHAR_STAIRS_DOWN, d.CHAR_COLLAPSE):
+                targets.add((x, y))
+            if explorer and (cell in d.SCHOLAR_STAIR_CHARS or (
+                floor_index > 0 and cell == d.CHAR_FLOOR
+                and floors[floor_index - 1].field[y][x] == d.CHAR_COLLAPSE
+            )):
+                targets.add((x, y))
+    reachable = reachable_known_cells(
+        active.field, active.seen, visible, active.entities, player,
+        terminal_targets=targets,
+        include_unexplored=True,
+    )
+    return not targets.intersection(reachable)
+
+
 def _apply_terrain_hazards(
     current: Floor,
     player: d.Player,
@@ -1963,28 +1993,13 @@ def run_game(
     config: Optional[GameConfig] = None,
     stage_num: int = 3,
 ) -> None:
-    if config is None:
-        config = GameConfig()
-    initial_seed = rand.get_seed()
-    single_floor_stage = stage_num in (1, 2)
-    if single_floor_stage:
-        floors, player = build_single_floor(config, stage_num)
-    elif stage_num == 6:
-        floors, player = stage6.build(config)
-    elif stage_num == 5:
-        floors, player = stage5.build_member_trial(config)
-    else:
-        floors, player = build(
-            config.corridor_h_width,
-            config.corridor_v_width,
-            stage_num,
-        )
-    for floor_data in floors:
-        floor_data.update_outer_wall_decor()
-    player.known_monsters = set(d.INITIALLY_KNOWN_MONSTERS)
-    player.boss_defeated = False
-    player.dungeon_core_destroyed = False
-    player.treasure_collected = False
+    from .game_session import GameSession
+
+    session = GameSession(stage_num, config)
+    config = session.config
+    initial_seed = session.initial_seed
+    single_floor_stage = session.single_floor_stage
+    floors, player = session.floors, session.player
     replay_context = (
         ReplayContext(stage_num, initial_seed, config)
         if not single_floor_stage
@@ -2094,28 +2109,8 @@ def run_game(
             return
         if getattr(ui, "escape_check_requested", False):
             ui.escape_check_requested = False
-            active = floors[floor[0]]
-            targets = {(entity.x, entity.y) for entity in active.entities
-                       if isinstance(entity, (d.Monster, d.Fairy, d.PartyMember))
-                       and not (isinstance(entity, d.Monster)
-                                and entity.tribe.char == "M" and not entity.active)}
-            explorer = d.has_member(player, d.MEMBER_DUNGEON_EXPLORER)
-            for y, row in enumerate(active.field):
-                for x, cell in enumerate(row):
-                    if cell in (d.CHAR_STAIRS_UP, d.CHAR_STAIRS_DOWN, d.CHAR_COLLAPSE):
-                        targets.add((x, y))
-                    if explorer and (cell in d.SCHOLAR_STAIR_CHARS or (
-                        floor[0] > 0 and cell == d.CHAR_FLOOR
-                        and floors[floor[0] - 1].field[y][x] == d.CHAR_COLLAPSE
-                    )):
-                        targets.add((x, y))
-            reachable = reachable_known_cells(
-                active.field, active.seen, cur, active.entities, player,
-                terminal_targets=targets,
-                include_unexplored=True,
-            )
             confirm = getattr(ui, "confirm_game_over", None)
-            if not targets.intersection(reachable) and confirm is not None:
+            if _quit_check(floors, player, floor[0], cur) and confirm is not None:
                 if confirm() is True:
                     _stop_movement_repeat(ui)
                     if trace is not None:
