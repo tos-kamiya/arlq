@@ -117,7 +117,7 @@ class GameSession:
         self.trace_known_monsters_recorded = set(self.player.known_monsters)
         self.queue: engine.Counter[tuple[int, str]] = engine.Counter()
         self.turn = 0
-        (message_ticks, start_text) = d.STAGE_START_MESSAGES[self.stage_num]
+        message_ticks, start_text = d.STAGE_START_MESSAGES[self.stage_num]
         self.message: tuple[int, str] = (
             message_ticks,
             engine.trp(start_text, 1) if start_text else "",
@@ -147,7 +147,7 @@ class GameSession:
         floor_view = view_floor != self.floor[0]
         show_entities = self.debug_show_entities or map_mode
         reachable_cells: set[d.Point] = set()
-        if farthest_preview and (not floor_view):
+        if farthest_preview and not floor_view:
             reachable_cells = engine.reachable_known_cells(
                 current.field,
                 current.seen,
@@ -156,8 +156,8 @@ class GameSession:
                 self.player,
                 {
                     (x, y)
-                    for (y, row) in enumerate(current.field)
-                    for (x, cell) in enumerate(row)
+                    for y, row in enumerate(current.field)
+                    for x, cell in enumerate(row)
                     if cell == d.CHAR_D_GATE
                 },
             )
@@ -175,8 +175,6 @@ class GameSession:
         )
         if stage_draw_options:
             stage_draw_options["floor_view"] = floor_view
-        if self.player.lp <= 0 and self.phase == "playing":
-            self.message = (-1, engine.trp(">> Collapsed from hunger! <<", 9))
         options = dict(
             turn=self.turn,
             game_start_turn=self.game_start_turn if self.has_rewound else None,
@@ -223,6 +221,7 @@ class GameSession:
         current = self.floors[self.floor[0]]
         show_entities = self.debug_show_entities or map_mode
         known_types = self.player.known_monsters
+        # Dialogue remains visible through non-movement UI actions.
         if self.message[0] == -2:
             self.message = (-1, "")
         rogue_spotted_danger = False
@@ -244,7 +243,7 @@ class GameSession:
         repeat_stop_enabled = auto_repeat_stop
         if (
             repeat_stop_enabled
-            and (not rogue_spotted_danger)
+            and not rogue_spotted_danger
             and repeat
             and engine._should_stop_movement_repeat(
                 move,
@@ -314,7 +313,7 @@ class GameSession:
                 "Loop contact requires recorded inputs"
             )
             operation_count = len(self.replay_context.operations)
-            (rewind_turn, rewind_operation) = self.replay_context.prepare_loop_rewind(
+            rewind_turn, rewind_operation = self.replay_context.prepare_loop_rewind(
                 self.game_start_turn, self.loop_anchor_turn
             )
             self.loop_trail_by_floor.clear()
@@ -343,9 +342,12 @@ class GameSession:
                 self.floor[0],
                 (self.player.x, self.player.y),
             )
+            # Rewind contacts still reach the normal turn-end LP decrement.
             self.player.lp += d.movement_lp_cost(self.player)
             self.replay_context.anchor_loop_rewind(rewind_turn)
             self.game_start_turn = rewind_turn
+            # The turn mapping now points to this contact, preserving its
+            # respawn and earlier rewinds when returning to the anchor again.
             self.loop_anchor_turn = rewind_turn
             self.has_rewound = True
             event_message: tuple[int, str] | None = (5, rewind_message)
@@ -360,6 +362,8 @@ class GameSession:
             show_floor_transition = self.hooks.floor_transition
             if transition is not None and show_floor_transition is not None:
                 show_floor_transition(transition, self.player, self.player.floor_exit)
+        # A stair contact can change the player's floor during the step. Keep
+        # floor_after in sync so the next frame shows the new floor.
         self.player.current_floor = self.floor[0]
         if event_message is not None and (
             event_message[0] == -2
@@ -371,12 +375,12 @@ class GameSession:
             self.trace.set_player(self.player, floor_index=self.floor[0])
             seen_added_count = sum(
                 1
-                for (floor_data, previous_seen) in zip(
+                for floor_data, previous_seen in zip(
                     self.floors, self.trace_seen_recorded, strict=True
                 )
-                for (y, row) in enumerate(floor_data.seen)
-                for (x, is_seen) in enumerate(row)
-                if is_seen and (not previous_seen[y][x])
+                for y, row in enumerate(floor_data.seen)
+                for x, is_seen in enumerate(row)
+                if is_seen and not previous_seen[y][x]
             )
             self.trace.record_state_changes(
                 seen_added_count,
@@ -406,8 +410,8 @@ class GameSession:
             )
         if (
             self.stage_num == 6
-            and (not self.player.dungeon_core_destroyed)
-            and (self.turn >= d.STAGE6_TURN_LIMIT)
+            and not self.player.dungeon_core_destroyed
+            and self.turn >= d.STAGE6_TURN_LIMIT
         ):
             stop_repeat = True
             if self.hooks.stop_movement_repeat is not None:
@@ -418,8 +422,8 @@ class GameSession:
             )
         if (
             self.stage_num == 6
-            and (not self.player.dungeon_core_destroyed)
-            and (d.STAGE6_TURN_LIMIT - self.turn == 500)
+            and not self.player.dungeon_core_destroyed
+            and d.STAGE6_TURN_LIMIT - self.turn == 500
         ):
             self.message = (
                 engine.MESSAGE_TICKS,
@@ -436,24 +440,17 @@ class GameSession:
 
     def _finish(self):
         self.phase = "game_over"
-        self.outcome = (
-            "win"
-            if self.player.stage_won
-            else "time_up"
-            if self.stage_num == 6
-            and (not self.player.dungeon_core_destroyed)
-            and (self.turn >= d.STAGE6_TURN_LIMIT)
-            else "lose"
-        )
         won = self.player.stage_won
-        if self.trace is not None:
-            self.trace.set_outcome("win" if won else "lose")
-        if (
+        time_up = (
             not won
             and self.stage_num == 6
-            and (not self.player.dungeon_core_destroyed)
-            and (self.turn >= d.STAGE6_TURN_LIMIT)
-        ):
+            and not self.player.dungeon_core_destroyed
+            and self.turn >= d.STAGE6_TURN_LIMIT
+        )
+        self.outcome = "win" if won else "time_up" if time_up else "lose"
+        if self.trace is not None:
+            self.trace.set_outcome("win" if won else "lose")
+        if time_up:
             self.message = (
                 -1,
                 engine.trp(">> The Dungeon Core ran wild and the capital fell! <<", 9),
@@ -473,7 +470,8 @@ class GameSession:
         if self.trace is not None:
             self.trace.record_quit()
             self.trace.set_outcome("unfinished" if unfinished else "quit")
-        self.phase = "game_over"
+        # Quitting skips the game-over screen, unlike a finished game.
+        self.phase = "quit"
 
     def game_over_message(self):
         return self.message[1]

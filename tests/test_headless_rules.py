@@ -1243,7 +1243,7 @@ def test_floor_view_preserves_player_floor_and_visibility(monkeypatch, game_over
     game_engine_module.rand.set_seed(1)
     run_game(ui, "floor-view", stage_num=4)
 
-    views = draws[1:] if game_over else draws
+    views = draws
     assert [view[0] for view in views] == [False, True, False]
     assert all(view[3] for view in views)
     assert all(view[4] == 0 for view in views)

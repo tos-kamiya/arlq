@@ -2005,6 +2005,10 @@ def run_game(
     )
     view_floor = 0
     while session.phase == "playing":
+        if session.player.lp <= 0:
+            _stop_movement_repeat(ui)
+            session._finish()
+            break
         session.message = tick_message(session.message)
         ui.draw_stage(
             **session.view(
@@ -2013,10 +2017,6 @@ def run_game(
                 farthest_preview=getattr(ui, "farthest_preview", False),
             )
         )
-        if session.player.lp <= 0:
-            _stop_movement_repeat(ui)
-            session._finish()
-            break
         move = ui.input_direction()
         if move is None:
             session.quit(unfinished=getattr(ui, "ran_dry", False))
@@ -2066,6 +2066,6 @@ def run_game(
         elif key == "s":
             session.message = (-1, session.seed_message())
         elif isinstance(key, tuple) and len(key) == 3:
-            (_, dy, shifted) = key
+            _, dy, shifted = key
             if shifted:
                 view_floor = max(0, min(len(session.floors) - 1, view_floor + dy))

@@ -94,3 +94,20 @@ def test_fixed_inputs_match_ui_wrapper(stage_num):
     engine.rand.set_seed(12345)
     engine.run_game(ui, "test", stage_num=stage_num)
     assert ui.last == (direct.turn, direct.player.x, direct.player.y, direct.player.lp)
+
+
+def test_quit_is_distinct_from_game_over(session):
+    session.quit()
+    assert session.phase == "quit"
+    assert session.outcome is None
+    assert not session.step((1, 0)).consumed
+
+
+def test_view_does_not_change_message(session):
+    session.player.lp = 0
+    message = session.message
+    session.view()
+    assert session.message == message
+    session.step((1, 0))
+    assert session.phase == "game_over"
+    assert session.game_over_message() == engine.trp(">> Collapsed from hunger! <<", 9)
