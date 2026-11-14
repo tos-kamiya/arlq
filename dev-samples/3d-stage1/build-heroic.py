@@ -827,9 +827,17 @@ def player(x, y, sword=None, facing='down'):
     # and with barely rounded edges; standing out in front with round edges,
     # it looked stuck on from the side.
     block('Player eye window', (x, y - 0.2125, 0.81), (0.22, 0.006, 0.05), visor, 0.002)
-    # The crest runs 60% of the helm's depth and juts a little past its
-    # front, to stand out as a mark of the helm.
-    block('Player helm crest', (x, y - 0.112, 1.005), (0.05, 0.18, 0.05), iron, 0.015)
+    # The crest is a plate as thin as before, but seen from the side a
+    # triangle like a horn: it rises from the top of the helm, its base
+    # running from 60% of the way back to near the front, and sweeps
+    # forward and up to a point a little past the visor: 0.06 ahead of the
+    # base's front and 0.108 above it (0.10 and 0.135 at first stood out
+    # too far). The base sits a little
+    # into the helm, which is rounded toward its front.
+    profile = [(y - 0.02, 0.985), (y - 0.17, 0.955), (y - 0.23, 1.063)]
+    vertices = [(x + side * 0.025, py, pz) for side in (-1, 1) for py, pz in profile]
+    faces = [(0, 1, 2), (5, 4, 3), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)]
+    mesh_object('Player helm crest', vertices, faces, iron, False)
     for side in (-1, 1):
         cone('Player helm fin', (x + side * 0.15, y, 0.90),
              (x + side * 0.27, y + 0.11, 1.06), 0.055, 0, iron, 4, False)
