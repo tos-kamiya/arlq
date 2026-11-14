@@ -31,7 +31,15 @@ from .arlq import (
     tick_message,
     unlock_treasure_for_defeat,
 )
-from .game_events import WallEvent
+from .game_events import (
+    BarrierHit,
+    Combat,
+    EntityRef,
+    FloorChanged,
+    GameEvent,
+    WallEvent,
+    _emit,
+)
 from .i18n import t as tr
 from .i18n import trp
 from .stage_replay import rewind as _rewind
@@ -1573,6 +1581,7 @@ def _process_multi_floor_turn(
     repeat_stop_reasons: Optional[Set[str]] = None,
     combat_effect=None,
     barrier_effect=None,
+    events: Optional[List[GameEvent]] = None,
 ) -> Optional[Tuple[int, str]] | _RewindRequest:
     if player.status_popup_ticks > 0:
         player.status_popup_ticks -= 1
@@ -1707,6 +1716,7 @@ def _process_multi_floor_turn(
         ).format(n=floor[0] + 1, total=len(floors))
         current = floors[floor[0]]
         collapse_transition = True
+        _emit(events, FloorChanged(from_floor, "fall", floor[0], collapse_point))
         if stage_num == 6:
             stage6.scatter_members_on_new_route(
                 floors, player, from_floor, collapse_point, floor[0]
@@ -1721,9 +1731,13 @@ def _process_multi_floor_turn(
     if hazard_message is not None:
         event_message = hazard_message
     if (player.lp < old_hazard_lp
-            and current.field[player.y][player.x] == d.CHAR_BARRIER
-            and barrier_effect is not None):
-        barrier_effect()
+            and current.field[player.y][player.x] == d.CHAR_BARRIER):
+        _emit(
+            events,
+            BarrierHit(floor[0], (player.x, player.y), old_hazard_lp - player.lp),
+        )
+        if barrier_effect is not None:
+            barrier_effect()
     player.marksman_damage_prevented = False
     if (player.x, player.y) != previous or collapse_transition:
         marksman_hit = _marksman_shoot(current, player, trace)
@@ -1753,7 +1767,10 @@ def _process_multi_floor_turn(
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("entity_contact")
         entity = current.entities[hit]
-        if (combat_effect is not None and isinstance(entity, d.Monster) and entity.active
+        combat_event = None
+        contact_lp = player.lp
+        if ((combat_effect is not None or events is not None)
+                and isinstance(entity, d.Monster) and entity.active
                 and not entity.tribe.is_elf
                 and not entity.tribe.passive
                 and (entity.tribe.char != "M" or entity.active)):
@@ -1762,7 +1779,21 @@ def _process_multi_floor_turn(
             won = d.current_player_attack(player) >= sum(
                 d.monster_level(monster) for monster in enemies
             )
-            if stage_num in (5, 6):
+            if events is not None:
+                combat_event = Combat(
+                    floor[0],
+                    previous,
+                    [
+                        (EntityRef(monster.uid, monster.tribe.char, "monster"),
+                         (monster.x, monster.y))
+                        for monster in enemies
+                    ],
+                    won,
+                    0,
+                    [previous, *((member.x, member.y) for member in player.members)],
+                )
+                _emit(events, combat_event)
+            if combat_effect is not None and stage_num in (5, 6):
                 positions = (
                     [(monster.x, monster.y) for monster in enemies]
                     if won
@@ -1772,7 +1803,7 @@ def _process_multi_floor_turn(
                     ]
                 )
                 combat_effect(positions, won)
-            else:
+            elif combat_effect is not None:
                 combat_effect((entity.x, entity.y) if won else previous, won)
         contact = _resolve_contact(
             hit,
@@ -1785,6 +1816,8 @@ def _process_multi_floor_turn(
             trace=trace,
             stage_num=stage_num,
         )
+        if combat_event is not None:
+            combat_event.lp_delta = player.lp - contact_lp
         if contact.end_turn:
             end_turn_message = prefer_event_message(event_message, contact.message)
             return (
@@ -1832,6 +1865,14 @@ def _process_multi_floor_turn(
                 floors, player, floor_before, movement_destination, floor[0]
             )
         player.floor_exit = movement_destination
+        transition_kind = floor_transition_kind(
+            floors, floor_before, floor[0], (player.x, player.y)
+        )
+        if transition_kind is not None:
+            _emit(
+                events,
+                FloorChanged(floor_before, transition_kind, floor[0], movement_destination),
+            )
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("floor_transition")
         event_message = prefer_event_message(event_message, transition_message)

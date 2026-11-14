@@ -1,3 +1,4 @@
+from itertools import count
 from math import ceil
 from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
@@ -288,10 +289,14 @@ def collapse_placement_cells_valid(
     return True
 
 
+_entity_uids = count()
+
+
 class Entity:
     """Base class for entities in the game that have x and y coordinates."""
 
     def __init__(self, x, y):
+        self.uid = next(_entity_uids)
         self.x = x
         self.y = y
 

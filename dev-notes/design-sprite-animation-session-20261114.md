@@ -114,6 +114,14 @@ def run_game(ui, seed_str, ..., stage_num=3):
    - `FloorChanged` → `draw_floor_transition(kind, player, exit_point)`
 3. `run_game` が `hooks` を渡さないようにし、`GameSession` から `hooks` 引数、`LegacyHooks` クラス、`_process_multi_floor_turn` の `combat_effect=` / `barrier_effect=` 引数を削除する。
 
+進捗（2026-11-14）: 廃止計画の手順 1 として、`TurnResult.events` と
+`Combat` / `BarrierHit` / `Rewound` / `FloorChanged` の収集を実装した。
+`LegacyHooks` は引き続き既存のタイミングで呼ぶ。`Entity.uid` と `EntityRef`
+も追加し、戦闘相手の座標・移動前の味方位置・戦闘による LP 差分を保存する。
+`step(collect_events=False)` で収集を無効にでき、収集の有無によるトレースと
+乱数状態の一致をテストする。移動・出現など、下記の残りのイベントは未実装。
+手順 2 の文字表示 UI の切り替えと、手順 3 のフック削除もまだ行わない。
+
 廃止による見た目の変化（許容する前提）:
 
 - 戦闘の閃光とバリアの演出は、ターンの途中ではなくターンの処理が終わった後に表示される。閃光はまだ前の画面が表示されている上に重ねて描くので、見た目はほぼ同じ。

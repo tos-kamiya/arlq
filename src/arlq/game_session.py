@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from . import defs as d
 from . import game_engine as engine
 from .arlq import GameConfig
+from .game_events import GameEvent, Rewound, _emit
 from .utils import rand
 
 
@@ -18,6 +19,7 @@ class TurnResult:
     stop_repeat: bool
     floor_before: int
     floor_after: int
+    events: list[GameEvent] = field(default_factory=list)
 
 
 @dataclass
@@ -204,14 +206,26 @@ class GameSession:
             options.pop("loop_trail_markers")
         return options
 
-    def step(self, move, *, repeat=False, auto_repeat_stop=True, map_mode=False):
-        """Resolve one movement and its turn end without polling input."""
+    def step(
+        self,
+        move,
+        *,
+        repeat=False,
+        auto_repeat_stop=True,
+        map_mode=False,
+        collect_events=True,
+    ):
+        """Resolve a turn, optionally collecting presentation events.
+
+        Disabling collection leaves gameplay and legacy hooks unchanged.
+        """
         floor_before = self.floor[0]
         if self.phase == "playing" and self.player.lp <= 0:
             self._finish()
         if self.phase != "playing" or move == (0, 0):
             return TurnResult(False, self.message, False, floor_before, floor_before)
         stop_repeat = False
+        events: list[GameEvent] | None = [] if collect_events else None
         # Discovery must also advance when no renderer calls view().
         engine.observe_world(
             self.floors, self.player, self.floor[0], self.config.torch_radius
@@ -292,6 +306,7 @@ class GameSession:
             barrier_effect=(lambda: self.hooks.barrier_effect(self))
             if self.hooks.barrier_effect
             else None,
+            events=events,
         )
         if self.replay_context is not None:
             self.operation_path.append((self.floor[0], (self.player.x, self.player.y)))
@@ -341,6 +356,17 @@ class GameSession:
             # respawn and earlier rewinds when returning to the anchor again.
             self.loop_anchor_turn = rewind_turn
             self.has_rewound = True
+            _emit(
+                events,
+                Rewound(
+                    step_result.floor_index,
+                    transition_message,
+                    {
+                        index: set(points)
+                        for index, points in self.loop_trail_by_floor.items()
+                    },
+                ),
+            )
             event_message: tuple[int, str] | None = (5, rewind_message)
         else:
             event_message = step_result
@@ -397,7 +423,12 @@ class GameSession:
         if self.player.stage_won:
             self._finish()
             return TurnResult(
-                True, self.message, stop_repeat, floor_before, self.floor[0]
+                True,
+                self.message,
+                stop_repeat,
+                floor_before,
+                self.floor[0],
+                events or [],
             )
         if (
             self.stage_num == 6
@@ -407,7 +438,12 @@ class GameSession:
             stop_repeat = True
             self._finish()
             return TurnResult(
-                True, self.message, stop_repeat, floor_before, self.floor[0]
+                True,
+                self.message,
+                stop_repeat,
+                floor_before,
+                self.floor[0],
+                events or [],
             )
         if (
             self.stage_num == 6
@@ -423,7 +459,9 @@ class GameSession:
         if self.player.lp <= 0:
             stop_repeat = True
             self._finish()
-        return TurnResult(True, self.message, stop_repeat, floor_before, self.floor[0])
+        return TurnResult(
+            True, self.message, stop_repeat, floor_before, self.floor[0], events or []
+        )
 
     def _finish(self):
         self.phase = "game_over"
