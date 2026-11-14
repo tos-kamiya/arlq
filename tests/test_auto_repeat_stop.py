@@ -319,6 +319,56 @@ def test_disabling_automatic_repeat_stop_skips_precheck_and_event_stop(monkeypat
     assert step_repeat_reasons == [None]
 
 
+@pytest.mark.parametrize("repeat", [False, True])
+@pytest.mark.parametrize("auto_stop", [False, True])
+def test_rogue_danger_stops_repeat_but_still_consumes_turn(monkeypatch, repeat, auto_stop):
+    player = d.Player(2, 2, 100, 90)
+    player.members.append(d.PartyMember(2, 2, d.MEMBER_ROGUE))
+    floor = floor_with()
+    monkeypatch.setattr(game_engine, "build_single_floor", lambda *_: ([floor], player))
+    monkeypatch.setattr(game_engine.stage56, "rogue_danger", lambda *_: "O")
+    prechecks = []
+    monkeypatch.setattr(
+        game_engine, "_should_stop_movement_repeat",
+        lambda *_args, **_kwargs: prechecks.append(True) or True,
+    )
+    steps = []
+
+    def fake_step(move, *_args, **_kwargs):
+        steps.append(move)
+        player.x += move[0]
+        player.y += move[1]
+
+    monkeypatch.setattr(game_engine, "_process_multi_floor_turn", fake_step)
+
+    class UI:
+        input_was_repeat = repeat
+        auto_repeat_stop_enabled = auto_stop
+
+        def __init__(self):
+            self.moves = iter([(1, 0)])
+            self.stopped = 0
+
+        def draw_stage(self, **_kwargs):
+            pass
+
+        def input_direction(self):
+            return next(self.moves, None)
+
+        def stop_movement_repeat(self):
+            self.stopped += 1
+
+    ui = UI()
+    initial_lp = player.lp
+    game_engine.run_game(ui, "test-seed", config=GameConfig(), stage_num=1)
+
+    assert steps == [(1, 0)]
+    assert (player.x, player.y) == (3, 2)
+    assert player.lp == initial_lp - d.movement_lp_cost(player)
+    assert ui.stopped == 1
+    assert prechecks == []
+
+
 def test_run_game_shows_the_floor_transition_from_the_stairs(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     upper = floor_with()
