@@ -43,7 +43,12 @@ from pyglet.window import key as pgkey
 
 from .__about__ import __version__
 from . import defs as d
-from .settings import combat_effect_seconds, floor_transition_seconds, load_settings
+from .settings import (
+    combat_effect_seconds,
+    floor_transition_seconds,
+    idle_bob_enabled,
+    load_settings,
+)
 from . import display as ui_display
 from .arlq import barrier_lp_damage
 from .i18n import t as tr
@@ -355,6 +360,7 @@ class PygletUI:
     dim_protected_hazards = True
     # Whether draw_floor_transition shows a still (and Settings offers its time).
     supports_floor_transition = False
+    supports_idle_bob = False
 
     def _initialize_state(self) -> None:
         """Initialize Python state before creating the window or loading settings."""
@@ -372,6 +378,7 @@ class PygletUI:
         self._gamepad_pressed_buttons = set()
         self.combat_effect_seconds = d.COMBAT_EFFECT_SECONDS
         self.floor_transition_seconds = d.FLOOR_TRANSITION_SECONDS
+        self.idle_bob_enabled = d.IDLE_BOB_ENABLED
 
     def __init__(
         self,
@@ -431,6 +438,7 @@ class PygletUI:
         self.auto_repeat_stop_enabled = load_auto_repeat_stop_enabled()
         self.combat_effect_seconds = combat_effect_seconds(_load_settings())
         self.floor_transition_seconds = floor_transition_seconds(_load_settings())
+        self.idle_bob_enabled = idle_bob_enabled(_load_settings())
         (
             self.gamepad_help_button,
             self.gamepad_preview_button,
@@ -564,6 +572,17 @@ class PygletUI:
             path.parent.mkdir(parents=True, exist_ok=True)
             settings = _load_settings()
             settings["floor_transition_seconds"] = self.floor_transition_seconds
+            path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+        except OSError:
+            pass
+
+    def set_idle_bob_enabled(self, enabled: bool) -> None:
+        self.idle_bob_enabled = bool(enabled)
+        path = _settings_path()
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            settings = _load_settings()
+            settings["idle_bob_enabled"] = self.idle_bob_enabled
             path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
         except OSError:
             pass
@@ -2069,11 +2088,15 @@ class PygletUI:
         transition_index = d.FLOOR_TRANSITION_SECONDS_CHOICES.index(
             self.floor_transition_seconds
         )
-        # Rows from the top; the floor transition row only where the frontend
-        # draws it, and the gamepad row is selectable only while connected.
+        bob_enabled = self.idle_bob_enabled
+        # Rows from the top; the floor transition and bobbing rows only where
+        # the frontend draws them, and the gamepad row is selectable only while
+        # connected.
         rows = ["scale", "repeat", "stop", "effect"]
         if self.supports_floor_transition:
             rows.append("transition")
+        if self.supports_idle_bob:
+            rows.append("bob")
         rows.append("gamepad")
         row = 0
 
@@ -2086,6 +2109,8 @@ class PygletUI:
                 self.set_floor_transition_seconds(
                     d.FLOOR_TRANSITION_SECONDS_CHOICES[transition_index]
                 )
+            if self.supports_idle_bob:
+                self.set_idle_bob_enabled(bob_enabled)
 
         while True:
             controller_connected = self._gamepad_is_connected()
@@ -2119,6 +2144,10 @@ class PygletUI:
                 "transition": (
                     tr("Floor transition duration"),
                     f"<  {d.FLOOR_TRANSITION_SECONDS_CHOICES[transition_index]:.1f}s  >",
+                ),
+                "bob": (
+                    tr("Character bobbing"),
+                    f"<  {tr('On') if bob_enabled else tr('Off')}  >",
                 ),
                 "gamepad": (tr("Gamepad button settings"), "->"),
             }
@@ -2156,7 +2185,7 @@ class PygletUI:
 
             def change(step):
                 nonlocal current_index, repeat_index, auto_repeat_stop_enabled
-                nonlocal effect_index, transition_index
+                nonlocal effect_index, transition_index, bob_enabled
                 if selected == "scale":
                     current_index = min(len(UI_SCALE_CHOICES) - 1, max(0, current_index + step))
                 elif selected == "repeat":
@@ -2172,6 +2201,8 @@ class PygletUI:
                         len(d.FLOOR_TRANSITION_SECONDS_CHOICES) - 1,
                         max(0, transition_index + step),
                     )
+                elif selected == "bob":
+                    bob_enabled = not bob_enabled
                 elif selected == "gamepad" and step > 0 and controller_connected:
                     self.gamepad_button_settings_menu()
 

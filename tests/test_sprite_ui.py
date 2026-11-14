@@ -1836,3 +1836,116 @@ def test_bridgehead_parts_are_aligned_and_dim_when_explored(sprite_ui):
     assert left.y == pytest.approx(ui.window_height - 6.4 * ui.cell_size_y)
     assert left.color == (255, 255, 255)
     assert right.color == (140, 140, 140)
+
+
+@pytest.fixture
+def bob_ui(sprite_ui):
+    ui = sprite_ui
+    ui._cur_torched = [[1] * 10 for _ in range(10)]
+    ui._stage_input_active = True
+    ui.idle_bob_enabled = True
+    ui.flips = 0
+    ui._flip = lambda: setattr(ui, 'flips', ui.flips + 1)
+    ui.now = 0.0
+    ui._bob_clock = lambda: ui.now
+    return ui
+
+
+def _bobbing_ys(ui):
+    return [sprite.y for sprite, _ in ui._bobbing]
+
+
+@pytest.mark.parametrize('text, bobs', [
+    ('b', True),    # monster
+    ('K', True),    # elf waiting on the map
+    ('J', True),    # Javelin Elf before it joins
+    ('l', True),    # fairy on the map
+    ('?', True),    # unidentified character
+    ('T', False),   # treasure chest
+])
+def test_characters_in_view_hop_but_treasure_stays(bob_ui, text, bobs):
+    bob_ui._draw_field_text((4, 5), text, (220, 82, 82), True)
+    assert bool(bob_ui._bobbing) is bobs
+
+
+def test_characters_outside_view_or_on_the_map_stay_still(bob_ui):
+    bob_ui._cur_torched[5][4] = 0
+    bob_ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
+    assert not bob_ui._bobbing
+    bob_ui._cur_torched[5][4] = 1
+    bob_ui.map_mode = True
+    bob_ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
+    assert not bob_ui._bobbing
+
+
+@pytest.mark.parametrize('tone, role, bobs', [
+    ('member_waiting', d.MEMBER_HEALER, True),
+    ('member', d.MEMBER_HEALER, False),
+    ('member', d.MEMBER_JAVELIN_ELF, False),
+])
+def test_waiting_members_hop_and_followers_stay(bob_ui, tone, role, bobs):
+    char = 'J' if role == d.MEMBER_JAVELIN_ELF else d.MEMBER_GLYPHS[role]
+    bob_ui._member_variants = {char: sprite_funcs.MEMBER_SPRITES[char][0]}
+    bob_ui._member_skins = dict.fromkeys(sprite_funcs.MEMBER_SPRITES, 'm')
+    bob_ui._draw_member(display.FieldGlyph(4, 5, char, tone, member_role=role))
+    assert bool(bob_ui._bobbing) is bobs
+
+
+def test_player_hops_but_following_fairy_stays(bob_ui, monkeypatch):
+    monkeypatch.setattr(bob_ui, '_player_sprite', lambda player: '@')
+    monkeypatch.setattr(bob_ui, '_draw_lp_gauge', lambda *args: None)
+    bob_ui._draw_player((4, 5), d.Player(4, 5, 100, 90))
+    assert len(bob_ui._bobbing) == 1
+    bob_ui._draw_fairy_slot((5, 5), 'l')
+    assert len(bob_ui._bobbing) == 1
+
+
+def test_hop_switches_every_interval_in_whole_texels(bob_ui):
+    bob_ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
+    base = bob_ui._bobbing[0][1]
+    interval = sprite_funcs.IDLE_BOB_INTERVAL
+    hop = sprite_funcs.IDLE_BOB_TEXELS / sprite_funcs.LOW_RESOLUTION_DETAIL_SCALE
+    bob_ui._update_idle_bob()
+    assert (_bobbing_ys(bob_ui), bob_ui.flips) == ([base], 0)
+    bob_ui.now = interval * 1.1
+    bob_ui._update_idle_bob()
+    assert (_bobbing_ys(bob_ui), bob_ui.flips) == ([base + hop], 1)
+    bob_ui.now = interval * 1.9
+    bob_ui._update_idle_bob()
+    assert bob_ui.flips == 1  # no redraw within one height
+    bob_ui.now = interval * 2.1
+    bob_ui._update_idle_bob()
+    assert (_bobbing_ys(bob_ui), bob_ui.flips) == ([base], 2)
+
+
+def test_redraw_while_raised_keeps_the_raised_height(bob_ui):
+    bob_ui.now = sprite_funcs.IDLE_BOB_INTERVAL * 1.5
+    bob_ui._update_idle_bob()
+    bob_ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
+    sprite, base = bob_ui._bobbing[0]
+    assert sprite.y == base + bob_ui._bob_offset()
+
+
+@pytest.mark.parametrize('change', ['disabled', 'not_waiting', 'map'])
+def test_hop_returns_to_ground_when_off_or_not_waiting(bob_ui, change):
+    bob_ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
+    base = bob_ui._bobbing[0][1]
+    bob_ui.now = sprite_funcs.IDLE_BOB_INTERVAL * 1.5
+    bob_ui._update_idle_bob()
+    if change == 'disabled':
+        bob_ui.idle_bob_enabled = False
+    elif change == 'not_waiting':
+        bob_ui._stage_input_active = False
+    else:
+        bob_ui.map_mode = True
+    bob_ui._update_idle_bob()
+    assert _bobbing_ys(bob_ui) == [base]
+
+
+def test_menu_leaves_hopping_sprites_untouched(bob_ui):
+    bob_ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
+    base = bob_ui._bobbing[0][1]
+    bob_ui._menu_active = True
+    bob_ui.now = sprite_funcs.IDLE_BOB_INTERVAL * 1.5
+    bob_ui._update_idle_bob()
+    assert (_bobbing_ys(bob_ui), bob_ui.flips) == ([base], 0)

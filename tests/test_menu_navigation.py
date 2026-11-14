@@ -397,3 +397,41 @@ def test_gui_barrier_colors(monkeypatch, protection, background, foreground, dim
     else:
         assert tiles[0] != (220, 82, 82)
     assert labels == [(foreground, not dimmed)]
+
+
+@pytest.mark.parametrize("presses, enabled", [(0, True), (1, False), (2, True)])
+def test_sprite_settings_toggle_and_reload_character_bobbing(
+    monkeypatch, tmp_path, presses, enabled
+):
+    from arlq.settings import idle_bob_enabled, load_settings
+
+    path = tmp_path / "settings.json"
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    events = [(key.DOWN, 0)] * 5 + [(key.RIGHT, 0)] * presses + [(key.RETURN, 0)]
+    ui = _menu_ui(monkeypatch, events)
+    ui.supports_floor_transition = True
+    ui.supports_idle_bob = True
+    ui.set_scale = lambda scale: None
+
+    ui.settings_menu()
+
+    assert ui.idle_bob_enabled is enabled
+    assert idle_bob_enabled(load_settings(path)) is enabled
+
+
+def test_plain_gui_settings_do_not_save_character_bobbing(monkeypatch, tmp_path):
+    path = tmp_path / "settings.json"
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    ui = _menu_ui(monkeypatch, [(key.RETURN, 0)])
+    ui.set_scale = lambda scale: None
+
+    ui.settings_menu()
+
+    assert "idle_bob_enabled" not in json.loads(path.read_text())
+
+
+@pytest.mark.parametrize("value", [None, 0, 1, "true", "off"])
+def test_invalid_character_bobbing_uses_default(value):
+    from arlq.settings import idle_bob_enabled
+
+    assert idle_bob_enabled({"idle_bob_enabled": value}) is True

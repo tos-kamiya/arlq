@@ -1029,4 +1029,7 @@ COMBAT_EFFECT_SECONDS = 0.3
 # 0 skips it.
 FLOOR_TRANSITION_SECONDS = 0.5
 FLOOR_TRANSITION_SECONDS_CHOICES = tuple(n / 10 for n in range(11))
+# The sprite GUI's hop of characters in view while waiting for input, set in
+# Settings.
+IDLE_BOB_ENABLED = True
 COMBAT_EFFECT_SECONDS_CHOICES = tuple(n / 10 for n in range(6))

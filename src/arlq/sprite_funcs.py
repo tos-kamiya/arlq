@@ -159,6 +159,11 @@ STRENGTH_TEXT_SCALE = 0.7
 SPRITE_CELL_SIZE_X = 15
 # Keep an integer 30x40 pixel grid per field cell at every window size.
 LOW_RESOLUTION_DETAIL_SCALE = 2.0
+# While waiting for input, characters in view hop between two heights every
+# IDLE_BOB_INTERVAL seconds, all in step. The hop is whole texels of the
+# low-resolution render target (1 window pixel at 100%).
+IDLE_BOB_INTERVAL = 0.7
+IDLE_BOB_TEXELS = 2
 MIPMAP_LOD_BIAS = -1.0
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
 # drawn white whatever the monster's strength color. They float at the upper
@@ -603,6 +608,7 @@ class SpriteUI(PygletUI):
 
     supports_horizontal_view = True
     supports_floor_transition = True
+    supports_idle_bob = True
     dim_protected_hazards = False
 
     # Decorations of the floor being drawn (see draw_stage), and the cells to
@@ -640,6 +646,10 @@ class SpriteUI(PygletUI):
     def _initialize_state(self):
         super()._initialize_state()
         self._presenter = Presenter()
+        # Sprites that hop while waiting for input, as (sprite, base y).
+        self._bobbing = []
+        self._bob_raised = False
+        self._bob_clock = time.monotonic
         self._mouse_position = None
         self._mouse_visible_until = None
         self._edge_shade_fields = {}
@@ -986,6 +996,43 @@ class SpriteUI(PygletUI):
     def _flip(self):
         self._draw_and_flip()
 
+    def _bob_offset(self):
+        return IDLE_BOB_TEXELS * self.scale / LOW_RESOLUTION_DETAIL_SCALE
+
+    def _idle_bob_raised(self):
+        return (
+            self.idle_bob_enabled
+            and self._stage_input_active
+            and not self.map_mode
+            and int(self._bob_clock() / IDLE_BOB_INTERVAL) % 2 == 1
+        )
+
+    def _update_idle_bob(self):
+        """Move the hopping sprites when the hop height changes; nothing is
+        drawn in between, so waiting stays cheap."""
+        if self._menu_active:
+            return
+        raised = self._idle_bob_raised()
+        if raised == self._bob_raised:
+            return
+        self._bob_raised = raised
+        if not self._bobbing:
+            return
+        offset = self._bob_offset() if raised else 0
+        for sprite, base_y in self._bobbing:
+            sprite.y = base_y + offset
+        self._flip()
+
+    def _in_view(self, pos):
+        grid = self._cur_torched
+        x, y = pos
+        return (
+            grid is not None
+            and 0 <= y < len(grid)
+            and 0 <= x < len(grid[y])
+            and bool(grid[y][x])
+        )
+
     def _framebuffer_size(self):
         get_size = getattr(self.window, 'get_framebuffer_size', None)
         if get_size is not None:
@@ -1086,6 +1133,7 @@ class SpriteUI(PygletUI):
 
     def _pump(self):
         super()._pump()
+        self._update_idle_bob()
         deadline = self._mouse_visible_until
         if deadline is not None and time.monotonic() >= deadline:
             self.window.set_mouse_visible(False)
@@ -1639,7 +1687,8 @@ class SpriteUI(PygletUI):
         _, background = ui_display.player_appearance(player)
         poison = self._tone_color('magenta') if player.item == d.ITEM_POISONED else None
         top = self._draw_sprite(pos, self._player_sprite(player),
-                                self._tone_color(background or 'default'), poison)
+                                self._tone_color(background or 'default'), poison,
+                                bob=True)
         self._draw_lp_gauge(pos, player, top)
 
     def _draw_player_wall_break_glyph(self, player):
@@ -2049,6 +2098,7 @@ class SpriteUI(PygletUI):
         for drawable in getattr(self, '_uncached_drawables', ()):
             drawable.delete()
         self._uncached_drawables = []
+        self._bobbing = []
         super()._clear_drawables()
         self._sprite_cells.clear()
         self._player_cell = None
@@ -2234,8 +2284,10 @@ class SpriteUI(PygletUI):
         if glyph.member_role == d.MEMBER_JAVELIN_ELF:
             self._enlarge_neighbors = False
         try:
+            # Followers stay still; members waiting to be met hop.
             self._draw_sprite((glyph.x, glyph.y), key, color,
-                              disc_scale=0.0 if glyph.tone == 'member' else 1.0)
+                              disc_scale=0.0 if glyph.tone == 'member' else 1.0,
+                              bob=glyph.tone == 'member_waiting')
         finally:
             self._enlarge_neighbors = True
 
@@ -2259,7 +2311,12 @@ class SpriteUI(PygletUI):
             return super()._draw_field_text((x, y - FIELD_TEXT_RAISE), text, color, bold)
         tribe = d.CHAR_TO_MONSTER_TRIBE.get(text)
         met_elf = tribe is not None and tribe.is_elf and not bold
-        self._draw_sprite(pos, text, color, shade=MET_ELF_SHADE if met_elf else 1.0)
+        # Monsters (elves included), fairies, and unidentified characters hop;
+        # treasure chests stay still.
+        bob = (text in d.CHAR_TO_MONSTER_TRIBE or text in d.CHAR_TO_FAIRY_TRIBE
+               or text in UNKNOWN_SPRITES)
+        self._draw_sprite(pos, text, color, shade=MET_ELF_SHADE if met_elf else 1.0,
+                          bob=bob)
 
     def _draw_dungeon_core(self, pos):
         x, y = pos
@@ -2332,7 +2389,8 @@ class SpriteUI(PygletUI):
         px, py = self._player_cell
         return abs(pos[0] - px) + abs(pos[1] - py) == 1
 
-    def _draw_sprite(self, pos, text, color, upper_right_color=None, shade=1.0, disc_scale=1.0):
+    def _draw_sprite(self, pos, text, color, upper_right_color=None, shade=1.0, disc_scale=1.0,
+                     bob=False):
         x, y = pos
         cx, cy = self._field_col_x(x) + self.cell_size_x / 2, (y + 0.5) * self.cell_size_y
         dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
@@ -2346,7 +2404,8 @@ class SpriteUI(PygletUI):
             size *= HOVER_SCALE
         glow = color if text in UNKNOWN_SPRITES else None
         top = self._place_sprite(text, cx, cy, size, y,
-                                 'hover' if hovered else 'sprite', dimmed, shade, glow)
+                                 'hover' if hovered else 'sprite', dimmed, shade, glow,
+                                 bob=bob and not self.map_mode and self._in_view(pos))
         if hovered:
             self._draw_hover_name(pos, text, top)
         self._sprite_cells[pos] = size
@@ -2412,7 +2471,8 @@ class SpriteUI(PygletUI):
             ),
         )
 
-    def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0, glow=None):
+    def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0, glow=None,
+                      bob=False):
         """Draw a character image with its feet at field pixel (cx, cy); returns
         the field pixel y of the top of the character in it.
 
@@ -2445,6 +2505,11 @@ class SpriteUI(PygletUI):
         )
         self._set_drawable_attribute(sprite, 'scale', scale)
         self._set_drawable_attribute(sprite, 'color', tint)
+        if bob and sprite is not None:
+            # Only the character hops; its disc and pillar stay on the ground.
+            self._bobbing.append((sprite, bottom))
+            if self._bob_raised:
+                sprite.y = bottom + self._bob_offset()
         head_room = self._sprite_head_room.get(text, 0)
         return cy - (picture.height / 2 + SPRITE_GROUND_OFFSET_PIXELS - head_room) * scale
 

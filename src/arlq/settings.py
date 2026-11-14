@@ -27,6 +27,11 @@ def combat_effect_seconds(settings: dict) -> float:
     return d.COMBAT_EFFECT_SECONDS
 
 
+def idle_bob_enabled(settings: dict) -> bool:
+    value = settings.get("idle_bob_enabled", d.IDLE_BOB_ENABLED)
+    return value if isinstance(value, bool) else d.IDLE_BOB_ENABLED
+
+
 def floor_transition_seconds(settings: dict) -> float:
     value = settings.get("floor_transition_seconds", d.FLOOR_TRANSITION_SECONDS)
     if isinstance(value, (int, float)) and not isinstance(value, bool):
