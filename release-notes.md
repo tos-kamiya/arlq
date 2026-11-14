@@ -1,5 +1,21 @@
 # ARLQ Release Notes
 
+## 6.7.0 - 2026-11-15
+
+- Turn the sprite-mode player toward its last move, with new sprites facing up,
+  left and right in every sword state; it faces the screen at the start of a
+  stage and after stairs, falls and Loop rewinds.
+- Refine the player's look: a shorter cloak, the eye window set into the
+  faceplate, and a horn-shaped crest.
+- Make characters in view hop gently while waiting for input in sprite mode,
+  with a `Character bobbing` on/off setting.
+- Cut the sprite-mode slash effect the way the player attacked.
+- Animate the sprite-mode floor transition: the old floor fades out, the player
+  steps along the stairs, falls or climbs the rope, and the new floor fades in.
+- Draw following party members and the Javelin Elf smaller, with a fainter
+  outline, so they no longer look larger than the player.
+- Mark party members with `@` in the member status (for example `Y@`).
+
 ## 6.6.4 - 2026-11-15
 
 - Keep the sprite window responsive during combat and floor-transition effects,
