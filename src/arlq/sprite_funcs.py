@@ -393,6 +393,23 @@ STAIR_DISC_OPACITY = 90
 # and ROPE_GLOW_LENGTH times the rope's length, at ROPE_GLOW_OPACITY.
 LANDING_FILE = 'stairs/stairs-landing.png'
 TRANSITION_BACKGROUND = (6, 6, 8)
+# The floor transition's timeline, as fractions of its set time: the old
+# floor fades to black over the first FLOOR_TRANSITION_FADE, the player then
+# moves at a steady speed, and over the last FLOOR_TRANSITION_FADE the new
+# floor, already drawn underneath, fades in from black. On stairs and the
+# rope the player moves FLOOR_TRANSITION_STEP cells up or down (down a
+# staircase it dims to FLOOR_TRANSITION_STAIRS_DIM, up one it brightens from
+# it). The stairs turn back at the landing like a "く", so on them the
+# player first goes up or down to the right, out to
+# FLOOR_TRANSITION_STAIRS_SIDE cells, and then back to the left. A fall
+# covers FLOOR_TRANSITION_FALL cells in the same time, so it looks fast, and
+# the player shrinks to FLOOR_TRANSITION_FALL_SHRINK and fades out.
+FLOOR_TRANSITION_FADE = 0.15
+FLOOR_TRANSITION_STEP = 0.25
+FLOOR_TRANSITION_STAIRS_SIDE = 0.125
+FLOOR_TRANSITION_FALL = 0.5
+FLOOR_TRANSITION_STAIRS_DIM = 0.4
+FLOOR_TRANSITION_FALL_SHRINK = 0.7
 LANDING_FEET_HEIGHT = 0.725
 ROPE_COLOR = (160, 134, 96)
 ROPE_WIDTH, ROPE_OFFSET, ROPE_LENGTH = 0.08, 0.1, 2.0
@@ -691,6 +708,8 @@ class SpriteUI(PygletUI):
     # The way the player attacked in the fight being shown (see
     # sprite_fx.Presenter); picks the slash image.
     _attack_facing = 'up'
+    # The view the turn being presented leads to (see present_turn).
+    _next_view = None
     _cooling_center = None
     _cooling_damage = None
     # The field being drawn, for stairs and pits that spread over neighbouring floor.
@@ -1647,7 +1666,12 @@ class SpriteUI(PygletUI):
 
     def present_turn(self, result, view):
         self._update_player_facing(result)
-        return self._presenter.play(self, result, view)
+        # A floor transition draws the next view under its fade-in.
+        self._next_view = view
+        try:
+            return self._presenter.play(self, result, view)
+        finally:
+            self._next_view = None
 
     def _update_player_facing(self, result):
         """Face the last move, even one that left the player in place; face
@@ -1657,8 +1681,8 @@ class SpriteUI(PygletUI):
         if any(isinstance(event, (FloorChanged, Rewound)) for event in result.events):
             self._player_facing = 'down'
 
-    def _play_effect(self, seconds, create):
-        self._presenter.hold(self, seconds, create)
+    def _play_effect(self, seconds, create, update=None):
+        self._presenter.hold(self, seconds, create, update)
 
     def draw_combat_effect(self, pos, won: bool) -> None:
         seconds = self.combat_effect_seconds
@@ -1698,15 +1722,63 @@ class SpriteUI(PygletUI):
         self._play_effect(seconds, create)
 
     def draw_floor_transition(self, kind, player, exit_point=None) -> None:
-        """Show the moment between floors as a still: on the landing of the
-        stairs the player is taking, or alone in the dark falling through or
-        climbing out of a pit, on the cell it left from."""
+        """Show the moment between floors: on the landing of the stairs the
+        player is taking, or alone in the dark falling through or climbing
+        out of a pit, on the cell it left from. The scene fades in over the
+        old floor, the player moves, and the new floor fades in from black
+        (see FLOOR_TRANSITION_FADE)."""
         seconds = self.floor_transition_seconds
         if seconds == 0 or '@' not in self._sprite_images:
             return
+        revealed = []
+
+        def update(progress):
+            # Draw the new floor under the scene once, as the fade out begins;
+            # without it (no next view), the scene stays until the cut.
+            if (not revealed and progress >= 1 - FLOOR_TRANSITION_FADE
+                    and self._next_view is not None):
+                revealed.append(True)
+                self.draw_stage(**self._next_view)
+            self._animate_floor_transition(kind, progress, bool(revealed))
+
         self._play_effect(
-            seconds, lambda: self._create_floor_transition(kind, player, exit_point),
+            seconds, lambda: self._create_floor_transition(kind, player, exit_point), update,
         )
+
+    def _animate_floor_transition(self, kind, progress, fade_out):
+        parts = self._transition_parts
+        fade = min(1.0, progress / FLOOR_TRANSITION_FADE)
+        if fade_out:
+            fade = min(fade, (1 - progress) / FLOOR_TRANSITION_FADE)
+        move = min(1.0, max(0.0, (progress - FLOOR_TRANSITION_FADE)
+                            / (1 - 2 * FLOOR_TRANSITION_FADE)))
+        size, alpha, side = 1.0, 1.0, 0.0
+        if kind in ('down', 'up'):
+            # Out to the right over the first half, back over the second.
+            side = FLOOR_TRANSITION_STAIRS_SIDE * (1 - abs(2 * move - 1))
+        if kind == 'down':
+            offset = -FLOOR_TRANSITION_STEP * move
+            alpha = 1 - (1 - FLOOR_TRANSITION_STAIRS_DIM) * move
+        elif kind == 'up':
+            offset = -FLOOR_TRANSITION_STEP * (1 - move)
+            alpha = FLOOR_TRANSITION_STAIRS_DIM + (1 - FLOOR_TRANSITION_STAIRS_DIM) * move
+        elif kind == 'climb':
+            offset = -FLOOR_TRANSITION_STEP * (1 - move)
+        else:
+            offset = -FLOOR_TRANSITION_FALL * move
+            size = 1 - (1 - FLOOR_TRANSITION_FALL_SHRINK) * move
+            alpha = 1 - move
+        # Offsets are in cells (up the screen, and to the right for `side`);
+        # the feet stay the anchor.
+        figure, cx, cy, picture, scale = parts['figure']
+        scale *= size
+        figure.scale = scale
+        figure.x = cx + side * self.cell_size_x - picture.width * scale / 2
+        figure.y = (self.window_height - cy + offset * self.cell_size_y
+                    - (picture.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale)
+        figure.opacity = round(255 * alpha * fade)
+        for obj, opacity in parts['fading']:
+            obj.opacity = round(opacity * fade)
 
     def _create_floor_transition(self, kind, player, exit_point):
         field_height = self.field_height * self.cell_size_y
@@ -1748,6 +1820,12 @@ class SpriteUI(PygletUI):
         )
         figure.scale = scale
         shapes.append(figure)
+        # The parts the animation moves and fades (see
+        # _animate_floor_transition), with each one's full opacity.
+        self._transition_parts = {
+            'figure': (figure, cx, cy, picture, scale),
+            'fading': [(shape, 255) for shape in shapes[:-1]],
+        }
         if kind == 'climb':
             # A rope segment over the player, centred on the figure's height.
             figure_height = (picture.height / 2 + SPRITE_GROUND_OFFSET_PIXELS
@@ -1768,12 +1846,14 @@ class SpriteUI(PygletUI):
             glow.color = self._display_color(COLOR_MAP[CI_GREEN])
             glow.opacity = ROPE_GLOW_OPACITY
             shapes.append(glow)
-            shapes.append(pyglet.shapes.Rectangle(
+            rope = pyglet.shapes.Rectangle(
                 round(rope_x - width / 2),
                 self.window_height - (rope_middle + length / 2),
                 width, length, color=self._display_color(ROPE_COLOR),
                 batch=self.batch, group=pyglet.graphics.Group(order=100001),
-            ))
+            )
+            shapes.append(rope)
+            self._transition_parts['fading'] += [(glow, ROPE_GLOW_OPACITY), (rope, 255)]
         return shapes
 
     def _draw_player(self, pos, player):

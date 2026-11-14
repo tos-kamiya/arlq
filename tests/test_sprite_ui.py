@@ -1718,7 +1718,8 @@ def test_edge_shade_strips_cover_shifted_fades(cached_floor_ui):
 def instant_effects(sprite_ui, monkeypatch):
     durations = []
 
-    def play(seconds, create):
+    def play(seconds, create, update=None):
+        # Checks the scene as built; the animation is tested on its own.
         durations.append(seconds)
         objects = create()
         try:
@@ -2097,3 +2098,125 @@ def test_directional_slashes_are_bundled():
     effects = Path(sprite_funcs.__file__).parent / 'assets' / 'effects'
     for filename in sprite_funcs.SLASH_FILES.values():
         assert (effects / filename).is_file(), filename
+
+
+@pytest.fixture
+def transition_ui(sprite_ui, monkeypatch):
+    ui = sprite_ui
+    ui._disc_image = SimpleNamespace(width=64, height=64)
+    ui.field_height = 20
+    ui.field_pixel_width = 26 * 13
+    ui._landing_image = SimpleNamespace(width=450, height=600)
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+                        lambda *args, **kwargs: SimpleNamespace(args=args, **kwargs))
+    return ui
+
+
+def _figure_after(ui, kind, progress, fade_out=True):
+    ui._create_floor_transition(kind, d.Player(3, 4, level=1, lp=d.LP_INIT), None)
+    figure, cx, cy, picture, scale = ui._transition_parts['figure']
+    base_y = ui.window_height - cy - (picture.height / 2
+                                      - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * scale
+    ui._animate_floor_transition(kind, progress, fade_out)
+    return figure, base_y, scale
+
+
+STEP = sprite_funcs.FLOOR_TRANSITION_STEP
+
+
+@pytest.mark.parametrize('kind, start, end', [
+    ('down', 0, -STEP), ('up', -STEP, 0), ('climb', -STEP, 0),
+])
+def test_floor_transition_moves_at_a_steady_speed(transition_ui, kind, start, end):
+    ui = transition_ui
+    fade = sprite_funcs.FLOOR_TRANSITION_FADE
+    for progress, moved in ((0.0, 0.0), (fade, 0.0), (0.5, 0.5), (1 - fade, 1.0), (1.0, 1.0)):
+        figure, base_y, _ = _figure_after(ui, kind, progress)
+        offset = (figure.y - base_y) / ui.cell_size_y
+        assert offset == pytest.approx(start + (end - start) * moved)
+
+
+@pytest.mark.parametrize('kind, sides', [
+    ('down', (0, 0.5, 1, 0.5, 0)), ('up', (0, 0.5, 1, 0.5, 0)), ('climb', (0,) * 5),
+    ('fall', (0,) * 5),
+])
+def test_stairs_go_right_then_left_like_ku(transition_ui, kind, sides):
+    ui = transition_ui
+    fade = sprite_funcs.FLOOR_TRANSITION_FADE
+    side = sprite_funcs.FLOOR_TRANSITION_STAIRS_SIDE
+    for moved, expected in zip((0, 0.25, 0.5, 0.75, 1), sides):
+        progress = fade + (1 - 2 * fade) * moved
+        figure, _, scale = _figure_after(ui, kind, progress)
+        _, cx, _, picture, _ = ui._transition_parts['figure']
+        centre = figure.x + picture.width * figure.scale / 2
+        assert (centre - cx) / ui.cell_size_x == pytest.approx(expected * side)
+
+
+def test_fall_keeps_its_feet_on_the_falling_point(transition_ui):
+    ui = transition_ui
+    figure, base_y, scale = _figure_after(ui, 'fall', 0.5)
+    picture = ui._transition_parts['figure'][3]
+    feet = figure.y + (picture.height / 2 - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * figure.scale
+    base_feet = base_y + (picture.height / 2 - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * scale
+    assert feet - base_feet == pytest.approx(
+        -0.5 * sprite_funcs.FLOOR_TRANSITION_FALL * ui.cell_size_y)
+    # The fall covers twice the stairs' distance in the same time.
+    assert sprite_funcs.FLOOR_TRANSITION_FALL == 2 * sprite_funcs.FLOOR_TRANSITION_STEP
+    fade = sprite_funcs.FLOOR_TRANSITION_FADE
+    figure, _, scale = _figure_after(ui, 'fall', 1 - fade)
+    assert figure.scale == pytest.approx(scale * sprite_funcs.FLOOR_TRANSITION_FALL_SHRINK)
+
+
+@pytest.mark.parametrize('progress, fade_out, opacity', [
+    (0.0, True, 0), (0.075, True, 128), (0.5, True, 255),
+    (0.925, True, 128), (1.0, True, 0), (1.0, False, 255),
+])
+def test_floor_transition_fades_in_and_out_over_fifteen_percent(transition_ui, progress,
+                                                                 fade_out, opacity):
+    ui = transition_ui
+    _figure_after(ui, 'down', progress, fade_out)
+    background = ui._transition_parts['fading'][0][0]
+    assert abs(background.opacity - opacity) <= 1
+
+
+def test_floor_transition_draws_the_new_floor_once_before_fading_out(transition_ui,
+                                                                    monkeypatch):
+    ui = transition_ui
+    drawn, progresses = [], []
+    monkeypatch.setattr(ui, 'draw_stage', lambda **view: drawn.append(view))
+    monkeypatch.setattr(ui, '_animate_floor_transition',
+                        lambda kind, progress, fade_out: progresses.append(fade_out))
+
+    def play(seconds, create, update):
+        create()
+        for progress in (0.0, 0.5, 0.84, 0.86, 0.95, 1.0):
+            update(progress)
+
+    monkeypatch.setattr(ui, '_play_effect', play)
+    ui._next_view = {'turn': 7}
+    ui.draw_floor_transition('down', d.Player(3, 4, level=1, lp=d.LP_INIT))
+    assert drawn == [{'turn': 7}]
+    assert progresses == [False, False, False, True, True, True]
+
+
+def test_floor_transition_without_a_next_view_keeps_the_scene(transition_ui, monkeypatch):
+    ui = transition_ui
+    fade_outs = []
+    monkeypatch.setattr(ui, 'draw_stage', lambda **view: pytest.fail('no next view'))
+    monkeypatch.setattr(ui, '_animate_floor_transition',
+                        lambda kind, progress, fade_out: fade_outs.append(fade_out))
+    monkeypatch.setattr(ui, '_play_effect',
+                        lambda seconds, create, update: (create(), update(0.95)))
+    ui.draw_floor_transition('down', d.Player(3, 4, level=1, lp=d.LP_INIT))
+    assert fade_outs == [False]
+
+
+def test_present_turn_offers_the_next_view_only_while_playing(sprite_ui, monkeypatch):
+    seen = []
+    monkeypatch.setattr(sprite_ui._presenter, 'play',
+                        lambda ui, result, view: seen.append(ui._next_view) or True)
+    sprite_ui.present_turn(_turn((0, 1)), {'turn': 3})
+    assert seen == [{'turn': 3}]
+    assert sprite_ui._next_view is None

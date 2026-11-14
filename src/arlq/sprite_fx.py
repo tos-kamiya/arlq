@@ -120,18 +120,29 @@ class Presenter:
             )
         )
 
-    def hold(self, ui, seconds, create):
-        """Keep an effect alive, pumping input and rebuilding it after resize."""
+    def hold(self, ui, seconds, create, update=None):
+        """Keep an effect alive, pumping input and rebuilding it after resize.
+
+        With `update`, it is called as update(progress) before each frame,
+        progress running from 0 to 1 over the effect's time, to animate it.
+        """
         if seconds <= 0 or ui._closed:
             return
         was_active = ui._stage_input_active
         ui._stage_input_active = True
         objects = []
         try:
-            deadline = self.clock() + seconds
+            start = self.clock()
+            deadline = start + seconds
             objects = create()
             layout = self._layout(ui)
-            ui._flip()
+
+            def show():
+                if update is not None:
+                    update(min(1.0, max(0.0, (self.clock() - start) / seconds)))
+                ui._flip()
+
+            show()
             while not ui._closed and self.clock() < deadline:
                 ui._pump()
                 if ui._closed:
@@ -142,10 +153,14 @@ class Presenter:
                     objects = []
                     objects = create()
                     layout = self._layout(ui)
-                ui._flip()
+                show()
                 remaining = deadline - self.clock()
                 if remaining > 0:
                     self.wait(min(1 / 60, remaining))
+            if update is not None and not ui._closed:
+                # End an animation on its last frame.
+                update(1.0)
+                ui._flip()
         finally:
             for obj in objects:
                 obj.delete()

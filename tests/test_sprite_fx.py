@@ -246,3 +246,22 @@ def test_play_sets_the_attack_facing_before_each_fight():
               Combat(0, (2, 2), [(EntityRef(2, "a", "monster"), (2, 3))], True, 0)]
     Presenter().play(ui, TurnResult(True, None, False, 0, 0, fights), view)
     assert seen == ["left", "down"]
+
+
+def test_hold_reports_progress_before_each_frame():
+    ui = fake_ui()
+    clock = Clock()
+    progresses = []
+    Presenter(clock=clock, wait=clock.wait).hold(
+        ui, 0.05, lambda: [], update=lambda progress: progresses.append(round(progress, 3)))
+    assert progresses[0] == 0
+    assert progresses[-1] == 1
+    assert progresses == sorted(progresses)
+    assert len(progresses) == len(ui.frames)
+
+
+def test_hold_without_update_adds_no_final_frame():
+    ui = fake_ui()
+    clock = Clock()
+    Presenter(clock=clock, wait=clock.wait).hold(ui, 0.05, lambda: [])
+    assert len(ui.frames) == 4

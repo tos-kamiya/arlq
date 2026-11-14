@@ -87,7 +87,7 @@ In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 se
 These effects appear after each move is resolved, before the map refreshes.
 In `arlq-sprites`, the window keeps updating during effects, and keys pressed during them are queued for the next input.
 In `arlq-sprites`, the slash of a won fight is cut the way the player attacked (up, down, left, or right).
-In `arlq-sprites`, `Floor transition duration` selects 0 to 1 second in 0.1-second steps for the still shown between floors (default: 0.5; 0 skips it).
+In `arlq-sprites`, `Floor transition duration` selects 0 to 1 second in 0.1-second steps for the short scene shown between floors (default: 0.5; 0 skips it): the old floor fades to black, the player steps down or up the stairs, falls, or climbs the rope, and the new floor fades in.
 In `arlq-sprites`, `Character bobbing` turns on or off the small hop that characters in view make every 0.7 seconds while the game waits for input (default: On). The player, monsters, fairies, and elves and party members waiting on the map hop; following fairies and party members stay still.
 
 ## Screen and controls
