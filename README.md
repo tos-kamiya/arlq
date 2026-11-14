@@ -283,19 +283,9 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 
 ### Stage 6: Dungeon with a Party
 
-Ordinary openings between sections are one cell wider than in the other generated stages; hidden passages remain one cell wide. On floors 1 and 2, each detached section has two hidden passages when a second connection is possible, and one otherwise.
+Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the bridgehead and destroy the Dungeon Core within 2,000 turns, before it runs wild and the capital falls. Defeat the empowered Fire Drake (`F'`) to reveal the core; destroying it lifts the time limit and unseals the treasure chest. Watch out for Mimics as you claim the treasure. Returning to the floor 1 bridgehead restores LP to 60 if it is lower.
 
-Stage 6 is a three-floor dungeon starting at level 1. Party member candidates start near the bridgehead, with no two candidates or player in adjacent cells, including diagonals. Recruit them and destroy the Dungeon Core within 2,000 turns, before it runs wild and the capital above falls; destroying it on turn 2,000 is in time. The limit is lifted once the core is destroyed, and claiming the treasure completes the stage. The turn counter shows the limit until then, and a warning appears with 500 turns remaining. In the sprite GUI, the core grows every 500 turns: small until turn 499, then medium, then large from turn 1,000, and from turn 1,500 it swells to its largest, cracked and close to running wild. Returning to the floor 1 bridgehead restores LP to 60 if it is lower.
-
-Uppercase monsters are placed in fixed numbers at the start and do not spawn later. Floors 2 and 3 each contain one Rare Chimera (`C`). Floor 1 favors weak monsters and LP recovery. Floor 2 offers more experience but fewer LP-restoring Bison and Buffalo. Ordinary Bison spawns on floors 2 and 3 are empowered (`b'`), and floor 3 starts with one Buffalo. Floor 3 guards the boss with strong monsters and barriers. The boss party starts with an empowered Fire Drake (`F'`), a Vortex (`V`), and one randomly selected monster. Its position has vertical space for eight monsters, and ordinary spawns can join it up to that limit. Defeat the Fire Drake to reveal the Dungeon Core, destroy the core to unseal the chest and awaken the Mimic, then claim the treasure.
-
-Each pair of neighboring floors has one staircase and, when space permits, a second in a different section. The second staircase prefers sections outside the first staircase's eight neighboring sections; if none is available, it may be placed in a neighboring section. When you use a different staircase or pit from the one used for your previous floor change, all unrecruited members are scattered independently to random floors, and their previously known locations are cleared. Reusing the same staircase or pit consecutively, in either direction, does not scatter them again.
-
-Each floor starts with a sword-carrying `c` and three fairies selected from `l`, `n`, `o`, and `p`. A fairy that leaves returns only to its original floor. Initial monster spawn attempts number 40, 35, and 31 on floors 1 through 3; all monsters start alone except the boss party. Every 60 turns, a spawn is attempted on each floor, and monsters may form parties on every floor. Golems (`g`), Marksmen (`k`), Caltrop Plants (`X`), and Vortices (`V`) appear on the deeper floors. Defeated monsters do not respawn.
-
-On floor 2, half of ordinary Flame Cobra (`f`) spawn slots are empowered (`f'`); on floor 3, all Flame Cobra spawns, including the boss party's possible addition, are empowered. The detached room on floor 2 can still contain an ordinary Flame Cobra.
-
-The Rare Amoebas and Caltrop Plants on floor 3 are empowered (`A'` and `X'`).
+Deeper floors contain stronger monsters and barriers. Defeated monsters do not respawn. Unrecruited members scatter to random floors when you use a different staircase or pit from your previous floor change, and their known locations are cleared.
 
 #### Party members
 
@@ -312,13 +302,7 @@ In Stage 6, S, H, and J cannot cross barriers. If they would enter a barrier, th
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
 
-Monsters spawn individually and form parties when vertically adjacent. Ordinary spawns avoid the starting section and otherwise use the same rates across sections, including the boss section. When party preference applies, normal monsters have a 60% chance to try up to five positions above or below existing monsters, followed by up to five random positions if needed. Otherwise, up to ten random positions are tried. If none is valid, the spawn is skipped. Monsters can spawn on barrier cells, removing the barrier from that cell. Monsters with special effects spawn alone.
-
-Vertically adjacent monsters fight in parties of up to eight, combining their strength and experience; the highest LP reward applies. The player receives the monsters' combined experience.
-
-If a defeated party contains a sword-bearing `c`, its sword takes precedence over other members' items, including spores.
-
-Some rooms may be sealed by walls, but D can discover passages into them.
+Vertically adjacent monsters fight in parties of up to eight, combining their strength and experience; the highest LP reward applies. If a defeated party includes a sword-bearing `c`, its sword takes precedence over other items.
 
 #### Monsters
 
@@ -327,10 +311,6 @@ Some rooms may be sealed by walls, but D can discover passages into them.
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **f** / **f'** Flame cobra | Worth 5 experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
 | **i** Ivy | Base attack power 50. Ivies appear on floors 2 and 3. Each active Ivy deals 4 LP damage every turn when the player is directly above, below, left, or right of it. Rogue does not block this damage. |
-| **g** / **g'** Golem | Rank 1 Golems appear on floors 2 and 3; rank 2 appears on floor 3. |
-| **w** Wyrm | Wyrms appear on floors 2 and 3. |
-
-The floor 3 boss party starts with `F'`, `V`, and one randomly selected monster. A Mimic also impersonates the Dungeon Core. Pits drop you to the next floor. On defeat, your members respawn with you.
 
 ## Development commands
 
