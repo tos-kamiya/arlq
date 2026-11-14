@@ -9,11 +9,11 @@ from pathlib import Path
 
 import pyglet
 
-from . import defs as d
-from . import display as ui_display
-from .arlq import barrier_lp_damage
-from .i18n import t as tr
-from .game_events import FloorChanged, Rewound
+from .. import defs as d
+from .. import display as ui_display
+from ..arlq import barrier_lp_damage
+from ..i18n import t as tr
+from ..game_events import FloorChanged, Rewound
 from .sprite_fx import Presenter
 from .sprite_defs import (
     NEIGHBOR_SCALE,
@@ -59,7 +59,7 @@ from .sprite_images import (
     smoke_image,
     soft_outline_image,
 )
-from .pyglet_funcs import (
+from ..pyglet_funcs import (
     CELL_SIZE_X,
     CELL_SIZE_Y,
     CI_BLUE,
@@ -328,7 +328,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._drawing_hud = False
         self.window.set_caption(self.window.caption.replace('Pyglet mix', 'Sprite mix'))
         self._update_minimum_window_size()
-        directory = Path(__file__).parent / 'assets' / 'characters'
+        directory = Path(__file__).parent.parent / 'assets' / 'characters'
         self._gray_images = {}
         for char, filename in SPRITE_FILES.items():
             path = directory / filename
@@ -359,7 +359,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             (side, gaps): respawn_column_image(side, gaps)
             for side in ('back', 'front') for gaps in (False, True)
         }
-        assets = Path(__file__).parent / 'assets'
+        assets = Path(__file__).parent.parent / 'assets'
         # Per theme: wall parts, floor images and their grayscale copies for
         # the map display. A theme whose images are missing uses the ruins'.
         self._theme_images = {}

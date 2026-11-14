@@ -6,13 +6,14 @@ import pyglet
 import pytest
 
 from arlq import defs as d
-from arlq import display, pyglet_funcs, sprite_defs, sprite_effects, sprite_funcs
-from arlq import sprite_images, sprite_terrain
+from arlq import display, pyglet_funcs
+from arlq.sprites import sprite_defs, sprite_effects, sprite_funcs
+from arlq.sprites import sprite_images, sprite_terrain
 from arlq import i18n
 from arlq.game_events import FloorChanged, Rewound
 from arlq.pyglet_funcs import PygletUI
-from arlq.sprite_defs import SPRITE_REFERENCE_PIXELS
-from arlq.sprite_funcs import SPRITE_FILES, SpriteUI
+from arlq.sprites.sprite_defs import SPRITE_REFERENCE_PIXELS
+from arlq.sprites.sprite_funcs import SPRITE_FILES, SpriteUI
 
 
 @pytest.fixture
@@ -43,15 +44,15 @@ def sprite_ui(monkeypatch):
     ui._drawables = []
     ui.text_calls = []
     ui.outlines = []
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.shapes.Rectangle',
                         lambda x, y, width, height, **kwargs: SimpleNamespace(
                             x=x, y=y, width=width, height=height, **kwargs))
     monkeypatch.setattr(PygletUI, '_draw_field_text',
                         lambda self, *args: self.text_calls.append(args))
     monkeypatch.setattr(ui, '_draw_ground_disc', lambda *args: ui.outlines.append(args))
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.text.Label',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.text.Label',
                         lambda text, **kwargs: SimpleNamespace(text=text, **kwargs))
     return ui
 
@@ -286,7 +287,7 @@ def test_ground_disc_is_tinted_ellipse_fading_outward(monkeypatch):
     ui._disc_image, ui._disc_group = image, 'disc'
     ui._drawables = []
     ui._display_color = lambda color: color
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     ui._draw_ground_disc(50, 100, 10, (82, 140, 220))
     disc = ui._drawables[0]
@@ -698,7 +699,7 @@ def _strength_column_ui(monkeypatch, known_types):
     ui._display_color = lambda color: color
     texts = []
     monkeypatch.setattr(ui, '_draw_text', lambda pos, text, *args, **kwargs: texts.append(text))
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     return ui, texts
 
@@ -734,7 +735,7 @@ def test_disc_halves_split_on_the_diagonal(monkeypatch):
     ui._disc_halves, ui._disc_group = (lower, upper), 'disc'
     ui._drawables = []
     ui._display_color = lambda color: color
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     ui._draw_ground_disc(50, 100, 10, (230, 230, 230), (200, 80, 200))
     assert [(disc.image, disc.color) for disc in ui._drawables] == [
@@ -756,7 +757,7 @@ def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
     floors = []
     monkeypatch.setattr(PygletUI, '_draw_tile',
                         lambda self, x, y, color, *args: floors.append((x, y, color)))
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.shapes.Rectangle',
                         lambda *args, **kwargs: SimpleNamespace(args=args, **kwargs))
     field = [[d.CHAR_FLOOR] * 3 for _ in range(3)]
     field[1][1] = d.CHAR_WALL
@@ -789,7 +790,7 @@ def test_training_room_walls_are_boxes_smaller_than_the_cell(monkeypatch, tile_c
     ui._display_color = lambda color: color
     ui.map_mode = False
     monkeypatch.setattr(PygletUI, '_draw_tile', lambda *args: None)
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.shapes.Rectangle',
                         lambda *args, **kwargs: SimpleNamespace(args=args, **kwargs))
     field = [[d.CHAR_WALL] * 3 for _ in range(3)]
     ui._draw_tile(1, 1, tile_color, field, lambda x, y: True)
@@ -849,7 +850,7 @@ def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
     ui._drawables = []
     ui._display_color = lambda color: color
     monkeypatch.setattr(PygletUI, '_draw_tile', lambda *args: None)
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     field = [[d.CHAR_FLOOR] * 3 for _ in range(3)]
     field[1][0] = d.CHAR_WALL
@@ -886,7 +887,7 @@ def _barrier_ui(monkeypatch, cooling_center):
     ui._row_groups = {}
     ui._drawables = []
     ui._display_color = lambda color: color
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     ui._field_col_x = lambda x: x * ui.cell_size_x
     ui._field_col_width = lambda x: ui.cell_size_x
@@ -997,7 +998,7 @@ def test_column_wall_links_only_toward_discovered_wall_neighbors(monkeypatch):
                        for part in sprite_terrain.WALL_PARTS}
     ui._floor_images = None
     monkeypatch.setattr(PygletUI, '_draw_tile', lambda *args: None)
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     field = [[d.CHAR_FLOOR] * 3, [d.CHAR_WALL] * 3, [d.CHAR_FLOOR] * 3]
     # The east neighbour is unexplored, so no link reaches toward it.
@@ -1024,7 +1025,7 @@ def test_floor_is_a_checkerboard_of_two_tinted_stones(monkeypatch):
     ui._display_color = lambda color: color
     ui._floor_images = [SimpleNamespace(width=130, height=200, part=part)
                         for part in sprite_terrain.FLOOR_PARTS]
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     field = [[d.CHAR_FLOOR] * 2 for _ in range(2)]
     for x, y in ((0, 0), (1, 0), (1, 1)):
@@ -1064,7 +1065,7 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     for image in ui._terrain_images.values():
         image.get_region = lambda x, y, w, h, image=image: SimpleNamespace(
             width=w, height=h, char=image.char, region=(x, x + w))
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     ui._draw_stairs((0, 0), char)
     ui._draw_stairs((1, 0), char)
@@ -1159,7 +1160,7 @@ def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui._stage_field = [[' ', d.CHAR_COLLAPSE, ' ']]
     ui._stage_discovered_at = lambda x, y: True
     ui._cur_torched = [[1, 1, 1]]
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     ui._draw_pit((1, 0))
     pit, = ui._drawables
@@ -1760,9 +1761,9 @@ def test_floor_transition_shows_only_the_players_landing(sprite_ui, monkeypatch,
             return obj
         return make
 
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         track(lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs)))
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.shapes.Rectangle',
                         track(lambda *args, **kwargs: SimpleNamespace(args=args, **kwargs)))
     player = d.Player(3, 4, level=1, lp=d.LP_INIT)
 
@@ -1797,10 +1798,10 @@ def test_floor_transition_is_drawn_on_the_stairs_cell(sprite_ui, monkeypatch, in
     ui._landing_image = SimpleNamespace(width=450, height=600)
     made = []
     monkeypatch.setattr(ui, '_flip', lambda: None)
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: made.append(SimpleNamespace(
                             image=picture, delete=lambda: None, **kwargs)) or made[-1])
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.shapes.Rectangle',
                         lambda *args, **kwargs: SimpleNamespace(delete=lambda: None))
 
     ui.draw_floor_transition('down', d.Player(3, 4, level=1, lp=d.LP_INIT), (7, 2))
@@ -2017,7 +2018,7 @@ def test_player_sprite_falls_back_to_facing_the_camera(sprite_ui):
 
 
 def test_turned_player_sprites_are_bundled():
-    directory = Path(sprite_funcs.__file__).parent / 'assets' / 'characters'
+    directory = Path(sprite_funcs.__file__).parent.parent / 'assets' / 'characters'
     for key, filename in SPRITE_FILES.items():
         if key.split(' ')[-1] in sprite_funcs.PLAYER_FACINGS and filename.startswith('player'):
             assert (directory / filename).is_file(), filename
@@ -2087,7 +2088,7 @@ def test_follower_image_falls_back_without_image_data(sprite_ui):
 def test_combat_effect_slashes_the_way_the_player_attacked(sprite_ui, monkeypatch,
                                                            facing, won, filename):
     loaded = []
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.image.load',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.image.load',
                         lambda path: loaded.append(Path(path).name))
     monkeypatch.setattr(sprite_ui, '_play_effect', lambda seconds, create: None)
     sprite_ui.combat_effect_seconds = 0.3
@@ -2097,7 +2098,7 @@ def test_combat_effect_slashes_the_way_the_player_attacked(sprite_ui, monkeypatc
 
 
 def test_directional_slashes_are_bundled():
-    effects = Path(sprite_funcs.__file__).parent / 'assets' / 'effects'
+    effects = Path(sprite_funcs.__file__).parent.parent / 'assets' / 'effects'
     for filename in sprite_effects.SLASH_FILES.values():
         assert (effects / filename).is_file(), filename
 
@@ -2109,9 +2110,9 @@ def transition_ui(sprite_ui, monkeypatch):
     ui.field_height = 20
     ui.field_pixel_width = 26 * 13
     ui._landing_image = SimpleNamespace(width=450, height=600)
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
-    monkeypatch.setattr('arlq.sprite_funcs.pyglet.shapes.Rectangle',
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.shapes.Rectangle',
                         lambda *args, **kwargs: SimpleNamespace(args=args, **kwargs))
     return ui
 

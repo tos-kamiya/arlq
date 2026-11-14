@@ -334,7 +334,7 @@ def main(terminal_only=False, sprites_only=False):
         from .pyglet_funcs import PygletUI
 
         if args.sprites:
-            from .sprite_funcs import SpriteUI
+            from .sprites.sprite_funcs import SpriteUI
 
             ui = SpriteUI(args.scale)
         else:

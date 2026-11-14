@@ -4,7 +4,7 @@ import math
 
 import pyglet
 
-from . import defs as d
+from .. import defs as d
 
 # Followers walking with the player (party members, the Javelin Elf and the
 # cat) are drawn at this size, never enlarged as neighbors, so they do not

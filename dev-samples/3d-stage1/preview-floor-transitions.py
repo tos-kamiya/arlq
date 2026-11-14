@@ -18,8 +18,8 @@ pyglet.options['headless'] = True
 pyglet.input = SimpleNamespace(get_controllers=lambda: [])
 
 from arlq import defs as d
-from arlq import sprite_funcs
-from arlq.sprite_funcs import SpriteUI
+from arlq.sprites import sprite_funcs
+from arlq.sprites.sprite_funcs import SpriteUI
 
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else (
     Path(__file__).resolve().parent / 'heroic' / 'preview-floor-transitions.jpg')

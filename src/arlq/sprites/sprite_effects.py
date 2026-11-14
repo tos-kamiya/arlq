@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pyglet
 
-from . import defs as d
-from .pyglet_funcs import CI_GREEN, COLOR_MAP
+from .. import defs as d
+from ..pyglet_funcs import CI_GREEN, COLOR_MAP
 from .sprite_defs import (
     NEIGHBOR_SCALE,
     SPRITE_REFERENCE_PIXELS,
@@ -68,7 +68,7 @@ class SpriteEffectsMixin:
         positions = [pos] if len(pos) == 2 and all(
             isinstance(value, (int, float)) for value in pos
         ) else pos
-        effects = Path(__file__).parent / "assets" / "effects"
+        effects = Path(__file__).parent.parent / "assets" / "effects"
         path = effects / (SLASH_FILES.get(self._attack_facing, "slash.png") if won
                           else "splash.png")
         if not path.is_file():

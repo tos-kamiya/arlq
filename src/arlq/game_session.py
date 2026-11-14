@@ -230,7 +230,7 @@ class GameSession:
             repeat_stop_enabled
             and not rogue_spotted_danger
             and repeat
-            and engine._should_stop_movement_repeat(
+            and engine.should_stop_movement_repeat(
                 move,
                 current,
                 self.player,
@@ -452,7 +452,7 @@ class GameSession:
         cur = engine.observe_world(
             self.floors, self.player, self.floor[0], self.config.torch_radius
         )
-        return engine._quit_check(self.floors, self.player, self.floor[0], cur)
+        return engine.quit_check(self.floors, self.player, self.floor[0], cur)
 
     def quit(self, *, unfinished=False):
         if self.trace is not None:

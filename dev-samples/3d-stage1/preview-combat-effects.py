@@ -28,8 +28,8 @@ pyglet.options['headless'] = True
 pyglet.input = SimpleNamespace(get_controllers=lambda: [])
 
 from arlq import defs as d
-from arlq import sprite_funcs
-from arlq.sprite_funcs import SpriteUI
+from arlq.sprites import sprite_funcs
+from arlq.sprites.sprite_funcs import SpriteUI
 
 HEROIC = Path(__file__).resolve().parent / 'heroic'
 OUT = HEROIC / 'preview-combat-effects.jpg'

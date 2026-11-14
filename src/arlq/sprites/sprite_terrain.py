@@ -5,8 +5,8 @@ from functools import partial
 
 import pyglet
 
-from . import defs as d
-from .pyglet_funcs import (
+from .. import defs as d
+from ..pyglet_funcs import (
     CELL_SIZE_Y,
     CI_GREEN,
     CI_YELLOW,

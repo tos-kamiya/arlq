@@ -1101,7 +1101,7 @@ def test_discovered_passage_reachability_and_repeat_follow_explorer(explorer):
         phase_walls={(2, 1)}, terminal_targets={(3, 1)},
     )
     assert ((3, 1) in reachable) is explorer
-    assert engine._should_stop_movement_repeat((1, 0), current, player) is not explorer
+    assert engine.should_stop_movement_repeat((1, 0), current, player) is not explorer
 
 
 def test_explorer_climbs_pit_by_stepping_onto_marker():

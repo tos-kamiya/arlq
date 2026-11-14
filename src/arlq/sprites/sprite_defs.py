@@ -2,7 +2,7 @@
 
 import math
 
-from . import defs as d
+from .. import defs as d
 
 # A character in one of the four cells next to the player, the one the next
 # step would meet, is drawn this much larger (its ground disc keeps its size).

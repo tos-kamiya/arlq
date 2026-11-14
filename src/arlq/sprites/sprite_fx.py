@@ -3,8 +3,8 @@
 from dataclasses import replace
 from time import monotonic
 
-from .game_events import BarrierHit, Combat, FloorChanged, Rewound
-from .presentation import play_turn_events
+from ..game_events import BarrierHit, Combat, FloorChanged, Rewound
+from ..presentation import play_turn_events
 
 
 def attack_facing(event):

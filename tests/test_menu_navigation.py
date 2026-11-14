@@ -233,7 +233,7 @@ def test_invalid_floor_transition_duration_uses_default(value):
 
 def test_zero_duration_skips_effect_in_all_frontends():
     from arlq.blessed_funcs import BlessedUI
-    from arlq.sprite_funcs import SpriteUI
+    from arlq.sprites.sprite_funcs import SpriteUI
 
     for frontend in (PygletUI, SpriteUI, BlessedUI):
         ui = frontend.__new__(frontend)

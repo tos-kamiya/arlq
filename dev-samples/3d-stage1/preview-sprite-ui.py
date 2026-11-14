@@ -8,7 +8,7 @@ pyglet.options['headless'] = True
 pyglet.input = SimpleNamespace(get_controllers=lambda: [])
 
 from arlq import defs as d
-from arlq.sprite_funcs import SPRITE_FILES, SpriteUI
+from arlq.sprites.sprite_funcs import SPRITE_FILES, SpriteUI
 
 ui = SpriteUI(scale=3)
 field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]

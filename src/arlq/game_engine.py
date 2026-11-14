@@ -246,7 +246,7 @@ def _visible_auto_stop_entities(
     return visible
 
 
-def _should_stop_movement_repeat(
+def should_stop_movement_repeat(
     direction: d.Point,
     current: Floor,
     player: d.Player,
@@ -292,7 +292,7 @@ def _stop_movement_repeat(ui: Any) -> None:
         stop_repeat()
 
 
-def _quit_check(
+def quit_check(
     floors: List[Floor], player: d.Player, floor_index: int,
     visible: List[List[int]],
 ) -> bool:

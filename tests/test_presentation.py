@@ -91,13 +91,13 @@ def test_optional_effects_and_empty_turns():
 def test_frontends_use_one_effect_path_at_the_expected_time(monkeypatch, frontend, won):
     from arlq.blessed_funcs import BlessedUI
     from arlq.pyglet_funcs import PygletUI
-    from arlq.sprite_funcs import SpriteUI
+    from arlq.sprites.sprite_funcs import SpriteUI
 
     ui_type = {"blessed": BlessedUI, "pyglet": PygletUI, "sprite": SpriteUI}[frontend]
     ui = ui_type.__new__(ui_type)
     ui.map_mode = False
     if frontend == "sprite":
-        from arlq.sprite_fx import Presenter
+        from arlq.sprites.sprite_fx import Presenter
 
         ui._presenter = Presenter()
         ui._stage_input_active = False

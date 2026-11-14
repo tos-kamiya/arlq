@@ -17,7 +17,7 @@ pyglet.options['headless'] = True
 pyglet.input = SimpleNamespace(get_controllers=lambda: [])
 
 from arlq import defs as d
-from arlq.sprite_funcs import SpriteUI
+from arlq.sprites.sprite_funcs import SpriteUI
 
 OUT = Path(__file__).resolve().parent / 'heroic' / 'preview-unknowns.jpg'
 ROW = 5

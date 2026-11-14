@@ -11,7 +11,7 @@ from arlq.game_engine import (
     Floor,
     _ContactResult,
     _process_multi_floor_turn,
-    _should_stop_movement_repeat,
+    should_stop_movement_repeat,
 )
 
 
@@ -46,7 +46,7 @@ def test_repeat_stops_before_entering_known_special_terrain(cell):
     floor.field[2][3] = cell
     floor.seen[2][3] = 1
 
-    assert _should_stop_movement_repeat((1, 0), floor, player)
+    assert should_stop_movement_repeat((1, 0), floor, player)
 
 
 def test_repeat_does_not_inspect_unknown_terrain_ahead():
@@ -54,7 +54,7 @@ def test_repeat_does_not_inspect_unknown_terrain_ahead():
     floor = floor_with([player])
     floor.field[2][3] = d.CHAR_WALL
 
-    assert not _should_stop_movement_repeat((1, 0), floor, player)
+    assert not should_stop_movement_repeat((1, 0), floor, player)
 
 
 @pytest.mark.parametrize(
@@ -72,7 +72,7 @@ def test_repeat_stops_before_entering_displayed_entity_cell(entity):
     floor = floor_with([player, entity])
     floor.seen[entity.y][entity.x] = 1
 
-    assert _should_stop_movement_repeat((1, 0), floor, player)
+    assert should_stop_movement_repeat((1, 0), floor, player)
 
 
 def test_repeat_can_move_away_from_nearby_entity():
@@ -81,7 +81,7 @@ def test_repeat_can_move_away_from_nearby_entity():
     floor = floor_with([player, monster])
     floor.seen[monster.y][monster.x] = 1
 
-    assert not _should_stop_movement_repeat((-1, 0), floor, player)
+    assert not should_stop_movement_repeat((-1, 0), floor, player)
 
 
 def test_repeat_does_not_stop_for_entity_more_than_two_steps_away():
@@ -90,7 +90,7 @@ def test_repeat_does_not_stop_for_entity_more_than_two_steps_away():
     floor = floor_with([monster])
     floor.seen[monster.y][monster.x] = 1
 
-    assert not _should_stop_movement_repeat((1, 0), floor, player)
+    assert not should_stop_movement_repeat((1, 0), floor, player)
 
 
 def test_repeat_does_not_stop_for_unseen_entity():
@@ -98,7 +98,7 @@ def test_repeat_does_not_stop_for_unseen_entity():
     monster = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
     floor = floor_with([player, monster])
 
-    assert not _should_stop_movement_repeat((1, 0), floor, player)
+    assert not should_stop_movement_repeat((1, 0), floor, player)
 
 
 def test_inactive_mimic_is_ignored_until_its_glyph_is_revealed():
@@ -108,10 +108,10 @@ def test_inactive_mimic_is_ignored_until_its_glyph_is_revealed():
     floor = floor_with([player, mimic])
     floor.seen[mimic.y][mimic.x] = 1
 
-    assert not _should_stop_movement_repeat((1, 0), floor, player)
+    assert not should_stop_movement_repeat((1, 0), floor, player)
 
     mimic.active = True
-    assert _should_stop_movement_repeat((1, 0), floor, player)
+    assert should_stop_movement_repeat((1, 0), floor, player)
 
 
 def run_step_for_repeat_reasons(player, floors, direction, stage_num=3):
@@ -284,7 +284,7 @@ def test_disabling_automatic_repeat_stop_skips_precheck_and_event_stop(monkeypat
     precheck_calls = []
     monkeypatch.setattr(
         game_engine,
-        "_should_stop_movement_repeat",
+        "should_stop_movement_repeat",
         lambda *_args, **_kwargs: precheck_calls.append(True) or True,
     )
     step_repeat_reasons = []
@@ -329,7 +329,7 @@ def test_rogue_danger_stops_repeat_but_still_consumes_turn(monkeypatch, repeat, 
     monkeypatch.setattr(game_engine.stage56, "rogue_danger", lambda *_: "O")
     prechecks = []
     monkeypatch.setattr(
-        game_engine, "_should_stop_movement_repeat",
+        game_engine, "should_stop_movement_repeat",
         lambda *_args, **_kwargs: prechecks.append(True) or True,
     )
     steps = []

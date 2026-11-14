@@ -28,7 +28,7 @@ from pyglet.math import Mat4
 
 from arlq import defs as d
 from arlq.pyglet_funcs import CELL_SIZE_X, CELL_SIZE_Y, VISIBLE_FLOOR
-from arlq.sprite_funcs import (
+from arlq.sprites.sprite_funcs import (
     FLOOR_CHECKER_SHADE,
     FLOOR_TINTS,
     SpriteUI,

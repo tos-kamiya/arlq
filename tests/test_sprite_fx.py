@@ -7,7 +7,7 @@ import pytest
 from arlq import defs as d
 from arlq.game_events import BarrierHit, Combat, EntityRef, FloorChanged, Rewound
 from arlq.game_session import TurnResult
-from arlq.sprite_fx import Presenter
+from arlq.sprites.sprite_fx import Presenter
 
 
 class Clock:
@@ -222,14 +222,14 @@ def test_loss_only_flashes_visible_party_members():
     ((4, 3), (3, 3), "left"), ((2, 3), (3, 3), "right"),
 ])
 def test_attack_facing_points_from_player_to_monster(attacker, target, facing):
-    from arlq.sprite_fx import attack_facing
+    from arlq.sprites.sprite_fx import attack_facing
 
     combat = Combat(0, attacker, [(EntityRef(1, "a", "monster"), target)], True, 0)
     assert attack_facing(combat) == facing
 
 
 def test_attack_facing_uses_the_monster_run_into_for_a_party():
-    from arlq.sprite_fx import attack_facing
+    from arlq.sprites.sprite_fx import attack_facing
 
     party = [(EntityRef(1, "a", "monster"), (4, 3)), (EntityRef(2, "b", "monster"), (4, 2))]
     assert attack_facing(Combat(0, (3, 3), party, True, 0)) == "right"
