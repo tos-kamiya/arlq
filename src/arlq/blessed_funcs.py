@@ -28,6 +28,8 @@ def key_to_dir(key: str) -> Optional[d.Point]:
 
 
 class BlessedUI:
+    uses_event_effects = True
+
     def __init__(self, term: Terminal, dots: bool = False):
         self.combat_effect_seconds = combat_effect_seconds(load_settings())
         self.term = term

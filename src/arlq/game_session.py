@@ -307,6 +307,7 @@ class GameSession:
             if self.hooks.barrier_effect
             else None,
             events=events,
+            torch_radius=self.config.torch_radius,
         )
         if self.replay_context is not None:
             self.operation_path.append((self.floor[0], (self.player.x, self.player.y)))

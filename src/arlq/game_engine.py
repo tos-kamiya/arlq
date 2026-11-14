@@ -1582,6 +1582,7 @@ def _process_multi_floor_turn(
     combat_effect=None,
     barrier_effect=None,
     events: Optional[List[GameEvent]] = None,
+    torch_radius: Optional[int] = None,
 ) -> Optional[Tuple[int, str]] | _RewindRequest:
     if player.status_popup_ticks > 0:
         player.status_popup_ticks -= 1
@@ -1736,6 +1737,10 @@ def _process_multi_floor_turn(
             events,
             BarrierHit(floor[0], (player.x, player.y), old_hazard_lp - player.lp),
         )
+        # The legacy barrier redraw also observed the destination. Preserve
+        # that discovery timing when effects are played after the turn.
+        if torch_radius is not None:
+            observe_world(floors, player, floor[0], torch_radius)
         if barrier_effect is not None:
             barrier_effect()
     player.marksman_damage_prevented = False
@@ -2035,14 +2040,16 @@ def run_game(
     stage_num: int = 3,
 ) -> None:
     from .game_session import GameSession, LegacyHooks
+    from .presentation import play_turn_events
 
+    uses_event_effects = getattr(ui, "uses_event_effects", False)
     session = GameSession(
         stage_num,
         config,
         seed_str=seed_str,
         trace=trace,
         debug_show_entities=debug_show_entities,
-        hooks=LegacyHooks.from_ui(ui),
+        hooks=None if uses_event_effects else LegacyHooks.from_ui(ui),
     )
     view_floor = 0
     while session.phase == "playing":
@@ -2091,6 +2098,8 @@ def run_game(
         )
         if result.stop_repeat:
             _stop_movement_repeat(ui)
+        if uses_event_effects:
+            play_turn_events(ui, result, session.player, stage_num)
         view_floor = result.floor_after
     view_floor = session.floor[0]
     while True:

@@ -351,6 +351,7 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 
 
 class PygletUI:
+    uses_event_effects = True
     supports_horizontal_view = False
     dim_protected_hazards = True
     # Whether draw_floor_transition shows a still (and Settings offers its time).
