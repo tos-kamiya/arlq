@@ -786,7 +786,10 @@ def player(x, y, sword=None, facing='down'):
     # Cloak: hugs the shoulders, drifts back and sideways toward the hem. It
     # hangs 0.4 below the shoulders (0.8 of the first 0.5), so the facings
     # turned away from the camera show more of the figure than the cloak.
+    # The flare and the drift back and sideways shrink with it (`drape`);
+    # left at their first sizes, the short cloak looked blown in a gale.
     cloak_drop = 0.40
+    drape = cloak_drop / 0.50
     columns, rows = 25, 8
     vertices = []
     for row in range(rows):
@@ -794,10 +797,10 @@ def player(x, y, sword=None, facing='down'):
         for col in range(columns):
             u = col / (columns - 1) * 2 - 1
             angle = u * math.radians(95)
-            radius = 0.26 + 0.10 * t
+            radius = 0.26 + 0.10 * drape * t
             depth = flat + (1 - flat) * t
-            vertices.append((x + radius * math.sin(angle) + 0.05 * t * t,
-                             y + radius * depth * math.cos(angle) + 0.21 * t * t,
+            vertices.append((x + radius * math.sin(angle) + 0.05 * drape * t * t,
+                             y + radius * depth * math.cos(angle) + 0.21 * drape * t * t,
                              0.64 - cloak_drop * t + 0.045 * t * math.cos(u * math.pi * 3)))
     faces = [(r * columns + c, r * columns + c + 1, (r + 1) * columns + c + 1, (r + 1) * columns + c)
              for r in range(rows - 1) for c in range(columns - 1)]
@@ -818,11 +821,15 @@ def player(x, y, sword=None, facing='down'):
                             @ Matrix.Translation((-x, -y, 0)) @ obj.matrix_world)
     block('Player head', (x, y - 0.04, 0.83), (0.34, 0.32, 0.34), helm, 0.10)
     # A dark iron faceplate with a glowing eye window, wider than a real
-    # helm's slit so the face reads at sprite size, and a crest running front
-    # to back over the top.
+    # helm's slit so the face reads at sprite size, and a crest over the top.
     block('Player faceplate', (x, y - 0.195, 0.80), (0.28, 0.04, 0.14), iron, 0.015)
-    block('Player eye window', (x, y - 0.218, 0.81), (0.22, 0.012, 0.05), visor, 0.008)
-    block('Player helm crest', (x, y - 0.02, 1.005), (0.05, 0.30, 0.05), iron, 0.015)
+    # The window is set into the faceplate, flush with its front (y - 0.215)
+    # and with barely rounded edges; standing out in front with round edges,
+    # it looked stuck on from the side.
+    block('Player eye window', (x, y - 0.2125, 0.81), (0.22, 0.006, 0.05), visor, 0.002)
+    # The crest runs 60% of the helm's depth and juts a little past its
+    # front, to stand out as a mark of the helm.
+    block('Player helm crest', (x, y - 0.112, 1.005), (0.05, 0.18, 0.05), iron, 0.015)
     for side in (-1, 1):
         cone('Player helm fin', (x + side * 0.15, y, 0.90),
              (x + side * 0.27, y + 0.11, 1.06), 0.055, 0, iron, 4, False)
