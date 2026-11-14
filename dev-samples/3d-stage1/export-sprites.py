@@ -20,6 +20,12 @@ models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
           ('b', 'bison', (-2, -1.5)), ('d', 'comodo-dragon', (2, -1.5)),
           ('@', 'player', (0, 0)), ('@c', 'player-sword', (0, 0)),
           ('@C', 'player-cursed-sword', (0, 0)), ('@K', 'player-blessed', (0, 0))]
+# The player turned up, left and right in each sword state, e.g. '@c<' is
+# player-sword-left.png.
+models += [(char + suffix, name + '-' + facing, (0, 0))
+           for char, name in (('@', 'player'), ('@c', 'player-sword'),
+                              ('@C', 'player-cursed-sword'), ('@K', 'player-blessed'))
+           for facing, suffix in (('up', '^'), ('left', '<'), ('right', '>'))]
 models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treasure-toy', (0, 0)), ('M', 'mimic', (0, 0)),
            ('D', 'dragon', (0, 0)), ('l', 'loop-watch', (0, 0)), ('n', 'nomicon', (0, 0)), ('o', 'ocular', (0, 0)),
            ('C', 'rare-chimera', (0, 0)), ('F', 'fire-drake', (0, 0)), ('f', 'flame-cobra', (0, 0)),
