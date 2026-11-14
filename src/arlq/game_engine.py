@@ -2042,9 +2042,7 @@ def run_game(
             )
         # Floor entities exclude the player for every stage. The terminal
         # renderer still discovers it through this render-only combined list.
-        render_player = deepcopy(player) if floor_view else player
-        render_player.current_floor = view_floor
-        render_entities = [render_player, *display_floor.entities]
+        render_entities = [player, *display_floor.entities]
         known_types = player.known_monsters
         no_current_visibility = [
             [0] * len(display_floor.field[0]) for _ in display_floor.field
@@ -2059,9 +2057,9 @@ def run_game(
         ui.draw_stage(
             turn=turn,
             game_start_turn=game_start_turn if has_rewound else None,
-            player=render_player,
+            player=player,
             entities=render_entities,
-            field=_field_for_display(floors, view_floor, render_player),
+            field=_field_for_display(floors, view_floor, player),
             cur_torched=no_current_visibility if floor_view else cur,
             torched=display_floor.seen,
             known_types=known_types,
@@ -2347,9 +2345,7 @@ def run_game(
         display_floor = floors[view_floor]
         floor_view = view_floor != floor[0]
         cur = get_torched(player, config.torch_radius)
-        render_player = deepcopy(player) if floor_view else player
-        render_player.current_floor = view_floor
-        render_entities = [render_player, *display_floor.entities]
+        render_entities = [player, *display_floor.entities]
         known_types = player.known_monsters
         stage_draw_options = _stage_draw_options(
             stage_num, floors, view_floor, single_floor_stage, show_floor_label=False
@@ -2357,9 +2353,9 @@ def run_game(
         ui.draw_stage(
             turn=turn,
             game_start_turn=game_start_turn if has_rewound else None,
-            player=render_player,
+            player=player,
             entities=render_entities,
-            field=_field_for_display(floors, view_floor, render_player),
+            field=_field_for_display(floors, view_floor, player),
             cur_torched=(
                 [[0] * len(display_floor.field[0]) for _ in display_floor.field]
                 if floor_view else cur

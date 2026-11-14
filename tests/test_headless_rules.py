@@ -1215,6 +1215,43 @@ def test_vortex_uses_ordinary_monster_identification():
     assert d.revealed_entity_glyphs(vortex, {"V"}, False, 1, None)[0].char == "V"
 
 
+@pytest.mark.parametrize("game_over", [False, True])
+def test_floor_view_preserves_player_floor_and_visibility(monkeypatch, game_over):
+    original_build = game_engine_module.build
+    actual_players = []
+
+    def build(*args):
+        floors, player = original_build(*args)
+        actual_players.append(player)
+        if game_over:
+            player.lp = 0
+        return floors, player
+
+    monkeypatch.setattr(game_engine_module, "build", build)
+    draws = []
+
+    def draw_stage(**kwargs):
+        draws.append((kwargs["floor_view"], kwargs["player"].current_floor,
+                      kwargs["cur_torched"], kwargs["entities"][0] is kwargs["player"],
+                      actual_players[0].current_floor))
+
+    moves = iter([(0, 1), (0, -1), None])
+    keys = iter([(0, 1, True), (0, -1, True), None])
+    ui = SimpleNamespace(draw_stage=draw_stage, input_direction=moves.__next__,
+                         input_game_over=keys.__next__, map_mode=False,
+                         shift_direction=True)
+    game_engine_module.rand.set_seed(1)
+    run_game(ui, "floor-view", stage_num=4)
+
+    views = draws[1:] if game_over else draws
+    assert [view[0] for view in views] == [False, True, False]
+    assert all(view[3] for view in views)
+    assert all(view[4] == 0 for view in views)
+    assert all(not any(map(any, view[2])) for view in views if view[0])
+    assert all(any(map(any, view[2])) for view in views if not view[0])
+    assert views[-1][1] == 0
+
+
 def test_stage4_debug_floor_views_show_v_as_v():
     draws = []
     moves = iter([(0, 1), (0, 1), (0, 1), None])
