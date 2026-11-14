@@ -6,11 +6,12 @@ import pyglet
 import pytest
 
 from arlq import defs as d
-from arlq import display, sprite_funcs, sprite_images
+from arlq import display, sprite_defs, sprite_effects, sprite_funcs, sprite_images
 from arlq import i18n
 from arlq.game_events import FloorChanged, Rewound
 from arlq.pyglet_funcs import PygletUI
-from arlq.sprite_funcs import SPRITE_FILES, SPRITE_REFERENCE_PIXELS, SpriteUI
+from arlq.sprite_defs import SPRITE_REFERENCE_PIXELS
+from arlq.sprite_funcs import SPRITE_FILES, SpriteUI
 
 
 @pytest.fixture
@@ -62,7 +63,7 @@ def test_known_sprite_enlarges_around_cell_center_and_retains_color(sprite_ui):
     assert sprite.scale == pytest.approx(1.8 * 11 / SPRITE_REFERENCE_PIXELS)
     assert sprite.x + sprite.image.width * sprite.scale / 2 == pytest.approx(58.5)
     # The feet, a fixed offset below the image centre, rest on the cell centre.
-    feet = sprite.y + (sprite.image.height / 2 - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * sprite.scale
+    feet = sprite.y + (sprite.image.height / 2 - sprite_defs.SPRITE_GROUND_OFFSET_PIXELS) * sprite.scale
     assert feet == pytest.approx(390)
     assert ui.outlines[0][3:] == (color, None)
     assert not ui.text_calls
@@ -78,7 +79,7 @@ def test_hover_enlarges_sprite_with_fixed_feet_and_original_cell_hitbox(sprite_u
     ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
     sprite = ui._drawables[0]
     assert sprite.scale == pytest.approx(2 * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
-    feet = sprite.y + (sprite.image.height / 2 - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * sprite.scale
+    feet = sprite.y + (sprite.image.height / 2 - sprite_defs.SPRITE_GROUND_OFFSET_PIXELS) * sprite.scale
     assert feet == pytest.approx(390)
     assert sprite.group.order > ui._row_group(21, 'wall').order
     assert sprite.group.order > pyglet.graphics.Group(order=9000).order
@@ -265,7 +266,7 @@ def test_larger_sprite_image_is_drawn_larger_at_the_same_scale(sprite_ui):
     assert amoeba.image.width * amoeba.scale == pytest.approx(19.8)
     assert dragon.image.width * dragon.scale > 1.5 * 19.8
     assert dragon.x + dragon.image.width * dragon.scale / 2 == pytest.approx(58.5)
-    feet = dragon.y + (dragon.image.height / 2 - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * dragon.scale
+    feet = dragon.y + (dragon.image.height / 2 - sprite_defs.SPRITE_GROUND_OFFSET_PIXELS) * dragon.scale
     assert feet == pytest.approx(390)
 
 
@@ -633,7 +634,7 @@ def test_met_elf_sprite_and_disc_are_darker(sprite_ui, met):
     assert ui.outlines[0][3] == tuple(round(c * shade) for c in white)
 
 
-@pytest.mark.parametrize('pos, size', [((4, 5), sprite_funcs.NEIGHBOR_SCALE), ((3, 6), sprite_funcs.NEIGHBOR_SCALE),
+@pytest.mark.parametrize('pos, size', [((4, 5), sprite_defs.NEIGHBOR_SCALE), ((3, 6), sprite_defs.NEIGHBOR_SCALE),
                                        ((5, 5), 1.0), ((4, 4), 1.0)])
 def test_character_next_to_player_is_enlarged_with_disc_unchanged(sprite_ui, pos, size):
     ui = sprite_ui
@@ -663,7 +664,7 @@ def test_waiting_member_next_to_player_is_still_enlarged(sprite_ui):
     ui._player_cell = (4, 6)
     ui._draw_member(display.FieldGlyph(4, 5, 'H', 'member_waiting', member_role=d.MEMBER_HEALER))
     assert ui._drawables[0].scale == pytest.approx(
-        sprite_funcs.NEIGHBOR_SCALE * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+        sprite_defs.NEIGHBOR_SCALE * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
 
 
 def test_rank_mark_grows_with_an_enlarged_neighbor(sprite_ui):
@@ -1074,7 +1075,7 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     assert visible_disc.scale_x * 64 == pytest.approx(2 * sprite_funcs.GROUND_DISC_RADIUS * 13)
     assert sum(explored_disc.color) < sum(visible_disc.color)
     assert visible.image.char == char
-    assert visible.color == sprite_funcs.TERRAIN_TINT
+    assert visible.color == sprite_defs.TERRAIN_TINT
     assert sum(explored.color) < sum(visible.color)
     # One cell plus half a cell into the north band. Each flight spreads a
     # quarter cell over the explored floor beside it and is cropped at the
@@ -1083,7 +1084,7 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     assert visible.image.region == (75, 450) and visible.x == 0
     assert visible.image.width * visible.scale_x == pytest.approx(13 * 1.25)
     assert explored.image.region == (0, 375)
-    assert explored.x == pytest.approx(13 - 13 * sprite_funcs.TERRAIN_SIDE)
+    assert explored.x == pytest.approx(13 - 13 * sprite_defs.TERRAIN_SIDE)
     assert visible.group is ui._row_group(0, layer)
 
 
@@ -1162,11 +1163,11 @@ def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui._draw_pit((1, 0))
     pit, = ui._drawables
     assert pit.image.char == d.CHAR_COLLAPSE
-    assert pit.color == sprite_funcs.TERRAIN_TINT
+    assert pit.color == sprite_defs.TERRAIN_TINT
     assert pit.group is ui._row_group(0, 'wall')
     # Spread a quarter cell over the floor on both sides, and a quarter cell
     # into the band to the north, like a wall part.
-    assert pit.x == pytest.approx(13 - 13 * sprite_funcs.TERRAIN_SIDE)
+    assert pit.x == pytest.approx(13 - 13 * sprite_defs.TERRAIN_SIDE)
     assert pit.image.width * pit.scale_x == pytest.approx(13 * 1.5)
     assert pit.y == 480 and pit.image.height * pit.scale_y == pytest.approx(25)
 
@@ -1733,8 +1734,8 @@ def instant_effects(sprite_ui, monkeypatch):
 
 
 @pytest.mark.parametrize('kind, tint', [
-    ('down', sprite_funcs.TERRAIN_TINT),
-    ('up', sprite_funcs.TERRAIN_TINT),
+    ('down', sprite_defs.TERRAIN_TINT),
+    ('up', sprite_defs.TERRAIN_TINT),
     ('fall', None),
     ('climb', None),
 ])
@@ -1769,11 +1770,11 @@ def test_floor_transition_shows_only_the_players_landing(sprite_ui, monkeypatch,
     landings = [obj for obj in shown if getattr(obj, 'image', None) is ui._landing_image]
     assert [landing.color for landing in landings] == ([] if tint is None else [tint])
     assert any(getattr(obj, 'image', None) is ui._sprite_images['@'] for obj in shown)
-    ropes = [obj for obj in shown if getattr(obj, 'color', None) == sprite_funcs.ROPE_COLOR]
+    ropes = [obj for obj in shown if getattr(obj, 'color', None) == sprite_effects.ROPE_COLOR]
     assert len(ropes) == (kind == 'climb')
     glows = [obj for obj in shown if getattr(obj, 'image', None) is ui._disc_image]
     assert [glow.opacity for glow in glows] == (
-        [sprite_funcs.ROPE_GLOW_OPACITY] if kind == 'climb' else [])
+        [sprite_effects.ROPE_GLOW_OPACITY] if kind == 'climb' else [])
     assert deleted == shown
     assert instant_effects == [d.FLOOR_TRANSITION_SECONDS]
 
@@ -1806,7 +1807,7 @@ def test_floor_transition_is_drawn_on_the_stairs_cell(sprite_ui, monkeypatch, in
     landing = next(obj for obj in made if obj.image is ui._landing_image)
     figure = next(obj for obj in made if obj.image is ui._sprite_images['@'])
     left = 7 * 13 - 26
-    assert landing.x == left - sprite_funcs.TERRAIN_SIDE * 13
+    assert landing.x == left - sprite_defs.TERRAIN_SIDE * 13
     assert landing.y == ui.window_height - 3 * 20
     assert figure.x + figure.image.width * figure.scale / 2 == left + 13 / 2
 
@@ -2096,7 +2097,7 @@ def test_combat_effect_slashes_the_way_the_player_attacked(sprite_ui, monkeypatc
 
 def test_directional_slashes_are_bundled():
     effects = Path(sprite_funcs.__file__).parent / 'assets' / 'effects'
-    for filename in sprite_funcs.SLASH_FILES.values():
+    for filename in sprite_effects.SLASH_FILES.values():
         assert (effects / filename).is_file(), filename
 
 
@@ -2118,12 +2119,12 @@ def _figure_after(ui, kind, progress, fade_out=True):
     ui._create_floor_transition(kind, d.Player(3, 4, level=1, lp=d.LP_INIT), None)
     figure, cx, cy, picture, scale = ui._transition_parts['figure']
     base_y = ui.window_height - cy - (picture.height / 2
-                                      - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * scale
+                                      - sprite_defs.SPRITE_GROUND_OFFSET_PIXELS) * scale
     ui._animate_floor_transition(kind, progress, fade_out)
     return figure, base_y, scale
 
 
-STEP = sprite_funcs.FLOOR_TRANSITION_STEP
+STEP = sprite_effects.FLOOR_TRANSITION_STEP
 
 
 @pytest.mark.parametrize('kind, start, end', [
@@ -2131,7 +2132,7 @@ STEP = sprite_funcs.FLOOR_TRANSITION_STEP
 ])
 def test_floor_transition_moves_at_a_steady_speed(transition_ui, kind, start, end):
     ui = transition_ui
-    fade = sprite_funcs.FLOOR_TRANSITION_FADE
+    fade = sprite_effects.FLOOR_TRANSITION_FADE
     for progress, moved in ((0.0, 0.0), (fade, 0.0), (0.5, 0.5), (1 - fade, 1.0), (1.0, 1.0)):
         figure, base_y, _ = _figure_after(ui, kind, progress)
         offset = (figure.y - base_y) / ui.cell_size_y
@@ -2144,8 +2145,8 @@ def test_floor_transition_moves_at_a_steady_speed(transition_ui, kind, start, en
 ])
 def test_stairs_go_right_then_left_like_ku(transition_ui, kind, sides):
     ui = transition_ui
-    fade = sprite_funcs.FLOOR_TRANSITION_FADE
-    side = sprite_funcs.FLOOR_TRANSITION_STAIRS_SIDE
+    fade = sprite_effects.FLOOR_TRANSITION_FADE
+    side = sprite_effects.FLOOR_TRANSITION_STAIRS_SIDE
     for moved, expected in zip((0, 0.25, 0.5, 0.75, 1), sides):
         progress = fade + (1 - 2 * fade) * moved
         figure, _, scale = _figure_after(ui, kind, progress)
@@ -2158,15 +2159,15 @@ def test_fall_keeps_its_feet_on_the_falling_point(transition_ui):
     ui = transition_ui
     figure, base_y, scale = _figure_after(ui, 'fall', 0.5)
     picture = ui._transition_parts['figure'][3]
-    feet = figure.y + (picture.height / 2 - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * figure.scale
-    base_feet = base_y + (picture.height / 2 - sprite_funcs.SPRITE_GROUND_OFFSET_PIXELS) * scale
+    feet = figure.y + (picture.height / 2 - sprite_defs.SPRITE_GROUND_OFFSET_PIXELS) * figure.scale
+    base_feet = base_y + (picture.height / 2 - sprite_defs.SPRITE_GROUND_OFFSET_PIXELS) * scale
     assert feet - base_feet == pytest.approx(
-        -0.5 * sprite_funcs.FLOOR_TRANSITION_FALL * ui.cell_size_y)
+        -0.5 * sprite_effects.FLOOR_TRANSITION_FALL * ui.cell_size_y)
     # The fall covers twice the stairs' distance in the same time.
-    assert sprite_funcs.FLOOR_TRANSITION_FALL == 2 * sprite_funcs.FLOOR_TRANSITION_STEP
-    fade = sprite_funcs.FLOOR_TRANSITION_FADE
+    assert sprite_effects.FLOOR_TRANSITION_FALL == 2 * sprite_effects.FLOOR_TRANSITION_STEP
+    fade = sprite_effects.FLOOR_TRANSITION_FADE
     figure, _, scale = _figure_after(ui, 'fall', 1 - fade)
-    assert figure.scale == pytest.approx(scale * sprite_funcs.FLOOR_TRANSITION_FALL_SHRINK)
+    assert figure.scale == pytest.approx(scale * sprite_effects.FLOOR_TRANSITION_FALL_SHRINK)
 
 
 @pytest.mark.parametrize('progress, fade_out, opacity', [
