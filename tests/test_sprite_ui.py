@@ -644,13 +644,26 @@ def test_character_next_to_player_is_enlarged_with_disc_unchanged(sprite_ui, pos
     assert ui.outlines[0][2] == pytest.approx(sprite_funcs.GROUND_DISC_RADIUS * ui.cell_size_x)
 
 
-def test_follower_next_to_player_keeps_its_size(sprite_ui):
+@pytest.mark.parametrize('char, role', [('J', d.MEMBER_JAVELIN_ELF), ('H', d.MEMBER_HEALER)])
+def test_follower_next_to_player_is_drawn_smaller_not_enlarged(sprite_ui, char, role):
     ui = sprite_ui
+    ui._member_variants = {char: sprite_funcs.MEMBER_SPRITES[char][0]}
+    ui._member_skins = dict.fromkeys(sprite_funcs.MEMBER_SPRITES, 'm')
     ui._player_cell = (4, 6)
-    ui._draw_member(display.FieldGlyph(4, 5, 'J', 'member', member_role=d.MEMBER_JAVELIN_ELF))
-    assert ui._drawables[0].image is ui._sprite_images['J']
-    assert ui._drawables[0].scale == pytest.approx(1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+    ui._draw_member(display.FieldGlyph(4, 5, char, 'member', member_role=role))
+    assert ui._drawables[0].scale == pytest.approx(
+        sprite_funcs.FOLLOWER_SCALE * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
     assert not ui.outlines
+
+
+def test_waiting_member_next_to_player_is_still_enlarged(sprite_ui):
+    ui = sprite_ui
+    ui._member_variants = {'H': sprite_funcs.MEMBER_SPRITES['H'][0]}
+    ui._member_skins = dict.fromkeys(sprite_funcs.MEMBER_SPRITES, 'm')
+    ui._player_cell = (4, 6)
+    ui._draw_member(display.FieldGlyph(4, 5, 'H', 'member_waiting', member_role=d.MEMBER_HEALER))
+    assert ui._drawables[0].scale == pytest.approx(
+        sprite_funcs.NEIGHBOR_SCALE * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
 
 
 def test_rank_mark_grows_with_an_enlarged_neighbor(sprite_ui):
@@ -2017,3 +2030,47 @@ def test_stage_start_faces_the_camera(sprite_ui, monkeypatch):
     assert sprite_ui._player_facing == 'left'
     sprite_ui.draw_stage(turn=0, stage_num=1)
     assert sprite_ui._player_facing == 'down'
+
+
+def _image(rows):
+    """ImageData from rows of RGBA tuples, bottom row first."""
+    height, width = len(rows), len(rows[0])
+    data = bytes(value for row in rows for pixel in row for value in pixel)
+    return pyglet.image.ImageData(width, height, 'RGBA', data, pitch=width * 4)
+
+
+def test_soft_outline_fades_only_dark_pixels_near_the_edge(monkeypatch):
+    monkeypatch.setattr(sprite_funcs, 'FOLLOWER_OUTLINE_BAND', 1)
+    ink, cloth, clear = (20, 20, 30, 255), (200, 150, 100, 255), (0, 0, 0, 0)
+    size = 7
+    rows = [[clear] * size for _ in range(size)]
+    for y in range(1, size - 1):
+        for x in range(1, size - 1):
+            edge = x in (1, size - 2) or y in (1, size - 2)
+            rows[y][x] = ink if edge else cloth
+    rows[3][3] = ink  # a dark detail away from the edge
+    soft = sprite_funcs.soft_outline_image(_image(rows))
+    alpha = soft.get_data('RGBA', size * 4)[3::4]
+    at = lambda x, y: alpha[y * size + x]
+    assert at(1, 1) == at(1, 3) == round(255 * sprite_funcs.FOLLOWER_OUTLINE_KEEP)
+    assert at(2, 2) == 255   # colored pixel near the edge
+    assert at(3, 3) == 255   # dark pixel away from the edge
+    assert at(0, 0) == 0
+
+
+def test_follower_image_is_made_once_per_map_mode(sprite_ui, monkeypatch):
+    made = []
+    monkeypatch.setattr(sprite_funcs, 'mipmapped', lambda data: made.append(data) or data)
+    monkeypatch.setattr(sprite_funcs, 'soft_outline_image', lambda data: ('soft', data))
+    monkeypatch.setattr(sprite_funcs, 'gray_image', lambda data: ('gray', data))
+    sprite_ui._sprite_data = {'J': 'raw'}
+    first = sprite_ui._follower_image('J')
+    assert first == ('soft', 'raw')
+    assert sprite_ui._follower_image('J') is first
+    sprite_ui.map_mode = True
+    assert sprite_ui._follower_image('J') == ('gray', ('soft', 'raw'))
+    assert len(made) == 2
+
+
+def test_follower_image_falls_back_without_image_data(sprite_ui):
+    assert sprite_ui._follower_image('J') is sprite_ui._sprite_images['J']

@@ -148,8 +148,16 @@ TEXT_PANEL_ALPHA = 112
 TEXT_PANEL_PADDING = 4
 # A character in one of the four cells next to the player, the one the next
 # step would meet, is drawn this much larger (its ground disc keeps its size).
-# Followers walking with the player keep their usual size.
 NEIGHBOR_SCALE = 1.3
+# Followers walking with the player (party members, the Javelin Elf and the
+# cat) are drawn at this size, never enlarged as neighbors, so they do not
+# look larger than the player. Their outer ink outline is faded too: dark
+# pixels (luminance below FOLLOWER_INK) within FOLLOWER_OUTLINE_BAND pixels
+# of the image's transparent area keep FOLLOWER_OUTLINE_KEEP of their alpha.
+FOLLOWER_SCALE = 0.85
+FOLLOWER_INK = 70
+FOLLOWER_OUTLINE_BAND = 4
+FOLLOWER_OUTLINE_KEEP = 0.35
 # Field text kept as text (such as "+" and ".") is raised by this fraction of
 # a cell, so it stays within its cell above the flagstone joint.
 FIELD_TEXT_RAISE = 0.1
@@ -550,6 +558,43 @@ def gray_image(data):
                                   pitch=data.width * 4)
 
 
+def soft_outline_image(data):
+    """Copy of image data with its outer ink outline faded (see
+    FOLLOWER_SCALE); inner lines and colors are kept."""
+    width, height = data.width, data.height
+    rgba = data.get_data('RGBA', width * 4)
+    clear = rgba[3::4]
+    # Dilate the transparent area by the band, along rows and then columns.
+    band = FOLLOWER_OUTLINE_BAND
+    near_row = bytearray(width * height)
+    for y in range(height):
+        row = y * width
+        for start, stop, step in ((0, width, 1), (width - 1, -1, -1)):
+            last = None
+            for x in range(start, stop, step):
+                if clear[row + x] < 16:
+                    last = x
+                if last is not None and abs(x - last) <= band:
+                    near_row[row + x] = 1
+    near = bytearray(width * height)
+    for x in range(width):
+        for start, stop, step in ((0, height, 1), (height - 1, -1, -1)):
+            last = None
+            for y in range(start, stop, step):
+                if near_row[y * width + x]:
+                    last = y
+                if last is not None and abs(y - last) <= band:
+                    near[y * width + x] = 1
+    faded = bytearray(rgba)
+    for i in range(width * height):
+        offset = i * 4
+        alpha = rgba[offset + 3]
+        if alpha and near[i] and (299 * rgba[offset] + 587 * rgba[offset + 1]
+                                  + 114 * rgba[offset + 2]) // 1000 < FOLLOWER_INK:
+            faded[offset + 3] = round(alpha * FOLLOWER_OUTLINE_KEEP)
+    return pyglet.image.ImageData(width, height, 'RGBA', bytes(faded), pitch=width * 4)
+
+
 def brightened_image(data, gain):
     """Copy of image data with its colors scaled by gain (clipped), alpha kept."""
     rgba = data.get_data('RGBA', data.width * 4)
@@ -676,6 +721,9 @@ class SpriteUI(PygletUI):
         self._edge_shade_pending = False
         self._sprite_images = {}
         self._sprite_head_room = {}
+        # Image data kept for followers' faded-outline copies, made on first use.
+        self._sprite_data = {}
+        self._follower_images = {}
         self._theme_floor_tiles = {}
         self._wall_rect_colors = {}
 
@@ -711,6 +759,7 @@ class SpriteUI(PygletUI):
                 continue
             data = pyglet.image.load(str(path)).get_image_data()
             self._sprite_images[char] = mipmapped(data)
+            self._sprite_data[char] = data
             rgba = data.get_data('RGBA', data.width * 4)
             # Fully transparent rows above the character (rows run bottom
             # to top), so things drawn over its head sit on the head itself.
@@ -1040,6 +1089,19 @@ class SpriteUI(PygletUI):
         for sprite, base_y in self._bobbing:
             sprite.y = base_y + offset
         self._flip()
+
+    def _follower_image(self, text):
+        """The faded-outline copy of a sprite (gray on the map), made once."""
+        key = (text, self.map_mode)
+        image = self._follower_images.get(key)
+        if image is None:
+            data = self._sprite_data.get(text)
+            if data is None:
+                return (self._gray_images if self.map_mode else self._sprite_images)[text]
+            soft = soft_outline_image(data)
+            image = mipmapped(gray_image(soft) if self.map_mode else soft)
+            self._follower_images[key] = image
+        return image
 
     def _in_view(self, pos):
         grid = self._cur_torched
@@ -2314,10 +2376,12 @@ class SpriteUI(PygletUI):
         if glyph.member_role == d.MEMBER_JAVELIN_ELF:
             self._enlarge_neighbors = False
         try:
-            # Followers stay still; members waiting to be met hop.
+            # Followers stay still, smaller and with a faded outline; members
+            # waiting to be met hop.
             self._draw_sprite((glyph.x, glyph.y), key, color,
                               disc_scale=0.0 if glyph.tone == 'member' else 1.0,
-                              bob=glyph.tone == 'member_waiting')
+                              bob=glyph.tone == 'member_waiting',
+                              follower=glyph.tone == 'member')
         finally:
             self._enlarge_neighbors = True
 
@@ -2420,7 +2484,7 @@ class SpriteUI(PygletUI):
         return abs(pos[0] - px) + abs(pos[1] - py) == 1
 
     def _draw_sprite(self, pos, text, color, upper_right_color=None, shade=1.0, disc_scale=1.0,
-                     bob=False):
+                     bob=False, follower=False):
         x, y = pos
         cx, cy = self._field_col_x(x) + self.cell_size_x / 2, (y + 0.5) * self.cell_size_y
         dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
@@ -2428,14 +2492,18 @@ class SpriteUI(PygletUI):
             # Map sprites use a grey texture. Preserve the half-bright marker
             # for dim neutral colors supplied by callers outside COLOR_MAP.
             dimmed = True
-        size = NEIGHBOR_SCALE if self._neighbor_of_player(pos) else 1.0
+        if follower:
+            size = FOLLOWER_SCALE
+        else:
+            size = NEIGHBOR_SCALE if self._neighbor_of_player(pos) else 1.0
         hovered = pos == self._hovered_cell()
         if hovered:
             size *= HOVER_SCALE
         glow = color if text in UNKNOWN_SPRITES else None
         top = self._place_sprite(text, cx, cy, size, y,
                                  'hover' if hovered else 'sprite', dimmed, shade, glow,
-                                 bob=bob and not self.map_mode and self._in_view(pos))
+                                 bob=bob and not self.map_mode and self._in_view(pos),
+                                 follower=follower)
         if hovered:
             self._draw_hover_name(pos, text, top)
         self._sprite_cells[pos] = size
@@ -2502,7 +2570,7 @@ class SpriteUI(PygletUI):
         )
 
     def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0, glow=None,
-                      bob=False):
+                      bob=False, follower=False):
         """Draw a character image with its feet at field pixel (cx, cy); returns
         the field pixel y of the top of the character in it.
 
@@ -2512,7 +2580,7 @@ class SpriteUI(PygletUI):
         swapped = THEME_SPRITES.get(self._terrain_theme, {}).get(text)
         if swapped in images:
             text = swapped
-        picture = images[text]
+        picture = self._follower_image(text) if follower else images[text]
         padding = max(1, round(self.scale))
         width = max(1, self._sprite_unit() - 2 * padding)
         scale = size * 1.8 * width / SPRITE_REFERENCE_PIXELS

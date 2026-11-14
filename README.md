@@ -128,6 +128,8 @@ The player is shown holding a sword when carrying one. The player faces the dire
 
 Hover over a character to enlarge it and display its name. Unidentified characters show no name.
 
+Characters next to the player are drawn larger. Party members and the Javelin Elf following the player are instead drawn at about 85% size with a fainter outline, so they do not look larger than the player.
+
 ## Game Description
 
 * **Objective**  
