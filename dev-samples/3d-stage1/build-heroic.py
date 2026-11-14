@@ -105,7 +105,17 @@ RATIONS = ('ration-hyorogan', 'ration-hardtack', 'ration-jerky')
 ROW += [('ration-hyorogan', 'HYOROGAN', 75, 0), ('ration-hardtack', 'HARDTACK', 80, 0),
         ('ration-jerky', 'JERKY', 85, 0)]
 ROW += [(char, name, 90 + 5 * k, 0) for k, (char, name) in enumerate(OTHER_TONES)]
-OFF_GRID = ("'", '"', '?', '!', '&', *RATIONS, *(char for char, _ in OTHER_TONES))
+# The player turned up, left and right, for each sword state, built for
+# sprite export and preview-player-facings.py only.
+# Each facing other than down, with its character-key suffix and preview name.
+PLAYER_FACINGS = (('up', '^', 'UP'), ('left', '<', 'LEFT'), ('right', '>', 'RIGHT'))
+PLAYER_VARIANTS = (('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
+                   ('@K', 'PLAYER + K BLESSING'))
+PLAYER_TURNS = [(char + suffix, name + ' ' + label)
+                for char, name in PLAYER_VARIANTS for _, suffix, label in PLAYER_FACINGS]
+ROW += [(char, name, 300 + 5 * k, 0) for k, (char, name) in enumerate(PLAYER_TURNS)]
+OFF_GRID = ("'", '"', '?', '!', '&', *RATIONS, *(char for char, _ in OTHER_TONES),
+            *(char for char, _ in PLAYER_TURNS))
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba's first size, baked into the meshes.
@@ -121,7 +131,8 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # (MEMBER_HEAD_SIZE). The bison and buffalo were then shrunk to 0.95 of
 # their sizes, as they looked too large, with their eyes enlarged by as
 # much (BOVINE_EYE) so these stay as large on screen.
-SIZES = {'@': 1.42, '@c': 1.42, '@C': 1.42, '@K': 1.42, 'a': 0.9, 'A': 0.9, 'b': 1.09 * 0.95, 'B': 1.13 * 0.95, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
+SIZES = {**{base + turn: 1.42 for base in ('@', '@c', '@C', '@K')
+            for turn in ('', '^', '<', '>')}, 'a': 0.9, 'A': 0.9, 'b': 1.09 * 0.95, 'B': 1.13 * 0.95, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'i': 2.1, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5,
@@ -662,11 +673,17 @@ def chimera_blade(name, base, tip, width, steel):
     return tube(name, [base, tip], [(width, width * 0.2), 0], steel, sides=4)
 
 
-def player(x, y, sword=None):
+# The player's turn about its feet for each facing; the model is built facing
+# the camera (down the screen, -Y).
+PLAYER_FACING_YAW = {'down': 0.0, 'right': math.pi / 2, 'up': math.pi, 'left': -math.pi / 2}
+
+
+def player(x, y, sword=None, facing='down'):
     """The player. `sword` picks the blade in the right hand: None for the
     player's own broad short sword, 'blessed' for the same sword glowing blue
     after the Collector Elf's blessing, 'c' or 'C' for the chimera's or the
-    cursed chimera's sword taken from them."""
+    cursed chimera's sword taken from them. `facing` turns the figure toward
+    'down' (the camera), 'up', 'left' or 'right' on the screen."""
     # Plate armour in bluish steel rather than the first frosted crystal,
     # which looked more like a spacesuit.
     tunic = material('Player steel plate', (0.55, 0.63, 0.74), roughness=0.32, metallic=0.8,
@@ -766,7 +783,10 @@ def player(x, y, sword=None):
         mesh_object('Player sword blade', vertices, faces, blade, False)
         tube('Player sword guard', [hand + across * 0.08, hand - across * 0.08],
              [0.025, 0.025], iron, sides=6)
-    # Cloak: hugs the shoulders, drifts back and sideways toward the hem.
+    # Cloak: hugs the shoulders, drifts back and sideways toward the hem. It
+    # hangs 0.4 below the shoulders (0.8 of the first 0.5), so the facings
+    # turned away from the camera show more of the figure than the cloak.
+    cloak_drop = 0.40
     columns, rows = 25, 8
     vertices = []
     for row in range(rows):
@@ -778,7 +798,7 @@ def player(x, y, sword=None):
             depth = flat + (1 - flat) * t
             vertices.append((x + radius * math.sin(angle) + 0.05 * t * t,
                              y + radius * depth * math.cos(angle) + 0.21 * t * t,
-                             0.64 - 0.50 * t + 0.045 * t * math.cos(u * math.pi * 3)))
+                             0.64 - cloak_drop * t + 0.045 * t * math.cos(u * math.pi * 3)))
     faces = [(r * columns + c, r * columns + c + 1, (r + 1) * columns + c + 1, (r + 1) * columns + c)
              for r in range(rows - 1) for c in range(columns - 1)]
     cloak = mesh_object('Player cloak', vertices, faces, cape, True)
@@ -807,6 +827,15 @@ def player(x, y, sword=None):
         cone('Player helm fin', (x + side * 0.15, y, 0.90),
              (x + side * 0.27, y + 0.11, 1.06), 0.055, 0, iron, 4, False)
     neck = Vector((x, y, 0.66))
+    # Turn the whole figure about its feet first, then tilt the head back
+    # away from the camera whichever way it faces: the camera-side of the
+    # helm (visor, side or back) then faces the camera, as the visor does
+    # when facing down. Tilting before the turn would tip the head toward
+    # the camera when facing up.
+    feet = Vector((x, y, 0))
+    transform_new(body_start, Matrix.Translation(feet)
+                  @ Matrix.Rotation(PLAYER_FACING_YAW[facing], 4, 'Z')
+                  @ Matrix.Translation(-feet))
     transform_new(start, Matrix.Translation((0, 0, neck.z * (ELF_STRETCH - 1)))
                   @ Matrix.Translation(neck) @ Matrix.Rotation(-0.6, 4, 'X')
                   @ Matrix.Translation(-neck))
@@ -5226,6 +5255,9 @@ builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
             'ration-hyorogan': hyorogan, 'ration-hardtack': hardtack, 'ration-jerky': jerky,
             **{f'{job}-{gender}-{tone}': member_builder(job, gender, tone)
                for job, gender in MEMBER_VARIANTS for tone in MEMBER_TONES}}
+PLAYER_SWORDS = {'@': None, '@c': 'c', '@C': 'C', '@K': 'blessed'}
+builders.update({char + suffix: (lambda sword, facing: lambda x, y: player(x, y, sword, facing))(
+    sword, facing) for char, sword in PLAYER_SWORDS.items() for facing, suffix, _ in PLAYER_FACINGS})
 def render_group_shot():
     """Open the others' scene, bring in the other groups, and render them all."""
     bpy.ops.wm.open_mainfile(filepath=str(blend_path('others')))
