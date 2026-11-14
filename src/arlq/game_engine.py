@@ -1580,6 +1580,8 @@ def _process_multi_floor_turn(
     trace: Optional[TraceRecorder] = None,
     repeat_stop_reasons: Optional[Set[str]] = None,
     events: Optional[List[GameEvent]] = None,
+    # GameSession always passes this. Direct callers that omit it skip the
+    # discovery update after barrier damage, unlike real play.
     torch_radius: Optional[int] = None,
 ) -> Optional[Tuple[int, str]] | _RewindRequest:
     if player.status_popup_ticks > 0:
@@ -1735,8 +1737,9 @@ def _process_multi_floor_turn(
             events,
             BarrierHit(floor[0], (player.x, player.y), old_hazard_lp - player.lp),
         )
-        # The legacy barrier redraw also observed the destination. Preserve
-        # that discovery timing when effects are played after the turn.
+        # Gameplay rule: barrier damage settles the view at the barrier
+        # before marksman, ivy, and contact resolution. This is not a
+        # leftover of the removed barrier redraw; traces depend on it.
         if torch_radius is not None:
             observe_world(floors, player, floor[0], torch_radius)
     player.marksman_damage_prevented = False
