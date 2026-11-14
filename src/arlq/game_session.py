@@ -26,7 +26,6 @@ class LegacyHooks:
     barrier_effect: Callable[..., None] | None = None
     rewind_transition: Callable[..., None] | None = None
     floor_transition: Callable[..., None] | None = None
-    stop_movement_repeat: Callable[..., None] | None = None
 
     @classmethod
     def from_ui(cls, ui):
@@ -43,7 +42,6 @@ class LegacyHooks:
             barrier,
             getattr(ui, "draw_rewind_transition", None),
             getattr(ui, "draw_floor_transition", None),
-            getattr(ui, "stop_movement_repeat", None),
         )
 
 
@@ -234,8 +232,6 @@ class GameSession:
                         len(self.replay_context.operations), []
                     ).append(destination)
                 stop_repeat = True
-                if self.hooks.stop_movement_repeat is not None:
-                    self.hooks.stop_movement_repeat()
                 self.message = (
                     5,
                     engine.trp("-- Rogue spotted danger. Movement repeat stopped.", 5),
@@ -253,9 +249,6 @@ class GameSession:
                 known_types=known_types,
             )
         ):
-            stop_repeat = True
-            if self.hooks.stop_movement_repeat is not None:
-                self.hooks.stop_movement_repeat()
             return TurnResult(False, self.message, True, floor_before, floor_before)
         if self.trace is not None:
             key = engine.DIR_TO_KEY.get(move)
@@ -306,8 +299,6 @@ class GameSession:
             repeat_stop_enabled or "member_dialogue" in repeat_stop_reasons
         ):
             stop_repeat = True
-            if self.hooks.stop_movement_repeat is not None:
-                self.hooks.stop_movement_repeat()
         if isinstance(step_result, engine._RewindRequest):
             assert self.replay_context is not None, (
                 "Loop contact requires recorded inputs"
@@ -414,8 +405,6 @@ class GameSession:
             and self.turn >= d.STAGE6_TURN_LIMIT
         ):
             stop_repeat = True
-            if self.hooks.stop_movement_repeat is not None:
-                self.hooks.stop_movement_repeat()
             self._finish()
             return TurnResult(
                 True, self.message, stop_repeat, floor_before, self.floor[0]
@@ -433,8 +422,6 @@ class GameSession:
             )
         if self.player.lp <= 0:
             stop_repeat = True
-            if self.hooks.stop_movement_repeat is not None:
-                self.hooks.stop_movement_repeat()
             self._finish()
         return TurnResult(True, self.message, stop_repeat, floor_before, self.floor[0])
 

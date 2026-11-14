@@ -1144,7 +1144,7 @@ def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):
     assert player.lp == pytest.approx(90 - 0.75)
     assert (player.x, player.y) == (3, 2)
     assert player.current_floor == 1
-    assert ui.stops == 2
+    assert ui.stops == 1
 
 
 @pytest.mark.parametrize("roles", [(), ("Healer",)])

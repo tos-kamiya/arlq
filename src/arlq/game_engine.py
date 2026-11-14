@@ -2048,6 +2048,8 @@ def run_game(
             auto_repeat_stop=getattr(ui, "auto_repeat_stop_enabled", True),
             map_mode=getattr(ui, "map_mode", False),
         )
+        if result.stop_repeat:
+            _stop_movement_repeat(ui)
         view_floor = result.floor_after
     view_floor = session.floor[0]
     while True:
