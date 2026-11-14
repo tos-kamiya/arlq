@@ -351,7 +351,6 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 
 
 class PygletUI:
-    uses_event_effects = True
     supports_horizontal_view = False
     dim_protected_hazards = True
     # Whether draw_floor_transition shows a still (and Settings offers its time).
@@ -1127,7 +1126,7 @@ class PygletUI:
         time.sleep(seconds)
 
     def draw_rewind_transition(self, message: str) -> None:
-        """Show the Loop Fairy transition before rebuilding the past."""
+        """Show the Loop Fairy transition before the next stage frame."""
         overlay_group = pyglet.graphics.Group(order=10000)
         text_group = self._text_overlay_group
         if text_group is None:

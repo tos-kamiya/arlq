@@ -1,4 +1,4 @@
-"""Replay turn events with the existing text frontend effects."""
+"""Replay turn events with the existing frontend effects."""
 
 from typing import TYPE_CHECKING
 

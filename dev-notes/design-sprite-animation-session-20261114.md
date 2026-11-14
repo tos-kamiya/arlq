@@ -4,7 +4,7 @@
 
 ## 状況と目的
 
-`arlq-sprites`（`sprite_funcs.py` の `SpriteUI`）に、ターン制RPGのようなアニメーションや効果を全面的に導入する。そのために、ゲームエンジンを「1手ずつ進めて、起きたことをイベント列で返す」形にし、スプライト版がそれを呼び出して演出する構成に変える。会話で設計を検討しただけで、実装・検証はしていない。
+`arlq-sprites`（`sprite_funcs.py` の `SpriteUI`）に、ターン制RPGのようなアニメーションや効果を全面的に導入する。そのために、ゲームエンジンを「1手ずつ進めて、起きたことをイベント列で返す」形にし、スプライト版がそれを呼び出して演出する構成に変える。現在は `GameSession` の切り出し、演出用イベント4種の収集、`LegacyHooks` の廃止まで実装済み。残りのイベントと `Presenter` は未実装。
 
 ## 決定事項（ユーザーと合意済み）
 
@@ -17,16 +17,16 @@
 
 ## 現状の作り（2026-11-14 時点）
 
-- `game_engine.run_game()` が `while True` でループを持ち、毎ターン `ui.draw_stage(...)` に状態を丸ごと渡して描かせ、`ui.input_direction()` で入力を待つ。
-- 演出は処理を止めて行っている。`draw_combat_effect` は一度描いて `time.sleep()` で待つだけ。`_process_multi_floor_turn` に `combat_effect=` / `barrier_effect=` の関数を渡して途中で呼ばせている（`game_engine.py` の 1727 行付近、1696 行付近）。巻き戻しは `draw_rewind_transition`、階段の移動は `draw_floor_transition` を `run_game` から呼んでいる。
-- `game_events.py` の `TurnEvents`（wall / contact / expired / world）はトレース記録用で、演出に必要な情報（座標、見た目、順番）は足りない。
+- `GameSession.step()` が1手分のゲーム処理を担当する。`game_engine.run_game()` は入力・描画のループを持つラッパーになった。
+- 全UIが `step()` 後に `presentation.play_turn_events()` で既存の演出を呼ぶ。戦闘・バリア・巻き戻し・階移動に対応し、エンジンは演出関数を呼ばない。既存の `time.sleep()` はまだ残っている。
+- `game_events.py` の `TurnEvents`（wall / contact / expired / world）は引き続きトレース用。演出用の `GameEvent` は別系統で、現在4種を収集する。
 - `SpriteUI` はすでに自前で画面更新を回しながら入力を待っている（`_pump`、`input_direction`）。
 
 ## 前提
 
 - 入力処理を作り直さない。`pyglet.app.run` への全面移行はせず、「入力 → `step()` → 演出を再生 → 描画」の順に回す方式にする。演出の再生中も既存の `_pump` で画面を回し、キー入力を受け付ける。
 - トレースの形式は変えない。`TraceRecorder` は今のまま並行して動かし、演出用イベントは別に集める。
-- 既存の演出呼び出しはしばらく残す。blessed 版と Pyglet 文字表示版は、今の呼び出しを `LegacyHooks` 経由で使い続け、表示のタイミングを変えない。
+- 既存の演出関数は全UIで使い続けるが、呼び出しはイベント経由に統一した。ターン途中から処理後への演出タイミングの変化は許容する（下記「廃止計画」参照）。
 
 ## 1. `GameSession`（新規モジュール `src/arlq/game_session.py`）
 
@@ -34,11 +34,11 @@
 
 ```python
 class GameSession:
-    def __init__(self, seed_str, stage_num=3, config=None, trace=None,
-                 debug_show_entities=False, hooks: "LegacyHooks | None" = None): ...
+    def __init__(self, stage_num=3, config=None, *, seed_str="", trace=None,
+                 debug_show_entities=False): ...
 
     # 読み取り用
-    phase: Literal["playing", "game_over"]
+    phase: Literal["playing", "game_over", "quit"]
     outcome: Literal["win", "lose", "time_up"] | None
     turn: int
     player: d.Player
@@ -85,8 +85,8 @@ class TurnResult:
 
 ```python
 def run_game(ui, seed_str, ..., stage_num=3):
-    s = GameSession(seed_str, stage_num, config, trace, debug_show_entities,
-                    hooks=LegacyHooks.from_ui(ui))
+    s = GameSession(stage_num, config, seed_str=seed_str, trace=trace,
+                    debug_show_entities=debug_show_entities)
     view_floor = 0
     while s.phase == "playing":
         ui.draw_stage(**s.view(view_floor, map_mode=..., farthest_preview=...))
@@ -94,17 +94,18 @@ def run_game(ui, seed_str, ..., stage_num=3):
         ...  # Esc や階層ビューなど UI だけの処理（今のコードを移す）
         r = s.step(move, repeat=getattr(ui, "input_was_repeat", False), ...)
         if r.stop_repeat: _stop_movement_repeat(ui)
+        play_turn_events(ui, r, s.player, stage_num)
         view_floor = r.floor_after
     ...  # ゲームオーバー画面のループ（今のコードを移す）
 ```
 
-`LegacyHooks` は、今エンジンの途中で呼んでいる演出関数（`combat_effect`、`barrier_effect`、`rewind_transition`、`floor_transition`）を束ねたもの。文字表示の2つの UI はこれを渡して今と同じタイミングで演出し、スプライト版は `None` を渡してイベントだけで演出する。
+`LegacyHooks` は、エンジンの途中で呼んでいた演出関数（`combat_effect`、`barrier_effect`、`rewind_transition`、`floor_transition`）を束ねる過渡的な仕組みだった。以下の計画に沿って廃止した。
 
 押し続け移動の停止は、当初 `LegacyHooks.stop_movement_repeat` も用意していたが、`TurnResult.stop_repeat` と重複するため削除した（2026-11-14）。`run_game` は `step()` の後に `result.stop_repeat` を見て `ui.stop_movement_repeat()` を呼ぶ。UI 側の処理はフラグを戻すだけで、演出関数は入力を読まないため、ターンの途中で呼んでも後で呼んでも結果は同じ。
 
-### `LegacyHooks` の廃止計画
+### `LegacyHooks` の廃止計画（完了）
 
-`LegacyHooks` は過渡的な仕組みで、演出用イベント（手順「イベント型の定義」）が入った後に廃止する。
+`LegacyHooks` は、次の3段階で廃止した。
 
 1. `TurnResult.events` を実装する。この時点では `LegacyHooks` も残し、両方から演出できる状態にする。
 2. blessed 版と Pyglet 文字表示版に、`step()` の後でイベント列を見て既存の演出関数を呼ぶ小さな関数を用意する（`run_game` 内、またはそれぞれの UI モジュール内）。
@@ -116,17 +117,20 @@ def run_game(ui, seed_str, ..., stage_num=3):
 
 進捗（2026-11-14）: 廃止計画の手順 1 として、`TurnResult.events` と
 `Combat` / `BarrierHit` / `Rewound` / `FloorChanged` の収集を実装した。
-`LegacyHooks` は引き続き既存のタイミングで呼ぶ。`Entity.uid` と `EntityRef`
+この段階では `LegacyHooks` も既存のタイミングで呼んでいた。`Entity.uid` と `EntityRef`
 も追加し、戦闘相手の座標・移動前の味方位置・戦闘による LP 差分を保存する。
 `step(collect_events=False)` で収集を無効にでき、収集の有無によるトレースと
 乱数状態の一致をテストする。移動・出現など、下記の残りのイベントは未実装。
 
-手順 2 も実装済み。文字表示 UI は `uses_event_effects = True` とし、
+手順 2 では文字表示 UI を `uses_event_effects = True` とし、
 `run_game` から `presentation.play_turn_events` を呼んで既存の演出を再生する。
-スプライト版は `False` とし、引き続き `LegacyHooks` を使用する。
+スプライト版は `False` とし、この段階では引き続き `LegacyHooks` を使用した。
 バリアの途中描画が兼ねていた探索状態の更新は、`torch_radius` を渡して
 ゲーム処理側で同じ時点に行う。文字表示 UI の演出を遅らせてもトレースを変えない。
-手順 3 のフック削除はまだ行わない。
+手順 3 も完了。スプライト版も同じイベント経路へ切り替え、`LegacyHooks`、
+`GameSession` の `hooks` 引数、エンジンの演出コールバック、移行用の
+`uses_event_effects` フラグを削除した。削除前後で全6ステージと視界半径を
+変えたバリア通過の計9ケースを比較し、トレースと乱数状態の一致を確認した。
 
 廃止による見た目の変化（許容する前提）:
 
@@ -251,7 +255,7 @@ class Presenter:
 
 1. `uid` の追加とイベント型の定義をし、イベントを出す処理を入れる（挙動は変わらず、テスト 1・2 を追加）
 2. `GameSession` を切り出し、`run_game` をラッパーにする（テスト 3 を追加）— 完了（2026-11-14、`e55be2c`、`ef3d71d` ほか。実際には手順 1 より先に実施した）
-3. 文字表示の UI の演出をイベント経由に切り替え、`LegacyHooks` を廃止する（上記「`LegacyHooks` の廃止計画」）
+3. 文字表示の UI の演出をイベント経由に切り替え、`LegacyHooks` を廃止する（上記「`LegacyHooks` の廃止計画」）— 完了（2026-11-14）
 4. スプライト版を「セッション + Presenter」の構成に切り替える（最初は今と同じ見た目で、sleep をなくす）
 5. 各イベントの演出を順に作り込む
 
@@ -261,6 +265,6 @@ class Presenter:
 
 - 階層ビュー用の `deepcopy(player)`: 解決済み。コピーせずに `player` をそのまま渡す形にした（`915b183`）。`player.current_floor` を読むのは `sprite_funcs.py` のカメラ追従だけで、階層ビュー以外のときしか通らない。
 - 巻き戻し（時間ループ）とリプレイ: スナップショットとイベントの順番が乱数の消費順に左右されるので、手順 1 ではイベントを出すだけにし、処理の順番には一切手を付けない。
-- `LegacyHooks` と演出用イベントの二重管理は過渡的なもの。手順 3 で廃止する（「`LegacyHooks` の廃止計画」参照）。
+- `LegacyHooks` と演出用イベントの二重管理は解消済み（「`LegacyHooks` の廃止計画」参照）。
 - トレースを演出用イベントから作る形への統合は、トレース形式を変えずにできる場合に限り、後で検討する。
 - プレイヤーに見える挙動（演出速度の設定など）が増えたら、`README.md` と `README-ja_JP.md` を更新する。

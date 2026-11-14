@@ -1579,8 +1579,6 @@ def _process_multi_floor_turn(
     stage_num: int = 3,
     trace: Optional[TraceRecorder] = None,
     repeat_stop_reasons: Optional[Set[str]] = None,
-    combat_effect=None,
-    barrier_effect=None,
     events: Optional[List[GameEvent]] = None,
     torch_radius: Optional[int] = None,
 ) -> Optional[Tuple[int, str]] | _RewindRequest:
@@ -1741,8 +1739,6 @@ def _process_multi_floor_turn(
         # that discovery timing when effects are played after the turn.
         if torch_radius is not None:
             observe_world(floors, player, floor[0], torch_radius)
-        if barrier_effect is not None:
-            barrier_effect()
     player.marksman_damage_prevented = False
     if (player.x, player.y) != previous or collapse_transition:
         marksman_hit = _marksman_shoot(current, player, trace)
@@ -1774,7 +1770,7 @@ def _process_multi_floor_turn(
         entity = current.entities[hit]
         combat_event = None
         contact_lp = player.lp
-        if ((combat_effect is not None or events is not None)
+        if (events is not None
                 and isinstance(entity, d.Monster) and entity.active
                 and not entity.tribe.is_elf
                 and not entity.tribe.passive
@@ -1784,32 +1780,19 @@ def _process_multi_floor_turn(
             won = d.current_player_attack(player) >= sum(
                 d.monster_level(monster) for monster in enemies
             )
-            if events is not None:
-                combat_event = Combat(
-                    floor[0],
-                    previous,
-                    [
-                        (EntityRef(monster.uid, monster.tribe.char, "monster"),
-                         (monster.x, monster.y))
-                        for monster in enemies
-                    ],
-                    won,
-                    0,
-                    [previous, *((member.x, member.y) for member in player.members)],
-                )
-                _emit(events, combat_event)
-            if combat_effect is not None and stage_num in (5, 6):
-                positions = (
-                    [(monster.x, monster.y) for monster in enemies]
-                    if won
-                    else [
-                        previous,
-                        *((member.x, member.y) for member in player.members),
-                    ]
-                )
-                combat_effect(positions, won)
-            elif combat_effect is not None:
-                combat_effect((entity.x, entity.y) if won else previous, won)
+            combat_event = Combat(
+                floor[0],
+                previous,
+                [
+                    (EntityRef(monster.uid, monster.tribe.char, "monster"),
+                     (monster.x, monster.y))
+                    for monster in enemies
+                ],
+                won,
+                0,
+                [previous, *((member.x, member.y) for member in player.members)],
+            )
+            _emit(events, combat_event)
         contact = _resolve_contact(
             hit,
             current,
@@ -2039,17 +2022,15 @@ def run_game(
     config: Optional[GameConfig] = None,
     stage_num: int = 3,
 ) -> None:
-    from .game_session import GameSession, LegacyHooks
+    from .game_session import GameSession
     from .presentation import play_turn_events
 
-    uses_event_effects = getattr(ui, "uses_event_effects", False)
     session = GameSession(
         stage_num,
         config,
         seed_str=seed_str,
         trace=trace,
         debug_show_entities=debug_show_entities,
-        hooks=None if uses_event_effects else LegacyHooks.from_ui(ui),
     )
     view_floor = 0
     while session.phase == "playing":
@@ -2098,8 +2079,7 @@ def run_game(
         )
         if result.stop_repeat:
             _stop_movement_repeat(ui)
-        if uses_event_effects:
-            play_turn_events(ui, result, session.player, stage_num)
+        play_turn_events(ui, result, session.player, stage_num)
         view_floor = result.floor_after
     view_floor = session.floor[0]
     while True:

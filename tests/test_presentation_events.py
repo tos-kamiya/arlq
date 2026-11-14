@@ -1,4 +1,4 @@
-"""Presentation events coexist with legacy hooks without changing gameplay."""
+"""Presentation events capture resolved turns without changing gameplay."""
 
 from copy import deepcopy
 
@@ -7,7 +7,7 @@ import pytest
 from arlq import defs as d
 from arlq import game_engine as engine
 from arlq.game_events import BarrierHit, Combat, FloorChanged, Rewound
-from arlq.game_session import GameSession, LegacyHooks
+from arlq.game_session import GameSession
 from arlq.stage_types import Floor
 from arlq.trace import TraceRecorder
 
@@ -19,13 +19,13 @@ def make_floor(entities=()):
     )
 
 
-def make_session(monkeypatch, floors, player, stage_num=1, hooks=None, trace=None):
+def make_session(monkeypatch, floors, player, stage_num=1, trace=None):
     monkeypatch.setattr(engine, "build_single_floor", lambda *_: (floors, player))
     monkeypatch.setattr(engine, "build", lambda *_: (floors, player))
     monkeypatch.setattr(
         engine.stage5, "build_member_trial", lambda *_: (floors, player)
     )
-    return GameSession(stage_num, hooks=hooks, trace=trace)
+    return GameSession(stage_num, trace=trace)
 
 
 def test_uid_survives_snapshot_without_consuming_randomness():
@@ -38,23 +38,13 @@ def test_uid_survives_snapshot_without_consuming_randomness():
     assert engine.rand.getstate() == state
 
 
-@pytest.mark.parametrize("with_hooks", [False, True])
 @pytest.mark.parametrize("stage_num", [1, 5])
 @pytest.mark.parametrize("won", [False, True])
-def test_combat_snapshots_and_legacy_hook(monkeypatch, stage_num, won, with_hooks):
+def test_combat_snapshots(monkeypatch, stage_num, won):
     monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
     current = make_floor([monster])
     player = d.Player(2, 2, 100 if won else 0.1, 90)
-    calls = []
-    session = make_session(
-        monkeypatch,
-        [current],
-        player,
-        stage_num,
-        LegacyHooks(combat_effect=lambda *args: calls.append(args))
-        if with_hooks
-        else None,
-    )
+    session = make_session(monkeypatch, [current], player, stage_num)
     result = session.step((1, 0))
     assert [type(event) for event in result.events] == [Combat]
     event = result.events[0]
@@ -65,10 +55,6 @@ def test_combat_snapshots_and_legacy_hook(monkeypatch, stage_num, won, with_hook
     assert event.targets[0][1] == (3, 2)
     assert event.won is won
     assert event.lp_delta == pytest.approx(player.lp + d.movement_lp_cost(player) - 90)
-    expected = [(3, 2)] if won else [(2, 2)]
-    assert calls == (
-        [(expected if stage_num == 5 else expected[0], won)] if with_hooks else []
-    )
     monster.x = 50
     assert event.targets[0][1] == (3, 2)
     assert (monster in current.entities) is not won
@@ -79,17 +65,11 @@ def test_barrier_precedes_combat(monkeypatch):
     current = make_floor([monster])
     current.field[2][3] = d.CHAR_BARRIER
     player = d.Player(2, 2, 100, 90)
-    calls = []
-    hooks = LegacyHooks(
-        combat_effect=lambda *_: calls.append("combat"),
-        barrier_effect=lambda _: calls.append("barrier"),
-    )
-    session = make_session(monkeypatch, [current], player, hooks=hooks)
+    session = make_session(monkeypatch, [current], player)
     result = session.step((1, 0))
     assert [type(event) for event in result.events] == [BarrierHit, Combat]
     assert result.events[0].at == (3, 2)
     assert result.events[0].amount > 0
-    assert calls == ["barrier", "combat"]
 
 
 @pytest.mark.parametrize("fall", [False, True])
@@ -101,14 +81,8 @@ def test_floor_changed_precedes_destination_events(monkeypatch, fall):
     lower.up_stairs = [(4, 4)]
     if fall:
         lower.field[2][3] = d.CHAR_BARRIER
-    calls = []
     player = d.Player(2, 2, 100, 90)
-    session = make_session(
-        monkeypatch,
-        [upper, lower],
-        player,
-        hooks=LegacyHooks(floor_transition=lambda *args: calls.append(args)),
-    )
+    session = make_session(monkeypatch, [upper, lower], player)
     result = session.step((1, 0))
     event = result.events[0]
     assert isinstance(event, FloorChanged)
@@ -116,7 +90,6 @@ def test_floor_changed_precedes_destination_events(monkeypatch, fall):
     assert event.to_floor == result.floor_after == 1
     assert event.exit_point == (3, 2)
     assert event.kind == ("fall" if fall else "down")
-    assert calls[0][0] == event.kind
     if fall:
         assert isinstance(result.events[1], BarrierHit)
         assert result.events[1].floor == 1
@@ -125,16 +98,15 @@ def test_floor_changed_precedes_destination_events(monkeypatch, fall):
 def test_rewind_event_survives_early_return_and_copies_trail(monkeypatch):
     current = make_floor([d.Fairy(4, 2, d.CHAR_TO_FAIRY_TRIBE["l"])])
     player = d.Player(2, 2, 10, 90)
-    calls = []
-    session = make_session(
-        monkeypatch, [current], player, 3, LegacyHooks(rewind_transition=calls.append)
-    )
+    session = make_session(monkeypatch, [current], player, 3)
     assert session.step((1, 0)).events == []
     result = session.step((1, 0))
     assert [type(event) for event in result.events] == [Rewound]
     event = result.events[0]
     assert event.floor == 0
-    assert calls == [event.message]
+    assert event.message == engine.trp(
+        "-- Time folds back to the beginning of the recorded past.", 9
+    )
     assert event.trail == session.loop_trail_by_floor
     saved = deepcopy(event.trail)
     for points in session.loop_trail_by_floor.values():

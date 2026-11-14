@@ -28,8 +28,6 @@ def key_to_dir(key: str) -> Optional[d.Point]:
 
 
 class BlessedUI:
-    uses_event_effects = True
-
     def __init__(self, term: Terminal, dots: bool = False):
         self.combat_effect_seconds = combat_effect_seconds(load_settings())
         self.term = term
@@ -600,7 +598,7 @@ class BlessedUI:
         time.sleep(seconds)
 
     def draw_rewind_transition(self, message: str) -> None:
-        """Show the Loop Fairy transition before rebuilding the past."""
+        """Show the Loop Fairy transition before the next stage frame."""
         self._wait_for_terminal_size()
         width = max(0, d.FIELD_WIDTH - 3)
         height = min(d.FIELD_HEIGHT, self.term.height)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from . import defs as d
@@ -22,31 +21,6 @@ class TurnResult:
     events: list[GameEvent] = field(default_factory=list)
 
 
-@dataclass
-class LegacyHooks:
-    combat_effect: Callable[..., None] | None = None
-    barrier_effect: Callable[..., None] | None = None
-    rewind_transition: Callable[..., None] | None = None
-    floor_transition: Callable[..., None] | None = None
-
-    @classmethod
-    def from_ui(cls, ui):
-        def barrier(session):
-            view = session.view(map_mode=getattr(ui, "map_mode", False))
-            view["message"] = None
-            ui.draw_stage(**view)
-            effect = getattr(ui, "draw_combat_effect", None)
-            if effect is not None:
-                effect((session.player.x, session.player.y), False)
-
-        return cls(
-            getattr(ui, "draw_combat_effect", None),
-            barrier,
-            getattr(ui, "draw_rewind_transition", None),
-            getattr(ui, "draw_floor_transition", None),
-        )
-
-
 class GameSession:
     """Own a game without polling input or running a display loop."""
 
@@ -58,7 +32,6 @@ class GameSession:
         seed_str="",
         trace=None,
         debug_show_entities=False,
-        hooks=None,
     ):
         # Keep the existing builders in game_engine so their callers and test
         # substitutions keep using the same implementations.
@@ -88,7 +61,6 @@ class GameSession:
         self.seed_str = seed_str
         self.trace = trace
         self.debug_show_entities = debug_show_entities
-        self.hooks = hooks or LegacyHooks()
         self.phase = "playing"
         self.outcome = None
         self.replay_context = (
@@ -217,7 +189,7 @@ class GameSession:
     ):
         """Resolve a turn, optionally collecting presentation events.
 
-        Disabling collection leaves gameplay and legacy hooks unchanged.
+        Disabling collection leaves gameplay unchanged.
         """
         floor_before = self.floor[0]
         if self.phase == "playing" and self.player.lp <= 0:
@@ -302,10 +274,6 @@ class GameSession:
             stage_num=self.stage_num,
             trace=self.trace,
             repeat_stop_reasons=repeat_stop_reasons,
-            combat_effect=self.hooks.combat_effect,
-            barrier_effect=(lambda: self.hooks.barrier_effect(self))
-            if self.hooks.barrier_effect
-            else None,
             events=events,
             torch_radius=self.config.torch_radius,
         )
@@ -332,9 +300,6 @@ class GameSession:
             transition_message = engine.trp(
                 "-- Time folds back to the beginning of the recorded past.", 9
             )
-            show_transition = self.hooks.rewind_transition
-            if show_transition is not None:
-                show_transition(transition_message)
             rewind_message = engine._rewind(
                 self.floors,
                 self.player,
@@ -371,15 +336,6 @@ class GameSession:
             event_message: tuple[int, str] | None = (5, rewind_message)
         else:
             event_message = step_result
-            transition = engine.floor_transition_kind(
-                self.floors,
-                floor_before_step,
-                self.floor[0],
-                (self.player.x, self.player.y),
-            )
-            show_floor_transition = self.hooks.floor_transition
-            if transition is not None and show_floor_transition is not None:
-                show_floor_transition(transition, self.player, self.player.floor_exit)
         # A stair contact can change the player's floor during the step. Keep
         # floor_after in sync so the next frame shows the new floor.
         self.player.current_floor = self.floor[0]

@@ -17,6 +17,7 @@ from arlq.game_engine import (
     _step,
     run_game,
 )
+from arlq.game_events import Combat
 from arlq.trace import (
     KEY_TO_DIR,
     ReplayUI,
@@ -562,20 +563,20 @@ def test_current_stage2_high_elf_is_passive_and_traced(stage_num):
     assert "H" in player.known_monsters
 
 
-def test_high_elf_decoy_contact_does_not_trigger_combat_effect():
+def test_high_elf_decoy_contact_does_not_emit_combat_event():
     player = d.Player(2, 2, 1, 90)
     player.last_encounter_party = "a"
     high_elf = d.Monster(3, 2, d.HIGH_ELF_DECOY)
     floors = [one_floor([high_elf])]
 
-    def unexpected_combat(*_args):
-        pytest.fail("passive decoy must not trigger a combat effect")
+    events = []
 
     game_engine_module._process_multi_floor_turn(
         KEYS["R"], floors, player, [0], [(2, 2)], Counter(), 1,
-        stage_num=2, combat_effect=unexpected_combat,
+        stage_num=2, events=events,
     )
 
+    assert not any(isinstance(event, Combat) for event in events)
     assert high_elf in floors[0].entities
     assert player.last_encounter_party == "a"
     assert (player.x, player.y, player.lp) == (3, 2, 90)

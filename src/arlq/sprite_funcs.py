@@ -600,8 +600,6 @@ def mipmapped(image):
 class SpriteUI(PygletUI):
     """Reuse input, menus, visibility and glyph selection without duplicating rules."""
 
-    # Keep in-turn hooks until the sprite presenter is introduced.
-    uses_event_effects = False
     supports_horizontal_view = True
     supports_floor_transition = True
     dim_protected_hazards = False

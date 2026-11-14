@@ -1,4 +1,4 @@
-"""Text frontends replay each event once after the turn is committed."""
+"""All frontends replay each event once after the turn is committed."""
 
 from types import SimpleNamespace
 
@@ -119,52 +119,59 @@ def test_frontends_use_one_effect_path_at_the_expected_time(monkeypatch, fronten
     def combat(pos, victory):
         # The old hook runs before commit_turn, so this also detects using
         # both paths by accident.
-        assert len(trace.turns) == (0 if frontend == "sprite" else 1)
-        if frontend != "sprite":
-            assert trace.turns[0]["player"]["lp_after_turn"] == player.lp
+        assert len(trace.turns) == 1
+        assert trace.turns[0]["player"]["lp_after_turn"] == player.lp
         calls.append(("effect", pos, victory))
 
     ui.draw_combat_effect = combat
     engine.run_game(ui, "test", trace=trace, stage_num=1)
     effects = [("effect", (3, 2), False), ("effect", (3, 2) if won else (2, 2), won)]
-    if frontend == "sprite":
-        expected = [("draw", 0), ("draw", 0), *effects, ("stop",), ("draw", 1)]
-    else:
-        expected = [("draw", 0), ("stop",), *effects, ("draw", 1)]
+    expected = [("draw", 0), ("stop",), *effects, ("draw", 1)]
     assert calls == expected
 
 
-@pytest.mark.parametrize(
-    "torch_radius", [d.TORCH_RADIUS - 1, d.TORCH_RADIUS, d.TORCH_RADIUS + 1]
-)
-def test_text_event_path_preserves_legacy_barrier_trace(monkeypatch, torch_radius):
-    traces = []
-    for event_effects in (False, True):
-        engine.rand.set_seed(12345)
-        field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
-        field[8][16] = d.CHAR_BARRIER
-        current = Floor(
-            field, [], [[0] * len(row) for row in field], (15, 8), (70, 18), None
-        )
-        player = d.Player(15, 8, 10, 90)
-        monkeypatch.setattr(
-            engine,
-            "build_single_floor",
-            lambda *_, current=current, player=player: ([current], player),
-        )
-        trace = TraceRecorder({"stage": 1})
-        moves = iter([(1, 0), None])
-        ui = SimpleNamespace(
-            uses_event_effects=event_effects,
-            draw_stage=lambda **_: None,
-            input_direction=lambda moves=moves: next(moves),
-        )
-        engine.run_game(
-            ui,
-            "test",
-            trace=trace,
-            stage_num=1,
-            config=engine.GameConfig(torch_radius=torch_radius),
-        )
-        traces.append((trace.turns, engine.rand.getstate()))
-    assert traces[0] == traces[1]
+@pytest.mark.parametrize("torch_radius, expected_seen", [(2, 36), (3, 66), (4, 106)])
+def test_barrier_trace_matches_pre_hook_removal_baseline(
+    monkeypatch, torch_radius, expected_seen
+):
+    engine.rand.set_seed(12345)
+    random_state = engine.rand.getstate()
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    field[8][16] = d.CHAR_BARRIER
+    current = Floor(
+        field, [], [[0] * len(row) for row in field], (15, 8), (70, 18), None
+    )
+    player = d.Player(15, 8, 10, 90)
+    monkeypatch.setattr(engine, "build_single_floor", lambda *_: ([current], player))
+    trace = TraceRecorder({"stage": 1})
+    moves = iter([(1, 0), None])
+    ui = SimpleNamespace(
+        draw_stage=lambda **_: None, input_direction=lambda: next(moves)
+    )
+    engine.run_game(
+        ui,
+        "test",
+        trace=trace,
+        stage_num=1,
+        config=engine.GameConfig(torch_radius=torch_radius),
+    )
+    assert trace.turns[0] == {
+        "turn": 1,
+        "input": "R",
+        "damage": [{"source": "barrier"}],
+        "player": {
+            "lp": 60,
+            "level": 10,
+            "attack": 10,
+            "floor": 0,
+            "position": [16, 8],
+            "lp_after_turn": 59,
+        },
+        "seen_added_count": expected_seen,
+        "known_monsters_added": [],
+        "wall": None,
+        "contact": None,
+        "expired": [],
+        "world": [],
+    }
+    assert engine.rand.getstate() == random_state
