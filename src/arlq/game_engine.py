@@ -1993,380 +1993,66 @@ def run_game(
     config: Optional[GameConfig] = None,
     stage_num: int = 3,
 ) -> None:
-    from .game_session import GameSession
+    from .game_session import GameSession, LegacyHooks
 
-    session = GameSession(stage_num, config)
-    config = session.config
-    initial_seed = session.initial_seed
-    single_floor_stage = session.single_floor_stage
-    floors, player = session.floors, session.player
-    replay_context = (
-        ReplayContext(stage_num, initial_seed, config)
-        if not single_floor_stage
-        else None
+    session = GameSession(
+        stage_num,
+        config,
+        seed_str=seed_str,
+        trace=trace,
+        debug_show_entities=debug_show_entities,
+        hooks=LegacyHooks.from_ui(ui),
     )
-    game_start_turn = 0
-    loop_anchor_turn = 0
-    has_rewound = False
-    floor = [0]
-    checkpoint = [floors[0].up]
-    player.current_floor = 0
-    operation_path: List[Tuple[int, d.Point]] = [
-        (floor[0], (player.x, player.y))
-    ]
-    loop_trail_by_floor: Dict[int, Set[d.Point]] = {}
-    loop_trail_expires_at = 0
-    if trace is not None:
-        trace.set_start_state(player, floor[0])
-    trace_seen_recorded = (
-        [deepcopy(floor_data.seen) for floor_data in floors]
-        if trace is not None
-        else []
-    )
-    trace_known_monsters_recorded = set(player.known_monsters)
     view_floor = 0
-    queue: Counter[Tuple[int, str]] = Counter()
-    turn = 0
-    message_ticks, start_text = d.STAGE_START_MESSAGES[stage_num]
-    message: Tuple[int, str] = (
-        message_ticks, trp(start_text, 1) if start_text else "",
-    )
-    while True:
-        current = floors[floor[0]]
-        display_floor = floors[view_floor]
-        cur = observe_world(floors, player, floor[0], config.torch_radius)
-
-        message = tick_message(message)
-
-        floor_view = view_floor != floor[0]
-        show_entities = debug_show_entities or getattr(ui, "map_mode", False)
-        reachable_cells: Set[d.Point] = set()
-        if getattr(ui, "farthest_preview", False) and not floor_view:
-            reachable_cells = reachable_known_cells(
-                current.field,
-                current.seen,
-                cur,
-                current.entities,
-                player,
-                {
-                    (x, y)
-                    for y, row in enumerate(current.field)
-                    for x, cell in enumerate(row)
-                    if cell == d.CHAR_D_GATE
-                },
-            )
-        # Floor entities exclude the player for every stage. The terminal
-        # renderer still discovers it through this render-only combined list.
-        render_entities = [player, *display_floor.entities]
-        known_types = player.known_monsters
-        no_current_visibility = [
-            [0] * len(display_floor.field[0]) for _ in display_floor.field
-        ]
-        stage_draw_options = _stage_draw_options(
-            stage_num, floors, view_floor, single_floor_stage, show_floor_label=True
-        )
-        if stage_draw_options:
-            stage_draw_options["floor_view"] = floor_view
-        if player.lp <= 0:
-            message = (-1, trp(">> Collapsed from hunger! <<", 9))
+    while session.phase == "playing":
+        session.message = tick_message(session.message)
         ui.draw_stage(
-            turn=turn,
-            game_start_turn=game_start_turn if has_rewound else None,
-            player=player,
-            entities=render_entities,
-            field=_field_for_display(floors, view_floor, player),
-            cur_torched=no_current_visibility if floor_view else cur,
-            torched=display_floor.seen,
-            known_types=known_types,
-            show_entities=show_entities,
-            debug_show_entities=debug_show_entities,
-            stage_num=stage_num,
-            message=message[1],
-            checkpoint=checkpoint[0],
-            decor=display_floor.decor,
-            respawn_glows=respawn_glow_cells(display_floor),
-            d_gates=display_floor.d_gates,
-            reachable_cells=reachable_cells,
-            loop_trail_markers=(
-                loop_trail_by_floor.get(floor[0], set())
-                if not floor_view and turn < loop_trail_expires_at
-                else set()
-            ),
-            **stage_draw_options,
+            **session.view(
+                view_floor,
+                map_mode=getattr(ui, "map_mode", False),
+                farthest_preview=getattr(ui, "farthest_preview", False),
+            )
         )
-
-        if player.lp <= 0:
+        if session.player.lp <= 0:
             _stop_movement_repeat(ui)
+            session._finish()
             break
-
         move = ui.input_direction()
         if move is None:
-            if trace is not None:
-                trace.record_quit()
-                trace.set_outcome(
-                    "unfinished" if getattr(ui, "ran_dry", False) else "quit"
-                )
+            session.quit(unfinished=getattr(ui, "ran_dry", False))
             return
         if getattr(ui, "escape_check_requested", False):
             ui.escape_check_requested = False
             confirm = getattr(ui, "confirm_game_over", None)
-            if _quit_check(floors, player, floor[0], cur) and confirm is not None:
+            if session.quit_check() and confirm is not None:
                 if confirm() is True:
                     _stop_movement_repeat(ui)
-                    if trace is not None:
-                        trace.record_quit()
-                        trace.set_outcome("quit")
+                    session.quit()
                     return
                 ui.farthest_preview = True
-                view_floor = floor[0]
+                view_floor = session.floor[0]
                 continue
         if getattr(ui, "floor_view_reset_requested", False):
-            view_floor = floor[0]
+            view_floor = session.floor[0]
             ui.floor_view_reset_requested = False
         if move == (0, 0):
             continue
         if getattr(ui, "farthest_preview", False):
             ui.farthest_preview = False
         if getattr(ui, "shift_direction", False):
-            view_floor = max(0, min(len(floors) - 1, view_floor + move[1]))
+            view_floor = max(0, min(len(session.floors) - 1, view_floor + move[1]))
             continue
-
-        # Dialogue remains visible through non-movement UI actions.
-        if message[0] == -2:
-            message = (-1, "")
-        # A real movement always returns the display to the player's floor.
-        view_floor = floor[0]
-        rogue_spotted_danger = False
-        if d.has_member(player, d.MEMBER_ROGUE):
-            destination = (player.x + move[0], player.y + move[1])
-            if stage56.rogue_danger(current, destination):
-                rogue_spotted_danger = True
-                if replay_context is not None:
-                    replay_context.rogue_checks.setdefault(
-                        len(replay_context.operations), []
-                    ).append(destination)
-                _stop_movement_repeat(ui)
-                message = (5, trp("-- Rogue spotted danger. Movement repeat stopped.", 5))
-        repeat_stop_enabled = getattr(ui, "auto_repeat_stop_enabled", True)
-        if (
-            repeat_stop_enabled
-            and not rogue_spotted_danger
-            and getattr(ui, "input_was_repeat", False)
-            and _should_stop_movement_repeat(
-                move,
-                current,
-                player,
-                show_all_entities=show_entities,
-                known_types=known_types,
-            )
-        ):
-            _stop_movement_repeat(ui)
-            continue
-
-        if trace is not None:
-            key = DIR_TO_KEY.get(move)
-            if key is None:
-                raise RuntimeError(
-                    "--trace does not support non-cardinal (e.g. diagonal joystick) movement"
-                )
-            trace.begin_turn(key)
-
-        if replay_context is not None:
-            replay_context.save_snapshot(
-                len(replay_context.operations), floors, player, floor, checkpoint, queue
-            )
-            replay_context.prune_snapshots(game_start_turn)
-            replay_context.operations.append(move)
-            game_start_turn += 1
-            replay_context.turn_to_operation[game_start_turn] = len(
-                replay_context.operations
-            )
-
-        repeat_stop_reasons: Optional[Set[str]] = (
-            set() if repeat_stop_enabled or stage_num == 5 else None
-        )
-        def show_barrier_effect():
-            active = floors[floor[0]]
-            visible = observe_world(
-                floors, player, floor[0], config.torch_radius
-            )
-            ui.draw_stage(
-                turn=turn, player=player, entities=[player, *active.entities],
-                field=_field_for_display(floors, floor[0], player), cur_torched=visible, torched=active.seen,
-                known_types=player.known_monsters,
-                show_entities=debug_show_entities or getattr(ui, "map_mode", False),
-                debug_show_entities=debug_show_entities, stage_num=stage_num,
-                message=None,
-                checkpoint=checkpoint[0], decor=active.decor,
-                respawn_glows=respawn_glow_cells(active),
-                **_stage_draw_options(
-                    stage_num, floors, floor[0], single_floor_stage,
-                    show_floor_label=True,
-                ),
-            )
-            effect = getattr(ui, "draw_combat_effect", None)
-            if effect is not None:
-                effect((player.x, player.y), False)
-
-        floor_before_step = floor[0]
-        point_before_step = (player.x, player.y)
-        step_result = _process_multi_floor_turn(
+        result = session.step(
             move,
-            floors,
-            player,
-            floor,
-            checkpoint,
-            queue,
-            turn,
-            stage_num=stage_num,
-            trace=trace,
-            repeat_stop_reasons=repeat_stop_reasons,
-            combat_effect=getattr(ui, "draw_combat_effect", None),
-            barrier_effect=show_barrier_effect,
+            repeat=getattr(ui, "input_was_repeat", False),
+            auto_repeat_stop=getattr(ui, "auto_repeat_stop_enabled", True),
+            map_mode=getattr(ui, "map_mode", False),
         )
-        if replay_context is not None:
-            operation_path.append((floor[0], (player.x, player.y)))
-        if repeat_stop_reasons and (
-            repeat_stop_enabled or "member_dialogue" in repeat_stop_reasons
-        ):
-            _stop_movement_repeat(ui)
-        if isinstance(step_result, _RewindRequest):
-            assert replay_context is not None, "Loop contact requires recorded inputs"
-            operation_count = len(replay_context.operations)
-            rewind_turn, rewind_operation = replay_context.prepare_loop_rewind(
-                game_start_turn, loop_anchor_turn,
-            )
-            loop_trail_by_floor.clear()
-            loop_trail_expires_at = turn + d.LOOP_TRAIL_TURNS + 1
-            for trail_floor, position in operation_path[
-                rewind_operation + 1 : operation_count + 1
-            ]:
-                loop_trail_by_floor.setdefault(trail_floor, set()).add(position)
-            transition_message = trp(
-                "-- Time folds back to the beginning of the recorded past.", 9
-            )
-            show_transition = getattr(ui, "draw_rewind_transition", None)
-            if show_transition is not None:
-                show_transition(transition_message)
-            rewind_message = _rewind(
-                floors,
-                player,
-                floor,
-                checkpoint,
-                queue,
-                replay_context,
-                operation_count=operation_count,
-                loop_floor_index=step_result.floor_index,
-            )
-            operation_path[operation_count] = (floor[0], (player.x, player.y))
-            # Rewind contacts still reach the normal turn-end LP decrement.
-            player.lp += d.movement_lp_cost(player)
-            replay_context.anchor_loop_rewind(rewind_turn)
-            game_start_turn = rewind_turn
-            # The turn mapping now points to this contact, preserving its
-            # respawn and earlier rewinds when returning to the anchor again.
-            loop_anchor_turn = rewind_turn
-            has_rewound = True
-            event_message: Optional[Tuple[int, str]] = (5, rewind_message)
-        else:
-            event_message = step_result
-            transition = floor_transition_kind(
-                floors, floor_before_step, floor[0], (player.x, player.y)
-            )
-            show_floor_transition = getattr(ui, "draw_floor_transition", None)
-            if transition is not None and show_floor_transition is not None:
-                show_floor_transition(transition, player, player.floor_exit)
-        player.current_floor = floor[0]
-        # A stair contact can change the player's floor during _step(). Keep
-        # the displayed floor in sync so the next frame shows the new floor.
-        view_floor = floor[0]
-        if event_message is not None:
-            if event_message[0] == -2 or prefer_event_message(
-                message[1] if message is not None else None, event_message[1]
-            ) == event_message[1]:
-                message = event_message
-
-        if trace is not None:
-            trace.set_player(player, floor_index=floor[0])
-            seen_added_count = sum(
-                1
-                for floor_data, previous_seen in zip(
-                    floors, trace_seen_recorded, strict=True
-                )
-                for y, row in enumerate(floor_data.seen)
-                for x, is_seen in enumerate(row)
-                if is_seen and not previous_seen[y][x]
-            )
-            trace.record_state_changes(
-                seen_added_count,
-                list(player.known_monsters - trace_known_monsters_recorded),
-            )
-            trace_seen_recorded = [
-                deepcopy(floor_data.seen) for floor_data in floors
-            ]
-            trace_known_monsters_recorded = set(player.known_monsters)
-
-        turn += 1
-        player.lp -= d.movement_lp_cost(player)
-        if not isinstance(step_result, _RewindRequest):
-            bridgehead.recover_at_bridgehead(
-                floors, player, floor[0], floor_before_step, point_before_step
-            )
-        if trace is not None:
-            trace.set_turn_end_lp(player.lp)
-            trace.commit_turn()
-        if player.stage_won:
-            break
-        if stage_num == 6 and not player.dungeon_core_destroyed and turn >= d.STAGE6_TURN_LIMIT:
-            _stop_movement_repeat(ui)
-            break
-        if (stage_num == 6 and not player.dungeon_core_destroyed
-                and d.STAGE6_TURN_LIMIT - turn == 500):
-            message = (MESSAGE_TICKS, trp("-- The Dungeon Core is swelling; its rampage draws near!", 7))
-
-    won = player.stage_won
-    if trace is not None:
-        trace.set_outcome("win" if won else "lose")
-
-    if (not won and stage_num == 6 and not player.dungeon_core_destroyed
-            and turn >= d.STAGE6_TURN_LIMIT):
-        message = (-1, trp(">> The Dungeon Core ran wild and the capital fell! <<", 9))
-    elif not won:
-        message = (-1, trp(">> Collapsed from hunger! <<", 9))
-    else:
-        message = (-1, trp(">> Treasure chest obtained! <<", 9))
-    view_floor = floor[0]
+        view_floor = result.floor_after
+    view_floor = session.floor[0]
     while True:
-        display_floor = floors[view_floor]
-        floor_view = view_floor != floor[0]
-        cur = get_torched(player, config.torch_radius)
-        render_entities = [player, *display_floor.entities]
-        known_types = player.known_monsters
-        stage_draw_options = _stage_draw_options(
-            stage_num, floors, view_floor, single_floor_stage, show_floor_label=False
-        )
         ui.draw_stage(
-            turn=turn,
-            game_start_turn=game_start_turn if has_rewound else None,
-            player=player,
-            entities=render_entities,
-            field=_field_for_display(floors, view_floor, player),
-            cur_torched=(
-                [[0] * len(display_floor.field[0]) for _ in display_floor.field]
-                if floor_view else cur
-            ),
-            torched=display_floor.seen,
-            known_types=known_types,
-            show_entities=debug_show_entities or getattr(ui, "map_mode", False),
-            debug_show_entities=debug_show_entities,
-            stage_num=stage_num,
-            message=message[1],
-            extra_keys=True,
-            checkpoint=checkpoint[0],
-            decor=display_floor.decor,
-            respawn_glows=respawn_glow_cells(display_floor),
-            floor_view=floor_view,
-            **stage_draw_options,
+            **session.view(view_floor, map_mode=getattr(ui, "map_mode", False))
         )
         input_game_over = getattr(ui, "input_game_over", None)
         key = input_game_over() if input_game_over is not None else ui.input_alphabet()
@@ -2376,10 +2062,10 @@ def run_game(
             if hasattr(ui, "map_mode"):
                 ui.map_mode = True
             else:
-                debug_show_entities = True
+                session.debug_show_entities = True
         elif key == "s":
-            message = (-1, tr("SEED: {seed_str}").format(seed_str=seed_str))
+            session.message = (-1, session.seed_message())
         elif isinstance(key, tuple) and len(key) == 3:
-            _, dy, shifted = key
+            (_, dy, shifted) = key
             if shifted:
-                view_floor = max(0, min(len(floors) - 1, view_floor + dy))
+                view_floor = max(0, min(len(session.floors) - 1, view_floor + dy))
