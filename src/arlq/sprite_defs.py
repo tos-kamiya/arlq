@@ -26,3 +26,13 @@ TERRAIN_SIDE = 0.25
 TERRAIN_OVERHANG = {d.CHAR_STAIRS_UP: 0.5, d.CHAR_STAIRS_DOWN: 0.5,
                     d.CHAR_COLLAPSE: 0.25,
                     d.DECOR_FALLEN_ROCKS: 0.25}
+# Image key of the golem's rubble.
+ROCK_SPRITE = 'golem rock'
+# Field cells are wider than the text GUI's (13) so characters overflow
+# their cells less; sprites and their discs keep the CELL_SIZE_X-based size.
+SPRITE_CELL_SIZE_X = 15
+# Keep an integer 30x40 pixel grid per field cell at every window size.
+LOW_RESOLUTION_DETAIL_SCALE = 2.0
+# Radius in cell widths of the ground disc under each sprite (see
+# sprite_images.ground_disc_image).
+GROUND_DISC_RADIUS = 1.3

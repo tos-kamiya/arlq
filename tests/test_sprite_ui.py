@@ -6,7 +6,8 @@ import pyglet
 import pytest
 
 from arlq import defs as d
-from arlq import display, sprite_defs, sprite_effects, sprite_funcs, sprite_images
+from arlq import display, pyglet_funcs, sprite_defs, sprite_effects, sprite_funcs
+from arlq import sprite_images, sprite_terrain
 from arlq import i18n
 from arlq.game_events import FloorChanged, Rewound
 from arlq.pyglet_funcs import PygletUI
@@ -235,7 +236,7 @@ def test_member_sprite_uses_stable_skin_without_pillar(sprite_ui, monkeypatch, c
     assert [obj.image for obj in ui._drawables] == [ui._sprite_images[f'{name}-m']] * 2
     assert not pillars
     assert len(ui.outlines) == 1
-    assert ui.outlines[0][2] == pytest.approx(sprite_funcs.GROUND_DISC_RADIUS * ui.cell_size_x)
+    assert ui.outlines[0][2] == pytest.approx(sprite_defs.GROUND_DISC_RADIUS * ui.cell_size_x)
 
 
 def test_buffalo_has_bundled_sprite():
@@ -575,7 +576,7 @@ def _respawn_ui(ui, glows, known_cells):
     field = [[d.CHAR_FLOOR] * 10 for _ in range(10)]
     for y in range(10):
         for x in range(10):
-            ui._draw_tile(x, y, sprite_funcs.FLOOR, field, lambda x, y: (x, y) in known_cells)
+            ui._draw_tile(x, y, pyglet_funcs.FLOOR, field, lambda x, y: (x, y) in known_cells)
     return ui
 
 
@@ -642,7 +643,7 @@ def test_character_next_to_player_is_enlarged_with_disc_unchanged(sprite_ui, pos
     ui._draw_field_text(pos, 'b', ui._tone_color('blue'), True)
     sprite = ui._drawables[0]
     assert sprite.scale == pytest.approx(size * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
-    assert ui.outlines[0][2] == pytest.approx(sprite_funcs.GROUND_DISC_RADIUS * ui.cell_size_x)
+    assert ui.outlines[0][2] == pytest.approx(sprite_defs.GROUND_DISC_RADIUS * ui.cell_size_x)
 
 
 @pytest.mark.parametrize('char, role', [('J', d.MEMBER_JAVELIN_ELF), ('H', d.MEMBER_HEALER)])
@@ -759,11 +760,11 @@ def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
                         lambda *args, **kwargs: SimpleNamespace(args=args, **kwargs))
     field = [[d.CHAR_FLOOR] * 3 for _ in range(3)]
     field[1][1] = d.CHAR_WALL
-    ui._draw_tile(1, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: True)
-    assert floors == [(1, 1, sprite_funcs.VISIBLE_FLOOR)]
+    ui._draw_tile(1, 1, pyglet_funcs.VISIBLE_WALL, field, lambda x, y: True)
+    assert floors == [(1, 1, pyglet_funcs.VISIBLE_FLOOR)]
     top, front = ui._drawables
     # The top face starts above the wall's own cell, inside the cell to its north.
-    overhang = sprite_funcs.WALL_OVERHANG * ui.cell_size_y
+    overhang = sprite_terrain.WALL_OVERHANG * ui.cell_size_y
     assert top.args[1] + top.args[3] == pytest.approx(500 - (20 - overhang))
     # The front face reaches down to the wall cell's south edge.
     assert front.args[1] == pytest.approx(500 - 40 - 1)
@@ -772,13 +773,13 @@ def test_wall_rises_into_north_cell_between_character_rows(monkeypatch):
     assert order(0, 'sprite') < top.group.order < order(1, 'sprite')
 
 
-@pytest.mark.parametrize('tile_color', [sprite_funcs.VISIBLE_WALL, sprite_funcs.WALL])
+@pytest.mark.parametrize('tile_color', [pyglet_funcs.VISIBLE_WALL, pyglet_funcs.WALL])
 def test_training_room_walls_are_boxes_smaller_than_the_cell(monkeypatch, tile_color):
     ui = SpriteUI.__new__(SpriteUI)
     ui._initialize_state()
     ui._terrain_theme = 'training'
     ui._wall_images = None
-    ui._wall_tints = sprite_funcs.TERRAIN_THEMES['training'][4]
+    ui._wall_tints = sprite_terrain.TERRAIN_THEMES['training'][4]
     ui._floor_images = None
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui.window_height = 500
@@ -803,10 +804,10 @@ def test_training_room_walls_are_boxes_smaller_than_the_cell(monkeypatch, tile_c
     assert top.args[1] == pytest.approx(front.args[1] + front.args[3])
     # The top face is as tall as it is wide on screen: a square seen from above.
     assert top.args[3] == pytest.approx(top.args[2])
-    assert top.args[1] + top.args[3] <= 500 - (20 - sprite_funcs.WALL_OVERHANG * 20) + 1e-9
+    assert top.args[1] + top.args[3] <= 500 - (20 - sprite_terrain.WALL_OVERHANG * 20) + 1e-9
 
 
-@pytest.mark.parametrize('tile_color', [sprite_funcs.VISIBLE_WALL, sprite_funcs.WALL])
+@pytest.mark.parametrize('tile_color', [pyglet_funcs.VISIBLE_WALL, pyglet_funcs.WALL])
 def test_outer_wall_is_a_flat_cell_without_column(sprite_ui, monkeypatch, tile_color):
     ui = sprite_ui
     ui._decor = [[d.DECOR_OUTER_WALL]]
@@ -819,7 +820,7 @@ def test_outer_wall_is_a_flat_cell_without_column(sprite_ui, monkeypatch, tile_c
     assert not ui._drawables
 
 
-@pytest.mark.parametrize('tile_color', [sprite_funcs.VISIBLE_WALL, sprite_funcs.WALL])
+@pytest.mark.parametrize('tile_color', [pyglet_funcs.VISIBLE_WALL, pyglet_funcs.WALL])
 def test_buried_wall_is_a_flat_wall_colored_cell(sprite_ui, monkeypatch, tile_color):
     ui = sprite_ui
     ui._decor = [[d.DECOR_BURIED_WALL]]
@@ -836,9 +837,9 @@ def test_buried_wall_is_a_flat_wall_colored_cell(sprite_ui, monkeypatch, tile_co
 def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
     ui = SpriteUI.__new__(SpriteUI)
     ui._initialize_state()
-    ui._wall_images = {part: SimpleNamespace(width=26, height=50) for part in sprite_funcs.WALL_PARTS}
+    ui._wall_images = {part: SimpleNamespace(width=26, height=50) for part in sprite_terrain.WALL_PARTS}
     ui._floor_images = None
-    ui._sprite_images = {sprite_funcs.ROCK_SPRITE: SimpleNamespace(width=95, height=103)}
+    ui._sprite_images = {sprite_defs.ROCK_SPRITE: SimpleNamespace(width=95, height=103)}
     ui.map_mode = False
     ui.scale = 1
     ui.cell_size_x, ui.cell_size_y = 13, 20
@@ -854,17 +855,17 @@ def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
     field[1][0] = d.CHAR_WALL
     field[1][1] = d.CHAR_GOLEM_WALL
     ui._decor = [[d.DECOR_NONE] * 3 for _ in range(3)]
-    ui._draw_tile(1, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: True)
-    assert [piece.image for piece in ui._drawables] == [ui._sprite_images[sprite_funcs.ROCK_SPRITE]]
+    ui._draw_tile(1, 1, pyglet_funcs.VISIBLE_WALL, field, lambda x, y: True)
+    assert [piece.image for piece in ui._drawables] == [ui._sprite_images[sprite_defs.ROCK_SPRITE]]
     ui._draw_golem_rubble((1, 1), True)
     assert len(ui._drawables) == 1
     ui._drawables.clear()
-    ui._draw_tile(1, 1, sprite_funcs.WALL, field, lambda x, y: True)
-    shade = round(255 * sprite_funcs.ROCK_EXPLORED_SHADE)
+    ui._draw_tile(1, 1, pyglet_funcs.WALL, field, lambda x, y: True)
+    shade = round(255 * sprite_terrain.ROCK_EXPLORED_SHADE)
     assert ui._drawables[0].color == (shade, shade, shade)
     # The ordinary wall beside the rubble does not link toward it.
     ui._drawables.clear()
-    ui._draw_tile(0, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: True)
+    ui._draw_tile(0, 1, pyglet_funcs.VISIBLE_WALL, field, lambda x, y: True)
     assert [piece.image for piece in ui._drawables] == [ui._wall_images['column']]
 
 
@@ -898,12 +899,12 @@ def _barrier_ui(monkeypatch, cooling_center):
 def test_barrier_glows_on_the_floor_and_only_smokes_near_a_protected_player(
         monkeypatch, center, pos, cooled):
     ui, field = _barrier_ui(monkeypatch, center)
-    ui._draw_tile(*pos, sprite_funcs.VISIBLE_FLOOR, field, lambda x, y: True)
+    ui._draw_tile(*pos, pyglet_funcs.VISIBLE_FLOOR, field, lambda x, y: True)
     stone, light = ui._drawables
     assert stone.image.name.startswith('floor')
     assert light.image.name.startswith('smoke' if cooled else 'barrier')
     if cooled:
-        assert light.color == sprite_funcs.SMOKE_TINT
+        assert light.color == sprite_terrain.SMOKE_TINT
         assert light.blend_dest != pyglet.gl.GL_ONE
     else:
         assert light.blend_dest == pyglet.gl.GL_ONE  # additive glow
@@ -933,7 +934,7 @@ def test_guardian_cools_barriers_but_not_caltrops_near_player(
         player.elf_stage_flags |= d.ELF_STAGE_H_FLAG
     monkeypatch.setattr(PygletUI, 'draw_stage', lambda self, **kwargs: None)
     ui.draw_stage(player=player, floor_view=floor_view)
-    ui._draw_tile(2, 2, sprite_funcs.VISIBLE_FLOOR, field, lambda x, y: True)
+    ui._draw_tile(2, 2, pyglet_funcs.VISIBLE_FLOOR, field, lambda x, y: True)
     light = ui._drawables[-1]
     assert light.image.name.startswith(barrier_look)
     if barrier_look == 'reduced':
@@ -967,7 +968,7 @@ def test_reduced_barrier_image_is_a_smaller_barrier_in_the_middle():
     width, height = sprite_images.BARRIER_TEXELS
     alpha = lambda image: image.get_data('RGBA', width * 4)[3::4]
     full = alpha(sprite_images.barrier_image(0))
-    reduced = alpha(sprite_images.barrier_image(0, sprite_funcs.BARRIER_REDUCED_SCALE))
+    reduced = alpha(sprite_images.barrier_image(0, sprite_terrain.BARRIER_REDUCED_SCALE))
     lit = lambda data: [(i % width, i // width) for i, a in enumerate(data) if a > 20]
     full_cols = [col for col, _ in lit(full)]
     cols, rows = zip(*lit(reduced))
@@ -993,20 +994,20 @@ def test_column_wall_links_only_toward_discovered_wall_neighbors(monkeypatch):
     ui._drawables = []
     ui._display_color = lambda color: color
     ui._wall_images = {part: SimpleNamespace(width=26, height=50, part=part)
-                       for part in sprite_funcs.WALL_PARTS}
+                       for part in sprite_terrain.WALL_PARTS}
     ui._floor_images = None
     monkeypatch.setattr(PygletUI, '_draw_tile', lambda *args: None)
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     field = [[d.CHAR_FLOOR] * 3, [d.CHAR_WALL] * 3, [d.CHAR_FLOOR] * 3]
     # The east neighbour is unexplored, so no link reaches toward it.
-    ui._draw_tile(1, 1, sprite_funcs.VISIBLE_WALL, field, lambda x, y: x != 2)
+    ui._draw_tile(1, 1, pyglet_funcs.VISIBLE_WALL, field, lambda x, y: x != 2)
     parts = [piece.image.part for piece in ui._drawables]
     assert parts == ['link-west', 'column']
     column = ui._drawables[-1]
     assert column.image.width * column.scale_x == 14
     assert column.image.height * column.scale_y == pytest.approx(
-        (1 + sprite_funcs.WALL_OVERHANG) * 20)
+        (1 + sprite_terrain.WALL_OVERHANG) * 20)
     assert column.y == 500 - 40
     assert ui._drawables[0].group.order < column.group.order < ui._row_group(1, 'sprite').order
 
@@ -1022,19 +1023,19 @@ def test_floor_is_a_checkerboard_of_two_tinted_stones(monkeypatch):
     ui._drawables = []
     ui._display_color = lambda color: color
     ui._floor_images = [SimpleNamespace(width=130, height=200, part=part)
-                        for part in sprite_funcs.FLOOR_PARTS]
+                        for part in sprite_terrain.FLOOR_PARTS]
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     field = [[d.CHAR_FLOOR] * 2 for _ in range(2)]
     for x, y in ((0, 0), (1, 0), (1, 1)):
-        ui._draw_tile(x, y, sprite_funcs.VISIBLE_FLOOR, field, lambda *_: True)
+        ui._draw_tile(x, y, pyglet_funcs.VISIBLE_FLOOR, field, lambda *_: True)
     even, odd, even_again = ui._drawables
     assert (even.image.part, odd.image.part, even_again.image.part) == ('a', 'b', 'a')
-    assert even.color == even_again.color == sprite_funcs.FLOOR_TINTS[sprite_funcs.VISIBLE_FLOOR]
+    assert even.color == even_again.color == sprite_terrain.FLOOR_TINTS[pyglet_funcs.VISIBLE_FLOOR]
     assert sum(odd.color) < sum(even.color)
     assert even.image.width * even.scale_x == 14 and even.image.height * even.scale_y == 21
     # Explored-but-not-visible floor stays darker than visible floor.
-    ui._draw_tile(0, 1, sprite_funcs.FLOOR, field, lambda *_: True)
+    ui._draw_tile(0, 1, pyglet_funcs.FLOOR, field, lambda *_: True)
     assert sum(ui._drawables[-1].color) < sum(odd.color)
 
 
@@ -1053,7 +1054,7 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     ui._reused_drawable_ids = set()
     ui._display_color = lambda color: color
     ui._terrain_images = {char: SimpleNamespace(width=450, height=600, char=char)
-                          for char in sprite_funcs.TERRAIN_FILES}
+                          for char in sprite_terrain.TERRAIN_FILES}
     ui._terrain_regions = {}
     ui._stage_field = [[' ', ' ']]
     ui._stage_discovered_at = lambda x, y: True
@@ -1071,8 +1072,8 @@ def test_stairs_are_gold_marble_flights_darker_outside_the_view(monkeypatch, cha
     # A ground disc in the respawn point's yellow sits under the flight.
     assert visible_disc.image is ui._disc_image and visible_disc.group is ui._disc_group
     assert visible_disc.color == sprite_funcs.COLOR_MAP[sprite_funcs.CI_YELLOW]
-    assert visible_disc.opacity == sprite_funcs.STAIR_DISC_OPACITY
-    assert visible_disc.scale_x * 64 == pytest.approx(2 * sprite_funcs.GROUND_DISC_RADIUS * 13)
+    assert visible_disc.opacity == sprite_terrain.STAIR_DISC_OPACITY
+    assert visible_disc.scale_x * 64 == pytest.approx(2 * sprite_defs.GROUND_DISC_RADIUS * 13)
     assert sum(explored_disc.color) < sum(visible_disc.color)
     assert visible.image.char == char
     assert visible.color == sprite_defs.TERRAIN_TINT
@@ -1123,7 +1124,7 @@ def test_pit_up_marker_is_a_green_disc_and_allows_fallen_rocks(sprite_ui, monkey
     assert len(discs) == 1
     assert discs[0][3] == sprite_funcs.COLOR_MAP[sprite_funcs.CI_GREEN]
     assert not sprite_ui.text_calls
-    assert d.CHAR_SCHOLAR_STAIRS_UP not in sprite_funcs.FALLEN_ROCK_BLOCKERS
+    assert d.CHAR_SCHOLAR_STAIRS_UP not in sprite_terrain.FALLEN_ROCK_BLOCKERS
 
     sprite_ui._show_pit_up_marker = False
     sprite_ui._draw_stairs((4, 5), d.CHAR_SCHOLAR_STAIRS_UP)
@@ -1153,7 +1154,7 @@ def test_collapse_pit_is_a_gold_tinted_hole_under_the_characters(monkeypatch):
     ui._reused_drawable_ids = set()
     ui._display_color = lambda color: color
     ui._terrain_images = {char: SimpleNamespace(width=450, height=500, char=char)
-                          for char in sprite_funcs.TERRAIN_FILES}
+                          for char in sprite_terrain.TERRAIN_FILES}
     ui._terrain_regions = {}
     ui._stage_field = [[' ', d.CHAR_COLLAPSE, ' ']]
     ui._stage_discovered_at = lambda x, y: True
@@ -1209,7 +1210,7 @@ def cached_floor_ui(sprite_ui):
     ui._floor_group = 'floor'
     ui._floor_cells = {}
     ui._floor_tiles, ui._floor_cell_tiles = {}, {}
-    for color in sprite_funcs.FLOOR_TINTS:
+    for color in sprite_terrain.FLOOR_TINTS:
         for map_mode in (False, True):
             key = color, map_mode
             ui._floor_tiles[key] = SimpleNamespace(color=color, map_mode=map_mode)
@@ -1224,11 +1225,11 @@ def test_matching_floor_cells_are_copied_as_one_checkerboard(cached_floor_ui):
     ui = cached_floor_ui
     for y in range(2):
         for x in range(2):
-            ui._draw_floor(x, y, sprite_funcs.VISIBLE_FLOOR, None, None)
+            ui._draw_floor(x, y, pyglet_funcs.VISIBLE_FLOOR, None, None)
     ui._draw_floor_tiles()
     assert len(ui._drawables) == 1
     sprite = ui._drawables[0]
-    assert sprite.image is ui._floor_tiles[sprite_funcs.VISIBLE_FLOOR, False]
+    assert sprite.image is ui._floor_tiles[pyglet_funcs.VISIBLE_FLOOR, False]
     assert (sprite.x, sprite.y) == (0, 420)
     assert sprite.scale_x == pytest.approx(26 / 30)
     assert sprite.scale_y == 1
@@ -1244,13 +1245,13 @@ def test_floor_backdrop_is_reused_and_follows_scroll(cached_floor_ui, monkeypatc
     ui._floor_backdrop_group = 'backdrop'
     data = bytes(range(16))
     tile = SimpleNamespace(width=2, height=2, get_data=lambda *args: data)
-    ui._floor_tiles[sprite_funcs.VISIBLE_FLOOR, False].get_image_data = lambda: tile
+    ui._floor_tiles[pyglet_funcs.VISIBLE_FLOOR, False].get_image_data = lambda: tile
     uploads = []
     def image_data(width, height, fmt, pixels, pitch):
         uploads.append((width, height, pixels, pitch))
         return SimpleNamespace(get_texture=lambda: SimpleNamespace(width=width, height=height))
     monkeypatch.setattr(sprite_funcs.pyglet.image, 'ImageData', image_data)
-    ui._draw_floor(0, 0, sprite_funcs.FLOOR, None, None)
+    ui._draw_floor(0, 0, pyglet_funcs.FLOOR, None, None)
     assert ui._floor_backdrop_pending and not ui._floor_cells
     ui._draw_floor_backdrop()
     assert len(uploads) == 1
@@ -1270,12 +1271,12 @@ def test_floor_visibility_boundary_preserves_each_cells_shade_and_parity(cached_
     ui.map_mode = True
     for y in range(2):
         for x in range(2):
-            color = sprite_funcs.VISIBLE_FLOOR if x == 0 else sprite_funcs.FLOOR
+            color = pyglet_funcs.VISIBLE_FLOOR if x == 0 else pyglet_funcs.FLOOR
             ui._draw_floor(x, y, color, None, None)
     ui._draw_floor_tiles()
     assert len(ui._drawables) == 4
     for sprite, (x, y) in zip(ui._drawables, ((0, 0), (1, 0), (0, 1), (1, 1))):
-        color = sprite_funcs.VISIBLE_FLOOR if x == 0 else sprite_funcs.FLOOR
+        color = pyglet_funcs.VISIBLE_FLOOR if x == 0 else pyglet_funcs.FLOOR
         assert sprite.image is ui._floor_cell_tiles[color, True][(x + y) % 2]
 
 
@@ -1283,7 +1284,7 @@ def test_floor_copies_do_not_cover_fog_special_cells_or_the_odd_field_edge(cache
     ui = cached_floor_ui
     last_x = d.FIELD_WIDTH - 1
     for x, y in ((0, 0), (1, 1), (last_x, 0), (last_x, 1)):
-        ui._draw_floor(x, y, sprite_funcs.VISIBLE_FLOOR, None, None)
+        ui._draw_floor(x, y, pyglet_funcs.VISIBLE_FLOOR, None, None)
     ui._draw_floor_tiles()
     assert len(ui._drawables) == 4
     assert {(sprite.x, sprite.y) for sprite in ui._drawables} == {
@@ -1341,7 +1342,7 @@ def test_tile_columns_keep_checkerboard_alignment_and_terrain_margin(sprite_ui):
     # Include a stair disc whose centre lies outside either window edge.
     for x in range(79):
         centre = ui._field_col_x(x) + ui.cell_size_x / 2
-        radius = sprite_funcs.GROUND_DISC_RADIUS * ui._sprite_unit()
+        radius = sprite_defs.GROUND_DISC_RADIUS * ui._sprite_unit()
         if centre + radius >= 0 and centre - radius <= ui.window_width:
             assert x in columns
     assert list(PygletUI._field_draw_columns(ui, 79)) == list(range(79))
@@ -1471,10 +1472,10 @@ def test_floor_culling_keeps_full_blocks_at_window_edges(cached_floor_ui):
     ui._horizontal_scroll_px = 100.5
     for y in range(2):
         for x in ui._field_draw_columns(79):
-            ui._draw_floor(x, y, sprite_funcs.VISIBLE_FLOOR, None, None)
+            ui._draw_floor(x, y, pyglet_funcs.VISIBLE_FLOOR, None, None)
     ui._draw_floor_tiles()
     assert len(ui._drawables) == 3
-    assert all(obj.image is ui._floor_tiles[sprite_funcs.VISIBLE_FLOOR, False]
+    assert all(obj.image is ui._floor_tiles[pyglet_funcs.VISIBLE_FLOOR, False]
                for obj in ui._drawables)
     assert ui._drawables[0].x < 0
     assert ui._drawables[-1].x + 52 > ui.window_width
@@ -1549,7 +1550,7 @@ def test_lp_gauge_sits_over_player_head_scaled_to_its_disc(sprite_ui, lp, tone):
     sprite = ui._drawables[0]
     top_frame, bottom_frame, left_frame, right_frame, fill = ui._drawables[1:6]
     backing = ui._drawables[6] if lp < d.LP_MAX else None
-    width = round(sprite_funcs.LP_GAUGE_WIDTH * 2 * sprite_funcs.GROUND_DISC_RADIUS
+    width = round(sprite_funcs.LP_GAUGE_WIDTH * 2 * sprite_defs.GROUND_DISC_RADIUS
                   * ui._sprite_unit())
     assert fill.width + (backing.width if backing else 0) == width
     assert fill.width == round(width * min(lp, d.LP_MAX) / d.LP_MAX)
@@ -1633,7 +1634,7 @@ def test_edge_shade_multiplies_only_visible_strips_once_floor_is_drawn(cached_fl
     ui._finish_drawables()
     assert ui._drawables == []
     ui = edge_shade_ui(ui, 0)
-    ui._draw_floor(4, 4, sprite_funcs.VISIBLE_FLOOR, None, None)
+    ui._draw_floor(4, 4, pyglet_funcs.VISIBLE_FLOOR, None, None)
     ui._finish_drawables()
     strips = [obj for obj in ui._drawables if obj.group == 'edge-shade']
     # At the left end: the left strip and the top/bottom strips, not the right one.
@@ -1650,7 +1651,7 @@ def test_edge_shade_multiplies_only_visible_strips_once_floor_is_drawn(cached_fl
     # In the middle of the field only the top and bottom strips remain.
     ui = edge_shade_ui(ui, 26 * 30)
     ui._drawables = []
-    ui._draw_floor(40, 4, sprite_funcs.VISIBLE_FLOOR, None, None)
+    ui._draw_floor(40, 4, pyglet_funcs.VISIBLE_FLOOR, None, None)
     ui._finish_drawables()
     strips = [obj for obj in ui._drawables if obj.group == 'edge-shade']
     assert len(strips) == 2
@@ -1920,7 +1921,7 @@ def test_hop_switches_every_interval_in_whole_texels(bob_ui):
     bob_ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
     base = bob_ui._bobbing[0][1]
     interval = sprite_funcs.IDLE_BOB_INTERVAL
-    hop = sprite_funcs.IDLE_BOB_TEXELS / sprite_funcs.LOW_RESOLUTION_DETAIL_SCALE
+    hop = sprite_funcs.IDLE_BOB_TEXELS / sprite_defs.LOW_RESOLUTION_DETAIL_SCALE
     bob_ui._update_idle_bob()
     assert (_bobbing_ys(bob_ui), bob_ui.flips) == ([base], 0)
     bob_ui.now = interval * 1.1
