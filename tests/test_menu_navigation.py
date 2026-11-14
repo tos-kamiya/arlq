@@ -182,6 +182,60 @@ def test_cancel_combat_effect_duration_keeps_saved_value(monkeypatch, tmp_path):
     assert path.read_text() == original
 
 
+@pytest.mark.parametrize("submenu", ["sprites", "gamepad"])
+@pytest.mark.parametrize("use_gamepad", [False, True])
+def test_settings_opens_submenus_with_confirm(monkeypatch, submenu, use_gamepad):
+    events = [(key.DOWN, 0)] * (3 if submenu == "sprites" else 4)
+    events += [None if use_gamepad else (key.RETURN, 0), (key.ESCAPE, 0)]
+    ui = _menu_ui(monkeypatch, events)
+    ui.supports_floor_transition = True
+    ui.controller = object()
+    ui._gamepad_is_connected = lambda: True
+    ui._controller_direction = lambda controller: (0, 0)
+    opened = []
+    ui.sprite_settings_menu = lambda *args: opened.append("sprites")
+    ui.gamepad_button_settings_menu = lambda: opened.append("gamepad")
+    if use_gamepad:
+        original_next = ui._next_key_event
+
+        def next_event():
+            event = original_next()
+            ui._gamepad_pressed_buttons = {0} if event is None else set()
+            return event
+
+        ui._next_key_event = next_event
+
+    ui.settings_menu()
+
+    assert opened == [submenu]
+
+
+@pytest.mark.parametrize("cancel_submenu,cancel_parent,expected", [
+    (False, False, 0.4), (True, False, 0.3), (False, True, 0.3),
+])
+def test_sprite_effect_submenu_applies_or_cancels(monkeypatch, tmp_path, cancel_submenu,
+                                                 cancel_parent, expected):
+    path = tmp_path / "settings.json"
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    events = [(key.DOWN, 0)] * 3 + [(key.RETURN, 0), (key.RIGHT, 0)]
+    events += [(key.ESCAPE if cancel_submenu else key.RETURN, 0)]
+    if not cancel_parent:
+        events.append((key.UP, 0))
+    events += [(key.ESCAPE if cancel_parent else key.RETURN, 0)]
+    ui = _menu_ui(monkeypatch, events)
+    ui.supports_floor_transition = True
+    ui.supports_idle_bob = True
+    ui.set_scale = lambda scale: None
+
+    ui.settings_menu()
+
+    assert ui.combat_effect_seconds == expected
+    if cancel_parent:
+        assert not path.exists()
+    else:
+        assert json.loads(path.read_text())["combat_effect_seconds"] == expected
+
+
 @pytest.mark.parametrize("value", [None, True, "0.1", -0.1, 0.6, 0.25, float("nan")])
 def test_invalid_combat_effect_duration_uses_default(value):
     from arlq.settings import combat_effect_seconds
@@ -198,7 +252,8 @@ def test_sprite_settings_select_and_reload_floor_transition_duration(
     path = tmp_path / "settings.json"
     monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
     arrow = key.RIGHT if presses > 0 else key.LEFT
-    events = [(key.DOWN, 0)] * 4 + [(arrow, 0)] * abs(presses) + [(key.RETURN, 0)]
+    events = [(key.DOWN, 0)] * 3 + [(key.RIGHT, 0), (key.DOWN, 0)]
+    events += [(arrow, 0)] * abs(presses) + [(key.RETURN, 0), (key.UP, 0), (key.RETURN, 0)]
     ui = _menu_ui(monkeypatch, events)
     ui.supports_floor_transition = True
     ui.set_scale = lambda scale: None
@@ -407,7 +462,8 @@ def test_sprite_settings_toggle_and_reload_character_bobbing(
 
     path = tmp_path / "settings.json"
     monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
-    events = [(key.DOWN, 0)] * 5 + [(key.RIGHT, 0)] * presses + [(key.RETURN, 0)]
+    events = [(key.DOWN, 0)] * 3 + [(key.RIGHT, 0)] + [(key.DOWN, 0)] * 2
+    events += [(key.RIGHT, 0)] * presses + [(key.RETURN, 0), (key.UP, 0), (key.RETURN, 0)]
     ui = _menu_ui(monkeypatch, events)
     ui.supports_floor_transition = True
     ui.supports_idle_bob = True

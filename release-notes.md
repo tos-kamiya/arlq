@@ -1,5 +1,12 @@
 # ARLQ Release Notes
 
+## 6.7.1 - 2026-11-15
+
+- Group sprite display options in a submenu for combat effects, floor
+  transitions and character bobbing.
+- Open settings submenus with Enter or the gamepad confirm button as well as
+  the right direction.
+
 ## 6.7.0 - 2026-11-15
 
 - Turn the sprite-mode player toward its last move, with new sprites facing up,
