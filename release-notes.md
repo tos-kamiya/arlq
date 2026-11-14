@@ -1,10 +1,14 @@
 # ARLQ Release Notes
 
-## Unreleased
+## 6.6.3 - 2026-11-14
 
 - Narrow sprite-mode field cells back to 15 px (from 16 px) at scale 1, and
   redraw the floor, wall, stair, pit, bridgehead and Dungeon Core images for
   the 3:4 cell shape.
+- Rebalance Stage 4 and Stage 6 monster rosters and Stage 6 progression,
+  including recovery encounters and the Dungeon Core deadline.
+- Refine party member behavior and the Stage 5 healer's trial and training area.
+- Show the Dungeon Core growing toward its rampage as the deadline approaches.
 
 ## 6.6.2 - 2026-11-11
 
