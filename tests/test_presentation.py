@@ -96,6 +96,13 @@ def test_frontends_use_one_effect_path_at_the_expected_time(monkeypatch, fronten
     ui_type = {"blessed": BlessedUI, "pyglet": PygletUI, "sprite": SpriteUI}[frontend]
     ui = ui_type.__new__(ui_type)
     ui.map_mode = False
+    if frontend == "sprite":
+        from arlq.sprite_fx import Presenter
+
+        ui._presenter = Presenter()
+        ui._stage_input_active = False
+        ui._closed = False
+        ui._pump = lambda: None
     calls = []
     ui.draw_stage = lambda **kwargs: calls.append(("draw", kwargs["turn"]))
     ui.stop_movement_repeat = lambda: calls.append(("stop",))
@@ -175,3 +182,31 @@ def test_barrier_trace_matches_pre_hook_removal_baseline(
         "world": [],
     }
     assert engine.rand.getstate() == random_state
+
+
+@pytest.mark.parametrize("completed", [False, True])
+def test_closing_presenter_skips_further_draws_and_preserves_completed_outcome(
+    monkeypatch, completed
+):
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    current = Floor(
+        field, [], [[0] * len(row) for row in field], (2, 2), (70, 18), None
+    )
+    player = d.Player(2, 2, 10, 90)
+    monkeypatch.setattr(engine, "build_single_floor", lambda *_: ([current], player))
+    trace = TraceRecorder({"stage": 1})
+    frames = []
+
+    def step(*_, **__):
+        if completed:
+            player.boss_defeated = player.treasure_collected = True
+
+    monkeypatch.setattr(engine, "_process_multi_floor_turn", step)
+    ui = SimpleNamespace(
+        draw_stage=lambda **view: frames.append(view["turn"]),
+        input_direction=lambda: (1, 0),
+        present_turn=lambda *_: False,
+    )
+    engine.run_game(ui, "test", stage_num=1, trace=trace)
+    assert frames == [0]
+    assert trace.outcome == ("win" if completed else "quit")

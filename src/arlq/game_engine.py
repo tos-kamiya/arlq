@@ -2079,7 +2079,14 @@ def run_game(
         )
         if result.stop_repeat:
             _stop_movement_repeat(ui)
-        play_turn_events(ui, result, session.player, stage_num)
+        present = getattr(ui, "present_turn", None)
+        if present is not None:
+            if present(result, session.view()) is False:
+                if session.phase == "playing":
+                    session.quit()
+                return
+        else:
+            play_turn_events(ui, result, session.player, stage_num)
         view_floor = result.floor_after
     view_floor = session.floor[0]
     while True:

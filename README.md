@@ -85,6 +85,7 @@ Integer seeds use their low 32 bits.
 
 In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 seconds for combat and barrier damage effects (default: 0.3). Choosing 0 disables the effects and their delay. The selection is saved and also used in terminal mode.
 These effects appear after each move is resolved, before the map refreshes.
+In `arlq-sprites`, the window keeps updating during effects, and keys pressed during them are queued for the next input.
 In `arlq-sprites`, `Floor transition duration` selects 0 to 1 second in 0.1-second steps for the still shown between floors (default: 0.5; 0 skips it).
 
 ## Screen and controls

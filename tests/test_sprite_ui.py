@@ -1700,6 +1700,23 @@ def test_edge_shade_strips_cover_shifted_fades(cached_floor_ui):
                 ) == 1
 
 
+@pytest.fixture
+def instant_effects(sprite_ui, monkeypatch):
+    durations = []
+
+    def play(seconds, create):
+        durations.append(seconds)
+        objects = create()
+        try:
+            sprite_ui._flip()
+        finally:
+            for obj in objects:
+                obj.delete()
+
+    monkeypatch.setattr(sprite_ui, '_play_effect', play)
+    return durations
+
+
 @pytest.mark.parametrize('kind, tint', [
     ('down', sprite_funcs.TERRAIN_TINT),
     ('up', sprite_funcs.TERRAIN_TINT),
@@ -1707,7 +1724,7 @@ def test_edge_shade_strips_cover_shifted_fades(cached_floor_ui):
     ('climb', None),
 ])
 def test_floor_transition_shows_only_the_players_landing(sprite_ui, monkeypatch,
-                                                         kind, tint):
+                                                         kind, tint, instant_effects):
     ui = sprite_ui
     ui._disc_image = SimpleNamespace(width=64, height=64)
     ui.combat_effect_seconds = 0.3
@@ -1715,8 +1732,6 @@ def test_floor_transition_shows_only_the_players_landing(sprite_ui, monkeypatch,
     ui.field_pixel_width = 26 * 13
     ui._landing_image = SimpleNamespace(width=450, height=600)
     shown, deleted = [], []
-    slept = []
-    monkeypatch.setattr('arlq.sprite_funcs.time.sleep', slept.append)
     monkeypatch.setattr(ui, '_flip', lambda: shown.extend(made))
     made = []
 
@@ -1745,7 +1760,7 @@ def test_floor_transition_shows_only_the_players_landing(sprite_ui, monkeypatch,
     assert [glow.opacity for glow in glows] == (
         [sprite_funcs.ROPE_GLOW_OPACITY] if kind == 'climb' else [])
     assert deleted == shown
-    assert slept == [d.FLOOR_TRANSITION_SECONDS]
+    assert instant_effects == [d.FLOOR_TRANSITION_SECONDS]
 
 
 def test_floor_transition_is_skipped_at_zero_seconds(sprite_ui, monkeypatch):
@@ -1756,7 +1771,7 @@ def test_floor_transition_is_skipped_at_zero_seconds(sprite_ui, monkeypatch):
     ui.draw_floor_transition('down', d.Player(3, 4, level=1, lp=d.LP_INIT))
 
 
-def test_floor_transition_is_drawn_on_the_stairs_cell(sprite_ui, monkeypatch):
+def test_floor_transition_is_drawn_on_the_stairs_cell(sprite_ui, monkeypatch, instant_effects):
     ui = sprite_ui
     ui.combat_effect_seconds = 0.3
     ui.field_height = 20
@@ -1764,7 +1779,6 @@ def test_floor_transition_is_drawn_on_the_stairs_cell(sprite_ui, monkeypatch):
     ui._horizontal_scroll_px = 26
     ui._landing_image = SimpleNamespace(width=450, height=600)
     made = []
-    monkeypatch.setattr('arlq.sprite_funcs.time.sleep', lambda seconds: None)
     monkeypatch.setattr(ui, '_flip', lambda: None)
     monkeypatch.setattr('arlq.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: made.append(SimpleNamespace(

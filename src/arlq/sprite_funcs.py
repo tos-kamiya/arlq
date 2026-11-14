@@ -13,6 +13,7 @@ from . import defs as d
 from . import display as ui_display
 from .arlq import barrier_lp_damage
 from .i18n import t as tr
+from .sprite_fx import Presenter
 from .pyglet_funcs import (
     CELL_SIZE_X,
     CELL_SIZE_Y,
@@ -638,6 +639,7 @@ class SpriteUI(PygletUI):
 
     def _initialize_state(self):
         super()._initialize_state()
+        self._presenter = Presenter()
         self._mouse_position = None
         self._mouse_visible_until = None
         self._edge_shade_fields = {}
@@ -1508,6 +1510,12 @@ class SpriteUI(PygletUI):
             ),
         )
 
+    def present_turn(self, result, view):
+        return self._presenter.play(self, result, view)
+
+    def _play_effect(self, seconds, create):
+        self._presenter.hold(self, seconds, create)
+
     def draw_combat_effect(self, pos, won: bool) -> None:
         seconds = self.combat_effect_seconds
         if seconds == 0:
@@ -1519,30 +1527,29 @@ class SpriteUI(PygletUI):
         image = pyglet.image.load(str(
             Path(__file__).parent / "assets" / "effects" / f"{name}.png"
         ))
-        padding = max(1, round(self.scale))
-        size = NEIGHBOR_SCALE if won else 1.0
-        scale = (size * 1.8 * max(1, self._sprite_unit() - 2 * padding)
-                 / SPRITE_REFERENCE_PIXELS)
-        blend = ({"blend_src": pyglet.gl.GL_SRC_ALPHA,
-                  "blend_dest": pyglet.gl.GL_ONE} if won else {})
-        effects = []
-        for x, y in positions:
-            cx = self._field_col_x(x) + self.cell_size_x / 2
-            cy = (y + 0.5) * self.cell_size_y
-            effect = pyglet.sprite.Sprite(
-                image, x=cx - image.width * scale / 2,
-                y=self.window_height - cy - (
-                    image.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale,
-                batch=self.batch, group=pyglet.graphics.Group(order=100000), **blend,
-            )
-            effect.scale = scale
-            effects.append(effect)
-        try:
-            self._flip()
-            time.sleep(seconds)
-        finally:
-            for effect in effects:
-                effect.delete()
+
+        def create():
+            padding = max(1, round(self.scale))
+            size = NEIGHBOR_SCALE if won else 1.0
+            scale = (size * 1.8 * max(1, self._sprite_unit() - 2 * padding)
+                     / SPRITE_REFERENCE_PIXELS)
+            blend = ({"blend_src": pyglet.gl.GL_SRC_ALPHA,
+                      "blend_dest": pyglet.gl.GL_ONE} if won else {})
+            effects = []
+            for x, y in positions:
+                cx = self._field_col_x(x) + self.cell_size_x / 2
+                cy = (y + 0.5) * self.cell_size_y
+                effect = pyglet.sprite.Sprite(
+                    image, x=cx - image.width * scale / 2,
+                    y=self.window_height - cy - (
+                        image.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale,
+                    batch=self.batch, group=pyglet.graphics.Group(order=100000), **blend,
+                )
+                effect.scale = scale
+                effects.append(effect)
+            return effects
+
+        self._play_effect(seconds, create)
 
     def draw_floor_transition(self, kind, player, exit_point=None) -> None:
         """Show the moment between floors as a still: on the landing of the
@@ -1551,6 +1558,11 @@ class SpriteUI(PygletUI):
         seconds = self.floor_transition_seconds
         if seconds == 0 or '@' not in self._sprite_images:
             return
+        self._play_effect(
+            seconds, lambda: self._create_floor_transition(kind, player, exit_point),
+        )
+
+    def _create_floor_transition(self, kind, player, exit_point):
         field_height = self.field_height * self.cell_size_y
         shapes = [pyglet.shapes.Rectangle(
             # The whole window's width: the scrolled field can show past
@@ -1616,12 +1628,7 @@ class SpriteUI(PygletUI):
                 width, length, color=self._display_color(ROPE_COLOR),
                 batch=self.batch, group=pyglet.graphics.Group(order=100001),
             ))
-        try:
-            self._flip()
-            time.sleep(seconds)
-        finally:
-            for shape in shapes:
-                shape.delete()
+        return shapes
 
     def _draw_player(self, pos, player):
         if '@' not in self._sprite_images:
