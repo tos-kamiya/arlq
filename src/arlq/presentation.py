@@ -45,3 +45,15 @@ def play_turn_events(
             if effect is not None:
                 effect(event.kind, player, event.exit_point)
             floor = event.to_floor
+
+
+def play_defeat_effects(ui, result: "TurnResult") -> None:
+    """Play post-move boss and core effects on the new floor."""
+    for event in result.events:
+        if not isinstance(event, Combat) or event.floor != result.floor_after or not event.won:
+            continue
+        for point, method in ((event.boss_at, "draw_boss_afterglow"),
+                              (event.core_at, "draw_core_burst")):
+            effect = getattr(ui, method, None)
+            if point is not None and effect is not None:
+                effect(point)

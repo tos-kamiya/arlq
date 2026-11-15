@@ -74,6 +74,14 @@ def _font_glyph_metrics(font_name: str, size: int, weight: str) -> Tuple[int, in
     return metrics
 
 
+def _braille_dots(char: str):
+    """Yield the two-column, four-row dot positions of a braille character."""
+    bits = ((1, 8), (2, 16), (4, 32), (64, 128))
+    pattern = ord(char) - 0x2800
+    return ((column, row) for row, pair in enumerate(bits)
+            for column, bit in enumerate(pair) if pattern & bit)
+
+
 def _menu_method(method):
     """Keep menu text metrics stable while the resizable game view changes."""
     @wraps(method)
@@ -1163,6 +1171,56 @@ class PygletUI(PygletSettingsMixin):
         self._flip()
         time.sleep(seconds)
 
+    def _draw_braille_effect(self, name, pos):
+        from .braille_effects import effect_frames
+
+        seconds, frames = effect_frames(name, pos, self.combat_effect_seconds)
+        if not frames:
+            return
+        group = pyglet.graphics.Group(order=10002)
+        background = pyglet.graphics.Group(order=10001)
+        for cells in frames:
+            if self._closed:
+                break
+            objects = []
+            for (x, y), char, color in cells:
+                if (x, y) == getattr(self, "_effect_player_pos", None):
+                    continue
+                cell_color = self._combat_cell_colors.get((x, y), VISIBLE_FLOOR)
+                objects.append(pyglet.shapes.Rectangle(
+                    self._field_col_x(x), self.window_height - (y + 1) * self.cell_size_y,
+                    self._field_col_width(x), self.cell_size_y,
+                    color=self._display_color(cell_color), batch=self.batch, group=background,
+                ))
+                left = self._field_col_x(x)
+                top = self.window_height - y * self.cell_size_y
+                width = self._field_col_width(x)
+                for column, row in _braille_dots(char):
+                    objects.append(pyglet.shapes.Rectangle(
+                        left + width * column / 2,
+                        top - self.cell_size_y * (row + 1) / 4,
+                        width / 2, self.cell_size_y / 4,
+                        color=self._display_color(color), batch=self.batch, group=group,
+                    ))
+            self._flip()
+            deadline = time.monotonic() + seconds / len(frames)
+            while not self._closed and time.monotonic() < deadline:
+                self._pump()
+                time.sleep(min(1 / 60, max(0, deadline - time.monotonic())))
+            for obj in objects:
+                obj.delete()
+        if not self._closed:
+            self._flip()
+
+    def draw_vortex_effect(self, pos):
+        self._draw_braille_effect("Vortex", pos)
+
+    def draw_boss_afterglow(self, pos):
+        self._draw_braille_effect("Boss", pos)
+
+    def draw_core_burst(self, pos):
+        self._draw_braille_effect("Dungeon Core", pos)
+
     def draw_rewind_transition(self, message: str) -> None:
         """Show the Loop Fairy transition before the next stage frame."""
         overlay_group = pyglet.graphics.Group(order=10000)
@@ -1276,6 +1334,7 @@ class PygletUI(PygletSettingsMixin):
         reveal_disguises = debug_show_entities or self.map_mode
         self._clear_drawables()
         px, py = player.x, player.y
+        self._effect_player_pos = None if floor_view else (px, py)
         self._combat_cell_colors = {}
 
         def discovered_at(x: int, y: int) -> bool:

@@ -2046,7 +2046,7 @@ def run_game(
     stage_num: int = 3,
 ) -> None:
     from .game_session import GameSession
-    from .presentation import play_turn_events
+    from .presentation import play_defeat_effects, play_turn_events
 
     session = GameSession(
         stage_num,
@@ -2110,6 +2110,12 @@ def run_game(
                 return
         else:
             play_turn_events(ui, result, session.player, stage_num)
+            if any(isinstance(event, Combat) and event.won
+                   and event.floor == result.floor_after
+                   and (event.boss_at is not None or event.core_at is not None)
+                   for event in result.events):
+                ui.draw_stage(**session.view(result.floor_after))
+                play_defeat_effects(ui, result)
         view_floor = result.floor_after
     view_floor = session.floor[0]
     while True:

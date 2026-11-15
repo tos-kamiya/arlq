@@ -6,6 +6,7 @@ from blessed import Terminal
 from . import defs as d
 from .arlq import barrier_lp_damage
 from .settings import combat_effect_seconds, load_settings
+from .braille_effects import effect_frames
 from . import display as ui_display
 from .i18n import t as tr
 
@@ -58,11 +59,10 @@ class BlessedUI:
     def _render_last_stage(self) -> None:
         if self._last_stage is None:
             return
-        print(
-            self._draw_stage(*self._last_stage[0]) + self._draw_status_bar(*self._last_stage[1]),
-            end="",
-            flush=True,
+        self._stage_snapshot = (
+            self._draw_stage(*self._last_stage[0]) + self._draw_status_bar(*self._last_stage[1])
         )
+        print(self._stage_snapshot, end="", flush=True)
 
     def _read_key(self):
         while True:
@@ -153,6 +153,7 @@ class BlessedUI:
                 player = entity
                 px, py = entity.x, entity.y
         assert player is not None and px is not None and py is not None
+        self._effect_player_pos = None if floor_view else (px, py)
         barrier_damage = barrier_lp_damage(player)
 
         def cell_background(x: int, y: int) -> Optional[str]:
@@ -596,6 +597,41 @@ class BlessedUI:
                 bg=self._combat_cell_backgrounds.get(point),
             ), end="", flush=True)
         time.sleep(seconds)
+
+    def _draw_braille_effect(self, name, pos):
+        seconds, frames = effect_frames(name, pos, self.combat_effect_seconds)
+        if not frames:
+            return
+        snapshot = getattr(self, "_stage_snapshot", "")
+        for cells in frames:
+            self._wait_for_terminal_size()
+            output = [snapshot]
+            for (x, y), char, color in cells:
+                if (x, y) == getattr(self, "_effect_player_pos", None):
+                    continue
+                bg = self._combat_cell_backgrounds.get((x, y))
+                glyph = self._style(char, bg=bg)
+                if not self.map_mode and self.term.number_of_colors >= 256:
+                    glyph = self.term.color_rgb(*color)(glyph)
+                elif not self.map_mode:
+                    if name == "Vortex" and color == (170, 170, 170):
+                        color_name = "white"
+                    else:
+                        color_name = {"Boss": "yellow", "Dungeon Core": "magenta", "Vortex": "cyan"}[name]
+                    glyph = self._style(char, color=color_name, bg=bg)
+                output.append(self.term.move_xy(x, y) + glyph)
+            print("".join(output) + self.term.normal, end="", flush=True)
+            time.sleep(seconds / len(frames))
+        print(snapshot, end="", flush=True)
+
+    def draw_vortex_effect(self, pos):
+        self._draw_braille_effect("Vortex", pos)
+
+    def draw_boss_afterglow(self, pos):
+        self._draw_braille_effect("Boss", pos)
+
+    def draw_core_burst(self, pos):
+        self._draw_braille_effect("Dungeon Core", pos)
 
     def draw_rewind_transition(self, message: str) -> None:
         """Show the Loop Fairy transition before the next stage frame."""
