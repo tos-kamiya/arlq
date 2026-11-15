@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from . import defs as d
 from . import game_engine as engine
+from . import stage7
 from .arlq import GameConfig
 from .game_events import GameEvent, Rewound, _emit
 from .utils import rand
@@ -48,6 +49,8 @@ class GameSession:
             self.floors, self.player = engine.stage6.build(self.config)
         elif stage_num == 5:
             self.floors, self.player = engine.stage5.build_member_trial(self.config)
+        elif stage_num == d.TREASURE_CHECK_STAGE:
+            self.floors, self.player = stage7.build(self.config)
         else:
             self.floors, self.player = engine.build(
                 self.config.corridor_h_width,
@@ -60,6 +63,8 @@ class GameSession:
         self.player.boss_defeated = False
         self.player.dungeon_core_destroyed = False
         self.player.treasure_collected = False
+        # The check stage is won by just taking its open chest.
+        self.player.boss_defeated = stage_num == d.TREASURE_CHECK_STAGE
 
         self.seed_str = seed_str
         self.trace = trace

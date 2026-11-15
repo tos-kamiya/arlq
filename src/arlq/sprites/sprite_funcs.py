@@ -302,6 +302,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     # Set by a finished glide, whose last frame already shows the next turn:
     # the next draw_stage of the same view is skipped (see draw_stage).
     _glide_drew_next_turn = False
+    # The cell of the chest that won the stage, drawn behind the player.
+    _won_chest_cell = None
 
     def _initialize_state(self):
         super()._initialize_state()
@@ -311,6 +313,9 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._bobbing = []
         self._bob_raised = False
         self._bob_clock = time.monotonic
+        # The won stage's treasure glow (see draw_treasure_glow).
+        self._treasure_glow = None
+        self._treasure_glow_since = None
         self._mouse_position = None
         self._mouse_visible_until = None
         self._edge_shade_fields = {}
@@ -528,7 +533,16 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             else None
         )
         self._cooling_damage = barrier_lp_damage(player) if self._cooling_center else None
+        won = (player is not None and player.treasure_collected and player.stage_won
+               and not kwargs.get('floor_view') and not self.map_mode)
+        # The game ends on the chest's cell: the taken chest stays in sight
+        # there, behind the player (see _draw_player), inside its glow.
+        self._won_chest_cell = (player.x, player.y) if won else None
         result = super().draw_stage(decor=decor, **kwargs)
+        if won:
+            self.draw_treasure_glow((player.x, player.y))
+        else:
+            self._treasure_glow_since = None
         return result
 
     def _draw_text(
@@ -732,6 +746,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     def _pump(self):
         super()._pump()
         self._update_idle_bob()
+        self._update_treasure_glow()
         deadline = self._mouse_visible_until
         if deadline is not None and time.monotonic() >= deadline:
             self.window.set_mouse_visible(False)
@@ -921,6 +936,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     def _draw_player(self, pos, player):
         if '@' not in self._sprite_images:
             return super()._draw_player(pos, player)
+        if pos == self._won_chest_cell:
+            self._draw_sprite(pos, d.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], disc_scale=0.0)
         # Low/warning LP colors the ground disc instead of filling the cell;
         # poison turns the disc's upper-right half purple.
         self._player_cell = pos
@@ -1346,6 +1363,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         for drawable in getattr(self, '_uncached_drawables', ()):
             drawable.delete()
         self._uncached_drawables = []
+        self._treasure_glow = None
         self._bobbing = []
         self._slide_parts = []
         self._follower_cells = {}

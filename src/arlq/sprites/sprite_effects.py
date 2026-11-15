@@ -2,6 +2,7 @@
 
 import math
 import random
+import time
 from pathlib import Path
 
 import pyglet
@@ -117,6 +118,31 @@ CORE_BURST_BAND = (0.9, 0.15)
 DOME_GLOW_BANDS = tuple(0.03 * 1.4 ** k for k in range(10))
 
 
+# A won stage's treasure glow (draw_treasure_glow), shown for as long as the
+# final screen stays up, centred on the chest's cell: a hazy hemisphere of
+# TREASURE_GLOW_COLOR light (soft_dome_image, brightest inside and fading
+# out toward its outline) TREASURE_GLOW_RADIUS cell widths across swells up
+# over TREASURE_GLOW_SWELL seconds and then breathes, its brightness swaying
+# TREASURE_GLOW_BREATH over TREASURE_GLOW_BREATH_SECONDS. Inside it
+# TREASURE_MOTES glowing motes float about: each rises and wanders for
+# TREASURE_MOTE_LIFE seconds, fading in and out, and then starts again
+# somewhere else in the dome; while it floats its light gently swells and
+# ebbs (TREASURE_MOTE_SHIMMER). Frames are redrawn at most
+# TREASURE_GLOW_FPS times a second.
+TREASURE_GLOW_COLOR = (255, 200, 100)
+TREASURE_MOTE_COLORS = ((255, 244, 210), (255, 214, 120))
+TREASURE_GLOW_RADIUS = 5.0
+TREASURE_GLOW_SWELL = 0.9
+TREASURE_GLOW_OPACITY = 0.5
+TREASURE_GLOW_BREATH, TREASURE_GLOW_BREATH_SECONDS = 0.15, 2.6
+TREASURE_MOTES = 34
+TREASURE_MOTE_LIFE = (2.5, 4.5)
+TREASURE_MOTE_HALO = (0.1, 0.18)  # cell widths, the soft light around a mote
+TREASURE_MOTE_RISE = (0.25, 0.55)  # dome radii over a mote's life
+TREASURE_MOTE_SHIMMER = 0.35
+TREASURE_GLOW_FPS = 30
+
+
 def dome_images(size=128, bands=DOME_GLOW_BANDS):
     """A unit hemisphere on the ground seen DOME_ELEVATION down: a dark
     see-through shell (darker toward its outline and its foot), and for
@@ -164,6 +190,29 @@ def dome_images(size=128, bands=DOME_GLOW_BANDS):
         return picture
 
     return image(shell), {band: image(glow) for band, glow in glows.items()}
+
+
+def soft_dome_image(size=128):
+    """A hazy white light shaped like dome_images' hemisphere, brightest
+    inside near its foot and fading smoothly to nothing at its outline.
+    The anchor is on the centre of its foot."""
+    sin_e = math.sin(DOME_ELEVATION)
+    width, height = size, round(size / 2 * (1 + sin_e))
+    rgba = bytearray()
+    for row in range(height):
+        sy = (row + 0.5) / height * (1 + sin_e) - sin_e  # up the screen
+        for col in range(width):
+            sx = (col + 0.5) / width * 2 - 1
+            # How far out toward the outline: the shell above the foot's
+            # centre line, the foot's ellipse below it.
+            r = math.hypot(sx, sy if sy >= 0 else sy / sin_e)
+            edge = max(0.0, min(1.0, (1 - r) / 0.45))
+            alpha = math.exp(-1.6 * r * r) * edge * edge * (3 - 2 * edge)
+            rgba += bytes((255, 255, 255, round(255 * alpha)))
+    picture = pyglet.image.ImageData(width, height, 'RGBA', bytes(rgba), pitch=width * 4)
+    picture.anchor_x = width // 2
+    picture.anchor_y = round(height * sin_e / (1 + sin_e))
+    return picture
 
 
 def pillar_image(width=16, height=64):
@@ -468,6 +517,103 @@ class SpriteEffectsMixin:
                                      * min(1.0, t / 0.1) * (1 - t) ** 1.2)
 
         self._play_effect(CORE_BURST_SECONDS, create, update)
+
+    def draw_treasure_glow(self, pos) -> None:
+        """Put the won stage's hazy golden dome and its floating motes over
+        `pos`. The glow keeps its clock across redraws, so it only swells
+        once."""
+        if self.combat_effect_seconds == 0:
+            return
+        if getattr(self, '_soft_dome_image', None) is None:
+            self._soft_dome_image = soft_dome_image()
+        if getattr(self, '_treasure_glow_since', None) is None:
+            self._treasure_glow_since = time.monotonic()
+        x, y = pos
+        rand = random.Random(x * 1009 + y)
+        motes = [
+            {'seed': rand.getrandbits(32), 'life': rand.uniform(*TREASURE_MOTE_LIFE),
+             'offset': rand.random(), 'shimmer': rand.uniform(0.8, 1.6),
+             'phase': rand.random(), 'color': rand.choice(TREASURE_MOTE_COLORS)}
+            for _ in range(TREASURE_MOTES)
+        ]
+        group = pyglet.graphics.Group(order=100000)
+        additive = {"blend_src": pyglet.gl.GL_SRC_ALPHA, "blend_dest": pyglet.gl.GL_ONE}
+        dome = pyglet.sprite.Sprite(self._soft_dome_image, batch=self.batch, group=group,
+                                    **additive)
+        dome.color = self._display_color(TREASURE_GLOW_COLOR)
+        lights = []
+        for mote in motes:
+            tint = self._display_color(mote['color'])
+            halo = pyglet.sprite.Sprite(self._disc_image, batch=self.batch, group=group,
+                                        **additive)
+            halo.color = tint
+            core = pyglet.shapes.Circle(0, 0, 1, color=tint, batch=self.batch,
+                                        group=group, **additive)
+            lights.append((halo, core))
+        self._uncached_drawables.extend([dome] + [part for light in lights for part in light])
+        self._treasure_glow = {'pos': pos, 'dome': dome,
+                               'motes': list(zip(motes, lights)), 'drawn_at': 0.0}
+        self._animate_treasure_glow()
+
+    def _animate_treasure_glow(self):
+        glow = self._treasure_glow
+        now = time.monotonic()
+        glow['drawn_at'] = now
+        t = now - self._treasure_glow_since
+        x, y = glow['pos']
+        cell_x = self.cell_size_x
+        gx = self._field_col_x(x) + cell_x / 2
+        gy = self.window_height - (y + 0.5) * self.cell_size_y
+        grow = 1 - (1 - min(1.0, t / TREASURE_GLOW_SWELL)) ** 3
+        breath = 1 - TREASURE_GLOW_BREATH * (
+            0.5 + 0.5 * math.cos(2 * math.pi * t / TREASURE_GLOW_BREATH_SECONDS))
+        radius = TREASURE_GLOW_RADIUS * cell_x / 2 * (0.15 + 0.85 * grow)
+        flatten = math.sin(DOME_ELEVATION)
+        dome = glow['dome']
+        dome.x, dome.y = gx, gy
+        dome.scale = 2 * radius / dome.image.width
+        dome.opacity = round(255 * TREASURE_GLOW_OPACITY
+                             * min(1.0, t / (TREASURE_GLOW_SWELL / 2)) * breath)
+
+        shown = max(0.0, min(1.0, (t - TREASURE_GLOW_SWELL / 3) / TREASURE_GLOW_SWELL))
+        disc = self._disc_image
+        for mote, (halo, core) in glow['motes']:
+            age = t / mote['life'] + mote['offset']
+            cycle, u = int(age), age % 1.0
+            # Each life starts somewhere new, from the mote's own numbers.
+            path = random.Random(mote['seed'] * 7919 + cycle)
+            sx = path.uniform(-0.7, 0.7)
+            room = math.sqrt(1 - sx * sx)
+            sy = room * path.uniform(-0.7 * flatten, 0.45)
+            drift = path.uniform(-0.15, 0.15)
+            rise = path.uniform(*TREASURE_MOTE_RISE)
+            wander = path.uniform(0.03, 0.08)
+            turns = path.uniform(0.6, 1.4)
+            size = path.uniform(*TREASURE_MOTE_HALO)
+            px = gx + radius * (sx + drift * u
+                                + wander * math.sin(2 * math.pi * (turns * u + mote['phase'])))
+            py = gy + radius * (sy + rise * u)
+            shimmer = 1 - TREASURE_MOTE_SHIMMER * (0.5 + 0.5 * math.sin(
+                2 * math.pi * (t / mote['shimmer'] + mote['phase'])))
+            strength = math.sin(math.pi * u) ** 1.5 * shimmer * shown
+            reach = size * cell_x * (0.85 + 0.15 * shimmer)
+            halo.scale_x = 2 * reach / disc.width
+            halo.scale_y = 2 * reach / disc.height
+            halo.x, halo.y = px - reach, py - reach
+            halo.opacity = round(255 * 0.55 * strength)
+            core.x, core.y = px, py
+            core.radius = max(1.0, 0.035 * cell_x)
+            core.opacity = round(255 * 0.9 * strength)
+
+    def _update_treasure_glow(self):
+        """While waiting on the final screen, move the sparkles on."""
+        glow = getattr(self, '_treasure_glow', None)
+        if glow is None or self._menu_active or self._closed:
+            return
+        if time.monotonic() - glow['drawn_at'] < 1 / TREASURE_GLOW_FPS:
+            return
+        self._animate_treasure_glow()
+        self._flip()
 
     def draw_floor_transition(self, kind, player, exit_point=None) -> None:
         """Show the moment between floors: on the landing of the stairs the
