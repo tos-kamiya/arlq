@@ -77,7 +77,7 @@ VORTEX_SECONDS_FACTOR = 4 / 3
 # the first BOSS_SPARK_DELAY, each living BOSS_SPARK_LIFE of the time.
 # All are drawn additively, at BOSS_AFTERGLOW_OPACITY so they stay a little
 # see-through.
-BOSS_AFTERGLOW_SECONDS = 1.4
+BOSS_AFTERGLOW_SECONDS = 14 / 15
 BOSS_AFTERGLOW_OPACITY = 0.6
 BOSS_AFTERGLOW_COLOR = (255, 196, 110)
 BOSS_AFTERGLOW_CORE_COLOR = (255, 238, 200)
@@ -96,7 +96,7 @@ BOSS_SPARK_HEIGHT = (2.0, 4.5)  # cells
 # as it fades. The dome is at most CORE_BURST_OPACITY opaque, thinning to
 # CORE_BURST_THIN of that as it swells; each puff
 # CORE_BURST_PUFF_OPACITY.
-CORE_BURST_SECONDS = 1.5
+CORE_BURST_SECONDS = 1.0
 CORE_BURST_RADIUS = 4.0
 CORE_BURST_SWELL = 0.35
 CORE_BURST_OPACITY = 0.75

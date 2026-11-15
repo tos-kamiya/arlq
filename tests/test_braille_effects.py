@@ -20,6 +20,14 @@ def test_frames_are_clipped_and_disabled_by_combat_setting(name):
             assert len(color) == 3
 
 
+@pytest.mark.parametrize("name, expected", [("Boss", 14 / 15), ("Dungeon Core", 1.0)])
+def test_defeat_effect_duration_is_fixed_when_enabled(name, expected):
+    for setting in (0.1, 1.0):
+        duration, frames = effect_frames(name, (10, 9), setting)
+        assert duration == pytest.approx(expected)
+        assert frames
+
+
 def test_defeat_effects_only_follow_wins_on_the_current_floor():
     calls = []
     ui = SimpleNamespace(draw_boss_afterglow=lambda p: calls.append(("boss", p)),

@@ -2437,3 +2437,11 @@ def test_glide_draws_a_cell_past_the_window_edges(sprite_ui):
     ui._slide_from = {'@': (3, 5)}
     assert ui._intersects_window(-2 * width + 2, width)
     assert ui._intersects_window(400 + width - 1, width)
+
+
+def test_sprite_defeat_effect_durations_match_character_modes():
+    from arlq.braille_effects import effect_frames
+    from arlq.sprites.sprite_effects import BOSS_AFTERGLOW_SECONDS, CORE_BURST_SECONDS
+
+    assert BOSS_AFTERGLOW_SECONDS == effect_frames("Boss", (10, 9), 1)[0]
+    assert CORE_BURST_SECONDS == effect_frames("Dungeon Core", (10, 9), 1)[0]

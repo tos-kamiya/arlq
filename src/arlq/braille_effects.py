@@ -7,7 +7,7 @@ from pathlib import Path
 from . import defs as d
 
 _ORIGIN = (10, 9)
-_DURATIONS = {"Vortex": 4 / 3, "Dungeon Core": 1.5, "Boss": 1.4}
+_DURATIONS = {"Vortex": 4 / 3, "Dungeon Core": 1.0, "Boss": 14 / 15}
 
 
 @lru_cache(maxsize=1)
