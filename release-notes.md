@@ -1,5 +1,14 @@
 # ARLQ Release Notes
 
+## 6.7.10 - 2026-11-15
+
+- Apply all settings and exit when confirming the sprite display or gamepad
+  button settings submenu.
+- Keep the character GUI responsive during combat effects and allow a gamepad
+  direction change to interrupt sprite movement animation.
+- Continue movement repeat after entity contact; automatic stopping still
+  applies before visible entities and known hazards.
+
 ## 6.7.9 - 2026-11-15
 
 - Show Loop Fairy movement trails as cyan circles centered in each cell in
