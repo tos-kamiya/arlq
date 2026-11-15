@@ -284,7 +284,7 @@ def test_hold_stops_early_on_its_last_frame():
     assert ui._key_queue == [("right", 0)]
 
 
-def test_boss_afterglow_plays_after_the_glide_on_the_current_floor():
+def test_boss_afterglow_and_core_burst_play_after_the_glide_on_the_current_floor():
     from arlq.sprites.sprite_funcs import SpriteUI
 
     ui = SpriteUI.__new__(SpriteUI)
@@ -294,12 +294,14 @@ def test_boss_afterglow_plays_after_the_glide_on_the_current_floor():
     ui._presenter = SimpleNamespace(play=lambda *args: calls.append("effects") or True)
     ui._slide_into_cell = lambda *args: calls.append("glide")
     ui.draw_boss_afterglow = lambda pos: calls.append(("afterglow", pos))
+    ui.draw_core_burst = lambda pos: calls.append(("core", pos))
     target = [(EntityRef(1, "W", "monster"), (3, 2))]
     events = [
         Combat(0, (2, 2), target, True, 0),
         Combat(0, (2, 2), target, True, 0, boss_at=(3, 2)),
         Combat(1, (2, 2), target, True, 0, boss_at=(5, 5)),
+        Combat(0, (2, 2), target, True, 0, core_at=(4, 4)),
     ]
     result = TurnResult(True, None, True, 0, 0, events)
     assert ui.present_turn(result, {})
-    assert calls == ["effects", "glide", ("afterglow", (3, 2))]
+    assert calls == ["effects", "glide", ("afterglow", (3, 2)), ("core", (4, 4))]

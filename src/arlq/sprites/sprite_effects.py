@@ -87,6 +87,85 @@ BOSS_SPARKS, BOSS_SPARK_DELAY, BOSS_SPARK_LIFE = 30, 0.5, (0.35, 0.5)
 BOSS_SPARK_HEIGHT = (2.0, 4.5)  # cells
 
 
+# A destroyed Dungeon Core (draw_core_burst), over CORE_BURST_SECONDS on its
+# cell: a dark, see-through hemisphere (dome_images), its rim glowing in
+# CORE_BURST_RIM_COLOR, swells to CORE_BURST_RADIUS cell widths over the
+# first CORE_BURST_SWELL, then comes apart into CORE_BURST_PUFFS puffs of
+# dark mist and CORE_BURST_MOTES violet motes drifting out from its surface
+# as it fades. The dome is at most CORE_BURST_OPACITY opaque, thinning to
+# CORE_BURST_THIN of that as it swells; each puff
+# CORE_BURST_PUFF_OPACITY.
+CORE_BURST_SECONDS = 1.5
+CORE_BURST_RADIUS = 4.0
+CORE_BURST_SWELL = 0.35
+CORE_BURST_OPACITY = 0.75
+CORE_BURST_THIN = 0.5
+# The dome's violet glow is drawn at CORE_BURST_GLOW_OPACITY.
+CORE_BURST_GLOW_OPACITY = 0.6
+CORE_BURST_RIM_COLOR = (170, 90, 255)
+CORE_BURST_PUFFS, CORE_BURST_MOTES = 48, 28
+CORE_BURST_PUFF_OPACITY = 0.45
+# The puffs and motes are drawn at CORE_BURST_PARTICLE_OPACITY and drift and
+# grow CORE_BURST_PARTICLE_SPREAD as far as their own figures say.
+CORE_BURST_PARTICLE_OPACITY = 0.6
+CORE_BURST_PARTICLE_SPREAD = 0.5
+DOME_ELEVATION = math.radians(60)  # the character sprites' view
+# The dome's band of light is CORE_BURST_BAND cell widths wide, from thick
+# while the dome is small to thin once it has swollen; the glow image whose
+# band (a fraction of the radius, DOME_GLOW_BANDS) comes closest is used.
+CORE_BURST_BAND = (0.9, 0.15)
+DOME_GLOW_BANDS = tuple(0.03 * 1.4 ** k for k in range(10))
+
+
+def dome_images(size=128, bands=DOME_GLOW_BANDS):
+    """A unit hemisphere on the ground seen DOME_ELEVATION down: a dark
+    see-through shell (darker toward its outline and its foot), and for
+    each band width in `bands` (a fraction of the radius) a white glow
+    along its outline and the near side of its foot that wide, with a soft
+    sheen on its upper left. The anchor is on the centre of its foot."""
+    sin_e, cos_e = math.sin(DOME_ELEVATION), math.cos(DOME_ELEVATION)
+    light_dir = (-0.55, 0.0, 0.83)
+    width, height = size, round(size / 2 * (1 + sin_e))
+    shell = bytearray()
+    glows = {band: bytearray() for band in bands}
+    for row in range(height):
+        sy = (row + 0.5) / height * (1 + sin_e) - sin_e  # up the screen
+        for col in range(width):
+            sx = (col + 0.5) / width * 2 - 1
+            inside = 1 - sx * sx - sy * sy
+            depth = math.sqrt(inside) if inside > 0 else -1.0
+            foot = sx * sx + (sy / sin_e) ** 2  # < 1 inside the dome's foot
+            dark = shine = 0.0
+            edge = None  # how far in from the glowing edge, in radii
+            z = sy * cos_e + depth * sin_e
+            if depth >= 0 and z >= 0:
+                # On the near side of the shell; depth is how squarely it
+                # faces the viewer. The point itself, on the unit sphere:
+                normal = (sx, sy * sin_e - depth * cos_e, z)
+                dark = min(1.0, 0.2 + 0.6 * (1 - depth) ** 1.5 + 0.2 * (1 - z))
+                shine = 0.4 * max(0.0, sum(a * b for a, b in zip(normal, light_dir))) ** 40
+                edge = 1 - math.sqrt(sx * sx + sy * sy)
+            elif foot <= 1:
+                dark = 0.45
+            if foot <= 1 and sy < 0:
+                to_foot = 1 - math.sqrt(foot)
+                edge = to_foot if edge is None else min(edge, to_foot)
+            shell += bytes((0, 0, 0, round(255 * dark)))
+            for band, glow in glows.items():
+                light = shine
+                if edge is not None:
+                    light += max(0.0, 1 - edge / band) ** 2
+                glow += bytes((255, 255, 255, round(255 * min(1.0, light))))
+
+    def image(data):
+        picture = pyglet.image.ImageData(width, height, 'RGBA', bytes(data), pitch=width * 4)
+        picture.anchor_x = width // 2
+        picture.anchor_y = round(height * sin_e / (1 + sin_e))
+        return picture
+
+    return image(shell), {band: image(glow) for band, glow in glows.items()}
+
+
 def pillar_image(width=16, height=64):
     """White column of light: brightest along its axis and at its foot,
     fading to transparent at its sides and toward its top."""
@@ -282,6 +361,113 @@ class SpriteEffectsMixin:
                                 * min(1.0, t / 0.15) * (1 - t) ** 1.2)
 
         self._play_effect(BOSS_AFTERGLOW_SECONDS, create, update)
+
+    def draw_core_burst(self, pos) -> None:
+        """Swell a dark dome over the destroyed Dungeon Core's cell and let
+        it come apart into drifting mist."""
+        if self.combat_effect_seconds == 0:
+            return
+        x, y = pos
+        if getattr(self, '_dome_images', None) is None:
+            self._dome_images = dome_images()
+        shell_image, glow_images = self._dome_images
+        rand = random.Random(x * 1009 + y)
+        flatten = math.sin(DOME_ELEVATION)
+
+        def surface_point():
+            # A point on the dome as seen: anywhere from its foot (squashed
+            # below the centre) up to its top.
+            angle = rand.uniform(0, 2 * math.pi)
+            reach = math.sqrt(rand.uniform(0.15, 1.0))
+            squash = 1.0 if angle < math.pi else flatten
+            return (reach * math.cos(angle), reach * math.sin(angle) * squash)
+
+        puffs = [
+            {'at': surface_point(), 'delay': rand.uniform(0, 0.25),
+             'size': rand.uniform(0.35, 0.75), 'drift': rand.uniform(0.3, 0.7)}
+            for _ in range(CORE_BURST_PUFFS)
+        ]
+        motes = [
+            {'at': surface_point(), 'delay': rand.uniform(0, 0.4),
+             'size': rand.uniform(0.05, 0.1), 'drift': rand.uniform(0.4, 1.0),
+             'rise': rand.uniform(0.5, 1.5)}
+            for _ in range(CORE_BURST_MOTES)
+        ]
+        parts = {}
+        additive = {"blend_src": pyglet.gl.GL_SRC_ALPHA, "blend_dest": pyglet.gl.GL_ONE}
+
+        def create():
+            group = pyglet.graphics.Group(order=100000)
+            rim = self._display_color(CORE_BURST_RIM_COLOR)
+            parts['shell'] = pyglet.sprite.Sprite(shell_image, batch=self.batch, group=group)
+            parts['glow'] = pyglet.sprite.Sprite(
+                glow_images[DOME_GLOW_BANDS[-1]], batch=self.batch, group=group,
+                **additive)
+            parts['glow'].color = rim
+            parts['puffs'] = []
+            for _ in puffs:
+                puff = pyglet.sprite.Sprite(self._disc_image, batch=self.batch, group=group)
+                puff.color = (0, 0, 0)
+                parts['puffs'].append(puff)
+            parts['motes'] = [
+                pyglet.shapes.Circle(0, 0, 1, color=rim, batch=self.batch,
+                                     group=group, **additive)
+                for _ in motes
+            ]
+            return [parts['shell'], parts['glow']] + parts['puffs'] + parts['motes']
+
+        def update(progress):
+            cell_x = self.cell_size_x
+            gx = self._field_col_x(x) + cell_x / 2
+            gy = self.window_height - (y + 0.5) * self.cell_size_y
+            swell = min(1.0, progress / CORE_BURST_SWELL)
+            after = max(0.0, (progress - CORE_BURST_SWELL) / (1 - CORE_BURST_SWELL))
+            grow = 1 - (1 - swell) ** 3
+            radius = CORE_BURST_RADIUS * cell_x * (0.1 + 0.9 * grow + 0.1 * after)
+            # It thins out as it swells, down to CORE_BURST_THIN at full size,
+            # and fades away as it comes apart.
+            fade = (1 - (1 - CORE_BURST_THIN) * grow) * (1 - after) ** 1.5
+            start, end = CORE_BURST_BAND
+            band = (start + (end - start) * grow) * cell_x / radius
+            nearest = min(DOME_GLOW_BANDS, key=lambda b: abs(math.log(b / band)))
+            if parts['glow'].image is not glow_images[nearest]:
+                parts['glow'].image = glow_images[nearest]
+            for sprite, strength in ((parts['shell'], CORE_BURST_OPACITY),
+                                     (parts['glow'], CORE_BURST_GLOW_OPACITY)):
+                sprite.x, sprite.y = gx, gy
+                sprite.scale = 2 * radius / sprite.image.width
+                sprite.opacity = round(255 * strength * fade)
+
+            image = self._disc_image
+            for puff, spec in zip(parts['puffs'], puffs):
+                t = (after - spec['delay']) / (1 - spec['delay'])
+                if t <= 0:
+                    puff.opacity = 0
+                    continue
+                ux, uy = spec['at']
+                spread = 1 + CORE_BURST_PARTICLE_SPREAD * spec['drift'] * (1 - (1 - t) ** 2)
+                size = spec['size'] * cell_x * (1 + CORE_BURST_PARTICLE_SPREAD * 1.5 * t)
+                puff.scale_x = 2 * size / image.width
+                puff.scale_y = 2 * size * flatten / image.height
+                puff.x = gx + radius * ux * spread - size
+                puff.y = gy + radius * uy * spread - size * flatten
+                puff.opacity = round(255 * CORE_BURST_PUFF_OPACITY * CORE_BURST_PARTICLE_OPACITY
+                                     * min(1.0, t / 0.15) * (1 - t) ** 1.5)
+            for mote, spec in zip(parts['motes'], motes):
+                t = (after - spec['delay']) / (1 - spec['delay'])
+                if t <= 0:
+                    mote.opacity = 0
+                    continue
+                ux, uy = spec['at']
+                travel = CORE_BURST_PARTICLE_SPREAD * t
+                spread = 1 + spec['drift'] * travel
+                mote.x = gx + radius * ux * spread
+                mote.y = gy + radius * uy * spread + spec['rise'] * cell_x * travel
+                mote.radius = max(1.0, spec['size'] * cell_x * (1 - 0.5 * t))
+                mote.opacity = round(255 * CORE_BURST_PARTICLE_OPACITY
+                                     * min(1.0, t / 0.1) * (1 - t) ** 1.2)
+
+        self._play_effect(CORE_BURST_SECONDS, create, update)
 
     def draw_floor_transition(self, kind, player, exit_point=None) -> None:
         """Show the moment between floors: on the landing of the stairs the

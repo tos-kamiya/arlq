@@ -31,6 +31,8 @@ class Combat(GameEvent):
     # Where the stage boss stood when this fight first defeated it (not set
     # for the Dungeon Core), for the boss's afterglow.
     boss_at: Point | None = None
+    # Where the Dungeon Core stood when this fight destroyed it.
+    core_at: Point | None = None
 
 
 @dataclass

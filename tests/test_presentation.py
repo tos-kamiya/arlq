@@ -278,3 +278,5 @@ def test_stage6_boss_party_marks_its_boss_but_not_the_dungeon_core():
     fights = [event for event in events if isinstance(event, Combat)]
     assert player.dungeon_core_destroyed and fights
     assert all(fight.won and fight.boss_at is None for fight in fights)
+    assert [fight.core_at for fight in fights] == [(core.x, core.y)]
+    assert combat.core_at is None

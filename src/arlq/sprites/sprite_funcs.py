@@ -785,12 +785,16 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             if not self._presenter.play(self, result, view):
                 return False
             self._slide_into_cell(result, view, before, followers_before)
-            # A stage boss's afterglow lingers once the boss is gone and the
-            # player has settled into its new cell.
+            # A stage boss's afterglow, or the burst of the Dungeon Core,
+            # plays once it is gone and the player has settled into its cell.
             for event in result.events:
-                if (isinstance(event, Combat) and event.boss_at is not None
-                        and event.floor == result.floor_after and not self._closed):
+                if (not isinstance(event, Combat) or self._closed
+                        or event.floor != result.floor_after):
+                    continue
+                if event.boss_at is not None:
                     self.draw_boss_afterglow(event.boss_at)
+                if event.core_at is not None:
+                    self.draw_core_burst(event.core_at)
             return not self._closed
         finally:
             self._next_view = None
