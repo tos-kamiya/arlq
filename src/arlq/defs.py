@@ -59,10 +59,6 @@ FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1 + 2 * FIELD_X_MARGIN
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 # Stages available from the game's UI and command line.
 PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5, 6)
-# Stage 7 holds only the player and an open treasure chest, to check the
-# win screen; it is started with --stage 7 and left out of the stage select.
-TREASURE_CHECK_STAGE: int = 7
-CLI_STAGE_NUMBERS: Tuple[int, ...] = PUBLIC_STAGE_NUMBERS + (TREASURE_CHECK_STAGE,)
 MEMBER_JESTER = "Jester"
 MEMBER_JAVELIN_ELF = "Javelin Elf"
 MEMBER_HEALER = "Healer"

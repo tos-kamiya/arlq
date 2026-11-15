@@ -1103,7 +1103,7 @@ def parse_seed_string(args, seed_str, enforce_version: bool = True):
         args.stage = int(stage_str)
     except ValueError:
         exit("Error: Stage value in seed string is not a valid integer.")
-    if args.stage not in d.CLI_STAGE_NUMBERS:
+    if args.stage not in d.PUBLIC_STAGE_NUMBERS:
         exit("Error: Stage value in seed string must be between 1 and 6.")
 
     try:

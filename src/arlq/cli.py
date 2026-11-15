@@ -162,7 +162,7 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
 
     set_language(args.lang)
 
-    if args.stage != 0 and args.stage not in d.CLI_STAGE_NUMBERS:
+    if args.stage != 0 and args.stage not in d.PUBLIC_STAGE_NUMBERS:
         parser.error("--stage must be 1, 2, 3, 4, 5, or 6")
 
     if args.continue_trace and not args.trace_path:

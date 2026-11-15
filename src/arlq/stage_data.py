@@ -293,6 +293,5 @@ STAGE_START_MESSAGES: Dict[int, Tuple[int, str]] = {
     4: (5, "-- The King has ordered the Strong Fire Drake (F') slain."),
     5: (12, "-- Explore the training ground and claim the Fire Drake’s treasure."),
     6: (12, "-- To avert the Dungeon Core's rampage, the capital asks you to destroy it."),
-    7: (-1, ""),
 }
 
