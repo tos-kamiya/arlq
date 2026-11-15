@@ -50,6 +50,7 @@ from .settings import (
     load_settings,
     move_glide_enabled,
 )
+from .treasure_particles import SPARKLE_TICKS_PER_SECOND, sparkle_cells, sparkle_frame
 from . import display as ui_display
 from .arlq import barrier_lp_damage
 from .i18n import t as tr
@@ -371,6 +372,7 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 class PygletUI(PygletSettingsMixin):
     supports_horizontal_view = False
     show_treasure_brackets = True
+    show_treasure_sparkles = True
     dim_protected_hazards = True
     # Whether draw_floor_transition shows a still (and Settings offers its time).
     supports_floor_transition = False
@@ -1362,6 +1364,22 @@ class PygletUI(PygletSettingsMixin):
         px, py = player.x, player.y
         self._effect_player_pos = None if floor_view else (px, py)
         self._combat_cell_colors = {}
+        blocked = set(loop_trail_markers or ())
+        if checkpoint is not None:
+            blocked.add(checkpoint)
+        if player.fairy is not None:
+            blocked.add((px + 1, py))
+        if not (player.treasure_collected and player.stage_won):
+            self._treasure_sparkle_started = None
+        elif getattr(self, "_treasure_sparkle_started", None) is None:
+            self._treasure_sparkle_started = time.monotonic()
+        self._treasure_sparkle_center = (px, py)
+        self._treasure_sparkle_cells = (
+            sparkle_cells(player, entities, field, torched, decor, blocked)
+            if self.show_treasure_sparkles and self.combat_effect_seconds > 0
+            and player.treasure_collected and player.stage_won
+            and not floor_view and not self.map_mode else []
+        )
 
         def discovered_at(x: int, y: int) -> bool:
             return bool(torched[y][x] or show_entities)
@@ -2098,12 +2116,43 @@ class PygletUI(PygletSettingsMixin):
                     break
                 time.sleep(1 / 30)
 
+    def _draw_treasure_sparkles(self, cells, tick):
+        """Overlay animated particles without changing the saved stage drawing."""
+        batch = pyglet.graphics.Batch()
+        dots = []
+        for (x, y), char in sparkle_frame(cells, tick, self._treasure_sparkle_center):
+            left = self._field_col_x(x)
+            top = self.window_height - y * self.cell_size_y
+            width = self._field_col_width(x)
+            for column, row in _braille_dots(char):
+                dots.append(pyglet.shapes.Rectangle(
+                    left + width * column / 2,
+                    top - self.cell_size_y * (row + 1) / 4,
+                    width / 2, self.cell_size_y / 4,
+                    color=self._display_color(COLOR_MAP[CI_YELLOW]), batch=batch,
+                ))
+        self.window.switch_to()
+        self.window.clear()
+        self.batch.draw()
+        batch.draw()
+        self.window.flip()
+        for dot in dots:
+            dot.delete()
+
     def input_game_over(self):
         """Wait for a game-over command or a shifted floor-view direction."""
+        last_tick = None
         while True:
             self._pump()
             if self._closed:
                 return None
+            cells = getattr(self, "_treasure_sparkle_cells", ())
+            if cells:
+                tick = int((time.monotonic() - self._treasure_sparkle_started)
+                           * SPARKLE_TICKS_PER_SECOND)
+                if tick != last_tick:
+                    self._draw_treasure_sparkles(cells, tick)
+                    last_tick = tick
 
             if self.gamepad_help_button in self._gamepad_pressed_buttons:
                 self.controls_menu()

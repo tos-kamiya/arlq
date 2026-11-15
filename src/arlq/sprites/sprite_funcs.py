@@ -248,6 +248,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     supports_horizontal_view = True
     show_treasure_brackets = False
+    show_treasure_sparkles = False
     supports_floor_transition = True
     supports_idle_bob = True
     supports_move_glide = True

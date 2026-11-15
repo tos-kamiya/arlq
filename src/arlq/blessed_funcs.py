@@ -7,6 +7,7 @@ from . import defs as d
 from .arlq import barrier_lp_damage
 from .settings import combat_effect_seconds, load_settings
 from .braille_effects import effect_frames
+from .treasure_particles import SPARKLE_TICKS_PER_SECOND, sparkle_cells, sparkle_frame
 from . import display as ui_display
 from .i18n import t as tr
 
@@ -37,6 +38,7 @@ class BlessedUI:
         self.farthest_preview = False
         self.shift_direction = False
         self._last_stage: Optional[Tuple[Any, Any]] = None
+        self._treasure_sparkle_cells = []
 
     def _terminal_is_large_enough(self) -> bool:
         return self.term.width >= MIN_TERMINAL_WIDTH and self.term.height >= MIN_TERMINAL_HEIGHT
@@ -607,6 +609,19 @@ class BlessedUI:
             extra_keys,
             game_start_turn,
         )
+        blocked = set(loop_trail_markers or ())
+        if checkpoint is not None:
+            blocked.add(checkpoint)
+        if not (player.treasure_collected and player.stage_won):
+            self._treasure_sparkle_started = None
+        elif getattr(self, "_treasure_sparkle_started", None) is None:
+            self._treasure_sparkle_started = time.monotonic()
+        self._treasure_sparkle_center = (player.x, player.y)
+        self._treasure_sparkle_cells = (
+            sparkle_cells(player, entities, field, torched, decor, blocked)
+            if player.treasure_collected and player.stage_won and not floor_view
+            and not self.map_mode and self.combat_effect_seconds > 0 else []
+        )
         self._last_stage = (stage_args, status_args)
         self._render_last_stage()
 
@@ -746,8 +761,23 @@ class BlessedUI:
 
     def input_game_over(self):
         """Wait for a game-over command or a shifted floor-view direction."""
+        last_tick = None
         while True:
-            key = self._read_key()
+            self._wait_for_terminal_size()
+            if self._treasure_sparkle_cells:
+                tick = int((time.monotonic() - self._treasure_sparkle_started) * SPARKLE_TICKS_PER_SECOND)
+                if tick != last_tick:
+                    output = [self._stage_snapshot]
+                    for (x, y), char in sparkle_frame(self._treasure_sparkle_cells, tick, self._treasure_sparkle_center):
+                        output.append(self.term.move_xy(x, y) + self._style(
+                            char, "yellow", bold=True,
+                            bg=self._combat_cell_backgrounds.get((x, y)),
+                        ))
+                    print("".join(output) + self.term.normal, end="", flush=True)
+                    last_tick = tick
+            key = self.term.inkey(timeout=0.2 if self._treasure_sparkle_cells else 0.5)
+            if not key:
+                continue
             key_name = key.name or str(key)
             key_text = str(key).lower()
             if key.code == self.term.KEY_ESCAPE or key_text == "q":
