@@ -229,8 +229,8 @@ STAGE6_BRIDGEHEAD_KNOWN_VORTEX_RATIO = 0.2
 STAGE6_EXTRA_BISON_RANKS = (1, None, None)
 STAGE6_FIXED_MONSTERS = (
     (("A", 1, 2), ("B", 1, 4)),
-    (("A", 1, 4), ("A", 2, 6), ("B", 1, 2), ("C", 1, 1), ("X", 1, 1), ("V", 1, 1)),
-    (("A", 2, 3), ("B", 1, 1), ("C", 1, 1), ("X", 2, 1), ("V", 1, 1)),
+    (("A", 1, 4), ("A", 2, 6), ("B", 1, 2), ("C", 1, 1), ("E", 1, 1), ("X", 1, 1), ("V", 1, 1)),
+    (("A", 2, 3), ("B", 1, 1), ("C", 1, 1), ("E", 1, 1), ("X", 2, 1), ("V", 1, 1)),
 )
 # Stage 6 roster entries are (char, count, rank, spawn-weight multiplier).
 STAGE6_ROSTER = (

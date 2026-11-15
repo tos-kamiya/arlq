@@ -1390,6 +1390,7 @@ def test_seed_reproduces_layout_and_groups():
 def test_stage6_spawn_roster_scales_by_floor():
     assert len(d.STAGE6_ROSTER) == d.STAGE6_FLOORS == 3
     assert all(any(char == "c" for char, *_ in roster) for roster in d.STAGE6_ROSTER)
+    assert all(("E", 1, 1) in roster for roster in d.STAGE6_FIXED_MONSTERS[1:])
     assert all(any(char == "A" for char, *_ in roster) for roster in d.STAGE6_FIXED_MONSTERS)
     assert all(any(char == "V" for char, *_ in roster) for roster in d.STAGE6_FIXED_MONSTERS[1:])
 
