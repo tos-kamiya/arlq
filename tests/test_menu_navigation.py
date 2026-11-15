@@ -268,8 +268,8 @@ def test_sprite_settings_select_and_reload_floor_transition_duration(
 def test_plain_gui_settings_have_no_floor_transition_row(monkeypatch, tmp_path):
     path = tmp_path / "settings.json"
     monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
-    # Four Downs wrap back to the scale row without a gamepad.
-    ui = _menu_ui(monkeypatch, [(key.DOWN, 0)] * 4 + [(key.RIGHT, 0), (key.RETURN, 0)])
+    # Five Downs (past the reset row) wrap back to the scale row without a gamepad.
+    ui = _menu_ui(monkeypatch, [(key.DOWN, 0)] * 5 + [(key.RIGHT, 0), (key.RETURN, 0)])
     scales = []
     ui.set_scale = scales.append
 
@@ -277,6 +277,95 @@ def test_plain_gui_settings_have_no_floor_transition_row(monkeypatch, tmp_path):
 
     assert scales == [1.25]
     assert "floor_transition_seconds" not in json.loads(path.read_text())
+
+
+CHANGED_SETTINGS = {
+    "scale": 2.0,
+    "key_repeat_interval": 0.3,
+    "auto_repeat_stop_enabled": False,
+    "combat_effect_seconds": 0.5,
+    "floor_transition_seconds": 1.0,
+    "idle_bob_enabled": False,
+    "move_glide_enabled": False,
+    "gamepad_help_button": 5,
+    "gamepad_preview_button": 4,
+    "gamepad_preview_mode": "toggle",
+}
+
+
+def _changed_sprite_menu_ui(monkeypatch, tmp_path, events, controller=False):
+    path = tmp_path / "settings.json"
+    path.write_text(json.dumps(CHANGED_SETTINGS))
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    ui = _menu_ui(monkeypatch, events)
+    ui.supports_floor_transition = True
+    ui.supports_idle_bob = True
+    ui.supports_move_glide = True
+    ui.scale = ui._menu_scale = 2.0
+    ui.key_repeat_interval = 0.3
+    ui.auto_repeat_stop_enabled = False
+    ui.combat_effect_seconds = 0.5
+    ui.floor_transition_seconds = 1.0
+    ui.idle_bob_enabled = False
+    ui.move_glide_enabled = False
+    ui.gamepad_help_button, ui.gamepad_preview_button = 5, 4
+    ui.gamepad_preview_mode = "toggle"
+    ui._gamepad_preview_held = False
+    if controller:
+        ui.controller = object()
+        ui._gamepad_is_connected = lambda: True
+        ui._controller_direction = lambda controller: (0, 0)
+    scales = []
+    ui.set_scale = lambda scale: (scales.append(scale), setattr(ui, "scale", scale))
+    return ui, path, scales
+
+
+@pytest.mark.parametrize("controller", [False, True])
+def test_reset_row_restores_every_setting_to_its_default(monkeypatch, tmp_path, controller):
+    from arlq import pyglet_funcs
+    from arlq.settings import (combat_effect_seconds, floor_transition_seconds,
+                               idle_bob_enabled, load_settings, move_glide_enabled)
+
+    # The reset row is last; it shows the defaults and returns to the top
+    # row, where Enter applies them.
+    downs = 5 if controller else 4
+    events = [(key.DOWN, 0)] * downs + [(key.RETURN, 0), (key.RETURN, 0)]
+    ui, path, scales = _changed_sprite_menu_ui(monkeypatch, tmp_path, events, controller)
+
+    ui.settings_menu()
+
+    saved = load_settings(path)
+    assert scales == [pyglet_funcs.DEFAULT_UI_SCALE]
+    assert ui.key_repeat_interval is None and saved["key_repeat_interval"] is None
+    assert ui.auto_repeat_stop_enabled is True and saved["auto_repeat_stop_enabled"] is True
+    assert ui.combat_effect_seconds == combat_effect_seconds(saved) == defs.COMBAT_EFFECT_SECONDS
+    assert (ui.floor_transition_seconds == floor_transition_seconds(saved)
+            == defs.FLOOR_TRANSITION_SECONDS)
+    assert ui.idle_bob_enabled is idle_bob_enabled(saved) is True
+    assert ui.move_glide_enabled is move_glide_enabled(saved) is True
+    assert (ui.gamepad_help_button, ui.gamepad_preview_button, ui.gamepad_preview_mode) == (
+        pyglet_funcs.DEFAULT_GAMEPAD_HELP_BUTTON,
+        pyglet_funcs.DEFAULT_GAMEPAD_PREVIEW_BUTTON,
+        pyglet_funcs.DEFAULT_GAMEPAD_PREVIEW_MODE,
+    )
+    assert pyglet_funcs.load_gamepad_bindings() == (
+        pyglet_funcs.DEFAULT_GAMEPAD_HELP_BUTTON,
+        pyglet_funcs.DEFAULT_GAMEPAD_PREVIEW_BUTTON,
+        pyglet_funcs.DEFAULT_GAMEPAD_PREVIEW_MODE,
+    )
+
+
+def test_cancel_after_reset_keeps_saved_settings(monkeypatch, tmp_path):
+    events = [(key.DOWN, 0)] * 4 + [(key.RETURN, 0), (key.ESCAPE, 0)]
+    ui, path, scales = _changed_sprite_menu_ui(monkeypatch, tmp_path, events)
+    original = path.read_text()
+
+    ui.settings_menu()
+
+    assert path.read_text() == original
+    assert scales == []
+    assert (ui.key_repeat_interval, ui.move_glide_enabled, ui.gamepad_help_button) == (
+        0.3, False, 5)
 
 
 @pytest.mark.parametrize("value", [None, True, "0.1", -0.1, 1.1, 0.25, float("nan")])
@@ -475,6 +564,29 @@ def test_sprite_settings_toggle_and_reload_character_bobbing(
     assert idle_bob_enabled(load_settings(path)) is enabled
 
 
+@pytest.mark.parametrize("presses, enabled", [(0, True), (1, False), (2, True)])
+def test_sprite_settings_toggle_and_reload_smooth_movement(
+    monkeypatch, tmp_path, presses, enabled
+):
+    from arlq.settings import load_settings, move_glide_enabled
+
+    path = tmp_path / "settings.json"
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    events = [(key.DOWN, 0)] * 3 + [(key.RIGHT, 0)] + [(key.DOWN, 0)] * 3
+    events += [(key.RIGHT, 0)] * presses + [(key.RETURN, 0), (key.UP, 0), (key.RETURN, 0)]
+    ui = _menu_ui(monkeypatch, events)
+    ui.supports_floor_transition = True
+    ui.supports_idle_bob = True
+    ui.supports_move_glide = True
+    ui.set_scale = lambda scale: None
+
+    ui.settings_menu()
+
+    assert ui.move_glide_enabled is enabled
+    assert ui.idle_bob_enabled is True
+    assert move_glide_enabled(load_settings(path)) is enabled
+
+
 def test_plain_gui_settings_do_not_save_character_bobbing(monkeypatch, tmp_path):
     path = tmp_path / "settings.json"
     monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
@@ -484,6 +596,14 @@ def test_plain_gui_settings_do_not_save_character_bobbing(monkeypatch, tmp_path)
     ui.settings_menu()
 
     assert "idle_bob_enabled" not in json.loads(path.read_text())
+    assert "move_glide_enabled" not in json.loads(path.read_text())
+
+
+@pytest.mark.parametrize("value", [None, 0, 1, "true", "off"])
+def test_invalid_smooth_movement_uses_default(value):
+    from arlq.settings import move_glide_enabled
+
+    assert move_glide_enabled({"move_glide_enabled": value}) is True
 
 
 @pytest.mark.parametrize("value", [None, 0, 1, "true", "off"])

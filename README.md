@@ -84,12 +84,14 @@ Integer seeds use their low 32 bits.
 | `--auto-repeat-stop` / `--no-auto-repeat-stop` | Enable or disable automatic repeat stopping near known hazards and after encounters. Enabled by default; the selection is saved for later GUI starts and can also be changed in `Settings`. |
 
 In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 seconds for combat and barrier damage effects (default: 0.3). Choosing 0 disables the effects and their delay. The selection is saved and also used in terminal mode.
-In `arlq-sprites`, this setting, `Floor transition duration`, and `Character bobbing` are in `Settings` → `Sprite display settings`. Open the submenu with Enter or Right, confirm its changes with Enter, then select another row and press Enter to apply them in `Settings`.
+In `arlq-sprites`, this setting, `Floor transition duration`, `Character bobbing`, and `Smooth movement` are in `Settings` → `Sprite display settings`. Open the submenu with Enter or Right, confirm its changes with Enter, then select another row and press Enter to apply them in `Settings`.
 These effects appear after each move is resolved, before the map refreshes.
+`Reset all settings to defaults`, the last row of `Settings`, sets every setting back to its default, including those in `Sprite display settings` and the gamepad buttons (default movement repeat: no repeat). Press Enter on it to show the defaults; the cursor returns to the top row, where Enter applies them and Esc cancels.
 In `arlq-sprites`, the window keeps updating during effects, and keys pressed during them are queued for the next input.
 In `arlq-sprites`, the slash of a won fight is cut the way the player attacked (up, down, left, or right).
 In `arlq-sprites`, `Floor transition duration` selects 0 to 1 second in 0.1-second steps for the short scene shown between floors (default: 0.5; 0 skips it): the old floor fades to black, the player steps down or up the stairs, falls, or climbs the rope, and the new floor fades in.
 In `arlq-sprites`, `Character bobbing` turns on or off the small hop that characters in view make every 0.7 seconds while the game waits for input (default: On). The player, monsters, fairies, and elves and party members waiting on the map hop; following fairies and party members stay still.
+In `arlq-sprites`, `Smooth movement` turns on or off the glide of the player, its fairy, and following party members into each one-cell step, with the field scrolling along (default: On). When it is off, they and the view move a whole cell at once.
 
 ## Screen and controls
 

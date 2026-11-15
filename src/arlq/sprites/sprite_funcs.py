@@ -249,6 +249,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     supports_horizontal_view = True
     supports_floor_transition = True
     supports_idle_bob = True
+    supports_move_glide = True
     dim_protected_hazards = False
 
     # Decorations of the floor being drawn (see draw_stage), and the cells to
@@ -815,7 +816,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         glide the player and its followers in from the cells they left.
         Presentation only: the turn has already been played."""
         player = view.get('player')
-        if (self._closed or self.map_mode or before is None or player is None
+        if (self._closed or not getattr(self, 'move_glide_enabled', True) or self.map_mode
+                or before is None or player is None
                 or '@' not in self._sprite_images or view.get('floor_view')
                 or result.floor_before != result.floor_after
                 or any(isinstance(event, (FloorChanged, Rewound)) for event in result.events)):

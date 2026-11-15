@@ -48,6 +48,7 @@ from .settings import (
     floor_transition_seconds,
     idle_bob_enabled,
     load_settings,
+    move_glide_enabled,
 )
 from . import display as ui_display
 from .arlq import barrier_lp_damage
@@ -185,6 +186,9 @@ GAMEPAD_BUTTON_CHOICES = (None,) + GAMEPAD_BUTTONS
 GAMEPAD_TRIGGER_BUTTONS = (11, 12)
 GAMEPAD_TRIGGER_PRESS_THRESHOLD = 0.5
 GAMEPAD_PREVIEW_MODES = ("hold", "toggle")
+DEFAULT_UI_SCALE = 1.0
+DEFAULT_KEY_REPEAT_INTERVAL = None
+DEFAULT_AUTO_REPEAT_STOP_ENABLED = True
 DEFAULT_GAMEPAD_HELP_BUTTON = 3
 DEFAULT_GAMEPAD_PREVIEW_BUTTON = 2
 DEFAULT_GAMEPAD_PREVIEW_MODE = "hold"
@@ -238,10 +242,10 @@ def _load_settings() -> dict:
 def load_ui_scale() -> float:
     """Load the saved GUI scale, falling back safely to the default."""
     try:
-        value = _load_settings().get("scale", 1.0)
+        value = _load_settings().get("scale", DEFAULT_UI_SCALE)
         value = float(value)
     except (OSError, ValueError, TypeError, json.JSONDecodeError, AttributeError):
-        return 1.0
+        return DEFAULT_UI_SCALE
     return min(MAX_UI_SCALE, max(MIN_UI_SCALE, value))
 
 
@@ -273,8 +277,8 @@ def save_key_repeat_interval(interval: Optional[float]) -> None:
 
 def load_auto_repeat_stop_enabled() -> bool:
     """Load whether automatic movement repeat should stop at game events."""
-    value = _load_settings().get("auto_repeat_stop_enabled", True)
-    return value if isinstance(value, bool) else True
+    value = _load_settings().get("auto_repeat_stop_enabled", DEFAULT_AUTO_REPEAT_STOP_ENABLED)
+    return value if isinstance(value, bool) else DEFAULT_AUTO_REPEAT_STOP_ENABLED
 
 
 def save_auto_repeat_stop_enabled(enabled: bool) -> None:
@@ -362,6 +366,7 @@ class PygletUI(PygletSettingsMixin):
     # Whether draw_floor_transition shows a still (and Settings offers its time).
     supports_floor_transition = False
     supports_idle_bob = False
+    supports_move_glide = False
 
     def _initialize_state(self) -> None:
         """Initialize Python state before creating the window or loading settings."""
@@ -380,6 +385,7 @@ class PygletUI(PygletSettingsMixin):
         self.combat_effect_seconds = d.COMBAT_EFFECT_SECONDS
         self.floor_transition_seconds = d.FLOOR_TRANSITION_SECONDS
         self.idle_bob_enabled = d.IDLE_BOB_ENABLED
+        self.move_glide_enabled = d.MOVE_GLIDE_ENABLED
 
     def __init__(
         self,
@@ -433,13 +439,14 @@ class PygletUI(PygletSettingsMixin):
         self._f_key_held = False
         self._escape_key_held = False
         self.key_repeat_interval = self._valid_repeat_interval(
-            _load_settings().get("key_repeat_interval", None)
+            _load_settings().get("key_repeat_interval", DEFAULT_KEY_REPEAT_INTERVAL)
             if key_repeat_interval is None else key_repeat_interval
         )
         self.auto_repeat_stop_enabled = load_auto_repeat_stop_enabled()
         self.combat_effect_seconds = combat_effect_seconds(_load_settings())
         self.floor_transition_seconds = floor_transition_seconds(_load_settings())
         self.idle_bob_enabled = idle_bob_enabled(_load_settings())
+        self.move_glide_enabled = move_glide_enabled(_load_settings())
         (
             self.gamepad_help_button,
             self.gamepad_preview_button,
@@ -584,6 +591,17 @@ class PygletUI(PygletSettingsMixin):
             path.parent.mkdir(parents=True, exist_ok=True)
             settings = _load_settings()
             settings["idle_bob_enabled"] = self.idle_bob_enabled
+            path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+        except OSError:
+            pass
+
+    def set_move_glide_enabled(self, enabled: bool) -> None:
+        self.move_glide_enabled = bool(enabled)
+        path = _settings_path()
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            settings = _load_settings()
+            settings["move_glide_enabled"] = self.move_glide_enabled
             path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
         except OSError:
             pass

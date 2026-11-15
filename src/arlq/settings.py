@@ -32,6 +32,11 @@ def idle_bob_enabled(settings: dict) -> bool:
     return value if isinstance(value, bool) else d.IDLE_BOB_ENABLED
 
 
+def move_glide_enabled(settings: dict) -> bool:
+    value = settings.get("move_glide_enabled", d.MOVE_GLIDE_ENABLED)
+    return value if isinstance(value, bool) else d.MOVE_GLIDE_ENABLED
+
+
 def floor_transition_seconds(settings: dict) -> float:
     value = settings.get("floor_transition_seconds", d.FLOOR_TRANSITION_SECONDS)
     if isinstance(value, (int, float)) and not isinstance(value, bool):

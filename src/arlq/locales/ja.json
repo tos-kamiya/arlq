@@ -112,6 +112,8 @@
     "Combat effect duration": "戦闘エフェクトの表示時間",
     "Floor transition duration": "階の移動の表示時間",
     "Character bobbing": "キャラクターの揺れ",
+    "Smooth movement": "なめらかな移動",
+    "Reset all settings to defaults": "すべての設定を初期値に戻す",
     "Automatic repeat stop": "自動リピート停止",
     "Gamepad button settings": "ゲームパッドボタン設定",
     "Help button": "操作方法ボタン",

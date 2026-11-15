@@ -1032,4 +1032,7 @@ FLOOR_TRANSITION_SECONDS_CHOICES = tuple(n / 10 for n in range(11))
 # The sprite GUI's hop of characters in view while waiting for input, set in
 # Settings.
 IDLE_BOB_ENABLED = True
+# The sprite GUI's glide of the player (and the field's scroll) into each
+# one-cell step, set in Settings.
+MOVE_GLIDE_ENABLED = True
 COMBAT_EFFECT_SECONDS_CHOICES = tuple(n / 10 for n in range(6))

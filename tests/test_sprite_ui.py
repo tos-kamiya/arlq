@@ -2335,6 +2335,14 @@ def _slide_ui(sprite_ui, before=(3, 5, 0)):
     return ui, calls
 
 
+def test_step_does_not_glide_when_smooth_movement_is_off(sprite_ui):
+    ui, calls = _slide_ui(sprite_ui)
+    ui.move_glide_enabled = False
+    player = d.Player(4, 5, level=8, lp=d.LP_INIT)
+    assert ui.present_turn(_turn((1, 0)), {'player': player}) is True
+    assert calls == []
+
+
 def test_step_draws_the_new_turn_then_glides(sprite_ui):
     ui, calls = _slide_ui(sprite_ui)
     ui.key_repeat_interval = None
