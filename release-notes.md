@@ -1,5 +1,13 @@
 # ARLQ Release Notes
 
+## 6.7.5 - 2026-11-15
+
+- In sprite mode, defeating a stage boss leaves a lingering afterglow where it
+  fell: a pillar of light, a ring spreading over the ground and sparks
+  drifting up, for about 1.4 seconds. In Stage 6 it marks the boss party's
+  leader, not the Dungeon Core. It is skipped when the combat effect duration
+  is 0.
+
 ## 6.7.4 - 2026-11-15
 
 - In sprite mode, defeating a Vortex briefly shows its dark storm swirling
