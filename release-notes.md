@@ -1,5 +1,17 @@
 # ARLQ Release Notes
 
+## 6.7.11 - 2026-11-16
+
+- Show a golden glow around the collected treasure on the sprite-mode victory
+  screen, and sparkling particles around the player in the character GUI and
+  terminal. Both effects respect the combat effect duration setting.
+- Display treasure and undiscovered Mimics as `[T]` in character modes, and
+  hide treasure and Dungeon Core brackets wherever they would obscure other
+  map contents.
+- Shorten boss and Dungeon Core defeat effects to about 0.93 and 1 second,
+  respectively, in all display modes.
+- Widen the first room of the Stage 5 training ground by one column.
+
 ## 6.7.10 - 2026-11-15
 
 - Apply all settings and exit when confirming the sprite display or gamepad
