@@ -1441,7 +1441,7 @@ def test_member_trial_corridor_and_initial_combat():
     upper = floors[0]
     first = next(e for e in upper.entities if isinstance(e, d.Monster) and (e.x, e.y) == (7, 3))
     pair = next(e for e in upper.entities if isinstance(e, d.Monster) and (e.x, e.y) == (10, 3))
-    knight_pair = next(e for e in upper.entities if isinstance(e, d.Monster) and (e.x, e.y) == (16, 3))
+    knight_pair = next(e for e in upper.entities if isinstance(e, d.Monster) and (e.x, e.y) == (17, 3))
     assert d.current_player_attack(player) >= d.monster_level(first)
     engine._resolve_party_contact(first, upper, floors, player, [0], [upper.up], Counter(), None, 5)
     assert d.current_player_attack(player) < sum(
@@ -1478,10 +1478,10 @@ def test_member_trial_rooms_are_connected_by_short_doorways():
 def test_member_trial_can_bypass_first_pair_and_recruit_knight():
     floors, player = stage5.build_member_trial()
     upper = floors[0]
-    player.x, player.y = 13, 3
+    player.x, player.y = 14, 3
     floor, checkpoint, queue = [0], [upper.up], Counter()
     engine._step((1, 0), floors, player, floor, checkpoint, queue, 1, stage_num=5)
-    assert (player.x, player.y) == (14, 3)
+    assert (player.x, player.y) == (15, 3)
     assert [member.role for member in player.members] == [d.MEMBER_KNIGHT]
     assert sum(isinstance(e, d.Monster) and e.tribe.char == "f" for e in upper.entities) == 5
 
