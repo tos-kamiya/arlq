@@ -120,11 +120,13 @@ class Presenter:
             )
         )
 
-    def hold(self, ui, seconds, create, update=None):
+    def hold(self, ui, seconds, create, update=None, stop=None):
         """Keep an effect alive, pumping input and rebuilding it after resize.
 
         With `update`, it is called as update(progress) before each frame,
         progress running from 0 to 1 over the effect's time, to animate it.
+        With `stop`, the effect ends early (on its last frame) once stop()
+        returns true.
         """
         if seconds <= 0 or ui._closed:
             return
@@ -145,7 +147,7 @@ class Presenter:
             show()
             while not ui._closed and self.clock() < deadline:
                 ui._pump()
-                if ui._closed:
+                if ui._closed or (stop is not None and stop()):
                     break
                 if self._layout(ui) != layout:
                     for obj in objects:

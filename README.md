@@ -126,7 +126,7 @@ rendering detail consistent. If the window is resized narrower than the field,
 the camera follows the player; Shift+Left/Right scrolls the view three cells at
 a time without moving.
 
-The player is shown holding a sword when carrying one. The player faces the direction of its last move, even when a wall or a lost fight keeps it in place, and faces the screen at the start of a stage and after stairs, a fall, or a Loop rewind. The LP gauge appears just above the player, as in a fighting game. Ground discs show whether monsters are identified, their strength, and the player's status.
+The player is shown holding a sword when carrying one. The player faces the direction of its last move, even when a wall or a lost fight keeps it in place, and faces the screen at the start of a stage and after stairs, a fall, or a Loop rewind. After a one-cell step, the player, its fairy, and following party members glide from the cells they left into their new cells, and the field scrolls smoothly along with them when the view follows the player. While a held direction repeats, each glide lasts until the next repeat, so walking does not pause between steps. The LP gauge appears just above the player, as in a fighting game. Ground discs show whether monsters are identified, their strength, and the player's status.
 
 Hover over a character to enlarge it and display its name. Unidentified characters show no name.
 

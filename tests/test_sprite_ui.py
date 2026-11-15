@@ -36,6 +36,7 @@ def sprite_ui(monkeypatch):
     ui._non_ascii_font_result = (ui.font_name, 1.0)
     ui._menu_non_ascii_font_result = (ui.font_name, 1.0)
     ui._menu_active = False
+    ui._closed = False
     ui.window_height = 500
     ui.batch = None
     ui._text_batch = None
@@ -2223,3 +2224,187 @@ def test_present_turn_offers_the_next_view_only_while_playing(sprite_ui, monkeyp
     sprite_ui.present_turn(_turn((0, 1)), {'turn': 3})
     assert seen == [{'turn': 3}]
     assert sprite_ui._next_view is None
+
+
+@pytest.mark.parametrize('interval, seconds', [
+    (None, sprite_funcs.MOVE_SLIDE_SECONDS),
+    (1.0, sprite_funcs.MOVE_SLIDE_SECONDS),
+    (0.1, 0.1 * sprite_funcs.MOVE_SLIDE_REPEAT_SHARE),
+])
+def test_step_glide_fits_within_the_key_repeat_interval(sprite_ui, interval, seconds):
+    sprite_ui.key_repeat_interval = interval
+    assert sprite_ui._move_slide_seconds() == pytest.approx(seconds)
+
+
+def test_step_glide_is_skipped_when_repeat_leaves_too_little_time(sprite_ui, monkeypatch):
+    monkeypatch.setattr(sprite_funcs, 'MOVE_SLIDE_MIN_SECONDS', 0.1)
+    sprite_ui.key_repeat_interval = 0.1
+    assert sprite_ui._move_slide_seconds() == 0
+
+
+@pytest.mark.parametrize('held, repeat, due, seconds', [
+    ((1, 0), True, 10.25, 0.25),                       # held: until the next repeat
+    ((1, 0), True, 10.5, 0.3),                         # never longer than the interval
+    ((1, 0), True, 10.01, 0),                          # too little time left
+    ((1, 0), False, 10.3, sprite_funcs.MOVE_SLIDE_SECONDS),  # the first, pressed step
+    (None, True, 0.0, sprite_funcs.MOVE_SLIDE_SECONDS),      # released, or repeat stopped
+])
+def test_repeated_step_glides_until_the_next_repeat(sprite_ui, monkeypatch, held, repeat,
+                                                     due, seconds):
+    monkeypatch.setattr(sprite_funcs.time, 'monotonic', lambda: 10.0)
+    sprite_ui.key_repeat_interval = 0.3
+    sprite_ui._held_direction = held
+    sprite_ui._next_repeat_at = due
+    sprite_ui.input_was_repeat = repeat
+    assert sprite_ui._move_slide_seconds() == pytest.approx(seconds)
+
+
+@pytest.mark.parametrize('direction, due, seconds', [
+    ((1, 0), 10.25, 0.25),
+    ((0, 0), 0.0, sprite_funcs.MOVE_SLIDE_SECONDS),
+])
+def test_controller_repeat_glides_until_the_next_repeat(sprite_ui, monkeypatch, direction,
+                                                        due, seconds):
+    monkeypatch.setattr(sprite_funcs.time, 'monotonic', lambda: 10.0)
+    sprite_ui.key_repeat_interval = 0.3
+    sprite_ui._held_direction = None
+    sprite_ui.gamepad_previous_direction = direction
+    sprite_ui._next_gamepad_repeat_at = due
+    sprite_ui.input_was_repeat = True
+    assert sprite_ui._move_slide_seconds() == pytest.approx(seconds)
+
+
+@pytest.mark.parametrize('start, row', [((3, 5), 5), ((4, 6), 6), ((4, 4), 5)])
+def test_player_glides_in_from_the_cell_it_left(sprite_ui, start, row):
+    ui = sprite_ui
+    rows = []
+    place = ui._place_sprite
+    ui._place_sprite = lambda text, cx, cy, size, r, *args, **kwargs: (
+        rows.append(r) or place(text, cx, cy, size, r, *args, **kwargs))
+    ui._slide_from = {'@': start}
+    ui._draw_player((4, 5), d.Player(4, 5, level=8, lp=d.LP_INIT))
+    assert rows == [row]
+    assert ui._slide_row is None
+    parts = ui._slide_parts
+    assert parts and {part[3] for part in parts} == {(4 - start[0], 5 - start[1])}
+    sx, sy = 4 - start[0], 5 - start[1]
+    # Drawn back toward (by default on) the cell it left at first, ...
+    back = sprite_funcs.MOVE_SLIDE_START
+    for obj, x, y, _ in parts:
+        assert obj.x == pytest.approx(x - sx * ui.cell_size_x * back, abs=0.5)
+        assert obj.y == pytest.approx(y + sy * ui.cell_size_y * back, abs=0.5)
+    # ... halfway there after half the glide (a steady speed), and on its cell at the end.
+    ui._slide_progress = 0.5
+    ui._place_slide_parts()
+    obj, x, y, _ = parts[0]
+    assert obj.x == pytest.approx(x - sx * ui.cell_size_x * back / 2, abs=0.5)
+    assert obj.y == pytest.approx(y + sy * ui.cell_size_y * back / 2, abs=0.5)
+    ui._slide_progress = 1.0
+    ui._place_slide_parts()
+    assert all((obj.x, obj.y) == (x, y) for obj, x, y, _ in parts)
+
+
+def test_player_does_not_glide_more_than_one_cell(sprite_ui):
+    sprite_ui._slide_from = {'@': (2, 5)}
+    sprite_ui._draw_player((4, 5), d.Player(4, 5, level=8, lp=d.LP_INIT))
+    assert not sprite_ui._slide_parts
+
+
+def test_follower_glides_from_its_last_drawn_cell(sprite_ui):
+    ui = sprite_ui
+    ui._member_variants = {'H': sprite_funcs.MEMBER_SPRITES['H'][0]}
+    ui._member_skins = dict.fromkeys(sprite_funcs.MEMBER_SPRITES, 'm')
+    glyph = display.FieldGlyph(4, 5, 'H', 'member', member_role=d.MEMBER_HEALER)
+    ui._draw_member(glyph)
+    assert ui._follower_cells == {('H', d.MEMBER_HEALER): (4, 5)}
+    assert not ui._slide_parts
+    ui._slide_from = {('H', d.MEMBER_HEALER): (4, 5)}
+    ui._draw_member(display.FieldGlyph(5, 5, 'H', 'member', member_role=d.MEMBER_HEALER))
+    assert {part[3] for part in ui._slide_parts} == {(1, 0)}
+
+
+def _slide_ui(sprite_ui, before=(3, 5, 0)):
+    ui = sprite_ui
+    ui._last_camera_player_pos = before
+    ui._key_queue = []
+    calls = []
+    ui._presenter.play = lambda *args: True
+    ui.draw_stage = lambda **view: calls.append(('draw', dict(ui._slide_from or {})))
+    ui._presenter.hold = lambda ui_, seconds, create, update, stop: calls.append(
+        ('hold', seconds))
+    return ui, calls
+
+
+def test_step_draws_the_new_turn_then_glides(sprite_ui):
+    ui, calls = _slide_ui(sprite_ui)
+    ui.key_repeat_interval = None
+    player = d.Player(4, 5, level=8, lp=d.LP_INIT)
+    assert ui.present_turn(_turn((1, 0)), {'player': player}) is True
+    assert calls == [('draw', {'@': (3, 5)}), ('hold', sprite_funcs.MOVE_SLIDE_SECONDS)]
+    assert ui._slide_from is None and ui._slide_parts == []
+
+
+@pytest.mark.parametrize('before, events, map_mode', [
+    ((4, 5, 0), [], False),     # bumped into a wall or lost a fight
+    ((2, 5, 0), [], False),     # more than one cell
+    ((3, 5, 1), [], False),     # another floor
+    ((3, 5, 0), [FloorChanged(0, 'down', 1, (3, 3))], False),
+    ((3, 5, 0), [Rewound(0, 'rewind', {})], False),
+    ((3, 5, 0), [], True),
+    (None, [], False),
+])
+def test_step_does_not_glide_without_a_one_cell_move(sprite_ui, before, events, map_mode):
+    ui, calls = _slide_ui(sprite_ui, before)
+    ui.map_mode = map_mode
+    player = d.Player(4, 5, level=8, lp=d.LP_INIT)
+    ui.present_turn(_turn((1, 0), events), {'player': player})
+    assert calls == []
+
+
+def test_idle_hop_waits_while_gliding(bob_ui):
+    bob_ui.now = sprite_funcs.IDLE_BOB_INTERVAL * 1.5
+    assert bob_ui._idle_bob_raised()
+    bob_ui._slide_from = {'@': (3, 5)}
+    assert not bob_ui._idle_bob_raised()
+
+
+def test_glide_end_frame_is_not_redrawn_for_the_same_view(sprite_ui, monkeypatch):
+    ui = sprite_ui
+    drawn = []
+    monkeypatch.setattr(PygletUI, 'draw_stage', lambda self, **kwargs: drawn.append(kwargs))
+    monkeypatch.setattr(ui, '_update_strength_column_width', lambda: None)
+    ui.window_width, ui.strength_column_width = 800, 100
+    ui._last_stage_draw = (None, {'turn': 3, 'message': 'a'})
+    ui._glide_drew_next_turn = True
+    ui.draw_stage(turn=3, message='a')
+    assert drawn == [] and not ui._glide_drew_next_turn
+    # Only once, and never for a changed view.
+    ui.draw_stage(turn=3, message='a')
+    ui._glide_drew_next_turn = True
+    ui.draw_stage(turn=3, message='')
+    assert len(drawn) == 2
+
+
+def test_field_scrolls_along_with_a_glide(sprite_ui):
+    ui = sprite_ui
+    assert ui._field_scroll_shift() == 0
+    ui._slide_scroll_from = 10
+    ui._horizontal_scroll_px = 11 * ui.cell_size_x
+    # The camera moved one cell right: the field starts a cell further right,
+    # just as the player starts a cell to the left, so the player stays put.
+    texel = ui.scale / sprite_defs.LOW_RESOLUTION_DETAIL_SCALE
+    expected = round(ui.cell_size_x * sprite_funcs.MOVE_SLIDE_START / texel) * texel
+    assert ui._field_scroll_shift() == expected
+    assert ui._field_scroll_shift() == ui._slide_shift(ui.cell_size_x)
+    ui._slide_progress = 1.0
+    assert ui._field_scroll_shift() == 0
+
+
+def test_glide_draws_a_cell_past_the_window_edges(sprite_ui):
+    ui = sprite_ui
+    ui.window_width = 400
+    width = ui.cell_size_x
+    assert not ui._intersects_window(-2 * width, width)
+    ui._slide_from = {'@': (3, 5)}
+    assert ui._intersects_window(-2 * width + 2, width)
+    assert ui._intersects_window(400 + width - 1, width)

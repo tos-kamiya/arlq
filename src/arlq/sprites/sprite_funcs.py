@@ -202,6 +202,18 @@ STRENGTH_TEXT_SCALE = 0.7
 # low-resolution render target (1 window pixel at 100%).
 IDLE_BOB_INTERVAL = 0.7
 IDLE_BOB_TEXELS = 2
+# After a one-cell step the next turn is drawn at once, but the player, its
+# fairy and followers glide in at a steady speed from MOVE_SLIDE_START of the
+# way back toward the cells they left (the whole cell, so they never jump),
+# and the field scrolls along with the camera over the same time. A pressed step glides
+# for MOVE_SLIDE_SECONDS, at most MOVE_SLIDE_REPEAT_SHARE of the key repeat
+# interval; a repeated step of a held direction glides until the next repeat
+# is due, so walking does not pause between steps. A glide shorter than
+# MOVE_SLIDE_MIN_SECONDS is skipped.
+MOVE_SLIDE_SECONDS = 0.12
+MOVE_SLIDE_START = 1.0
+MOVE_SLIDE_REPEAT_SHARE = 0.8
+MOVE_SLIDE_MIN_SECONDS = 0.04
 # Empowered-rank marks, rendered as raised apostrophes in near-white resin and
 # drawn white whatever the monster's strength color. They float at the upper
 # right of the sprite instead of in the next cell: centre offset from the
@@ -278,6 +290,17 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     _respawn_draws = ()
     _respawn_columns_drawn = frozenset()
     _show_pit_up_marker = True
+    # A step being glided (see _slide_into_cell): the cells the player ('@')
+    # and followers left, keyed like _follower_cells; None otherwise.
+    _slide_from = None
+    _slide_progress = 0.0
+    # The horizontal scroll (in cells) the field glides from, during a glide.
+    _slide_scroll_from = None
+    # Row of the cell left, while drawing a character gliding out of it.
+    _slide_row = None
+    # Set by a finished glide, whose last frame already shows the next turn:
+    # the next draw_stage of the same view is skipped (see draw_stage).
+    _glide_drew_next_turn = False
 
     def _initialize_state(self):
         super()._initialize_state()
@@ -303,6 +326,10 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._follower_images = {}
         self._theme_floor_tiles = {}
         self._wall_rect_colors = {}
+        # Followers' cells in the last frame, keyed by (char, member role).
+        self._follower_cells = {}
+        # Drawables of gliding characters as (drawable, x, y, step).
+        self._slide_parts = []
 
     def __init__(self, scale=None, key_repeat_interval=None):
         self._member_variants = {char: random.choice(names) for char, names in MEMBER_SPRITES.items()}
@@ -456,6 +483,11 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         return self._row_groups[order]
 
     def draw_stage(self, *, decor=None, **kwargs):
+        if self._glide_drew_next_turn:
+            # Redrawing the frame a glide ended on would only pause walking.
+            self._glide_drew_next_turn = False
+            if self._last_stage_draw == (decor, kwargs):
+                return None
         self._update_strength_column_width()
         self.field_pixel_width = max(
             self.cell_size_x, self.window_width - self.strength_column_width,
@@ -544,6 +576,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     def _idle_bob_raised(self):
         return (
             self.idle_bob_enabled
+            and self._slide_from is None
             and self._stage_input_active
             and not self.map_mode
             and int(self._bob_clock() / IDLE_BOB_INTERVAL) % 2 == 1
@@ -662,14 +695,21 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._update_composite_scale()
         use_render_target = self._render_framebuffer is not None and not self._menu_active
         projection = self.window.projection
+        # The field (not the sidebar or HUD, drawn natively on top) scrolls
+        # along with a glide.
+        shift = 0 if self._menu_active else self._field_scroll_shift()
         if use_render_target:
             self._render_framebuffer.bind()
             pyglet.gl.glViewport(0, 0, *self._render_target_size)
             unit = self.scale / LOW_RESOLUTION_DETAIL_SCALE
             width, height = self._render_target_size
             self.window.projection = pyglet.math.Mat4.orthogonal_projection(
-                0, width * unit, self.window_height - height * unit,
+                -shift, width * unit - shift, self.window_height - height * unit,
                 self.window_height, -255, 255,
+            )
+        elif shift:
+            self.window.projection = pyglet.math.Mat4.orthogonal_projection(
+                -shift, self.window.width - shift, 0, self.window.height, -255, 255,
             )
         try:
             self.window.clear()
@@ -680,6 +720,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
                 self._render_framebuffer.unbind()
                 self.window.projection = projection
                 pyglet.gl.glViewport(0, 0, *self._framebuffer_size())
+            elif shift:
+                self.window.projection = projection
         if use_render_target:
             self.window.clear()
             self._composite_batch.draw()
@@ -734,12 +776,119 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     def present_turn(self, result, view):
         self._update_player_facing(result)
+        before = getattr(self, '_last_camera_player_pos', None)
+        followers_before = dict(getattr(self, '_follower_cells', {}))
         # A floor transition draws the next view under its fade-in.
         self._next_view = view
         try:
-            return self._presenter.play(self, result, view)
+            if not self._presenter.play(self, result, view):
+                return False
+            self._slide_into_cell(result, view, before, followers_before)
+            return not self._closed
         finally:
             self._next_view = None
+
+    def _next_movement_repeat_at(self):
+        """When a held direction (key or controller) repeats next, or None."""
+        if getattr(self, '_held_direction', None) is not None:
+            return self._next_repeat_at
+        due = getattr(self, '_next_gamepad_repeat_at', None)
+        if (due is not None and due != float('inf')
+                and getattr(self, 'gamepad_previous_direction', None) not in (None, (0, 0))):
+            return due
+        return None
+
+    def _move_slide_seconds(self):
+        interval = getattr(self, 'key_repeat_interval', None)
+        due = self._next_movement_repeat_at()
+        if getattr(self, 'input_was_repeat', False) and interval is not None and due:
+            # End on time for the next repeat; the input loop then takes it at once.
+            seconds = min(interval, due - time.monotonic())
+        else:
+            seconds = MOVE_SLIDE_SECONDS
+            if interval is not None:
+                seconds = min(seconds, MOVE_SLIDE_REPEAT_SHARE * interval)
+        return seconds if seconds >= MOVE_SLIDE_MIN_SECONDS else 0
+
+    def _slide_into_cell(self, result, view, before, followers_before):
+        """After a one-cell step, draw the new turn (camera included) and
+        glide the player and its followers in from the cells they left.
+        Presentation only: the turn has already been played."""
+        player = view.get('player')
+        if (self._closed or self.map_mode or before is None or player is None
+                or '@' not in self._sprite_images or view.get('floor_view')
+                or result.floor_before != result.floor_after
+                or any(isinstance(event, (FloorChanged, Rewound)) for event in result.events)):
+            return
+        bx, by, floor = before
+        if floor != player.current_floor or abs(player.x - bx) + abs(player.y - by) != 1:
+            return
+        seconds = self._move_slide_seconds()
+        if seconds <= 0:
+            return
+        self._slide_from = {'@': (bx, by), **followers_before}
+        self._slide_progress = 0.0
+        self._slide_scroll_from = self._horizontal_scroll_px / self.cell_size_x
+        self._bob_raised = False
+
+        def update(progress):
+            self._slide_progress = progress
+            self._place_slide_parts()
+
+        try:
+            self.draw_stage(**view)
+            self._presenter.hold(self, seconds, lambda: [], update,
+                                 stop=lambda: bool(self._key_queue))
+            self._glide_drew_next_turn = not self._closed
+        finally:
+            self._slide_from = None
+            self._slide_scroll_from = None
+            self._slide_parts = []
+
+    def _slide_capture_start(self, key, pos):
+        """Before drawing a character at `pos`: the index of its first
+        drawable when it glides in from a neighbouring cell, else None."""
+        start = self._slide_from.get(key) if self._slide_from else None
+        if start is None or abs(pos[0] - start[0]) + abs(pos[1] - start[1]) != 1:
+            return None
+        self._slide_row = max(pos[1], start[1])
+        return len(getattr(self, '_uncached_drawables', ()))
+
+    def _slide_capture_end(self, key, pos, index):
+        self._slide_row = None
+        if index is None:
+            return
+        start = self._slide_from[key]
+        step = (pos[0] - start[0], pos[1] - start[1])
+        added = getattr(self, '_uncached_drawables', [])[index:]
+        self._slide_parts.extend((obj, obj.x, obj.y, step) for obj in added)
+        self._place_slide_parts()
+
+    def _slide_shift(self, pixels):
+        """The remaining part of a glide of `pixels`, in whole render texels."""
+        remaining = MOVE_SLIDE_START * (1 - self._slide_progress)
+        texel = self.scale / LOW_RESOLUTION_DETAIL_SCALE
+        return round(pixels * remaining / texel) * texel
+
+    def _place_slide_parts(self):
+        """Shift the gliding drawables back toward the cells they left by the
+        remaining part of the step."""
+        for obj, x, y, (sx, sy) in self._slide_parts:
+            obj.x = x - self._slide_shift(sx * self.cell_size_x)
+            obj.y = y + self._slide_shift(sy * self.cell_size_y)
+
+    def _field_scroll_shift(self):
+        """How far right the field is drawn while it scrolls along with a
+        glide: the remaining part of the camera's move."""
+        if self._slide_scroll_from is None:
+            return 0
+        moved = self._horizontal_scroll_px - self._slide_scroll_from * self.cell_size_x
+        return self._slide_shift(moved)
+
+    def _slide_margin(self):
+        """Extra width drawn past each side of the window during a glide, for
+        the cells the scrolling field brings in."""
+        return self.cell_size_x if self._slide_from is not None else 0
 
     def _update_player_facing(self, result):
         """Face the last move, even one that left the player in place; face
@@ -757,10 +906,14 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._player_cell = pos
         _, background = ui_display.player_appearance(player)
         poison = self._tone_color('magenta') if player.item == d.ITEM_POISONED else None
-        top = self._draw_sprite(pos, self._player_sprite(player),
-                                self._tone_color(background or 'default'), poison,
-                                bob=True)
-        self._draw_lp_gauge(pos, player, top)
+        slide = self._slide_capture_start('@', pos)
+        try:
+            top = self._draw_sprite(pos, self._player_sprite(player),
+                                    self._tone_color(background or 'default'), poison,
+                                    bob=True)
+            self._draw_lp_gauge(pos, player, top)
+        finally:
+            self._slide_capture_end('@', pos, slide)
 
     def _draw_player_wall_break_glyph(self, player):
         return
@@ -1045,7 +1198,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         # The translucent sidebar still reveals the scene behind it.
         window_width = self.window_width
         # Linear enlargement can sample the adjacent render-target texel.
-        guard = self.scale / LOW_RESOLUTION_DETAIL_SCALE
+        guard = self.scale / LOW_RESOLUTION_DETAIL_SCALE + self._slide_margin()
         return window_width is None or (left <= window_width + guard
                                         and left + width >= -guard)
 
@@ -1060,7 +1213,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             return range(width)
         scroll = self._horizontal_scroll_px
         # Include terrain overhang, stair discs and the one-pixel seam overlap.
-        margin = max(TERRAIN_SIDE, GROUND_DISC_RADIUS) * self.cell_size_x + 1
+        margin = (max(TERRAIN_SIDE, GROUND_DISC_RADIUS) * self.cell_size_x + 1
+                  + self._slide_margin())
         rock = self._sprite_images.get(ROCK_SPRITE)
         if rock is not None:
             padding = max(1, round(self.scale))
@@ -1173,6 +1327,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             drawable.delete()
         self._uncached_drawables = []
         self._bobbing = []
+        self._slide_parts = []
+        self._follower_cells = {}
         super()._clear_drawables()
         self._sprite_cells.clear()
         self._player_cell = None
@@ -1247,14 +1403,20 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     def _draw_dialogue_panel(self, x, y, width, height):
         if width > 0 and height > 0:
-            self._draw_rect(
-                x,
-                y,
-                width,
-                height,
-                (0, 0, 0, TEXT_PANEL_ALPHA),
-                group=self._overlay_group,
-            )
+            # Drawn with the HUD, under its text, so it stays put while the
+            # field scrolls along with a glide.
+            drawing_hud, self._drawing_hud = self._drawing_hud, True
+            try:
+                self._draw_rect(
+                    x,
+                    y,
+                    width,
+                    height,
+                    (0, 0, 0, TEXT_PANEL_ALPHA),
+                    group=self._overlay_group,
+                )
+            finally:
+                self._drawing_hud = drawing_hud
 
     def _draw_text_panel(self, kind, x, width):
         padding = max(1, round(TEXT_PANEL_PADDING * self._menu_scale))
@@ -1290,6 +1452,12 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         color = self._tone_color('default')
         if glyph.member_role == d.MEMBER_JAVELIN_ELF:
             self._enlarge_neighbors = False
+        pos = (glyph.x, glyph.y)
+        slide = None
+        if glyph.tone == 'member':
+            follower = (glyph.char, glyph.member_role)
+            self._follower_cells[follower] = pos
+            slide = self._slide_capture_start(follower, pos)
         try:
             # Followers stay still, smaller and with a faded outline; members
             # waiting to be met hop.
@@ -1299,6 +1467,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
                               follower=glyph.tone == 'member')
         finally:
             self._enlarge_neighbors = True
+            if slide is not None:
+                self._slide_capture_end(follower, pos, slide)
 
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
@@ -1389,8 +1559,15 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         dx, dy = FAMILIAR_OFFSET
         cx = self._field_col_x(x - 1) + 0.5 * self.cell_size_x + dx * self._sprite_unit()
         cy = (y + 0.5 - dy) * self.cell_size_y
-        self._place_sprite(char, cx, cy, FAMILIAR_SIZE, y, 'familiar', dimmed=False)
-        self._draw_pillar(cx, cy, FAMILIAR_SIZE, y, COLOR_MAP[CI_GREEN], familiar=True)
+        # The fairy glides with the player, from the left of `pos`.
+        player_pos = (x - 1, y)
+        slide = self._slide_capture_start('@', player_pos)
+        row = y if self._slide_row is None else self._slide_row
+        try:
+            self._place_sprite(char, cx, cy, FAMILIAR_SIZE, row, 'familiar', dimmed=False)
+            self._draw_pillar(cx, cy, FAMILIAR_SIZE, row, COLOR_MAP[CI_GREEN], familiar=True)
+        finally:
+            self._slide_capture_end('@', player_pos, slide)
 
     def _neighbor_of_player(self, pos):
         if not self._enlarge_neighbors or self._player_cell is None:
@@ -1415,7 +1592,10 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         if hovered:
             size *= HOVER_SCALE
         glow = color if text in UNKNOWN_SPRITES else None
-        top = self._place_sprite(text, cx, cy, size, y,
+        # A character gliding up out of a cell stays in that (nearer) row's
+        # layer, in front of what stands beside the cell it left.
+        row = y if self._slide_row is None else self._slide_row
+        top = self._place_sprite(text, cx, cy, size, row,
                                  'hover' if hovered else 'sprite', dimmed, shade, glow,
                                  bob=bob and not self.map_mode and self._in_view(pos),
                                  follower=follower)

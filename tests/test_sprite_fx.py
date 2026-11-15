@@ -265,3 +265,20 @@ def test_hold_without_update_adds_no_final_frame():
     clock = Clock()
     Presenter(clock=clock, wait=clock.wait).hold(ui, 0.05, lambda: [])
     assert len(ui.frames) == 4
+
+
+def test_hold_stops_early_on_its_last_frame():
+    ui = fake_ui()
+    clock = Clock()
+    presenter = Presenter(clock=clock, wait=clock.wait)
+    progress = []
+
+    def pump():
+        if len(progress) >= 2:
+            ui._key_queue.append(("right", 0))
+
+    ui._pump = pump
+    presenter.hold(ui, 1.0, lambda: [], progress.append, stop=lambda: bool(ui._key_queue))
+    assert progress[-1] == 1.0
+    assert clock.now < 0.1
+    assert ui._key_queue == [("right", 0)]
