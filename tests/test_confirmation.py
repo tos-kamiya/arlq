@@ -45,3 +45,18 @@ def test_terminal_confirmation_direct_keys(text, expected):
     ui._style = lambda text, **kw: text
     ui._read_key = lambda: Keystroke(text, code=27 if text == '\x1b' else None)
     assert ui.confirm_game_over() is expected
+
+
+def test_gui_game_over_redraws_after_resize():
+    ui = PygletUI.__new__(PygletUI)
+    ui._initialize_state()
+    ui._closed = False
+    ui._key_queue = []
+    ui._gamepad_pressed_buttons = set()
+    ui.gamepad_help_button = None
+    ui._pump = lambda: None
+    ui._resize_redraw_pending = True
+    # A resize returns a no-op input, so the game loop redraws the final
+    # screen (and anything drawn over it) for the new window size.
+    assert ui.input_game_over() == (0, 0, False)
+    assert not ui._resize_redraw_pending

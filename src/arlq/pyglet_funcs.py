@@ -2091,6 +2091,11 @@ class PygletUI(PygletSettingsMixin):
                 if symbol in _DIRECTION_KEYS:
                     return (*_DIRECTION_KEYS[symbol], bool(modifiers & pgkey.MOD_SHIFT))
 
+            if self._resize_redraw_pending:
+                # Let the game loop redraw the final screen for the new size.
+                self._resize_redraw_pending = False
+                return (0, 0, False)
+
             time.sleep(1 / 30)
 
     def quit(self):

@@ -536,13 +536,11 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         won = (player is not None and player.treasure_collected and player.stage_won
                and not kwargs.get('floor_view') and not self.map_mode)
         # The game ends on the chest's cell: the taken chest stays in sight
-        # there, behind the player (see _draw_player), inside its glow.
+        # there, behind the player, inside its glow (see _draw_player).
         self._won_chest_cell = (player.x, player.y) if won else None
-        result = super().draw_stage(decor=decor, **kwargs)
-        if won:
-            self.draw_treasure_glow((player.x, player.y))
-        else:
+        if not won:
             self._treasure_glow_since = None
+        result = super().draw_stage(decor=decor, **kwargs)
         return result
 
     def _draw_text(
@@ -934,6 +932,10 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             self._player_facing = 'down'
 
     def _draw_player(self, pos, player):
+        if pos == self._won_chest_cell:
+            # Made here, before draw_stage shows the frame, so a redraw never
+            # shows the final screen without its glow.
+            self.draw_treasure_glow(pos)
         if '@' not in self._sprite_images:
             return super()._draw_player(pos, player)
         if pos == self._won_chest_cell:
