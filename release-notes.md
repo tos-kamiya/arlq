@@ -1,5 +1,12 @@
 # ARLQ Release Notes
 
+## 6.7.4 - 2026-11-15
+
+- In sprite mode, defeating a Vortex briefly shows its dark storm swirling
+  over the floor around where it stood, after the slash and before the
+  rearranged floor appears. It lasts 4/3 of the combat effect duration and
+  is skipped when that is set to 0.
+
 ## 6.7.3 - 2026-11-15
 
 - Add a `Smooth movement` setting to the sprite display settings to turn the
