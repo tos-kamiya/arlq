@@ -95,7 +95,7 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
             "--auto-repeat-stop",
             action=argparse.BooleanOptionalAction,
             default=argparse.SUPPRESS,
-            help="Stop held movement near hazards and after encounters (saves for future GUI starts).",
+            help="Stop held movement near known hazards and entities (saves for future GUI starts).",
         )
     dev.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
     dev.add_argument(

@@ -847,10 +847,18 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             self._slide_progress = progress
             self._place_slide_parts()
 
+        def new_input():
+            if self._key_queue:
+                return True
+            if self.controller:
+                direction = self._controller_direction(self.controller)
+                return direction != (0, 0) and direction != self.gamepad_previous_direction
+            return False
+
         try:
             self.draw_stage(**view)
             self._presenter.hold(self, seconds, lambda: [], update,
-                                 stop=lambda: bool(self._key_queue))
+                                 stop=new_input)
             self._glide_drew_next_turn = not self._closed
         finally:
             self._slide_from = None

@@ -163,7 +163,7 @@ def test_pegasus_jump_marks_repeat_stop_reason():
     assert (player.x, player.y) == (2 + d.PEGASUS_STEP_X, 2)
 
 
-def test_entity_contact_marks_repeat_stop_reason(monkeypatch):
+def test_entity_contact_does_not_stop_repeat(monkeypatch):
     player = d.Player(2, 2, 100, 90)
     monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
     floor = floor_with([monster])
@@ -174,7 +174,7 @@ def test_entity_contact_marks_repeat_stop_reason(monkeypatch):
 
     reasons = run_step_for_repeat_reasons(player, [floor], (1, 0))
 
-    assert "entity_contact" in reasons
+    assert not reasons
 
 
 def test_collapse_trigger_marks_repeat_stop_reason():

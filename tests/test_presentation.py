@@ -133,7 +133,7 @@ def test_frontends_use_one_effect_path_at_the_expected_time(monkeypatch, fronten
     ui.draw_combat_effect = combat
     engine.run_game(ui, "test", trace=trace, stage_num=1)
     effects = [("effect", (3, 2), False), ("effect", (3, 2) if won else (2, 2), won)]
-    expected = [("draw", 0), ("stop",), *effects, ("draw", 1)]
+    expected = [("draw", 0), *effects, ("draw", 1)]
     assert calls == expected
 
 

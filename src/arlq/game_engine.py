@@ -1660,8 +1660,6 @@ def _process_multi_floor_turn(
         None,
     )
     if hit is not None and not standing_on_collapse:
-        if repeat_stop_reasons is not None:
-            repeat_stop_reasons.add("entity_contact")
         entity = current.entities[hit]
         if isinstance(entity, d.Fairy) and entity.tribe.char == "l":
             contact = _resolve_contact(
@@ -1768,8 +1766,6 @@ def _process_multi_floor_turn(
         None,
     )
     if hit is not None:
-        if repeat_stop_reasons is not None:
-            repeat_stop_reasons.add("entity_contact")
         entity = current.entities[hit]
         combat_event = None
         contact_lp = player.lp

@@ -2352,6 +2352,27 @@ def test_step_draws_the_new_turn_then_glides(sprite_ui):
     assert ui._slide_from is None and ui._slide_parts == []
 
 
+def test_gamepad_direction_change_interrupts_glide(sprite_ui):
+    ui, _ = _slide_ui(sprite_ui)
+    ui.controller = object()
+    ui.gamepad_previous_direction = (1, 0)
+    direction = [(1, 0)]
+    ui._controller_direction = lambda controller: direction[0]
+    checked = []
+
+    def hold(ui_, seconds, create, update, stop):
+        checked.append(stop())
+        direction[0] = (0, 1)
+        checked.append(stop())
+
+    ui._presenter.hold = hold
+    player = d.Player(4, 5, level=8, lp=d.LP_INIT)
+    ui.present_turn(_turn((1, 0)), {'player': player})
+
+    assert checked == [False, True]
+    assert ui.gamepad_previous_direction == (1, 0)
+
+
 @pytest.mark.parametrize('before, events, map_mode', [
     ((4, 5, 0), [], False),     # bumped into a wall or lost a fight
     ((2, 5, 0), [], False),     # more than one cell

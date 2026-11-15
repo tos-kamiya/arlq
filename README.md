@@ -81,13 +81,14 @@ Integer seeds use their low 32 bits.
 | `--terminal` | Run the game in the terminal using Blessed. |
 | `--scale FACTOR` | Enlarge or reduce the Pyglet GUI (from `0.5` to `4.0`, for example `--scale 1.5`). The selected scale is saved in the per-user configuration directory and used automatically on the next GUI launch. You can also change it in the stage selection screen's `Settings`. |
 | `--key-repeat-interval SECONDS` | Set the GUI movement repeat delay and interval (from `0.1` to `1.0` seconds), or use `none` to disable it. The setting is saved for later GUI starts and can also be changed in the stage selection screen's `Settings`. |
-| `--auto-repeat-stop` / `--no-auto-repeat-stop` | Enable or disable automatic repeat stopping near known hazards and after encounters. Enabled by default; the selection is saved for later GUI starts and can also be changed in `Settings`. |
+| `--auto-repeat-stop` / `--no-auto-repeat-stop` | Enable or disable automatic repeat stopping near known hazards and visible entities. Enabled by default; the selection is saved for later GUI starts and can also be changed in `Settings`. |
 
 In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 seconds for combat and barrier damage effects (default: 0.3). Choosing 0 disables the effects and their delay. The selection is saved and also used in terminal mode.
 In `arlq-sprites`, this setting, `Floor transition duration`, `Character bobbing`, and `Smooth movement` are in `Settings` → `Sprite display settings`. Open the submenu with Enter or Right; Enter applies all changes and exits settings, while Esc cancels the submenu and returns to `Settings`.
 These effects appear after each move is resolved, before the map refreshes.
 `Reset all settings to defaults`, the last row of `Settings`, sets every setting back to its default, including those in `Sprite display settings` and the gamepad buttons (default movement repeat: no repeat). Press Enter on it to show the defaults; the cursor returns to the top row, where Enter applies them and Esc cancels.
 In `arlq-sprites`, the window keeps updating during effects, and keys pressed during them are queued for the next input.
+In `arlq`, the window also processes events during combat effects; keys pressed then are queued for the next input.
 In `arlq-sprites`, the slash of a won fight is cut the way the player attacked (up, down, left, or right).
 Defeating a Vortex (`V`) briefly shows its storm around where it stood, after the combat effect and before the rearranged floor appears. The character GUI and terminal modes render it with colored braille characters.
 Defeating a stage boss (in Stage 6, the leader of the boss party; not the Dungeon Core) leaves a lingering afterglow where it fell: a pillar of light, a ring spreading over the ground and sparks drifting up, for about 1.4 seconds. It is skipped when `Combat effect duration` is 0.
@@ -153,7 +154,7 @@ Characters next to the player are drawn larger. Party members and the Javelin El
 
   | Feature | Description |
   | --- | --- |
-  | Movement repeat | Holding a direction repeats movement when enabled. Automatic stopping is on by default near known hazards and after encounters or special movement; release and press the direction again to resume. Change it in `Settings` or with `--no-auto-repeat-stop`. |
+  | Movement repeat | Holding a direction repeats movement when enabled. Automatic stopping is on by default before known hazards and visible entities, and after some special movement; release and press the direction again to resume. Change it in `Settings` or with `--no-auto-repeat-stop`. |
   | Reachable area preview | Press `F` to highlight explored cells reachable with your remaining LP. A gamepad button can show the preview while held or toggle it. While viewing the preview, Up or Down inspects another floor in Stages 3 and 4; moving closes the keyboard preview. Unexplored cells and routes remain hidden. The estimate avoids displayed entities and stairs, does not break walls or count LP recovery, and excludes Marksman and Ivy damage, so actual reach may differ. |
 
 * **Monsters, Fairies, and Elves**

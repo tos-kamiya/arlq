@@ -83,6 +83,34 @@ def test_gui_effect_keeps_player_cell(monkeypatch):
     assert positions == [(30, 70, 10, 10), (30, 77.5, 5, 2.5)]
 
 
+def test_gui_combat_effect_pumps_events_until_deadline(monkeypatch):
+    from arlq import pyglet_funcs
+
+    ui = pyglet_funcs.PygletUI.__new__(pyglet_funcs.PygletUI)
+    ui.combat_effect_seconds = 0.05
+    ui._closed = False
+    ui._stage_input_active = False
+    ui._combat_cell_colors = {}
+    ui.cell_size_y = 10
+    ui._field_col_x = lambda x: x * 10
+    ui._field_col_width = lambda x: 10
+    ui._field_text_x_offset = lambda: 0
+    ui._draw_rect = lambda *args, **kwargs: None
+    ui._draw_text = lambda *args, **kwargs: None
+    ui._flip = lambda: None
+    now = [0.0]
+    active = []
+    ui._pump = lambda: active.append(ui._stage_input_active)
+    monkeypatch.setattr(pyglet_funcs.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(pyglet_funcs.time, "sleep", lambda seconds: now.__setitem__(0, now[0] + seconds))
+
+    ui.draw_combat_effect((1, 1), True)
+
+    assert active and all(active)
+    assert now[0] == pytest.approx(0.05)
+    assert not ui._stage_input_active
+
+
 def test_braille_dot_mapping():
     from arlq.pyglet_funcs import _braille_dots
 

@@ -1185,7 +1185,16 @@ class PygletUI(PygletSettingsMixin):
                             x_offset=self._field_text_x_offset(),
                             group=pyglet.graphics.Group(order=10002))
         self._flip()
-        time.sleep(seconds)
+        deadline = time.monotonic() + seconds
+        was_active = self._stage_input_active
+        self._stage_input_active = True
+        try:
+            while not self._closed and time.monotonic() < deadline:
+                self._pump()
+                if not self._closed:
+                    time.sleep(min(1 / 60, max(0, deadline - time.monotonic())))
+        finally:
+            self._stage_input_active = was_active
 
     def _draw_braille_effect(self, name, pos):
         from .braille_effects import effect_frames
