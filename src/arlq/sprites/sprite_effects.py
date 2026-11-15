@@ -53,6 +53,16 @@ LANDING_FEET_HEIGHT = 0.725
 ROPE_COLOR = (160, 134, 96)
 ROPE_WIDTH, ROPE_OFFSET, ROPE_LENGTH = 0.08, 0.1, 2.0
 ROPE_GLOW_WIDTH, ROPE_GLOW_LENGTH, ROPE_GLOW_OPACITY = 0.9, 1.3, 90
+# A defeated Vortex (draw_vortex_effect): its storm (vortex-storm.png, see
+# build-vortex-storm.py) is shown over the floor for VORTEX_SECONDS_FACTOR
+# times the combat effect's time, the funnel's eye, VORTEX_STORM_FOOT of the
+# image's height below its centre, on the Vortex's cell. The storm's reach,
+# VORTEX_STORM_REACH of the image's width from the eye, is drawn
+# VORTEX_RADIUS_RATIO the size of the area the Vortex rearranges.
+VORTEX_STORM_REACH = 1.0 / 2.6
+VORTEX_STORM_FOOT = 0.07
+VORTEX_RADIUS_RATIO = 1 / 4
+VORTEX_SECONDS_FACTOR = 4 / 3
 
 
 class SpriteEffectsMixin:
@@ -95,6 +105,33 @@ class SpriteEffectsMixin:
                 effect.scale = scale
                 effects.append(effect)
             return effects
+
+        self._play_effect(seconds, create)
+
+    def draw_vortex_effect(self, pos) -> None:
+        """Show the storm of a defeated Vortex over the floor around its cell."""
+        seconds = self.combat_effect_seconds * VORTEX_SECONDS_FACTOR
+        path = Path(__file__).parent.parent / "assets" / "effects" / "vortex-storm.png"
+        if seconds == 0 or not path.is_file():
+            return
+        image = pyglet.image.load(str(path))
+        image.anchor_x = image.width // 2
+        image.anchor_y = round(image.height * (0.5 - VORTEX_STORM_FOOT))
+        x, y = pos
+        horizontal = round(d.FIELD_WIDTH * d.VORTEX_FLOOR_DIAMETER_RATIO / 2)
+        vertical = round(horizontal / d.FOV_WIDTH_EXPANSION_RATIO)
+        reach = VORTEX_STORM_REACH * image.width
+
+        def create():
+            storm = pyglet.sprite.Sprite(
+                image, x=self._field_col_x(x) + self.cell_size_x / 2,
+                y=self.window_height - (y + 0.5) * self.cell_size_y,
+                batch=self.batch, group=pyglet.graphics.Group(order=100000),
+            )
+            storm.scale_x = horizontal * VORTEX_RADIUS_RATIO * self.cell_size_x / reach
+            storm.scale_y = vertical * VORTEX_RADIUS_RATIO * self.cell_size_y / reach
+            storm.color = self._display_color((255, 255, 255))
+            return [storm]
 
         self._play_effect(seconds, create)
 

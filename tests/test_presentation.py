@@ -210,3 +210,21 @@ def test_closing_presenter_skips_further_draws_and_preserves_completed_outcome(
     engine.run_game(ui, "test", stage_num=1, trace=trace)
     assert frames == [0]
     assert trace.outcome == ("win" if completed else "quit")
+
+
+@pytest.mark.parametrize("won", [False, True])
+def test_won_combat_against_vortex_plays_vortex_effect(won):
+    player = d.Player(2, 2, 10, 90)
+    targets = [
+        (EntityRef(1, "F", "monster"), (3, 2)),
+        (EntityRef(2, "V", "monster"), (3, 3)),
+    ]
+    event = Combat(0, (2, 2), targets, won, 0, [(2, 2)])
+    result = TurnResult(True, None, True, 0, 0, [event])
+    ui, calls = recording_ui()
+    ui.draw_vortex_effect = lambda *args: calls.append(("vortex", *args))
+    play_turn_events(ui, result, player, 6)
+    vortex_calls = [call for call in calls if call[0] == "vortex"]
+    assert vortex_calls == ([("vortex", (3, 3))] if won else [])
+    if won:
+        assert calls[0][0] == "combat"

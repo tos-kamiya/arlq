@@ -26,6 +26,11 @@ def play_turn_events(
                     else event.party_positions or [event.attacker]
                 )
                 effect(positions if stage_num in (5, 6) else positions[0], event.won)
+            vortex = getattr(ui, "draw_vortex_effect", None)
+            if event.won and vortex is not None:
+                for target, point in event.targets:
+                    if target.glyph == "V":
+                        vortex(point)
         elif isinstance(event, BarrierHit):
             effect = getattr(ui, "draw_combat_effect", None)
             if effect is not None:
