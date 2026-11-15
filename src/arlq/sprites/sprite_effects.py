@@ -1,5 +1,7 @@
 """Combat and floor transition effects for the sprite frontend."""
 
+import math
+import random
 from pathlib import Path
 
 import pyglet
@@ -63,6 +65,39 @@ VORTEX_STORM_REACH = 1.0 / 2.6
 VORTEX_STORM_FOOT = 0.07
 VORTEX_RADIUS_RATIO = 1 / 4
 VORTEX_SECONDS_FACTOR = 4 / 3
+
+
+# A stage boss's afterglow (draw_boss_afterglow), over BOSS_AFTERGLOW_SECONDS
+# on the cell where it fell: a pillar of BOSS_AFTERGLOW_COLOR light, a
+# brighter BOSS_AFTERGLOW_CORE_COLOR core inside it, shoots up
+# BOSS_PILLAR_HEIGHT cells over the first BOSS_PILLAR_RISE, then slowly
+# narrows and fades; a ring spreads over the ground out to BOSS_RING_RADIUS
+# cell widths; and BOSS_SPARKS sparks drift up from the cell, starting over
+# the first BOSS_SPARK_DELAY, each living BOSS_SPARK_LIFE of the time.
+# All are drawn additively, at BOSS_AFTERGLOW_OPACITY so they stay a little
+# see-through.
+BOSS_AFTERGLOW_SECONDS = 1.4
+BOSS_AFTERGLOW_OPACITY = 0.6
+BOSS_AFTERGLOW_COLOR = (255, 196, 110)
+BOSS_AFTERGLOW_CORE_COLOR = (255, 238, 200)
+BOSS_PILLAR_WIDTH, BOSS_PILLAR_CORE_WIDTH = 1.8, 0.4  # cell widths
+BOSS_PILLAR_HEIGHT, BOSS_PILLAR_RISE = 5.0, 0.15
+BOSS_RING_RADIUS, BOSS_RING_SEGMENTS = 2.4, 40
+BOSS_SPARKS, BOSS_SPARK_DELAY, BOSS_SPARK_LIFE = 30, 0.5, (0.35, 0.5)
+BOSS_SPARK_HEIGHT = (2.0, 4.5)  # cells
+
+
+def pillar_image(width=16, height=64):
+    """White column of light: brightest along its axis and at its foot,
+    fading to transparent at its sides and toward its top."""
+    rgba = bytearray()
+    for row in range(height):
+        v = (row + 0.5) / height  # 0 at the foot, 1 at the top
+        along = min(1.0, v / 0.06) * (1 - v) ** 1.3
+        for col in range(width):
+            u = abs((col + 0.5) / width * 2 - 1)
+            rgba += bytes((255, 255, 255, round(255 * along * (1 - u) ** 1.5)))
+    return pyglet.image.ImageData(width, height, 'RGBA', bytes(rgba), pitch=width * 4)
 
 
 class SpriteEffectsMixin:
@@ -134,6 +169,119 @@ class SpriteEffectsMixin:
             return [storm]
 
         self._play_effect(seconds, create)
+
+    def draw_boss_afterglow(self, pos) -> None:
+        """Let a pillar of light, a spreading ring and drifting sparks
+        linger where a stage boss fell."""
+        if self.combat_effect_seconds == 0:
+            return
+        x, y = pos
+        # Its own generator, so the game's random state is left alone.
+        rand = random.Random(x * 1009 + y)
+        sparks = [
+            {
+                'delay': rand.uniform(0, BOSS_SPARK_DELAY),
+                'life': rand.uniform(*BOSS_SPARK_LIFE),
+                'angle': rand.uniform(0, 2 * math.pi),
+                'out': rand.uniform(0, 0.7),
+                'height': rand.uniform(*BOSS_SPARK_HEIGHT),
+                'sway': rand.uniform(0.08, 0.2),
+                'turns': rand.uniform(0.5, 1.5),
+                'phase': rand.uniform(0, 1),
+                'size': rand.uniform(0.06, 0.12),
+                'core': rand.random() < 0.4,
+            }
+            for _ in range(BOSS_SPARKS)
+        ]
+        parts = {}
+        additive = {"blend_src": pyglet.gl.GL_SRC_ALPHA, "blend_dest": pyglet.gl.GL_ONE}
+
+        def create():
+            group = pyglet.graphics.Group(order=100000)
+            glow = self._display_color(BOSS_AFTERGLOW_COLOR)
+            core = self._display_color(BOSS_AFTERGLOW_CORE_COLOR)
+            pillars = []
+            if getattr(self, '_pillar_image', None) is None:
+                self._pillar_image = pillar_image()
+            for tint in (glow, core):
+                pillar = pyglet.sprite.Sprite(
+                    self._pillar_image, batch=self.batch, group=group, **additive)
+                pillar.color = tint
+                pillars.append(pillar)
+            parts['pillars'] = pillars
+            parts['ground'] = pyglet.sprite.Sprite(
+                self._disc_image, batch=self.batch, group=group, **additive)
+            parts['ground'].color = glow
+            parts['ring'] = [
+                pyglet.shapes.Line(0, 0, 0, 0, color=glow, batch=self.batch,
+                                   group=group, **additive)
+                for _ in range(BOSS_RING_SEGMENTS)
+            ]
+            parts['sparks'] = [
+                pyglet.shapes.Circle(0, 0, 1, color=core if spark['core'] else glow,
+                                     batch=self.batch, group=group, **additive)
+                for spark in sparks
+            ]
+            return (parts['pillars'] + [parts['ground']] + parts['ring']
+                    + parts['sparks'])
+
+        def update(progress):
+            cell_x, cell_y = self.cell_size_x, self.cell_size_y
+            gx = self._field_col_x(x) + cell_x / 2
+            gy = self.window_height - (y + 0.5) * cell_y
+            image = self._disc_image
+            rise = 1 - (1 - min(1.0, progress / BOSS_PILLAR_RISE)) ** 3
+            after = max(0.0, (progress - BOSS_PILLAR_RISE) / (1 - BOSS_PILLAR_RISE))
+            fade = (1 - after) ** 1.5
+            narrow = 1 - 0.7 * after
+            height = BOSS_PILLAR_HEIGHT * cell_y * rise
+            for pillar, width, strength in zip(
+                    parts['pillars'], (BOSS_PILLAR_WIDTH, BOSS_PILLAR_CORE_WIDTH),
+                    (255, 255)):
+                w = width * cell_x * narrow
+                picture = self._pillar_image
+                pillar.scale_x = w / picture.width
+                pillar.scale_y = max(1.0, height) / picture.height
+                pillar.x = gx - w / 2
+                pillar.y = gy - 0.05 * height
+                pillar.opacity = round(strength * fade * BOSS_AFTERGLOW_OPACITY)
+
+            spread = 1 - (1 - min(1.0, progress / 0.6)) ** 2
+            radius = BOSS_RING_RADIUS * cell_x * (0.2 + 0.8 * spread)
+            flatten = math.sin(math.radians(60))
+            ground = parts['ground']
+            ground.scale_x = 2 * radius * 0.7 / image.width
+            ground.scale_y = 2 * radius * 0.7 * flatten / image.height
+            ground.x = gx - radius * 0.7
+            ground.y = gy - radius * 0.7 * flatten
+            ground.opacity = round(160 * fade * BOSS_AFTERGLOW_OPACITY)
+            ring_fade = (1 - min(1.0, progress / 0.7)) ** 1.2
+            for k, line in enumerate(parts['ring']):
+                a0 = 2 * math.pi * k / BOSS_RING_SEGMENTS
+                a1 = 2 * math.pi * (k + 1) / BOSS_RING_SEGMENTS
+                line.x = gx + radius * math.cos(a0)
+                line.y = gy + radius * flatten * math.sin(a0)
+                line.x2 = gx + radius * math.cos(a1)
+                line.y2 = gy + radius * flatten * math.sin(a1)
+                line.thickness = max(1.0, 0.12 * cell_x * (1 - 0.6 * spread))
+                line.opacity = round(220 * ring_fade * BOSS_AFTERGLOW_OPACITY)
+
+            for spark, dot in zip(sparks, parts['sparks']):
+                t = (progress - spark['delay']) / spark['life']
+                if not 0 <= t <= 1:
+                    dot.opacity = 0
+                    continue
+                lift = 1 - (1 - t) ** 2
+                sway = spark['sway'] * math.sin(
+                    2 * math.pi * (spark['turns'] * t + spark['phase']))
+                dot.x = gx + cell_x * (spark['out'] * math.cos(spark['angle']) + sway)
+                dot.y = (gy + cell_x * spark['out'] * flatten * math.sin(spark['angle'])
+                         + spark['height'] * cell_y * lift)
+                dot.radius = max(1.0, spark['size'] * cell_x * (1 - 0.5 * t))
+                dot.opacity = round(255 * BOSS_AFTERGLOW_OPACITY
+                                * min(1.0, t / 0.15) * (1 - t) ** 1.2)
+
+        self._play_effect(BOSS_AFTERGLOW_SECONDS, create, update)
 
     def draw_floor_transition(self, kind, player, exit_point=None) -> None:
         """Show the moment between floors: on the landing of the stairs the

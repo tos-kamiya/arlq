@@ -13,7 +13,7 @@ from .. import defs as d
 from .. import display as ui_display
 from ..arlq import barrier_lp_damage
 from ..i18n import t as tr
-from ..game_events import FloorChanged, Rewound
+from ..game_events import Combat, FloorChanged, Rewound
 from .sprite_fx import Presenter
 from .sprite_defs import (
     NEIGHBOR_SCALE,
@@ -785,6 +785,12 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             if not self._presenter.play(self, result, view):
                 return False
             self._slide_into_cell(result, view, before, followers_before)
+            # A stage boss's afterglow lingers once the boss is gone and the
+            # player has settled into its new cell.
+            for event in result.events:
+                if (isinstance(event, Combat) and event.boss_at is not None
+                        and event.floor == result.floor_after and not self._closed):
+                    self.draw_boss_afterglow(event.boss_at)
             return not self._closed
         finally:
             self._next_view = None

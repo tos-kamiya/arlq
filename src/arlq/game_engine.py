@@ -1773,6 +1773,8 @@ def _process_multi_floor_turn(
         entity = current.entities[hit]
         combat_event = None
         contact_lp = player.lp
+        boss_was_defeated = player.boss_defeated
+        boss_point = None
         if (events is not None
                 and isinstance(entity, d.Monster) and entity.active
                 and not entity.tribe.is_elf
@@ -1783,6 +1785,12 @@ def _process_multi_floor_turn(
             won = d.current_player_attack(player) >= sum(
                 d.monster_level(monster) for monster in enemies
             )
+            if not any(monster.tribe.char == d.CHAR_DUNGEON_CORE for monster in enemies):
+                boss_point = next(
+                    ((monster.x, monster.y) for monster in enemies
+                     if monster.boss_id is not None),
+                    (entity.x, entity.y),
+                )
             combat_event = Combat(
                 floor[0],
                 previous,
@@ -1809,6 +1817,9 @@ def _process_multi_floor_turn(
         )
         if combat_event is not None:
             combat_event.lp_delta = player.lp - contact_lp
+            if (combat_event.won and not boss_was_defeated
+                    and player.boss_defeated):
+                combat_event.boss_at = boss_point
         if contact.end_turn:
             end_turn_message = prefer_event_message(event_message, contact.message)
             return (

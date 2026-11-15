@@ -28,6 +28,9 @@ class Combat(GameEvent):
     lp_delta: float
     # Party positions before contact, used by the existing loss flash.
     party_positions: list[Point] = field(default_factory=list)
+    # Where the stage boss stood when this fight first defeated it (not set
+    # for the Dungeon Core), for the boss's afterglow.
+    boss_at: Point | None = None
 
 
 @dataclass

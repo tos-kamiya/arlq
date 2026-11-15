@@ -228,3 +228,53 @@ def test_won_combat_against_vortex_plays_vortex_effect(won):
     assert vortex_calls == ([("vortex", (3, 3))] if won else [])
     if won:
         assert calls[0][0] == "combat"
+
+
+def _fight(glyph, stage_num, boss_defeated=False):
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[glyph])
+    current = Floor(
+        field, [monster], [[0] * len(row) for row in field], (2, 2), (70, 18), None
+    )
+    player = d.Player(2, 2, 100, 90)
+    player.level = 10000
+    player.boss_defeated = boss_defeated
+    events = []
+    engine._step((1, 0), [current], player, [0], [(2, 2)], engine.Counter(), 1,
+                 stage_num=stage_num, events=events)
+    return next(event for event in events if isinstance(event, Combat))
+
+
+def test_first_stage_boss_defeat_marks_where_the_boss_stood():
+    assert _fight("W", 3).boss_at == (3, 2)
+    assert _fight("W", 3, boss_defeated=True).boss_at is None
+    assert _fight("a", 3).boss_at is None
+
+
+def test_stage6_boss_party_marks_its_boss_but_not_the_dungeon_core():
+    from arlq import stage6
+
+    floors, player = stage6.build()
+    current = floors[-1]
+    boss = next(
+        e for e in current.entities if isinstance(e, d.Monster) and e.tribe.char == "F"
+    )
+    player.members.append(d.PartyMember(player.x, player.y, "Knight"))
+    player.level = 10000
+    player.x, player.y = boss.x, boss.y
+    events = []
+    engine._step((0, 0), floors, player, [len(floors) - 1], [current.up],
+                 engine.Counter(), 1, stage_num=6, events=events)
+    combat = next(event for event in events if isinstance(event, Combat))
+    assert player.boss_defeated
+    assert combat.boss_at == (boss.x, boss.y)
+
+    core = next(e for e in current.entities if isinstance(e, d.Monster)
+                and e.tribe.char == d.CHAR_DUNGEON_CORE)
+    player.x, player.y = core.x, core.y
+    events = []
+    engine._step((0, 0), floors, player, [len(floors) - 1], [current.up],
+                 engine.Counter(), 2, stage_num=6, events=events)
+    fights = [event for event in events if isinstance(event, Combat)]
+    assert player.dungeon_core_destroyed and fights
+    assert all(fight.won and fight.boss_at is None for fight in fights)
