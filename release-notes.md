@@ -1,5 +1,13 @@
 # ARLQ Release Notes
 
+## 6.7.3 - 2026-11-15
+
+- Add a `Smooth movement` setting to the sprite display settings to turn the
+  glide into each step, and the field's scroll along with it, on or off.
+- Add `Reset all settings to defaults` at the end of `Settings`, restoring
+  every setting, including the sprite display settings and gamepad buttons;
+  Enter on the top row then applies the defaults and Esc cancels.
+
 ## 6.7.2 - 2026-11-15
 
 - Glide the sprite-mode player, its fairy and following party members from the
