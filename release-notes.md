@@ -1,5 +1,9 @@
 # ARLQ Release Notes
 
+## 6.7.7 - 2026-11-15
+
+- Adjust enemy placement in the Stage 5 training ground and add a Vortex.
+
 ## 6.7.6 - 2026-11-15
 
 - In sprite mode, destroying the Dungeon Core swells a dark, see-through dome
