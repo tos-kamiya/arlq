@@ -1,5 +1,10 @@
 # ARLQ Release Notes
 
+## 6.8.0 - 2026-11-16
+
+- Restore one Rare Erebus (`E`) to the initial monster placement on each of
+  Stage 6's second and third floors.
+
 ## 6.7.11 - 2026-11-16
 
 - Show a golden glow around the collected treasure on the sprite-mode victory
