@@ -1151,6 +1151,22 @@ class PygletUI(PygletSettingsMixin):
         self._draw_text(pos, text, color, bold=bold,
                         x_offset=self._field_text_x_offset())
 
+    def _draw_loop_trail(self, pos: d.Point):
+        x, y = pos
+        center_x = self._field_col_x(x) + self._field_col_width(x) / 2
+        center_y = self.window_height - (y + 0.5) * self.cell_size_y
+        radius = max(1, min(self.cell_size_x, self.cell_size_y) / 8)
+        color = self._display_color(COLOR_MAP[CI_CYAN])
+        group = self._loop_trail_group(y)
+        self._draw_object(
+            ('loop_trail', center_x, center_y, radius, color, id(group)),
+            lambda: pyglet.shapes.Circle(center_x, center_y, radius, color=color,
+                                         batch=self.batch, group=group),
+        )
+
+    def _loop_trail_group(self, y):
+        return None
+
     def draw_combat_effect(self, pos, won: bool) -> None:
         seconds = self.combat_effect_seconds
         if seconds == 0:
@@ -1413,7 +1429,7 @@ class PygletUI(PygletSettingsMixin):
                     and field[y][x] in (d.CHAR_FLOOR, d.CHAR_PIT_LANDING)
                     and (x, y) != (px, py)
                 ):
-                    self._draw_field_text((x, y), ".", COLOR_MAP[CI_CYAN])
+                    self._draw_loop_trail((x, y))
 
         for entity in entities:
             if not isinstance(entity, d.Monster) or entity.tribe.char != "k":

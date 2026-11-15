@@ -1482,6 +1482,9 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             if slide is not None:
                 self._slide_capture_end(follower, pos, slide)
 
+    def _loop_trail_group(self, y):
+        return self._row_group(y, 'mark')
+
     def _draw_field_text(self, pos, text, color, bold=False):
         x, y = pos
         if text == d.CHAR_DUNGEON_CORE and self._dungeon_core_images:
