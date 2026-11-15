@@ -171,14 +171,19 @@ class PygletSettingsMixin:
                     )
                     if result is not None:
                         effect_index, transition_index, bob_enabled, glide_enabled = result
+                        apply()
+                        return True
                 elif selected == "gamepad" and step > 0 and controller_connected:
-                    self.gamepad_button_settings_menu()
-                    # Buttons set there are saved there; keep them.
-                    reset_gamepad = False
+                    if self.gamepad_button_settings_menu():
+                        # Buttons set there are saved there; keep them.
+                        reset_gamepad = False
+                        apply()
+                        return True
                 elif selected == "reset" and step > 0:
                     # Show the defaults; Enter on another row applies them.
                     reset()
                     row = 0
+                return False
 
             while True:
                 self._pump()
@@ -197,11 +202,13 @@ class PygletSettingsMixin:
                         change(-1)
                         break
                     if symbol == pgkey.RIGHT:
-                        change(1)
+                        if change(1):
+                            return
                         break
                     if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
                         if selected in ("sprites", "gamepad", "reset"):
-                            change(1)
+                            if change(1):
+                                return
                             break
                         apply()
                         return
@@ -224,11 +231,13 @@ class PygletSettingsMixin:
                         change(-1)
                         break
                     if direction == (1, 0):
-                        change(1)
+                        if change(1):
+                            return
                         break
                 if 0 in self._gamepad_pressed_buttons:
                     if selected in ("sprites", "gamepad", "reset"):
-                        change(1)
+                        if change(1):
+                            return
                         break
                     apply()
                     return
@@ -237,7 +246,7 @@ class PygletSettingsMixin:
 
     def sprite_settings_menu(self, effect_index, transition_index, bob_enabled,
                              glide_enabled=True):
-        """Edit sprite display options, returning changes to the parent menu."""
+        """Edit sprite display options, returning confirmed changes."""
         from . import pyglet_funcs as gui
 
         row = 0
@@ -301,11 +310,11 @@ class PygletSettingsMixin:
                         glide_enabled = not glide_enabled
                     break
 
-    def gamepad_button_settings_menu(self) -> None:
+    def gamepad_button_settings_menu(self) -> bool:
         """Configure gamepad mode buttons while keeping menu controls fixed."""
         from . import pyglet_funcs as gui
         if not self._gamepad_is_connected():
-            return
+            return False
         help_button = self.gamepad_help_button
         preview_button = self.gamepad_preview_button
         preview_mode = self.gamepad_preview_mode
@@ -359,7 +368,7 @@ class PygletSettingsMixin:
             while True:
                 self._pump()
                 if self._closed or not self._gamepad_is_connected():
-                    return
+                    return False
 
                 event = self._next_key_event()
                 if event is not None:
@@ -393,9 +402,9 @@ class PygletSettingsMixin:
                         self.set_gamepad_bindings(
                             help_button, preview_button, preview_mode
                         )
-                        return
+                        return True
                     if symbol in (pgkey.ESCAPE, pgkey.Q):
-                        return
+                        return False
 
                 pressed_buttons = self._gamepad_pressed_buttons
                 assign_button = next(
@@ -443,6 +452,6 @@ class PygletSettingsMixin:
                     self.set_gamepad_bindings(
                         help_button, preview_button, preview_mode
                     )
-                    return
+                    return True
                 if 1 in pressed_buttons:
-                    return
+                    return False
