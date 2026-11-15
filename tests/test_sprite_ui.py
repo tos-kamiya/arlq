@@ -253,7 +253,7 @@ def test_unknown_mimic_uses_treasure_sprite(sprite_ui):
     entity = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE['M'], mimic_boss_char='D')
     entity.active = True
     glyphs = display.revealed_entity_glyphs(entity, set(), False, 8, None)
-    assert [glyph.char for glyph in glyphs] == [d.CHAR_TREASURE]
+    assert [glyph.char for glyph in glyphs] == [d.CHAR_TREASURE, '[', ']']
     sprite_ui._draw_field_text((4, 5), glyphs[0].char, (244, 190, 78))
     assert sprite_ui._drawables[0].image is sprite_ui._sprite_images[d.CHAR_TREASURE]
 

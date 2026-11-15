@@ -169,7 +169,7 @@ Characters next to the player are drawn larger. Party members and the Javelin El
 
   Defeating another ordinary monster replaces your held item, even if it carries nothing. This also removes poison or Spores. In Stages 3 and 4, contact with an elf you have not yet met clears Spores; Lifebringer also cures poison.
 
-  Some monsters, such as `d`, respawn. Monster spawns and respawns avoid the 5×5 cells centered on the player on the current floor. If no position is available, that attempt is skipped. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked `T` clears the stage.
+  Some monsters, such as `d`, respawn. Monster spawns and respawns avoid the 5×5 cells centered on the player on the current floor. If no position is available, that attempt is skipped. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked treasure (`[T]`) clears the stage. The brackets are omitted where other map contents occupy their cells.
 
   Fairies provide a temporary benefit, with one fairy at a time. Each monster combat encounter consumes one unit of its duration; a party encounter counts once regardless of its size. Each Pegasus jump also consumes one unit. For example, the Nomicon identifies nearby monsters and elves.
 
@@ -299,6 +299,8 @@ Stage 5 is a fixed-map training ground for trying enemy parties and the abilitie
 ### Stage 6: Dungeon with a Party
 
 Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near the bridgehead and destroy the Dungeon Core within 2,000 turns, before it runs wild and the capital falls. Defeat the empowered Fire Drake (`F'`) to reveal the core; destroying it lifts the time limit and unseals the treasure chest. Watch out for Mimics as you claim the treasure. Returning to the floor 1 bridgehead restores LP to 60 if it is lower.
+
+The core appears as `[*]`; either bracket is hidden when another map feature occupies its cell.
 
 Deeper floors contain stronger monsters and barriers. Defeated monsters do not respawn. Unrecruited members scatter to random floors when you use a different staircase or pit from your previous floor change, and their known locations are cleared.
 

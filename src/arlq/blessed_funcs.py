@@ -355,26 +355,52 @@ class BlessedUI:
             )
 
         drawing_entities = ui_display.entities_for_drawing(entities)
+        entity_glyphs = []
         if show_entities:
             for entity in drawing_entities:
-                for glyph in ui_display.preview_entity_glyphs(
-                    entity,
-                    reveal_disguises=reveal_disguises,
-                    known_types=known_types,
-                ):
-                    paint(glyph)
+                entity_glyphs.extend((entity, glyph) for glyph in ui_display.preview_entity_glyphs(
+                    entity, reveal_disguises=reveal_disguises, known_types=known_types,
+                ))
 
         for entity in drawing_entities:
             if torched[entity.y][entity.x] == 0 or (entity.x, entity.y) == (px, py):
                 continue
-            for glyph in ui_display.revealed_entity_glyphs(
+            entity_glyphs.extend((entity, glyph) for glyph in ui_display.revealed_entity_glyphs(
                 entity, known_types, show_entities, player_attack, dim_types,
                 reveal_disguises=reveal_disguises,
                 debug_show_entities=debug_show_entities,
                 party_entities=entities if stage_num in (5, 6) else None,
                 party_tones=party_tones,
-            ):
-                paint(glyph)
+            ))
+
+        def is_bracket(entity, glyph):
+            return glyph.char in ("[", "]") and glyph.x != entity.x
+
+        occupied = {(glyph.x, glyph.y) for entity, glyph in entity_glyphs
+                    if not is_bracket(entity, glyph)}
+        bracket_owners = {}
+        for entity, glyph in entity_glyphs:
+            if is_bracket(entity, glyph):
+                bracket_owners.setdefault((glyph.x, glyph.y), set()).add(id(entity))
+        occupied.update(point for point, owners in bracket_owners.items() if len(owners) > 1)
+        if not floor_view:
+            occupied.add((px, py))
+            occupied.update((glyph.x, glyph.y) for glyph in ui_display.member_glyphs(player))
+            wall_break = ui_display.player_wall_break_glyph(player)
+            if wall_break is not None:
+                occupied.add((wall_break.x, wall_break.y))
+            occupied.update(loop_trail_markers or set())
+            if checkpoint is not None:
+                occupied.add(checkpoint)
+        occupied.update((x, y) for entity in entities
+                        if isinstance(entity, d.Monster) and entity.tribe.char == "k"
+                        for (x, y), _ in entity.arrow_marks
+                        if show_entities or torched[y][x])
+        for entity, glyph in entity_glyphs:
+            if (is_bracket(entity, glyph)
+                    and not ui_display.core_bracket_is_clear(glyph, field, occupied, decor)):
+                continue
+            paint(glyph)
 
         if not floor_view:
             for glyph in ui_display.member_glyphs(player):

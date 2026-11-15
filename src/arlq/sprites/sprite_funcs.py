@@ -247,6 +247,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     """Reuse input, menus, visibility and glyph selection without duplicating rules."""
 
     supports_horizontal_view = True
+    show_treasure_brackets = False
     supports_floor_transition = True
     supports_idle_bob = True
     supports_move_glide = True

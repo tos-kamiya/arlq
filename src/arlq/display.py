@@ -1,7 +1,7 @@
 """Shared text and glyph calculations used by both frontends."""
 
 from math import floor
-from typing import List, NamedTuple, Optional, Set, Tuple
+from typing import List, NamedTuple, Optional, Sequence, Set, Tuple
 
 from . import defs as d
 
@@ -272,6 +272,25 @@ def entities_for_drawing(entities: List[d.Entity]) -> List[d.Entity]:
     return result
 
 
+def treasure_glyphs(entity: d.Entity, tone: str, *, bold: bool = False,
+                    dim: bool = False) -> List[FieldGlyph]:
+    """Draw treasure and disguised mimics with the same appearance."""
+    return [
+        FieldGlyph(entity.x, entity.y, d.CHAR_TREASURE, tone, bold=bold, dim=dim),
+        FieldGlyph(entity.x - 1, entity.y, "[", tone, bold=bold, dim=dim),
+        FieldGlyph(entity.x + 1, entity.y, "]", tone, bold=bold, dim=dim),
+    ]
+
+
+def core_bracket_is_clear(glyph: FieldGlyph, field: Sequence[Sequence[str]],
+                          occupied: Set[d.Point], decor: Optional[Sequence[Sequence[str]]] = None) -> bool:
+    """Leave other map contents visible underneath a core's side glyphs."""
+    x, y = glyph.x, glyph.y
+    return (0 <= y < len(field) and 0 <= x < len(field[y])
+            and field[y][x] == d.CHAR_FLOOR and (x, y) not in occupied
+            and not (decor and y < len(decor) and x < len(decor[y]) and decor[y][x]))
+
+
 def preview_entity_glyphs(
     entity: d.Entity,
     reveal_disguises: bool = False,
@@ -316,6 +335,8 @@ def preview_entity_glyphs(
     if isinstance(entity, d.Monster) and entity.tribe.passive:
         known = entity.revealed or d.monster_type_key(entity) in known_types
     tone = "red" if known else "default"
+    if char == d.CHAR_TREASURE:
+        return treasure_glyphs(entity, tone, dim=tone == "default")
     glyphs = [
         FieldGlyph(
             entity.x,
@@ -402,9 +423,7 @@ def revealed_entity_glyphs(
         else:
             known = d.monster_type_key(entity) in known_types
         if char == "M" and not known and not reveal_disguises:
-            return [
-                FieldGlyph(entity.x, entity.y, d.CHAR_TREASURE, "yellow", bold=True)
-            ]
+            return treasure_glyphs(entity, "yellow", bold=True)
         if char != "M" and not known:
             if show_entities:
                 return []
@@ -462,9 +481,7 @@ def revealed_entity_glyphs(
         return glyphs
     if isinstance(entity, d.Treasure):
         if entity.unlocked:
-            return [
-                FieldGlyph(entity.x, entity.y, d.CHAR_TREASURE, "yellow", bold=True)
-            ]
+            return treasure_glyphs(entity, "yellow", bold=True)
     return []
 
 
