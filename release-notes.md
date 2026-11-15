@@ -1,5 +1,12 @@
 # ARLQ Release Notes
 
+## 6.7.6 - 2026-11-15
+
+- In sprite mode, destroying the Dungeon Core swells a dark, see-through dome
+  over where it stood, its violet band of light thinning as it grows, before
+  it comes apart into faint mist over about 1.5 seconds. It is skipped when
+  the combat effect duration is 0.
+
 ## 6.7.5 - 2026-11-15
 
 - In sprite mode, defeating a stage boss leaves a lingering afterglow where it
