@@ -1,5 +1,11 @@
 # ARLQ Release Notes
 
+## 6.7.8 - 2026-11-15
+
+- Show Vortex storms, Dungeon Core bursts and boss afterglows in the character
+  GUI and terminal, using pixel graphics and braille respectively. The player
+  remains visible, and setting combat effect duration to 0 disables them.
+
 ## 6.7.7 - 2026-11-15
 
 - Adjust enemy placement in the Stage 5 training ground and add a Vortex.
