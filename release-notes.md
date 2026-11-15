@@ -1,5 +1,10 @@
 # ARLQ Release Notes
 
+## 6.7.9 - 2026-11-15
+
+- Show Loop Fairy movement trails as cyan circles centered in each cell in
+  the character and sprite GUIs, improving their visibility near walls.
+
 ## 6.7.8 - 2026-11-15
 
 - Show Vortex storms, Dungeon Core bursts and boss afterglows in the character
