@@ -1,5 +1,13 @@
 # ARLQ Release Notes
 
+## 6.7.2 - 2026-11-15
+
+- Glide the sprite-mode player, its fairy and following party members from the
+  cell they left into the new one, with the field scrolling smoothly along
+  with the view instead of jumping a cell.
+- While a direction is held, make each glide last until the next key repeat so
+  walking keeps moving between steps.
+
 ## 6.7.1 - 2026-11-15
 
 - Group sprite display options in a submenu for combat effects, floor
