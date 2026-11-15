@@ -1,5 +1,10 @@
 # ARLQ Release Notes
 
+## 6.8.1 - 2026-11-16
+
+- Keep the player visible in front of the collected treasure chest on the
+  sprite-mode victory screen.
+
 ## 6.8.0 - 2026-11-16
 
 - Restore one Rare Erebus (`E`) to the initial monster placement on each of
