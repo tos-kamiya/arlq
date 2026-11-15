@@ -218,7 +218,7 @@ class SpriteTerrainMixin:
             if not complete:
                 texture.delete()
 
-    ROW_LAYERS = ('wall', 'column', 'pillar-back', 'sprite', 'pillar-front', 'familiar',
+    ROW_LAYERS = ('wall', 'column', 'pillar-back', 'chest-back', 'sprite', 'pillar-front', 'familiar',
                   'familiar-front', 'mark')
 
     def _set_edge_shade_field(self, field):

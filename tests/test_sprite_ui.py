@@ -340,6 +340,17 @@ def test_treasure_disc_stays_yellow(sprite_ui):
     assert ui.outlines[0][3:] == (ui._tone_color('yellow'), None)
 
 
+def test_collected_chest_is_drawn_behind_player(sprite_ui, monkeypatch):
+    ui = sprite_ui
+    ui._won_chest_cell = (4, 5)
+    monkeypatch.setattr(ui, 'draw_treasure_glow', lambda pos: None)
+    ui._draw_player((4, 5), d.Player(4, 5, level=8, lp=d.LP_INIT))
+    chest, player = ui._drawables[:2]
+    assert chest.image is ui._sprite_images[d.CHAR_TREASURE]
+    assert player.image is ui._sprite_images['@']
+    assert chest.group.order < player.group.order
+
+
 def test_shift_horizontal_view_scrolls_only_when_field_overflows():
     ui = SpriteUI.__new__(SpriteUI)
     ui._initialize_state()

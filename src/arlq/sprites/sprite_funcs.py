@@ -941,7 +941,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         if '@' not in self._sprite_images:
             return super()._draw_player(pos, player)
         if pos == self._won_chest_cell:
-            self._draw_sprite(pos, d.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], disc_scale=0.0)
+            self._draw_sprite(pos, d.CHAR_TREASURE, COLOR_MAP[CI_YELLOW], disc_scale=0.0,
+                              layer='chest-back')
         # Low/warning LP colors the ground disc instead of filling the cell;
         # poison turns the disc's upper-right half purple.
         self._player_cell = pos
@@ -1621,7 +1622,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         return abs(pos[0] - px) + abs(pos[1] - py) == 1
 
     def _draw_sprite(self, pos, text, color, upper_right_color=None, shade=1.0, disc_scale=1.0,
-                     bob=False, follower=False):
+                     bob=False, follower=False, layer=None):
         x, y = pos
         cx, cy = self._field_col_x(x) + self.cell_size_x / 2, (y + 0.5) * self.cell_size_y
         dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
@@ -1641,7 +1642,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         # layer, in front of what stands beside the cell it left.
         row = y if self._slide_row is None else self._slide_row
         top = self._place_sprite(text, cx, cy, size, row,
-                                 'hover' if hovered else 'sprite', dimmed, shade, glow,
+                                 layer or ('hover' if hovered else 'sprite'), dimmed, shade, glow,
                                  bob=bob and not self.map_mode and self._in_view(pos),
                                  follower=follower)
         if hovered:
