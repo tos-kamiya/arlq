@@ -15,7 +15,7 @@ MONSTERS = {'a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'F', 'f', 'g', 'rock', 'X', 
 # files: gender f(emale), m(ale), or n for a job with one build for both;
 # tone l(ight), m(edium) or d(ark) skin.
 MEMBER_VARIANTS = (('jester', 'n'), ('healer', 'f'), ('healer', 'm'), ('rogue', 'n'),
-                   ('knight', 'n'), ('guardian', 'n'), ('explorer', 'f'), ('explorer', 'm'),
+                   ('knight', 'n'), ('guardian', 'n'), ('explorer', 'n'),
                    ('seer', 'f'), ('seer', 'm'))
 MEMBER_TONES = ('l', 'm', 'd')
 MEMBER_MODELS = tuple(f'{job}-{gender}-{tone}' for job, gender in MEMBER_VARIANTS

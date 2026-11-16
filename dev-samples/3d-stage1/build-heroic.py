@@ -62,8 +62,8 @@ GRID_COLS, GRID_ROWS = 14, 7
 # Back to front: the player and its sword variants, Stage 1 monsters and chest;
 # the fairies and elves; monsters in stage order, then the party members in
 # the medium skin tone in the order J, H, R, K, G, D (Explorer), S (Fairy
-# Seer), Y (female and male for the Healer, Dungeon Explorer and Fairy Seer,
-# whose hair shows), the Stage 5 toy chest, and last the Stage 6 ivy.
+# Seer), Y (female and male for the Healer and Fairy Seer, whose hair
+# shows; the Dungeon Explorer, a dragon, has one build), the Stage 5 toy chest, and last the Stage 6 ivy.
 MEMBER_LABELS = {'jester': 'JESTER', 'healer': 'HEALER', 'rogue': 'ROGUE', 'knight': 'KNIGHT',
                  'guardian': 'GUARDIAN', 'explorer': 'EXPLORER', 'seer': 'FAIRY SEER'}
 GENDER_LABELS = {'f': ' FEMALE', 'm': ' MALE', 'n': ''}
@@ -3016,95 +3016,118 @@ def rogue(x, y, tone):
             obj.matrix_world = unlean @ obj.matrix_world
 
 
-HELMET_PUSH = math.radians(4)  # how far the Dungeon Explorer's helmet is pushed back
+# The Dungeon Explorer's scales by model tone: dark teal, leaning blue,
+# midway or leaning green (the job's three variants in place of skin tones).
+EXPLORER_SCALES = {
+    'light': (0.020, 0.115, 0.175),
+    'medium': (0.022, 0.135, 0.130),
+    'dark': (0.032, 0.145, 0.088),
+}
+EXPLORER_HEAD_TURN = math.radians(25)
 
 
-def dungeon_explorer(x, y, tone, gender='male'):
-    """Dungeon Explorer (D), a Stage 5 member: a caver who finds hidden
-    routes. Lightly dressed like a caving team, but the helmet is a khaki
-    pith helmet with a brown leather band, and the headlamp is a glowing
-    amber stone in a brass claw setting on its front (a magic light, not a
-    machine). A fitted light grey shirt, navy trousers, knee pads and a bare
-    sit harness with a few carabiners. A coil of twisted hemp rope is slung
-    over the right shoulder and across the chest, and the right hand holds a
-    short, modern technical ice axe (a slightly bent red anodised shaft,
-    a black head with a deeply curved, toothed pick, and a black wrist leash)
-    beside the body, its head at shoulder height. The left hand
-    rests on the hip. No weapon besides the tool, no cape. `tone` picks one of
-    `MEMBER_SKINS`; `gender` 'male' shows no hair under the helmet, 'female'
-    a fringe and a short cut, the locks framing the face to the jaw.
+def dungeon_explorer(x, y, tone):
+    """Dungeon Explorer (D), a Stage 5 member: a dragon in a body close to a
+    human's, a calm scholar of the dungeon who knows its hidden routes. A
+    angular dragon head with the Dragon's (D) swept horns in whitish bone, turned
+    aside and looking ahead, with dark eyes behind round gold-rimmed
+    glasses; an ordinary build but for a thick neck, the upper body bare in
+    matte, finely scaled dark teal with paler belly plates; loose brown
+    trousers gathered at the ankle, bare clawed feet and a long tail lying
+    along the floor. The caver's gear is kept light: a harness belt with a
+    few carabiners and a coil of twisted hemp rope slung over the right
+    shoulder and across the chest. Both arms hang easy at the sides, claws
+    showing. No wings, so it does not read as the monster. `tone` picks the
+    scales' shade from EXPLORER_SCALES.
     """
-    hair = material('Dungeon Explorer brown hair', (0.20, 0.11, 0.05), 0.1, 0.4,
-                    rim=(0.9, 0.7, 0.5), rim_strength=0.6, coat=0.3)
-    shirt = material('Dungeon Explorer light grey shirt', (0.36, 0.37, 0.39), 0.0, 0.55,
-                     rim=(0.85, 0.87, 0.92), rim_strength=0.45)
-    trousers = material('Dungeon Explorer navy trousers', (0.06, 0.08, 0.20), 0.0, 0.6,
-                        rim=(0.6, 0.65, 0.8), rim_strength=0.5)
-    pads = material('Dungeon Explorer knee pads', (0.42, 0.42, 0.44), 0.0, 0.45,
-                    rim=(0.8, 0.8, 0.85), rim_strength=0.5)
-    leather = material('Dungeon Explorer brown boots', (0.30, 0.20, 0.11), 0.0, 0.55,
-                       rim=(0.9, 0.72, 0.5), rim_strength=0.5)
+    # Fine Voronoi cells in the bump read as small scales.
+    scales = textured(material('Dungeon Explorer scales ' + tone, EXPLORER_SCALES[tone], 0.0,
+                               0.55, rim=(0.45, 0.95, 0.90), rim_strength=0.7, coat=0.15),
+                      35, 0.4)
+    plates = material('Dungeon Explorer belly plates', (0.30, 0.36, 0.28), 0.0, 0.45,
+                      rim=(0.85, 0.95, 0.85), rim_strength=0.5, coat=0.3)
+    # Whitish bone horns like the Dread Wyrm's, apart from the gold glasses;
+    # bone claws also stand out on the dark scales.
+    horn = material('Dungeon Explorer bone horns', (0.80, 0.76, 0.66), roughness=0.3,
+                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    bone = material('Dungeon Explorer horn and claw', (0.72, 0.66, 0.52), 0.0, 0.3,
+                    rim=(1.0, 0.95, 0.85), rim_strength=0.4, coat=0.5)
+    # Soft, muted brown cloth.
+    trousers = material('Dungeon Explorer brown trousers', (0.17, 0.11, 0.065), 0.0, 0.8,
+                        rim=(0.90, 0.75, 0.60), rim_strength=0.45)
     webbing = material('Dungeon Explorer harness webbing', (0.06, 0.06, 0.07), 0.0, 0.5,
                        rim=(0.6, 0.6, 0.65), rim_strength=0.4)
-    # Woven cork-and-cloth khaki of a pith helmet: matte, lighter and greyer
-    # than the hemp rope so the two do not merge.
-    helmet = material('Dungeon Explorer khaki pith helmet', (0.60, 0.50, 0.33), 0.0, 0.8,
-                      rim=(1.0, 0.92, 0.75), rim_strength=0.45)
-    band = material('Dungeon Explorer helmet band', (0.20, 0.10, 0.045), 0.0, 0.45,
-                    rim=(0.95, 0.70, 0.45), rim_strength=0.5, coat=0.25)
-    vent = material('Dungeon Explorer helmet vent', (0.02, 0.018, 0.015), roughness=0.8)
-    brass = material('Dungeon Explorer brass', (0.78, 0.52, 0.20), roughness=0.35,
-                     metallic=1.0, rim=(1.0, 0.85, 0.55), rim_strength=0.5)
     # Matte hemp; a bright yellow, smooth rope read as nylon.
     rope = material('Dungeon Explorer hemp rope', (0.50, 0.37, 0.19), 0.0, 0.85,
                     rim=(0.95, 0.85, 0.65), rim_strength=0.3)
     steel = material('Dungeon Explorer steel', (0.62, 0.63, 0.66), roughness=0.3,
                      metallic=0.8, rim=(0.95, 0.95, 1.0), rim_strength=0.6)
-    # A deliberately modern tool: glossy red anodised aluminium and black steel.
-    shaft = material('Dungeon Explorer ice axe shaft', (0.70, 0.04, 0.025), roughness=0.25,
-                     metallic=0.5, rim=(1.0, 0.6, 0.5), rim_strength=0.5, coat=0.5)
-    axe_head = material('Dungeon Explorer ice axe head', (0.05, 0.05, 0.055), roughness=0.35,
-                        metallic=0.8, rim=(0.8, 0.82, 0.9), rim_strength=0.6)
-    # Warm amber: green is the fairies' colour, light blue the Rogue's knife.
-    lamp = material('Dungeon Explorer light stone', (1.0, 0.74, 0.32), 0.3, 0.15,
-                    emission=(1.0, 0.72, 0.30), strength=3.0,
-                    rim=(1.0, 0.92, 0.7), rim_strength=0.9, coat=0.8)
-    skin = material('Dungeon Explorer skin ' + tone, MEMBER_SKINS[tone], 0.2, 0.4,
-                    rim=(1.0, 0.9, 0.8), rim_strength=0.6)
+    gold = material('Dungeon Explorer gold glasses', (1.0, 0.74, 0.25), roughness=0.2,
+                    metallic=1.0, rim=(1.0, 0.9, 0.6), rim_strength=0.8)
+    lens = material('Dungeon Explorer glass lenses', (0.9, 0.95, 1.0), 1.0, 0.0)
+    # Plain dark eyes like the human members', not the Dragon's glowing ones.
     eye = material('Dungeon Explorer eyes', (0.025, 0.02, 0.015), roughness=0.2, coat=1.0)
+    dark = material('Dungeon Explorer nostrils', (0.01, 0.01, 0.01), roughness=0.6)
+
+    def claws(base, direction, spread, length=0.05, radius=0.014):
+        # Three bone claws from `base`, fanned along `spread`.
+        for k in (-1, 0, 1):
+            root = base + spread * (0.025 * k)
+            cone('Dungeon Explorer claw', tuple(root),
+                 tuple(root + (direction + spread * (0.25 * k)).normalized() * length),
+                 radius, 0, bone, 8, True)
 
     def body(x, y):
-        # Straight legs a little apart, with knee pads over the trousers.
-        tube('Dungeon Explorer hips', [(x, y, 0.36), (x, y, 0.47), (x, y, 0.58)],
-             [(0.15, 0.12), (0.16, 0.125), (0.155, 0.125)], trousers, sides=24, smooth=True)
+        # A short column of belly plates down the bare front.
+        for k, z in enumerate((0.78, 0.72, 0.66, 0.60)):
+            sphere('Dungeon Explorer belly plate', (x, y - 0.13 + 0.004 * k, z),
+                   (0.065 - 0.004 * k, 0.025, 0.026), plates, 16)
+        # Loose trousers: a full seat and wide legs, gathered at the ankle
+        # over bare clawed feet.
+        tube('Dungeon Explorer hips', [(x, y, 0.34), (x, y, 0.46), (x, y, 0.58)],
+             [(0.175, 0.14), (0.18, 0.145), (0.165, 0.135)], trousers, sides=24, smooth=True)
         for side in (-1, 1):
-            hip, knee = (x + side * 0.08, y, 0.42), (x + side * 0.10, y - 0.01, 0.24)
-            ankle = (x + side * 0.11, y, 0.07)
-            tube('Dungeon Explorer leg', [hip, knee, ankle], [0.08, 0.07, 0.062], trousers,
-                 sides=12, smooth=True)
-            sphere('Dungeon Explorer knee pad', (knee[0], knee[1] - 0.055, knee[2]),
-                   (0.06, 0.035, 0.065), pads, 16)
-            tube('Dungeon Explorer boot', [(ankle[0], ankle[1] + 0.03, 0.09),
-                                           (ankle[0], ankle[1] - 0.05, 0.05),
-                                           (ankle[0], ankle[1] - 0.11, 0.035)],
-                 [0.075, 0.07, 0.05], leather, sides=12, smooth=True)
-            # Leg loops of the harness.
-            bpy.ops.mesh.primitive_torus_add(major_radius=0.085, minor_radius=0.014,
-                                             location=(x + side * 0.085, y, 0.37),
-                                             rotation=(0, side * math.radians(-12), 0))
-            finish(bpy.context.object, webbing, True, 'Dungeon Explorer leg loop')
-        # The waist belt of the harness, with carabiners on the left hip.
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.165, minor_radius=0.022,
-                                         location=(x, y, 0.52))
+            hip, knee = (x + side * 0.09, y, 0.40), (x + side * 0.11, y - 0.01, 0.24)
+            ankle = (x + side * 0.12, y, 0.10)
+            tube('Dungeon Explorer leg', [hip, knee, (ankle[0], ankle[1], 0.13), ankle],
+                 [0.10, 0.098, 0.092, 0.06], trousers, sides=16, smooth=True)
+            tube('Dungeon Explorer ankle', [(ankle[0], ankle[1], 0.11), (ankle[0], ankle[1], 0.05)],
+                 [0.048, 0.052], scales, sides=12, smooth=True)
+            foot = Vector((ankle[0] + side * 0.01, ankle[1] - 0.06, 0.04))
+            sphere('Dungeon Explorer foot', tuple(foot), (0.065, 0.095, 0.04), scales, 16)
+            claws(foot + Vector((0, -0.08, 0.0)), Vector((side * 0.1, -1, -0.3)),
+                  Vector((1, 0, 0)), 0.055, 0.015)
+        # The harness belt, with carabiners on the left hip.
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.175, minor_radius=0.02,
+                                         location=(x, y, 0.53))
         belt = finish(bpy.context.object, webbing, True, 'Dungeon Explorer harness belt')
         belt.scale.y = 0.82
         for k in range(3):
             bpy.ops.mesh.primitive_torus_add(major_radius=0.03, minor_radius=0.007,
-                                             location=(x + 0.05 + 0.045 * k, y - 0.14 + 0.02 * k,
-                                                       0.46),
+                                             location=(x + 0.05 + 0.045 * k, y - 0.15 + 0.02 * k,
+                                                       0.47),
                                              rotation=(math.pi / 2, 0, math.radians(15 * k)))
             ring = finish(bpy.context.object, steel, True, 'Dungeon Explorer carabiner')
             ring.scale = (0.75, 1.3, 1.0)
+
+        # The long tail: from the small of the back it sweeps out behind
+        # and lies along the floor round to the left side (screen right),
+        # the tip curling forward, with a row of small bone spikes.
+        # Its run along the floor is 0.8 times as long as first built.
+        tail = [Vector((x + 0.02 + (px - 0.02) * 0.8, y + 0.10 + (py - 0.10) * 0.8, pz))
+                for px, py, pz in (
+            (0.02, 0.10, 0.46), (0.10, 0.22, 0.34), (0.22, 0.30, 0.20), (0.38, 0.30, 0.10),
+            (0.52, 0.22, 0.06), (0.60, 0.10, 0.05), (0.62, -0.02, 0.05), (0.60, -0.10, 0.05))]
+        tail_radii = [(0.095, 0.085), (0.085, 0.075), (0.07, 0.062), (0.058, 0.05), (0.045, 0.038),
+                      (0.034, 0.028), (0.022, 0.018), 0]
+        tube('Dungeon Explorer tail', tail, tail_radii, scales, sides=16, smooth=True)
+        for i in range(1, 6):
+            rz = tail_radii[i][1]
+            base = tail[i] + Vector((0, 0, rz * 0.8))
+            ahead = (tail[i + 1] - tail[i - 1]).normalized()
+            cone('Dungeon Explorer tail spike', tuple(base),
+                 tuple(base + Vector((0, 0, 0.05 - 0.005 * i)) + ahead * 0.03),
+                 0.03 - 0.003 * i, 0, bone, 6, False)
 
         # A coil of rope over the right shoulder (screen left), crossing the
         # chest to the left hip. Three strands make it read as a coil rather
@@ -3137,181 +3160,86 @@ def dungeon_explorer(x, y, tone, gender='male'):
                 tube('Dungeon Explorer rope ply', strands, [0.012] * len(strands), rope,
                      sides=6, smooth=True)
 
-        def sleeve(side, shoulder, elbow, wrist):
-            # Two straight tubes and a round elbow: one tube bent at the
-            # elbow turns its rings there and looks twisted.
-            tube('Dungeon Explorer ' + side + ' upper sleeve', [shoulder, elbow], [0.062, 0.055],
-                 shirt, sides=16, smooth=True)
-            sphere('Dungeon Explorer ' + side + ' elbow', elbow, (0.055, 0.055, 0.055), shirt, 16)
-            tube('Dungeon Explorer ' + side + ' lower sleeve', [elbow, wrist], [0.055, 0.045],
-                 shirt, sides=16, smooth=True)
-
-        # Left hand (screen right) on the hip, elbow out.
-        sleeve('left', (x + 0.16, y - 0.01, 0.83), (x + 0.32, y, 0.67), (x + 0.22, y - 0.07, 0.55))
-        sphere('Dungeon Explorer left hand', (x + 0.19, y - 0.09, 0.53),
-               (0.045, 0.04, 0.05), skin, 16)
-        # Right hand holds the ice axe upright beside the body, the spike
-        # toward the floor and the head at shoulder height.
-        spike, top = Vector((x - 0.29, y - 0.14, 0.38)), Vector((x - 0.39, y - 0.10, 0.92))
-        hand = spike.lerp(top, 0.31)
-        sleeve('right', (x - 0.16, y - 0.01, 0.83), (x - 0.31, y - 0.03, 0.70),
-               hand + Vector((0.01, 0.02, 0.05)))
-        sphere('Dungeon Explorer right hand', tuple(hand + Vector((0, -0.01, 0))),
-               (0.045, 0.045, 0.05), skin, 16)
-        # The shaft bends gently outward (screen left) below the hand, like
-        # a technical axe; flattened front to back.
-        out = Vector((-1, 0, 0))
-        path = [spike.lerp(top, t) + out * (0.025 * math.sin(math.pi * t) * (1 - t))
-                for t in (0.0, 0.25, 0.5, 0.75, 1.0)]
-        tube('Dungeon Explorer ice axe shaft', path, [(0.022, 0.015)] * 4 + [(0.02, 0.015)],
-             shaft, sides=12, smooth=True)
-        cone('Dungeon Explorer ice axe spike', tuple(spike), tuple(spike + (spike - top) * 0.08),
-             0.018, 0.0, axe_head, 12)
-        # The head: a black pick curving deeply down and outward with teeth
-        # underneath, a short adze turned up toward the body.
-        block('Dungeon Explorer ice axe head', tuple(top + Vector((0, 0, 0.005))),
-              (0.07, 0.035, 0.06), axe_head, 0.012)
-        pick = [top + Vector(p) for p in ((0.0, 0, 0.01), (-0.07, 0, 0.005), (-0.14, 0, -0.03),
-                                          (-0.19, 0, -0.10), (-0.21, 0, -0.18))]
-        tube('Dungeon Explorer ice axe pick', pick,
-             [(0.022, 0.03), (0.02, 0.026), (0.016, 0.022), (0.012, 0.018), 0.0], axe_head,
-             sides=8, smooth=True)
-        for k, t in enumerate((0.45, 0.6, 0.75, 0.88)):
-            seg = min(int(t * 4), 3)
-            local = t * 4 - seg
-            at = pick[seg].lerp(pick[seg + 1], local)
-            inward = Vector((0.6, 0, -0.8)) if seg < 2 else Vector((0.9, 0, -0.3))
-            cone('Dungeon Explorer ice axe tooth', tuple(at + inward * 0.012),
-                 tuple(at + inward * 0.03), 0.009, 0.0, axe_head, 6, False)
-        block('Dungeon Explorer ice axe adze', tuple(top + Vector((0.075, 0, 0.02))),
-              (0.08, 0.04, 0.02), axe_head, 0.006, (0, math.radians(-18), 0))
-        # The leash: a thin black strap from under the head, hanging in a
-        # loose loop to the hand.
-        tube('Dungeon Explorer ice axe leash',
-             [top + Vector((0.015, -0.02, -0.04)), top.lerp(hand, 0.3) + Vector((0.07, -0.03, 0)),
-              top.lerp(hand, 0.65) + Vector((0.08, -0.03, 0)), hand + Vector((0.035, -0.02, 0.02))],
-             [(0.012, 0.004)] * 4, webbing, sides=6, smooth=True)
+        # Both arms hang easy, a little away from the body, the clawed
+        # hands open beside the hips.
+        for side in (-1, 1):
+            shoulder = Vector((x + side * 0.17, y - 0.01, 0.83))
+            elbow = Vector((x + side * 0.24, y + 0.01, 0.67))
+            wrist = Vector((x + side * 0.25, y - 0.04, 0.53))
+            tube('Dungeon Explorer upper arm', [shoulder, elbow], [0.058, 0.05],
+                 scales, sides=16, smooth=True)
+            sphere('Dungeon Explorer elbow', tuple(elbow), (0.05, 0.05, 0.05), scales, 16)
+            tube('Dungeon Explorer forearm', [elbow, wrist], [0.05, 0.042],
+                 scales, sides=16, smooth=True)
+            hand = wrist + Vector((0, -0.01, -0.04))
+            sphere('Dungeon Explorer hand', tuple(hand), (0.045, 0.04, 0.05), scales, 16)
+            claws(hand + Vector((0, -0.02, -0.04)), Vector((0, -0.25, -1)), Vector((1, 0, 0)),
+                  0.045, 0.012)
 
     def head(x, y):
-        # A pith helmet: a tall dome tapering a little towards the crown,
-        # cut by one plane just above the eyes in front and a little lower
-        # at the back, a wide brim all round sloping down, longer front and
-        # back than at the sides, and a brown leather band round the foot of
-        # the dome. A small button on the crown and a brass-ringed vent on
-        # each side. The light stone sits on the front above the band.
-        center, radii = Vector((x, y + 0.005, 1.05)), Vector((0.158, 0.19, 0.215))
-        thick = 0.025
-        if gender == 'female':
-            # A short fringe under the front brim and a short cut: locks
-            # framing the face down to the jaw, and the back over the nape.
-            sphere('Dungeon Explorer fringe', (x, y - 0.105, 1.10), (0.12, 0.05, 0.04), hair, 24)
-            sphere('Dungeon Explorer hair back', (x, y + 0.07, 1.02), (0.15, 0.10, 0.11), hair, 24)
-            for side in (-1, 1):
-                tube('Dungeon Explorer hair lock', [(x + side * 0.125, y - 0.08, 1.10),
-                                                    (x + side * 0.145, y - 0.08, 1.01),
-                                                    (x + side * 0.135, y - 0.06, 0.95)],
-                     [0.045, 0.045, 0.02], hair, sides=10, smooth=True)
+        # The Dragon's head (great_dragon), scaled to this head's size: one
+        # wedge of flat-shaded facets from the skull to a short snout, a
+        # lower jaw just open, eyes high on the sides and swept gold horns.
+        # Built level: unlike the human members' faces it is turned aside,
+        # so it is not tipped up to look at the camera (see the end).
+        # elf_figure's round head sphere, just made, is narrowed into the
+        # back of the skull.
+        cranium = bpy.context.object
+        cranium.scale = (0.115, 0.095, 0.13)
+        cranium.location.y -= 0.025
         start = set(bpy.data.objects)
-        rim_z, rim_tilt = 0.13, 0.10
-
-        def taper(z):
-            return 1.0 - 0.16 * max(0.0, z - 0.3) ** 1.5
-
-        def unit_point(a, unit_z):
-            # a = 0 faces front (-y); unit_z is the height on the unit sphere.
-            ring = math.sqrt(max(0.0, 1 - unit_z * unit_z)) * taper(unit_z)
-            return Vector((ring * math.sin(a), -ring * math.cos(a), unit_z))
-
-        def on_cap(a, unit_z, lift=0.0):
-            unit = unit_point(a, unit_z)
-            point = center + Vector((radii.x * unit.x, radii.y * unit.y, radii.z * unit.z))
-            normal = Vector((unit.x / radii.x, unit.y / radii.y, unit.z / radii.z)).normalized()
-            return point + normal * (thick + lift), normal
-
-        def place(obj, normal):
-            obj.rotation_euler = normal.to_track_quat('Z', 'Y').to_euler()
-
-        def reshape(co):
-            return Vector((co.x * taper(co.z), co.y * taper(co.z), co.z))
-
-        shell = sphere_shell('Dungeon Explorer helmet', tuple(center), tuple(radii), helmet,
-                             lambda c: c.z > -0.4, thick, reshape)
-        shell.modifiers['Shell thickness'].offset = 1.0
-        mesh = bmesh.new()
-        mesh.from_mesh(shell.data)
-        bmesh.ops.bisect_plane(mesh, geom=mesh.verts[:] + mesh.edges[:] + mesh.faces[:],
-                               plane_co=(0, 0, rim_z), plane_no=(0, rim_tilt, 1),
-                               clear_inner=True)
-        mesh.to_mesh(shell.data)
-        mesh.free()
-
-        def rim_height(a):
-            return rim_z + rim_tilt * math.cos(a)
-
-        # The brim: three rings from the foot of the dome outwards, drooping
-        # more towards the edge.
-        count, rings = 64, ([], [], [])
-        for k in range(count):
-            a = 2 * math.pi * k / count
-            foot, _ = on_cap(a, rim_height(a), -0.5 * thick)
-            outward = Vector((math.sin(a), -math.cos(a), 0))
-            width = 0.05 + 0.03 * math.cos(a) ** 2
-            for ring, (out, drop) in zip(rings, ((0.0, 0.0), (0.5, 0.12), (1.0, 0.36))):
-                ring.append(tuple(foot + outward * width * out - Vector((0, 0, drop * width))))
-        faces = [(r * count + k, r * count + (k + 1) % count,
-                  (r + 1) * count + (k + 1) % count, (r + 1) * count + k)
-                 for r in range(2) for k in range(count)]
-        brim = mesh_object('Dungeon Explorer helmet brim', rings[0] + rings[1] + rings[2],
-                           faces, helmet, True)
-        brim.modifiers.new('Brim thickness', 'SOLIDIFY').thickness = 0.012
-
-        # The band: a strip on the dome just above the brim.
-        low, high = [], []
-        for k in range(count):
-            a = 2 * math.pi * k / count
-            low.append(tuple(on_cap(a, rim_height(a) + 0.02, 0.002)[0]))
-            high.append(tuple(on_cap(a, rim_height(a) + 0.14, 0.002)[0]))
-        strip = mesh_object('Dungeon Explorer helmet band', low + high,
-                            [(k, (k + 1) % count, count + (k + 1) % count, count + k)
-                             for k in range(count)], band, True)
-        strip.modifiers.new('Band thickness', 'SOLIDIFY').thickness = 0.006
-
-        top, normal = on_cap(0.0, 1.0)
-        place(sphere('Dungeon Explorer helmet button', tuple(top), (0.022, 0.022, 0.012),
-                     helmet, 16), normal)
+        tube('Dungeon Explorer skull',
+             [(x, y + 0.01, 1.02), (x, y - 0.06, 1.04), (x, y - 0.17, 1.03),
+              (x, y - 0.27, 1.0), (x, y - 0.30, 0.99)],
+             [(0.10, 0.10), (0.12, 0.095), (0.10, 0.075), (0.06, 0.045), 0],
+             scales, sides=8, twist=math.pi / 8)
+        tube('Dungeon Explorer jaw', [(x, y - 0.02, 0.955), (x, y - 0.18, 0.93),
+                                      (x, y - 0.28, 0.91)],
+             [(0.09, 0.035), (0.075, 0.03), 0], plates, sides=6)
         for side in (-1, 1):
-            spot, normal = on_cap(side * math.pi / 2, 0.55)
-            for radius, depth, mat, name in ((0.016, 0.006, brass, 'vent ring'),
-                                             (0.009, 0.008, vent, 'vent')):
-                bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=radius, depth=depth,
-                                                    location=tuple(spot))
-                place(finish(bpy.context.object, mat, True, 'Dungeon Explorer helmet ' + name),
-                      normal)
-
-        # The light stone: a brass disc on the front of the dome above the
-        # band, holding a domed amber stone in four claws.
-        base, normal = on_cap(0.0, rim_height(0.0) + 0.27, 0.004)
-        rotation = normal.to_track_quat('Z', 'Y')
-        across, up = rotation @ Vector((1, 0, 0)), rotation @ Vector((0, 1, 0))
-        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.042, depth=0.012,
-                                            location=tuple(base))
-        place(finish(bpy.context.object, brass, True, 'Dungeon Explorer light setting'), normal)
-        place(sphere('Dungeon Explorer light stone', tuple(base + normal * 0.008),
-                     (0.027, 0.027, 0.017), lamp, 24), normal)
-        for k in range(4):
-            a = math.radians(45 + 90 * k)
-            spot = base + normal * 0.012 + (across * math.cos(a) + up * math.sin(a)) * 0.027
-            place(block('Dungeon Explorer light claw', tuple(spot), (0.009, 0.009, 0.02), brass,
-                        0.003), normal)
-        # Worn pushed back: tip the whole helmet up about the back of the
-        # rim so the eyes show under the front brim from the camera.
-        pivot = Vector((x, center.y + radii.y, center.z))
-        push = (Matrix.Translation(pivot) @ Matrix.Rotation(-HELMET_PUSH, 4, 'X')
-                @ Matrix.Translation(-pivot))
+            sphere('Dungeon Explorer nostril', (x + side * 0.025, y - 0.28, 1.02),
+                   (0.011, 0.009, 0.007), dark, 10)
+            eye_at = Vector((x + side * 0.085, y - 0.12, 1.10))
+            sphere('Dungeon Explorer eye', tuple(eye_at), (0.03, 0.026, 0.028), eye, 16)
+            # Round gold rims in front of the eyes, their faces tipped 40
+            # degrees up toward the camera, with lenses and temples.
+            lens_at = eye_at + Vector((0, -0.05, 0.01))
+            tip = Matrix.Rotation(math.radians(50), 4, 'X')
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.044, minor_radius=0.012,
+                                             major_segments=32, minor_segments=10,
+                                             location=tuple(lens_at))
+            rim = finish(bpy.context.object, gold, True, 'Dungeon Explorer glasses rim')
+            rim.rotation_euler = tip.to_euler()
+            bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.04, depth=0.004,
+                                                location=tuple(lens_at))
+            glass = finish(bpy.context.object, lens, True, 'Dungeon Explorer glasses lens')
+            glass.rotation_euler = tip.to_euler()
+            tube('Dungeon Explorer glasses temple',
+                 [lens_at + Vector((side * 0.044, 0.0, 0.0)), (x + side * 0.13, y - 0.05, 1.09),
+                  (x + side * 0.125, y + 0.04, 1.07)], [0.007] * 3, gold, sides=6, smooth=True)
+            # The Dragon's swept horns.
+            tube('Dungeon Explorer horn',
+                 [(x + side * 0.084, y - 0.057, 1.124), (x + side * 0.15, y + 0.06, 1.21),
+                  (x + side * 0.20, y + 0.195, 1.24), (x + side * 0.227, y + 0.296, 1.208)],
+                 [0.042, 0.034, 0.021, 0], horn, sides=6, smooth=True)
+        # A short arched bridge between the inner edges of the rims.
+        tube('Dungeon Explorer glasses bridge',
+             [(x - 0.042, y - 0.17, 1.115), (x, y - 0.175, 1.13), (x + 0.042, y - 0.17, 1.115)],
+             [0.008] * 3, gold, sides=6, smooth=True)
+        # Unlike the human members, the head turns a further 25 degrees to
+        # screen left, so the snout shows in profile like a monster's, and
+        # elf_figure's backward tilt is undone first, so it looks ahead.
+        bpy.context.view_layer.update()
+        neck = Vector((x, y, 0.90))
+        turn = (Matrix.Translation(neck) @ Matrix.Rotation(0.6, 4, 'X')
+                @ Matrix.Rotation(-EXPLORER_HEAD_TURN, 4, 'Z') @ Matrix.Translation(-neck))
         for obj in set(bpy.data.objects) - start:
-            obj.matrix_world = push @ obj.matrix_world
+            obj.matrix_world = turn @ obj.matrix_world
 
-    elf_figure(x, y, 'Dungeon Explorer', shirt, skin, eye, body, head, skirt=None, ears=False)
+    # An ordinary build (elf_figure's own torso), but for the thick neck.
+    elf_figure(x, y, 'Dungeon Explorer', scales, scales, eye, body, head, skirt=None, ears=False,
+               torso=scales, body_radii=[(0.16, 0.13), (0.19, 0.15), (0.17, 0.13), (0.12, 0.11)],
+               head_scale=1.15)
 
 
 def heavy_armor_materials(tone):
@@ -5323,7 +5251,9 @@ for char, name, x, y in ROW:
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    yaw = (MONSTER_YAW if char in (*'aAbBcdDCFfgkmeEXTM', 'T-toy', 'cat') else WYRM_YAW if char in 'wW'
+    # The Dungeon Explorer, a dragon, turns like the monsters.
+    yaw = (MONSTER_YAW if char in (*'aAbBcdDCFfgkmeEXTM', 'T-toy', 'cat') or char.startswith('explorer-')
+           else WYRM_YAW if char in 'wW'
            else PEGASUS_YAW if char == 'p' else 0)
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
