@@ -169,22 +169,21 @@ In the GUI versions, pressing gamepad button 2 to 12 also assigns it to the sele
   | Movement repeat | Holding a direction repeats movement when enabled. Automatic stopping is on by default before known hazards and visible entities, and after some special movement; release and press the direction again to resume. Change it in `Settings`, or with `--auto-repeat-stop off` for one run. |
   | Reachable area preview | Press `F` to highlight explored cells reachable with your remaining LP. A gamepad button can show the preview while held or toggle it. While viewing the preview, Up or Down inspects another floor in Stages 3 and 4; moving closes the keyboard preview. Unexplored cells and routes remain hidden. The estimate avoids displayed entities and stairs, does not break walls or count LP recovery, and excludes Marksman and Ivy damage, so actual reach may differ. |
 
-* **Monsters, Fairies, and Elves**
+* **Monsters**
 
-  Unencountered monsters are displayed as `?`, fairies as `!`, and unidentified elves as `&`. Contact reveals an entity's type. The rank 1 Amoeba (`a`) is known from the start of every stage; stronger ranks are identified separately.
+  Unencountered monsters appear as `?`; contact reveals their type. Rank 1 Amoeba (`a`) is known from the start, while stronger ranks are identified separately. Monster identification persists across floors. In `arlq` and `arlq-cli`, the strength column shows identified monsters in white and unidentified ones in gray.
 
-  Monster identification persists across floors. Fairy identification is tracked separately on each floor in every stage, so an unencountered fairy is shown again as `!` on a new floor.
-  In `arlq` and `arlq-cli`, the right-hand strength column shows identified monster types in white and unidentified types in gray.
+  Contact with an ordinary monster starts combat. You win when its level is at or below your attack power. Most victories raise your level and restore LP; some give no LP or drain LP or levels. Defeat by a stronger monster returns you to the checkpoint and clears your item. Losing twice in a row to the same monster instead sends you to a random location. Victories, stairs, and falls update the checkpoint.
 
-  Contact with an ordinary monster starts combat. You win if its level is at or below your current attack power. Most victories raise your level by 1 and restore LP, but some monsters give no LP or drain LP or levels instead. Each victory updates the checkpoint. Losing to a stronger monster returns you to the checkpoint and clears your held item; losing twice in a row to the same monster, without contacting another monster in between, sends you to a random location instead. Stairs and falls also update the checkpoint.
+  Defeating an ordinary monster replaces your item and removes poison or Spores. Some monsters, such as `d`, respawn. Defeating a stage boss unlocks its treasure; contact with `[T]` clears the stage.
 
-  Defeating another ordinary monster replaces your held item, even if it carries nothing. This also removes poison or Spores. In Stages 3 and 4, contact with an elf you have not yet met clears Spores; Lifebringer also cures poison.
+* **Fairies**
 
-  Some monsters, such as `d`, respawn. Monster spawns and respawns avoid the 5×5 cells centered on the player on the current floor. If no position is available, that attempt is skipped. Defeating a stage boss unlocks its treasure chest. Contacting the unlocked treasure (`[T]`) clears the stage. The brackets are omitted where other map contents occupy their cells.
+  Unencountered fairies appear as `!`; contact reveals their type. Fairy identification resets on each floor. Fairies give a temporary benefit, with one at a time. Each monster combat encounter and Pegasus jump consumes one duration unit; a party encounter counts once.
 
-  Fairies provide a temporary benefit, with one fairy at a time. Each monster combat encounter consumes one unit of its duration; a party encounter counts once regardless of its size. Each Pegasus jump also consumes one unit. For example, the Nomicon identifies nearby monsters and elves.
+* **Elves**
 
-  Most elves appear from Stage 3 onward and provide support, such as increased attack power, when you meet certain conditions.
+  Unidentified elves appear as `&`; contact reveals their type. Most appear from Stage 3 onward and provide support when you meet certain conditions. Contact with an elf clears Spores; Lifebringer also cures poison.
 
 * **Rare Monster Types and Empowered Monsters**  
   Rare variants have different effects: `A` (Rare Amoeba) grants extra levels, `C` (Rare Chimera) gives a cursed sword, and `E` (Rare Erebus) drains levels. Empowered monsters appear from Stage 2 onward. Rank 2 has the normal level × 3 + 10; rank 3 has three times the rank-2 level. Their rank marks (`b'` and `b"`) identify them as stronger, separate monster types.
@@ -197,7 +196,7 @@ In the GUI versions, pressing gamepad button 2 to 12 also assigns it to the sele
 
 | Display & Name | Description                                                      |
 | -------------- | ---------------------------------------------------------------- |
-| **l** Loop Fairy | Appears in Stages 3–4. Rewinds up to 80 turns on contact, or to the start if fewer turns have elapsed. |
+| **l** Loop Fairy | Appears from Stage 3 onward. Rewinds up to 80 turns on contact, or to the start if fewer turns have elapsed. |
 | **n** Nomicon  | Reveals the type of every active monster and elf within the player's field of vision. |
 | **o** Ocular   | Significantly extends the player's field of vision.              |
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. Barrier landings require barrier immunity or G; R clears Golem walls at the landing point. |
@@ -326,7 +325,7 @@ In Stage 6, S, H, and J cannot cross barriers. If they would enter a barrier, th
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **K** Knight | Adds a fixed 40 to your attack power. |
 | **D** Dungeon Explorer | A dragon who became interested in humans while exploring ancient ruins. Lets you climb pits using a rope and travel through hidden passages. These are shown with green characters or light. |
-| **G** Guardian | Greatly reduces barrier damage. |
+| **G** Guardian | Reduces barrier damage from 30 LP to 5 LP per turn. |
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
 
