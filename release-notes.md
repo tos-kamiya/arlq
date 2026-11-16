@@ -1,5 +1,10 @@
 # ARLQ Release Notes
 
+## 6.8.2 - 2026-11-16
+
+- Draw the Stage 6 Dungeon Core in sprite mode at about the treasure chest's
+  size so it stands out when it appears; it was previously about half as wide.
+
 ## 6.8.1 - 2026-11-16
 
 - Keep the player visible in front of the collected treasure chest on the
