@@ -3026,7 +3026,7 @@ EXPLORER_SCALES = {
 EXPLORER_HEAD_TURN = math.radians(25)
 # How far the head is raised on its longer neck, and moved forward.
 EXPLORER_NECK_RAISE = 0.08
-EXPLORER_HEAD_FORWARD = 0.03
+EXPLORER_HEAD_FORWARD = 0.01
 
 
 def dungeon_explorer(x, y, tone):
@@ -3086,14 +3086,14 @@ def dungeon_explorer(x, y, tone):
         # The thick scaled neck rises out of the shirt's collar, broad at
         # its root and leaning a little forward; rounded shoulders slope from
         # the collar to the arms.
-        tube('Dungeon Explorer neck', [(x, y, 0.82), (x, y - 0.02, 0.89), (x, y - 0.05, 0.97)],
+        tube('Dungeon Explorer neck', [(x, y, 0.82), (x, y - 0.012, 0.89), (x, y - 0.03, 0.97)],
              [(0.12, 0.105), (0.105, 0.092), (0.092, 0.085)], scales, sides=24, smooth=True)
         # The shirt over the upper back slopes up into the back of the neck.
-        sphere('Dungeon Explorer upper back', (x, y + 0.045, 0.855), (0.15, 0.085, 0.07),
+        sphere('Dungeon Explorer upper back', (x, y + 0.03, 0.855), (0.15, 0.075, 0.065),
                shirt, 24)
         bpy.ops.mesh.primitive_torus_add(major_radius=0.105, minor_radius=0.012,
-                                         location=(x, y - 0.02, 0.89),
-                                         rotation=(math.radians(-12), 0, 0))
+                                         location=(x, y - 0.012, 0.89),
+                                         rotation=(math.radians(-8), 0, 0))
         collar = finish(bpy.context.object, shirt, True, 'Dungeon Explorer collar')
         collar.scale.y = 0.9
         for side in (-1, 1):
@@ -3257,11 +3257,11 @@ def dungeon_explorer(x, y, tone):
         for obj in parts:
             obj.matrix_world = raise_head @ obj.matrix_world
         tube('Dungeon Explorer upper neck',
-             [(x, y - 0.04, 0.86), (x, y - 0.045, 0.95),
+             [(x, y - 0.025, 0.86), (x, y - 0.03, 0.95),
               (x, y - 0.035 - EXPLORER_HEAD_FORWARD, 0.95 + EXPLORER_NECK_RAISE)],
              [(0.095, 0.09), (0.088, 0.083), (0.085, 0.08)], scales, sides=24, smooth=True)
-        # Unlike the human members, the head turns a further 25 degrees to
-        # screen left, so the snout shows in profile like a monster's, and
+        # The body faces front like the human members', but the head turns
+        # 25 degrees to screen left, so the snout shows a little in profile, and
         # elf_figure's backward tilt is undone first, so it looks ahead.
         bpy.context.view_layer.update()
         parts = (set(bpy.data.objects) - start) | {cranium}
@@ -5286,9 +5286,7 @@ for char, name, x, y in ROW:
     character = set(bpy.data.objects) - start
     bpy.context.view_layer.update()
     pivot = Matrix.Translation((x, y, 0))
-    # The Dungeon Explorer, a dragon, turns like the monsters.
-    yaw = (MONSTER_YAW if char in (*'aAbBcdDCFfgkmeEXTM', 'T-toy', 'cat') or char.startswith('explorer-')
-           else WYRM_YAW if char in 'wW'
+    yaw = (MONSTER_YAW if char in (*'aAbBcdDCFfgkmeEXTM', 'T-toy', 'cat') else WYRM_YAW if char in 'wW'
            else PEGASUS_YAW if char == 'p' else 0)
     resize = (pivot @ Matrix.Rotation(yaw, 4, 'Z') @ Matrix.Scale(SIZES[char], 4)
               @ pivot.inverted())
