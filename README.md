@@ -324,7 +324,7 @@ In Stage 6, S, H, and J cannot cross barriers. If they would enter a barrier, th
 | **H** Healer | Reduces the LP cost per turn to 0.75 and the defeat cost to 3. |
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **K** Knight | Adds a fixed 40 to your attack power. |
-| **D** Dungeon Explorer | Lets you climb pits using a rope and travel through hidden passages. These are shown with green characters or light. |
+| **D** Dungeon Explorer | A dragon who became interested in humans while exploring ancient ruins. Lets you climb pits using a rope and travel through hidden passages. These are shown with green characters or light. |
 | **G** Guardian | Greatly reduces barrier damage. |
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
