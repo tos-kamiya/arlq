@@ -33,12 +33,9 @@ def test_legacy_narrow_corridor_seed_still_restores_its_configuration(monkeypatc
     assert (config.corridor_h_width, config.corridor_v_width) == (1, 2)
 
 
-@pytest.mark.parametrize(
-    ("option", "expected"),
-    [("--auto-repeat-stop", True), ("--no-auto-repeat-stop", False)],
-)
-def test_cli_can_enable_or_disable_automatic_repeat_stop(monkeypatch, option, expected):
-    monkeypatch.setattr(sys, "argv", ["arlq", "--seed", "123", option])
+@pytest.mark.parametrize(("value", "expected"), [("on", True), ("off", False)])
+def test_cli_can_enable_or_disable_automatic_repeat_stop(monkeypatch, value, expected):
+    monkeypatch.setattr(sys, "argv", ["arlq", "--seed", "123", "--auto-repeat-stop", value])
 
     args, *_ = _prepare_cli_session()
 

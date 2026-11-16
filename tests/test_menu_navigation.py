@@ -142,11 +142,8 @@ def test_settings_can_disable_and_persist_automatic_repeat_stop(monkeypatch, tmp
     ui.settings_menu()
 
     assert ui.auto_repeat_stop_enabled is False
-    assert json.loads(settings_path.read_text()) == {
-        "key_repeat_interval": None,
-        "auto_repeat_stop_enabled": False,
-        "combat_effect_seconds": 0.3,
-    }
+    # Only the changed setting is saved.
+    assert json.loads(settings_path.read_text()) == {"auto_repeat_stop_enabled": False}
 
 
 @pytest.mark.parametrize("seconds", defs.COMBAT_EFFECT_SECONDS_CHOICES)
@@ -156,7 +153,8 @@ def test_settings_select_and_reload_combat_effect_duration(monkeypatch, tmp_path
     path = tmp_path / "settings.json"
     path.write_text(json.dumps({"scale": 1.5}))
     monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
-    events = [(key.DOWN, 0)] * 3 + [(key.LEFT, 0)] * 5
+    # The plain GUI keeps the effect duration in the sprite display submenu too.
+    events = [(key.DOWN, 0)] * 3 + [(key.RIGHT, 0)] + [(key.LEFT, 0)] * 5
     events += [(key.RIGHT, 0)] * round(seconds * 10) + [(key.RETURN, 0)]
     ui = _menu_ui(monkeypatch, events)
     ui.set_scale = lambda scale: None
@@ -173,7 +171,8 @@ def test_cancel_combat_effect_duration_keeps_saved_value(monkeypatch, tmp_path):
     original = '{"combat_effect_seconds": 0.3}'
     path.write_text(original)
     monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
-    ui = _menu_ui(monkeypatch, [(key.DOWN, 0)] * 3 + [(key.RIGHT, 0), (key.ESCAPE, 0)])
+    events = [(key.DOWN, 0)] * 3 + [(key.RIGHT, 0), (key.RIGHT, 0), (key.ESCAPE, 0)]
+    ui = _menu_ui(monkeypatch, events + [(key.ESCAPE, 0)])
     ui.combat_effect_seconds = 0.3
 
     ui.settings_menu()
@@ -234,7 +233,7 @@ def test_sprite_effect_submenu_applies_or_cancels(monkeypatch, tmp_path, cancel_
     ui.settings_menu()
 
     assert ui.combat_effect_seconds == expected
-    if cancel_parent:
+    if cancel_parent or cancel_submenu:
         assert not path.exists()
     else:
         assert json.loads(path.read_text())["combat_effect_seconds"] == expected
@@ -259,9 +258,8 @@ def test_gamepad_submenu_confirm_applies_parent_and_exits(monkeypatch, tmp_path)
 
     ui.settings_menu()
 
-    assert len(scales) == 1
+    assert scales == [1.25]
     assert bindings == [(4, 3, "hold")]
-    assert path.exists()
 
 
 @pytest.mark.parametrize("value", [None, True, "0.1", -0.1, 0.6, 0.25, float("nan")])
@@ -290,21 +288,37 @@ def test_sprite_settings_select_and_reload_floor_transition_duration(
 
     assert ui.floor_transition_seconds == seconds
     assert floor_transition_seconds(load_settings(path)) == seconds
-    assert load_settings(path)["combat_effect_seconds"] == 0.3
+    assert "combat_effect_seconds" not in load_settings(path)
 
 
-def test_plain_gui_settings_have_no_floor_transition_row(monkeypatch, tmp_path):
+def test_plain_gui_settings_use_the_sprite_layout(monkeypatch, tmp_path):
     path = tmp_path / "settings.json"
     monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
-    # Five Downs (past the reset row) wrap back to the scale row without a gamepad.
-    ui = _menu_ui(monkeypatch, [(key.DOWN, 0)] * 5 + [(key.RIGHT, 0), (key.RETURN, 0)])
+    # Six Downs (past the reset row) wrap back to the scale row, with or
+    # without a gamepad.
+    ui = _menu_ui(monkeypatch, [(key.DOWN, 0)] * 6 + [(key.RIGHT, 0), (key.RETURN, 0)])
     scales = []
     ui.set_scale = scales.append
 
     ui.settings_menu()
 
     assert scales == [1.25]
-    assert "floor_transition_seconds" not in json.loads(path.read_text())
+
+
+def test_gamepad_submenu_opens_without_a_controller(monkeypatch, tmp_path):
+    path = tmp_path / "settings.json"
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    events = [(key.DOWN, 0)] * 4 + [(key.RETURN, 0), (key.RIGHT, 0), (key.RETURN, 0)]
+    ui = _menu_ui(monkeypatch, events)
+    ui.set_scale = lambda scale: None
+    ui.gamepad_preview_button = 2
+    ui.gamepad_preview_mode = "hold"
+    ui._gamepad_preview_held = False
+
+    ui.settings_menu()
+
+    assert ui.gamepad_help_button == 4
+    assert json.loads(path.read_text())["gamepad_help_button"] == 4
 
 
 CHANGED_SETTINGS = {
@@ -354,18 +368,19 @@ def test_reset_row_restores_every_setting_to_its_default(monkeypatch, tmp_path, 
     from arlq.settings import (combat_effect_seconds, floor_transition_seconds,
                                idle_bob_enabled, load_settings, move_glide_enabled)
 
-    # The reset row is last; it shows the defaults and returns to the top
-    # row, where Enter applies them.
-    downs = 5 if controller else 4
-    events = [(key.DOWN, 0)] * downs + [(key.RETURN, 0), (key.RETURN, 0)]
+    # The reset row is last; Enter applies the defaults and exits.
+    events = [(key.DOWN, 0)] * 5 + [(key.RETURN, 0)]
     ui, path, scales = _changed_sprite_menu_ui(monkeypatch, tmp_path, events, controller)
 
     ui.settings_menu()
 
     saved = load_settings(path)
     assert scales == [pyglet_funcs.DEFAULT_UI_SCALE]
-    assert ui.key_repeat_interval is None and saved["key_repeat_interval"] is None
-    assert ui.auto_repeat_stop_enabled is True and saved["auto_repeat_stop_enabled"] is True
+    # The reset removes saved settings instead of writing default values.
+    # (set_scale is replaced in this test, so its saved scale stays.)
+    assert saved == {"scale": 2.0}
+    assert ui.key_repeat_interval is None
+    assert ui.auto_repeat_stop_enabled is True
     assert ui.combat_effect_seconds == combat_effect_seconds(saved) == defs.COMBAT_EFFECT_SECONDS
     assert (ui.floor_transition_seconds == floor_transition_seconds(saved)
             == defs.FLOOR_TRANSITION_SECONDS)
@@ -383,8 +398,8 @@ def test_reset_row_restores_every_setting_to_its_default(monkeypatch, tmp_path, 
     )
 
 
-def test_cancel_after_reset_keeps_saved_settings(monkeypatch, tmp_path):
-    events = [(key.DOWN, 0)] * 4 + [(key.RETURN, 0), (key.ESCAPE, 0)]
+def test_right_on_reset_row_does_nothing(monkeypatch, tmp_path):
+    events = [(key.DOWN, 0)] * 5 + [(key.RIGHT, 0), (key.ESCAPE, 0)]
     ui, path, scales = _changed_sprite_menu_ui(monkeypatch, tmp_path, events)
     original = path.read_text()
 
@@ -615,16 +630,31 @@ def test_sprite_settings_toggle_and_reload_smooth_movement(
     assert move_glide_enabled(load_settings(path)) is enabled
 
 
-def test_plain_gui_settings_do_not_save_character_bobbing(monkeypatch, tmp_path):
+def test_plain_gui_settings_also_save_sprite_display_settings(monkeypatch, tmp_path):
     path = tmp_path / "settings.json"
     monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
-    ui = _menu_ui(monkeypatch, [(key.RETURN, 0)])
+    events = [(key.DOWN, 0)] * 3 + [(key.RIGHT, 0)] + [(key.DOWN, 0)] * 2
+    ui = _menu_ui(monkeypatch, events + [(key.RIGHT, 0), (key.RETURN, 0)])
     ui.set_scale = lambda scale: None
 
     ui.settings_menu()
 
-    assert "idle_bob_enabled" not in json.loads(path.read_text())
-    assert "move_glide_enabled" not in json.loads(path.read_text())
+    assert json.loads(path.read_text()) == {"idle_bob_enabled": False}
+
+
+def test_settings_do_not_save_unchanged_command_line_values(monkeypatch, tmp_path):
+    path = tmp_path / "settings.json"
+    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
+    ui = _menu_ui(monkeypatch, [(key.DOWN, 0), (key.DOWN, 0), (key.RIGHT, 0), (key.RETURN, 0)])
+    ui.set_scale = lambda scale: None
+    # As set by --combat-effect-duration 0 --key-repeat-interval 0.35.
+    ui.combat_effect_seconds = 0.0
+    ui.key_repeat_interval = 0.35
+
+    ui.settings_menu()
+
+    assert json.loads(path.read_text()) == {"auto_repeat_stop_enabled": False}
+    assert (ui.combat_effect_seconds, ui.key_repeat_interval) == (0.0, 0.35)
 
 
 @pytest.mark.parametrize("value", [None, 0, 1, "true", "off"])

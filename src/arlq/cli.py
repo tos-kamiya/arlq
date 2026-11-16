@@ -10,6 +10,7 @@ from appdirs import user_cache_dir
 
 from . import arlq as game
 from . import defs as d
+from . import settings
 from .__about__ import __version__
 from .i18n import get_language, set_language
 from .trace import (
@@ -21,6 +22,97 @@ from .trace import (
 )
 
 
+def _choice_seconds(choices):
+    def parse(value):
+        try:
+            seconds = float(value)
+            tenths = round(seconds * 10)
+            seconds = tenths / 10 if abs(seconds * 10 - tenths) < 1e-9 else None
+        except ValueError:
+            seconds = None
+        if seconds not in choices:
+            raise argparse.ArgumentTypeError(
+                "choose from " + ", ".join(f"{choice:.1f}" for choice in choices)
+            )
+        return seconds
+    return parse
+
+
+def _on_off(value):
+    if value.lower() == "on":
+        return True
+    if value.lower() == "off":
+        return False
+    raise argparse.ArgumentTypeError("choose on or off")
+
+
+# Option dest -> setting name, in Settings screen order.
+SETTINGS_OPTIONS = {
+    "scale": "scale",
+    "key_repeat_interval": "key_repeat_interval",
+    "auto_repeat_stop": "auto_repeat_stop_enabled",
+    "combat_effect_duration": "combat_effect_seconds",
+    "floor_transition_duration": "floor_transition_seconds",
+    "character_bobbing": "idle_bob_enabled",
+    "smooth_movement": "move_glide_enabled",
+}
+
+
+def _add_settings_arguments(group) -> None:
+    """Options for the Settings screen items, available in all frontends."""
+    suppress = argparse.SUPPRESS
+    group.add_argument(
+        "--scale", type=float, metavar="FACTOR", default=suppress,
+        help="GUI display scale (0.5 to 4.0).",
+    )
+    group.add_argument(
+        "--key-repeat-interval",
+        type=lambda value: None if value.lower() == "none" else float(value),
+        metavar="SECONDS|none", default=suppress,
+        help="GUI movement repeat delay and interval (0.1 to 1.0 seconds, or none).",
+    )
+    group.add_argument(
+        "--auto-repeat-stop", type=_on_off, metavar="on|off", default=suppress,
+        help="Stop held movement near known hazards and entities.",
+    )
+    group.add_argument(
+        "--combat-effect-duration",
+        type=_choice_seconds(d.COMBAT_EFFECT_SECONDS_CHOICES),
+        metavar="SECONDS", default=suppress,
+        help="Combat and barrier damage effect duration (0 to 0.5 seconds in 0.1 steps).",
+    )
+    group.add_argument(
+        "--floor-transition-duration",
+        type=_choice_seconds(d.FLOOR_TRANSITION_SECONDS_CHOICES),
+        metavar="SECONDS", default=suppress,
+        help="Sprite GUI floor transition duration (0 to 1 second in 0.1 steps).",
+    )
+    group.add_argument(
+        "--character-bobbing", type=_on_off, metavar="on|off", default=suppress,
+        help="Sprite GUI idle character bobbing.",
+    )
+    group.add_argument(
+        "--smooth-movement", type=_on_off, metavar="on|off", default=suppress,
+        help="Sprite GUI smooth one-cell movement.",
+    )
+
+
+def cli_setting_overrides(args) -> dict:
+    """Settings given on the command line, used for this run only."""
+    overrides = {
+        name: getattr(args, dest)
+        for dest, name in SETTINGS_OPTIONS.items()
+        if hasattr(args, dest)
+    }
+    if "scale" in overrides:
+        overrides["scale"] = settings.valid_ui_scale(overrides["scale"])
+    if "key_repeat_interval" in overrides:
+        overrides["key_repeat_interval"] = settings.valid_key_repeat_interval(
+            overrides["key_repeat_interval"]
+        )
+    return overrides
+
+
 def _prepare_cli_session(terminal_only=False, sprites_only=False):
     parser = argparse.ArgumentParser(
         description="A Rogue-Like game.",
@@ -28,6 +120,9 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
     parser.set_defaults(sprites=False)
     general = parser.add_argument_group("General options")
     gui = None if terminal_only else parser.add_argument_group("GUI options")
+    settings_group = parser.add_argument_group(
+        "Settings options (this run only; the Settings screen saves settings)"
+    )
     terminal = parser.add_argument_group("Terminal options")
     dev = parser.add_argument_group("Development options")
     if terminal_only:
@@ -78,25 +173,7 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
                 help='Use the Pyglet sprite UI: 3D-rendered characters and marble column walls '
                      '(characters without a sprite stay text).',
             )
-        gui.add_argument(
-            "--scale",
-            type=float,
-            metavar="FACTOR",
-            help="GUI display scale (0.5 to 4.0); saves the value for future GUI starts.",
-        )
-        gui.add_argument(
-            "--key-repeat-interval",
-            type=lambda value: None if value.lower() == "none" else float(value),
-            metavar="SECONDS|none",
-            default=argparse.SUPPRESS,
-            help="GUI movement repeat delay and interval (0.1 to 1.0 seconds, or none); saves for future GUI starts.",
-        )
-        gui.add_argument(
-            "--auto-repeat-stop",
-            action=argparse.BooleanOptionalAction,
-            default=argparse.SUPPRESS,
-            help="Stop held movement near known hazards and entities (saves for future GUI starts).",
-        )
+    _add_settings_arguments(settings_group)
     dev.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
     dev.add_argument(
         "--trace",
@@ -322,6 +399,8 @@ def main(terminal_only=False, sprites_only=False):
                 config=game_config,
             )
 
+    overrides = cli_setting_overrides(args)
+
     if args.terminal:
         from blessed import Terminal
 
@@ -329,24 +408,23 @@ def main(terminal_only=False, sprites_only=False):
 
         term = Terminal()
         with term.fullscreen(), term.cbreak(), term.hidden_cursor():
-            play(BlessedUI(term, dots=args.dots))
+            ui = BlessedUI(term, dots=args.dots)
+            ui.setting_overrides = overrides
+            if "combat_effect_seconds" in overrides:
+                ui.combat_effect_seconds = overrides["combat_effect_seconds"]
+            play(ui)
     else:
         from .pyglet_funcs import PygletUI
 
         if args.sprites:
             from .sprites.sprite_funcs import SpriteUI
 
-            ui = SpriteUI(args.scale)
+            ui = SpriteUI(overrides.get("scale"))
         else:
-            ui = PygletUI(args.scale)
-        if args.scale is not None:
-            from .pyglet_funcs import save_ui_scale
-
-            save_ui_scale(ui.scale)
-        if hasattr(args, "key_repeat_interval"):
-            ui.set_key_repeat_interval(args.key_repeat_interval)
-        if hasattr(args, "auto_repeat_stop"):
-            ui.set_auto_repeat_stop_enabled(args.auto_repeat_stop)
+            ui = PygletUI(overrides.get("scale"))
+        # The Pyglet frontends keep each setting in an attribute of the same name.
+        for name, value in overrides.items():
+            setattr(ui, name, value)
         play(ui)
 
     if trace_recorder is not None:

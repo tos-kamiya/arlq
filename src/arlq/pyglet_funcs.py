@@ -1,5 +1,4 @@
 import locale
-import json
 import math
 import sys
 import time
@@ -7,7 +6,6 @@ from functools import wraps
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
-from appdirs import user_config_dir
 
 
 def _prepare_x11_locale() -> None:
@@ -44,11 +42,34 @@ from pyglet.window import key as pgkey
 from .__about__ import __version__
 from . import defs as d
 from .settings import (
+    DEFAULT_AUTO_REPEAT_STOP_ENABLED,
+    DEFAULT_GAMEPAD_HELP_BUTTON,
+    DEFAULT_GAMEPAD_PREVIEW_BUTTON,
+    DEFAULT_GAMEPAD_PREVIEW_MODE,
+    DEFAULT_KEY_REPEAT_INTERVAL,
+    DEFAULT_UI_SCALE,
+    GAMEPAD_BUTTON_CHOICES,
+    GAMEPAD_BUTTON_NAMES,
+    GAMEPAD_BUTTONS,
+    GAMEPAD_PREVIEW_MODES,
+    KEY_REPEAT_CHOICES,
+    MAX_UI_SCALE,
+    MIN_UI_SCALE,
+    UI_SCALE_CHOICES,
+    auto_repeat_stop_enabled,
     combat_effect_seconds,
     floor_transition_seconds,
+    gamepad_bindings,
+    gamepad_bindings_settings,
+    gamepad_button_label as _gamepad_button_label,
     idle_bob_enabled,
     load_settings,
     move_glide_enabled,
+    next_gamepad_button as _next_gamepad_button,
+    save_settings,
+    settings_path,
+    ui_scale,
+    valid_key_repeat_interval,
 )
 from .treasure_particles import SPARKLE_TICKS_PER_SECOND, sparkle_cells, sparkle_frame
 from . import display as ui_display
@@ -156,25 +177,6 @@ FONT_HEIGHT_RATIO = 0.87
 MESSAGE_FONT_SIZE_SCALE = 0.95
 MENU_ROW_SPACING = 1.2
 
-MIN_UI_SCALE = 0.5
-MAX_UI_SCALE = 4.0
-UI_SCALE_CHOICES = tuple(n / 100 for n in range(50, 401, 25))
-KEY_REPEAT_CHOICES = tuple(n / 10 for n in range(1, 11)) + (None,)
-GAMEPAD_BUTTON_NAMES = (
-    "A",
-    "B",
-    "X",
-    "Y",
-    "Left shoulder",
-    "Right shoulder",
-    "Back",
-    "Start",
-    "Guide",
-    "Left stick press",
-    "Right stick press",
-    "Left trigger",
-    "Right trigger",
-)
 GAMEPAD_CONTROLLER_ATTRIBUTES = (
     "a",
     "b",
@@ -190,40 +192,8 @@ GAMEPAD_CONTROLLER_ATTRIBUTES = (
     "lefttrigger",
     "righttrigger",
 )
-GAMEPAD_BUTTONS = tuple(range(len(GAMEPAD_BUTTON_NAMES)))
-GAMEPAD_BUTTON_CHOICES = (None,) + GAMEPAD_BUTTONS
 GAMEPAD_TRIGGER_BUTTONS = (11, 12)
 GAMEPAD_TRIGGER_PRESS_THRESHOLD = 0.5
-GAMEPAD_PREVIEW_MODES = ("hold", "toggle")
-DEFAULT_UI_SCALE = 1.0
-DEFAULT_KEY_REPEAT_INTERVAL = None
-DEFAULT_AUTO_REPEAT_STOP_ENABLED = True
-DEFAULT_GAMEPAD_HELP_BUTTON = 3
-DEFAULT_GAMEPAD_PREVIEW_BUTTON = 2
-DEFAULT_GAMEPAD_PREVIEW_MODE = "hold"
-
-
-def _gamepad_button_label(button: Optional[int]) -> str:
-    """Return a readable label for one of pyglet's standard controller inputs."""
-    if button is None:
-        return tr("Unassigned")
-    return tr("Button {n} ({name})").format(
-        n=button, name=tr(GAMEPAD_BUTTON_NAMES[button])
-    )
-
-
-def _next_gamepad_button(
-    current: Optional[int], step: int, occupied: Optional[int]
-) -> Optional[int]:
-    """Cycle bindings while skipping the other mode key's assigned button."""
-    index = GAMEPAD_BUTTON_CHOICES.index(current)
-    for offset in range(1, len(GAMEPAD_BUTTON_CHOICES) + 1):
-        candidate = GAMEPAD_BUTTON_CHOICES[
-            (index + step * offset) % len(GAMEPAD_BUTTON_CHOICES)
-        ]
-        if candidate is None or candidate != occupied:
-            return candidate
-    return None
 
 
 def _held_gamepad_buttons(controller) -> Set[int]:
@@ -241,7 +211,7 @@ def _held_gamepad_buttons(controller) -> Set[int]:
 
 
 def _settings_path() -> Path:
-    return Path(user_config_dir("arlq")) / "settings.json"
+    return settings_path()
 
 
 def _load_settings() -> dict:
@@ -250,107 +220,44 @@ def _load_settings() -> dict:
 
 def load_ui_scale() -> float:
     """Load the saved GUI scale, falling back safely to the default."""
-    try:
-        value = _load_settings().get("scale", DEFAULT_UI_SCALE)
-        value = float(value)
-    except (OSError, ValueError, TypeError, json.JSONDecodeError, AttributeError):
-        return DEFAULT_UI_SCALE
-    return min(MAX_UI_SCALE, max(MIN_UI_SCALE, value))
+    return ui_scale(_load_settings())
 
 
 def save_ui_scale(scale: float) -> None:
     """Persist the GUI scale in the user's platform configuration directory."""
-    path = _settings_path()
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        settings = _load_settings()
-        settings["scale"] = scale
-        path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-    except OSError:
-        # A read-only or unusual environment should not prevent the game from
-        # starting; the setting simply will not persist in that case.
-        pass
+    save_settings({"scale": scale}, _settings_path())
 
 
 def save_key_repeat_interval(interval: Optional[float]) -> None:
     """Persist the GUI key repeat interval without discarding other settings."""
-    path = _settings_path()
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        settings = _load_settings()
-        settings["key_repeat_interval"] = PygletUI._valid_repeat_interval(interval)
-        path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-    except OSError:
-        pass
+    save_settings(
+        {"key_repeat_interval": valid_key_repeat_interval(interval)}, _settings_path()
+    )
 
 
 def load_auto_repeat_stop_enabled() -> bool:
     """Load whether automatic movement repeat should stop at game events."""
-    value = _load_settings().get("auto_repeat_stop_enabled", DEFAULT_AUTO_REPEAT_STOP_ENABLED)
-    return value if isinstance(value, bool) else DEFAULT_AUTO_REPEAT_STOP_ENABLED
+    return auto_repeat_stop_enabled(_load_settings())
 
 
 def save_auto_repeat_stop_enabled(enabled: bool) -> None:
     """Persist the automatic repeat stop setting without discarding other settings."""
-    path = _settings_path()
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        settings = _load_settings()
-        settings["auto_repeat_stop_enabled"] = bool(enabled)
-        path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-    except OSError:
-        pass
+    save_settings({"auto_repeat_stop_enabled": bool(enabled)}, _settings_path())
 
 
 def load_gamepad_bindings() -> Tuple[Optional[int], Optional[int], str]:
     """Load configurable gamepad mode-button bindings safely."""
-    settings = _load_settings()
-    help_button = settings.get("gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON)
-    preview_button = settings.get("gamepad_preview_button", DEFAULT_GAMEPAD_PREVIEW_BUTTON)
-    preview_mode = settings.get("gamepad_preview_mode", DEFAULT_GAMEPAD_PREVIEW_MODE)
-    if help_button is not None and (
-        type(help_button) is not int or help_button not in GAMEPAD_BUTTONS
-    ):
-        help_button = DEFAULT_GAMEPAD_HELP_BUTTON
-    if preview_button is not None and (
-        type(preview_button) is not int or preview_button not in GAMEPAD_BUTTONS
-    ):
-        preview_button = DEFAULT_GAMEPAD_PREVIEW_BUTTON
-    if help_button is not None and help_button == preview_button:
-        preview_button = None
-    if preview_mode not in GAMEPAD_PREVIEW_MODES:
-        preview_mode = DEFAULT_GAMEPAD_PREVIEW_MODE
-    return help_button, preview_button, preview_mode
+    return gamepad_bindings(_load_settings())
 
 
 def save_gamepad_bindings(
     help_button: Optional[int], preview_button: Optional[int], preview_mode: str
 ) -> None:
     """Persist gamepad mode-button bindings without discarding other settings."""
-    if help_button is not None and (
-        type(help_button) is not int or help_button not in GAMEPAD_BUTTONS
-    ):
-        help_button = DEFAULT_GAMEPAD_HELP_BUTTON
-    if preview_button is not None and (
-        type(preview_button) is not int or preview_button not in GAMEPAD_BUTTONS
-    ):
-        preview_button = DEFAULT_GAMEPAD_PREVIEW_BUTTON
-    if help_button is not None and help_button == preview_button:
-        preview_button = None
-    if preview_mode not in GAMEPAD_PREVIEW_MODES:
-        preview_mode = DEFAULT_GAMEPAD_PREVIEW_MODE
-    path = _settings_path()
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        settings = _load_settings()
-        settings.update(
-            gamepad_help_button=help_button,
-            gamepad_preview_button=preview_button,
-            gamepad_preview_mode=preview_mode,
-        )
-        path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-    except OSError:
-        pass
+    save_settings(
+        gamepad_bindings_settings(help_button, preview_button, preview_mode),
+        _settings_path(),
+    )
 
 # Keys that map to a movement direction, shared by input_direction().
 _DIRECTION_KEYS = {
@@ -552,17 +459,7 @@ class PygletUI(PygletSettingsMixin):
         """
         return None
 
-    @staticmethod
-    def _valid_repeat_interval(interval: Optional[float]) -> Optional[float]:
-        if interval is None:
-            return None
-        try:
-            interval = float(interval)
-        except (ValueError, TypeError):
-            return 0.2
-        if not math.isfinite(interval):
-            return 0.2
-        return min(1.0, max(0.1, interval))
+    _valid_repeat_interval = staticmethod(valid_key_repeat_interval)
 
     def set_key_repeat_interval(self, interval: Optional[float]) -> None:
         self.key_repeat_interval = self._valid_repeat_interval(interval)
@@ -574,49 +471,21 @@ class PygletUI(PygletSettingsMixin):
 
     def set_combat_effect_seconds(self, seconds: float) -> None:
         self.combat_effect_seconds = combat_effect_seconds({"combat_effect_seconds": seconds})
-        path = _settings_path()
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            settings = _load_settings()
-            settings["combat_effect_seconds"] = self.combat_effect_seconds
-            path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-        except OSError:
-            pass
+        save_settings({"combat_effect_seconds": self.combat_effect_seconds}, _settings_path())
 
     def set_floor_transition_seconds(self, seconds: float) -> None:
         self.floor_transition_seconds = floor_transition_seconds(
             {"floor_transition_seconds": seconds}
         )
-        path = _settings_path()
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            settings = _load_settings()
-            settings["floor_transition_seconds"] = self.floor_transition_seconds
-            path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-        except OSError:
-            pass
+        save_settings({"floor_transition_seconds": self.floor_transition_seconds}, _settings_path())
 
     def set_idle_bob_enabled(self, enabled: bool) -> None:
         self.idle_bob_enabled = bool(enabled)
-        path = _settings_path()
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            settings = _load_settings()
-            settings["idle_bob_enabled"] = self.idle_bob_enabled
-            path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-        except OSError:
-            pass
+        save_settings({"idle_bob_enabled": self.idle_bob_enabled}, _settings_path())
 
     def set_move_glide_enabled(self, enabled: bool) -> None:
         self.move_glide_enabled = bool(enabled)
-        path = _settings_path()
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            settings = _load_settings()
-            settings["move_glide_enabled"] = self.move_glide_enabled
-            path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-        except OSError:
-            pass
+        save_settings({"move_glide_enabled": self.move_glide_enabled}, _settings_path())
 
     def set_gamepad_bindings(
         self,

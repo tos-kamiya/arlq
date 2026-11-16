@@ -79,66 +79,124 @@ Integer seeds use their low 32 bits.
 | Option | Description |
 | --- | --- |
 | `--terminal` | Run the game in the terminal using Blessed. |
-| `--scale FACTOR` | Enlarge or reduce the Pyglet GUI (from `0.5` to `4.0`, for example `--scale 1.5`). The selected scale is saved in the per-user configuration directory and used automatically on the next GUI launch. You can also change it in the stage selection screen's `Settings`. |
-| `--key-repeat-interval SECONDS` | Set the GUI movement repeat delay and interval (from `0.1` to `1.0` seconds), or use `none` to disable it. The setting is saved for later GUI starts and can also be changed in the stage selection screen's `Settings`. |
-| `--auto-repeat-stop` / `--no-auto-repeat-stop` | Enable or disable automatic repeat stopping near known hazards and visible entities. Enabled by default; the selection is saved for later GUI starts and can also be changed in `Settings`. |
 
-In `Settings`, `Combat effect duration` selects 0, 0.1, 0.2, 0.3, 0.4, or 0.5 seconds for combat and barrier damage effects (default: 0.3). Choosing 0 disables the effects and their delay. The selection is saved and also used in terminal mode.
-In `arlq-sprites`, this setting, `Floor transition duration`, `Character bobbing`, and `Smooth movement` are in `Settings` → `Sprite display settings`. Open the submenu with Enter or Right; Enter applies all changes and exits settings, while Esc cancels the submenu and returns to `Settings`.
-These effects appear after each move is resolved, before the map refreshes.
-`Reset all settings to defaults`, the last row of `Settings`, sets every setting back to its default, including those in `Sprite display settings` and the gamepad buttons (default movement repeat: no repeat). Press Enter on it to show the defaults; the cursor returns to the top row, where Enter applies them and Esc cancels.
-In `arlq-sprites`, the window keeps updating during effects, and keys pressed during them are queued for the next input.
-In `arlq`, the window also processes events during combat effects; keys pressed then are queued for the next input.
-In `arlq-sprites`, the slash of a won fight is cut the way the player attacked (up, down, left, or right).
-Defeating a Vortex (`V`) briefly shows its storm around where it stood, after the combat effect and before the rearranged floor appears. The character GUI and terminal modes render it with colored braille characters.
-Defeating a stage boss (in Stage 6, the leader of the boss party; not the Dungeon Core) leaves a lingering afterglow where it fell: a pillar of light, a ring spreading over the ground and sparks drifting up, for about 0.93 seconds. It is skipped when `Combat effect duration` is 0.
-Destroying the Dungeon Core swells a dark, see-through dome over where it stood, which then comes apart into drifting mist (about 1 second; also skipped when `Combat effect duration` is 0).
-In `arlq-sprites`, winning a stage by taking its treasure chest leaves the chest in sight on that cell, wrapped in a hazy golden dome of light with glowing motes floating inside it, for as long as the final screen stays up (skipped when `Combat effect duration` is 0).
-The character GUI and terminal show sparkling particles on empty cells around the player on the treasure victory screen (skipped when `Combat effect duration` is 0). The character GUI and terminal render the boss and Dungeon Core effects in braille. The GUI renders each character cell as a 2-by-4 pixel grid; terminal appearance depends on its font and colors. Terminal mode reads the saved combat effect setting; change it in the GUI settings.
-In `arlq-sprites`, `Floor transition duration` selects 0 to 1 second in 0.1-second steps for the short scene shown between floors (default: 0.5; 0 skips it): the old floor fades to black, the player steps down or up the stairs, falls, or climbs the rope, and the new floor fades in.
-In `arlq-sprites`, `Character bobbing` turns on or off the small hop that characters in view make every 0.7 seconds while the game waits for input (default: On). The player, monsters, fairies, and elves and party members waiting on the map hop; following fairies and party members stay still.
-In `arlq-sprites`, `Smooth movement` turns on or off the glide of the player, its fairy, and following party members into each one-cell step, with the field scrolling along (default: On). When it is off, they and the view move a whole cell at once.
+Options for the settings screen items, such as `--scale`, are available in every
+command. They apply to that run only and are not saved; see the tables in
+[Settings screen](#settings-screen).
 
 ## Screen and controls
 
 `arlq-cli` runs in a terminal, `arlq` opens a character-based GUI, and
-`arlq-sprites` opens a GUI with character sprites.
+`arlq-sprites` opens a GUI with character sprites. `arlq --terminal` also
+starts the terminal interface, and `arlq --sprites` the sprite GUI.
 
 ### Common to all modes
 
-The stage selector arranges `[1]` through `[6]` in two columns and three rows;
-select a stage directly with a number key. GUI modes also support gamepads;
-button assignments can be changed in `Settings -> Gamepad button settings`.
-
-Control the player character (`@` in `arlq-cli` and `arlq`) using the arrow keys or WASD.
-Your vision is centered on your location, and explored areas remain visible on the automap.
-
-After contacting an enemy, its party composition remains in brackets to the
-left of event messages. Temporary status popups appear near the player, while
-event messages remain in the bottom status area. LP and LVL changes in the
-popups are rounded to one decimal place, omitting trailing `.0`.
+- The stage selector arranges `[1]` through `[6]` in two columns and three rows; select a stage directly with a number key.
+- Control the player character (`@` in `arlq-cli` and `arlq`) using the arrow keys or WASD. GUI modes also support gamepads; button assignments can be changed in `Settings` → `Gamepad button settings`.
+- Your vision is centered on your location, and explored areas remain visible on the automap.
+- After contacting an enemy, its party composition remains in brackets to the left of event messages.
+- Temporary status popups appear near the player, while event messages remain in the bottom status area. LP and LVL changes in the popups are rounded to one decimal place, omitting trailing `.0`.
 
 ### Terminal: `arlq-cli`
 
 The Blessed terminal interface requires at least 80 columns and 24 lines. The
 game pauses if the terminal becomes smaller and resumes when it is large enough
-again. `arlq --terminal` also starts the terminal interface.
+again.
 
 ### Sprite GUI: `arlq-sprites`
 
-Use `arlq-sprites` for the character-sprite GUI. The same mode is also available
-through `arlq --sprites`. Its window opens wide enough to show the complete
-field and strength column without scrolling. The window can be resized in both
-dimensions. Changing the window height zooms the field while keeping its
-rendering detail consistent. If the window is resized narrower than the field,
-the camera follows the player; Shift+Left/Right scrolls the view three cells at
-a time without moving.
+**Window**: The window opens wide enough to show the complete field and strength
+column without scrolling, and can be resized in both dimensions. Changing the
+window height zooms the field while keeping its rendering detail consistent. If
+the window is resized narrower than the field, the camera follows the player;
+Shift+Left/Right scrolls the view three cells at a time without moving.
 
-The player is shown holding a sword when carrying one. The player faces the direction of its last move, even when a wall or a lost fight keeps it in place, and faces the screen at the start of a stage and after stairs, a fall, or a Loop rewind. After a one-cell step, the player, its fairy, and following party members glide from the cells they left into their new cells, and the field scrolls smoothly along with them when the view follows the player. While a held direction repeats, each glide lasts until the next repeat, so walking does not pause between steps. The LP gauge appears just above the player, as in a fighting game. Ground discs show whether monsters are identified, their strength, and the player's status.
+**The player**
 
-Hover over a character to enlarge it and display its name. Unidentified characters show no name.
+- The player is shown holding a sword when carrying one.
+- The player faces the direction of its last move, even when a wall or a lost fight keeps it in place, and faces the screen at the start of a stage and after stairs, a fall, or a Loop rewind.
+- The LP gauge appears just above the player, as in a fighting game.
+- After a one-cell step, the player, its fairy, and following party members glide from the cells they left into their new cells, and the field scrolls smoothly along with them when the view follows the player. While a held direction repeats, each glide lasts until the next repeat, so walking does not pause between steps.
 
-Characters next to the player are drawn larger. Party members and the Javelin Elf following the player are instead drawn at about 85% size with a fainter outline, so they do not look larger than the player.
+**Characters**
+
+- Ground discs show whether monsters are identified, their strength, and the player's status.
+- Characters next to the player are drawn larger. Party members and the Javelin Elf following the player are instead drawn at about 85% size with a fainter outline, so they do not look larger than the player.
+- Hover over a character to enlarge it and display its name. Unidentified characters show no name.
+
+## Display settings and effects
+
+### Settings screen
+
+`Settings` on the stage selection screen (the `s` key) changes display and
+control settings. `arlq-cli`, `arlq`, and `arlq-sprites` show the same items in
+the same layout, including items that have no effect in that mode. Every command
+Settings are saved in the per-user configuration directory and used by every mode
+on later starts.
+
+Every command also accepts command-line options for the items other than the
+gamepad ones. An option value is used for that run only and does not change the
+saved settings. The settings screen shows the option values; applying it saves
+only the items changed in the settings screen.
+
+In the settings screens, Up/Down selects an item and Left/Right changes its
+value. Enter or Right opens a submenu (an item marked `->`). Enter applies the
+changes and exits settings, and Esc cancels; in a submenu, Esc cancels the
+submenu's changes and returns to `Settings`.
+
+#### `Settings`
+
+| Settings item | Command-line option | Description |
+| --- | --- | --- |
+| `Interface scale` | `--scale FACTOR` | GUI display scale (`0.5` to `4.0`; default `1.0`). The settings screen selects it in 25% steps. |
+| `Movement repeat interval` | `--key-repeat-interval SECONDS` | GUI movement repeat delay and interval while a direction is held (`0.1` to `1.0` seconds). `none` (`No repeat`, the default) disables it. |
+| `Automatic repeat stop` | `--auto-repeat-stop on\|off` | Stop held movement near known hazards and visible entities (default: On). |
+| `Sprite display settings ->` | | Opens the submenu below. |
+| `Gamepad button settings ->` | | Opens the submenu below. |
+| `Reset all settings to defaults` | | Enter sets every setting, including those in the submenus, back to its default and exits settings. The saved settings are removed from the settings file. |
+
+#### `Settings` → `Sprite display settings`
+
+| Settings item | Command-line option | Description |
+| --- | --- | --- |
+| `Combat effect duration` | `--combat-effect-duration SECONDS` | Duration of combat and barrier damage effects (`0` to `0.5` seconds in 0.1-second steps; default `0.3`). 0 disables the effects and their delay. Used in every mode. |
+| `Floor transition duration` | `--floor-transition-duration SECONDS` | Duration of the short scene `arlq-sprites` shows between floors (`0` to `1` second in 0.1-second steps; default `0.5`; 0 skips it): the old floor fades to black, the player steps down or up the stairs, falls, or climbs the rope, and the new floor fades in. |
+| `Character bobbing` | `--character-bobbing on\|off` | In `arlq-sprites`, characters in view make a small hop every 0.7 seconds while the game waits for input (default: On). The player, monsters, fairies, and elves and party members waiting on the map hop; following fairies and party members stay still. |
+| `Smooth movement` | `--smooth-movement on\|off` | In `arlq-sprites`, the player, its fairy, and following party members glide into each one-cell step, with the field scrolling along (default: On). When it is off, they and the view move a whole cell at once. |
+
+#### `Settings` → `Gamepad button settings`
+
+Gamepads work in the GUI modes (`arlq` and `arlq-sprites`). The items on this
+screen have no command-line options.
+
+| Settings item | Description |
+| --- | --- |
+| `Help button` | Button that shows the controls (button 0 to 12; default: button 3), or unassigned. |
+| `Range / floor preview button` | Button for the range / floor preview (button 0 to 12; default: button 2), or unassigned. It cannot be the same as the help button. |
+| `Range / floor preview behavior` | Whether the preview button is held or toggled (default: hold). |
+| `Load default settings ->` | Right resets the three items on this screen to their defaults. |
+
+In the GUI modes, pressing gamepad button 2 to 12 also assigns it to the selected item.
+
+### Combat and victory effects
+
+Combat and barrier damage effects appear after each move is resolved, before the
+map refreshes.
+
+- **Combat**: In `arlq-sprites`, the slash of a won fight is cut the way the player attacked (up, down, left, or right).
+- **Defeating a Vortex (`V`)**: Its storm briefly appears around where it stood, after the combat effect and before the rearranged floor appears.
+- **Defeating a stage boss** (in Stage 6, the leader of the boss party; not the Dungeon Core): A lingering afterglow appears where it fell: a pillar of light, a ring spreading over the ground and sparks drifting up, for about 0.93 seconds.
+- **Destroying the Dungeon Core**: A dark, see-through dome swells over where it stood, then comes apart into drifting mist (about 1 second).
+- **Taking the treasure chest (stage clear)**: Shown for as long as the final screen stays up. In `arlq-sprites`, the chest stays in sight on its cell, wrapped in a hazy golden dome of light with glowing motes floating inside it. The character GUI and terminal show sparkling particles on empty cells around the player.
+
+The boss, Dungeon Core, and treasure chest effects are skipped when
+`Combat effect duration` is 0.
+
+The character GUI and terminal render the Vortex storm with colored braille
+characters and the boss and Dungeon Core effects in braille. The GUI renders
+each character cell as a 2-by-4 pixel grid; terminal appearance depends on its
+font and colors.
 
 ## Game Description
 
@@ -155,7 +213,7 @@ Characters next to the player are drawn larger. Party members and the Javelin El
 
   | Feature | Description |
   | --- | --- |
-  | Movement repeat | Holding a direction repeats movement when enabled. Automatic stopping is on by default before known hazards and visible entities, and after some special movement; release and press the direction again to resume. Change it in `Settings` or with `--no-auto-repeat-stop`. |
+  | Movement repeat | Holding a direction repeats movement when enabled. Automatic stopping is on by default before known hazards and visible entities, and after some special movement; release and press the direction again to resume. Change it in `Settings`, or with `--auto-repeat-stop off` for one run. |
   | Reachable area preview | Press `F` to highlight explored cells reachable with your remaining LP. A gamepad button can show the preview while held or toggle it. While viewing the preview, Up or Down inspects another floor in Stages 3 and 4; moving closes the keyboard preview. Unexplored cells and routes remain hidden. The estimate avoids displayed entities and stairs, does not break walls or count LP recovery, and excludes Marksman and Ivy damage, so actual reach may differ. |
 
 * **Monsters, Fairies, and Elves**

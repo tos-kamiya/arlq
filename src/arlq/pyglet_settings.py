@@ -4,6 +4,7 @@ from pyglet.window import key as pgkey
 
 from . import defs as d
 from .i18n import t as tr
+from .settings import clear_default_settings
 
 
 class PygletSettingsMixin:
@@ -25,18 +26,20 @@ class PygletSettingsMixin:
         )
         bob_enabled = self.idle_bob_enabled
         glide_enabled = self.move_glide_enabled
-        rows = ["scale", "repeat", "stop"]
-        rows.append("sprites" if self.supports_floor_transition else "effect")
-        rows.append("gamepad")
-        rows.append("reset")
+        # Every frontend shows the same rows, even where a setting has no effect.
+        rows = ["scale", "repeat", "stop", "sprites", "gamepad", "reset"]
         # Set by the reset row: also restore the gamepad buttons on apply.
         reset_gamepad = False
+        # Set by the reset row: remove default values from the settings file.
+        reset_all = False
+        initial = (current_index, repeat_index, auto_repeat_stop_enabled, effect_index,
+                   transition_index, bob_enabled, glide_enabled)
         row = 0
 
         def reset():
             nonlocal current_index, repeat_index, auto_repeat_stop_enabled
             nonlocal effect_index, transition_index, bob_enabled, glide_enabled
-            nonlocal reset_gamepad
+            nonlocal reset_gamepad, reset_all
             current_index = gui.UI_SCALE_CHOICES.index(gui.DEFAULT_UI_SCALE)
             repeat_index = gui.KEY_REPEAT_CHOICES.index(gui.DEFAULT_KEY_REPEAT_INTERVAL)
             auto_repeat_stop_enabled = gui.DEFAULT_AUTO_REPEAT_STOP_ENABLED
@@ -47,19 +50,29 @@ class PygletSettingsMixin:
             bob_enabled = d.IDLE_BOB_ENABLED
             glide_enabled = d.MOVE_GLIDE_ENABLED
             reset_gamepad = True
+            reset_all = True
 
         def apply():
-            self.set_scale(gui.UI_SCALE_CHOICES[current_index])
-            self.set_key_repeat_interval(gui.KEY_REPEAT_CHOICES[repeat_index])
-            self.set_auto_repeat_stop_enabled(auto_repeat_stop_enabled)
-            self.set_combat_effect_seconds(d.COMBAT_EFFECT_SECONDS_CHOICES[effect_index])
-            if self.supports_floor_transition:
+            # Save only what was changed here (or everything after a reset),
+            # so command-line settings for this run are not saved by accident.
+            def changed(index, value):
+                return reset_all or initial[index] != value
+
+            if changed(0, current_index):
+                self.set_scale(gui.UI_SCALE_CHOICES[current_index])
+            if changed(1, repeat_index):
+                self.set_key_repeat_interval(gui.KEY_REPEAT_CHOICES[repeat_index])
+            if changed(2, auto_repeat_stop_enabled):
+                self.set_auto_repeat_stop_enabled(auto_repeat_stop_enabled)
+            if changed(3, effect_index):
+                self.set_combat_effect_seconds(d.COMBAT_EFFECT_SECONDS_CHOICES[effect_index])
+            if changed(4, transition_index):
                 self.set_floor_transition_seconds(
                     d.FLOOR_TRANSITION_SECONDS_CHOICES[transition_index]
                 )
-            if self.supports_idle_bob:
+            if changed(5, bob_enabled):
                 self.set_idle_bob_enabled(bob_enabled)
-            if self.supports_move_glide:
+            if changed(6, glide_enabled):
                 self.set_move_glide_enabled(glide_enabled)
             if reset_gamepad:
                 self.set_gamepad_bindings(
@@ -67,15 +80,12 @@ class PygletSettingsMixin:
                     gui.DEFAULT_GAMEPAD_PREVIEW_BUTTON,
                     gui.DEFAULT_GAMEPAD_PREVIEW_MODE,
                 )
+            if reset_all:
+                clear_default_settings(gui._settings_path())
 
+        selectable = len(rows)
         while True:
-            controller_connected = self._gamepad_is_connected()
-            selectable_rows = [
-                name for name in rows if name != "gamepad" or controller_connected
-            ]
-            selectable = len(selectable_rows)
-            row = min(row, selectable - 1)
-            selected = selectable_rows[row]
+            selected = rows[row]
             self._clear_drawables()
             self._draw_text(
                 (8, 5),
@@ -96,18 +106,6 @@ class PygletSettingsMixin:
                     tr("Automatic repeat stop"),
                     f"<  {tr('On') if auto_repeat_stop_enabled else tr('Off')}  >",
                 ),
-                "effect": (
-                    tr("Combat effect duration"),
-                    f"<  {d.COMBAT_EFFECT_SECONDS_CHOICES[effect_index]:.1f}s  >",
-                ),
-                "transition": (
-                    tr("Floor transition duration"),
-                    f"<  {d.FLOOR_TRANSITION_SECONDS_CHOICES[transition_index]:.1f}s  >",
-                ),
-                "bob": (
-                    tr("Character bobbing"),
-                    f"<  {tr('On') if bob_enabled else tr('Off')}  >",
-                ),
                 "gamepad": (tr("Gamepad button settings"), "->"),
                 "sprites": (tr("Sprite display settings"), "->"),
                 "reset": (tr("Reset all settings to defaults"), ""),
@@ -115,11 +113,7 @@ class PygletSettingsMixin:
             for index, name in enumerate(rows):
                 label, value = values[name]
                 heading = f"{'>' if selected == name else ' '} {label}"
-                color = (
-                    (112, 116, 124)
-                    if name == "gamepad" and not controller_connected
-                    else gui.COLOR_MAP["default"]
-                )
+                color = gui.COLOR_MAP["default"]
                 y = 8 + 1.5 * index
                 self._draw_text((8, y), heading, color, bold=selected == name)
                 self._draw_text(
@@ -154,17 +148,6 @@ class PygletSettingsMixin:
                     repeat_index = min(len(gui.KEY_REPEAT_CHOICES) - 1, max(0, repeat_index + step))
                 elif selected == "stop":
                     auto_repeat_stop_enabled = not auto_repeat_stop_enabled
-                elif selected == "effect":
-                    effect_index = min(
-                        len(d.COMBAT_EFFECT_SECONDS_CHOICES) - 1, max(0, effect_index + step)
-                    )
-                elif selected == "transition":
-                    transition_index = min(
-                        len(d.FLOOR_TRANSITION_SECONDS_CHOICES) - 1,
-                        max(0, transition_index + step),
-                    )
-                elif selected == "bob":
-                    bob_enabled = not bob_enabled
                 elif selected == "sprites" and step > 0:
                     result = self.sprite_settings_menu(
                         effect_index, transition_index, bob_enabled, glide_enabled,
@@ -173,16 +156,12 @@ class PygletSettingsMixin:
                         effect_index, transition_index, bob_enabled, glide_enabled = result
                         apply()
                         return True
-                elif selected == "gamepad" and step > 0 and controller_connected:
+                elif selected == "gamepad" and step > 0:
                     if self.gamepad_button_settings_menu():
                         # Buttons set there are saved there; keep them.
                         reset_gamepad = False
                         apply()
                         return True
-                elif selected == "reset" and step > 0:
-                    # Show the defaults; Enter on another row applies them.
-                    reset()
-                    row = 0
                 return False
 
             while True:
@@ -206,10 +185,12 @@ class PygletSettingsMixin:
                             return
                         break
                     if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
-                        if selected in ("sprites", "gamepad", "reset"):
+                        if selected in ("sprites", "gamepad"):
                             if change(1):
                                 return
                             break
+                        if selected == "reset":
+                            reset()
                         apply()
                         return
                     if symbol in (pgkey.ESCAPE, pgkey.Q):
@@ -235,10 +216,12 @@ class PygletSettingsMixin:
                             return
                         break
                 if 0 in self._gamepad_pressed_buttons:
-                    if selected in ("sprites", "gamepad", "reset"):
+                    if selected in ("sprites", "gamepad"):
                         if change(1):
                             return
                         break
+                    if selected == "reset":
+                        reset()
                     apply()
                     return
                 if 1 in self._gamepad_pressed_buttons:
@@ -313,8 +296,6 @@ class PygletSettingsMixin:
     def gamepad_button_settings_menu(self) -> bool:
         """Configure gamepad mode buttons while keeping menu controls fixed."""
         from . import pyglet_funcs as gui
-        if not self._gamepad_is_connected():
-            return False
         help_button = self.gamepad_help_button
         preview_button = self.gamepad_preview_button
         preview_mode = self.gamepad_preview_mode
@@ -367,7 +348,7 @@ class PygletSettingsMixin:
 
             while True:
                 self._pump()
-                if self._closed or not self._gamepad_is_connected():
+                if self._closed:
                     return False
 
                 event = self._next_key_event()

@@ -5,6 +5,7 @@ from blessed import Terminal
 
 from . import defs as d
 from .arlq import barrier_lp_damage
+from .blessed_settings import BlessedSettingsMixin
 from .settings import combat_effect_seconds, load_settings
 from .braille_effects import effect_frames
 from .treasure_particles import SPARKLE_TICKS_PER_SECOND, sparkle_cells, sparkle_frame
@@ -29,9 +30,11 @@ def key_to_dir(key: str) -> Optional[d.Point]:
     return None
 
 
-class BlessedUI:
+class BlessedUI(BlessedSettingsMixin):
     def __init__(self, term: Terminal, dots: bool = False):
         self.combat_effect_seconds = combat_effect_seconds(load_settings())
+        # Command-line settings for this run only; never saved by themselves.
+        self.setting_overrides = {}
         self.term = term
         self.dots = dots
         self.map_mode = False
@@ -805,16 +808,18 @@ class BlessedUI:
 
     def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         options = [tr("[q]uit")] + [tr("Stage {number}").format(number=n) for n in stage_numbers]
+        options.append(tr("[s]ettings"))
+        settings_index = len(options) - 1
         stage_rows = (len(stage_numbers) + 1) // 2
         positions = [(0, 0)] + [
             (i % 2, 1 + i // 2) for i in range(len(stage_numbers))
-        ]
+        ] + [(0, stage_rows + 1)]
         current_index = 1
 
         def move_selection(dx, dy):
             col, row = positions[current_index]
             if dy:
-                target_row = (row + dy) % (stage_rows + 1)
+                target_row = (row + dy) % (stage_rows + 2)
                 candidates = [i for i, (_, r) in enumerate(positions) if r == target_row]
                 return min(candidates, key=lambda i: abs(positions[i][0] - col))
             target = (col + dx, row)
@@ -827,7 +832,7 @@ class BlessedUI:
             for i, option in enumerate(options):
                 text = f"{'>' if i == current_index else ' '} {option}"
                 col, row = positions[i]
-                display_row = row + (1 if i else 0)
+                display_row = row + (2 if i == settings_index else 1 if i else 0)
                 output.append(self.term.move_xy(4 + 22 * col, 4 + display_row)
                               + (self.term.bold(text) if i == current_index else text))
             print("".join(output) + self.term.normal, end="", flush=True)
@@ -842,7 +847,12 @@ class BlessedUI:
             elif key.name == "KEY_RIGHT":
                 current_index = move_selection(1, 0)
             elif str(key) in ("\n", "\r"):
+                if current_index == settings_index:
+                    self.settings_menu()
+                    continue
                 return stage_numbers[current_index - 1] if current_index else 0
+            elif str(key).lower() == "s":
+                self.settings_menu()
             elif str(key).lower() == "q" or key.code == self.term.KEY_ESCAPE:
                 return 0
             elif str(key).isdigit() and int(str(key)) in stage_numbers:
