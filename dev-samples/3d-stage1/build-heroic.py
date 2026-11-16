@@ -114,8 +114,10 @@ PLAYER_VARIANTS = (('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + C
 PLAYER_TURNS = [(char + suffix, name + ' ' + label)
                 for char, name in PLAYER_VARIANTS for _, suffix, label in PLAYER_FACINGS]
 ROW += [(char, name, 300 + 5 * k, 0) for k, (char, name) in enumerate(PLAYER_TURNS)]
+# The player collapsed from hunger, face down without a sword (player-collapsed.png).
+ROW += [('@_', 'PLAYER COLLAPSED', 400, 0)]
 OFF_GRID = ("'", '"', '?', '!', '&', *RATIONS, *(char for char, _ in OTHER_TONES),
-            *(char for char, _ in PLAYER_TURNS))
+            *(char for char, _ in PLAYER_TURNS), '@_')
 # Sprite export reads the character centres from here.
 CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # Model sizes relative to the amoeba's first size, baked into the meshes.
@@ -132,7 +134,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # their sizes, as they looked too large, with their eyes enlarged by as
 # much (BOVINE_EYE) so these stay as large on screen.
 SIZES = {**{base + turn: 1.42 for base in ('@', '@c', '@C', '@K')
-            for turn in ('', '^', '<', '>')}, 'a': 0.9, 'A': 0.9, 'b': 1.09 * 0.95, 'B': 1.13 * 0.95, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
+            for turn in ('', '^', '<', '>')}, '@_': 1.6, 'a': 0.9, 'A': 0.9, 'b': 1.09 * 0.95, 'B': 1.13 * 0.95, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'i': 2.1, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,
          'rock': 2.5,
@@ -678,12 +680,85 @@ def chimera_blade(name, base, tip, width, steel):
 PLAYER_FACING_YAW = {'down': 0.0, 'right': math.pi / 2, 'up': math.pi, 'left': -math.pi / 2}
 
 
-def player(x, y, sword=None, facing='down'):
+def collapsed_cloak_point(x, y, u, t, length):
+    """A point of the collapsed player's cloak, before the body is stretched
+    and laid down: `u` runs across the cloth (-1 to 1, right to left) and `t`
+    from the shoulders (0) to the hem (1, `length` below). Across, the cloth
+    follows one path: over the oval back, down the left side to the floor
+    (the figure's front level) and out along it; toward the hem its middle
+    slides along that path, so the cloth slips off the back onto the floor."""
+    radius = 0.28
+    drop = 0.18
+    # Most of the slide is near the shoulders, so the cloth's outer edge on the
+    # floor runs along the body instead of jutting out at the hem's corner.
+    ease = math.sin(t * math.pi / 2)
+    center = COLLAPSED_CLOAK_SLIDE[0] + (COLLAPSED_CLOAK_SLIDE[1] - COLLAPSED_CLOAK_SLIDE[0]) * ease
+    half = COLLAPSED_CLOAK_HALF_WIDTH[0] + (
+        COLLAPSED_CLOAK_HALF_WIDTH[1] - COLLAPSED_CLOAK_HALF_WIDTH[0]) * ease
+    s = center + u * half
+    z = 0.64 - length * t + 0.045 * t * math.cos(u * math.pi * 3)
+    if s <= 0:
+        # Over the back: 0 is the top of the left side, less is toward the right.
+        angle = math.pi / 2 + s / radius
+        px, py = radius * math.sin(angle), 0.8 * radius * math.cos(angle)
+        # Past the bottom of the breastplate the cloth sinks onto the
+        # narrower hips and legs, nearer the floor.
+        hips = min(1, max(0, (COLLAPSED_HIP_TOP - z) / (COLLAPSED_HIP_TOP - COLLAPSED_HIP_BOTTOM)))
+        py *= 1 - COLLAPSED_HIP_SAG * hips * hips * (3 - 2 * hips)
+    elif s <= drop:
+        # Down the left side, bowing out a little, to the floor.
+        k = s / drop
+        px = radius + 0.06 * math.sin(k * math.pi / 2)
+        py = COLLAPSED_FLOOR * k
+    else:
+        # Spread on the floor, with low folds lifting it a little.
+        px = radius + 0.06 + (s - drop)
+        py = COLLAPSED_FLOOR + 0.025 * (1 + math.sin((s - drop) * 18 + t * 4)) * min(1, (s - drop) * 8)
+    return (x + px, y + py, z)
+
+
+# The collapsed player: its flung arm's upper arm and forearm (shoulder to
+# elbow, elbow to fist, before the body is stretched and laid down), the
+# head's turn toward the camera, the cloak's drift back (up, once laid down)
+# as a share of the standing one's and its slide away from the camera, and
+# the turn of the laid figure, its head toward screen lower right.
+COLLAPSED_UPPER_ARM = (-0.16, -0.03, 0.21)
+COLLAPSED_FOREARM = (0.08, -0.07, 0.17)
+COLLAPSED_HEAD_TURN = math.radians(80)
+# Its cloak, still on the shoulders, slid off the back to the left side (away
+# from the camera once laid down) and spread on the floor there (see
+# collapsed_cloak_point()): the floor's level below the body's centre line
+# (before the body is laid down, its front), and how far along the cloth's
+# path over the back and down the side the middle of the hem has slid, and
+# the hem's half width along it, both from the shoulders' (a cloth path of
+# 0 is the top of the left side).
+COLLAPSED_FLOOR = -0.18
+# Over the back, the cloak sinks by this share of its height above the body's
+# centre line between these heights (before the stretch), from the bottom of
+# the breastplate (0.30) to the hips.
+COLLAPSED_HIP_SAG = 0.6
+COLLAPSED_HIP_TOP, COLLAPSED_HIP_BOTTOM = 0.36, 0.26
+COLLAPSED_CLOAK_SLIDE = (-0.44, 0.0)
+COLLAPSED_CLOAK_HALF_WIDTH = (0.465, 0.50)
+COLLAPSED_YAW = math.radians(-45)
+# The height of the gap across the back of its knees (before the stretch),
+# midway along the legs showing past the cloak.
+COLLAPSED_KNEE = 0.18
+# The notch there, seen from the side: how far behind the leg's axis its
+# closed edge and its open mouth are, and the mouth's half height (the leg is
+# about 0.075 thick there).
+COLLAPSED_KNEE_NOTCH = (0.02, 0.12, 0.035)
+COLLAPSED_SINK = 0.2
+
+
+def player(x, y, sword=None, facing='down', collapsed=False):
     """The player. `sword` picks the blade in the right hand: None for the
     player's own broad short sword, 'blessed' for the same sword glowing blue
     after the Collector Elf's blessing, 'c' or 'C' for the chimera's or the
     cursed chimera's sword taken from them. `facing` turns the figure toward
-    'down' (the camera), 'up', 'left' or 'right' on the screen."""
+    'down' (the camera), 'up', 'left' or 'right' on the screen.
+    `collapsed` lays the figure face down, collapsed from hunger, with no
+    sword and its visor dimmed (see player_collapse())."""
     # Plate armour in bluish steel rather than the first frosted crystal,
     # which looked more like a spacesuit.
     tunic = material('Player steel plate', (0.55, 0.63, 0.74), roughness=0.32, metallic=0.8,
@@ -695,8 +770,12 @@ def player(x, y, sword=None, facing='down'):
                     rim=(0.25, 0.45, 1.0), rim_strength=0.6)
     # Trim and sword are plain dark iron rather than precious metal.
     iron = material('Player dark iron trim', (0.16, 0.16, 0.18), roughness=0.35, metallic=1.0)
-    visor = material('Player visor glow', (0.3, 0.9, 1.0), emission=(0.1, 0.75, 1.0),
-                     strength=2.5)
+    if collapsed:
+        visor = material('Player dimmed visor', (0.05, 0.14, 0.18), emission=(0.1, 0.75, 1.0),
+                         strength=0.3)
+    else:
+        visor = material('Player visor glow', (0.3, 0.9, 1.0), emission=(0.1, 0.75, 1.0),
+                         strength=2.5)
     if sword == 'blessed':
         blade = material('Player blessed blade', (0.10, 0.35, 1.0), roughness=0.3,
                          metallic=0.3, emission=(0.03, 0.30, 1.0), strength=1.5,
@@ -710,10 +789,31 @@ def player(x, y, sword=None, facing='down'):
     legs = material('Player steel greaves', (0.45, 0.52, 0.62), roughness=0.35, metallic=0.8,
                     rim=(0.6, 0.8, 1.0), rim_strength=0.6)
     for side in (-1, 1):
-        tube('Player leg', [(x + side * 0.10, y, 0.36), (x + side * 0.10, y - 0.01, 0.18),
-                            (x + side * 0.10, y - 0.01, 0.06)], [0.085, 0.075, 0.065], legs,
-             sides=16, smooth=True)
+        leg = tube('Player leg', [(x + side * 0.10, y, 0.36), (x + side * 0.10, y - 0.01, 0.18),
+                                  (x + side * 0.10, y - 0.01, 0.06)], [0.085, 0.075, 0.065], legs,
+                   sides=16, smooth=True)
         sphere('Player boot', (x + side * 0.10, y - 0.03, 0.04), (0.075, 0.09, 0.045), iron, 20)
+        if collapsed:
+            # Laid face down the backs of the legs show: a notch cut across
+            # the back of each knee, a wedge seen from the side, opening at
+            # the back and closing toward the leg's middle, so the greave
+            # looks as if it bends there. Its cut faces are dark.
+            gap = material('Player knee notch', (0.008, 0.01, 0.015), roughness=0.6)
+            back, (apex, mouth, half) = y - 0.01, COLLAPSED_KNEE_NOTCH
+            profile = [(back + apex, COLLAPSED_KNEE), (back + mouth, COLLAPSED_KNEE + half),
+                       (back + mouth, COLLAPSED_KNEE - half)]
+            wedge = mesh_object('Player knee notch cutter',
+                                [(x + side * 0.10 + dx, py, pz) for dx in (-0.1, 0.1)
+                                 for py, pz in profile],
+                                [(0, 1, 2), (5, 4, 3), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)],
+                                gap, False)
+            cut = leg.modifiers.new('Knee notch', 'BOOLEAN')
+            cut.object = wedge
+            cut.solver = 'EXACT'
+            cut.material_mode = 'TRANSFER'
+            bpy.context.view_layer.objects.active = leg
+            bpy.ops.object.modifier_apply(modifier=cut.name)
+            bpy.data.objects.remove(wedge)
     # The body is an oval, wider than deep (`flat`), so it does not look like
     # a drum from above; the belt and seams follow it.
     flat = 0.72
@@ -737,15 +837,29 @@ def player(x, y, sword=None, facing='down'):
                                          location=(x, y, z))
         finish(bpy.context.object, iron, True, 'Player plate seam').scale.y = flat
     for side in (-1, 1):
+        # Broad pauldrons over the shoulders, and couters on the elbows.
+        sphere('Player pauldron', (x + side * 0.27, y - 0.05, 0.63), (0.14, 0.14, 0.07), iron, 24)
+        if collapsed and side == -1:
+            # The right arm (camera side once laid down) flung out past the
+            # head, bent at the elbow, its forearm on the floor.
+            shoulder = Vector((x - 0.27, y - 0.07, 0.60))
+            elbow = shoulder + Vector(COLLAPSED_UPPER_ARM)
+            fist = elbow + Vector(COLLAPSED_FOREARM)
+            tube('Player upper arm', [shoulder, elbow], [0.072, 0.066], tunic, sides=16,
+                 smooth=True)
+            tube('Player forearm', [elbow, fist], [0.064, 0.056], tunic, sides=16, smooth=True)
+            sphere('Player couter', tuple(elbow), (0.075, 0.075, 0.07), iron, 20)
+            sphere('Player gauntlet', tuple(fist), (0.068, 0.068, 0.068), iron, 20)
+            continue
         arm = block('Player arm', (x + side * 0.255, y - 0.06, 0.48),
                     (0.14, 0.16, 0.30), tunic, 0.06)
         arm.rotation_euler.y = -side * 0.10
-        # Broad pauldrons over the shoulders, and couters on the elbows.
-        sphere('Player pauldron', (x + side * 0.27, y - 0.05, 0.63), (0.14, 0.14, 0.07), iron, 24)
         sphere('Player couter', (x + side * 0.275, y - 0.10, 0.46), (0.075, 0.07, 0.06), iron, 20)
     # Sword in the right hand (screen left).
     hand = Vector((x - 0.30, y - 0.13, 0.34))
-    if sword in ('c', 'C'):
+    if collapsed:
+        pass
+    elif sword in ('c', 'C'):
         # The chimera's longer, tapering sword, with its own hilt. Held by
         # the player it also shows the sword status, so it is drawn 1.3
         # times as large as in the chimeras' jaws.
@@ -790,12 +904,15 @@ def player(x, y, sword=None, facing='down'):
     # left at their first sizes, the short cloak looked blown in a gale.
     cloak_drop = 0.40
     drape = cloak_drop / 0.50
-    columns, rows = 25, 8
+    columns, rows = (41, 10) if collapsed else (25, 8)
     vertices = []
     for row in range(rows):
         t = row / (rows - 1)
         for col in range(columns):
             u = col / (columns - 1) * 2 - 1
+            if collapsed:
+                vertices.append(collapsed_cloak_point(x, y, u, t, cloak_drop))
+                continue
             angle = u * math.radians(95)
             radius = 0.26 + 0.10 * drape * t
             depth = flat + (1 - flat) * t
@@ -848,12 +965,44 @@ def player(x, y, sword=None, facing='down'):
     # when facing down. Tilting before the turn would tip the head toward
     # the camera when facing up.
     feet = Vector((x, y, 0))
+    if collapsed:
+        # Lifted onto the stretched neck like the standing head, but turned
+        # on its cheek, the dimmed visor toward the camera once laid down,
+        # instead of tilted back.
+        head = Vector((x, y - 0.04, 0.83))
+        transform_new(start, Matrix.Translation((0, 0, neck.z * (ELF_STRETCH - 1)))
+                      @ Matrix.Translation(head) @ Matrix.Rotation(-COLLAPSED_HEAD_TURN, 4, 'Z')
+                      @ Matrix.Translation(-head))
+        player_collapse(body_start, x, y)
+        return
     transform_new(body_start, Matrix.Translation(feet)
                   @ Matrix.Rotation(PLAYER_FACING_YAW[facing], 4, 'Z')
                   @ Matrix.Translation(-feet))
     transform_new(start, Matrix.Translation((0, 0, neck.z * (ELF_STRETCH - 1)))
                   @ Matrix.Translation(neck) @ Matrix.Rotation(-0.6, 4, 'X')
                   @ Matrix.Translation(-neck))
+
+
+def player_collapse(body_start, x, y):
+    """Lay the upright player built since `body_start` face down, head
+    toward screen lower right and the cloak over its back, resting on the
+    floor and centred on (x, y)."""
+    feet = Vector((x, y, 0))
+    # Up (+Z) becomes screen right (+X), the front (-Y) faces the floor and
+    # the right side (-X) the camera; then the head turns down the screen.
+    prone = Matrix(((0, 0, 1, 0), (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
+    transform_new(body_start, Matrix.Translation(feet) @ Matrix.Rotation(COLLAPSED_YAW, 4, 'Z')
+                  @ prone @ Matrix.Translation(-feet))
+    bpy.context.view_layer.update()
+    corners = [obj.matrix_world @ Vector(corner)
+               for obj in set(bpy.data.objects) - body_start if obj.type == 'MESH'
+               for corner in obj.bound_box]
+    low = min(c.z for c in corners)
+    mid_x = (min(c.x for c in corners) + max(c.x for c in corners)) / 2
+    mid_y = (min(c.y for c in corners) + max(c.y for c in corners)) / 2
+    # Set down the screen (COLLAPSED_SINK) so the low figure sits on its
+    # ground disc rather than above it, as a standing figure's body does.
+    transform_new(body_start, Matrix.Translation((x - mid_x, y - COLLAPSED_SINK - mid_y, -low)))
 
 def chimera(x, y, cursed=False):
     if cursed:
@@ -5216,7 +5365,8 @@ def member_builder(job, gender, tone):
     return lambda x, y: build(x, y, tone, {'f': 'female', 'm': 'male'}[gender])
 
 
-builders = {'@': player, '@c': lambda x, y: player(x, y, 'c'),
+builders = {'@': player, '@_': lambda x, y: player(x, y, collapsed=True),
+            '@c': lambda x, y: player(x, y, 'c'),
             '@C': lambda x, y: player(x, y, 'C'), '@K': lambda x, y: player(x, y, 'blessed'),
             'a': lambda x, y: amoeba(x, y, False),
             'A': lambda x, y: amoeba(x, y, True), 'b': bison, 'B': buffalo, 'd': dragon,

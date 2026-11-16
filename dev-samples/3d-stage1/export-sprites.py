@@ -19,7 +19,8 @@ RATION_OUT.mkdir(parents=True, exist_ok=True)
 models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
           ('b', 'bison', (-2, -1.5)), ('d', 'comodo-dragon', (2, -1.5)),
           ('@', 'player', (0, 0)), ('@c', 'player-sword', (0, 0)),
-          ('@C', 'player-cursed-sword', (0, 0)), ('@K', 'player-blessed', (0, 0))]
+          ('@C', 'player-cursed-sword', (0, 0)), ('@K', 'player-blessed', (0, 0)),
+          ('@_', 'player-collapsed', (0, 0))]
 # The player turned up, left and right in each sword state, e.g. '@c<' is
 # player-sword-left.png.
 models += [(char + suffix, name + '-' + facing, (0, 0))
