@@ -36,3 +36,7 @@ LOW_RESOLUTION_DETAIL_SCALE = 2.0
 # Radius in cell widths of the ground disc under each sprite (see
 # sprite_images.ground_disc_image).
 GROUND_DISC_RADIUS = 1.3
+# Sprite width units drawn per cell of the Dungeon Core image (its "cells" in
+# dungeon-core.json). Its pillars span 1.7 of those cells, so they then match
+# the treasure chest's visible width.
+DUNGEON_CORE_CELL_UNITS = 1.2

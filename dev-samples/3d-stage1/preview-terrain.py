@@ -5,8 +5,8 @@ the floor above; the barrier (both checkerboard variants), the reduced
 barrier shown near the player while Guardian lowers its damage, the Stage 6
 bridgehead (build-bridgehead.py) and the Stage 6 Dungeon Core at each of its
 four growth stages (build-dungeon-core.py). The bridgehead and Dungeon Core
-images are laid over their two and three cells here, at the game's scale,
-placed by their JSON.
+images are centred over their two and three cells here, at the game's
+scale, placed by their JSON.
 
     PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py [--stage N]
 
@@ -48,9 +48,10 @@ LEFT, RIGHT = 1, CORES[-1][1] + 3
 # Barrier cells drawn as when Guardian reduces their damage near the player.
 REDUCED_BARRIERS = {(6, 7), (7, 7)}
 ASSETS = Path(__file__).resolve().parents[2] / 'src' / 'arlq' / 'assets'
-# Images laid over cells: (asset folder, image name, field row, first column).
-OVERLAYS = [('bridgehead', 'bridgehead', 7, 10)] + [
-    ('dungeon-core', 'dungeon-core-' + growth, 7, column) for growth, column in CORES]
+# Images centred over cells: (asset folder, image name, field row, first
+# column, cell count).
+OVERLAYS = [('bridgehead', 'bridgehead', 7, 10, 2)] + [
+    ('dungeon-core', 'dungeon-core-' + growth, 7, column, 3) for growth, column in CORES]
 
 ui = SpriteUI(scale=4)
 field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
@@ -78,9 +79,9 @@ with tempfile.TemporaryDirectory() as work:
     full = Path(work) / 'full.png'
     pyglet.image.get_buffer_manager().get_color_buffer().save(str(full))
     cx, cy = ui.cell_size_x, ui.cell_size_y
-    for name, image, row, column in OVERLAYS:
+    for name, image, row, column, span in OVERLAYS:
         placing = json.loads((ASSETS / name / (name + '.json')).read_text())
-        image_left = round(ui._field_col_x(column))
+        image_left = round(ui._field_col_x(column) + (span - placing['cells']) * cx / 2)
         image_bottom = round((row + 1 + placing['under']) * cy)
         image_width = round(placing['cells'] * cx)
         image_height = round((placing['under'] + 1 + placing['overhang']) * cy)

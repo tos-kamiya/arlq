@@ -24,6 +24,7 @@ from .sprite_defs import (
     SPRITE_CELL_SIZE_X,
     LOW_RESOLUTION_DETAIL_SCALE,
     GROUND_DISC_RADIUS,
+    DUNGEON_CORE_CELL_UNITS,
 )
 from .sprite_effects import SpriteEffectsMixin
 from .sprite_terrain import (
@@ -441,10 +442,12 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
                       for growth in d.DUNGEON_CORE_GROWTHS}
         self._dungeon_core_images = {}
         self._dungeon_core_under = self._dungeon_core_overhang = 0.0
+        self._dungeon_core_cells = 1.0
         if all(path.is_file() for path in core_paths.values()):
             placement = json.loads((core_dir / 'dungeon-core.json').read_text())
             self._dungeon_core_under = placement['under']
             self._dungeon_core_overhang = placement['overhang']
+            self._dungeon_core_cells = placement['cells']
             self._dungeon_core_images = {growth: mipmapped(pyglet.image.load(str(path)))
                                          for growth, path in core_paths.items()}
         self._dungeon_core_growth = 'small'
@@ -1552,8 +1555,10 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         shade = 1.0 if self._cur_torched is not None and self._cur_torched[y][x] else TERRAIN_EXPLORED_SHADE
         glow = self._display_color(tuple(round(c * shade) for c in COLOR_MAP[CI_YELLOW]))
         self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self._sprite_unit(), glow)
-        width = 1.8 * max(1, self._sprite_unit() - 2 * max(1, round(self.scale)))
-        factor = width / (3 * self.cell_size_x)
+        cells = self._dungeon_core_cells
+        width = (cells * DUNGEON_CORE_CELL_UNITS
+                 * max(1, self._sprite_unit() - 2 * max(1, round(self.scale))))
+        factor = width / (cells * self.cell_size_x)
         left = self._field_col_x(x) + (self.cell_size_x - width) / 2
         bottom = self.window_height - (
             y + 0.5 + (0.5 + self._dungeon_core_under) * factor

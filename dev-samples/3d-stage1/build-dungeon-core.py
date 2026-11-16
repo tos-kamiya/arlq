@@ -15,7 +15,8 @@ spikes of smoky light, black at heart and violet at their edges, fading
 toward their tips, radiating from it in every direction. There is no base.
 It uses the bridgehead's 60-degree orthographic camera and ink outline, and
 is fitted so the pillars span FRAME_CELLS cells, centred on a canvas CELLS
-wide that leaves room for the rays.
+wide with little room to spare: only the faintest tips of the longest rays
+are cut off at its sides.
 
 The pillars keep their shape and size in every stage (GROWTH); only their
 glow changes. The crystal, eye, rays and inner light grow with the core:
@@ -37,7 +38,7 @@ pillars stay put when the game swaps them.
 Writes to OUT (DUNGEON_CORE_OUT in the environment, else
 src/arlq/assets/dungeon-core):
   dungeon-core-{small,medium,large,huge}.png
-  dungeon-core.json  {"cells": 3, "under": UNDER, "overhang": OVERHANG}
+  dungeon-core.json  {"cells": CELLS, "under": UNDER, "overhang": OVERHANG}
 """
 from pathlib import Path
 import json
@@ -55,9 +56,9 @@ OUT.mkdir(parents=True, exist_ok=True)
 CELL_PIXELS = (300, 400)
 UNIT_PIXELS = 300
 CELL_W = CELL_PIXELS[0] / UNIT_PIXELS
-CELLS = 3
+CELLS = 2.2
 FRAME_CELLS = 1.7
-WIDTH = CELL_PIXELS[0] * CELLS
+WIDTH = round(CELL_PIXELS[0] * CELLS)
 ELEVATION = math.radians(60)
 CELL_UP = CELL_PIXELS[1] / UNIT_PIXELS
 

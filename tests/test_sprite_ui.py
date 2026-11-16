@@ -340,16 +340,18 @@ def test_treasure_disc_stays_yellow(sprite_ui):
     assert ui.outlines[0][3:] == (ui._tone_color('yellow'), None)
 
 
-def test_dungeon_core_uses_treasure_width_and_hides_brackets(sprite_ui):
+def test_dungeon_core_art_matches_treasure_width_and_hides_brackets(sprite_ui):
     ui = sprite_ui
-    image = SimpleNamespace(width=900, height=800)
+    image = SimpleNamespace(width=660, height=800)
     ui._dungeon_core_images = {'small': image}
     ui._dungeon_core_growth = 'small'
     ui._dungeon_core_under, ui._dungeon_core_overhang = 0.6, 0.4
+    ui._dungeon_core_cells = 2.2
     ui._cur_torched = [[True] * 10 for _ in range(10)]
     ui._draw_dungeon_core((4, 5))
     core = ui._drawables[0]
-    expected_width = 1.8 * 11
+    # The pillars (1.7 of the image's 2.2 cells) match the chest's width.
+    expected_width = 2.2 * 1.2 * 11
     assert core.scale_x * image.width == pytest.approx(expected_width)
     assert core.x + expected_width / 2 == pytest.approx(ui._field_col_x(4) + 6.5)
     assert not ui.show_core_brackets and not ui.show_treasure_brackets

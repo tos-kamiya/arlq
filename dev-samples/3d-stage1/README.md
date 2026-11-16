@@ -80,7 +80,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-pit.py
 
 結界（`=`）のマスは、普通の敷石の上に魔法の結界が張られた姿で描く（マス全体を赤い岩にすると溶岩風呂のように見えたため）。結界はBlenderの画像ではなく、GUIが起動時に作る半透明の画像（`sprite_funcs.py` の `barrier_image()`、`BARRIER_*`）で、マスの縁から少し内側に、縁が明るく光る橙色の板を床に敷き、その手前と奥の辺から、上へ薄れていく橙色の光の幕が立ち上る。左右の幕は真横から見た細い光の筋になる。幕にはかすかな縦の揺らぎと、いくつかの火花がある。揺らぎと火花の位置が違う2通りを市松模様に置き、奥の幕は北のマスに少しかかる。加算合成で床に重ね、キャラクターより奥に描く。動きはない。視界外の探索済みのマスは `BARRIER_EXPLORED_SHADE` で暗くする。お守りや守護騎士（G）で結界のダメージが減っている間は、プレイヤーを中心にした周り1マス（自分と周りの8マス）だけ、見た目を変え、それより遠いマスは元のまま。Gでダメージが5に減っているときは、板の縦横を半分（面積で4分の1）にしてマスの真ん中に置き、光の幕の高さも半分にした小さな結界（`barrier_image()` の `scale`、`BARRIER_REDUCED_SCALE`）を、元と同じ色と合成で描く。お守りでダメージが0のときは、元の結界と同じ形の薄い灰色の煙（`smoke_image()`、`SMOKE_*`）を描く。別のフロアを見ている間は見た目を変えない。スプライト版では赤い `=` の文字は描かない（元のGUIと端末版は従来どおり）。
 
-地形の見え方は `preview-terrain.py` で確かめられる。ゲームの描画（`SpriteUI`）を画面なしで動かし、ゲームと同じ着色でUIの最大倍率（4倍）で3行に並べ、名前を付けて `heroic/preview-terrain.jpg` に書き出す（ImageMagick の `convert` を使う）。1行目は床タイル2種類・壁の列柱・上り階段・下り階段、2行目はゴーレムの岩・落とし穴・落ちてきた岩、3行目は結界（市松模様の2通り）・Gでダメージが減っているときの小さな結界・ステージ6の橋頭堡（`build-bridgehead.py` の `bridgehead.png`）・ステージ6のダンジョンコア（`build-dungeon-core.py` の `dungeon-core.png`）。小さな結界は、プレイヤーを置かずに、そのマスだけ見た目を切り替えて描く。橋頭堡とダンジョンコアはこのスクリプトの中で、それぞれ2マスと3マスの上に同じ縮尺で画像を重ねる。南と北へのはみ出し（`bridgehead.json` と `dungeon-core.json` の `under` と `overhang`）は、それぞれ `build-bridgehead.py` と `build-dungeon-core.py` が書き出す。
+地形の見え方は `preview-terrain.py` で確かめられる。ゲームの描画（`SpriteUI`）を画面なしで動かし、ゲームと同じ着色でUIの最大倍率（4倍）で3行に並べ、名前を付けて `heroic/preview-terrain.jpg` に書き出す（ImageMagick の `convert` を使う）。1行目は床タイル2種類・壁の列柱・上り階段・下り階段、2行目はゴーレムの岩・落とし穴・落ちてきた岩、3行目は結界（市松模様の2通り）・Gでダメージが減っているときの小さな結界・ステージ6の橋頭堡（`build-bridgehead.py` の `bridgehead.png`）・ステージ6のダンジョンコア（`build-dungeon-core.py` の `dungeon-core.png`）。小さな結界は、プレイヤーを置かずに、そのマスだけ見た目を切り替えて描く。橋頭堡とダンジョンコアはこのスクリプトの中で、それぞれ2マスと3マスの中央に同じ縮尺で画像を重ねる。南と北へのはみ出し（`bridgehead.json` と `dungeon-core.json` の `under` と `overhang`）は、それぞれ `build-bridgehead.py` と `build-dungeon-core.py` が書き出す。
 
 ```bash
 PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py
@@ -273,7 +273,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-dungeon-co
 - 水晶を中心に、上から見て正方形の柱を4本、十字に立てる。十字全体を上から見て時計回りに30度回し（`YAW`）、手前の柱が水晶と目を隠さないようにする。柱は上面が平らで、磨いた紫がかった黒の石。各面に紫に光る縦の溝、上端と根元の近くに光る帯を入れる。
 - 黒っぽい光は、水晶からいろいろな方向へ伸びる四角錐のトゲ（中心が黒く、縁が紫で、先ほど薄い）。カメラへまっすぐ向かうトゲは除く。輪郭線は柱と水晶だけに付け、トゲには付けない。
 - 台座はなし。
-- 柱の並びの横幅を1.7マス（`FRAME_CELLS`）に合わせ、トゲが切れないよう3マス幅（`CELLS`）の画像の中央に置く。南と北へのはみ出しは `dungeon-core.json` に書き出す。
+- 柱の並びの横幅を1.7マス（`FRAME_CELLS`）に合わせ、余白の少ない2.2マス幅（`CELLS`）の画像の中央に置く（特大のいちばん長いトゲの、ほとんど透明な先端だけが左右で切れる）。ゲームでは柱の並びが宝箱と同じ幅に見える縮尺で、`[*]` の中央のマスを中心に描く。南と北へのはみ出しは `dungeon-core.json` に書き出す。
 - 出力先は環境変数 `DUNGEON_CORE_OUT` で変えられる（試作をアセットに上書きせずに見るとき）。
 - 見え方は `preview-terrain.py`（上記）の右端で確かめる。
 
