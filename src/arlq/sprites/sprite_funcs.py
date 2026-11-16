@@ -113,6 +113,8 @@ SPRITE_FILES = {
     'S': 'sylvan-elf.png',
     # Not a glyph: the rubble drawn on walls a defeated Golem raised.
     'golem rock': 'golem-rock.png',
+    # Not a glyph: the player collapsed from hunger, face down without a sword.
+    'player collapsed': 'player-collapsed.png',
     # Not glyphs: the player holding a chimera's sword taken from it, or its
     # own sword glowing blue after the Collector Elf's blessing.
     'player sword': 'player-sword.png',
@@ -172,7 +174,7 @@ SPRITE_NAMES = {
     '!': 'Unidentified Fairy', '&': 'Unidentified Elf',
 }
 SPRITE_NAMES.update(dict.fromkeys(
-    ('player sword', 'player cursed sword', 'player blessed'), 'Player'))
+    ('player sword', 'player cursed sword', 'player blessed', 'player collapsed'), 'Player'))
 SPRITE_NAMES.update({f'{name}-{skin}': role
                      for role, char in d.MEMBER_GLYPHS.items()
                      for name in MEMBER_SPRITES.get(char, ())
@@ -205,6 +207,10 @@ STRENGTH_TEXT_SCALE = 0.7
 # low-resolution render target (1 window pixel at 100%).
 IDLE_BOB_INTERVAL = 0.7
 IDLE_BOB_TEXELS = 2
+# When the player's LP runs out, once its last turn has been shown, it sinks
+# as far as an idle hop (its knees giving way) for COLLAPSE_SINK_SECONDS, and
+# then lies collapsed ('player collapsed') on the final screen.
+COLLAPSE_SINK_SECONDS = 0.45
 # After a one-cell step the next turn is drawn at once, but the player, its
 # fairy and followers glide in at a steady speed from MOVE_SLIDE_START of the
 # way back toward the cells they left (the whole cell, so they never jump),
@@ -310,6 +316,11 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     _glide_drew_next_turn = False
     # The cell of the chest that won the stage, drawn behind the player.
     _won_chest_cell = None
+    # While a turn is being presented the player still stands, even with no
+    # LP left; it collapses only after (see present_turn).
+    _presenting_turn = False
+    # The player sinking just before it collapses (see _show_collapse).
+    _player_sinking = False
 
     def _initialize_state(self):
         super()._initialize_state()
@@ -802,6 +813,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         followers_before = dict(getattr(self, '_follower_cells', {}))
         # A floor transition draws the next view under its fade-in.
         self._next_view = view
+        self._presenting_turn = True
         try:
             if not self._presenter.play(self, result, view):
                 return False
@@ -816,9 +828,28 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
                     self.draw_boss_afterglow(event.boss_at)
                 if event.core_at is not None:
                     self.draw_core_burst(event.core_at)
+            player = view.get('player')
+            if player is not None and player.lp <= 0 and not self._closed:
+                self._show_collapse(view)
             return not self._closed
         finally:
             self._next_view = None
+            self._presenting_turn = False
+
+    def _show_collapse(self, view):
+        """The player has no LP left: let it sink for a moment before the
+        final screen shows it collapsed."""
+        # The final screen must be drawn even after a glide ended on this view.
+        self._glide_drew_next_turn = False
+        if (self.combat_effect_seconds == 0 or self.map_mode or view.get('floor_view')
+                or 'player collapsed' not in self._sprite_images):
+            return
+        self._player_sinking = True
+        try:
+            self.draw_stage(**view)
+            self._presenter.hold(self, COLLAPSE_SINK_SECONDS, lambda: [])
+        finally:
+            self._player_sinking = False
 
     def _next_movement_repeat_at(self):
         """When a held direction (key or controller) repeats next, or None."""
@@ -955,10 +986,13 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         _, background = ui_display.player_appearance(player)
         poison = self._tone_color('magenta') if player.item == d.ITEM_POISONED else None
         slide = self._slide_capture_start('@', pos)
+        sprite = self._player_sprite(player)
         try:
-            top = self._draw_sprite(pos, self._player_sprite(player),
+            # Sinking or collapsed, the player does not hop.
+            top = self._draw_sprite(pos, sprite,
                                     self._tone_color(background or 'default'), poison,
-                                    bob=True)
+                                    bob=not self._player_sinking and sprite != 'player collapsed',
+                                    sink=self._bob_offset() if self._player_sinking else 0)
             self._draw_lp_gauge(pos, player, top)
         finally:
             self._slide_capture_end('@', pos, slide)
@@ -1005,7 +1039,11 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     def _player_sprite(self, player):
         """The player's image for its sword: a chimera's sword it holds, else
-        its own sword, glowing after the Collector Elf's blessing."""
+        its own sword, glowing after the Collector Elf's blessing. With no LP
+        left, once its last turn has been shown, it lies collapsed."""
+        if (player.lp <= 0 and not self._presenting_turn
+                and 'player collapsed' in self._sprite_images):
+            return 'player collapsed'
         if player.item == d.ITEM_SWORD_X1_5:
             sprite = 'player sword'
         elif player.item == d.ITEM_SWORD_CURSED:
@@ -1635,7 +1673,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         return abs(pos[0] - px) + abs(pos[1] - py) == 1
 
     def _draw_sprite(self, pos, text, color, upper_right_color=None, shade=1.0, disc_scale=1.0,
-                     bob=False, follower=False, layer=None):
+                     bob=False, follower=False, layer=None, sink=0):
         x, y = pos
         cx, cy = self._field_col_x(x) + self.cell_size_x / 2, (y + 0.5) * self.cell_size_y
         dimmed = color in {self._dim_color(value) for value in COLOR_MAP.values()}
@@ -1657,7 +1695,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         top = self._place_sprite(text, cx, cy, size, row,
                                  layer or ('hover' if hovered else 'sprite'), dimmed, shade, glow,
                                  bob=bob and not self.map_mode and self._in_view(pos),
-                                 follower=follower)
+                                 follower=follower, sink=sink)
         if hovered:
             self._draw_hover_name(pos, text, top)
         self._sprite_cells[pos] = size
@@ -1724,9 +1762,10 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         )
 
     def _place_sprite(self, text, cx, cy, size, row, layer, dimmed, shade=1.0, glow=None,
-                      bob=False, follower=False):
+                      bob=False, follower=False, sink=0):
         """Draw a character image with its feet at field pixel (cx, cy); returns
-        the field pixel y of the top of the character in it.
+        the field pixel y of the top of the character in it. `sink` lowers the
+        image alone by that many pixels; the returned top stays put.
 
         With `glow`, the image is tinted slightly (UNKNOWN_TINT) toward that color.
         """
@@ -1739,7 +1778,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         width = max(1, self._sprite_unit() - 2 * padding)
         scale = size * 1.8 * width / SPRITE_REFERENCE_PIXELS
         left = cx - picture.width * scale / 2
-        bottom = self.window_height - cy - (picture.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale
+        bottom = (self.window_height - cy - (picture.height / 2 - SPRITE_GROUND_OFFSET_PIXELS) * scale
+                  - sink)
         group = self._row_group(row, layer)
         tint = ((128, 128, 128) if dimmed else
                 (round(255 * shade),) * 3 if shade < 1 else (255, 255, 255))

@@ -1571,6 +1571,47 @@ def test_player_sprite_shows_its_sword(item, k_blessed, sprite):
     assert ui._player_sprite(player) == '@'
 
 
+@pytest.mark.parametrize('lp, presenting, images, sprite', [
+    (0, False, None, 'player collapsed'),
+    (-3, False, None, 'player collapsed'),
+    (1, False, None, 'player sword'),
+    # Its last turn is still being shown: it stands until that ends.
+    (0, True, None, 'player sword'),
+    # Without the image, the plain player is drawn.
+    (0, False, {'@': None}, '@'),
+])
+def test_player_with_no_lp_left_lies_collapsed(lp, presenting, images, sprite):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
+    ui._sprite_images = images or dict.fromkeys(sprite_funcs.SPRITE_FILES)
+    ui._presenting_turn = presenting
+    player = d.Player(1, 1, 10, lp)
+    player.item = d.ITEM_SWORD_X1_5
+    assert ui._player_sprite(player) == sprite
+
+
+def test_sinking_player_is_drawn_lower_without_hopping_and_keeps_its_gauge(bob_ui):
+    ui = bob_ui
+    ui._display_color = lambda color: color
+    player = d.Player(4, 5, level=8, lp=0)
+    ui._presenting_turn = True
+    ui._draw_player((4, 5), player)
+    standing, gauge = ui._drawables[0], ui._drawables[5]
+    assert len(ui._bobbing) == 1
+    ui._drawables, ui._bobbing = [], []
+    ui._player_sinking = True
+    ui._draw_player((4, 5), player)
+    sunk = ui._drawables[0]
+    assert sunk.y == pytest.approx(standing.y - ui._bob_offset())
+    assert ui._drawables[5].y == gauge.y
+    assert not ui._bobbing
+    # Collapsed on the final screen, it lies still too.
+    ui._drawables, ui._player_sinking, ui._presenting_turn = [], False, False
+    ui._draw_player((4, 5), player)
+    assert ui._drawables[0].image is ui._sprite_images['player collapsed']
+    assert not ui._bobbing
+
+
 @pytest.mark.parametrize('lp, tone', [(90, 'default'), (d.LP_INIT, 'magenta'), (d.LP_LOW_THRESHOLD, 'red')])
 def test_lp_gauge_sits_over_player_head_scaled_to_its_disc(sprite_ui, lp, tone):
     ui = sprite_ui
@@ -2424,6 +2465,37 @@ def test_idle_hop_waits_while_gliding(bob_ui):
     assert bob_ui._idle_bob_raised()
     bob_ui._slide_from = {'@': (3, 5)}
     assert not bob_ui._idle_bob_raised()
+
+
+def _collapse_ui(sprite_ui):
+    ui, calls = _slide_ui(sprite_ui, before=None)
+    ui.draw_stage = lambda **view: calls.append(('draw', ui._player_sinking))
+    ui._presenter.hold = lambda ui_, seconds, create, update=None, stop=None: calls.append(
+        ('hold', seconds))
+    return ui, calls
+
+
+def test_player_with_no_lp_left_sinks_after_its_last_turn(sprite_ui):
+    ui, calls = _collapse_ui(sprite_ui)
+    ui._glide_drew_next_turn = True
+    assert ui.present_turn(_turn((1, 0)), {'player': d.Player(4, 5, level=8, lp=0)}) is True
+    assert calls == [('draw', True), ('hold', sprite_funcs.COLLAPSE_SINK_SECONDS)]
+    assert not ui._player_sinking and not ui._presenting_turn
+    # The final screen is drawn even if a glide ended on the same view.
+    assert not ui._glide_drew_next_turn
+
+
+@pytest.mark.parametrize('lp, effect_seconds, map_mode', [
+    (1, 0.3, False),    # still alive
+    (0, 0, False),      # effects turned off: collapsed at once
+    (0, 0.3, True),     # on the map
+])
+def test_player_does_not_sink_otherwise(sprite_ui, lp, effect_seconds, map_mode):
+    ui, calls = _collapse_ui(sprite_ui)
+    ui.combat_effect_seconds = effect_seconds
+    ui.map_mode = map_mode
+    ui.present_turn(_turn((1, 0)), {'player': d.Player(4, 5, level=8, lp=lp)})
+    assert calls == []
 
 
 def test_glide_end_frame_is_not_redrawn_for_the_same_view(sprite_ui, monkeypatch):

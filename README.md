@@ -92,7 +92,8 @@ Shift+Left/Right scrolls the view three cells at a time.
 
 **Player**: The player is shown holding a sword when carrying one. The LP gauge
 appears just above the player, as in a fighting game. The disc under the player
-shows its LP status.
+shows its LP status. When LP runs out, the player sinks for a moment after its
+last move and then lies collapsed on the final screen.
 
 **Monsters**: The disc under a monster shows whether it is identified and its
 strength. Hover over a character to enlarge it and display its name above it.
