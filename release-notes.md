@@ -1,5 +1,12 @@
 # ARLQ Release Notes
 
+## 6.8.4 - 2026-11-17
+
+- Show the player collapsed when LP runs out in sprite mode: after the last
+  move the player sinks for a moment, then lies face down on the final screen
+  with the empty LP gauge above it. The sink is skipped when the combat effect
+  duration is 0.
+
 ## 6.8.3 - 2026-11-17
 
 - Give `arlq-cli` the same Settings screen as the GUIs (`[s]ettings` on the
