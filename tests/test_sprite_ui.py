@@ -340,6 +340,22 @@ def test_treasure_disc_stays_yellow(sprite_ui):
     assert ui.outlines[0][3:] == (ui._tone_color('yellow'), None)
 
 
+def test_dungeon_core_uses_treasure_width_and_hides_brackets(sprite_ui):
+    ui = sprite_ui
+    image = SimpleNamespace(width=900, height=800)
+    ui._dungeon_core_images = {'small': image}
+    ui._dungeon_core_growth = 'small'
+    ui._dungeon_core_under, ui._dungeon_core_overhang = 0.6, 0.4
+    ui._cur_torched = [[True] * 10 for _ in range(10)]
+    ui._draw_dungeon_core((4, 5))
+    core = ui._drawables[0]
+    expected_width = 1.8 * 11
+    assert core.scale_x * image.width == pytest.approx(expected_width)
+    assert core.x + expected_width / 2 == pytest.approx(ui._field_col_x(4) + 6.5)
+    assert not ui.show_core_brackets and not ui.show_treasure_brackets
+    assert PygletUI.show_core_brackets and PygletUI.show_treasure_brackets
+
+
 def test_collected_chest_is_drawn_behind_player(sprite_ui, monkeypatch):
     ui = sprite_ui
     ui._won_chest_cell = (4, 5)

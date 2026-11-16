@@ -248,6 +248,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     supports_horizontal_view = True
     show_treasure_brackets = False
+    show_core_brackets = False
     show_treasure_sparkles = False
     supports_floor_transition = True
     supports_idle_bob = True
@@ -1546,24 +1547,29 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     def _draw_dungeon_core(self, pos):
         x, y = pos
         image = self._dungeon_core_images[self._dungeon_core_growth]
-        left = self._field_col_x(x - 1)
+        cx = self._field_col_x(x) + self.cell_size_x / 2
+        cy = (y + 0.5) * self.cell_size_y
+        shade = 1.0 if self._cur_torched is not None and self._cur_torched[y][x] else TERRAIN_EXPLORED_SHADE
+        glow = self._display_color(tuple(round(c * shade) for c in COLOR_MAP[CI_YELLOW]))
+        self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self._sprite_unit(), glow)
+        width = 1.8 * max(1, self._sprite_unit() - 2 * max(1, round(self.scale)))
+        factor = width / (3 * self.cell_size_x)
+        left = self._field_col_x(x) + (self.cell_size_x - width) / 2
         bottom = self.window_height - (
-            y + 1 + self._dungeon_core_under
+            y + 0.5 + (0.5 + self._dungeon_core_under) * factor
         ) * self.cell_size_y
-        scale_x = 3 * self.cell_size_x / image.width
+        scale_x = width / image.width
         scale_y = (
             (1 + self._dungeon_core_under + self._dungeon_core_overhang)
-            * self.cell_size_y
+            * self.cell_size_y * factor
             / image.height
         )
-        visible = self._cur_torched is not None and self._cur_torched[y][x]
-        shade = 1.0 if visible else TERRAIN_EXPLORED_SHADE
-        tint = self._display_color(tuple(round(255 * shade) for _ in range(3)))
+        tint = self._display_color((255, 255, 255))
         group = self._row_group(y, 'wall')
         signature = ('dungeon-core', id(image), left, bottom, scale_x, scale_y,
                      id(group), tint)
         sprite = self._draw_bounded_object(
-            left, 3 * self.cell_size_x, signature,
+            left, width, signature,
             lambda: pyglet.sprite.Sprite(image, x=left, y=bottom,
                                          batch=self.batch, group=group),
         )

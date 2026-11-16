@@ -372,6 +372,7 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 class PygletUI(PygletSettingsMixin):
     supports_horizontal_view = False
     show_treasure_brackets = True
+    show_core_brackets = True
     show_treasure_sparkles = True
     dim_protected_hazards = True
     # Whether draw_floor_transition shows a still (and Settings offers its time).
@@ -1538,13 +1539,20 @@ class PygletUI(PygletSettingsMixin):
                         for (x, y), _ in entity.arrow_marks
                         if show_entities or torched[y][x])
         for entity, glyph in entity_glyphs:
-            if (is_bracket(entity, glyph) and not self.show_treasure_brackets
-                    and not (isinstance(entity, d.Monster)
-                             and entity.tribe.char == d.CHAR_DUNGEON_CORE)):
-                continue
-            if (is_bracket(entity, glyph)
-                    and not ui_display.core_bracket_is_clear(glyph, field, occupied, decor)):
-                continue
+            if is_bracket(entity, glyph):
+                is_core = (isinstance(entity, d.Monster)
+                           and entity.tribe.char == d.CHAR_DUNGEON_CORE)
+                if not (self.show_core_brackets if is_core else self.show_treasure_brackets):
+                    continue
+            if is_bracket(entity, glyph):
+                bracket_over_wall = (
+                    0 <= glyph.y < len(field)
+                    and 0 <= glyph.x < len(field[glyph.y])
+                    and field[glyph.y][glyph.x] in d.WALL_CHARS
+                )
+                if (not bracket_over_wall
+                        and not ui_display.core_bracket_is_clear(glyph, field, occupied, decor)):
+                    continue
             paint(glyph)
 
         if not floor_view:
