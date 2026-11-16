@@ -136,10 +136,12 @@ UNKNOWN_PILLAR = 0.21
 # the blue disc of a beatable identified monster.
 UNKNOWN_DISC_REFERENCE = CI_BLUE
 # Member sprite files are named '<job>-<gender>-<skin>.png': gender f, m, or
-# n for a job drawn alike for both; skin l(ight), m(edium) or d(ark).
+# n for a job drawn alike for both; skin l(ight), m(edium) or d(ark). The
+# Dungeon Explorer, a dragon, has one build whose scales lean blue (l), sit
+# midway (m) or lean green (d).
 MEMBER_SPRITES = {'J': ('jester-n',), 'H': ('healer-f', 'healer-m'),
                   'R': ('rogue-n',), 'K': ('knight-n',),
-                  'G': ('guardian-n',), 'D': ('explorer-f', 'explorer-m'),
+                  'G': ('guardian-n',), 'D': ('explorer-n',),
                   'S': ('seer-f', 'seer-m')}
 CAT_SPRITE = 'yawning-cat'
 SPRITE_FILES[CAT_SPRITE] = 'yawning-cat.png'

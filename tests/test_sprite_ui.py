@@ -113,7 +113,7 @@ def test_hover_enlarges_sprite_with_fixed_feet_and_original_cell_hitbox(sprite_u
     ('player sword', 'Player'),
     ('k', 'Marksman(k)'),
     ('d', 'Komodo Dragon(d)'),
-    ('knight-n-l', 'Knight'), ('explorer-m-d', 'Dungeon Explorer'),
+    ('knight-n-l', 'Knight'), ('explorer-n-d', 'Dungeon Explorer'),
     ('seer-f-l', 'Fairy Seer'), ('seer-m-d', 'Fairy Seer'),
 ])
 def test_hover_names_preserve_identity_and_member_roles(sprite_ui, key, name):
@@ -146,7 +146,7 @@ def test_hover_name_is_below_only_at_dungeon_top(sprite_ui, row):
     ('d', 'コモドドラゴン(d)'),
     ('player blessed', 'プレイヤー(@)'), ('knight-n-l', '騎士(K)'),
     ('K', 'コレクターエルフ(K)'), ('D', 'ドラゴン(D)'),
-    ('explorer-m-d', 'ダンジョン探検家(D)'),
+    ('explorer-n-d', 'ダンジョン探検家(D)'),
 ])
 def test_japanese_hover_names_include_glyph(sprite_ui, monkeypatch, key, name):
     monkeypatch.setattr(i18n, '_lang', 'ja')
