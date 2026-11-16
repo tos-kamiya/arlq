@@ -1,5 +1,21 @@
 # ARLQ Release Notes
 
+## 6.8.3 - 2026-11-17
+
+- Give `arlq-cli` the same Settings screen as the GUIs (`[s]ettings` on the
+  stage selection screen), and use its layout in `arlq` too. Every command now
+  accepts the settings options (`--scale`, `--key-repeat-interval`,
+  `--auto-repeat-stop`, `--combat-effect-duration`,
+  `--floor-transition-duration`, `--character-bobbing`, `--smooth-movement`),
+  which apply to that run only and are not saved.
+- Save only the items changed on the Settings screen. "Reset all settings to
+  defaults" now applies on Enter and leaves the settings screen, and the
+  gamepad button submenu opens without a connected controller.
+- Redraw the Dungeon Explorer (`D`) in sprite mode as a dragon who became
+  interested in humans while exploring ancient ruins: a horned dragon head
+  with round gold glasses, a grey shirt, a rope coil and a long tail, in one
+  of three teal shades. It no longer looks like the Fairy Seer.
+
 ## 6.8.2 - 2026-11-16
 
 - Draw the Stage 6 Dungeon Core in sprite mode at about the treasure chest's
