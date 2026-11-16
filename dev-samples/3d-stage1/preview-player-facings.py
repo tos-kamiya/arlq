@@ -1,12 +1,15 @@
 """Render the player in every sword state and facing from the saved heroic others' scene.
 
 Rows are the sword states (own sword, chimera's sword, cursed sword, K
-blessing) and columns the facings (down, left, right, up). Run after
+blessing) and columns the facings (down, left, right, up); a last row shows
+the player collapsed from hunger, in the first column. Run after
 build-heroic.py:
 blender --background --threads 4 --python dev-samples/3d-stage1/preview-player-facings.py
+Writes heroic/preview-player-facings.jpg; needs ImageMagick's `convert`.
 """
 from pathlib import Path
 import math
+import subprocess
 
 import bpy
 from mathutils import Matrix, Vector
@@ -15,6 +18,9 @@ ROOT = Path(__file__).resolve().parent
 SWORDS = [('@', 'OWN SWORD'), ('@c', 'CHIMERA SWORD (c)'), ('@C', 'CURSED SWORD (C)'),
           ('@K', 'K BLESSING')]
 FACINGS = [('', 'DOWN'), ('<', 'LEFT'), ('>', 'RIGHT'), ('^', 'UP')]
+# The collapsed player has one pose, shown under the down column.
+COLLAPSED = ('@_', 'COLLAPSED (HUNGER)')
+ROWS = len(SWORDS) + 1
 SPACING_X = 1.8
 SPACING_Y = 2.4
 
@@ -44,22 +50,30 @@ def cell(col, row):
 
 
 shown = set()
-for row, (sword, sword_name) in enumerate(SWORDS):
-    for col, (suffix, facing_name) in enumerate(FACINGS):
-        char = sword + suffix
-        collection = next(c for c in bpy.data.collections
-                          if c.name.startswith('Character ' + char + ' '))
-        x, y = centers[char]
-        cx, cy = cell(col, row)
-        move = Matrix.Translation((cx - x, cy - y, 0))
-        for obj in collection.objects:
-            if not obj.get('sprite'):
-                continue
-            obj.matrix_world = move @ obj.matrix_world
-            obj.hide_render = False
-            shown.add(obj)
+
+
+def place(char, col, row):
+    """Move the character `char` to the cell (col, row) and show it."""
+    collection = next(c for c in bpy.data.collections
+                      if c.name.startswith('Character ' + char + ' '))
+    x, y = centers[char]
+    cx, cy = cell(col, row)
+    move = Matrix.Translation((cx - x, cy - y, 0))
+    for obj in collection.objects:
+        if not obj.get('sprite'):
+            continue
+        obj.matrix_world = move @ obj.matrix_world
+        obj.hide_render = False
+        shown.add(obj)
+
+
+rows = [(sword_name, [sword + suffix for suffix, _ in FACINGS]) for sword, sword_name in SWORDS]
+rows.append((COLLAPSED[1], [COLLAPSED[0]]))
+for row, (row_name, chars) in enumerate(rows):
+    for col, char in enumerate(chars):
+        place(char, col, row)
     left, cy = cell(0, row)
-    shown.add(label(sword_name, (left - SPACING_X * 0.55, cy - 0.3, 0.005), 0.14, 'RIGHT'))
+    shown.add(label(row_name, (left - SPACING_X * 0.55, cy - 0.3, 0.005), 0.14, 'RIGHT'))
 for col, (_, facing_name) in enumerate(FACINGS):
     cx, _ = cell(col, 0)
     # Above the back row's helmets, which rise well above their cells on screen.
@@ -78,13 +92,20 @@ for light in [obj for obj in scene.objects if obj.type == 'LIGHT']:
     light.data = sun
 camera = scene.camera
 angle = math.radians(60)
-width = len(FACINGS) * SPACING_X + 3.2
-depth = len(SWORDS) * SPACING_Y + 0.6
-target = Vector((-0.8, -(len(SWORDS) - 1) * SPACING_Y / 2 + 0.75, 0.5))
+# Room on the left for the longest row label, on the right for the swords
+# held out by the last column, above for the column labels, and below for
+# the collapsed player's flung arm.
+width = len(FACINGS) * SPACING_X + 5.2
+depth = ROWS * SPACING_Y + 3.4
+target = Vector((-0.6, -(ROWS - 1) * SPACING_Y / 2 + 0.2, 0.5))
 camera.location = target + Vector((0, -15 * math.cos(angle), 15 * math.sin(angle)))
 camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.ortho_scale = width
 scene.render.resolution_x = 1400
 scene.render.resolution_y = round(1400 * (depth * math.sin(angle) + 2.4) / width)
-scene.render.filepath = str(ROOT / 'heroic' / 'preview-player-facings.png')
+png = ROOT / 'heroic' / 'preview-player-facings.png'
+scene.render.filepath = str(png)
 bpy.ops.render.render(write_still=True)
+# Only the JPEG goes in the repository.
+subprocess.run(['convert', str(png), '-quality', '90', str(png.with_suffix('.jpg'))], check=True)
+png.unlink()
