@@ -43,102 +43,73 @@ arlq-sprites
 arlq-cli
 ```
 
-## Command-line options
+`arlq-cli` runs in a terminal, `arlq` opens a character-based GUI, and
+`arlq-sprites` opens a GUI with character sprites. `arlq --terminal` also
+starts the terminal version, and `arlq --sprites` the sprite GUI version.
 
-### Options shared by `arlq-cli`, `arlq`, and `arlq-sprites`
+## Command-line options
 
 | Option | Description |
 | --- | --- |
 | `--version` | Show the version. |
-| `--rematch` | Replay the most recently started stage with the same seed. |
+| `--rematch` | Replay the most recently started stage with the same seed. It cannot be combined with `--seed`. You may also specify `--stage` if it matches the saved stage. |
 | `--seed VALUE` | Select an integer seed or a versioned seed string. |
 | `--stage 1`, `--stage 2`, `--stage 3`, `--stage 4`, `--stage 5`, `--stage 6` | Select a stage directly. Stage 5 is a compact member-ability trial; Stage 6 is a three-floor boss and treasure dungeon with a 2,000-turn limit. |
-| `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` detects it from the locale. Status-bar labels and item names stay in English. |
+| `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` (the default) detects it from the locale. Status-bar labels and item names stay in English. |
+| `-T` / `--large-torch` | Difficulty option. Widen the field of view. |
+| `-t` / `--small-torch` | Difficulty option. Narrow the field of view. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
 At game start, the stage and seed are saved to `arlq/last-seed` under the user
-cache directory. `--rematch` starts the saved stage without showing the stage
-selector. It cannot be combined with `--seed`. You may also specify `--stage`
-if it matches the saved stage. Keep the other layout options unchanged to
-reproduce the same layout.
+cache directory. `--rematch` alone starts the saved stage directly. It is an
+error if combined with `--seed`, if `--stage` differs from the saved stage, or if
+no valid saved value exists.
 
 The game uses its own MT19937 generator, so the same game version, seed, and
-options reproduce layouts across Python versions. The switch from the previous
-generator changes layouts and means older recorded traces may not replay correctly.
-Integer seeds use their low 32 bits.
-
-#### Difficulty options
-
-| Option | Description |
-| --- | --- |
-| `-T` / `--large-torch` | Expand the visible area. |
-| `-t` / `--small-torch` | Reduce the visible area. |
-
-### Options available only with `arlq`
-
-| Option | Description |
-| --- | --- |
-| `--terminal` | Run the game in the terminal using Blessed. |
-
-Options for the settings screen items, such as `--scale`, are available in every
-command. They apply to that run only and are not saved; see the tables in
-[Settings screen](#settings-screen).
+options reproduce layouts across Python versions.
 
 ## Screen and controls
 
-`arlq-cli` runs in a terminal, `arlq` opens a character-based GUI, and
-`arlq-sprites` opens a GUI with character sprites. `arlq --terminal` also
-starts the terminal interface, and `arlq --sprites` the sprite GUI.
-
-### Common to all modes
+Screens and controls common to `arlq-cli`, `arlq`, and `arlq-sprites`:
 
 - The stage selector arranges `[1]` through `[6]` in two columns and three rows; select a stage directly with a number key.
-- Control the player character (`@` in `arlq-cli` and `arlq`) using the arrow keys or WASD. GUI modes also support gamepads; button assignments can be changed in `Settings` → `Gamepad button settings`.
+- Control the player character (`@` in `arlq-cli` and `arlq`) using the arrow keys or WASD. GUI versions also support gamepads; button assignments can be changed in `Settings` → `Gamepad button settings`.
 - Your vision is centered on your location, and explored areas remain visible on the automap.
-- After contacting an enemy, its party composition remains in brackets to the left of event messages.
-- Temporary status popups appear near the player, while event messages remain in the bottom status area. LP and LVL changes in the popups are rounded to one decimal place, omitting trailing `.0`.
+- After contacting an enemy, its party composition remains in brackets, such as `[aaw]`, to the left of event messages.
+- Temporary status popups appear near the player, while event messages appear at the bottom of the screen.
 
-### Terminal: `arlq-cli`
+### Terminal version: `arlq-cli`
 
-The Blessed terminal interface requires at least 80 columns and 24 lines. The
-game pauses if the terminal becomes smaller and resumes when it is large enough
-again.
+The terminal must be at least 80 columns by 24 lines.
 
-### Sprite GUI: `arlq-sprites`
+### Sprite GUI version: `arlq-sprites`
 
 **Window**: The window opens wide enough to show the complete field and strength
 column without scrolling, and can be resized in both dimensions. Changing the
 window height zooms the field while keeping its rendering detail consistent. If
 the window is resized narrower than the field, the camera follows the player;
-Shift+Left/Right scrolls the view three cells at a time without moving.
+Shift+Left/Right scrolls the view three cells at a time.
 
-**The player**
+**Player**: The player is shown holding a sword when carrying one. The LP gauge
+appears just above the player, as in a fighting game. The disc under the player
+shows its LP status.
 
-- The player is shown holding a sword when carrying one.
-- The player faces the direction of its last move, even when a wall or a lost fight keeps it in place, and faces the screen at the start of a stage and after stairs, a fall, or a Loop rewind.
-- The LP gauge appears just above the player, as in a fighting game.
-- After a one-cell step, the player, its fairy, and following party members glide from the cells they left into their new cells, and the field scrolls smoothly along with them when the view follows the player. While a held direction repeats, each glide lasts until the next repeat, so walking does not pause between steps.
+**Monsters**: The disc under a monster shows whether it is identified and its
+strength. Hover over a character to enlarge it and display its name above it.
+Unidentified characters show no name.
 
-**Characters**
-
-- Ground discs show whether monsters are identified, their strength, and the player's status.
-- Characters next to the player are drawn larger. Party members and the Javelin Elf following the player are instead drawn at about 85% size with a fainter outline, so they do not look larger than the player.
-- Hover over a character to enlarge it and display its name. Unidentified characters show no name.
-
-## Display settings and effects
-
-### Settings screen
+## Game settings
 
 `Settings` on the stage selection screen (the `s` key) changes display and
-control settings. `arlq-cli`, `arlq`, and `arlq-sprites` show the same items in
-the same layout, including items that have no effect in that mode. Every command
-Settings are saved in the per-user configuration directory and used by every mode
-on later starts.
+control settings. Settings are saved in the per-user configuration directory and
+used by every mode on later starts.
 
-Every command also accepts command-line options for the items other than the
-gamepad ones. An option value is used for that run only and does not change the
-saved settings. The settings screen shows the option values; applying it saves
-only the items changed in the settings screen.
+The items other than the gamepad ones can be given as command-line options.
+However, an option is used for that run only and does not change the saved
+settings. The settings screen shows the option values; applying it saves only
+the items changed in the settings screen.
+
+### Settings screen
 
 In the settings screens, Up/Down selects an item and Left/Right changes its
 value. Enter or Right opens a submenu (an item marked `->`). Enter applies the
@@ -151,7 +122,7 @@ submenu's changes and returns to `Settings`.
 | --- | --- | --- |
 | `Interface scale` | `--scale FACTOR` | GUI display scale (`0.5` to `4.0`; default `1.0`). The settings screen selects it in 25% steps. |
 | `Movement repeat interval` | `--key-repeat-interval SECONDS` | GUI movement repeat delay and interval while a direction is held (`0.1` to `1.0` seconds). `none` (`No repeat`, the default) disables it. |
-| `Automatic repeat stop` | `--auto-repeat-stop on\|off` | Stop held movement near known hazards and visible entities (default: On). |
+| `Automatic repeat stop` | `--auto-repeat-stop on\|off` | Stops held movement near known hazards and visible entities (default: On). |
 | `Sprite display settings ->` | | Opens the submenu below. |
 | `Gamepad button settings ->` | | Opens the submenu below. |
 | `Reset all settings to defaults` | | Enter sets every setting, including those in the submenus, back to its default and exits settings. The saved settings are removed from the settings file. |
@@ -161,13 +132,13 @@ submenu's changes and returns to `Settings`.
 | Settings item | Command-line option | Description |
 | --- | --- | --- |
 | `Combat effect duration` | `--combat-effect-duration SECONDS` | Duration of combat and barrier damage effects (`0` to `0.5` seconds in 0.1-second steps; default `0.3`). 0 disables the effects and their delay. Used in every mode. |
-| `Floor transition duration` | `--floor-transition-duration SECONDS` | Duration of the short scene `arlq-sprites` shows between floors (`0` to `1` second in 0.1-second steps; default `0.5`; 0 skips it): the old floor fades to black, the player steps down or up the stairs, falls, or climbs the rope, and the new floor fades in. |
-| `Character bobbing` | `--character-bobbing on\|off` | In `arlq-sprites`, characters in view make a small hop every 0.7 seconds while the game waits for input (default: On). The player, monsters, fairies, and elves and party members waiting on the map hop; following fairies and party members stay still. |
+| `Floor transition duration` | `--floor-transition-duration SECONDS` | Duration of the short scene `arlq-sprites` shows between floors (`0` to `1` second in 0.1-second steps; default `0.5`). 0 skips it. |
+| `Character bobbing` | `--character-bobbing on\|off` | In `arlq-sprites`, makes characters in view hop slightly every 0.7 seconds while the game waits for input (default: On). |
 | `Smooth movement` | `--smooth-movement on\|off` | In `arlq-sprites`, the player, its fairy, and following party members glide into each one-cell step, with the field scrolling along (default: On). When it is off, they and the view move a whole cell at once. |
 
 #### `Settings` → `Gamepad button settings`
 
-Gamepads work in the GUI modes (`arlq` and `arlq-sprites`). The items on this
+Gamepads work in the GUI versions (`arlq` and `arlq-sprites`). The items on this
 screen have no command-line options.
 
 | Settings item | Description |
@@ -177,26 +148,7 @@ screen have no command-line options.
 | `Range / floor preview behavior` | Whether the preview button is held or toggled (default: hold). |
 | `Load default settings ->` | Right resets the three items on this screen to their defaults. |
 
-In the GUI modes, pressing gamepad button 2 to 12 also assigns it to the selected item.
-
-### Combat and victory effects
-
-Combat and barrier damage effects appear after each move is resolved, before the
-map refreshes.
-
-- **Combat**: In `arlq-sprites`, the slash of a won fight is cut the way the player attacked (up, down, left, or right).
-- **Defeating a Vortex (`V`)**: Its storm briefly appears around where it stood, after the combat effect and before the rearranged floor appears.
-- **Defeating a stage boss** (in Stage 6, the leader of the boss party; not the Dungeon Core): A lingering afterglow appears where it fell: a pillar of light, a ring spreading over the ground and sparks drifting up, for about 0.93 seconds.
-- **Destroying the Dungeon Core**: A dark, see-through dome swells over where it stood, then comes apart into drifting mist (about 1 second).
-- **Taking the treasure chest (stage clear)**: Shown for as long as the final screen stays up. In `arlq-sprites`, the chest stays in sight on its cell, wrapped in a hazy golden dome of light with glowing motes floating inside it. The character GUI and terminal show sparkling particles on empty cells around the player.
-
-The boss, Dungeon Core, and treasure chest effects are skipped when
-`Combat effect duration` is 0.
-
-The character GUI and terminal render the Vortex storm with colored braille
-characters and the boss and Dungeon Core effects in braille. The GUI renders
-each character cell as a 2-by-4 pixel grid; terminal appearance depends on its
-font and colors.
+In the GUI versions, pressing gamepad button 2 to 12 also assigns it to the selected item.
 
 ## Game Description
 
