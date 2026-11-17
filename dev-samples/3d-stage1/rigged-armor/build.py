@@ -536,6 +536,10 @@ def cape(rig, mat, columns=48, rows=28):
     return obj
 
 
+# Round bar subtracted from the back of the helmet's lower edge (axis along X).
+NAPE_CUT_CENTER, NAPE_CUT_RADIUS = (0, .12, 1.535), .05
+
+
 def helmet_crest_and_horns(rig, mat):
     """Crest and horns of the heroic player's helm (../build-heroic.py),
     scaled 0.8 about its head center (0, -.04, .83) onto this helmet's center."""
@@ -739,6 +743,35 @@ def build_armor(rig):
     helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),
                     (.14,.13,.13),(.2075,.115,.115),(.23,.085,.085)]
     helmet = squarish(plate(rig, 'head', 'Helmet', helmet_rings, helm), rig, 'head', helmet_rings)
+    # Hollow it like a real helmet: the helmet's own rings, one wall
+    # thickness inside at every height (1.8 cm at the sides, 1 cm at the
+    # back, 3.5 cm at the front so the eye slot does not break through), are
+    # subtracted from below. The lower edge becomes a rim and the inside
+    # takes the dark lining.
+    side_wall, back_wall, front_wall = .018, .01, .035
+    inner = [(along, width - side_wall, depth - (front_wall + back_wall) / 2)
+             for along, width, depth in helmet_rings[:3]]
+    cavity_rings = [(-.06, *inner[0][1:])] + inner[:2] + [(.13, *inner[2][1:])]
+    cavity = squarish(plate(rig, 'head', 'Helmet cavity cutter', cavity_rings, dark),
+                      rig, 'head', cavity_rings)
+    for vertex in cavity.data.vertices:
+        vertex.co.y += (front_wall - back_wall) / 2
+    # plate() leaves its faces pointing inward; the exact boolean needs both
+    # solids facing outward.
+    for mesh in (helmet.data, cavity.data):
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        bm.to_mesh(mesh)
+        bm.free()
+        mesh.update()
+    cavity.hide_render = True
+    cavity.display_type = 'WIRE'
+    hollow = helmet.modifiers.new('Hollow', 'BOOLEAN')
+    hollow.operation, hollow.solver, hollow.object = 'DIFFERENCE', 'EXACT', cavity
+    hollow.material_mode = 'TRANSFER'
+    bpy.context.view_layer.objects.active = helmet
+    bpy.ops.object.modifier_move_to_index(modifier=hollow.name, index=0)
     # Eye slot: a horizontal bar subtracted from the helmet front. It runs a
     # little past the helmet's width, so it cuts into the rounded front
     # corners and the recess shows from the side too. The cut faces take the
@@ -754,6 +787,22 @@ def build_armor(rig):
     slot.material_mode = 'TRANSFER'
     bpy.context.view_layer.objects.active = helmet
     bpy.ops.object.modifier_move_to_index(modifier=slot.name, index=0)
+    # Nape cut: a round bar running across the back of the helmet's lower
+    # edge is subtracted, scooping the back of the neck open so the helmet
+    # looks less confining. The cut keeps the helmet's steel.
+    bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=NAPE_CUT_RADIUS, depth=.4,
+                                        location=NAPE_CUT_CENTER, rotation=(0, math.pi / 2, 0))
+    nape = bpy.context.object
+    nape.name = 'Nape cutter'
+    # attach() reads matrix_world, which only picks up the rotation after an update.
+    bpy.context.view_layer.update()
+    attach(nape, rig, 'head', helm).modifiers['Forged edge'].width = .004
+    nape.hide_render = True
+    nape.display_type = 'WIRE'
+    cut = helmet.modifiers.new('Nape cut', 'BOOLEAN')
+    cut.operation, cut.solver, cut.object = 'DIFFERENCE', 'EXACT', nape
+    bpy.context.view_layer.objects.active = helmet
+    bpy.ops.object.modifier_move_to_index(modifier=cut.name, index=1)
     glow = material('Player visor glow', (.3, .9, 1.0), roughness=.35,
                     emission=(.1, .75, 1.0), strength=2.5)
     # Just in front of the slot's back wall (not on it, or the two flicker).
