@@ -25,9 +25,9 @@ TORSO, ARMS, LEGS, HEAD = .6, .55, .46, 1.0
 # Arms, legs and torso are then made this much thicker across their bones.
 # The clavicles widen along their length too, so the shoulders keep up with
 # the thicker chest. The round dark parts (ball joints, knee and elbow caps,
-# pauldrons) are not thickened.
+# pauldrons) and the sword are not thickened, so they keep their shapes.
 THICKEN = 1.2
-ROUND_PARTS = ('Joint ', 'Knee cap ', 'Elbow cap ', 'Pauldron ')
+ROUND_PARTS = ('Joint ', 'Knee cap ', 'Elbow cap ', 'Pauldron ', 'Sword ')
 
 
 def region_scale(name):

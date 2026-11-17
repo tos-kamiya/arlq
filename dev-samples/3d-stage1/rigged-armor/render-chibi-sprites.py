@@ -4,11 +4,11 @@ blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/ren
 
 Run build-chibi.py first; this opens hero-rig-chibi.blend. The camera looks
 down at 60 degrees, orthographic, as in the game. For each sample pose and
-facing (down, left, right, up) the figure is turned about its feet, then,
-so the face reads from above, the whole body leans back a little about the
-feet and the head tilts back a little more at the neck. Both are rigid
-turns about the screen's horizontal axis, applied to baked copies of the
-evaluated meshes, so the rig itself is left unchanged. Writes
+facing (down, left, right, up) the figure is turned about its feet, then
+the whole body leans back a little about the feet and the head tilts back
+further at the neck, so the face reads from above. Both are rigid turns
+about the screen's horizontal axis, applied to baked copies of the evaluated
+meshes, so the rig itself is left unchanged. Writes
 sprite-<pose>-<facing>.png next to this script.
 """
 import math
@@ -18,7 +18,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 HERE = Path(__file__).resolve().parent
-BODY_LEAN, HEAD_TILT = 0.2, 0.25    # radians, back from the camera
+BODY_LEAN, HEAD_TILT = 0.1, 0.3    # radians, back from the camera
 FACINGS = {'down': 0, 'left': -90, 'right': 90, 'up': 180}    # turn in degrees
 POSE_FRAMES = {'rest': 1, 'guard': 40, 'step': 80}
 

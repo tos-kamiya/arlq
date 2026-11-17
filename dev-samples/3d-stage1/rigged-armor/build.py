@@ -540,6 +540,69 @@ def cape(rig, mat, columns=48, rows=28):
 NAPE_CUT_CENTER, NAPE_CUT_RADIUS = (0, .12, 1.535), .05
 
 
+# Size of the heroic player's sword parts in this model's units: the heroic
+# head is 0.34 tall and the chibi build's 0.265, and the hand shrinks to 0.55
+# there, so the chibi sword keeps the heroic length relative to the head.
+SWORD_UNIT = .265 / .34 / .55
+# The blade is tipped this far (radians) further toward the figure's back
+# than on the heroic sprite, and rolled this far about its length so its flat
+# also shows when the figure faces up the screen.
+SWORD_BACK_TILT, SWORD_ROLL = .2, .2
+
+
+def own_sword(rig, blade_mat, guard_mat):
+    """The player's own broad short sword in the right hand, as on the heroic
+    sprite (../build-heroic.py player()): the blade points up to screen left
+    and a little into the screen, its width in the screen plane; a dark iron
+    guard crosses it a little along the blade from the fist."""
+    u = SWORD_UNIT
+    head, tail = (Vector(p) for p in BONES['hand.R'][:2])
+    fist = head + (tail - head) * .6
+    ahead = Vector((-.75, .3, .32)).normalized()
+    # Tip the blade toward the back (+Y).
+    ahead = Matrix.Rotation(SWORD_BACK_TILT, 3, ahead.cross(Vector((0, 1, 0))).normalized()) @ ahead
+    hand = fist + ahead * .06 * u
+    across = ahead.cross(Vector((0, -.5, .87))).normalized()
+    across = Matrix.Rotation(SWORD_ROLL, 3, ahead) @ across
+    tip = hand + ahead * .42 * u
+    thick = across.cross(ahead)
+    vertices = []
+    for center, width, depth in ((hand + (tip - hand) * .12, .075 * u, .016 * u),
+                                 (tip * .94 + hand * .06, .06 * u, .014 * u)):
+        vertices += [tuple(center + across * width), tuple(center + thick * depth),
+                     tuple(center - across * width), tuple(center - thick * depth)]
+    vertices.append(tuple(tip))
+    faces = [(3, 2, 1, 0)] + [(k, (k + 1) % 4, (k + 1) % 4 + 4, k + 4) for k in range(4)]
+    faces += [(k + 4, (k + 1) % 4 + 4, 8) for k in range(4)]
+    mesh = bpy.data.meshes.new('Sword blade')
+    mesh.from_pydata(vertices, [], faces)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+    blade = bpy.data.objects.new('Sword blade', mesh)
+    bpy.context.collection.objects.link(blade)
+    attach(blade, rig, 'hand.R', blade_mat).modifiers['Forged edge'].width = .003
+    ring_bar_open = [hand + across * .08 * u, hand - across * .08 * u]
+    curve = bpy.data.curves.new('Sword guard', 'CURVE')
+    curve.dimensions, curve.bevel_depth, curve.bevel_resolution = '3D', .025 * u, 2
+    curve.use_fill_caps = True
+    spline = curve.splines.new('POLY')
+    spline.points.add(1)
+    for point, co in zip(spline.points, ring_bar_open):
+        point.co = (*co, 1)
+    guard = bpy.data.objects.new('Sword guard', curve)
+    bpy.context.collection.objects.link(guard)
+    bpy.ops.object.select_all(action='DESELECT')
+    guard.select_set(True)
+    bpy.context.view_layer.objects.active = guard
+    bpy.ops.object.convert(target='MESH')
+    guard = bpy.context.object
+    attach(guard, rig, 'hand.R', guard_mat).modifiers['Forged edge'].width = .002
+
+
 def helmet_crest_and_horns(rig, mat):
     """Crest and horns of the heroic player's helm (../build-heroic.py),
     scaled 0.8 about its head center (0, -.04, .83) onto this helmet's center."""
@@ -738,6 +801,9 @@ def build_armor(rig):
     cloak = material('Player midnight cloak', (.025, .05, .16), roughness=.4, transmission=.15,
                      rim=(.25, .45, 1.0), rim_strength=.6)
     cape(rig, cloak)
+    blade = material('Player iron blade', (.62, .63, .66), .55, .4,
+                     rim=(.85, .9, 1.0), rim_strength=.8)
+    own_sword(rig, blade, trim)
     joint(rig, 'neck', .075, dark)
     # A rounded box like the heroic player's helm: flat top, upright sides.
     helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),
