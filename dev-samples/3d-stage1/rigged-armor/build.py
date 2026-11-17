@@ -337,15 +337,23 @@ def helmet_crest_and_horns(rig, mat):
     crest = bpy.data.objects.new('Helmet crest', mesh)
     bpy.context.collection.objects.link(crest)
     attach(crest, rig, 'head', mat).modifiers['Forged edge'].width = .003
-    # Four-sided horns from the sides of the helm, out, back and up; enlarged
-    # from their roots.
-    horn_scale = 1.2
+    # Four-sided horns from the sides of the helm, out, back and up: 1.08 times
+    # the heroic size, moved in to 90% and up 1 cm. The rounded helmet
+    # corners fall away under their square roots, so each horn is extended
+    # 6 cm back along its own axis into the helmet; the visible part keeps
+    # its tip and taper.
+    horn_scale, horn_spread, horn_lift, horn_sink = 1.2 * .9, .9, .01, .06
+    radius = .055 * .8 * horn_scale
     for side, sign in (('L', 1), ('R', -1)):
-        start = heroic(sign * .15, 0, .90)
-        delta = (heroic(sign * .27, .11, 1.06) - start) * horn_scale
+        lift = Vector((0, 0, horn_lift))
+        start = heroic(sign * .15 * horn_spread, 0, .90) + lift
+        delta = (heroic(sign * .27 * horn_spread, .11, 1.06) + lift - start) * horn_scale
         end = start + delta
-        bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=.055 * .8 * horn_scale, radius2=0,
-                                        depth=delta.length, location=(start + end) / 2)
+        start = start - delta.normalized() * horn_sink
+        depth = (end - start).length
+        bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=radius * depth / delta.length,
+                                        radius2=0, depth=depth, location=(start + end) / 2)
+        delta = end - start
         horn = bpy.context.object
         horn.name = f'Helmet horn {side}'
         horn.rotation_euler = delta.to_track_quat('Z', 'Y').to_euler()
@@ -459,8 +467,8 @@ def build_armor(rig):
     breastplate.data.update()
     joint(rig, 'neck', .075, dark)
     # A rounded box like the heroic player's helm: flat top, upright sides.
-    helmet_rings = [(-.035,.115,.115),(.0,.13,.13),
-                    (.17,.13,.13),(.215,.12,.12),(.23,.10,.10)]
+    helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),
+                    (.14,.13,.13),(.2075,.115,.115),(.23,.085,.085)]
     helmet = plate(rig, 'head', 'Helmet', helmet_rings, helm)
     matrix = rig.data.bones['head'].matrix_local
     for row, (along, width, depth) in enumerate(helmet_rings):
@@ -468,8 +476,8 @@ def build_armor(rig):
             angle = i * 2 * math.pi / 12
             x, z = math.sin(angle), math.cos(angle)
             helmet.data.vertices[row * 12 + i].co = matrix @ Vector((
-                width * math.copysign(abs(x) ** .45, x), along,
-                depth * math.copysign(abs(z) ** .45, z)))
+                width * math.copysign(abs(x) ** .575, x), along,
+                depth * math.copysign(abs(z) ** .575, z)))
     helmet.data.update()
     # Eye slot: a horizontal bar subtracted from the helmet front. It runs a
     # little past the helmet's width, so it cuts into the rounded front
