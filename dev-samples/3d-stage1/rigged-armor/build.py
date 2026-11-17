@@ -28,6 +28,8 @@ for side, sign in [('L', 1), ('R', -1)]:
         f'thigh.{side}': ((sign*.13, 0, .91), (sign*.15, -.025, .52), 'pelvis'),
         f'shin.{side}': ((sign*.15, -.025, .52), (sign*.15, 0, .12), f'thigh.{side}'),
         f'foot.{side}': ((sign*.15, 0, .12), (sign*.15, -.20, .065), f'shin.{side}'),
+        # Hinge at the top of the lower diagonal waist plate; driven by the thigh.
+        f'hip_plate.{side}': ((sign*.19, -.122, .98), (sign*.19, -.122, .66), 'pelvis'),
     })
 
 
@@ -74,6 +76,19 @@ def create_rig():
             # Positive X folds elbows forward; knees fold backward.
             limit.min_x, limit.max_x = ((0, math.radians(145))
                 if bone.name.startswith('forearm.') else (math.radians(-145), 0))
+        if bone.name.startswith('hip_plate.'):
+            # Swing forward with a raised thigh; hang still when it moves back.
+            bone.lock_rotation = (True, True, True)
+            follow = bone.constraints.new('COPY_ROTATION')
+            follow.name = 'Follow thigh'
+            follow.target, follow.subtarget = rig, 'thigh.' + bone.name[-1]
+            follow.use_y = follow.use_z = False
+            follow.owner_space = follow.target_space = 'LOCAL'
+            limit = bone.constraints.new('LIMIT_ROTATION')
+            limit.name = 'Forward swing only'
+            limit.owner_space = 'LOCAL'
+            limit.use_limit_x = True
+            limit.min_x, limit.max_x = 0, math.radians(90)
     return rig
 
 
@@ -148,34 +163,41 @@ def joint(rig, bone_name, radius, mat):
 
 
 def diagonal_waist_plates(rig, mat):
-    """Hang curved tassets around the front-side quarters of the hips."""
+    """Hang curved tassets around the front-side quarters of the hips.
+
+    The upper band is fixed to the pelvis. The lower plate tucks under it and
+    swings on hip_plate so a raised thigh does not pass through it.
+    """
+    # Arc centered 50 degrees away from the front, wrapping toward the side.
+    parts = [('Diagonal waist plate', 'pelvis',
+              [(1.065, .19, .145, 23), (.98, .25, .19, 29)]),
+             ('Diagonal waist plate lower', 'hip_plate',
+              [(.995, .238, .178, 29), (.80, .28, .21, 29), (.66, .27, .20, 24)])]
     for side, sign in (('L', 1), ('R', -1)):
-        vertices = []
-        # Arc centered 50 degrees away from the front, wrapping toward the side.
-        for z, radius_x, radius_y, half_angle in (
-                (1.065, .19, .145, 23), (.98, .25, .19, 29),
-                (.80, .28, .21, 29), (.66, .27, .20, 24)):
-            for i in range(13):
-                angle = math.radians(50 + half_angle * (2 * i / 12 - 1))
-                vertices.append((sign * radius_x * math.sin(angle),
-                                 -radius_y * math.cos(angle), z))
-        faces = []
-        for row in range(3):
-            for i in range(12):
-                a = row * 13 + i
-                face = (a, a + 1, a + 14, a + 13)
-                faces.append(face if sign == 1 else tuple(reversed(face)))
-        mesh = bpy.data.meshes.new(f'Diagonal waist plate {side}')
-        mesh.from_pydata(vertices, [], faces)
-        mesh.update()
-        obj = bpy.data.objects.new(mesh.name, mesh)
-        bpy.context.collection.objects.link(obj)
-        attach(obj, rig, 'pelvis', mat)
-        solidify = obj.modifiers.new('Plate thickness', 'SOLIDIFY')
-        solidify.thickness = .012
-        bpy.context.view_layer.objects.active = obj
-        bpy.ops.object.modifier_move_up(modifier=solidify.name)
-        bpy.ops.object.modifier_move_up(modifier=solidify.name)
+        for name, bone_name, rows in parts:
+            vertices = []
+            for z, radius_x, radius_y, half_angle in rows:
+                for i in range(13):
+                    angle = math.radians(50 + half_angle * (2 * i / 12 - 1))
+                    vertices.append((sign * radius_x * math.sin(angle),
+                                     -radius_y * math.cos(angle), z))
+            faces = []
+            for row in range(len(rows) - 1):
+                for i in range(12):
+                    a = row * 13 + i
+                    face = (a, a + 1, a + 14, a + 13)
+                    faces.append(face if sign == 1 else tuple(reversed(face)))
+            mesh = bpy.data.meshes.new(f'{name} {side}')
+            mesh.from_pydata(vertices, [], faces)
+            mesh.update()
+            obj = bpy.data.objects.new(mesh.name, mesh)
+            bpy.context.collection.objects.link(obj)
+            attach(obj, rig, bone_name if bone_name == 'pelvis' else f'{bone_name}.{side}', mat)
+            solidify = obj.modifiers.new('Plate thickness', 'SOLIDIFY')
+            solidify.thickness = .012
+            bpy.context.view_layer.objects.active = obj
+            bpy.ops.object.modifier_move_up(modifier=solidify.name)
+            bpy.ops.object.modifier_move_up(modifier=solidify.name)
 
 
 def build_armor(rig):
@@ -288,6 +310,8 @@ def animate(rig, scene):
     for frame, (label, rotations) in POSES.items():
         scene.timeline_markers.new(label, frame=frame)
         for bone in rig.pose.bones:
+            if bone.name.startswith('hip_plate.'):
+                continue
             angles = rotations.get(bone.name, (0,0,0))
             # Waist/neck twist around bone-local Y, which is upright.
             if bone.name in ('waist','neck'):
