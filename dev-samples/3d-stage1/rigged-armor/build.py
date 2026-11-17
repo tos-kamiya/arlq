@@ -277,6 +277,19 @@ def joint(rig, bone_name, radius, mat):
     return attach(obj, rig, bone_name, mat)
 
 
+def box(rig, bone_name, name, center, half_size, mat, bevel_width):
+    """Rounded rigid block given by its center and half extents."""
+    bpy.ops.mesh.primitive_cube_add(location=center)
+    obj = bpy.context.object
+    obj.name = name
+    obj.scale = half_size
+    # attach() reads matrix_world, which only picks up the scale after an update.
+    bpy.context.view_layer.update()
+    bevel = attach(obj, rig, bone_name, mat).modifiers['Forged edge']
+    bevel.width, bevel.segments = bevel_width, 3
+    return obj
+
+
 # Hip armor rings on the pelvis bone: (distance along bone, half-width, half-depth).
 HIP_RINGS = [(0, .17, .12), (.08, .19, .14), (.205, .16, .12)]
 
@@ -307,7 +320,11 @@ def helmet_crest_and_horns(rig, mat):
     # A thin plate, a horn-like triangle from the side: its base runs along
     # the top of the helm and it sweeps forward and up past the visor.
     profile = [heroic(0, -.02, .985), heroic(0, -.17, .955), heroic(0, -.23, 1.063)]
-    vertices = [(side * .02, p.y, p.z) for side in (-1, 1) for p in profile]
+    # Shrunk about the middle of its base, so it stays seated on the helmet.
+    crest_scale = .8
+    base = (profile[0] + profile[1]) / 2
+    profile = [base + (point - base) * crest_scale for point in profile]
+    vertices = [(side * .02 * crest_scale, p.y, p.z) for side in (-1, 1) for p in profile]
     faces = [(0, 1, 2), (5, 4, 3), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)]
     mesh = bpy.data.meshes.new('Helmet crest')
     mesh.from_pydata(vertices, [], faces)
@@ -320,12 +337,14 @@ def helmet_crest_and_horns(rig, mat):
     crest = bpy.data.objects.new('Helmet crest', mesh)
     bpy.context.collection.objects.link(crest)
     attach(crest, rig, 'head', mat).modifiers['Forged edge'].width = .003
-    # Four-sided horns from the sides of the helm, out, back and up.
+    # Four-sided horns from the sides of the helm, out, back and up; enlarged
+    # from their roots.
+    horn_scale = 1.2
     for side, sign in (('L', 1), ('R', -1)):
         start = heroic(sign * .15, 0, .90)
-        end = heroic(sign * .27, .11, 1.06)
-        delta = end - start
-        bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=.055 * .8, radius2=0,
+        delta = (heroic(sign * .27, .11, 1.06) - start) * horn_scale
+        end = start + delta
+        bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=.055 * .8 * horn_scale, radius2=0,
                                         depth=delta.length, location=(start + end) / 2)
         horn = bpy.context.object
         horn.name = f'Helmet horn {side}'
@@ -364,14 +383,7 @@ def belt(rig, strap_mat, buckle_mat):
     # Buckle: a plain square plate, just proud of the strap.
     # The hip armor flares downward, so clear the strap's lower (outer) edge.
     front = hip_radius(BELT_Z - BELT_WIDTH / 2)[1] + .009 + .004
-    bpy.ops.mesh.primitive_cube_add(location=(0, -front, BELT_Z))
-    buckle = bpy.context.object
-    buckle.name = 'Belt buckle'
-    buckle.scale = (.03, .004, .028)
-    # attach() reads matrix_world, which only picks up the scale after an update.
-    bpy.context.view_layer.update()
-    bevel = attach(buckle, rig, 'pelvis', buckle_mat).modifiers['Forged edge']
-    bevel.width, bevel.segments = .003, 3
+    box(rig, 'pelvis', 'Belt buckle', (0, -front, BELT_Z), (.03, .004, .028), buckle_mat, .003)
 
 
 def diagonal_waist_plates(rig, mat):
@@ -446,8 +458,9 @@ def build_armor(rig):
         vertex.co.x *= 1.1
     breastplate.data.update()
     joint(rig, 'neck', .075, dark)
-    helmet_rings = [(-.035,.10,.105),(.025,.13,.13),
-                    (.15,.125,.13),(.21,.10,.105),(.23,.055,.06)]
+    # A rounded box like the heroic player's helm: flat top, upright sides.
+    helmet_rings = [(-.035,.115,.115),(.0,.13,.13),
+                    (.17,.13,.13),(.215,.12,.12),(.23,.10,.10)]
     helmet = plate(rig, 'head', 'Helmet', helmet_rings, helm)
     matrix = rig.data.bones['head'].matrix_local
     for row, (along, width, depth) in enumerate(helmet_rings):
@@ -455,32 +468,29 @@ def build_armor(rig):
             angle = i * 2 * math.pi / 12
             x, z = math.sin(angle), math.cos(angle)
             helmet.data.vertices[row * 12 + i].co = matrix @ Vector((
-                width * math.copysign(abs(x) ** .8, x), along,
-                depth * math.copysign(abs(z) ** .8, z)))
+                width * math.copysign(abs(x) ** .45, x), along,
+                depth * math.copysign(abs(z) ** .45, z)))
     helmet.data.update()
-    # Visor follows head, with front toward -Y in world space.
-    def curved_visor(name, width, height, offset, mat):
-        vertices = []
-        for z in (1.66 - height / 2, 1.66 + height / 2):
-            for i in range(25):
-                x = width * (i / 24 - .5)
-                y = -.13 * (1 - (abs(x) / .128) ** 2.5) ** .4 - offset
-                vertices.append((x, y, z))
-        mesh = bpy.data.meshes.new(name)
-        mesh.from_pydata(vertices, [], [(i, i + 1, i + 26, i + 25) for i in range(24)])
-        mesh.update()
-        obj = bpy.data.objects.new(name, mesh)
-        bpy.context.collection.objects.link(obj)
-        attach(obj, rig, 'head', mat)
-        obj.modifiers['Forged edge'].width = .002
-        shell = obj.modifiers.new('Visor thickness', 'SOLIDIFY')
-        shell.thickness = .004
-        for face in mesh.polygons:
-            face.use_smooth = True
-    curved_visor('Visor curved rim', .20, .075, .008, dark)
+    # Eye slot: a horizontal bar subtracted from the helmet front. It runs a
+    # little past the helmet's width, so it cuts into the rounded front
+    # corners and the recess shows from the side too. The cut faces take the
+    # cutter's dark iron, and a smaller glowing pane at the back leaves a
+    # black rim around the light.
+    slot_z, slot_half_height, slot_back = 1.68, .036, -.10
+    cutter = box(rig, 'head', 'Eye slot cutter', (0, slot_back - .025, slot_z),
+                 (.14, .025, slot_half_height), trim, .006)
+    cutter.hide_render = True
+    cutter.display_type = 'WIRE'
+    slot = helmet.modifiers.new('Eye slot', 'BOOLEAN')
+    slot.operation, slot.solver, slot.object = 'DIFFERENCE', 'EXACT', cutter
+    slot.material_mode = 'TRANSFER'
+    bpy.context.view_layer.objects.active = helmet
+    bpy.ops.object.modifier_move_to_index(modifier=slot.name, index=0)
     glow = material('Player visor glow', (.3, .9, 1.0), roughness=.35,
                     emission=(.1, .75, 1.0), strength=2.5)
-    curved_visor('Visor illuminated opening', .15, .032, .014, glow)
+    # Just in front of the slot's back wall (not on it, or the two flicker).
+    box(rig, 'head', 'Eye window', (0, slot_back - .0035, slot_z),
+        (.092, .002, .021), glow, .001)
     helmet_crest_and_horns(rig, trim)
     for side in ('L','R'):
         for part, radius in [('upper_arm',.085),('forearm',.062),('hand',.05),
