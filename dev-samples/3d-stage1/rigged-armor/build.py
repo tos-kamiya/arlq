@@ -328,8 +328,9 @@ BELT_RX, BELT_RY = (r + .004 for r in hip_radius(BELT_Z))
 
 # Breastplate rings on the chest bone: (distance along bone, half-width,
 # half-depth); the plate is then widened by CHEST_WIDEN.
-CHEST_RINGS = [(-.085, .175, .13), (.04, .205, .145), (.20, .235, .16),
-               (.27, .20, .13), (.30, .115, .09)]
+# Widest at heart height (z 1.30), narrowing gently up to the shoulders.
+CHEST_RINGS = [(-.085, .175, .13), (.04, .205, .145), (.12, .225, .16),
+               (.21, .213, .148), (.27, .19, .125), (.30, .115, .09)]
 CHEST_WIDEN = 1.1
 
 
