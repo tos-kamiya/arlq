@@ -30,7 +30,7 @@ for side, sign in [('L', 1), ('R', -1)]:
         f'shin.{side}': ((sign*.15, -.025, .52), (sign*.15, 0, .12), f'thigh.{side}'),
         f'foot.{side}': ((sign*.15, 0, .12), (sign*.15, -.20, .065), f'shin.{side}'),
         # Hinge at the top of the lower diagonal waist plate; driven by the thigh.
-        f'hip_plate.{side}': ((sign*.19, -.122, .997), (sign*.19, -.122, .741), 'pelvis'),
+        f'hip_plate.{side}': ((sign*.148, -.094, .985), (sign*.148, -.094, .741), 'pelvis'),
     })
 
 
@@ -534,22 +534,50 @@ def diagonal_waist_plates(rig, mat):
     swings on hip_plate so a raised thigh does not pass through it.
     """
     # Arc centered 50 degrees away from the front, wrapping toward the side.
+    # The upper band hangs from inside the belt and runs down close to the
+    # hip armor (1.5 cm off it), so nothing bulges out at the belt where a
+    # scabbard would hang; the lower part then flares gently to clear the
+    # thighs. Rows are (z, half-width, half-depth, width around the hips):
+    # 22.7 cm, like a rectangle, from the belt down to z 0.853, then
+    # narrowing to 19.4 cm at the hem.
+    hip_w, hip_d = hip_radius(.975)
     parts = [('Diagonal waist plate', 'pelvis',
               # Top edge on the belt's centerline, hidden inside it.
-              [(BELT_Z, BELT_RX, BELT_RY, 24), (.997, .25, .19, 29)]),
+              [(BELT_Z, BELT_RX, BELT_RY, .227), (.975, hip_w + .015, hip_d + .015, .227)]),
              ('Diagonal waist plate lower', 'hip_plate',
-              [(1.009, .238, .178, 29), (.853, .28, .21, 29), (.741, .27, .20, 24)])]
+              # Top edge tucked 1 cm up inside the upper band, leaving room
+              # below the belt for the edge to rise as the plate swings.
+              [(.985, .193, .146, .227), (.853, .26, .195, .227), (.741, .27, .20, .194)])]
+
+    def arc_row(radius_x, radius_y, width):
+        """13 angles (radians) on the ellipse spanning `width` around it,
+        centered 50 degrees from the front, with arc lengths from the center."""
+        def point(angle):
+            return Vector((radius_x * math.sin(angle), -radius_y * math.cos(angle)))
+
+        def length(half):
+            steps = [math.radians(50) + half * (2 * k / 200 - 1) for k in range(201)]
+            return sum((point(b) - point(a)).length for a, b in zip(steps, steps[1:]))
+        low, high = 0, math.pi / 2
+        for _ in range(40):
+            half = (low + high) / 2
+            low, high = (half, high) if length(half) < width else (low, half)
+        angles = [math.radians(50) + half * (2 * i / 12 - 1) for i in range(13)]
+        arcs = [0]
+        for a, b in zip(angles, angles[1:]):
+            arcs.append(arcs[-1] + (point(b) - point(a)).length)
+        return angles, [s - arcs[6] for s in arcs]
     for side, sign in (('L', 1), ('R', -1)):
         for name, bone_name, rows in parts:
             vertices, uvs = [], []
-            for z, radius_x, radius_y, half_angle in rows:
-                for i in range(13):
-                    angle = math.radians(50 + half_angle * (2 * i / 12 - 1))
+            for z, radius_x, radius_y, width in rows:
+                angles, arcs = arc_row(radius_x, radius_y, width)
+                for angle, arc in zip(angles, arcs):
                     vertices.append((sign * radius_x * math.sin(angle),
                                      -radius_y * math.cos(angle), z))
                     # Arc length and height in meters, shared by both parts
                     # so the mail pattern runs on across the seam.
-                    uvs.append((sign * (angle - math.radians(50)) * .25, z))
+                    uvs.append((sign * arc, z))
             faces = []
             for row in range(len(rows) - 1):
                 for i in range(12):
