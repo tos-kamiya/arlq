@@ -5,6 +5,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/bui
 import math
 from pathlib import Path
 
+import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
@@ -116,32 +117,63 @@ def plate(rig, bone_name, name, rings, mat, joint_inner_front=None, open_ends=Fa
           top_cap=True):
     """Rings in bone coordinates: (distance along bone, half-width, half-depth)."""
     matrix = rig.data.bones[bone_name].matrix_local
-    count = 32 if joint_inner_front is not None or open_ends else 12
-    verts = [matrix @ Vector((width*math.sin(i*2*math.pi/count),
-                             along * (.95 + (-.80 if joint_inner_front else .80) *
-                                      math.cos(i*2*math.pi/count)
-                                      if joint_inner_front is not None else 1),
-                             depth*math.cos(i*2*math.pi/count)))
-             for along, width, depth in rings for i in range(count)]
+    count = (64 if joint_inner_front is not None and open_ends else
+             32 if joint_inner_front is not None or open_ends else 12)
+    def opening(i):
+        """Above .5 lies in the cut-out: the bend's inner side for hinge caps
+        (local +Z is front), otherwise the side facing the body center."""
+        angle = i * 2 * math.pi / count
+        if joint_inner_front is not None:
+            return (1 if joint_inner_front else -1) * math.cos(angle)
+        return (1 if bone_name.endswith('.L') else -1) * math.sin(angle)
+    alongs = [[along * (.95 + (-.80 if joint_inner_front else .80) *
+                        math.cos(i*2*math.pi/count)
+                        if joint_inner_front is not None else 1)
+               for i in range(count)] for along, _, _ in rings]
+    sizes = [[(width, depth)] * count for _, width, depth in rings]
+    tapered = open_ends and joint_inner_front is not None
+    if tapered:
+        # Hinge caps narrow toward the cut-out and close with a rounded end
+        # at the height of the widest ring, tucked in to the slimmest radius.
+        widest = max(range(len(rings)), key=lambda r: rings[r][1])
+        edge = math.acos(max(opening(i) for i in range(count) if opening(i) <= .5))
+        for i in range(count):
+            t = min(1, max(0, (math.acos(max(-1, min(1, opening(i)))) - edge)
+                           / (math.pi - edge)))
+            # Elliptic profile: vertical at the edge, so the tip is rounded.
+            taper = math.sqrt(t * (2 - t))
+            middle = alongs[widest][i]
+            mid_w, mid_d = min(s[i][0] for s in sizes), min(s[i][1] for s in sizes)
+            for r in range(len(rings)):
+                width, depth = sizes[r][i]
+                alongs[r][i] = middle + (alongs[r][i] - middle) * taper
+                sizes[r][i] = (mid_w + (width - mid_w) * taper,
+                               mid_d + (depth - mid_d) * taper)
+    verts = [matrix @ Vector((sizes[r][i][0]*math.sin(i*2*math.pi/count), alongs[r][i],
+                             sizes[r][i][1]*math.cos(i*2*math.pi/count)))
+             for r in range(len(rings)) for i in range(count)]
     faces = [] if open_ends else [tuple(reversed(range(count)))]
     for row in range(len(rings)-1):
         for i in range(count):
-            if open_ends:
-                side = -1 if bone_name.endswith('.L') else 1
-                if side * math.sin((i + .5) * 2 * math.pi / count) < -.5:
-                    continue
+            if open_ends and opening(i + .5) > .5:
+                continue
             a, b = row*count+i, row*count+(i+1)%count
             faces.append((a, b, b+count, a+count))
     if open_ends and top_cap:
-        side = -1 if bone_name.endswith('.L') else 1
-        faces.append(tuple(reversed([i for i in range(count)
-                                     if side * math.sin(i * 2 * math.pi / count) >= -.5])))
+        faces.append(tuple(reversed([i for i in range(count) if opening(i) <= .5])))
     if not open_ends:
         faces.append(tuple((len(rings)-1)*count+i for i in range(count)))
     # Ring order in local X/Z has its normal along -Y.
     faces = [tuple(reversed(face)) for face in faces]
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(verts, [], faces)
+    if tapered:
+        # Weld each collapsed edge column into a single tip vertex.
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+        bm.to_mesh(mesh)
+        bm.free()
     mesh.update()
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
@@ -275,11 +307,11 @@ def build_armor(rig):
         plate(rig, f'shin.{side}', f'Knee cap {side}',
               [(-.035,.057,.065),(-.028,.073,.082),(-.012,.086,.095),
                (.01,.091,.10),(.032,.086,.094),(.048,.073,.08),(.055,.062,.068)], trim,
-              joint_inner_front=False)
+              joint_inner_front=False, open_ends=True, top_cap=False)
         plate(rig, f'forearm.{side}', f'Elbow cap {side}',
               [(-.025,.045,.052),(-.018,.061,.068),(-.004,.073,.08),
                (.014,.078,.085),(.032,.072,.079),(.045,.058,.064),(.05,.049,.055)], trim,
-              joint_inner_front=True)
+              joint_inner_front=True, open_ends=True, top_cap=False)
         plate(rig, f'foot.{side}', f'Sabaton {side}',
               [(-.025,.065,.055),(.075,.08,.06),(.20,.065,.04)], steel)
         # Cuisse shell hugs the thigh plate, open on the inner thigh; its top
