@@ -456,6 +456,11 @@ CAPE_PROFILE = [(1.505, .12, .10, 60), (1.47, .20, .14, 64), (1.44, .235, .165, 
 # Vertical folds: this many across the cape, as deep as CAPE_FOLD_DEPTH at
 # the hem and flat at the top edge.
 CAPE_FOLDS, CAPE_FOLD_DEPTH = 6, .022
+# The cape billows like the heroic player's cloak, at half its amount: toward
+# the hem it drifts back and a little toward the figure's left, growing with
+# the square of the distance from the top (meters at the hem). The heroic
+# cloak drifts back 0.42 and sideways 0.1 of its length.
+CAPE_DRIFT_BACK, CAPE_DRIFT_SIDE = .2, .05
 # Three bone chains (left, center, right) down the cape, at these angles from
 # the front (180 is straight behind; left is +X), jointed at these heights.
 CAPE_CHAINS = {'L': 140, 'C': 180, 'R': 220}
@@ -475,7 +480,10 @@ def cape_section(z):
 def cape_point(angle, z):
     """Point on the cape at `angle` degrees from the front, height z."""
     width, depth, _ = cape_section(z)
-    return Vector((width * math.sin(math.radians(angle)), -depth * math.cos(math.radians(angle)), z))
+    top, hem = CAPE_PROFILE[0][0], CAPE_PROFILE[-1][0]
+    drift = ((top - z) / (top - hem)) ** 2
+    return Vector((width * math.sin(math.radians(angle)) + CAPE_DRIFT_SIDE * drift,
+                   -depth * math.cos(math.radians(angle)) + CAPE_DRIFT_BACK * drift, z))
 
 
 for _side, _angle in CAPE_CHAINS.items():
