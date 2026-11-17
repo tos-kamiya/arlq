@@ -1,6 +1,6 @@
 """Render the low head-to-body rig as top-down sprites, posed like the game.
 
-blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/render-chibi-sprites.py [-- --sword chimera]
+blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/render-chibi-sprites.py [-- --sword chimera|cursed|blessed]
 
 Run build-chibi.py first; this opens hero-rig-chibi.blend. The camera looks
 down at 60 degrees, orthographic, as in the game. For each sample pose and
@@ -23,7 +23,8 @@ BODY_LEAN, HEAD_TILT = 0.1, 0.3    # radians, back from the camera
 FACINGS = {'down': 0, 'left': -90, 'right': 90, 'up': 180}    # turn in degrees
 POSE_FRAMES = {'rest': 1, 'guard': 40, 'step': 80}
 # The sword in the right hand: the parts whose names start with each prefix.
-SWORDS = {'own': 'Sword ', 'chimera': 'Chimera sword '}
+SWORDS = {'own': 'Sword ', 'chimera': 'Chimera sword ', 'cursed': 'Cursed sword ',
+          'blessed': 'Blessed sword '}
 
 
 def main():

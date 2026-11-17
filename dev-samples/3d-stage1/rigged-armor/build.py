@@ -558,11 +558,12 @@ SWORD_UNIT = .265 / .34 / .55
 SWORD_BACK_TILT, SWORD_ROLL = .2, .2
 
 
-def own_sword(rig, blade_mat, guard_mat):
+def own_sword(rig, blade_mat, guard_mat, prefix='Sword', hidden=False):
     """The player's own broad short sword in the right hand, as on the heroic
     sprite (../build-heroic.py player()): the blade points up to screen left
     and a little into the screen, its width in the screen plane; a dark iron
-    guard crosses it a little along the blade from the fist."""
+    guard crosses it a little along the blade from the fist. The K blessing's
+    glowing sword is the same sword under another `prefix`, built `hidden`."""
     u = SWORD_UNIT
     head, tail = (Vector(p) for p in BONES['hand.R'][:2])
     fist = head + (tail - head) * .6
@@ -582,7 +583,7 @@ def own_sword(rig, blade_mat, guard_mat):
     vertices.append(tuple(tip))
     faces = [(3, 2, 1, 0)] + [(k, (k + 1) % 4, (k + 1) % 4 + 4, k + 4) for k in range(4)]
     faces += [(k + 4, (k + 1) % 4 + 4, 8) for k in range(4)]
-    mesh = bpy.data.meshes.new('Sword blade')
+    mesh = bpy.data.meshes.new(f'{prefix} blade')
     mesh.from_pydata(vertices, [], faces)
     bm = bmesh.new()
     bm.from_mesh(mesh)
@@ -590,10 +591,13 @@ def own_sword(rig, blade_mat, guard_mat):
     bm.to_mesh(mesh)
     bm.free()
     mesh.update()
-    blade = bpy.data.objects.new('Sword blade', mesh)
+    blade = bpy.data.objects.new(f'{prefix} blade', mesh)
     bpy.context.collection.objects.link(blade)
     attach(blade, rig, 'hand.R', blade_mat).modifiers['Forged edge'].width = .003
-    hand_bar(rig, 'Sword guard', hand + across * .08 * u, hand - across * .08 * u, .025 * u, guard_mat)
+    guard = hand_bar(rig, f'{prefix} guard', hand + across * .08 * u, hand - across * .08 * u,
+                     .025 * u, guard_mat)
+    for obj in (blade, guard):
+        obj.hide_render = obj.hide_viewport = hidden
 
 
 def hand_bar(rig, name, start, end, radius, mat):
@@ -869,7 +873,13 @@ def build_armor(rig):
     blade = material('Player iron blade', (.62, .63, .66), .55, .4,
                      rim=(.85, .9, 1.0), rim_strength=.8)
     own_sword(rig, blade, trim)
+    # The K blessing's sword: the own sword glowing blue (heroic 'Player
+    # blessed blade').
+    blessed = material('Player blessed blade', (.10, .35, 1.0), .3, .3, emission=(.03, .30, 1.0),
+                       strength=1.5, rim=(.2, .6, 1.0), rim_strength=2.0)
+    own_sword(rig, blessed, trim, 'Blessed sword', hidden=True)
     chimera_sword(rig)
+    chimera_sword(rig, cursed=True)
     joint(rig, 'neck', .075, dark)
     # A rounded box like the heroic player's helm: flat top, upright sides.
     helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),

@@ -28,7 +28,7 @@ TORSO, ARMS, LEGS, HEAD = .6, .55, .46, 1.0
 # pauldrons) and the sword are not thickened, so they keep their shapes.
 THICKEN = 1.2
 ROUND_PARTS = ('Joint ', 'Knee cap ', 'Elbow cap ', 'Pauldron ', 'Sword ', 'Chimera sword ',
-               'Cursed sword ')
+               'Cursed sword ', 'Blessed sword ')
 
 
 def region_scale(name):
