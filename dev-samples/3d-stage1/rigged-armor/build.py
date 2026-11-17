@@ -269,6 +269,21 @@ def plate(rig, bone_name, name, rings, mat, joint_inner_front=None, open_ends=Fa
     return obj
 
 
+def squarish(obj, rig, bone_name, rings, exponent=.575):
+    """Reshape a 12-sided plate's rings into rounded rectangles (a
+    superellipse; a lower exponent gives sharper corners)."""
+    matrix = rig.data.bones[bone_name].matrix_local
+    for row, (along, width, depth) in enumerate(rings):
+        for i in range(12):
+            angle = i * 2 * math.pi / 12
+            x, z = math.sin(angle), math.cos(angle)
+            obj.data.vertices[row * 12 + i].co = matrix @ Vector((
+                width * math.copysign(abs(x) ** exponent, x), along,
+                depth * math.copysign(abs(z) ** exponent, z)))
+    obj.data.update()
+    return obj
+
+
 def joint(rig, bone_name, radius, mat):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8,
                                       radius=radius, location=BONES[bone_name][0])
@@ -469,16 +484,7 @@ def build_armor(rig):
     # A rounded box like the heroic player's helm: flat top, upright sides.
     helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),
                     (.14,.13,.13),(.2075,.115,.115),(.23,.085,.085)]
-    helmet = plate(rig, 'head', 'Helmet', helmet_rings, helm)
-    matrix = rig.data.bones['head'].matrix_local
-    for row, (along, width, depth) in enumerate(helmet_rings):
-        for i in range(12):
-            angle = i * 2 * math.pi / 12
-            x, z = math.sin(angle), math.cos(angle)
-            helmet.data.vertices[row * 12 + i].co = matrix @ Vector((
-                width * math.copysign(abs(x) ** .575, x), along,
-                depth * math.copysign(abs(z) ** .575, z)))
-    helmet.data.update()
+    helmet = squarish(plate(rig, 'head', 'Helmet', helmet_rings, helm), rig, 'head', helmet_rings)
     # Eye slot: a horizontal bar subtracted from the helmet front. It runs a
     # little past the helmet's width, so it cuts into the rounded front
     # corners and the recess shows from the side too. The cut faces take the
@@ -525,8 +531,10 @@ def build_armor(rig):
               [(-.025,.045,.052),(-.018,.061,.068),(-.004,.073,.08),
                (.014,.078,.085),(.032,.072,.079),(.045,.058,.064),(.05,.049,.055)], trim,
               joint_inner_front=True, open_ends=True, top_cap=False)
-        plate(rig, f'foot.{side}', f'Sabaton {side}',
-              [(-.025,.065,.055),(.075,.08,.06),(.20,.065,.04)], greaves)
+        # Squarish dark iron sabatons, matching the helmet's rounded box.
+        sabaton_rings = [(-.025,.065,.055),(.075,.08,.06),(.20,.065,.04)]
+        squarish(plate(rig, f'foot.{side}', f'Sabaton {side}', sabaton_rings, trim),
+                 rig, f'foot.{side}', sabaton_rings)
     for obj in bpy.context.scene.objects:
         if obj.name.startswith(('Pauldron ', 'Knee cap ', 'Elbow cap ')):
             bevel = obj.modifiers['Forged edge']
