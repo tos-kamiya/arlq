@@ -446,14 +446,20 @@ def gorget(rig, mail, mat, count=32):
 
 
 # Cape profile behind the body: (z, half-width, half-depth, half-span in
-# degrees around the back). It hangs from behind the shoulders, tucked under
-# the pauldrons, to about the knees, and flares a little toward the hem.
-CAPE_PROFILE = [(1.44, .235, .155, 68), (1.30, .255, .185, 70), (1.10, .265, .19, 71),
-                (.90, .28, .21, 72), (.72, .30, .235, 74), (.55, .32, .26, 75)]
+# degrees around the back). Its top edge wraps the back of the neck just
+# outside the mail gorget; it then runs over the back of the shoulders, its
+# corners tucked under the pauldrons, down to about the knees, flaring a
+# little toward the hem.
+CAPE_PROFILE = [(1.505, .12, .10, 60), (1.47, .20, .14, 64), (1.44, .235, .165, 66),
+                (1.30, .255, .19, 70), (1.10, .265, .195, 71), (.90, .28, .21, 72),
+                (.72, .30, .235, 74), (.55, .32, .26, 75)]
+# Vertical folds: this many across the cape, as deep as CAPE_FOLD_DEPTH at
+# the hem and flat at the top edge.
+CAPE_FOLDS, CAPE_FOLD_DEPTH = 6, .022
 # Three bone chains (left, center, right) down the cape, at these angles from
 # the front (180 is straight behind; left is +X), jointed at these heights.
 CAPE_CHAINS = {'L': 140, 'C': 180, 'R': 220}
-CAPE_JOINTS = [1.44, 1.22, 1.0, .78, .55]
+CAPE_JOINTS = [1.505, 1.24, 1.0, .78, .55]
 
 
 def cape_section(z):
@@ -479,7 +485,7 @@ for _side, _angle in CAPE_CHAINS.items():
             'chest' if _k == 0 else f'cape.{_side}.{_k}')
 
 
-def cape(rig, mat, columns=24, rows=24):
+def cape(rig, mat, columns=48, rows=28):
     """Midnight-blue cloth cape, the one part that bends: an Armature modifier
     deforms it with the cape bone chains, each vertex weighted between the
     nearest chains around the back and the nearest bones down its length."""
@@ -489,7 +495,13 @@ def cape(rig, mat, columns=24, rows=24):
         z = top + (hem - top) * r / rows
         span = cape_section(z)[2]
         grid.append([(180 + span * (2 * c / columns - 1), z) for c in range(columns + 1)])
-    vertices = [tuple(cape_point(a, z)) for row in grid for a, z in row]
+    def folded(angle, z, c):
+        point = cape_point(angle, z)
+        depth = CAPE_FOLD_DEPTH * ((top - z) / (top - hem)) ** 1.5
+        wave = math.sin(c / columns * CAPE_FOLDS * 2 * math.pi)
+        radial = Vector((point.x, point.y, 0)).normalized()
+        return tuple(point + radial * depth * wave)
+    vertices = [folded(a, z, c) for row in grid for c, (a, z) in enumerate(row)]
     faces = [(r * (columns + 1) + c, r * (columns + 1) + c + 1,
               (r + 1) * (columns + 1) + c + 1, (r + 1) * (columns + 1) + c)
              for r in range(rows) for c in range(columns)]
