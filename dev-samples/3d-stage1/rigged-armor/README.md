@@ -3,6 +3,9 @@
 `hero-rig.blend` は人型の骨格を先に作り、各ボーンに独立した甲冑を取り付けた主人公のモデル。
 剣（4種類）・マント・倒れた姿勢を含む。頭身を下げた版（`hero-rig-chibi.blend`、後述）が
 ゲーム用のプレイヤー画像の元になる（`../build-heroic.py` が読み込む）。
+リポジトリには `build.py`・`build-chibi.py` などのソースと `hero-rig-chibi.blend` だけを置く。
+`hero-rig.blend` とポーズの画像（`rest.png` など）、`chibi-*.png`、`sprite-*.png` は
+スクリプトで生成し、追跡しない（`.gitignore`）。
 
 ## 開く・ポーズを付ける
 
@@ -140,7 +143,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/ren
 blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build.py
 ```
 
-同じディレクトリの `.blend` と3枚の画像を再生成するため、手編集したモデルは
+同じディレクトリに `hero-rig.blend` と4枚の画像を生成する（追跡しない）。手編集したモデルは
 別名保存する。Blender 4.0.2 で確認。
 
 - `BONES`: 関節位置と親子関係。ここで骨格・体格を決める。
