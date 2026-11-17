@@ -27,3 +27,7 @@ share/python-wheels/
 MANIFEST
 
 venv/
+
+# Blender source files and backups
+*.blend
+*.blend[0-9]*
