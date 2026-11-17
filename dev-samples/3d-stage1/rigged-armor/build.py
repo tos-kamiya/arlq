@@ -965,14 +965,10 @@ def validate(rig, scene):
     print(f'Validated {len(required)} required joints, {len(BONES)} bones, {len(meshes)} rigid parts, bending cape')
 
 
-def main():
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    scene = bpy.context.scene
-    rig = create_rig()
-    build_armor(rig)
-    animate(rig, scene)
-    setup_scene(scene)
-    validate(rig, scene)
+def save_and_render(rig, scene, blend_name, image_prefix='', view_center=(0, 0, .95),
+                    view_distance=3.3):
+    """Leave the rig selected in Pose Mode, save the .blend and render each
+    sample pose to <image_prefix><pose>.png next to this script."""
     bpy.ops.object.select_all(action='DESELECT')
     rig.select_set(True)
     bpy.context.view_layer.objects.active = rig
@@ -981,16 +977,27 @@ def main():
         for area in screen.areas:
             if area.type == 'VIEW_3D':
                 space = area.spaces.active
-                space.region_3d.view_distance = 3.3
-                space.region_3d.view_location = (0, 0, .95)
+                space.region_3d.view_distance = view_distance
+                space.region_3d.view_location = view_center
                 space.region_3d.view_rotation = scene.camera.rotation_euler.to_quaternion()
                 space.region_3d.view_perspective = 'ORTHO'
                 space.shading.color_type = 'MATERIAL'
-    bpy.ops.wm.save_as_mainfile(filepath=str(HERE / 'hero-rig.blend'))
+    bpy.ops.wm.save_as_mainfile(filepath=str(HERE / blend_name))
     for frame, (label, _) in POSES.items():
         scene.frame_set(frame)
-        scene.render.filepath = str(HERE / f'{label.lower()}.png')
+        scene.render.filepath = str(HERE / f'{image_prefix}{label.lower()}.png')
         bpy.ops.render.render(write_still=True)
+
+
+def main():
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    scene = bpy.context.scene
+    rig = create_rig()
+    build_armor(rig)
+    animate(rig, scene)
+    setup_scene(scene)
+    validate(rig, scene)
+    save_and_render(rig, scene, 'hero-rig.blend')
 
 
 if __name__ == '__main__':
