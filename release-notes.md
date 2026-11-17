@@ -1,5 +1,15 @@
 # ARLQ Release Notes
 
+## 6.8.5 - 2026-11-18
+
+- Redraw the player in sprite mode as a knight in plate armor built on a
+  posable skeleton: a box helmet with a recessed glowing eye slot, crest and
+  horns, a chainmail gorget, a breastplate with dark iron bands, a belt with
+  chainmail hip skirts, round gauntlets and a midnight-blue cape. All four
+  sword states (own sword, chimera's sword, cursed sword, K blessing), the
+  up/left/right facings and the collapsed-from-hunger pose are redrawn; the
+  collapsed player lies face down with the cape draped over its back.
+
 ## 6.8.4 - 2026-11-17
 
 - Show the player collapsed when LP runs out in sprite mode: after the last
