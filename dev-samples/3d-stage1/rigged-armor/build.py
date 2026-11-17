@@ -409,15 +409,8 @@ def build_armor(rig):
               joint_inner_front=True, open_ends=True, top_cap=False)
         plate(rig, f'foot.{side}', f'Sabaton {side}',
               [(-.025,.065,.055),(.075,.08,.06),(.20,.065,.04)], greaves)
-        # Cuisse shell hugs the thigh plate, open on the inner thigh; its top
-        # edge starts inside the hip armor and it ends above the mail hem, so
-        # it never shows as a second plate below the mail.
-        plate(rig, f'thigh.{side}', f'Cuisse {side}',
-              [(.03,.098,.104),(.08,.106,.112),(.12,.104,.11),
-               (.15,.098,.104)], greaves,
-              open_ends=True, top_cap=False)
     for obj in bpy.context.scene.objects:
-        if obj.name.startswith(('Pauldron ', 'Knee cap ', 'Elbow cap ', 'Cuisse ')):
+        if obj.name.startswith(('Pauldron ', 'Knee cap ', 'Elbow cap ')):
             bevel = obj.modifiers['Forged edge']
             bevel.width, bevel.segments = .014, 4
             for face in obj.data.polygons:
