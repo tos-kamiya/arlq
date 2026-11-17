@@ -1,6 +1,6 @@
 """Render the low head-to-body rig as top-down sprites, posed like the game.
 
-blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/render-chibi-sprites.py
+blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/render-chibi-sprites.py [-- --sword chimera]
 
 Run build-chibi.py first; this opens hero-rig-chibi.blend. The camera looks
 down at 60 degrees, orthographic, as in the game. For each sample pose and
@@ -12,6 +12,7 @@ meshes, so the rig itself is left unchanged. Writes
 sprite-<pose>-<facing>.png next to this script.
 """
 import math
+import sys
 from pathlib import Path
 
 import bpy
@@ -21,12 +22,20 @@ HERE = Path(__file__).resolve().parent
 BODY_LEAN, HEAD_TILT = 0.1, 0.3    # radians, back from the camera
 FACINGS = {'down': 0, 'left': -90, 'right': 90, 'up': 180}    # turn in degrees
 POSE_FRAMES = {'rest': 1, 'guard': 40, 'step': 80}
+# The sword in the right hand: the parts whose names start with each prefix.
+SWORDS = {'own': 'Sword ', 'chimera': 'Chimera sword '}
 
 
 def main():
+    args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+    sword = args[args.index('--sword') + 1] if '--sword' in args else 'own'
     bpy.ops.wm.open_mainfile(filepath=str(HERE / 'hero-rig-chibi.blend'))
     scene = bpy.context.scene
     rig = bpy.data.objects['Hero rig']
+    for obj in scene.objects:
+        for name, prefix in SWORDS.items():
+            if obj.name.startswith(prefix):
+                obj.hide_render = obj.hide_viewport = name != sword
     floor = bpy.data.objects['Studio floor'].location.z + .005
     camera = scene.camera
     angle, target = math.radians(60), Vector((0, .05, .5))
@@ -57,7 +66,8 @@ def main():
                 scene.collection.objects.link(copy)
                 copies.append(copy)
                 part.hide_render = True
-            scene.render.filepath = str(HERE / f'sprite-{pose}-{facing}.png')
+            suffix = '' if sword == 'own' else f'-{sword}'
+            scene.render.filepath = str(HERE / f'sprite-{pose}-{facing}{suffix}.png')
             bpy.ops.render.render(write_still=True)
             for copy in copies:
                 mesh = copy.data

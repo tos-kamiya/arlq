@@ -593,22 +593,79 @@ def own_sword(rig, blade_mat, guard_mat):
     blade = bpy.data.objects.new('Sword blade', mesh)
     bpy.context.collection.objects.link(blade)
     attach(blade, rig, 'hand.R', blade_mat).modifiers['Forged edge'].width = .003
-    ring_bar_open = [hand + across * .08 * u, hand - across * .08 * u]
-    curve = bpy.data.curves.new('Sword guard', 'CURVE')
-    curve.dimensions, curve.bevel_depth, curve.bevel_resolution = '3D', .025 * u, 2
+    hand_bar(rig, 'Sword guard', hand + across * .08 * u, hand - across * .08 * u, .025 * u, guard_mat)
+
+
+def hand_bar(rig, name, start, end, radius, mat):
+    """Straight round bar with capped ends, rigid on the right hand."""
+    curve = bpy.data.curves.new(name, 'CURVE')
+    curve.dimensions, curve.bevel_depth, curve.bevel_resolution = '3D', radius, 2
     curve.use_fill_caps = True
     spline = curve.splines.new('POLY')
     spline.points.add(1)
-    for point, co in zip(spline.points, ring_bar_open):
+    for point, co in zip(spline.points, (start, end)):
         point.co = (*co, 1)
-    guard = bpy.data.objects.new('Sword guard', curve)
-    bpy.context.collection.objects.link(guard)
+    obj = bpy.data.objects.new(name, curve)
+    bpy.context.collection.objects.link(obj)
     bpy.ops.object.select_all(action='DESELECT')
-    guard.select_set(True)
-    bpy.context.view_layer.objects.active = guard
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
     bpy.ops.object.convert(target='MESH')
-    guard = bpy.context.object
-    attach(guard, rig, 'hand.R', guard_mat).modifiers['Forged edge'].width = .002
+    obj = bpy.context.object
+    attach(obj, rig, 'hand.R', mat).modifiers['Forged edge'].width = .002
+    return obj
+
+
+def chimera_sword(rig, cursed=False):
+    """The chimera's sword in the right hand, as on the heroic sprite
+    (../build-heroic.py player() and chimera_sword_materials()): a flat blade
+    narrowing steadily to a sharp point, an acute isosceles triangle seen
+    from above, with a gold guard and pommel, 1.3 times the size of the one
+    in the chimera's jaws. Unlike the own sword it is held low, pointing to
+    screen lower left. Its parts start hidden; the sprite renderer shows the
+    sword the player holds."""
+    prefix = 'Cursed sword' if cursed else 'Chimera sword'
+    if cursed:
+        steel = material('Cursed sword black steel', (.04, .03, .04), .6, .15,
+                         emission=(.9, .05, .02), strength=.6, rim=(1.0, .15, .05),
+                         rim_strength=4.0, transmission=0)
+        hilt = material('Cursed sword iron hilt', (.25, .22, .24), 1.0, .3)
+    else:
+        steel = material('Chimera sword steel', (.85, .92, 1.0), .5, .08,
+                         emission=(.7, .85, 1.0), strength=.8, rim=(.9, .95, 1.0),
+                         rim_strength=1.5, transmission=.3)
+        hilt = material('Chimera sword hilt', (1.0, .68, .18), 1.0, .25)
+    u, size = SWORD_UNIT, 1.3
+    head, tail = (Vector(p) for p in BONES['hand.R'][:2])
+    hand = head + (tail - head) * .6
+    ahead = Vector((-.34, -.30, -.10)).normalized()
+    across = ahead.cross(Vector((0, 0, 1))).normalized()
+    thick = across.cross(ahead)
+    base, tip = hand + ahead * .05 * size * u, hand + ahead * .58 * size * u
+    width = .075 * size * u
+    vertices = [tuple(base + across * width), tuple(base + thick * width * .2),
+                tuple(base - across * width), tuple(base - thick * width * .2), tuple(tip)]
+    faces = [(3, 2, 1, 0)] + [(k, (k + 1) % 4, 4) for k in range(4)]
+    mesh = bpy.data.meshes.new(f'{prefix} blade')
+    mesh.from_pydata(vertices, [], faces)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+    blade = bpy.data.objects.new(f'{prefix} blade', mesh)
+    bpy.context.collection.objects.link(blade)
+    attach(blade, rig, 'hand.R', steel).modifiers['Forged edge'].width = .003
+    guard = hand_bar(rig, f'{prefix} guard', hand + across * .09 * size * u,
+                     hand - across * .09 * size * u, .025 * size * u, hilt)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, radius=.035 * size * u,
+                                         location=hand - ahead * .10 * size * u)
+    pommel = bpy.context.object
+    pommel.name = f'{prefix} pommel'
+    attach(pommel, rig, 'hand.R', hilt)
+    for obj in (blade, guard, pommel):
+        obj.hide_render = obj.hide_viewport = True
 
 
 def helmet_crest_and_horns(rig, mat):
@@ -812,6 +869,7 @@ def build_armor(rig):
     blade = material('Player iron blade', (.62, .63, .66), .55, .4,
                      rim=(.85, .9, 1.0), rim_strength=.8)
     own_sword(rig, blade, trim)
+    chimera_sword(rig)
     joint(rig, 'neck', .075, dark)
     # A rounded box like the heroic player's helm: flat top, upright sides.
     helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),

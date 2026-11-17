@@ -27,7 +27,8 @@ TORSO, ARMS, LEGS, HEAD = .6, .55, .46, 1.0
 # the thicker chest. The round dark parts (ball joints, knee and elbow caps,
 # pauldrons) and the sword are not thickened, so they keep their shapes.
 THICKEN = 1.2
-ROUND_PARTS = ('Joint ', 'Knee cap ', 'Elbow cap ', 'Pauldron ', 'Sword ')
+ROUND_PARTS = ('Joint ', 'Knee cap ', 'Elbow cap ', 'Pauldron ', 'Sword ', 'Chimera sword ',
+               'Cursed sword ')
 
 
 def region_scale(name):
