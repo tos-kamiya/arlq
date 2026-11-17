@@ -25,10 +25,11 @@ TORSO, ARMS, LEGS, HEAD = .6, .55, .46, 1.0
 # Arms, legs and torso are then made this much thicker across their bones.
 # The clavicles widen along their length too, so the shoulders keep up with
 # the thicker chest. The round dark parts (ball joints, knee and elbow caps,
-# pauldrons) and the sword are not thickened, so they keep their shapes.
+# pauldrons, gauntlets) and the swords are not thickened, so they keep their
+# shapes.
 THICKEN = 1.2
 ROUND_PARTS = ('Joint ', 'Knee cap ', 'Elbow cap ', 'Pauldron ', 'Sword ', 'Chimera sword ',
-               'Cursed sword ', 'Blessed sword ')
+               'Cursed sword ', 'Blessed sword ', 'Gauntlet ')
 
 
 def region_scale(name):
@@ -55,7 +56,10 @@ def chibify(rig, scene):
         across = along if name in ('root', 'head') else along * THICKEN
         if name.startswith('clavicle.'):
             along = across
-        frame = bones[name].matrix_local.to_3x3().normalized()
+        # The cape and its bones scale like the chest (thicker horizontally),
+        # not across their own slanting bones, so the cape keeps its gap from
+        # the thickened chest.
+        frame = bones['chest' if name.startswith('cape.') else name].matrix_local.to_3x3().normalized()
         scale[name] = frame @ Matrix.Diagonal((across, along, across)) @ frame.transposed()
     head = {}
     # BONES lists parents before children. A child's head keeps its offset

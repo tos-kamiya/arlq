@@ -464,6 +464,8 @@ CAPE_DRIFT_BACK, CAPE_DRIFT_SIDE = .2, .05
 # Three bone chains (left, center, right) down the cape, at these angles from
 # the front (180 is straight behind; left is +X), jointed at these heights.
 CAPE_CHAINS = {'L': 140, 'C': 180, 'R': 220}
+# Grid of the cape mesh: columns across the back, rows down from the top.
+CAPE_COLUMNS, CAPE_ROWS = 48, 28
 CAPE_JOINTS = [1.505, 1.24, 1.0, .78, .55]
 
 
@@ -493,7 +495,7 @@ for _side, _angle in CAPE_CHAINS.items():
             'chest' if _k == 0 else f'cape.{_side}.{_k}')
 
 
-def cape(rig, mat, columns=48, rows=28):
+def cape(rig, mat, columns=CAPE_COLUMNS, rows=CAPE_ROWS):
     """Midnight-blue cloth cape, the one part that bends: an Armature modifier
     deforms it with the cape bone chains, each vertex weighted between the
     nearest chains around the back and the nearest bones down its length."""
@@ -956,13 +958,24 @@ def build_armor(rig):
                              ('thigh',.085),('shin',.075),('foot',.055)]:
             joint(rig, f'{part}.{side}', radius, dark)
         for part, width, depth in [('upper_arm',.072,.075),('forearm',.066,.07),
-                                    ('thigh',.092,.095),('shin',.072,.078),('hand',.06,.05)]:
+                                    ('thigh',.092,.095),('shin',.072,.078)]:
             bone_name = f'{part}.{side}'
             length = rig.data.bones[bone_name].length
             plate(rig, bone_name, f'{part} plate {side}',
                   [(.045,width*.85,depth*.85),(length*.4,width,depth),
                    (length-.025,width*.75,depth*.8)],
                   greaves if part in ('thigh', 'shin') else steel)
+        # A round dark iron gauntlet for the fist, as on the heroic sprite
+        # (its 'Player gauntlet'), a little larger than the wrist's ball
+        # joint; the swords' grips sit inside it.
+        head, tail = (Vector(p) for p in BONES[f'hand.{side}'][:2])
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=.068,
+                                             location=head + (tail - head) * .55)
+        gauntlet = bpy.context.object
+        gauntlet.name = f'Gauntlet {side}'
+        attach(gauntlet, rig, f'hand.{side}', trim)
+        for face in gauntlet.data.polygons:
+            face.use_smooth = True
         plate(rig, f'upper_arm.{side}', f'Pauldron {side}',
               [(-.083,.008,.008),(-.077,.04,.04),(-.061,.07,.07),
                (-.035,.095,.095),(0,.115,.115),(.035,.122,.122),
@@ -1002,7 +1015,28 @@ POSES = {
          'thigh.R': (-15, 0, 0), 'shin.R': (-12, 0, 0),
          **{f'cape.{s}.{k}': (a, 0, 0) for s in 'LCR'
             for k, a in ((1, -6), (2, -8), (3, -8), (4, -6))}}),
+    # Collapsed from hunger, as on the heroic sprite: fallen face down, the
+    # head toward screen lower right (so the figure's right side faces the
+    # camera), the head turned a little toward the camera, the right arm
+    # flung past the head, the cape slid off the back toward the far side.
+    # The root is lifted onto the floor and the visor dimmed in animate().
+    # Below the shoulders the cape chains tip toward the body, laying the
+    # billowing cape on the back (the closest fit found that passes through
+    # the armor in neither this nor the chibi build).
+    # The head and neck tip back and the right arm reaches past the head
+    # along the floor, so neither props up the chest.
+    120: ('COLLAPSED', {'root': (90, 45, 0), 'neck': (-20, 0, -55), 'head': (-35, 0, 0),
+          'upper_arm.R': (170, 0, 40), 'forearm.R': (60, 0, 0),
+          'shin.L': (-25, 0, 0), 'shin.R': (-10, 0, 0),
+          **{f'cape.{s}.{k}': (a, 0, 0) for s in 'LCR'
+             for k, a in ((1, 0), (2, 20), (3, 5), (4, 5))}}),
 }
+COLLAPSED_FRAME = 120
+# Names of the sword parts in the right hand.
+SWORD_PREFIXES = ('Sword ', 'Chimera sword ', 'Cursed sword ', 'Blessed sword ')
+# Voxel size of the smooth envelope the collapsed cape is draped onto, and
+# how far (0 to 1) the cape drops from where its bones hold it onto it.
+DRAPE_VOXEL, DRAPE_AMOUNT, DRAPE_AMOUNT_BETWEEN_LEGS = .02, .3, .2
 
 
 def animate(rig, scene):
@@ -1017,9 +1051,126 @@ def animate(rig, scene):
                 angles = (angles[0], angles[2], angles[1])
             bone.rotation_euler = tuple(math.radians(v) for v in angles)
             bone.keyframe_insert('rotation_euler', frame=frame, group=bone.name)
-    rig.animation_data.action.name = 'Rest - guard - step (FK studies)'
-    scene.frame_end = 80
+    rig.animation_data.action.name = 'Rest - guard - step - collapsed (FK studies)'
+    # Rest the collapsed figure on the floor, centred where it stood: lift
+    # the root by the lowest point's drop below the standing figure's lowest
+    # point, and move it so the laid figure's footprint is centred. The
+    # collapsed figure holds no sword, so swords are left out; the cape and
+    # the mail skirts are cloth that the body presses flat, so they are left
+    # out too.
+    soft = SWORD_PREFIXES + ('Cape', 'Diagonal waist plate')
+
+    def points():
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        result = []
+        for obj in scene.objects:
+            if (obj.type == 'MESH' and obj.parent == rig and not obj.hide_render
+                    and not obj.name.startswith(soft)):
+                evaluated = obj.evaluated_get(depsgraph)
+                mesh = evaluated.to_mesh()
+                result += [evaluated.matrix_world @ v.co for v in mesh.vertices]
+                evaluated.to_mesh_clear()
+        return result
+    root = rig.pose.bones['root']
     scene.frame_set(1)
+    standing = min(p.z for p in points())
+    scene.frame_set(COLLAPSED_FRAME)
+    laid = points()
+    lift = standing - min(p.z for p in laid)
+    center_x = (min(p.x for p in laid) + max(p.x for p in laid)) / 2
+    center_y = (min(p.y for p in laid) + max(p.y for p in laid)) / 2
+    for frame in POSES:
+        # Root location is in its rest frame: local X is world X, local Y
+        # world up and local Z world -Y.
+        root.location = ((-center_x, lift, center_y) if frame == COLLAPSED_FRAME else (0, 0, 0))
+        root.keyframe_insert('location', frame=frame, group='root')
+    drape_cape(rig, scene, standing)
+    # Dim the visor while collapsed (heroic 'Player dimmed visor').
+    visor = bpy.data.materials['Player visor glow'].node_tree.nodes['Principled BSDF']
+    for frame in POSES:
+        collapsed = frame == COLLAPSED_FRAME
+        visor.inputs['Base Color'].default_value = ((.05, .14, .18, 1) if collapsed
+                                                    else (.3, .9, 1.0, 1))
+        visor.inputs['Emission Strength'].default_value = .3 if collapsed else 2.5
+        for name in ('Base Color', 'Emission Strength'):
+            visor.inputs[name].keyframe_insert('default_value', frame=frame)
+    scene.frame_end = max(POSES)
+    scene.frame_set(1)
+
+
+def drape_cape(rig, scene, floor_z):
+    """Let the cape fall onto the collapsed body: a Shrinkwrap modifier,
+    on only at the collapsed frame, projects it straight down onto a hidden,
+    smooth envelope of the laid body and the floor, so it lies along the back
+    and drops to the floor past the sides. The envelope is a voxel remesh of
+    the armor (which wraps its seams, belt and plate edges) and a thin floor
+    slab around it."""
+    scene.frame_set(COLLAPSED_FRAME)
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    bm = bmesh.new()
+    xs, ys = [], []
+    for obj in scene.objects:
+        if (obj.type == 'MESH' and obj.parent == rig and not obj.hide_render
+                and not obj.name.startswith(SWORD_PREFIXES + ('Cape',))):
+            evaluated = obj.evaluated_get(depsgraph)
+            mesh = evaluated.to_mesh()
+            mesh.transform(evaluated.matrix_world)
+            xs += [v.co.x for v in mesh.vertices]
+            ys += [v.co.y for v in mesh.vertices]
+            bm.from_mesh(mesh)
+            evaluated.to_mesh_clear()
+    margin = .3
+    slab = bmesh.ops.create_cube(bm, size=1)['verts']
+    low, high = Vector((min(xs) - margin, min(ys) - margin, floor_z - .03)), Vector((max(xs) + margin, max(ys) + margin, floor_z))
+    for vertex in slab:
+        vertex.co = Vector(low[i] if vertex.co[i] < 0 else high[i] for i in range(3))
+    target_mesh = bpy.data.meshes.new('Cape drape target')
+    bm.to_mesh(target_mesh)
+    bm.free()
+    target = bpy.data.objects.new('Cape drape target', target_mesh)
+    scene.collection.objects.link(target)
+    remesh = target.modifiers.new('Envelope', 'REMESH')
+    remesh.mode, remesh.voxel_size = 'VOXEL', DRAPE_VOXEL
+    bpy.context.view_layer.update()
+    evaluated = target.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    envelope = bpy.data.meshes.new_from_object(evaluated)
+    target.modifiers.remove(remesh)
+    target.data = envelope
+    bpy.data.meshes.remove(target_mesh)
+    target.hide_render = True
+    target.display_type = 'WIRE'
+    target.hide_set(True)
+    cape_obj = bpy.data.objects['Cape']
+    # Finer cloth first, so the part past the sides drops steeply instead of
+    # cutting across the body's edge between coarse vertices.
+    finer = cape_obj.modifiers.new('Drape detail', 'SUBSURF')
+    finer.subdivision_type, finer.levels, finer.render_levels = 'SIMPLE', 2, 2
+    drape = cape_obj.modifiers.new('Drape when collapsed', 'SHRINKWRAP')
+    drape.target, drape.wrap_method, drape.offset = target, 'PROJECT', .008
+    drape.use_project_z, drape.use_negative_direction, drape.use_positive_direction = True, True, False
+    # Only part of the way down (DRAPE_AMOUNT), through a vertex group: fully
+    # dropped, the cloth looked like rubber pulled over the body.
+    # Over the gap between the legs (the middle of the cape below the hips)
+    # it drops less, blending in across and down, so it does not sag in.
+    amount = cape_obj.vertex_groups.new(name='Drape amount')
+    for index in range(len(cape_obj.data.vertices)):
+        row, column = divmod(index, CAPE_COLUMNS + 1)
+        across = max(0, 1 - abs(column - CAPE_COLUMNS / 2) / (CAPE_COLUMNS / 6))
+        down = min(1, max(0, (row / CAPE_ROWS - .55) / .15))
+        between_legs = across * down * down * (3 - 2 * down)
+        amount.add([index], DRAPE_AMOUNT + (DRAPE_AMOUNT_BETWEEN_LEGS - DRAPE_AMOUNT) * between_legs,
+                   'REPLACE')
+    drape.vertex_group = amount.name
+    soften = cape_obj.modifiers.new('Soften drape', 'SMOOTH')
+    soften.factor, soften.iterations = .5, 4
+    bpy.context.view_layer.objects.active = cape_obj
+    for index, modifier in enumerate((finer, drape, soften), start=1):
+        bpy.ops.object.modifier_move_to_index(modifier=modifier.name, index=index)
+    for frame in POSES:
+        for modifier in (finer, drape, soften):
+            modifier.show_viewport = modifier.show_render = frame == COLLAPSED_FRAME
+            modifier.keyframe_insert('show_viewport', frame=frame)
+            modifier.keyframe_insert('show_render', frame=frame)
 
 
 def setup_scene(scene):
@@ -1036,8 +1187,11 @@ def setup_scene(scene):
     scene.world.use_nodes = True
     scene.world.node_tree.nodes['Background'].inputs['Color'].default_value = (.012, .018, .03, 1)
     floor = material('Night floor', (.006, .008, .014), roughness=.8)
+    # The floor sits under the standing figure's visible parts (not the
+    # hidden cutters or the collapsed cape's drape envelope).
     ground_z = min((obj.matrix_world @ v.co).z for obj in scene.objects
-                   if obj.type == 'MESH' for v in obj.data.vertices)
+                   if obj.type == 'MESH' and obj.parent and not obj.hide_render
+                   for v in obj.data.vertices)
     bpy.ops.mesh.primitive_plane_add(size=200)
     bpy.context.object.name = 'Studio floor'
     bpy.context.object.location.z = ground_z - .005
@@ -1125,10 +1279,16 @@ def save_and_render(rig, scene, blend_name, image_prefix='', view_center=(0, 0, 
                 space.region_3d.view_perspective = 'ORTHO'
                 space.shading.color_type = 'MATERIAL'
     bpy.ops.wm.save_as_mainfile(filepath=str(HERE / blend_name))
+    swords = [o for o in scene.objects if o.name.startswith(SWORD_PREFIXES) and not o.hide_render]
     for frame, (label, _) in POSES.items():
         scene.frame_set(frame)
+        # The collapsed figure is drawn without its sword.
+        for obj in swords:
+            obj.hide_render = frame == COLLAPSED_FRAME
         scene.render.filepath = str(HERE / f'{image_prefix}{label.lower()}.png')
         bpy.ops.render.render(write_still=True)
+    for obj in swords:
+        obj.hide_render = False
 
 
 def main():
