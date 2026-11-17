@@ -134,7 +134,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/ren
 0.1ラジアン、首でさらに頭を0.3ラジアン後ろへ傾け（`BODY_LEAN`、`HEAD_TILT`）、評価済みのメッシュを複製して焼く
 （リグは変えない）。倒れた姿は傾けず剣も持たせない。`render-chibi-sprites.py` はこれで60度の見下ろしの
 確認画像（`sprite-<ポーズ>-<向き>.png`）を描く。`../build-heroic.py` は同じ処理でプレイヤーを heroic の
-シーンに置き、heroic の以前のプレイヤーと同じ高さ（`HEROIC_PLAYER_HEIGHT`）にそろえる。
+シーンに置き、heroic の以前のプレイヤーの1.05倍の高さ（`HEROIC_PLAYER_HEIGHT`）にする。
 ゲーム用画像の再生成手順は `../README.md` の「キャラクター素材の再生成」を参照。
 
 ## 再生成と構造変更

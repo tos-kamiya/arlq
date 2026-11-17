@@ -94,10 +94,10 @@ def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4)):
     return copies
 
 
-# Height of the heroic player before its sprite size (SIZES['@'] in
-# ../build-heroic.py) is applied; the chibi figure is scaled to it, so it
-# fills a game cell as the previous player model did.
-HEROIC_PLAYER_HEIGHT = 1.33
+# Height of the player before its sprite size (SIZES['@'] in
+# ../build-heroic.py) is applied; the chibi figure is scaled to it: 1.05
+# times the previous player model's 1.33, a little larger on screen.
+HEROIC_PLAYER_HEIGHT = 1.33 * 1.05
 # The heroic scenes' sword states.
 HEROIC_SWORDS = {None: 'own', 'c': 'chimera', 'C': 'cursed', 'blessed': 'blessed'}
 
