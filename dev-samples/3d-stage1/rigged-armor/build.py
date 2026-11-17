@@ -30,18 +30,100 @@ for side, sign in [('L', 1), ('R', -1)]:
         f'shin.{side}': ((sign*.15, -.025, .52), (sign*.15, 0, .12), f'thigh.{side}'),
         f'foot.{side}': ((sign*.15, 0, .12), (sign*.15, -.20, .065), f'shin.{side}'),
         # Hinge at the top of the lower diagonal waist plate; driven by the thigh.
-        f'hip_plate.{side}': ((sign*.19, -.122, .98), (sign*.19, -.122, .66), 'pelvis'),
+        f'hip_plate.{side}': ((sign*.19, -.122, .997), (sign*.19, -.122, .741), 'pelvis'),
     })
 
 
-def material(name, color, metallic=0):
+def material(name, color, metallic=0, roughness=.38, emission=None, strength=0,
+             rim=None, rim_strength=0):
+    """Principled material with the heroic sprites' optional Fresnel rim glow
+    (see ../build-heroic.py material())."""
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = (*color, 1)
     mat.use_nodes = True
-    shader = mat.node_tree.nodes.get('Principled BSDF')
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    shader = nodes.get('Principled BSDF')
     shader.inputs['Base Color'].default_value = (*color, 1)
     shader.inputs['Metallic'].default_value = metallic
-    shader.inputs['Roughness'].default_value = .38
+    shader.inputs['Roughness'].default_value = roughness
+    shader.inputs['IOR'].default_value = 1.45
+    if emission:
+        shader.inputs['Emission Color'].default_value = (*emission, 1)
+        shader.inputs['Emission Strength'].default_value = strength
+    if rim:
+        weight = nodes.new('ShaderNodeLayerWeight')
+        weight.inputs['Blend'].default_value = .3
+        power = nodes.new('ShaderNodeMath')
+        power.operation = 'POWER'
+        power.inputs[1].default_value = 3.5
+        glow = nodes.new('ShaderNodeEmission')
+        glow.inputs['Color'].default_value = (*rim, 1)
+        glow.inputs['Strength'].default_value = rim_strength
+        add = nodes.new('ShaderNodeAddShader')
+        mix = nodes.new('ShaderNodeMixShader')
+        links.new(weight.outputs['Facing'], power.inputs[0])
+        links.new(power.outputs[0], mix.inputs['Fac'])
+        links.new(shader.outputs[0], add.inputs[0])
+        links.new(glow.outputs[0], add.inputs[1])
+        links.new(shader.outputs[0], mix.inputs[1])
+        links.new(add.outputs[0], mix.inputs[2])
+        links.new(mix.outputs[0], nodes['Material Output'].inputs['Surface'])
+    return mat
+
+
+def chainmail_material(name, pitch=.016):
+    """Blackened iron mail: staggered rows of raised rings, each overlapping
+    its neighbors, over a dark gap,
+    laid out on the mesh UVs (in meters, so `pitch` is the ring spacing)."""
+    mat = material(name, (.10, .10, .115), 1.0, .38)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    shader = nodes['Principled BSDF']
+
+    def math_node(op, a, b=None):
+        node = nodes.new('ShaderNodeMath')
+        node.operation = op
+        for socket, value in ((node.inputs[0], a), (node.inputs[1], b)):
+            if value is None:
+                continue
+            if isinstance(value, (int, float)):
+                socket.default_value = value
+            else:
+                links.new(value, socket)
+        return node.outputs[0]
+
+    uv = nodes.new('ShaderNodeTexCoord').outputs['UV']
+    split = nodes.new('ShaderNodeSeparateXYZ')
+    links.new(uv, split.inputs[0])
+    x = math_node('DIVIDE', split.outputs['X'], pitch)
+    # Rows overlap like real mail, so they sit closer than the ring spacing.
+    y = math_node('DIVIDE', split.outputs['Y'], pitch * .75)
+    # Every other row shifts by half a ring.
+    odd = math_node('FLOORED_MODULO', math_node('FLOOR', y), 2)
+    x = math_node('ADD', x, math_node('MULTIPLY', odd, .5))
+    fx = math_node('SUBTRACT', math_node('FRACT', x), .5)
+    fy = math_node('MULTIPLY', math_node('SUBTRACT', math_node('FRACT', y), .5), .75)
+    distance = math_node('SQRT', math_node('ADD', math_node('MULTIPLY', fx, fx),
+                                           math_node('MULTIPLY', fy, fy)))
+    off_wire = math_node('ABSOLUTE', math_node('SUBTRACT', distance, .44))
+    ring = nodes.new('ShaderNodeMapRange')
+    ring.interpolation_type = 'SMOOTHSTEP'
+    ring.inputs['From Min'].default_value, ring.inputs['From Max'].default_value = 0, .09
+    ring.inputs['To Min'].default_value, ring.inputs['To Max'].default_value = 1, 0
+    links.new(off_wire, ring.inputs['Value'])
+    wire = ring.outputs['Result']
+    color = nodes.new('ShaderNodeMix')
+    color.data_type = 'RGBA'
+    color.inputs['A'].default_value = (.008, .009, .012, 1)
+    color.inputs['B'].default_value = (.13, .13, .15, 1)
+    links.new(wire, color.inputs['Factor'])
+    links.new(color.outputs['Result'], shader.inputs['Base Color'])
+    links.new(math_node('SUBTRACT', .75, math_node('MULTIPLY', wire, .45)),
+              shader.inputs['Roughness'])
+    bump = nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value = .8
+    bump.inputs['Distance'].default_value = .003
+    links.new(wire, bump.inputs['Height'])
+    links.new(bump.outputs['Normal'], shader.inputs['Normal'])
     return mat
 
 
@@ -196,24 +278,27 @@ def joint(rig, bone_name, radius, mat):
 
 
 def diagonal_waist_plates(rig, mat):
-    """Hang curved tassets around the front-side quarters of the hips.
+    """Hang curved mail skirts around the front-side quarters of the hips.
 
     The upper band is fixed to the pelvis. The lower plate tucks under it and
     swings on hip_plate so a raised thigh does not pass through it.
     """
     # Arc centered 50 degrees away from the front, wrapping toward the side.
     parts = [('Diagonal waist plate', 'pelvis',
-              [(1.065, .19, .145, 23), (.98, .25, .19, 29)]),
+              [(1.065, .19, .145, 23), (.997, .25, .19, 29)]),
              ('Diagonal waist plate lower', 'hip_plate',
-              [(.995, .238, .178, 29), (.80, .28, .21, 29), (.66, .27, .20, 24)])]
+              [(1.009, .238, .178, 29), (.853, .28, .21, 29), (.741, .27, .20, 24)])]
     for side, sign in (('L', 1), ('R', -1)):
         for name, bone_name, rows in parts:
-            vertices = []
+            vertices, uvs = [], []
             for z, radius_x, radius_y, half_angle in rows:
                 for i in range(13):
                     angle = math.radians(50 + half_angle * (2 * i / 12 - 1))
                     vertices.append((sign * radius_x * math.sin(angle),
                                      -radius_y * math.cos(angle), z))
+                    # Arc length and height in meters, shared by both parts
+                    # so the mail pattern runs on across the seam.
+                    uvs.append((sign * (angle - math.radians(50)) * .25, z))
             faces = []
             for row in range(len(rows) - 1):
                 for i in range(12):
@@ -222,25 +307,36 @@ def diagonal_waist_plates(rig, mat):
                     faces.append(face if sign == 1 else tuple(reversed(face)))
             mesh = bpy.data.meshes.new(f'{name} {side}')
             mesh.from_pydata(vertices, [], faces)
+            layer = mesh.uv_layers.new(name='Mail')
+            for loop in mesh.loops:
+                layer.data[loop.index].uv = uvs[loop.vertex_index]
             mesh.update()
             obj = bpy.data.objects.new(mesh.name, mesh)
             bpy.context.collection.objects.link(obj)
             attach(obj, rig, bone_name if bone_name == 'pelvis' else f'{bone_name}.{side}', mat)
-            solidify = obj.modifiers.new('Plate thickness', 'SOLIDIFY')
-            solidify.thickness = .012
+            for face in mesh.polygons:
+                face.use_smooth = True
+            # Mail is thinner than plate.
+            solidify = obj.modifiers.new('Mail thickness', 'SOLIDIFY')
+            solidify.thickness = .007
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.modifier_move_up(modifier=solidify.name)
             bpy.ops.object.modifier_move_up(modifier=solidify.name)
 
 
 def build_armor(rig):
-    steel = material('Satin steel', (.32, .43, .55), .75)
-    trim = material('Blackened joint steel', (.09, .105, .125), .85)
-    trim.node_tree.nodes.get('Principled BSDF').inputs['Roughness'].default_value = .28
+    # Same finishes as the heroic player sprite (../build-heroic.py).
+    steel = material('Player steel plate', (.55, .63, .74), .8, .32,
+                     rim=(.6, .85, 1.0), rim_strength=.8)
+    helm = material('Player steel helm', (.62, .70, .80), .85, .28,
+                    rim=(.7, .9, 1.0), rim_strength=.9)
+    greaves = material('Player steel greaves', (.45, .52, .62), .8, .35,
+                       rim=(.6, .8, 1.0), rim_strength=.6)
+    trim = material('Player dark iron trim', (.16, .16, .18), 1.0, .35)
     dark = material('Dark joint lining', (.025, .034, .045), .15)
     plate(rig, 'pelvis', 'Hip armor', [(0,.17,.12),(.08,.19,.14),(.205,.16,.12)], steel)
     plate(rig, 'waist', 'Flexible waist lining', [(0,.135,.10),(.16,.145,.11)], dark)
-    diagonal_waist_plates(rig, steel)
+    diagonal_waist_plates(rig, chainmail_material('Blackened chainmail'))
     breastplate = plate(rig, 'chest', 'Breast and back plate', [(-.085,.175,.13),(.04,.205,.145),
           (.20,.235,.16),(.27,.20,.13),(.30,.115,.09)], steel)
     # Extend the front center of the lower rim into a shallow V over the abdomen.
@@ -253,7 +349,7 @@ def build_armor(rig):
     joint(rig, 'neck', .075, dark)
     helmet_rings = [(-.035,.10,.105),(.025,.13,.13),
                     (.15,.125,.13),(.21,.10,.105),(.23,.055,.06)]
-    helmet = plate(rig, 'head', 'Helmet', helmet_rings, steel)
+    helmet = plate(rig, 'head', 'Helmet', helmet_rings, helm)
     matrix = rig.data.bones['head'].matrix_local
     for row, (along, width, depth) in enumerate(helmet_rings):
         for i in range(12):
@@ -283,10 +379,8 @@ def build_armor(rig):
         for face in mesh.polygons:
             face.use_smooth = True
     curved_visor('Visor curved rim', .20, .075, .008, dark)
-    glow = material('Visor pale cyan', (.22, .68, .78))
-    shader = glow.node_tree.nodes.get('Principled BSDF')
-    shader.inputs['Emission Color'].default_value = (.12, .65, .8, 1)
-    shader.inputs['Emission Strength'].default_value = 1.5
+    glow = material('Player visor glow', (.3, .9, 1.0), roughness=.35,
+                    emission=(.1, .75, 1.0), strength=2.5)
     curved_visor('Visor illuminated opening', .15, .032, .014, glow)
     for side in ('L','R'):
         for part, radius in [('upper_arm',.085),('forearm',.062),('hand',.05),
@@ -298,7 +392,8 @@ def build_armor(rig):
             length = rig.data.bones[bone_name].length
             plate(rig, bone_name, f'{part} plate {side}',
                   [(.045,width*.85,depth*.85),(length*.4,width,depth),
-                   (length-.025,width*.75,depth*.8)], steel)
+                   (length-.025,width*.75,depth*.8)],
+                  greaves if part in ('thigh', 'shin') else steel)
         plate(rig, f'upper_arm.{side}', f'Pauldron {side}',
               [(-.083,.008,.008),(-.077,.04,.04),(-.061,.07,.07),
                (-.035,.095,.095),(0,.115,.115),(.035,.122,.122),
@@ -313,12 +408,13 @@ def build_armor(rig):
                (.014,.078,.085),(.032,.072,.079),(.045,.058,.064),(.05,.049,.055)], trim,
               joint_inner_front=True, open_ends=True, top_cap=False)
         plate(rig, f'foot.{side}', f'Sabaton {side}',
-              [(-.025,.065,.055),(.075,.08,.06),(.20,.065,.04)], steel)
+              [(-.025,.065,.055),(.075,.08,.06),(.20,.065,.04)], greaves)
         # Cuisse shell hugs the thigh plate, open on the inner thigh; its top
-        # edge starts inside the hip armor so no flat rim shows.
+        # edge starts inside the hip armor and it ends above the mail hem, so
+        # it never shows as a second plate below the mail.
         plate(rig, f'thigh.{side}', f'Cuisse {side}',
-              [(.03,.098,.104),(.08,.106,.112),(.15,.106,.112),
-               (.21,.099,.104),(.25,.092,.097)], steel,
+              [(.03,.098,.104),(.08,.106,.112),(.12,.104,.11),
+               (.15,.098,.104)], greaves,
               open_ends=True, top_cap=False)
     for obj in bpy.context.scene.objects:
         if obj.name.startswith(('Pauldron ', 'Knee cap ', 'Elbow cap ', 'Cuisse ')):
@@ -361,23 +457,34 @@ def animate(rig, scene):
 
 def setup_scene(scene):
     scene.render.engine = 'CYCLES'
-    scene.cycles.samples = 48
+    # Render, world and light rig follow the heroic sprites (../build-heroic.py).
+    scene.cycles.samples = 96
     scene.cycles.use_denoising = False
-    scene.world = bpy.data.worlds.new('Studio world')
-    scene.world.color = (.18,.18,.18)
-    floor = material('Studio floor', (.065,.08,.105))
+    scene.cycles.sample_clamp_indirect = 2.0
+    scene.cycles.blur_glossy = 1.0
+    scene.cycles.caustics_reflective = scene.cycles.caustics_refractive = False
+    scene.view_settings.view_transform = 'Standard'
+    scene.view_settings.look = 'Medium High Contrast'
+    scene.world = bpy.data.worlds.new('Night studio')
+    scene.world.use_nodes = True
+    scene.world.node_tree.nodes['Background'].inputs['Color'].default_value = (.012, .018, .03, 1)
+    floor = material('Night floor', (.006, .008, .014), roughness=.8)
     ground_z = min((obj.matrix_world @ v.co).z for obj in scene.objects
                    if obj.type == 'MESH' for v in obj.data.vertices)
     bpy.ops.mesh.primitive_plane_add(size=200)
     bpy.context.object.name = 'Studio floor'
     bpy.context.object.location.z = ground_z - .005
     bpy.context.object.data.materials.append(floor)
-    for name, loc, power, size in [('Key', (3,-4,5), 650, 4),
-                                  ('Fill', (-3,-2,3), 450, 3),
-                                  ('Rim', (1,3,4), 800, 3)]:
+    # Warm key, cool fill, strong back rim lights for glossy edges.
+    for name, loc, power, size, color in [
+            ('Key', (-4,-6,8), 1000, 5, (1.0,.93,.85)),
+            ('Fill', (6,-3,4), 250, 6, (.6,.75,1.0)),
+            ('Rim left', (-7,6,4), 1300, 3, (.55,.8,1.0)),
+            ('Rim right', (7,6,4), 1300, 3, (1.0,.7,.9))]:
         bpy.ops.object.light_add(type='AREA', location=loc)
         obj = bpy.context.object
         obj.name, obj.data.energy, obj.data.shape, obj.data.size = name, power, 'DISK', size
+        obj.data.color = color
         obj.rotation_euler = (Vector((0,0,1))-obj.location).to_track_quat('-Z','Y').to_euler()
     bpy.ops.object.camera_add(location=(2.7,-6,2.7))
     camera = bpy.context.object
