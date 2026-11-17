@@ -377,19 +377,23 @@ def chest_seams(rig, mat, heights=(1.21, 1.33), radius=.008):
         ring_bar(rig, 'chest', f'Chest seam {k + 1}', points, radius, mat)
 
 
-# Gorget rings (z, half-width, half-depth): a low dark iron cone that sits on
+# Gorget rings (z, half-width, half-depth): a low chainmail cone that sits on
 # the breastplate's top and narrows up to the neck, ending just below the
 # helmet's lower edge. The profile is scaled by GORGET_SCALE about the top
 # ring, in height and in flare alike, so its curve keeps its shape.
-GORGET_SCALE = .6
-GORGET_RINGS = [(1.525 - (1.525 - z) * GORGET_SCALE, .115 + (w - .115) * GORGET_SCALE,
-                 .10 + (d - .10) * GORGET_SCALE)
+# GORGET_RADIUS then draws it in around the neck, as mail can hug it closely.
+GORGET_SCALE, GORGET_RADIUS = .6, .8
+GORGET_RINGS = [(1.525 - (1.525 - z) * GORGET_SCALE,
+                 (.115 + (w - .115) * GORGET_SCALE) * GORGET_RADIUS,
+                 (.10 + (d - .10) * GORGET_SCALE) * GORGET_RADIUS)
                 for z, w, d in [(1.415, .235, .148), (1.45, .205, .135), (1.48, .16, .118),
                                 (1.505, .128, .106), (1.525, .115, .10)]]
 
 
-def shell_ring(rig, bone_name, name, rings, mat, thickness=.007, count=32):
-    """Smooth band open at both ends, through (z, half-width, half-depth) rings."""
+def shell_ring(rig, bone_name, name, rings, mat, thickness=.007, count=32, uv=False):
+    """Smooth band open at both ends, through (z, half-width, half-depth) rings.
+    With `uv`, U is the arc length around (seam at the back) and V the height,
+    both in meters, as chainmail_material() expects."""
     vertices = [(width * math.sin(i * 2 * math.pi / count),
                  -depth * math.cos(i * 2 * math.pi / count), z)
                 for z, width, depth in rings for i in range(count)]
@@ -403,6 +407,19 @@ def shell_ring(rig, bone_name, name, rings, mat, thickness=.007, count=32):
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.to_mesh(mesh)
     bm.free()
+    if uv:
+        layer = mesh.uv_layers.new(name='Mail')
+        for face in mesh.polygons:
+            # Angle from the front, in (-pi, pi]; faces across the back seam
+            # take the continuous side.
+            angles = {v: math.remainder(v % count * 2 * math.pi / count, 2 * math.pi)
+                      for v in face.vertices}
+            if max(angles.values()) - min(angles.values()) > math.pi:
+                angles = {v: a + 2 * math.pi if a < 0 else a for v, a in angles.items()}
+            for loop_index in face.loop_indices:
+                v = mesh.loops[loop_index].vertex_index
+                z, width, depth = rings[v // count]
+                layer.data[loop_index].uv = (angles[v] * (width + depth) / 2, z)
     for face in mesh.polygons:
         face.use_smooth = True
     mesh.update()
@@ -417,10 +434,10 @@ def shell_ring(rig, bone_name, name, rings, mat, thickness=.007, count=32):
     return obj
 
 
-def gorget(rig, mat, count=32):
-    """Dark iron gorget on the chest, a separate part over the breastplate,
-    with a rolled rim at its top edge."""
-    shell_ring(rig, 'chest', 'Gorget', GORGET_RINGS, mat)
+def gorget(rig, mail, mat, count=32):
+    """Chainmail gorget on the chest, a separate part over the breastplate,
+    hanging from a dark iron rolled rim at its top edge."""
+    shell_ring(rig, 'chest', 'Gorget', GORGET_RINGS, mail, uv=True)
     z, width, depth = GORGET_RINGS[-1]
     ring_bar(rig, 'chest', 'Gorget rim',
              [(width * math.sin(i * 2 * math.pi / count), -depth * math.cos(i * 2 * math.pi / count), z)
@@ -568,6 +585,7 @@ def build_armor(rig):
                        rim=(.6, .8, 1.0), rim_strength=.6)
     trim = material('Player dark iron trim', (.16, .16, .18), 1.0, .35)
     dark = material('Dark joint lining', (.025, .034, .045), .15)
+    mail = chainmail_material('Blackened chainmail')
     hip = plate(rig, 'pelvis', 'Hip armor', HIP_RINGS, steel, segments=32)
     # Brief-like hem: the front and back centers drop 6 cm to the crotch and
     # narrow between the thighs, while the sides stay at the hip joints, so
@@ -581,7 +599,7 @@ def build_armor(rig):
     hip.data.update()
     plate(rig, 'waist', 'Flexible waist lining', [(0,.135,.10),(.16,.145,.11)], dark)
     belt(rig, trim, trim)
-    diagonal_waist_plates(rig, chainmail_material('Blackened chainmail'))
+    diagonal_waist_plates(rig, mail)
     breastplate = plate(rig, 'chest', 'Breast and back plate', CHEST_RINGS, steel)
     # Extend the front center of the lower rim into a shallow V over the abdomen.
     for i in range(12):
@@ -591,7 +609,7 @@ def build_armor(rig):
         vertex.co.x *= CHEST_WIDEN
     breastplate.data.update()
     chest_seams(rig, trim)
-    gorget(rig, trim)
+    gorget(rig, mail, trim)
     joint(rig, 'neck', .075, dark)
     # A rounded box like the heroic player's helm: flat top, upright sides.
     helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),
