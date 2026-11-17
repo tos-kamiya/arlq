@@ -35,7 +35,7 @@ for side, sign in [('L', 1), ('R', -1)]:
 
 
 def material(name, color, metallic=0, roughness=.38, emission=None, strength=0,
-             rim=None, rim_strength=0):
+             rim=None, rim_strength=0, transmission=0):
     """Principled material with the heroic sprites' optional Fresnel rim glow
     (see ../build-heroic.py material())."""
     mat = bpy.data.materials.new(name)
@@ -47,6 +47,7 @@ def material(name, color, metallic=0, roughness=.38, emission=None, strength=0,
     shader.inputs['Metallic'].default_value = metallic
     shader.inputs['Roughness'].default_value = roughness
     shader.inputs['IOR'].default_value = 1.45
+    shader.inputs['Transmission Weight'].default_value = transmission
     if emission:
         shader.inputs['Emission Color'].default_value = (*emission, 1)
         shader.inputs['Emission Strength'].default_value = strength
@@ -444,6 +445,85 @@ def gorget(rig, mail, mat, count=32):
               for i in range(count)], .006, mat)
 
 
+# Cape profile behind the body: (z, half-width, half-depth, half-span in
+# degrees around the back). It hangs from behind the shoulders, tucked under
+# the pauldrons, to about the knees, and flares a little toward the hem.
+CAPE_PROFILE = [(1.44, .235, .155, 68), (1.30, .255, .185, 70), (1.10, .265, .19, 71),
+                (.90, .28, .21, 72), (.72, .30, .235, 74), (.55, .32, .26, 75)]
+# Three bone chains (left, center, right) down the cape, at these angles from
+# the front (180 is straight behind; left is +X), jointed at these heights.
+CAPE_CHAINS = {'L': 140, 'C': 180, 'R': 220}
+CAPE_JOINTS = [1.44, 1.22, 1.0, .78, .55]
+
+
+def cape_section(z):
+    """Interpolated (half-width, half-depth, half-span) of the cape at z."""
+    z = min(max(z, CAPE_PROFILE[-1][0]), CAPE_PROFILE[0][0])
+    for (z0, *a), (z1, *b) in zip(CAPE_PROFILE, CAPE_PROFILE[1:]):
+        if z1 <= z <= z0:
+            f = (z0 - z) / (z0 - z1)
+            return [u + (v - u) * f for u, v in zip(a, b)]
+    raise ValueError(z)
+
+
+def cape_point(angle, z):
+    """Point on the cape at `angle` degrees from the front, height z."""
+    width, depth, _ = cape_section(z)
+    return Vector((width * math.sin(math.radians(angle)), -depth * math.cos(math.radians(angle)), z))
+
+
+for _side, _angle in CAPE_CHAINS.items():
+    for _k in range(len(CAPE_JOINTS) - 1):
+        BONES[f'cape.{_side}.{_k + 1}'] = (
+            tuple(cape_point(_angle, CAPE_JOINTS[_k])), tuple(cape_point(_angle, CAPE_JOINTS[_k + 1])),
+            'chest' if _k == 0 else f'cape.{_side}.{_k}')
+
+
+def cape(rig, mat, columns=24, rows=24):
+    """Midnight-blue cloth cape, the one part that bends: an Armature modifier
+    deforms it with the cape bone chains, each vertex weighted between the
+    nearest chains around the back and the nearest bones down its length."""
+    top, hem = CAPE_PROFILE[0][0], CAPE_PROFILE[-1][0]
+    grid = []
+    for r in range(rows + 1):
+        z = top + (hem - top) * r / rows
+        span = cape_section(z)[2]
+        grid.append([(180 + span * (2 * c / columns - 1), z) for c in range(columns + 1)])
+    vertices = [tuple(cape_point(a, z)) for row in grid for a, z in row]
+    faces = [(r * (columns + 1) + c, r * (columns + 1) + c + 1,
+              (r + 1) * (columns + 1) + c + 1, (r + 1) * (columns + 1) + c)
+             for r in range(rows) for c in range(columns)]
+    mesh = bpy.data.meshes.new('Cape')
+    mesh.from_pydata(vertices, [], faces)
+    for face in mesh.polygons:
+        face.use_smooth = True
+    mesh.update()
+    obj = bpy.data.objects.new('Cape', mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(mat)
+    obj.parent = rig
+    groups = {name: obj.vertex_groups.new(name=name) for name in BONES if name.startswith('cape.')}
+    mids = [(a + b) / 2 for a, b in zip(CAPE_JOINTS, CAPE_JOINTS[1:])]
+    seg = CAPE_JOINTS[0] - CAPE_JOINTS[1]
+    for index, (angle, z) in enumerate(a for row in grid for a in row):
+        across = {s: max(0, 1 - abs(angle - a) / 40) for s, a in CAPE_CHAINS.items()}
+        down = [max(0, 1 - abs(z - m) / seg) for m in mids]
+        if z >= mids[0]:
+            down = [1] + [0] * (len(mids) - 1)
+        if z <= mids[-1]:
+            down = [0] * (len(mids) - 1) + [1]
+        total = sum(across.values()) * sum(down)
+        for s, wa in across.items():
+            for k, wd in enumerate(down):
+                if wa * wd:
+                    groups[f'cape.{s}.{k + 1}'].add([index], wa * wd / total, 'REPLACE')
+    obj.modifiers.new('Cape bones', 'ARMATURE').object = rig
+    cloth = obj.modifiers.new('Cloth thickness', 'SOLIDIFY')
+    cloth.thickness = .006
+    obj.modifiers.new('Soft folds', 'SUBSURF').levels = 1
+    return obj
+
+
 def helmet_crest_and_horns(rig, mat):
     """Crest and horns of the heroic player's helm (../build-heroic.py),
     scaled 0.8 about its head center (0, -.04, .83) onto this helmet's center."""
@@ -638,6 +718,10 @@ def build_armor(rig):
     breastplate.data.update()
     chest_seams(rig, trim)
     gorget(rig, mail, trim)
+    # Same midnight blue as the heroic player's cloak.
+    cloak = material('Player midnight cloak', (.025, .05, .16), roughness=.4, transmission=.15,
+                     rim=(.25, .45, 1.0), rim_strength=.6)
+    cape(rig, cloak)
     joint(rig, 'neck', .075, dark)
     # A rounded box like the heroic player's helm: flat top, upright sides.
     helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),
@@ -706,12 +790,15 @@ POSES = {
     40: ('GUARD', {'waist': (0, 0, 18), 'neck': (0, 0, -12),
          'upper_arm.R': (25, 0, -15), 'forearm.R': (95, 0, 0),
          'upper_arm.L': (35, 0, 15), 'forearm.L': (75, 0, 0),
-         'thigh.L': (12, 0, 0), 'shin.L': (-18, 0, 0)}),
+         'thigh.L': (12, 0, 0), 'shin.L': (-18, 0, 0),
+         'cape.L.2': (-4, 0, 0), 'cape.C.2': (-6, 0, 0), 'cape.R.2': (-8, 0, 0)}),
     80: ('STEP', {'waist': (0, 0, -10), 'neck': (0, 0, 10),
          'upper_arm.L': (-22, 0, 0), 'forearm.L': (20, 0, 0),
          'upper_arm.R': (25, 0, 0), 'forearm.R': (40, 0, 0),
          'thigh.L': (32, 0, 0), 'shin.L': (-40, 0, 0),
-         'thigh.R': (-15, 0, 0), 'shin.R': (-12, 0, 0)}),
+         'thigh.R': (-15, 0, 0), 'shin.R': (-12, 0, 0),
+         **{f'cape.{s}.{k}': (a, 0, 0) for s in 'LCR'
+            for k, a in ((1, -6), (2, -8), (3, -8), (4, -6))}}),
 }
 
 
@@ -777,7 +864,7 @@ def validate(rig, scene):
     """Verify each required joint carries armor and actually moves it rigidly."""
     required = ['neck','waist'] + [f'{part}.{side}' for side in ('L','R')
                 for part in ('upper_arm','forearm','thigh','shin')]
-    meshes = [o for o in scene.objects if o.parent == rig]
+    meshes = [o for o in scene.objects if o.parent == rig and o.name != 'Cape']
     assert all(o.parent_type == 'BONE' and o.parent_bone in BONES for o in meshes)
     scene.frame_set(1)
     for name in required:
@@ -791,8 +878,30 @@ def validate(rig, scene):
         assert abs(after.to_3x3().determinant()-before.to_3x3().determinant()) < 1e-5, name
         bone.rotation_euler = (0,0,0)
         bpy.context.view_layer.update()
+    # The cape bends: bending its middle chain moves the middle of the hem but
+    # not the middle of the top edge (checked with the Armature modifier only).
+    cape_obj = bpy.data.objects['Cape']
+    others = [m for m in cape_obj.modifiers if m.type != 'ARMATURE']
+    for m in others:
+        m.show_viewport = False
+    rest = [v.co for v in cape_obj.data.vertices]
+    top = max(range(len(rest)), key=lambda i: rest[i].z - abs(rest[i].x))
+    hem = min(range(len(rest)), key=lambda i: rest[i].z + abs(rest[i].x))
+
+    def cape_points():
+        mesh = cape_obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).to_mesh()
+        return mesh.vertices[hem].co.copy(), mesh.vertices[top].co.copy()
+    hem0, top0 = cape_points()
+    rig.pose.bones['cape.C.2'].rotation_euler.x = math.radians(-30)
+    bpy.context.view_layer.update()
+    hem1, top1 = cape_points()
+    assert (hem1 - hem0).length > .05 and (top1 - top0).length < 1e-4, 'cape'
+    rig.pose.bones['cape.C.2'].rotation_euler = (0, 0, 0)
+    for m in others:
+        m.show_viewport = True
+    bpy.context.view_layer.update()
     scene.frame_set(1)
-    print(f'Validated {len(required)} required joints, {len(BONES)} bones, {len(meshes)} rigid parts')
+    print(f'Validated {len(required)} required joints, {len(BONES)} bones, {len(meshes)} rigid parts, bending cape')
 
 
 def main():
