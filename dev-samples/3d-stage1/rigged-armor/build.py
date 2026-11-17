@@ -334,6 +334,28 @@ CHEST_RINGS = [(-.085, .175, .13), (.04, .205, .145), (.12, .225, .16),
 CHEST_WIDEN = 1.1
 
 
+def ring_bar(rig, bone_name, name, points, radius, mat):
+    """Closed round bar through the given world points, rigid on a bone."""
+    curve = bpy.data.curves.new(name, 'CURVE')
+    curve.dimensions, curve.bevel_depth, curve.bevel_resolution = '3D', radius, 3
+    spline = curve.splines.new('POLY')
+    spline.points.add(len(points) - 1)
+    for point, co in zip(spline.points, points):
+        point.co = (*co, 1)
+    spline.use_cyclic_u = True
+    obj = bpy.data.objects.new(name, curve)
+    bpy.context.collection.objects.link(obj)
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.convert(target='MESH')
+    obj = bpy.context.object
+    for face in obj.data.polygons:
+        face.use_smooth = True
+    attach(obj, rig, bone_name, mat).modifiers['Forged edge'].width = .002
+    return obj
+
+
 def chest_seams(rig, mat, heights=(1.21, 1.33), radius=.008):
     """Dark iron seams girdling the breastplate like the heroic player's
     plate seams (../build-heroic.py): round bars that follow the plate's
@@ -345,27 +367,64 @@ def chest_seams(rig, mat, heights=(1.21, 1.33), radius=.008):
             if base + a0 <= z <= base + a1:
                 f = (z - base - a0) / (a1 - a0)
                 width, depth = (w0 + (w1 - w0) * f) * CHEST_WIDEN, d0 + (d1 - d0) * f
-        curve = bpy.data.curves.new(f'Chest seam {k + 1}', 'CURVE')
-        curve.dimensions, curve.bevel_depth, curve.bevel_resolution = '3D', radius, 3
-        spline = curve.splines.new('POLY')
-        spline.points.add(11)
-        for i, point in enumerate(spline.points):
+        points = []
+        for i in range(12):
             angle = i * 2 * math.pi / 12
             corner = Vector((width * math.sin(angle), -depth * math.cos(angle), 0))
             # Push the bar's center out a little so half of it shows.
             corner += corner.normalized() * radius * .5
-            point.co = (corner.x, corner.y, z, 1)
-        spline.use_cyclic_u = True
-        obj = bpy.data.objects.new(curve.name, curve)
-        bpy.context.collection.objects.link(obj)
-        bpy.ops.object.select_all(action='DESELECT')
-        obj.select_set(True)
-        bpy.context.view_layer.objects.active = obj
-        bpy.ops.object.convert(target='MESH')
-        obj = bpy.context.object
-        for face in obj.data.polygons:
-            face.use_smooth = True
-        attach(obj, rig, 'chest', mat).modifiers['Forged edge'].width = .002
+            points.append((corner.x, corner.y, z))
+        ring_bar(rig, 'chest', f'Chest seam {k + 1}', points, radius, mat)
+
+
+# Gorget rings (z, half-width, half-depth): a low dark iron cone that sits on
+# the breastplate's top and narrows up to the neck, ending just below the
+# helmet's lower edge. The profile is scaled by GORGET_SCALE about the top
+# ring, in height and in flare alike, so its curve keeps its shape.
+GORGET_SCALE = .6
+GORGET_RINGS = [(1.525 - (1.525 - z) * GORGET_SCALE, .115 + (w - .115) * GORGET_SCALE,
+                 .10 + (d - .10) * GORGET_SCALE)
+                for z, w, d in [(1.415, .235, .148), (1.45, .205, .135), (1.48, .16, .118),
+                                (1.505, .128, .106), (1.525, .115, .10)]]
+
+
+def shell_ring(rig, bone_name, name, rings, mat, thickness=.007, count=32):
+    """Smooth band open at both ends, through (z, half-width, half-depth) rings."""
+    vertices = [(width * math.sin(i * 2 * math.pi / count),
+                 -depth * math.cos(i * 2 * math.pi / count), z)
+                for z, width, depth in rings for i in range(count)]
+    faces = [(r * count + i, r * count + (i + 1) % count,
+              (r + 1) * count + (i + 1) % count, (r + 1) * count + i)
+             for r in range(len(rings) - 1) for i in range(count)]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, [], faces)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    for face in mesh.polygons:
+        face.use_smooth = True
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    attach(obj, rig, bone_name, mat).modifiers['Forged edge'].width = .002
+    shell = obj.modifiers.new('Thickness', 'SOLIDIFY')
+    shell.thickness = thickness
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.modifier_move_up(modifier=shell.name)
+    bpy.ops.object.modifier_move_up(modifier=shell.name)
+    return obj
+
+
+def gorget(rig, mat, count=32):
+    """Dark iron gorget on the chest, a separate part over the breastplate,
+    with a rolled rim at its top edge."""
+    shell_ring(rig, 'chest', 'Gorget', GORGET_RINGS, mat)
+    z, width, depth = GORGET_RINGS[-1]
+    ring_bar(rig, 'chest', 'Gorget rim',
+             [(width * math.sin(i * 2 * math.pi / count), -depth * math.cos(i * 2 * math.pi / count), z)
+              for i in range(count)], .006, mat)
 
 
 def helmet_crest_and_horns(rig, mat):
@@ -532,6 +591,7 @@ def build_armor(rig):
         vertex.co.x *= CHEST_WIDEN
     breastplate.data.update()
     chest_seams(rig, trim)
+    gorget(rig, trim)
     joint(rig, 'neck', .075, dark)
     # A rounded box like the heroic player's helm: flat top, upright sides.
     helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),
