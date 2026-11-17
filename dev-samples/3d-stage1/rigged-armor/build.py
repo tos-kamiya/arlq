@@ -112,7 +112,8 @@ def attach(obj, rig, bone_name, mat):
     return obj
 
 
-def plate(rig, bone_name, name, rings, mat, joint_inner_front=None, open_ends=False):
+def plate(rig, bone_name, name, rings, mat, joint_inner_front=None, open_ends=False,
+          top_cap=True):
     """Rings in bone coordinates: (distance along bone, half-width, half-depth)."""
     matrix = rig.data.bones[bone_name].matrix_local
     count = 32 if joint_inner_front is not None or open_ends else 12
@@ -131,7 +132,7 @@ def plate(rig, bone_name, name, rings, mat, joint_inner_front=None, open_ends=Fa
                     continue
             a, b = row*count+i, row*count+(i+1)%count
             faces.append((a, b, b+count, a+count))
-    if open_ends:
+    if open_ends and top_cap:
         side = -1 if bone_name.endswith('.L') else 1
         faces.append(tuple(reversed([i for i in range(count)
                                      if side * math.sin(i * 2 * math.pi / count) >= -.5])))
@@ -281,11 +282,14 @@ def build_armor(rig):
               joint_inner_front=True)
         plate(rig, f'foot.{side}', f'Sabaton {side}',
               [(-.025,.065,.055),(.075,.08,.06),(.20,.065,.04)], steel)
-        # Separate tassets follow each thigh, leaving the hip free to rotate.
-        plate(rig, f'thigh.{side}', f'Tasset {side}',
-              [(.015,.105,.13),(.09,.11,.135),(.16,.10,.12)], steel)
+        # Cuisse shell hugs the thigh plate, open on the inner thigh; its top
+        # edge starts inside the hip armor so no flat rim shows.
+        plate(rig, f'thigh.{side}', f'Cuisse {side}',
+              [(.03,.098,.104),(.08,.106,.112),(.15,.106,.112),
+               (.21,.099,.104),(.25,.092,.097)], steel,
+              open_ends=True, top_cap=False)
     for obj in bpy.context.scene.objects:
-        if obj.name.startswith(('Pauldron ', 'Knee cap ', 'Elbow cap ')):
+        if obj.name.startswith(('Pauldron ', 'Knee cap ', 'Elbow cap ', 'Cuisse ')):
             bevel = obj.modifiers['Forged edge']
             bevel.width, bevel.segments = .014, 4
             for face in obj.data.polygons:
