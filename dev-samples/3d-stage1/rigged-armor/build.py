@@ -277,6 +277,66 @@ def joint(rig, bone_name, radius, mat):
     return attach(obj, rig, bone_name, mat)
 
 
+# Hip armor rings on the pelvis bone: (distance along bone, half-width, half-depth).
+HIP_RINGS = [(0, .17, .12), (.08, .19, .14), (.205, .16, .12)]
+
+
+def hip_radius(z):
+    """Half-width and half-depth of the hip armor at height z."""
+    base = BONES['pelvis'][0][2]
+    for (a0, w0, d0), (a1, w1, d1) in zip(HIP_RINGS, HIP_RINGS[1:]):
+        if base + a0 <= z <= base + a1:
+            f = (z - base - a0) / (a1 - a0)
+            return w0 + (w1 - w0) * f, d0 + (d1 - d0) * f
+    raise ValueError(z)
+
+
+# Belt strap around the top of the hip armor, below the breastplate hem; the
+# mail skirts hang from inside it. BELT_RX/RY is the ellipse just inside the
+# strap where the mail's top edge sits.
+BELT_Z, BELT_WIDTH, BELT_THICKNESS = 1.045, .045, .008
+BELT_RX, BELT_RY = (r + .004 for r in hip_radius(BELT_Z))
+
+
+def belt(rig, strap_mat, buckle_mat):
+    """Flat strap hugging the tapered hip armor, with a square front buckle."""
+    count, vertices = 64, []
+    for z in (BELT_Z - BELT_WIDTH / 2, BELT_Z + BELT_WIDTH / 2):
+        width, depth = hip_radius(z)
+        width, depth = width + .009, depth + .009
+        for i in range(count):
+            angle = i * 2 * math.pi / count
+            vertices.append((width * math.sin(angle), -depth * math.cos(angle), z))
+    # Ordered so the normals face outward.
+    faces = [(i, i + count, (i + 1) % count + count, (i + 1) % count)
+             for i in range(count)]
+    mesh = bpy.data.meshes.new('Belt')
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    strap = bpy.data.objects.new('Belt', mesh)
+    bpy.context.collection.objects.link(strap)
+    for face in mesh.polygons:
+        face.use_smooth = True
+    attach(strap, rig, 'pelvis', strap_mat).modifiers['Forged edge'].width = .002
+    shell = strap.modifiers.new('Strap thickness', 'SOLIDIFY')
+    shell.thickness = BELT_THICKNESS
+    bpy.context.view_layer.objects.active = strap
+    bpy.ops.object.modifier_move_up(modifier=shell.name)
+    bpy.ops.object.modifier_move_up(modifier=shell.name)
+
+    # Buckle: a plain square plate, just proud of the strap.
+    # The hip armor flares downward, so clear the strap's lower (outer) edge.
+    front = hip_radius(BELT_Z - BELT_WIDTH / 2)[1] + .009 + .004
+    bpy.ops.mesh.primitive_cube_add(location=(0, -front, BELT_Z))
+    buckle = bpy.context.object
+    buckle.name = 'Belt buckle'
+    buckle.scale = (.03, .004, .028)
+    # attach() reads matrix_world, which only picks up the scale after an update.
+    bpy.context.view_layer.update()
+    bevel = attach(buckle, rig, 'pelvis', buckle_mat).modifiers['Forged edge']
+    bevel.width, bevel.segments = .003, 3
+
+
 def diagonal_waist_plates(rig, mat):
     """Hang curved mail skirts around the front-side quarters of the hips.
 
@@ -285,7 +345,8 @@ def diagonal_waist_plates(rig, mat):
     """
     # Arc centered 50 degrees away from the front, wrapping toward the side.
     parts = [('Diagonal waist plate', 'pelvis',
-              [(1.065, .19, .145, 23), (.997, .25, .19, 29)]),
+              # Top edge on the belt's centerline, hidden inside it.
+              [(BELT_Z, BELT_RX, BELT_RY, 24), (.997, .25, .19, 29)]),
              ('Diagonal waist plate lower', 'hip_plate',
               [(1.009, .238, .178, 29), (.853, .28, .21, 29), (.741, .27, .20, 24)])]
     for side, sign in (('L', 1), ('R', -1)):
@@ -334,8 +395,9 @@ def build_armor(rig):
                        rim=(.6, .8, 1.0), rim_strength=.6)
     trim = material('Player dark iron trim', (.16, .16, .18), 1.0, .35)
     dark = material('Dark joint lining', (.025, .034, .045), .15)
-    plate(rig, 'pelvis', 'Hip armor', [(0,.17,.12),(.08,.19,.14),(.205,.16,.12)], steel)
+    plate(rig, 'pelvis', 'Hip armor', HIP_RINGS, steel)
     plate(rig, 'waist', 'Flexible waist lining', [(0,.135,.10),(.16,.145,.11)], dark)
+    belt(rig, trim, trim)
     diagonal_waist_plates(rig, chainmail_material('Blackened chainmail'))
     breastplate = plate(rig, 'chest', 'Breast and back plate', [(-.085,.175,.13),(.04,.205,.145),
           (.20,.235,.16),(.27,.20,.13),(.30,.115,.09)], steel)
