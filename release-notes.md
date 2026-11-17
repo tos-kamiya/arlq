@@ -1,5 +1,10 @@
 # ARLQ Release Notes
 
+## 6.8.6 - 2026-11-18
+
+- Draw the player 5% larger in sprite mode, in every sword state, facing and
+  the collapsed-from-hunger pose.
+
 ## 6.8.5 - 2026-11-18
 
 - Redraw the player in sprite mode as a knight in plate armor built on a
