@@ -100,9 +100,9 @@ def attach(obj, rig, bone_name, mat):
 def plate(rig, bone_name, name, rings, mat, joint_inner_front=None, open_ends=False):
     """Rings in bone coordinates: (distance along bone, half-width, half-depth)."""
     matrix = rig.data.bones[bone_name].matrix_local
-    count = 32 if joint_inner_front is not None else 12
+    count = 32 if joint_inner_front is not None or open_ends else 12
     verts = [matrix @ Vector((width*math.sin(i*2*math.pi/count),
-                             along * (.85 + (-.55 if joint_inner_front else .55) *
+                             along * (.95 + (-.80 if joint_inner_front else .80) *
                                       math.cos(i*2*math.pi/count)
                                       if joint_inner_front is not None else 1),
                              depth*math.cos(i*2*math.pi/count)))
@@ -180,7 +180,8 @@ def diagonal_waist_plates(rig, mat):
 
 def build_armor(rig):
     steel = material('Satin steel', (.32, .43, .55), .75)
-    trim = material('Brass edges', (.48, .30, .09), .65)
+    trim = material('Blackened joint steel', (.09, .105, .125), .85)
+    trim.node_tree.nodes.get('Principled BSDF').inputs['Roughness'].default_value = .28
     dark = material('Dark joint lining', (.025, .034, .045), .15)
     plate(rig, 'pelvis', 'Hip armor', [(0,.17,.12),(.08,.19,.14),(.205,.16,.12)], steel)
     plate(rig, 'waist', 'Flexible waist lining', [(0,.135,.10),(.16,.145,.11)], dark)
@@ -195,15 +196,43 @@ def build_armor(rig):
         vertex.co.x *= 1.1
     breastplate.data.update()
     joint(rig, 'neck', .075, dark)
-    plate(rig, 'head', 'Helmet', [(-.035,.10,.105),(.025,.13,.13),
-          (.15,.125,.13),(.22,.085,.09),(.245,.025,.035)], steel)
+    helmet_rings = [(-.035,.10,.105),(.025,.13,.13),
+                    (.15,.125,.13),(.21,.10,.105),(.23,.055,.06)]
+    helmet = plate(rig, 'head', 'Helmet', helmet_rings, steel)
+    matrix = rig.data.bones['head'].matrix_local
+    for row, (along, width, depth) in enumerate(helmet_rings):
+        for i in range(12):
+            angle = i * 2 * math.pi / 12
+            x, z = math.sin(angle), math.cos(angle)
+            helmet.data.vertices[row * 12 + i].co = matrix @ Vector((
+                width * math.copysign(abs(x) ** .8, x), along,
+                depth * math.copysign(abs(z) ** .8, z)))
+    helmet.data.update()
     # Visor follows head, with front toward -Y in world space.
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(0,-.126,1.66))
-    visor = bpy.context.object
-    visor.name = 'Visor slit'
-    visor.scale = (.19,.025,.023)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    attach(visor, rig, 'head', dark)
+    def curved_visor(name, width, height, offset, mat):
+        vertices = []
+        for z in (1.66 - height / 2, 1.66 + height / 2):
+            for i in range(25):
+                x = width * (i / 24 - .5)
+                y = -.13 * (1 - (abs(x) / .128) ** 2.5) ** .4 - offset
+                vertices.append((x, y, z))
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(vertices, [], [(i, i + 1, i + 26, i + 25) for i in range(24)])
+        mesh.update()
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(obj)
+        attach(obj, rig, 'head', mat)
+        obj.modifiers['Forged edge'].width = .002
+        shell = obj.modifiers.new('Visor thickness', 'SOLIDIFY')
+        shell.thickness = .004
+        for face in mesh.polygons:
+            face.use_smooth = True
+    curved_visor('Visor curved rim', .20, .075, .008, dark)
+    glow = material('Visor pale cyan', (.22, .68, .78))
+    shader = glow.node_tree.nodes.get('Principled BSDF')
+    shader.inputs['Emission Color'].default_value = (.12, .65, .8, 1)
+    shader.inputs['Emission Strength'].default_value = 1.5
+    curved_visor('Visor illuminated opening', .15, .032, .014, glow)
     for side in ('L','R'):
         for part, radius in [('upper_arm',.085),('forearm',.062),('hand',.05),
                              ('thigh',.085),('shin',.075),('foot',.055)]:
@@ -216,19 +245,29 @@ def build_armor(rig):
                   [(.045,width*.85,depth*.85),(length*.4,width,depth),
                    (length-.025,width*.75,depth*.8)], steel)
         plate(rig, f'upper_arm.{side}', f'Pauldron {side}',
-              [(-.0825,.075,.085),(-.035,.10,.105),(.015,.12,.12),
-               (.095,.115,.105),(.13,.095,.085)], steel, open_ends=True)
+              [(-.095,.008,.008),(-.088,.04,.04),(-.07,.07,.07),
+               (-.04,.095,.095),(0,.115,.115),(.04,.122,.122),
+               (.08,.117,.113),(.11,.105,.098),(.13,.095,.085)],
+              trim, open_ends=True)
         plate(rig, f'shin.{side}', f'Knee cap {side}',
-              [(-.035,.065,.075),(0,.087,.095),(.055,.075,.08)], trim,
+              [(-.035,.057,.065),(-.028,.073,.082),(-.012,.086,.095),
+               (.01,.091,.10),(.032,.086,.094),(.048,.073,.08),(.055,.062,.068)], trim,
               joint_inner_front=False)
         plate(rig, f'forearm.{side}', f'Elbow cap {side}',
-              [(-.025,.055,.065),(.015,.075,.08),(.05,.06,.065)], trim,
+              [(-.025,.045,.052),(-.018,.061,.068),(-.004,.073,.08),
+               (.014,.078,.085),(.032,.072,.079),(.045,.058,.064),(.05,.049,.055)], trim,
               joint_inner_front=True)
         plate(rig, f'foot.{side}', f'Sabaton {side}',
               [(-.025,.065,.055),(.075,.08,.06),(.20,.065,.04)], steel)
         # Separate tassets follow each thigh, leaving the hip free to rotate.
         plate(rig, f'thigh.{side}', f'Tasset {side}',
               [(.015,.105,.13),(.09,.11,.135),(.16,.10,.12)], steel)
+    for obj in bpy.context.scene.objects:
+        if obj.name.startswith(('Pauldron ', 'Knee cap ', 'Elbow cap ')):
+            bevel = obj.modifiers['Forged edge']
+            bevel.width, bevel.segments = .014, 4
+            for face in obj.data.polygons:
+                face.use_smooth = len(face.vertices) == 4
 
 
 POSES = {
