@@ -326,6 +326,47 @@ BELT_Z, BELT_WIDTH, BELT_THICKNESS = 1.045, .045, .008
 BELT_RX, BELT_RY = (r + .004 for r in hip_radius(BELT_Z))
 
 
+# Breastplate rings on the chest bone: (distance along bone, half-width,
+# half-depth); the plate is then widened by CHEST_WIDEN.
+CHEST_RINGS = [(-.085, .175, .13), (.04, .205, .145), (.20, .235, .16),
+               (.27, .20, .13), (.30, .115, .09)]
+CHEST_WIDEN = 1.1
+
+
+def chest_seams(rig, mat, heights=(1.21, 1.33), radius=.008):
+    """Dark iron seams girdling the breastplate like the heroic player's
+    plate seams (../build-heroic.py): round bars that follow the plate's
+    12-sided section, half sunk into it. Heights keep the heroic torso's
+    proportions between the belt and the shoulders."""
+    base = BONES['chest'][0][2]
+    for k, z in enumerate(heights):
+        for (a0, w0, d0), (a1, w1, d1) in zip(CHEST_RINGS, CHEST_RINGS[1:]):
+            if base + a0 <= z <= base + a1:
+                f = (z - base - a0) / (a1 - a0)
+                width, depth = (w0 + (w1 - w0) * f) * CHEST_WIDEN, d0 + (d1 - d0) * f
+        curve = bpy.data.curves.new(f'Chest seam {k + 1}', 'CURVE')
+        curve.dimensions, curve.bevel_depth, curve.bevel_resolution = '3D', radius, 3
+        spline = curve.splines.new('POLY')
+        spline.points.add(11)
+        for i, point in enumerate(spline.points):
+            angle = i * 2 * math.pi / 12
+            corner = Vector((width * math.sin(angle), -depth * math.cos(angle), 0))
+            # Push the bar's center out a little so half of it shows.
+            corner += corner.normalized() * radius * .5
+            point.co = (corner.x, corner.y, z, 1)
+        spline.use_cyclic_u = True
+        obj = bpy.data.objects.new(curve.name, curve)
+        bpy.context.collection.objects.link(obj)
+        bpy.ops.object.select_all(action='DESELECT')
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.convert(target='MESH')
+        obj = bpy.context.object
+        for face in obj.data.polygons:
+            face.use_smooth = True
+        attach(obj, rig, 'chest', mat).modifiers['Forged edge'].width = .002
+
+
 def helmet_crest_and_horns(rig, mat):
     """Crest and horns of the heroic player's helm (../build-heroic.py),
     scaled 0.8 about its head center (0, -.04, .83) onto this helmet's center."""
@@ -471,15 +512,15 @@ def build_armor(rig):
     plate(rig, 'waist', 'Flexible waist lining', [(0,.135,.10),(.16,.145,.11)], dark)
     belt(rig, trim, trim)
     diagonal_waist_plates(rig, chainmail_material('Blackened chainmail'))
-    breastplate = plate(rig, 'chest', 'Breast and back plate', [(-.085,.175,.13),(.04,.205,.145),
-          (.20,.235,.16),(.27,.20,.13),(.30,.115,.09)], steel)
+    breastplate = plate(rig, 'chest', 'Breast and back plate', CHEST_RINGS, steel)
     # Extend the front center of the lower rim into a shallow V over the abdomen.
     for i in range(12):
         angle = i * 2 * math.pi / 12
         breastplate.data.vertices[i].co.z -= .025 * max(0, math.cos(angle)) * (1 - abs(math.sin(angle)))
     for vertex in breastplate.data.vertices:
-        vertex.co.x *= 1.1
+        vertex.co.x *= CHEST_WIDEN
     breastplate.data.update()
+    chest_seams(rig, trim)
     joint(rig, 'neck', .075, dark)
     # A rounded box like the heroic player's helm: flat top, upright sides.
     helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),
