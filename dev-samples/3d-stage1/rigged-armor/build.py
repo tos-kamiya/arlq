@@ -298,6 +298,43 @@ BELT_Z, BELT_WIDTH, BELT_THICKNESS = 1.045, .045, .008
 BELT_RX, BELT_RY = (r + .004 for r in hip_radius(BELT_Z))
 
 
+def helmet_crest_and_horns(rig, mat):
+    """Crest and horns of the heroic player's helm (../build-heroic.py),
+    scaled 0.8 about its head center (0, -.04, .83) onto this helmet's center."""
+    def heroic(x, y, z):
+        return Vector((x * .8, (y + .04) * .8, 1.67 + (z - .83) * .8))
+
+    # A thin plate, a horn-like triangle from the side: its base runs along
+    # the top of the helm and it sweeps forward and up past the visor.
+    profile = [heroic(0, -.02, .985), heroic(0, -.17, .955), heroic(0, -.23, 1.063)]
+    vertices = [(side * .02, p.y, p.z) for side in (-1, 1) for p in profile]
+    faces = [(0, 1, 2), (5, 4, 3), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)]
+    mesh = bpy.data.meshes.new('Helmet crest')
+    mesh.from_pydata(vertices, [], faces)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+    crest = bpy.data.objects.new('Helmet crest', mesh)
+    bpy.context.collection.objects.link(crest)
+    attach(crest, rig, 'head', mat).modifiers['Forged edge'].width = .003
+    # Four-sided horns from the sides of the helm, out, back and up.
+    for side, sign in (('L', 1), ('R', -1)):
+        start = heroic(sign * .15, 0, .90)
+        end = heroic(sign * .27, .11, 1.06)
+        delta = end - start
+        bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=.055 * .8, radius2=0,
+                                        depth=delta.length, location=(start + end) / 2)
+        horn = bpy.context.object
+        horn.name = f'Helmet horn {side}'
+        horn.rotation_euler = delta.to_track_quat('Z', 'Y').to_euler()
+        # attach() reads matrix_world, which only picks up the rotation after an update.
+        bpy.context.view_layer.update()
+        attach(horn, rig, 'head', mat).modifiers['Forged edge'].width = .003
+
+
 def belt(rig, strap_mat, buckle_mat):
     """Flat strap hugging the tapered hip armor, with a square front buckle."""
     count, vertices = 64, []
@@ -444,6 +481,7 @@ def build_armor(rig):
     glow = material('Player visor glow', (.3, .9, 1.0), roughness=.35,
                     emission=(.1, .75, 1.0), strength=2.5)
     curved_visor('Visor illuminated opening', .15, .032, .014, glow)
+    helmet_crest_and_horns(rig, trim)
     for side in ('L','R'):
         for part, radius in [('upper_arm',.085),('forearm',.062),('hand',.05),
                              ('thigh',.085),('shin',.075),('foot',.055)]:
