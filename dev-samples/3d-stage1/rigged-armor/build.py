@@ -196,11 +196,11 @@ def attach(obj, rig, bone_name, mat):
 
 
 def plate(rig, bone_name, name, rings, mat, joint_inner_front=None, open_ends=False,
-          top_cap=True):
+          top_cap=True, segments=None):
     """Rings in bone coordinates: (distance along bone, half-width, half-depth)."""
     matrix = rig.data.bones[bone_name].matrix_local
-    count = (64 if joint_inner_front is not None and open_ends else
-             32 if joint_inner_front is not None or open_ends else 12)
+    count = segments or (64 if joint_inner_front is not None and open_ends else
+                         32 if joint_inner_front is not None or open_ends else 12)
     def opening(i):
         """Above .5 lies in the cut-out: the bend's inner side for hinge caps
         (local +Z is front), otherwise the side facing the body center."""
@@ -509,7 +509,17 @@ def build_armor(rig):
                        rim=(.6, .8, 1.0), rim_strength=.6)
     trim = material('Player dark iron trim', (.16, .16, .18), 1.0, .35)
     dark = material('Dark joint lining', (.025, .034, .045), .15)
-    plate(rig, 'pelvis', 'Hip armor', HIP_RINGS, steel)
+    hip = plate(rig, 'pelvis', 'Hip armor', HIP_RINGS, steel, segments=32)
+    # Brief-like hem: the front and back centers drop 6 cm to the crotch and
+    # narrow between the thighs, while the sides stay at the hip joints, so
+    # the leg openings arch up over the thighs. The 32-sided section keeps
+    # the crotch a rounded U instead of a point.
+    for i in range(32):
+        c2 = math.cos(i * 2 * math.pi / 32) ** 2
+        vertex = hip.data.vertices[i]
+        vertex.co.z -= .06 * c2
+        vertex.co.x *= 1 - .5 * c2
+    hip.data.update()
     plate(rig, 'waist', 'Flexible waist lining', [(0,.135,.10),(.16,.145,.11)], dark)
     belt(rig, trim, trim)
     diagonal_waist_plates(rig, chainmail_material('Blackened chainmail'))
