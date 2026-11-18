@@ -323,6 +323,11 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         # The won stage's treasure glow (see draw_treasure_glow).
         self._treasure_glow = None
         self._treasure_glow_since = None
+        # Effect images, made on first use.
+        self._pillar_image = None
+        self._dome_images = None
+        self._soft_dome_image = None
+        self._uncached_drawables = []
         self._mouse_position = None
         self._mouse_visible_until = None
         self._edge_shade_fields = {}
@@ -1368,7 +1373,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             self._set_drawable_attribute(badge, 'color', badge_color)
 
     def _clear_drawables(self):
-        for drawable in getattr(self, '_uncached_drawables', ()):
+        for drawable in self._uncached_drawables:
             drawable.delete()
         self._uncached_drawables = []
         self._treasure_glow = None
@@ -1394,8 +1399,6 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         if self._retain_drawable(signature):
             return super()._draw_object(signature, factory)
         drawable = factory()
-        if not hasattr(self, '_uncached_drawables'):
-            self._uncached_drawables = []
         self._uncached_drawables.append(drawable)
         self._drawables.append(drawable)
         return drawable

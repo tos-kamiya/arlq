@@ -302,6 +302,9 @@ class PygletUI(PygletSettingsMixin):
         self.floor_transition_seconds = d.FLOOR_TRANSITION_SECONDS
         self.idle_bob_enabled = d.IDLE_BOB_ENABLED
         self.move_glide_enabled = d.MOVE_GLIDE_ENABLED
+        self._effect_player_pos = None
+        self._treasure_sparkle_started = None
+        self._treasure_sparkle_cells = []
 
     def __init__(
         self,
@@ -1082,7 +1085,7 @@ class PygletUI(PygletSettingsMixin):
                 break
             objects = []
             for (x, y), char, color in cells:
-                if (x, y) == getattr(self, "_effect_player_pos", None):
+                if (x, y) == self._effect_player_pos:
                     continue
                 cell_color = self._combat_cell_colors.get((x, y), VISIBLE_FLOOR)
                 objects.append(pyglet.shapes.Rectangle(
@@ -1241,7 +1244,7 @@ class PygletUI(PygletSettingsMixin):
             blocked.add((px + 1, py))
         if not (player.treasure_collected and player.stage_won):
             self._treasure_sparkle_started = None
-        elif getattr(self, "_treasure_sparkle_started", None) is None:
+        elif self._treasure_sparkle_started is None:
             self._treasure_sparkle_started = time.monotonic()
         self._treasure_sparkle_center = (px, py)
         self._treasure_sparkle_cells = (
@@ -2029,7 +2032,7 @@ class PygletUI(PygletSettingsMixin):
             self._pump()
             if self._closed:
                 return None
-            cells = getattr(self, "_treasure_sparkle_cells", ())
+            cells = self._treasure_sparkle_cells
             if cells:
                 tick = int((time.monotonic() - self._treasure_sparkle_started)
                            * SPARKLE_TICKS_PER_SECOND)

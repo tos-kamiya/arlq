@@ -329,7 +329,7 @@ class SpriteEffectsMixin:
             glow = self._display_color(BOSS_AFTERGLOW_COLOR)
             core = self._display_color(BOSS_AFTERGLOW_CORE_COLOR)
             pillars = []
-            if getattr(self, '_pillar_image', None) is None:
+            if self._pillar_image is None:
                 self._pillar_image = pillar_image()
             for tint in (glow, core):
                 pillar = pyglet.sprite.Sprite(
@@ -417,7 +417,7 @@ class SpriteEffectsMixin:
         if self.combat_effect_seconds == 0:
             return
         x, y = pos
-        if getattr(self, '_dome_images', None) is None:
+        if self._dome_images is None:
             self._dome_images = dome_images()
         shell_image, glow_images = self._dome_images
         rand = random.Random(x * 1009 + y)
@@ -524,9 +524,9 @@ class SpriteEffectsMixin:
         once."""
         if self.combat_effect_seconds == 0:
             return
-        if getattr(self, '_soft_dome_image', None) is None:
+        if self._soft_dome_image is None:
             self._soft_dome_image = soft_dome_image()
-        if getattr(self, '_treasure_glow_since', None) is None:
+        if self._treasure_glow_since is None:
             self._treasure_glow_since = time.monotonic()
         x, y = pos
         rand = random.Random(x * 1009 + y)
@@ -607,7 +607,7 @@ class SpriteEffectsMixin:
 
     def _update_treasure_glow(self):
         """While waiting on the final screen, move the sparkles on."""
-        glow = getattr(self, '_treasure_glow', None)
+        glow = self._treasure_glow
         if glow is None or self._menu_active or self._closed:
             return
         if time.monotonic() - glow['drawn_at'] < 1 / TREASURE_GLOW_FPS:

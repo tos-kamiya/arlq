@@ -1456,6 +1456,7 @@ def test_culled_cached_objects_are_removed_and_created_on_return(sprite_ui):
 @pytest.mark.parametrize('ui_type', [PygletUI, SpriteUI])
 def test_shared_drawable_cache_retains_duplicates_and_deletes_stale_objects(ui_type):
     ui = ui_type.__new__(ui_type)
+    ui._uncached_drawables = []
     ui._menu_active = False
     ui._drawable_cache = {}
     ui._frame_drawable_cache = None
@@ -1487,6 +1488,7 @@ def test_shared_drawable_cache_retains_duplicates_and_deletes_stale_objects(ui_t
 
 def test_sprite_ui_recreates_uncached_objects_and_retains_floor():
     ui = SpriteUI.__new__(SpriteUI)
+    ui._uncached_drawables = []
     ui._menu_active = False
     ui._drawable_cache = {}
     ui._sprite_cells = {}

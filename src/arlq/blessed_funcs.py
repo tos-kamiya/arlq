@@ -42,6 +42,9 @@ class BlessedUI(BlessedSettingsMixin):
         self.shift_direction = False
         self._last_stage: Optional[Tuple[Any, Any]] = None
         self._treasure_sparkle_cells = []
+        self._treasure_sparkle_started = None
+        self._stage_snapshot = ""
+        self._effect_player_pos = None
 
     def _terminal_is_large_enough(self) -> bool:
         return self.term.width >= MIN_TERMINAL_WIDTH and self.term.height >= MIN_TERMINAL_HEIGHT
@@ -617,7 +620,7 @@ class BlessedUI(BlessedSettingsMixin):
             blocked.add(checkpoint)
         if not (player.treasure_collected and player.stage_won):
             self._treasure_sparkle_started = None
-        elif getattr(self, "_treasure_sparkle_started", None) is None:
+        elif self._treasure_sparkle_started is None:
             self._treasure_sparkle_started = time.monotonic()
         self._treasure_sparkle_center = (player.x, player.y)
         self._treasure_sparkle_cells = (
@@ -646,12 +649,12 @@ class BlessedUI(BlessedSettingsMixin):
         seconds, frames = effect_frames(name, pos, self.combat_effect_seconds)
         if not frames:
             return
-        snapshot = getattr(self, "_stage_snapshot", "")
+        snapshot = self._stage_snapshot
         for cells in frames:
             self._wait_for_terminal_size()
             output = [snapshot]
             for (x, y), char, color in cells:
-                if (x, y) == getattr(self, "_effect_player_pos", None):
+                if (x, y) == self._effect_player_pos:
                     continue
                 bg = self._combat_cell_backgrounds.get((x, y))
                 glyph = self._style(char, bg=bg)

@@ -35,7 +35,7 @@ class Presenter:
         """Use the old floor's visibility until a transition reaches the new one."""
         visibility = {result.floor_after: view.get("cur_torched")}
         if result.floor_before != result.floor_after:
-            previous = getattr(ui, "_last_stage_draw", None)
+            previous = ui._last_stage_draw
             previous_view = previous[1] if previous is not None else {}
             visibility[result.floor_before] = (
                 previous_view.get("cur_torched")
