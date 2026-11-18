@@ -553,8 +553,6 @@ def cape(rig, mat, columns=CAPE_COLUMNS, rows=CAPE_ROWS):
     return obj
 
 
-# Round bar subtracted from the back of the helmet's lower edge (axis along X).
-NAPE_CUT_CENTER, NAPE_CUT_RADIUS = (0, .12, 1.535), .05
 
 
 # Size of the heroic player's sword parts in this model's units: the heroic
@@ -681,8 +679,173 @@ def chimera_sword(rig, cursed=False):
         obj.hide_render = obj.hide_viewport = True
 
 
-# How far the middle of the helmet front's top edge rises to a point.
-HELMET_PEAK = .035
+# Jet helmet shell: a hemisphere of JET_RADIUS on its equator at
+# JET_EQUATOR_Z, centered JET_CENTER_Y behind the head axis, over sides that
+# run down through JET_SIDE_RINGS (z, radius, back offset, back drop) past
+# the ears. At the back each ring moves in or out by its offset and down by
+# its drop (fading out toward the sides), so the back of the helmet follows
+# the head into the neck: it pinches in under the skull and flares out over
+# the nape at the rim.
+JET_RADIUS, JET_EQUATOR_Z, JET_CENTER_Y = .135, 1.68, .005
+JET_SIDE_RINGS = [(1.64, .136, -.005, 0), (1.61, .137, -.018, .002),
+                  (1.58, .138, -.03, .006), (1.555, .139, -.027, .012),
+                  (1.535, .140, -.008, .014), (1.525, .141, .02, .022)]
+JET_THICKNESS = .012
+# The face opening: half width, top edge height and corner radius, seen from
+# the front; it is open down through the rim.
+JET_OPENING_HALF, JET_OPENING_TOP, JET_OPENING_CORNER = .124, 1.712, .028
+# The face plate, a steel plate in front of the opening, like a visor lowered
+# over the face: it lies on a cylinder of JET_PLATE_RADIUS just outside the
+# shell (a sphere above the shell's equator) with a forward ridge down its
+# middle (JET_PLATE_RIDGE deep, JET_PLATE_RIDGE_HALF wide). Half width around
+# the curve; its top edge arches over the opening's top, and its bottom edge
+# runs down to a rounded point at the chin.
+JET_PLATE_RADIUS, JET_PLATE_HALF = .149, .175
+JET_PLATE_RIDGE, JET_PLATE_RIDGE_HALF = .022, .08
+JET_PLATE_TOP, JET_PLATE_TOP_DROP = 1.765, .012
+# The top edge rises to a point over the ridge, like a home plate.
+JET_PLATE_PEAK = .03
+# How much the brow above the shell's equator follows the dome back
+# (1 follows a sphere, 0 rises straight).
+JET_PLATE_BROW_CURVE = .7
+JET_PLATE_CHIN, JET_PLATE_BOTTOM_SIDE = 1.475, 1.52
+# The eye slit through the face plate: height range and half width (around
+# the curve); a glowing window sits just behind it.
+JET_SLIT_LOW, JET_SLIT_HIGH, JET_SLIT_HALF = 1.6185, 1.6635, .10
+
+
+def outward_mesh(name, vertices, faces):
+    """Mesh with its face normals recalculated to point outward."""
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, [], faces)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    if hasattr(mesh, 'use_auto_smooth'):
+        mesh.use_auto_smooth = True
+    return mesh
+
+
+def jet_helmet(rig, shell_mat, glow_mat):
+    """An open-face jet helmet: a round shell over the top, sides and nape,
+    with a large face opening covered by a ridged steel face plate whose eye
+    slit shows a glowing window."""
+    count = 48
+    rings = [(JET_EQUATOR_Z + JET_RADIUS * math.sin(math.radians(a)),
+              JET_RADIUS * math.cos(math.radians(a)), 0, 0) for a in range(80, -1, -10)]
+    rings += JET_SIDE_RINGS
+    vertices = [(0, JET_CENTER_Y, JET_EQUATOR_Z + JET_RADIUS)]
+    for z, radius, offset, drop in rings:
+        for i in range(count):
+            angle = i * 2 * math.pi / count
+            # 1 at the back, 0 from the sides forward.
+            back = max(0, math.cos(angle)) ** 1.5
+            r = radius + offset * back
+            vertices.append((r * math.sin(angle), JET_CENTER_Y + r * math.cos(angle),
+                             z - drop * back))
+    faces = [(0, 1 + (i + 1) % count, 1 + i) for i in range(count)]
+    for row in range(len(rings) - 1):
+        a, b = 1 + row * count, 1 + (row + 1) * count
+        faces += [(a + i, a + (i + 1) % count, b + (i + 1) % count, b + i)
+                  for i in range(count)]
+    shell = bpy.data.objects.new('Helmet', outward_mesh('Helmet', vertices, faces))
+    bpy.context.collection.objects.link(shell)
+    for face in shell.data.polygons:
+        face.use_smooth = True
+    attach(shell, rig, 'head', shell_mat).modifiers['Forged edge'].width = .004
+
+    # Face opening cutter: the opening's outline seen from the front,
+    # extruded from in front of the helmet back to just short of its middle.
+    half, top, corner = JET_OPENING_HALF, JET_OPENING_TOP, JET_OPENING_CORNER
+    outline = [(-half, 1.4), (half, 1.4)]
+    for side, start, end in ((1, 0, 90), (-1, 90, 180)):
+        cx = side * (half - corner)
+        for k in range(9):
+            angle = math.radians(start + (end - start) * k / 8)
+            outline.append((cx + corner * math.cos(angle), top - corner + corner * math.sin(angle)))
+    n = len(outline)
+    vertices = [(x, y, z) for y in (-.4, -.03) for x, z in outline]
+    faces = [tuple(range(n)), tuple(range(n, 2 * n))]
+    faces += [(i, (i + 1) % n, (i + 1) % n + n, i + n) for i in range(n)]
+    cutter = bpy.data.objects.new('Helmet face opening cutter',
+                                  outward_mesh('Helmet face opening cutter', vertices, faces))
+    bpy.context.collection.objects.link(cutter)
+    attach(cutter, rig, 'head', shell_mat).modifiers['Forged edge'].width = .001
+    cutter.hide_render = True
+    cutter.display_type = 'WIRE'
+    wall = shell.modifiers.new('Shell thickness', 'SOLIDIFY')
+    wall.thickness, wall.offset = JET_THICKNESS, 0
+    opening = shell.modifiers.new('Face opening', 'BOOLEAN')
+    opening.operation, opening.solver, opening.object = 'DIFFERENCE', 'EXACT', cutter
+    bpy.context.view_layer.objects.active = shell
+    bpy.ops.object.modifier_move_to_index(modifier=wall.name, index=0)
+    bpy.ops.object.modifier_move_to_index(modifier=opening.name, index=1)
+
+    # Face plate: a grid over (around, height). Its middle band holds the eye
+    # slit at fixed heights; the bands above and below follow the arched top
+    # edge, pointed over the ridge, and the pointed chin. Faces inside the
+    # slit are left out.
+    half, slit = JET_PLATE_HALF, JET_SLIT_HALF
+    columns = sorted(set([round(half * (2 * c / 24 - 1), 6) for c in range(25)]
+                         + [-slit, slit]))
+
+    def top(u):
+        return (JET_PLATE_TOP - JET_PLATE_TOP_DROP * (u / half) ** 2
+                + JET_PLATE_PEAK * max(0, 1 - abs(u) / JET_PLATE_RIDGE_HALF))
+
+    def bottom(u):
+        return JET_PLATE_CHIN + (JET_PLATE_BOTTOM_SIDE - JET_PLATE_CHIN) * (abs(u) / half) ** 1.5
+
+    low, high = JET_SLIT_LOW - .03, JET_SLIT_HIGH + .02
+    rows = ([lambda u, t=t: bottom(u) + (low - bottom(u)) * t for t in (0, .2, .4, .6, .8)]
+            + [lambda u, z=z: z for z in (low, JET_SLIT_LOW, JET_SLIT_HIGH, high)]
+            + [lambda u, t=t: high + (top(u) - high) * t for t in (.5, 1)])
+
+    def plate_point(u, z, inset=0):
+        # Out from the shell's axis, plus the ridge; above the shell's
+        # equator the plate curves back, less than the dome
+        # (JET_PLATE_BROW_CURVE).
+        radius = (JET_PLATE_RADIUS - inset
+                  + JET_PLATE_RIDGE * max(0, 1 - abs(u) / JET_PLATE_RIDGE_HALF))
+        lift = JET_PLATE_BROW_CURVE * max(0, z - JET_EQUATOR_Z)
+        ring = math.sqrt(max(0, radius ** 2 - lift ** 2))
+        angle = u / JET_PLATE_RADIUS
+        return (ring * math.sin(angle), JET_CENTER_Y - ring * math.cos(angle), z)
+
+    vertices = [plate_point(u, row(u)) for row in rows for u in columns]
+    width = len(columns)
+    faces = []
+    for r in range(len(rows) - 1):
+        for c in range(width - 1):
+            middle = (columns[c] + columns[c + 1]) / 2
+            if r == 6 and abs(middle) < slit:
+                continue
+            faces.append((r * width + c, r * width + c + 1,
+                          (r + 1) * width + c + 1, (r + 1) * width + c))
+    face_plate = bpy.data.objects.new('Helmet face plate',
+                                      outward_mesh('Helmet face plate', vertices, faces))
+    bpy.context.collection.objects.link(face_plate)
+    for face in face_plate.data.polygons:
+        face.use_smooth = True
+    attach(face_plate, rig, 'head', shell_mat).modifiers['Forged edge'].width = .002
+    wall = face_plate.modifiers.new('Plate thickness', 'SOLIDIFY')
+    wall.thickness, wall.offset = .005, 0
+    bpy.context.view_layer.objects.active = face_plate
+    bpy.ops.object.modifier_move_to_index(modifier=wall.name, index=0)
+
+    # Eye window: a glowing strip just behind the slit, a little larger.
+    us = [slit * 1.15 * (2 * c / 16 - 1) for c in range(17)]
+    zs = (JET_SLIT_LOW - .006, JET_SLIT_HIGH + .006)
+    vertices = [plate_point(u, z, inset=.007) for z in zs for u in us]
+    faces = [(c, c + 1, 17 + c + 1, 17 + c) for c in range(16)]
+    window = bpy.data.objects.new('Eye window', outward_mesh('Eye window', vertices, faces))
+    bpy.context.collection.objects.link(window)
+    for face in window.data.polygons:
+        face.use_smooth = True
+    attach(window, rig, 'head', glow_mat).modifiers['Forged edge'].width = .001
+    return shell
 
 
 def helmet_crest_and_horns(rig, mat):
@@ -891,87 +1054,9 @@ def build_armor(rig):
     chimera_sword(rig)
     chimera_sword(rig, cursed=True)
     joint(rig, 'neck', .075, dark)
-    # A rounded box like the heroic player's helm: flat top, upright sides.
-    helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),
-                    (.14,.13,.13),(.2075,.115,.115),(.23,.085,.085)]
-    helmet = squarish(plate(rig, 'head', 'Helmet', helmet_rings, helm), rig, 'head', helmet_rings)
-    # Raise the middle of the front's top edge to a point, like an upturned
-    # home plate seen from the front, fading out toward the back and below
-    # the eye slot.
-    width = max(abs(v.co.x) for v in helmet.data.vertices)
-    depth = max(abs(v.co.y) for v in helmet.data.vertices)
-    low, top = 1.68, max(v.co.z for v in helmet.data.vertices)
-    for vertex in helmet.data.vertices:
-        co = vertex.co
-        upper = min(1, max(0, (co.z - low) / (top - low)))
-        co.z += (HELMET_PEAK * upper * max(0, -co.y / depth)
-                 * max(0, 1 - abs(co.x) / width))
-    helmet.data.update()
-    # Hollow it like a real helmet: the helmet's own rings, one wall
-    # thickness inside at every height (1.8 cm at the sides, 1 cm at the
-    # back, 3.5 cm at the front so the eye slot does not break through), are
-    # subtracted from below. The lower edge becomes a rim and the inside
-    # takes the dark lining.
-    side_wall, back_wall, front_wall = .018, .01, .035
-    inner = [(along, width - side_wall, depth - (front_wall + back_wall) / 2)
-             for along, width, depth in helmet_rings[:3]]
-    cavity_rings = [(-.06, *inner[0][1:])] + inner[:2] + [(.13, *inner[2][1:])]
-    cavity = squarish(plate(rig, 'head', 'Helmet cavity cutter', cavity_rings, dark),
-                      rig, 'head', cavity_rings)
-    for vertex in cavity.data.vertices:
-        vertex.co.y += (front_wall - back_wall) / 2
-    # plate() leaves its faces pointing inward; the exact boolean needs both
-    # solids facing outward.
-    for mesh in (helmet.data, cavity.data):
-        bm = bmesh.new()
-        bm.from_mesh(mesh)
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-        bm.to_mesh(mesh)
-        bm.free()
-        mesh.update()
-    cavity.hide_render = True
-    cavity.display_type = 'WIRE'
-    hollow = helmet.modifiers.new('Hollow', 'BOOLEAN')
-    hollow.operation, hollow.solver, hollow.object = 'DIFFERENCE', 'EXACT', cavity
-    hollow.material_mode = 'TRANSFER'
-    bpy.context.view_layer.objects.active = helmet
-    bpy.ops.object.modifier_move_to_index(modifier=hollow.name, index=0)
-    # Eye slot: a horizontal bar subtracted from the helmet front. It runs a
-    # little past the helmet's width, so it cuts into the rounded front
-    # corners and the recess shows from the side too. The cut faces take the
-    # cutter's dark iron, and a smaller glowing pane at the back leaves a
-    # black rim around the light.
-    slot_z, slot_half_height, slot_back = 1.68, .036, -.10
-    cutter = box(rig, 'head', 'Eye slot cutter', (0, slot_back - .025, slot_z),
-                 (.14, .025, slot_half_height), trim, .006)
-    cutter.hide_render = True
-    cutter.display_type = 'WIRE'
-    slot = helmet.modifiers.new('Eye slot', 'BOOLEAN')
-    slot.operation, slot.solver, slot.object = 'DIFFERENCE', 'EXACT', cutter
-    slot.material_mode = 'TRANSFER'
-    bpy.context.view_layer.objects.active = helmet
-    bpy.ops.object.modifier_move_to_index(modifier=slot.name, index=0)
-    # Nape cut: a round bar running across the back of the helmet's lower
-    # edge is subtracted, scooping the back of the neck open so the helmet
-    # looks less confining. The cut keeps the helmet's steel.
-    bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=NAPE_CUT_RADIUS, depth=.4,
-                                        location=NAPE_CUT_CENTER, rotation=(0, math.pi / 2, 0))
-    nape = bpy.context.object
-    nape.name = 'Nape cutter'
-    # attach() reads matrix_world, which only picks up the rotation after an update.
-    bpy.context.view_layer.update()
-    attach(nape, rig, 'head', helm).modifiers['Forged edge'].width = .004
-    nape.hide_render = True
-    nape.display_type = 'WIRE'
-    cut = helmet.modifiers.new('Nape cut', 'BOOLEAN')
-    cut.operation, cut.solver, cut.object = 'DIFFERENCE', 'EXACT', nape
-    bpy.context.view_layer.objects.active = helmet
-    bpy.ops.object.modifier_move_to_index(modifier=cut.name, index=1)
     glow = material('Player visor glow', (.3, .9, 1.0), roughness=.35,
                     emission=(.1, .75, 1.0), strength=2.5)
-    # Just in front of the slot's back wall (not on it, or the two flicker).
-    box(rig, 'head', 'Eye window', (0, slot_back - .0035, slot_z),
-        (.092, .002, .021), glow, .001)
+    jet_helmet(rig, helm, glow)
     helmet_crest_and_horns(rig, trim)
     for side in ('L','R'):
         for part, radius in [('upper_arm',.085),('forearm',.062),('hand',.05),

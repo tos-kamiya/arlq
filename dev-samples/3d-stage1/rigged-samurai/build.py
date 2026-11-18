@@ -231,7 +231,7 @@ def build_armor(rig):
     iron = mats['Player dark iron trim']
     cloth = mats['Player midnight cloak']
     sole = material('Zori sole', (.22, .18, .125), roughness=.85)
-    hidden = ('Sabaton', 'Eye ', 'Nape cutter', 'Cape', 'Pauldron', 'Chest seam',
+    hidden = ('Sabaton', 'Eye ', 'Helmet face', 'Nape cutter', 'Cape', 'Pauldron', 'Chest seam',
               'Breast and back plate', 'Diagonal waist plate', 'Tasset', 'Knee cap', 'thigh plate')
     for obj in list(rig.children):
         if obj.name.startswith(hidden) or obj.name in ('Helmet', 'Helmet cavity cutter'):
