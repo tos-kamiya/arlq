@@ -62,12 +62,11 @@ def strength_label_known(label: str, known_types: Set[str]) -> bool:
     return base + {"'": "2", '"': "3"}.get(mark, "") in known_types
 
 
-def level_item_labels(player: d.Player, stage_num: int) -> Tuple[str, str]:
+def level_item_labels(player: d.Player) -> Tuple[str, str]:
     """Level and item fragments shared by both status bars.
 
     The Collector's x1.2 and Javelin Elf's x1.25 bonuses apply in every stage.
     x1.2 is omitted while a sword already replaces the base multiplier.
-    `stage_num` is retained for existing callers.
     """
     has_k = bool(player.elf_stage_flags & d.ELF_STAGE_K_FLAG)
     has_j = d._javelin_follower_active(player)
@@ -102,7 +101,7 @@ def status_prefix(
     game_start_turn: Optional[int] = None,
 ) -> str:
     """Text to the left of the LP readout, including the trailing spaces."""
-    level_str, item_str = level_item_labels(player, stage_num)
+    level_str, item_str = level_item_labels(player)
     text = ""
     if stage_num != 0:
         text += f"ST: {stage_num}  "

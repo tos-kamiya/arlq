@@ -176,7 +176,7 @@ def test_glyph_party_inputs_control_strength_coloring(mode, known, expected):
 
 
 def step(current, player, direction=(1, 0), checkpoint=(2, 2), stage_num=6):
-    return engine._step(
+    return engine._process_multi_floor_turn(
         direction,
         [current],
         player,
@@ -367,7 +367,7 @@ def test_stage6_leaving_first_floor_scatters_waiting_candidates(monkeypatch):
     floor = [0]
     monkeypatch.setattr(stage6.rand, "choice", lambda choices: choices[-1])
 
-    engine._step((1, 0), [upper, lower], player, floor, [(2, 2)], Counter(), 1, stage_num=6)
+    engine._process_multi_floor_turn((1, 0), [upper, lower], player, floor, [(2, 2)], Counter(), 1, stage_num=6)
 
     assert floor == [1]
     assert candidate in lower.entities and candidate not in upper.entities
@@ -389,7 +389,7 @@ def test_stage6_falling_from_first_floor_scatters_members_on_all_floors(monkeypa
     monkeypatch.setattr(stage6.rand, "choice", lambda choices: choices[0])
     floor_index = [0]
 
-    engine._step((1, 0), [upper, lower], player, floor_index, [(2, 2)],
+    engine._process_multi_floor_turn((1, 0), [upper, lower], player, floor_index, [(2, 2)],
                  Counter(), 1, stage_num=6)
 
     assert floor_index == [1]
@@ -413,13 +413,13 @@ def test_stage6_scatter_when_route_differs_from_previous(monkeypatch):
     monkeypatch.setattr(stage6, "scatter_waiting_members",
                         lambda floors, player, index: calls.append(index))
 
-    engine._step((1, 0), [upper, lower], player, floor_index, [(2, 2)], Counter(), 1, stage_num=6)
+    engine._process_multi_floor_turn((1, 0), [upper, lower], player, floor_index, [(2, 2)], Counter(), 1, stage_num=6)
     assert floor_index == [1] and calls == [1]
     player.x, player.y = 7, 8
-    engine._step((1, 0), [upper, lower], player, floor_index, [(7, 8)], Counter(), 2, stage_num=6)
+    engine._process_multi_floor_turn((1, 0), [upper, lower], player, floor_index, [(7, 8)], Counter(), 2, stage_num=6)
     assert floor_index == [0] and calls == [1]
     player.x, player.y = 2, 2
-    engine._step((1, 0), [upper, lower], player, floor_index, [(2, 2)], Counter(), 3, stage_num=6)
+    engine._process_multi_floor_turn((1, 0), [upper, lower], player, floor_index, [(2, 2)], Counter(), 3, stage_num=6)
     assert floor_index == [1] and calls == [1]
     player.x, player.y = 12, 12
     stage6.scatter_members_on_new_route([upper, lower], player, 0, (4, 2), 1)
@@ -442,10 +442,10 @@ def test_stage6_new_route_scatter_including_pit_climb(monkeypatch):
     calls = []
     monkeypatch.setattr(stage6, "scatter_waiting_members",
                         lambda floors, player, index: calls.append(index))
-    engine._step((0, -1), [upper, lower], player, floor_index, [(5, 6)], Counter(), 1, stage_num=6)
+    engine._process_multi_floor_turn((0, -1), [upper, lower], player, floor_index, [(5, 6)], Counter(), 1, stage_num=6)
     assert floor_index == [0] and calls == [0]
     player.x, player.y = 5, 4
-    engine._step((0, 1), [upper, lower], player, floor_index, [(5, 4)], Counter(), 2, stage_num=6)
+    engine._process_multi_floor_turn((0, 1), [upper, lower], player, floor_index, [(5, 4)], Counter(), 2, stage_num=6)
     assert floor_index == [1] and calls == [0]
 
 
@@ -784,7 +784,7 @@ def test_boss_party_vortex_is_local_and_boss_unlocks_separate_treasure():
         key=lambda point: abs(point[0] - vortex.x) + abs(point[1] - vortex.y),
     )
     floor_index = [len(floors) - 1]
-    engine._step(
+    engine._process_multi_floor_turn(
         (0, 0),
         floors,
         player,
@@ -1012,7 +1012,7 @@ def test_pit_falls_to_next_floor_with_members():
     lower, _ = state()
     current.field[2][3] = d.CHAR_COLLAPSE
     floor_index = [0]
-    engine._step(
+    engine._process_multi_floor_turn(
         (1, 0),
         [current, lower],
         player,
@@ -1060,7 +1060,7 @@ def test_climbing_pit_moves_checkpoint_after_leaving_pit():
     assert floor_index == [0]
     assert checkpoint == [(3, 2)]
     assert player.just_climbed_pit
-    engine._step((1, 0), [upper, lower], player, floor_index, checkpoint,
+    engine._process_multi_floor_turn((1, 0), [upper, lower], player, floor_index, checkpoint,
                  Counter(), 1, stage_num=6)
     assert (player.x, player.y) == (4, 2)
     assert checkpoint == [(4, 2)]
@@ -1081,11 +1081,11 @@ def test_pit_and_discovered_passage_require_explorer():
         lower, [upper, lower], player, floor_index, checkpoint
     ) is None
     assert floor_index == [1]
-    engine._step((1, 0), [upper, lower], player, floor_index, checkpoint,
+    engine._process_multi_floor_turn((1, 0), [upper, lower], player, floor_index, checkpoint,
                  Counter(), 1, stage_num=6)
     assert (player.x, player.y) == (3, 2)
     player.members.append(d.PartyMember(3, 2, d.MEMBER_DUNGEON_EXPLORER))
-    engine._step((1, 0), [upper, lower], player, floor_index, checkpoint,
+    engine._process_multi_floor_turn((1, 0), [upper, lower], player, floor_index, checkpoint,
                  Counter(), 1, stage_num=6)
     assert (player.x, player.y) == (4, 2)
 
@@ -1110,7 +1110,7 @@ def test_explorer_climbs_pit_by_stepping_onto_marker():
     upper.field[2][3] = d.CHAR_COLLAPSE
     lower.field[2][3] = d.CHAR_SCHOLAR_STAIRS_UP
     floor_index = [1]
-    engine._step((1, 0), [upper, lower], player, floor_index, [(2, 2)],
+    engine._process_multi_floor_turn((1, 0), [upper, lower], player, floor_index, [(2, 2)],
                  Counter(), 1, stage_num=6)
     assert floor_index == [0]
     assert (player.x, player.y) == (3, 2)
@@ -1159,7 +1159,7 @@ def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):
 @pytest.mark.parametrize("roles", [(), ("Healer",)])
 def test_loop_replay_preserves_lp_including_earlier_rewinds(monkeypatch, roles):
     from arlq.arlq import GameConfig
-    from arlq.stage_replay import replay_to_operation
+    from replay_helpers import replay_to_operation
     from arlq.stage_types import ReplayContext
 
     def build(*_):
@@ -1251,7 +1251,13 @@ def test_floor_connections_are_reachable_and_keep_members_on_transitions(seed):
         d.PartyMember(player.x, player.y, "Dungeon Explorer"),
         d.PartyMember(player.x, player.y, "Noble"),
     ]
-    stage56.set_scholar_stairs(floors, True)
+    for current in floors:
+        for x, y in current.scholar_up_stairs:
+            current.field[y][x] = d.CHAR_SCHOLAR_STAIRS_UP
+            current.seen[y][x] = 1
+        for x, y in current.scholar_down_stairs:
+            current.field[y][x] = d.CHAR_SCHOLAR_STAIRS_DOWN
+            current.seen[y][x] = 1
     floor_index, checkpoint = [0], [floors[0].up]
     for index, current in enumerate(floors):
         entry = (player.x, player.y)
@@ -1430,7 +1436,7 @@ def test_member_trial_pit_lands_on_floor_without_return_stairs():
     player.x, player.y = pit
     floor, checkpoint = [0], [pit]
     engine._reveal_collapse_pits(floors, 0, collapse)
-    engine._step((0, -1), floors, player, floor, checkpoint, Counter(), 1, stage_num=5)
+    engine._process_multi_floor_turn((0, -1), floors, player, floor, checkpoint, Counter(), 1, stage_num=5)
     assert floor == [1]
     assert (player.x, player.y) == fall_point
     assert lower.field[fall_point[1]][fall_point[0]] == d.CHAR_PIT_LANDING
@@ -1481,7 +1487,7 @@ def test_member_trial_can_bypass_first_pair_and_recruit_knight():
     upper = floors[0]
     player.x, player.y = 14, 3
     floor, checkpoint, queue = [0], [upper.up], Counter()
-    engine._step((1, 0), floors, player, floor, checkpoint, queue, 1, stage_num=5)
+    engine._process_multi_floor_turn((1, 0), floors, player, floor, checkpoint, queue, 1, stage_num=5)
     assert (player.x, player.y) == (15, 3)
     assert [member.role for member in player.members] == [d.MEMBER_KNIGHT]
     assert sum(isinstance(e, d.Monster) and e.tribe.char == "f" for e in upper.entities) == 5
@@ -1508,10 +1514,10 @@ def test_member_trial_practice_pit_has_ordinary_return_stairs():
     engine._reveal_collapse_pits(floors, 0, collapse)
     player.x, player.y = collapse.x - 1, collapse.y
     floor, checkpoint = [0], [upper.up]
-    engine._step((1, 0), floors, player, floor, checkpoint, Counter(), 1, stage_num=5)
+    engine._process_multi_floor_turn((1, 0), floors, player, floor, checkpoint, Counter(), 1, stage_num=5)
     assert floor == [1]
     for _ in range(6):
-        engine._step((1, 0), floors, player, floor, checkpoint, Counter(), 2, stage_num=5)
+        engine._process_multi_floor_turn((1, 0), floors, player, floor, checkpoint, Counter(), 2, stage_num=5)
     assert floor == [0] and (player.x, player.y) == (33, 3)
     assert lower.up_stairs == [(32, 3)] and upper.down_stairs == [(33, 3)]
 
@@ -1625,17 +1631,17 @@ def test_trial_dialogue_repeats_on_adjacent_moves_and_recruitment_is_separate(mo
     current.entities.append(member)
     floors, floor, checkpoint, queue = [current], [0], [(1, 1)], Counter()
     reasons = set()
-    result = engine._step((1, 0), floors, player, floor, checkpoint, queue, 1,
+    result = engine._process_multi_floor_turn((1, 0), floors, player, floor, checkpoint, queue, 1,
                           stage_num=5, repeat_stop_reasons=reasons)
     assert result == (-2, i18n.t(stage5.TRIAL_MEMBER_LINES[d.MEMBER_KNIGHT]))
     assert "member_dialogue" in reasons
     assert not player.members
-    engine._step((-1, 0), floors, player, floor, checkpoint, queue, 2,
+    engine._process_multi_floor_turn((-1, 0), floors, player, floor, checkpoint, queue, 2,
                  stage_num=5)
-    result = engine._step((1, 0), floors, player, floor, checkpoint, queue, 3,
+    result = engine._process_multi_floor_turn((1, 0), floors, player, floor, checkpoint, queue, 3,
                           stage_num=5)
     assert result and result[0] == -2
-    result = engine._step((1, 0), floors, player, floor, checkpoint, queue, 4,
+    result = engine._process_multi_floor_turn((1, 0), floors, player, floor, checkpoint, queue, 4,
                           stage_num=5)
     assert result and result[0] != -2
     assert member in player.members
@@ -1645,11 +1651,11 @@ def test_trial_dialogue_only_on_successful_stage_five_movement():
     current, player = state()
     current.entities.append(d.PartyMember(4, 2, d.MEMBER_ROGUE))
     floors, floor, checkpoint, queue = [current], [0], [(1, 1)], Counter()
-    result = engine._step((1, 0), floors, player, floor, checkpoint, queue, 1,
+    result = engine._process_multi_floor_turn((1, 0), floors, player, floor, checkpoint, queue, 1,
                           stage_num=6)
     assert result is None or result[0] != -2
     current.field[2][2] = d.CHAR_WALL
-    result = engine._step((-1, 0), floors, player, floor, checkpoint, queue, 2,
+    result = engine._process_multi_floor_turn((-1, 0), floors, player, floor, checkpoint, queue, 2,
                           stage_num=5)
     assert result is None or result[0] != -2
 
@@ -1797,7 +1803,7 @@ def test_cat_explores_after_twenty_turns_without_identifying_or_stopping(monkeyp
     monkeypatch.setattr(stage56.rand, "choice", lambda cells: (10, 6))
     stops = set()
     for turn in range(20):
-        engine._step(
+        engine._process_multi_floor_turn(
             (1, 0) if turn % 2 == 0 else (-1, 0), [current], player,
             [0], [(2, 2)], Counter(), turn, stage_num=stage_num,
             repeat_stop_reasons=stops,

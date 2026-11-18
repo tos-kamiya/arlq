@@ -240,7 +240,7 @@ def _fight(glyph, stage_num, boss_defeated=False):
     player.level = 10000
     player.boss_defeated = boss_defeated
     events = []
-    engine._step((1, 0), [current], player, [0], [(2, 2)], engine.Counter(), 1,
+    engine._process_multi_floor_turn((1, 0), [current], player, [0], [(2, 2)], engine.Counter(), 1,
                  stage_num=stage_num, events=events)
     return next(event for event in events if isinstance(event, Combat))
 
@@ -263,7 +263,7 @@ def test_stage6_boss_party_marks_its_boss_but_not_the_dungeon_core():
     player.level = 10000
     player.x, player.y = boss.x, boss.y
     events = []
-    engine._step((0, 0), floors, player, [len(floors) - 1], [current.up],
+    engine._process_multi_floor_turn((0, 0), floors, player, [len(floors) - 1], [current.up],
                  engine.Counter(), 1, stage_num=6, events=events)
     combat = next(event for event in events if isinstance(event, Combat))
     assert player.boss_defeated
@@ -273,7 +273,7 @@ def test_stage6_boss_party_marks_its_boss_but_not_the_dungeon_core():
                 and e.tribe.char == d.CHAR_DUNGEON_CORE)
     player.x, player.y = core.x, core.y
     events = []
-    engine._step((0, 0), floors, player, [len(floors) - 1], [current.up],
+    engine._process_multi_floor_turn((0, 0), floors, player, [len(floors) - 1], [current.up],
                  engine.Counter(), 2, stage_num=6, events=events)
     fights = [event for event in events if isinstance(event, Combat)]
     assert player.dungeon_core_destroyed and fights

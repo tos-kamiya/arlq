@@ -285,7 +285,8 @@ def test_bridgehead_on_another_floor_restores_on_entry():
 
 def test_bridgehead_in_stage3_works_in_game_and_replay(monkeypatch):
     from types import SimpleNamespace
-    from arlq import stage_replay
+    from arlq import stage_world
+    from replay_helpers import replay_to_operation
     from arlq.arlq import GameConfig
     from arlq.stage_types import ReplayContext
 
@@ -295,7 +296,7 @@ def test_bridgehead_in_stage3_works_in_game_and_replay(monkeypatch):
         return [current], d.Player(9, 10, 1, 25)
 
     monkeypatch.setattr(game_engine, "build", build)
-    monkeypatch.setattr(stage_replay, "build", build)
+    monkeypatch.setattr(stage_world, "build", build)
     frames = []
     moves = iter([(1, 0), None])
     ui = SimpleNamespace(
@@ -305,7 +306,7 @@ def test_bridgehead_in_stage3_works_in_game_and_replay(monkeypatch):
     game_engine.run_game(ui, "test", stage_num=3)
     replay = ReplayContext(3, 123, GameConfig())
     replay.operations.append((1, 0))
-    _, replayed_player, *_ = stage_replay.replay_to_operation(replay, 1)
+    _, replayed_player, *_ = replay_to_operation(replay, 1)
     assert frames == [25, 60]
     assert replayed_player.lp == 60
 
@@ -366,7 +367,7 @@ def test_timed_spawn_is_recorded_as_world_change(monkeypatch):
     monkeypatch.setattr(stage6, "advance_spawns", lambda *_: [(0, spawned)])
     trace = TraceRecorder(params={})
     trace.begin_turn("R")
-    game_engine._step((1, 0), [current], player, [0], [(4, 4)], Counter(), 9,
+    game_engine._process_multi_floor_turn((1, 0), [current], player, [0], [(4, 4)], Counter(), 9,
                       stage_num=6, trace=trace)
     trace.commit_turn()
     assert trace.turns[0]["world"] == [{
@@ -383,7 +384,7 @@ def test_simultaneous_spawns_are_all_recorded(monkeypatch):
     monkeypatch.setattr(stage6, "advance_spawns", lambda *_: list(enumerate(monsters)))
     trace = TraceRecorder(params={})
     trace.begin_turn("R")
-    game_engine._step((1, 0), floors, player, [0], [(4, 4)], Counter(), 14,
+    game_engine._process_multi_floor_turn((1, 0), floors, player, [0], [(4, 4)], Counter(), 14,
                       stage_num=6, trace=trace)
     trace.commit_turn()
     assert [(event["floor"], event["at"]) for event in trace.turns[0]["world"]] == [

@@ -47,7 +47,7 @@ class GameSession:
         elif stage_num == 6:
             self.floors, self.player = engine.stage6.build(self.config)
         elif stage_num == 5:
-            self.floors, self.player = engine.stage5.build_member_trial(self.config)
+            self.floors, self.player = engine.stage5.build_member_trial()
         else:
             self.floors, self.player = engine.build(
                 self.config.corridor_h_width,
@@ -460,9 +460,6 @@ class GameSession:
             self.trace.set_outcome("unfinished" if unfinished else "quit")
         # Quitting skips the game-over screen, unlike a finished game.
         self.phase = "quit"
-
-    def game_over_message(self):
-        return self.message[1]
 
     def seed_message(self):
         return engine.tr("SEED: {seed_str}").format(seed_str=self.seed_str)

@@ -8,9 +8,10 @@ import pytest
 
 from arlq import defs as d
 from arlq import game_engine as engine
-from arlq import display, stage5, stage6, stage_replay
+from arlq import display, stage5, stage6, stage_replay, stage_world
 from arlq.arlq import GameConfig
 from arlq.stage_types import Floor, ReplayContext
+from replay_helpers import replay_to_operation
 
 
 @pytest.mark.parametrize('stage_num', range(1, 7))
@@ -34,7 +35,7 @@ def test_amoeba_is_known_at_the_start_of_every_stage(stage_num):
 @pytest.mark.parametrize('stage_num', range(3, 7))
 def test_replay_starts_with_only_rank_one_amoeba_known(stage_num):
     replay = ReplayContext(stage_num, 12345, GameConfig())
-    _, player, *_ = stage_replay.replay_to_operation(replay, 0)
+    _, player, *_ = replay_to_operation(replay, 0)
     assert player.known_monsters == {'a'}
 
 
@@ -99,7 +100,7 @@ def run_and_replay(monkeypatch, build, stage_num, moves, config):
         monkeypatch.setattr(stage5, "build_member_trial", build)
     else:
         monkeypatch.setattr(engine, "build", build)
-        monkeypatch.setattr(stage_replay, "build", build)
+        monkeypatch.setattr(stage_world, "build", build)
     contexts = []
 
     def make_context(*args):
@@ -124,7 +125,7 @@ def run_and_replay(monkeypatch, build, stage_num, moves, config):
     engine.rand.set_seed(2468)
     engine.run_game(ui, "test", stage_num=stage_num, config=config)
     context = contexts[0]
-    floors, player, floor, *_ = stage_replay.replay_to_operation(
+    floors, player, floor, *_ = replay_to_operation(
         context,
         len(context.operations),
     )
@@ -320,7 +321,7 @@ def test_rewind_keeps_current_knowledge_after_vortex_erasure(monkeypatch):
     monkeypatch.setattr(engine, "_vortex_rearrange", disturb_map)
     monkeypatch.setattr(stage_replay, "_spawn", respawn_loop)
     context = run_and_replay(monkeypatch, build, 5, [(1, 0)] * 14, GameConfig())
-    floors, player, *_ = stage_replay.replay_to_operation(context, 14)
+    floors, player, *_ = replay_to_operation(context, 14)
     assert (player.x, player.y) == (2, 2)
     assert floors[0].seen[2][15]
     assert not floors[0].seen[2][8]
@@ -478,7 +479,7 @@ def test_replay_executes_operations_discarded_by_loop_contacts(monkeypatch):
     context = ReplayContext(
         6, 123, GameConfig(), operations=[(1, 0)] * 3, rewind_targets={2: 0}
     )
-    _, player, *_ = stage_replay.replay_to_operation(context, 3)
+    _, player, *_ = replay_to_operation(context, 3)
     assert effects == ["V", "V"]
     assert (player.x, player.y) == (3, 2)
     assert "V" in player.known_monsters

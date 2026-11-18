@@ -44,7 +44,7 @@ def test_ivy_attacks_every_turn_even_without_movement(monkeypatch, stage_num):
     monkeypatch.setattr(stage6, "advance_spawns", lambda *args: None)
     reasons = set()
     for turn in (1, 2):
-        game_engine._step((0, 0), [current], player, [0], [(5, 4)], Counter(),
+        game_engine._process_multi_floor_turn((0, 0), [current], player, [0], [(5, 4)], Counter(),
                           turn, stage_num=stage_num, repeat_stop_reasons=reasons)
     assert player.lp == 92
     assert "ivy_hit" in reasons

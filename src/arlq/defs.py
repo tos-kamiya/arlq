@@ -206,7 +206,6 @@ EFFECT_ENERGY_DRAIN: str = "Energy Drain"
 EFFECT_CALTROP_SPREAD: str = "Caltrop Spread"
 EFFECT_ROCK_SPREAD: str = "Rock Spread"
 EFFECT_VORTEX: str = "Vortex"
-EFFECT_GOT_TREASURE: str = "Got Treasure"
 
 PEGASUS_STEP_X: int = 9
 PEGASUS_STEP_Y: int = 4
@@ -1010,18 +1009,6 @@ def get_stage_roster_tribes(stage_num: int) -> List[MonsterTribe]:
     )
 
 
-
-# Keep the established import surface while frontends use the display module.
-from .display import (
-    FieldGlyph as FieldGlyph,
-    build_strength_column as build_strength_column,
-    elf_stage_progress_marks as elf_stage_progress_marks,
-    level_item_labels as level_item_labels,
-    player_appearance as player_appearance,
-    preview_entity_glyphs as preview_entity_glyphs,
-    revealed_entity_glyphs as revealed_entity_glyphs,
-    status_prefix as status_prefix,
-)
 
 COMBAT_EFFECT_SECONDS = 0.3
 # The sprite GUI's still between floors (stairs and pits), set in Settings;

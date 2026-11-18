@@ -12,5 +12,5 @@ def test_solo_monster_does_not_move_as_turns_pass(monkeypatch):
     player = d.Player(4, 4, 1, 100)
     monkeypatch.setattr(stage6, "advance_spawns", lambda *_: [])
     for turn in range(20):
-        game_engine._step((0, 0), [current], player, [0], [(4, 4)], Counter(), turn, stage_num=6)
+        game_engine._process_multi_floor_turn((0, 0), [current], player, [0], [(4, 4)], Counter(), turn, stage_num=6)
     assert (enemy.x, enemy.y) == (10, 10)

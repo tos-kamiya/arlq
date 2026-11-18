@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 from blessed.keyboard import Keystroke
 
-from arlq import defs, i18n, settings
+from arlq import defs, i18n
 from arlq.blessed_funcs import BlessedUI
 from arlq.cli import _prepare_cli_session, cli_setting_overrides
 

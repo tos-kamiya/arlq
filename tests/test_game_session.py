@@ -110,7 +110,7 @@ def test_view_does_not_change_message(session):
     assert session.message == message
     session.step((1, 0))
     assert session.phase == "game_over"
-    assert session.game_over_message() == engine.trp(">> Collapsed from hunger! <<", 9)
+    assert session.message[1] == engine.trp(">> Collapsed from hunger! <<", 9)
 
 
 def test_consumed_turns_report_their_move(session):

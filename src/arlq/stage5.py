@@ -1,7 +1,6 @@
 """Stage 5 member trial and tutorial behavior."""
 
 from . import defs as d
-from .arlq import GameConfig
 from .i18n import t
 from .stage_types import Floor
 
@@ -105,9 +104,7 @@ def trial_member_line(current: Floor, player: d.Player) -> str | None:
     return None
 
 
-def build_member_trial(
-    config: GameConfig | None = None,
-) -> tuple[list[Floor], d.Player]:
+def build_member_trial() -> tuple[list[Floor], d.Player]:
     """Build both Stage 5 tutorial floors from their in-code ASCII maps."""
     member_roles = {glyph: role for role, glyph in d.MEMBER_GLYPHS.items()}
 

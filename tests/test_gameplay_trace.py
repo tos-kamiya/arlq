@@ -9,12 +9,11 @@ import pytest
 
 from arlq import defs as d
 from arlq import game_engine as game_engine_module
-from arlq.arlq import respawn_entity, update_entities
 from arlq.game_engine import (
     Floor,
     _move_player,
     _process_respawn_queue,
-    _step,
+    _process_multi_floor_turn,
     run_game,
 )
 from arlq.game_events import Combat
@@ -49,15 +48,6 @@ def one_floor(entities, **overrides):
     for key, value in overrides.items():
         setattr(floor, key, value)
     return floor
-
-
-def committed_turn(recorder, key, func, *args, **kwargs):
-    recorder.begin_turn(key)
-    result = func(*args, **kwargs)
-    if hasattr(result, "events"):
-        recorder.record_events(result.events)
-    recorder.commit_turn()
-    return recorder.turns[-1]
 
 
 # --- TraceRecorder / loader / ReplayUI -------------------------------------
@@ -263,7 +253,7 @@ def test_recorder_to_dict_schema_and_write(tmp_path):
     assert data["final"] == {"outcome": "quit", "turns": 0}
 
     out = tmp_path / "trace.json"
-    trace.write(out)
+    trace.write_outputs([out])
     assert json.loads(out.read_text()) == data
 
 
@@ -339,166 +329,6 @@ def test_fast_forward_continue_waits_on_game_over_screen():
     assert game_over_inputs == [True]
 
 
-def test_legacy_wall_blocked():
-    player = d.Player(2, 2, 1, 90)
-    field = blank_field()
-    field[2][3] = d.CHAR_WALL
-    trace = TraceRecorder(params={})
-
-    turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set())
-
-    assert turn["wall"] == {"result": "blocked"}
-    assert (player.x, player.y) == (2, 2)
-
-
-def test_legacy_wall_sword_break_reports_remaining_uses():
-    player = d.Player(2, 2, 1, 90)
-    player.item = d.ITEM_SWORD_X1_5
-    player.item_uses = 1
-    field = blank_field()
-    field[2][3] = d.CHAR_WALL
-    trace = TraceRecorder(params={})
-
-    turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set())
-
-    assert turn["wall"] == {"result": "sword_break", "item_uses_left": 0}
-    assert (player.x, player.y) == (3, 2)
-
-
-def test_legacy_wall_pegasus_phase():
-    player = d.Player(2, 2, 1, 90)
-    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
-    field = blank_field()
-    field[2][3] = d.CHAR_WALL
-    trace = TraceRecorder(params={})
-
-    turn = committed_turn(trace, "R", update_entities, KEYS["R"], field, player, [player], set())
-
-    assert turn["wall"] == {"result": "pegasus_phase"}
-    assert (player.x, player.y) == (2 + d.PEGASUS_STEP_X, 2)
-    assert player.karma == 1
-
-
-def test_legacy_contact_treasure_locked_and_unlocked():
-    player = d.Player(2, 2, 1, 90)
-    treasure = d.Treasure(3, 2, "TD")
-    field = blank_field()
-    trace = TraceRecorder(params={})
-
-    turn = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player, [player, treasure]
-    )
-    assert turn["contact"] == {"type": "treasure", "id": "TD", "collected": False}
-
-    player2 = d.Player(2, 2, 1, 90)
-    treasure2 = d.Treasure(3, 2, "TD")
-    treasure2.unlocked = True
-    turn2 = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player2, [player2, treasure2]
-    )
-    assert turn2["contact"] == {"type": "treasure", "id": "TD", "collected": True}
-
-
-def test_legacy_contact_fairy_join():
-    player = d.Player(2, 2, 1, 90)
-    fairy = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
-    field = blank_field()
-    trace = TraceRecorder(params={})
-
-    turn = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player, [player, fairy], set()
-    )
-
-    assert turn["contact"] == {"type": "companion", "id": "n"}
-    assert player.fairy is fairy
-
-
-def test_legacy_contact_monster_win_expires_old_item_as_overwritten():
-    player = d.Player(2, 2, 10, 90)
-    player.item = d.ITEM_SWORD_CURSED
-    player.item_taken_from = "d"
-    monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["c"])  # level 10, grants a sword
-    field = blank_field()
-    trace = TraceRecorder(params={})
-
-    turn = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player, [player, monster], set()
-    )
-
-    assert turn["contact"] == {"type": "monster", "id": "c", "outcome": "win"}
-    assert turn["expired"] == [{"type": "item_expired", "item": "d", "reason": "overwritten"}]
-    assert player.item == d.ITEM_SWORD_X1_5
-
-
-def test_legacy_contact_monster_lose_expires_old_item_as_lost_on_defeat():
-    player = d.Player(2, 2, 1, 90)
-    player.item = d.ITEM_SWORD_X1_5
-    player.item_taken_from = "c"
-    monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["C"])  # level 15, beats a level-1 player
-    field = blank_field()
-    trace = TraceRecorder(params={})
-
-    turn = committed_turn(
-        trace,
-        "R",
-        update_entities,
-        KEYS["R"],
-        field,
-        player,
-        [player, monster],
-        set(),
-        respawn_point=(5, 5),
-    )
-
-    assert turn["contact"] == {"type": "monster", "id": "C", "outcome": "lose", "respawn_to": [5, 5]}
-    assert turn["expired"] == [{"type": "item_expired", "item": "c", "reason": "lost_on_defeat"}]
-    assert player.item is None
-    assert player.item_uses == 0
-    assert player.item_taken_from is None
-
-
-def test_legacy_contact_high_elf_always_refused():
-    player = d.Player(2, 2, 1, 90)
-    high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
-    field = blank_field()
-    trace = TraceRecorder(params={})
-
-    turn = committed_turn(
-        trace, "R", update_entities, KEYS["R"], field, player, [player, high_elf], set()
-    )
-
-    assert turn["contact"] == {"type": "monster", "id": "H", "outcome": "refused"}
-
-
-def test_legacy_fairy_departed_on_karma_limit():
-    player = d.Player(2, 2, 1, 90)
-    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["l"])  # durability 1
-    player.karma = 1
-    field = blank_field()
-    trace = TraceRecorder(params={})
-
-    turn = committed_turn(trace, "U", update_entities, KEYS["U"], field, player, [player], set())
-
-    assert turn["expired"] == [{"type": "companion_departed", "id": "l"}]
-    assert player.fairy is None
-
-
-def test_legacy_world_respawn_event_reports_position(monkeypatch):
-    entities = []
-    field = blank_field()
-    trace = TraceRecorder(params={})
-    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (7, 3))
-
-    entity = respawn_entity(d.CHAR_TO_MONSTER_TRIBE["X"], entities, field)
-    trace.add_world_event({"type": "respawn", "kind": "monster", "id": "X", "at": [entity.x, entity.y]})
-
-    assert trace.turns == []  # add_world_event() before begin_turn() is a no-op
-    trace.begin_turn("R")
-    trace.add_world_event({"type": "respawn", "kind": "monster", "id": "X", "at": [entity.x, entity.y]})
-    trace.commit_turn()
-    assert trace.turns[-1]["world"] == [{"type": "respawn", "kind": "monster", "id": "X", "at": [7, 3]}]
-
-
 # --- Current game_engine turn path ----------------------------------------
 
 
@@ -506,7 +336,7 @@ def process_engine_turn(trace, key, floors, player, stage_num, turn=1):
     floor = [0]
     checkpoint = [(player.x, player.y)]
     trace.begin_turn(key)
-    _step(
+    _process_multi_floor_turn(
         KEYS[key],
         floors,
         player,
@@ -519,6 +349,139 @@ def process_engine_turn(trace, key, floors, player, stage_num, turn=1):
     )
     trace.commit_turn()
     return trace.turns[-1]
+
+
+def test_engine_wall_blocked():
+    player = d.Player(2, 2, 1, 90)
+    floors = [one_floor([])]
+    floors[0].field[2][3] = d.CHAR_WALL
+    trace = TraceRecorder(params={})
+
+    turn = process_engine_turn(trace, "R", floors, player, stage_num=1)
+
+    assert turn["wall"] == {"result": "blocked"}
+    assert (player.x, player.y) == (2, 2)
+
+
+def test_engine_wall_sword_break_reports_remaining_uses():
+    player = d.Player(2, 2, 1, 90)
+    player.item = d.ITEM_SWORD_X1_5
+    player.item_uses = 1
+    floors = [one_floor([])]
+    floors[0].field[2][3] = d.CHAR_WALL
+    trace = TraceRecorder(params={})
+
+    turn = process_engine_turn(trace, "R", floors, player, stage_num=1)
+
+    assert turn["wall"] == {"result": "sword_break", "item_uses_left": 0}
+    assert (player.x, player.y) == (3, 2)
+
+
+def test_engine_wall_pegasus_phase():
+    player = d.Player(2, 2, 1, 90)
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["p"])
+    floors = [one_floor([])]
+    floors[0].field[2][3] = d.CHAR_WALL
+    trace = TraceRecorder(params={})
+
+    turn = process_engine_turn(trace, "R", floors, player, stage_num=1)
+
+    assert turn["wall"] == {"result": "pegasus_phase"}
+    assert (player.x, player.y) == (2 + d.PEGASUS_STEP_X, 2)
+    assert player.karma == 1
+
+
+def test_engine_contact_treasure_locked_and_unlocked():
+    player = d.Player(2, 2, 1, 90)
+    treasure = d.Treasure(3, 2, "TD")
+    trace = TraceRecorder(params={})
+
+    turn = process_engine_turn(trace, "R", [one_floor([treasure])], player, stage_num=1)
+    assert turn["contact"] == {"type": "treasure", "id": "TD", "collected": False}
+
+    player2 = d.Player(2, 2, 1, 90)
+    treasure2 = d.Treasure(3, 2, "TD")
+    treasure2.unlocked = True
+    turn2 = process_engine_turn(trace, "R", [one_floor([treasure2])], player2, stage_num=1)
+    assert turn2["contact"] == {"type": "treasure", "id": "TD", "collected": True}
+
+
+def test_engine_contact_fairy_join():
+    player = d.Player(2, 2, 1, 90)
+    fairy = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
+    trace = TraceRecorder(params={})
+
+    turn = process_engine_turn(trace, "R", [one_floor([fairy])], player, stage_num=1)
+
+    assert turn["contact"] == {"type": "companion", "id": "n"}
+    assert player.fairy is fairy
+
+
+def test_engine_contact_monster_win_expires_old_item_as_overwritten():
+    player = d.Player(2, 2, 10, 90)
+    player.item = d.ITEM_SWORD_CURSED
+    player.item_taken_from = "d"
+    monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["c"])  # level 10, grants a sword
+    trace = TraceRecorder(params={})
+
+    turn = process_engine_turn(trace, "R", [one_floor([monster])], player, stage_num=1)
+
+    assert turn["contact"] == {"type": "monster", "id": "c", "outcome": "win"}
+    assert turn["expired"] == [{"type": "item_expired", "item": "d", "reason": "overwritten"}]
+    assert player.item == d.ITEM_SWORD_X1_5
+
+
+def test_engine_contact_monster_lose_expires_old_item_as_lost_on_defeat():
+    player = d.Player(2, 2, 1, 90)
+    player.item = d.ITEM_SWORD_X1_5
+    player.item_taken_from = "c"
+    monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["C"])  # level 15, beats a level-1 player
+    trace = TraceRecorder(params={})
+
+    turn = process_engine_turn(trace, "R", [one_floor([monster])], player, stage_num=1)
+
+    assert turn["contact"]["type"] == "monster"
+    assert turn["contact"]["id"] == "C"
+    assert turn["contact"]["outcome"] == "lose"
+    assert turn["contact"]["respawn_to"] == [2, 2]
+    assert turn["expired"] == [{"type": "item_expired", "item": "c", "reason": "lost_on_defeat"}]
+    assert player.item is None
+    assert player.item_uses == 0
+    assert player.item_taken_from is None
+
+
+def test_engine_contact_high_elf_refused():
+    player = d.Player(2, 2, 1, 90)
+    high_elf = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["H"])
+    trace = TraceRecorder(params={})
+
+    turn = process_engine_turn(trace, "R", [one_floor([high_elf])], player, stage_num=3)
+
+    assert turn["contact"] == {"type": "monster", "id": "H", "outcome": "refused"}
+
+
+def test_engine_fairy_departed_on_karma_limit():
+    player = d.Player(2, 2, 1, 90)
+    player.fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
+    player.karma = player.fairy.durability
+    trace = TraceRecorder(params={})
+
+    turn = process_engine_turn(trace, "U", [one_floor([])], player, stage_num=1)
+
+    assert turn["expired"] == [{"type": "companion_departed", "id": "n"}]
+    assert player.fairy is None
+
+
+def test_world_event_is_recorded_only_inside_a_turn():
+    trace = TraceRecorder(params={})
+    event = {"type": "respawn", "kind": "monster", "id": "X", "at": [7, 3]}
+
+    trace.add_world_event(event)
+    assert trace.turns == []  # add_world_event() before begin_turn() is a no-op
+    trace.begin_turn("R")
+    trace.add_world_event(event)
+    trace.commit_turn()
+    assert trace.turns[-1]["world"] == [event]
 
 
 def test_current_stage1_turn_records_boss_defeat_and_treasure_collection():
@@ -722,7 +685,7 @@ def test_stage3_elf_contact_granted_and_refused():
         trace = TraceRecorder(params={})
 
         trace.begin_turn("R")
-        _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
+        _process_multi_floor_turn(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
         trace.commit_turn()
 
         assert trace.turns[-1]["contact"] == {"type": "monster", "id": char, "outcome": outcome}, char
@@ -740,7 +703,7 @@ def test_lifebringer_raises_permanent_lp_cap_and_restores_to_120():
 
     assert d.player_lp_max(player) == d.LP_MAX
 
-    _step(
+    _process_multi_floor_turn(
         KEYS["R"], floors, player, floor, [(2, 2)], Counter(), 1,
         trace=trace,
     )
@@ -777,7 +740,7 @@ def test_stage3_repeat_elf_contact_is_refused():
     trace = TraceRecorder(params={})
 
     trace.begin_turn("R")
-    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
+    _process_multi_floor_turn(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
     trace.commit_turn()
 
     assert trace.turns[-1]["contact"] == {"type": "monster", "id": "H", "outcome": "refused"}
@@ -794,7 +757,7 @@ def test_stage3_monster_win_and_lose_expire_old_item():
     trace = TraceRecorder(params={})
 
     trace.begin_turn("R")
-    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
+    _process_multi_floor_turn(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
     trace.commit_turn()
 
     assert trace.turns[-1]["contact"] == {"type": "monster", "id": "W", "outcome": "win"}
@@ -810,7 +773,7 @@ def test_stage3_monster_win_and_lose_expire_old_item():
     trace2 = TraceRecorder(params={})
 
     trace2.begin_turn("R")
-    _step(KEYS["R"], floors2, player2, floor2, checkpoint2, Counter(), 1, trace=trace2)
+    _process_multi_floor_turn(KEYS["R"], floors2, player2, floor2, checkpoint2, Counter(), 1, trace=trace2)
     trace2.commit_turn()
 
     assert trace2.turns[-1]["contact"]["outcome"] == "lose"
@@ -827,7 +790,7 @@ def test_stage3_stairs_contact_records_floor_transition():
     trace = TraceRecorder(params={})
 
     trace.begin_turn("R")
-    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
+    _process_multi_floor_turn(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
     trace.commit_turn()
 
     assert trace.turns[-1]["contact"] == {"type": "stairs", "from_floor": 0, "to_floor": 1}
@@ -844,7 +807,7 @@ def test_stage3_fairy_departed_on_karma_limit():
     trace = TraceRecorder(params={})
 
     trace.begin_turn("U")
-    _step(KEYS["U"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
+    _process_multi_floor_turn(KEYS["U"], floors, player, floor, checkpoint, Counter(), 1, trace=trace)
     trace.commit_turn()
 
     assert trace.turns[-1]["expired"] == [{"type": "companion_departed", "id": "p"}]

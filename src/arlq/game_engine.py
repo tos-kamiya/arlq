@@ -1922,10 +1922,6 @@ def _process_multi_floor_turn(
     return (MESSAGE_TICKS, event_message) if event_message else None
 
 
-# Keep the old private name for tests and external tooling that imported it.
-_step = _process_multi_floor_turn
-
-
 def observe_world(
     floors: List[Floor], player: d.Player, floor_index: int,
     torch_radius: int,

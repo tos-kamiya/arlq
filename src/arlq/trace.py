@@ -18,7 +18,7 @@ from typing import Any, Deque, Dict, List, Optional, Tuple
 
 from . import defs as d
 from .__about__ import __version__
-from .game_events import TurnEvents, WallEvent
+from .game_events import WallEvent
 
 SCHEMA_VERSION = 3
 
@@ -36,8 +36,7 @@ class TraceRecorder:
     output. ``game_engine.run_game()`` calls ``begin_turn()`` /
     ``set_player()`` / ``commit_turn()`` / ``record_quit()`` /
     ``set_outcome()`` directly, while the current turn handler records events
-    as they happen. ``record_events()`` remains available for callers of the
-    legacy ``arlq.arlq.update_entities()`` helper.
+    as they happen.
     """
 
     def __init__(self, params: Dict[str, Any]) -> None:
@@ -96,48 +95,6 @@ class TraceRecorder:
             if wall.item_uses_left is not None:
                 wall_record["item_uses_left"] = wall.item_uses_left
             self._current["wall"] = wall_record
-
-    def record_events(self, events: TurnEvents) -> None:
-        """Serialize gameplay events into the trace schema for this turn."""
-        if self._current is None:
-            return
-        if events.wall is not None:
-            wall: Dict[str, Any] = {"result": events.wall.result}
-            if events.wall.item_uses_left is not None:
-                wall["item_uses_left"] = events.wall.item_uses_left
-            self._current["wall"] = wall
-        if events.contact is not None:
-            contact: Dict[str, Any] = {"type": events.contact.kind, "id": events.contact.event_id}
-            if events.contact.outcome is not None:
-                contact["outcome"] = events.contact.outcome
-            if events.contact.respawn_to is not None:
-                contact["respawn_to"] = list(events.contact.respawn_to)
-            if events.contact.collected is not None:
-                contact["collected"] = events.contact.collected
-            if events.contact.from_floor is not None:
-                contact["from_floor"] = events.contact.from_floor
-            if events.contact.to_floor is not None:
-                contact["to_floor"] = events.contact.to_floor
-            self._current["contact"] = contact
-        for expired_event in events.expired:
-            expired: Dict[str, Any] = {"type": expired_event.kind}
-            if expired_event.event_id is not None:
-                expired["id"] = expired_event.event_id
-            if expired_event.item is not None:
-                expired["item"] = expired_event.item
-            if expired_event.reason is not None:
-                expired["reason"] = expired_event.reason
-            self._current.setdefault("expired", []).append(expired)
-        for world_event in events.world:
-            world: Dict[str, Any] = {
-                "type": "respawn",
-                "kind": world_event.kind,
-                "id": world_event.event_id,
-                "at": list(world_event.at),
-            }
-            if world_event.floor is not None:
-                world["floor"] = world_event.floor
-            self._current.setdefault("world", []).append(world)
 
     def record_contact(self, contact: Dict[str, Any]) -> None:
         if self._current is not None:
@@ -204,11 +161,6 @@ class TraceRecorder:
             "turns": self._turn_no,
         }
         return data
-
-    def write(self, path: Path) -> None:
-        data = self.to_dict()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     def write_outputs(self, paths: List[Path]) -> None:
         """Write identical trace data to each requested destination."""

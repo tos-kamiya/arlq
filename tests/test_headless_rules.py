@@ -10,21 +10,17 @@ from arlq import display
 from arlq import game_engine as game_engine_module
 from arlq import i18n
 from arlq import stage_replay as stage_replay_module
-from arlq import stage56
 from arlq import stage_world as stage_world_module
 from arlq.arlq import (
     GameConfig,
     activate_mimic_for_defeat,
     game_config_from_args,
     get_torched,
-    respawn_entity,
     reveal_entities_in_fov,
     run_game,
     unlock_treasure_for_defeat,
-    update_entities,
 )
-from arlq.game_engine import Floor, _step
-from arlq.game_events import ContactEvent
+from arlq.game_engine import Floor, _process_multi_floor_turn
 
 
 @pytest.mark.parametrize(
@@ -155,7 +151,7 @@ def run_stage3_keys(
     for key in keys:
         if replay_context is not None:
             replay_context.operations.append(KEYS[key])
-        result = _step(
+        result = _process_multi_floor_turn(
             KEYS[key], floors, player, floor, checkpoint, queue, 1, stage_num
         )
         if isinstance(result, game_engine_module._RewindRequest):
@@ -193,13 +189,13 @@ def test_stage3_respawn_on_up_stairs_does_not_ascend_automatically():
     floor = [1]
     checkpoint = [(1, 2)]
 
-    _step(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1)
+    _process_multi_floor_turn(KEYS["R"], floors, player, floor, checkpoint, Counter(), 1)
 
     assert (player.x, player.y) == (1, 2)
     assert floor[0] == 1
 
     # A turn that leaves the player on the stair must not trigger it either.
-    _step((0, 0), floors, player, floor, checkpoint, Counter(), 2)
+    _process_multi_floor_turn((0, 0), floors, player, floor, checkpoint, Counter(), 2)
 
     assert floor[0] == 1
 
@@ -211,13 +207,13 @@ def test_stage3_player_respawn_glows_until_the_next_turn():
     player = d.Player(2, 2, 1, 90)
     checkpoint = [(1, 2)]
 
-    _step(KEYS["R"], floors, player, [0], checkpoint, Counter(), 1)
+    _process_multi_floor_turn(KEYS["R"], floors, player, [0], checkpoint, Counter(), 1)
 
     assert (player.x, player.y) == (1, 2)
     assert floors[0].player_respawn_glow == (1, 2)
     assert game_engine_module.respawn_glow_cells(floors[0]) == {(1, 2)}
 
-    _step((0, 0), floors, player, [0], checkpoint, Counter(), 2)
+    _process_multi_floor_turn((0, 0), floors, player, [0], checkpoint, Counter(), 2)
 
     assert floors[0].player_respawn_glow is None
     assert game_engine_module.respawn_glow_cells(floors[0]) == set()
@@ -236,9 +232,9 @@ def test_stage3_respawned_monster_glows_for_three_turns():
     assert floors[0].respawn_glows == {cell: d.RESPAWN_GLOW_TURNS}
     for turn in range(1, d.RESPAWN_GLOW_TURNS):
         assert game_engine_module.respawn_glow_cells(floors[0]) == {cell}
-        _step((0, 0), floors, player, [0], [(2, 2)], Counter(), turn)
+        _process_multi_floor_turn((0, 0), floors, player, [0], [(2, 2)], Counter(), turn)
     assert game_engine_module.respawn_glow_cells(floors[0]) == {cell}
-    _step((0, 0), floors, player, [0], [(2, 2)], Counter(), d.RESPAWN_GLOW_TURNS)
+    _process_multi_floor_turn((0, 0), floors, player, [0], [(2, 2)], Counter(), d.RESPAWN_GLOW_TURNS)
     assert game_engine_module.respawn_glow_cells(floors[0]) == set()
 
 
@@ -807,7 +803,7 @@ def test_floor_loop_fairy_blocks_marksman_shots_after_player_moves(
     if old_arrow_mark:
         marksman.arrow_marks = [((mark_x, 2), "-")]
 
-    _step(
+    _process_multi_floor_turn(
         (0, -1),
         [current],
         player,
@@ -1051,21 +1047,21 @@ def test_stage4_chests_wait_for_fire_drake_defeat():
     mimic.active = False
     floors, _ = stage3_state(player, [treasure, fire_drake, mimic])
     assert not treasure.unlocked
-    assert d.revealed_entity_glyphs(treasure, set(), False, 200, None) == []
-    assert d.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
-    assert d.preview_entity_glyphs(treasure)[0].char == "T"
-    assert d.preview_entity_glyphs(mimic) == []
-    assert d.preview_entity_glyphs(mimic, reveal_disguises=True)[0].char == "M"
+    assert display.revealed_entity_glyphs(treasure, set(), False, 200, None) == []
+    assert display.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
+    assert display.preview_entity_glyphs(treasure)[0].char == "T"
+    assert display.preview_entity_glyphs(mimic) == []
+    assert display.preview_entity_glyphs(mimic, reveal_disguises=True)[0].char == "M"
 
     floor, checkpoint, queue = [0], [(2, 2)], Counter()
     messages = run_stage3_keys(
         "RR", floors, player, floor, checkpoint, queue, stage_num=4
     )
-    assert d.revealed_entity_glyphs(treasure, set(), False, 200, None)[0].char == "T"
-    assert d.revealed_entity_glyphs(mimic, set(), False, 200, None)[0].char == "T"
+    assert display.revealed_entity_glyphs(treasure, set(), False, 200, None)[0].char == "T"
+    assert display.revealed_entity_glyphs(mimic, set(), False, 200, None)[0].char == "T"
     assert (
-        d.preview_entity_glyphs(treasure)[0].char
-        == d.preview_entity_glyphs(mimic)[0].char
+        display.preview_entity_glyphs(treasure)[0].char
+        == display.preview_entity_glyphs(mimic)[0].char
         == "T"
     )
     messages += run_stage3_keys(
@@ -1086,8 +1082,8 @@ def test_stage4_chests_wait_for_fire_drake_defeat():
     assert not mimic.revealed and mimic.met
     assert checkpoint[0] == (mimic.x, mimic.y)
     assert "MF" in player.known_monsters
-    assert d.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
-    assert d.preview_entity_glyphs(mimic) == []
+    assert display.revealed_entity_glyphs(mimic, set(), False, 200, None) == []
+    assert display.preview_entity_glyphs(mimic) == []
 
 
 def test_spores_are_a_temporary_item_replaced_by_the_next_monster():
@@ -1118,7 +1114,7 @@ def test_spores_reduce_torch_radius_and_are_shown_as_an_item():
     spore_torch = get_torched(player, d.TORCH_RADIUS)
 
     assert sum(map(sum, spore_torch)) < sum(map(sum, normal_torch))
-    assert d.level_item_labels(player, 3) == ("LVL: 100", "+Spores(m)")
+    assert display.level_item_labels(player) == ("LVL: 100", "+Spores(m)")
 
 
 def test_level_one_mimic_cannot_defeat_player_on_first_contact():
@@ -1150,8 +1146,8 @@ def test_mimic_identification_is_scoped_to_its_boss():
 
     assert d.monster_type_key(wyrm_mimic) == "MW"
     assert d.monster_type_key(dragon_mimic) == "MD"
-    assert d.preview_entity_glyphs(wyrm_mimic, known_types={"MW"})[0].char == "M"
-    assert d.preview_entity_glyphs(dragon_mimic, known_types={"MW"})[0].char == "T"
+    assert display.preview_entity_glyphs(wyrm_mimic, known_types={"MW"})[0].char == "M"
+    assert display.preview_entity_glyphs(dragon_mimic, known_types={"MW"})[0].char == "T"
 
 
 def test_nomicon_identifies_active_mimic_in_fov():
@@ -1192,13 +1188,13 @@ def test_non_nomicon_fov_does_not_record_cursed_chimera_floor():
 def test_debug_entity_display_reveals_mimic_identity():
     monster = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE["M"], mimic_boss_char="W")
 
-    assert d.preview_entity_glyphs(monster)[0].char == "T"
-    assert d.preview_entity_glyphs(monster, known_types={"MW"})[0].char == "M"
-    assert d.preview_entity_glyphs(monster, reveal_disguises=True)[0].char == "M"
-    assert d.revealed_entity_glyphs(monster, set(), True, 1, None)[0].char == "T"
-    assert d.revealed_entity_glyphs(monster, {"MW"}, False, 1, None)[0].char == "M"
+    assert display.preview_entity_glyphs(monster)[0].char == "T"
+    assert display.preview_entity_glyphs(monster, known_types={"MW"})[0].char == "M"
+    assert display.preview_entity_glyphs(monster, reveal_disguises=True)[0].char == "M"
+    assert display.revealed_entity_glyphs(monster, set(), True, 1, None)[0].char == "T"
+    assert display.revealed_entity_glyphs(monster, {"MW"}, False, 1, None)[0].char == "M"
     assert (
-        d.revealed_entity_glyphs(monster, set(), True, 1, None, reveal_disguises=True)[
+        display.revealed_entity_glyphs(monster, set(), True, 1, None, reveal_disguises=True)[
             0
         ].char
         == "M"
@@ -1208,10 +1204,10 @@ def test_debug_entity_display_reveals_mimic_identity():
 def test_vortex_uses_ordinary_monster_identification():
     vortex = d.Monster(4, 5, d.CHAR_TO_MONSTER_TRIBE["V"])
 
-    assert d.preview_entity_glyphs(vortex)[0].char == "V"
-    assert d.revealed_entity_glyphs(vortex, set(), False, 1, None)[0].char == "?"
-    assert d.revealed_entity_glyphs(vortex, set(), True, 1, None) == []
-    assert d.revealed_entity_glyphs(vortex, {"V"}, False, 1, None)[0].char == "V"
+    assert display.preview_entity_glyphs(vortex)[0].char == "V"
+    assert display.revealed_entity_glyphs(vortex, set(), False, 1, None)[0].char == "?"
+    assert display.revealed_entity_glyphs(vortex, set(), True, 1, None) == []
+    assert display.revealed_entity_glyphs(vortex, {"V"}, False, 1, None)[0].char == "V"
 
 
 @pytest.mark.parametrize("game_over", [False, True])
@@ -1281,29 +1277,25 @@ def test_stage4_debug_floor_views_show_v_as_v():
     assert len(vortex_draws) == 1
     label, vortex = vortex_draws[0]
     assert (
-        d.preview_entity_glyphs(
+        display.preview_entity_glyphs(
             vortex, reveal_disguises=by_floor[label]["debug_show_entities"]
         )[0].char
         == "V"
     )
 
 
-def test_legacy_defeat_applies_item_and_caltrop_field_effect():
+def test_defeat_applies_item_and_caltrop_field_effect():
     player = d.Player(2, 2, 100, 90)
     player.item = d.ITEM_SWORD_CURSED
     player.item_uses = 3
     plant = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["X"])
-    field = blank_field()
-    entities = [player, plant]
+    floors, field = stage3_state(player, [plant])
+    queue = Counter()
 
-    effect, respawns, message, contact = update_entities(
-        KEYS["R"], field, player, entities, respawn_point=(2, 2)
-    )
+    messages = run_stage3_keys("R", floors, player, [0], [(2, 2)], queue, stage_num=1)
 
-    assert effect == d.EFFECT_CALTROP_SPREAD
-    assert respawns == ["X"]
-    assert message == (8, "-- Caltrops were scattered!")
-    assert contact
+    assert messages == ["-- Caltrops were scattered!"]
+    assert queue == Counter({(0, "X"): 1})
     assert player.item is None
     assert player.item_taken_from == "X"
     assert player.level == 101
@@ -1312,50 +1304,36 @@ def test_legacy_defeat_applies_item_and_caltrop_field_effect():
 
 
 @pytest.mark.parametrize("rank", [1, 2])
-@pytest.mark.parametrize("legacy", [False, True])
-def test_caltrop_plant_rank_two_spreads_one_tile_farther(rank, legacy):
+def test_caltrop_plant_rank_two_spreads_one_tile_farther(rank):
     player = d.Player(10, 10, 100, d.LP_INIT)
     plant = d.Monster(11, 10, d.CHAR_TO_MONSTER_TRIBE["X"], empowered=rank)
     field = blank_field()
-    if legacy:
-        update_entities(KEYS["R"], field, player, [player, plant], respawn_point=(10, 10))
-    else:
-        floor = Floor(
-            field=field,
-            entities=[plant],
-            seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
-            up=(1, 1),
-            down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
-            island=None,
-        )
-        game_engine_module._defeat_monster(
-            plant, floor, player, [0], [(10, 10)], Counter(), floors=[floor], stage_num=2
-        )
+    floor = Floor(
+        field=field,
+        entities=[plant],
+        seen=[[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)],
+        up=(1, 1),
+        down=(d.FIELD_WIDTH - 2, d.FIELD_HEIGHT - 2),
+        island=None,
+    )
+    game_engine_module._defeat_monster(
+        plant, floor, player, [0], [(10, 10)], Counter(), floors=[floor], stage_num=2
+    )
     assert field[player.y][player.x + 2] == d.CHAR_CALTROP
     assert field[player.y][player.x + 4] == (
         d.CHAR_CALTROP if rank == 2 else d.CHAR_FLOOR
     )
 
 
-def test_legacy_fairy_identity_is_tracked_on_the_instance():
+def test_fairy_identity_is_tracked_on_the_instance():
     player = d.Player(2, 2, 100, 90)
     fairy = d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
+    floors, _ = stage3_state(player, [fairy])
 
-    update_entities(KEYS["R"], blank_field(), player, [fairy])
+    run_stage3_keys("R", floors, player, [0], [(2, 2)], Counter(), stage_num=1)
 
     assert player.fairy is fairy
     assert fairy.revealed
-
-
-def test_legacy_boss_unlocks_its_treasure_object():
-    player = d.Player(2, 2, 200, 90)
-    dragon = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_DRAGON])
-    treasure = d.Treasure(4, 2, d.CHAR_TREASURE + d.CHAR_DRAGON)
-    entities = [player, dragon, treasure]
-
-    update_entities(KEYS["R"], blank_field(), player, entities)
-
-    assert treasure.unlocked
 
 
 @pytest.mark.parametrize("char", [d.CHAR_DRAGON, d.CHAR_FIRE_DRAKE, "W"])
@@ -1411,36 +1389,6 @@ def test_defeated_empowered_boss_activates_only_matching_mimic():
 
     assert mimic.active
     assert not ordinary_fire_drake_mimic.active
-
-
-def test_legacy_respawn_queue_controls_actual_respawn(monkeypatch):
-    player = d.Player(2, 2, 100, 90)
-    plant = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["X"])
-    field = blank_field()
-    entities = [player, plant]
-
-    _, respawns, _, _ = update_entities(
-        KEYS["R"], field, player, entities, respawn_point=(2, 2)
-    )
-
-    assert respawns == ["X"]
-    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_args, **_kwargs: (5, 2))
-    respawn_entity(d.CHAR_TO_MONSTER_TRIBE["X"], entities, field)
-
-    assert [(e.x, e.y, e.tribe.char) for e in entities if isinstance(e, d.Monster)] == [
-        (5, 2, "X")
-    ]
-
-
-def test_legacy_respawned_fairy_is_already_revealed(monkeypatch):
-    entities = []
-    field = blank_field()
-    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_args, **_kwargs: (5, 2))
-
-    fairy = respawn_entity(d.CHAR_TO_TRIBE["n"], entities, field)
-
-    assert isinstance(fairy, d.Fairy)
-    assert fairy.revealed
 
 
 def test_stage3_respawned_fairy_is_already_revealed(monkeypatch):
@@ -1557,48 +1505,16 @@ def test_stage4_respawn_avoids_collapse_landings(monkeypatch, char):
     assert seen and landing <= seen[0]
 
 
-def test_legacy_non_respawning_monster_does_not_enter_respawn_queue():
+def test_non_respawning_monster_does_not_enter_respawn_queue():
     player = d.Player(2, 2, 100, 90)
     amoeba = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
-    field = blank_field()
-    entities = [player, amoeba]
+    floors, _ = stage3_state(player, [amoeba])
+    queue = Counter()
 
-    _, respawns, _, _ = update_entities(
-        KEYS["R"], field, player, entities, respawn_point=(2, 2)
-    )
+    run_stage3_keys("R", floors, player, [0], [(2, 2)], queue, stage_num=1)
 
-    respawn_queue = Counter(t for t in respawns if t not in d.NO_RESPAWN_MONSTERS)
-    assert respawn_queue == Counter()
-    assert entities == [player]
-
-
-def test_legacy_losing_twice_in_a_row_to_same_monster_escapes_to_random_place(
-    monkeypatch,
-):
-    """A monster too strong to beat, sitting in the only corridor into an
-    area, must not soft-lock the game: losing to it once still sends the
-    player back to the checkpoint, but losing to the very same monster again
-    right after (with no other monster contact in between) sends the player
-    somewhere random instead."""
-    player = d.Player(2, 2, 1, 90)
-    dragon = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_DRAGON])
-    field = blank_field()
-    entities = [player, dragon]
-
-    _, _, message, _ = update_entities(
-        KEYS["R"], field, player, entities, respawn_point=(2, 2)
-    )
-    assert message == (8, "-- Respawned!")
-    assert (player.x, player.y) == (2, 2)
-    assert player.last_contact_monster == (0, 3, 2)
-
-    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (10, 10))
-    _, _, message, _ = update_entities(
-        KEYS["R"], field, player, entities, respawn_point=(2, 2)
-    )
-
-    assert message == (8, "-- Respawned to a random location.")
-    assert (player.x, player.y) == (10, 10)
+    assert +queue == Counter()
+    assert floors[0].entities == []
 
 
 @pytest.mark.parametrize("stage_num", [1, 2, 3, 4])
@@ -1606,40 +1522,35 @@ def test_stage2_high_elf_is_passive_red_monster_decoy(monkeypatch, stage_num):
     """Stage 2's High Elf is identified on contact and never fights or respawns."""
     player = d.Player(2, 2, 1, 90)
     high_elf = d.Monster(3, 2, d.HIGH_ELF_DECOY)
-    field = blank_field()
-    entities = [player, high_elf]
-    hidden_glyph = d.revealed_entity_glyphs(
+    floors, _ = stage3_state(player, [high_elf])
+    hidden_glyph = display.revealed_entity_glyphs(
         high_elf, set(), False, 1, None
     )
     assert hidden_glyph[0].char == "?"
     monkeypatch.setattr(
-        "arlq.arlq.find_random_place",
+        game_engine_module,
+        "find_random_place",
         lambda *_a, **_k: pytest.fail("passive H must not respawn the player"),
     )
 
-    result = update_entities(
-        KEYS["R"], field, player, entities, respawn_point=(2, 2), stage_num=stage_num
+    messages = run_stage3_keys(
+        "R", floors, player, [0], [(2, 2)], Counter(), stage_num=stage_num
     )
-    assert result.message == (
-        8,
+    assert messages == [
         "-- It looks powerful, but doesn't seem to intend to attack you.",
-    )
+    ]
     assert high_elf.revealed
-    revealed_glyph = d.revealed_entity_glyphs(
+    revealed_glyph = display.revealed_entity_glyphs(
         high_elf, set(), False, 1, None
     )
     assert (revealed_glyph[0].char, revealed_glyph[0].tone) == ("H", "red")
     assert (player.x, player.y) == (3, 2)
-    assert player.lp == 90
-    assert high_elf in entities
     assert "H" in player.known_monsters
-    assert result.events.contact == ContactEvent("monster", "H", outcome="passive")
+    assert high_elf in floors[0].entities
 
-    update_entities(KEYS["L"], field, player, entities, stage_num=stage_num)
-    result = update_entities(KEYS["R"], field, player, entities, stage_num=stage_num)
-    assert result.events.contact == ContactEvent("monster", "H", outcome="passive")
+    run_stage3_keys("LR", floors, player, [0], [(2, 2)], Counter(), stage_num=stage_num)
     assert (player.x, player.y) == (3, 2)
-    assert high_elf in entities
+    assert high_elf in floors[0].entities
 
 
 def test_high_elf_decoy_preview_uses_identity_and_preserves_red_tone():
@@ -1664,37 +1575,6 @@ def test_stage2_spawns_a_monster_decoy_instead_of_an_elf():
     )
     assert high_elf.tribe is d.HIGH_ELF_DECOY
     assert not isinstance(high_elf, d.Elf)
-
-
-def test_legacy_defeating_a_different_monster_resets_the_escape_streak(monkeypatch):
-    """Beating an unrelated monster in between two losses to the same strong
-    monster must NOT count as "two losses in a row": the escape branch is
-    only for genuinely consecutive contact with the same individual."""
-    player = d.Player(2, 2, 1, 90)
-    dragon = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE[d.CHAR_DRAGON])
-    weak = d.Monster(1, 2, d.CHAR_TO_MONSTER_TRIBE["a"])
-    field = blank_field()
-    entities = [player, dragon, weak]
-
-    update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
-    assert player.last_contact_monster == (0, 3, 2)
-    assert (player.x, player.y) == (2, 2)
-
-    update_entities(KEYS["L"], field, player, entities, respawn_point=(2, 2))
-    assert player.last_contact_monster == (0, 1, 2)
-    assert (player.x, player.y) == (1, 2)
-
-    update_entities(KEYS["R"], field, player, entities, respawn_point=(2, 2))
-    assert (player.x, player.y) == (2, 2)
-
-    monkeypatch.setattr("arlq.arlq.find_random_place", lambda *_a, **_k: (99, 99))
-    _, _, message, _ = update_entities(
-        KEYS["R"], field, player, entities, respawn_point=(2, 2)
-    )
-
-    assert message == (8, "-- Respawned!")
-    assert (player.x, player.y) == (2, 2)
-    assert player.last_contact_monster == (0, 3, 2)
 
 
 def test_loop_fairy_rewinds_world_and_per_instance_fairy_knowledge(monkeypatch):
@@ -1725,7 +1605,7 @@ def test_loop_fairy_rewinds_world_and_per_instance_fairy_knowledge(monkeypatch):
     )
     old_field[10][10] = " "
     old_floors[0].up = (4, 5)
-    monkeypatch.setattr(stage_replay_module, "build", lambda *_: deepcopy((old_floors, old_player)))
+    monkeypatch.setattr(stage_world_module, "build", lambda *_: deepcopy((old_floors, old_player)))
     replay = game_engine_module.ReplayContext(3, 123, GameConfig())
     replay.save_snapshot(0, old_floors, old_player, [0], [old_floors[0].up], Counter())
     current_queue = Counter({(0, "X"): 3})
@@ -1793,7 +1673,7 @@ def test_rewind_reverts_per_instance_elf_encounter_state(monkeypatch):
     old_high_elf = d.Monster(7, 5, d.CHAR_TO_MONSTER_TRIBE["H"])
     old_sylvan_elf = d.Monster(8, 5, d.CHAR_TO_MONSTER_TRIBE["S"])
     old_floors, _ = stage3_state(old_player, [old_loop, old_high_elf, old_sylvan_elf])
-    monkeypatch.setattr(stage_replay_module, "build", lambda *_: deepcopy((old_floors, old_player)))
+    monkeypatch.setattr(stage_world_module, "build", lambda *_: deepcopy((old_floors, old_player)))
     replay = game_engine_module.ReplayContext(3, 123, GameConfig())
     replay.save_snapshot(0, old_floors, old_player, [0], [old_floors[0].up], Counter())
     floor = [0]
@@ -1836,7 +1716,7 @@ def test_loop_contact_returns_rewind_request_before_normal_turn_processing(monke
 
     monkeypatch.setattr(game_engine_module, "_apply_terrain_hazards", unexpected_hazard)
 
-    result = _step(KEYS["R"], floors, player, [0], [(2, 2)], Counter(), 0)
+    result = _process_multi_floor_turn(KEYS["R"], floors, player, [0], [(2, 2)], Counter(), 0)
 
     assert isinstance(result, game_engine_module._RewindRequest)
     assert (player.x, player.y) == (3, 2)
@@ -1871,7 +1751,7 @@ def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
     floor = [1]
     checkpoint = [(2, 2)]
     queue = Counter()
-    monkeypatch.setattr(stage_replay_module, "build", lambda *_: deepcopy((saved_floors, saved_player)))
+    monkeypatch.setattr(stage_world_module, "build", lambda *_: deepcopy((saved_floors, saved_player)))
     replay = game_engine_module.ReplayContext(3, 123, GameConfig(), operations=[KEYS["R"]])
     replay.save_snapshot(0, saved_floors, saved_player, [0], [saved_floors[0].up], Counter())
     respawn_position = (6, 6)
@@ -1886,7 +1766,7 @@ def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
 
     monkeypatch.setattr(stage_replay_module, "_spawn", spawn_loop)
 
-    result = _step(
+    result = _process_multi_floor_turn(
         KEYS["R"], floors, player, floor, checkpoint, queue, turn=1
     )
 
@@ -1919,7 +1799,7 @@ def test_cross_floor_loop_rewind_respawns_loop_on_contact_floor(monkeypatch):
     assert (respawned_loop.x, respawned_loop.y) == respawn_position
     assert respawned_loop.revealed
     assert (
-        d.revealed_entity_glyphs(respawned_loop, set(), False, 200, None)[0].char
+        display.revealed_entity_glyphs(respawned_loop, set(), False, 200, None)[0].char
         == "l"
     )
 
@@ -1947,7 +1827,7 @@ def test_replay_rewind_restores_world_state_and_preserves_current_knowledge(
         return [floor], player
 
     monkeypatch.setattr(game_engine_module, "build", initial_state)
-    monkeypatch.setattr(stage_replay_module, "build", initial_state)
+    monkeypatch.setattr(stage_world_module, "build", initial_state)
 
     def spawn_loop(entities, _field, char, _avoid, _island, _floor_index=None):
         assert char == "l"
@@ -2011,7 +1891,7 @@ def test_replay_rewind_restores_world_state_and_preserves_current_knowledge(
     assert (restored_loop.x, restored_loop.y) == (12, 12)
     assert restored_loop.revealed
     assert (
-        d.revealed_entity_glyphs(restored_loop, set(), False, 200, None)[0].char
+        display.revealed_entity_glyphs(restored_loop, set(), False, 200, None)[0].char
         == "l"
     )
     assert not restored_chest.unlocked
@@ -2028,7 +1908,7 @@ def test_rewind_uses_chronological_inputs_and_recorded_branch_target(monkeypatch
         floors, _ = stage3_state(player, [])
         return floors, player
 
-    monkeypatch.setattr(stage_replay_module, "build", initial_state)
+    monkeypatch.setattr(stage_world_module, "build", initial_state)
     operations = [(0, 0)] * 111
     replay = game_engine_module.ReplayContext(4, 123, GameConfig(), operations=operations)
     if recorded_target is not None:
@@ -2067,7 +1947,7 @@ def test_live_loop_rewind_replays_from_seed_for_repeatable_random_results(monkey
         return [floor], player
 
     monkeypatch.setattr(game_engine_module, "build", initial_state)
-    monkeypatch.setattr(stage_replay_module, "build", initial_state)
+    monkeypatch.setattr(stage_world_module, "build", initial_state)
 
     def play_once():
         game_engine_module.rand.set_seed(97531)
@@ -2129,13 +2009,13 @@ def test_golem_rocks_mark_golem_walls_in_terrain_and_decor():
     assert (12, 8) not in floor.persistent_barriers
 
 
-def test_legacy_golem_rocks_replace_barriers():
+def test_golem_rocks_replace_barriers():
     player = d.Player(10, 10, 100, d.LP_INIT)
     golem = d.Monster(11, 10, d.CHAR_TO_MONSTER_TRIBE["g"])
-    field = blank_field()
+    floors, field = stage3_state(player, [golem])
     field[8][9] = d.CHAR_BARRIER
 
-    update_entities(KEYS["R"], field, player, [player, golem], respawn_point=(10, 10))
+    run_stage3_keys("R", floors, player, [0], [(10, 10)], Counter(), stage_num=1)
 
     assert field[8][9] == d.CHAR_GOLEM_WALL
 
@@ -2209,14 +2089,14 @@ def test_carried_fairy_respawns_on_its_origin_floor_not_current_floor():
     queue = Counter()
 
     # Pick up floor 0's own Pegasus, then descend to floor 1 while carrying it.
-    _step(KEYS["R"], floors, player, floor, checkpoint, queue, 1)
-    _step(KEYS["R"], floors, player, floor, checkpoint, queue, 2)
+    _process_multi_floor_turn(KEYS["R"], floors, player, floor, checkpoint, queue, 1)
+    _process_multi_floor_turn(KEYS["R"], floors, player, floor, checkpoint, queue, 2)
     assert floor[0] == 1
     assert player.fairy is origin_pegasus
 
     # Force the carried fairy to expire while it is on floor 1.
     player.karma = origin_pegasus.tribe.durability
-    _step((0, 0), floors, player, floor, checkpoint, queue, 3)
+    _process_multi_floor_turn((0, 0), floors, player, floor, checkpoint, queue, 3)
     assert player.fairy is None
     assert queue[(0, "p")] == 1  # queued for its origin floor, not floor 1
 
@@ -2224,7 +2104,7 @@ def test_carried_fairy_respawns_on_its_origin_floor_not_current_floor():
     # leaving floor 1's own untouched Pegasus alone.
     interval = d.MONSTER_RESPAWN_INTERVAL
     next_boundary = ((3 // interval) + 1) * interval
-    _step((0, 0), floors, player, floor, checkpoint, queue, next_boundary)
+    _process_multi_floor_turn((0, 0), floors, player, floor, checkpoint, queue, next_boundary)
 
     def fairy_count(entities, char):
         return sum(
@@ -2251,7 +2131,7 @@ def test_stage3_respawns_only_on_the_entity_original_floor(monkeypatch):
         return (0, 0)
 
     monkeypatch.setattr(game_engine_module, "_spawn", record_spawn)
-    _step(KEYS["U"], floors, player, floor, checkpoint, queue, 0)
+    _process_multi_floor_turn(KEYS["U"], floors, player, floor, checkpoint, queue, 0)
 
     assert [
         (entities is floors[0].entities, char, floor_index)
@@ -2299,17 +2179,14 @@ def test_sword_breaks_wall_and_consumes_one_use():
     player = d.Player(2, 2, 10, 90)
     player.item = d.ITEM_SWORD_CURSED
     player.item_uses = 2
-    field = blank_field()
+    floors, field = stage3_state(player, [])
     field[2][3] = d.CHAR_WALL
+    queue = Counter()
 
-    effect, respawns, message, contact = update_entities(
-        KEYS["R"], field, player, [player], respawn_point=(2, 2)
-    )
+    messages = run_stage3_keys("R", floors, player, [0], [(2, 2)], queue, stage_num=1)
 
-    assert effect is None
-    assert respawns == []
-    assert message is None
-    assert not contact
+    assert messages == [None]
+    assert +queue == Counter()
     assert (player.x, player.y) == (3, 2)
     assert field[2][3] == " "
     assert player.item == d.ITEM_SWORD_CURSED
@@ -2344,21 +2221,6 @@ def test_discovered_passage_does_not_consume_sword():
     assert (player.x, player.y) == (3, 2)
     assert field[2][3] == d.CHAR_D_GATE
     assert player.item_uses == 2
-
-
-def test_sword_breaking_its_last_wall_clears_all_equipment_state():
-    player = d.Player(2, 2, 10, 90)
-    player.item = d.ITEM_SWORD_CURSED
-    player.item_uses = 1
-    player.item_taken_from = "C"
-    field = blank_field()
-    field[2][3] = d.CHAR_WALL
-
-    update_entities(KEYS["R"], field, player, [player], respawn_point=(2, 2))
-
-    assert player.item is None
-    assert player.item_uses == 0
-    assert player.item_taken_from is None
 
 
 def test_stage3_sword_breaking_its_last_wall_clears_all_equipment_state():
@@ -2838,16 +2700,15 @@ def test_level_item_labels_follow_permanent_elf_attack_bonuses():
     player = d.Player(1, 1, 100, 90)
     player.item = d.ITEM_POISONED
     player.item_taken_from = "d"
-    assert d.level_item_labels(player, 1) == ("LVL: 100 /3", "d-")
+    assert display.level_item_labels(player) == ("LVL: 100 /3", "d-")
 
     player.elf_stage_flags = d.ELF_STAGE_K_FLAG
     player.members.append(d.PartyMember(1, 1, d.MEMBER_JAVELIN_ELF))
-    assert d.level_item_labels(player, 3) == ("LVL: 100 /3 x1.2 x1.25", "d-")
-    assert d.level_item_labels(player, 2) == ("LVL: 100 /3 x1.2 x1.25", "d-")
+    assert display.level_item_labels(player) == ("LVL: 100 /3 x1.2 x1.25", "d-")
 
     player.item = d.ITEM_SWORD_X1_5
-    assert d.level_item_labels(player, 3)[0] == "LVL: 100 x1.5 x1.2 x1.25"
-    assert d.status_prefix(player, 3, 4).endswith(
+    assert display.level_item_labels(player)[0] == "LVL: 100 x1.5 x1.2 x1.25"
+    assert display.status_prefix(player, 3, 4).endswith(
         "LVL: 100 x1.5 x1.2 x1.25  c+  "
     )
 
@@ -2859,7 +2720,7 @@ def test_elf_stage_progress_marks_add_elf_floors_after_the_isolated_elf():
     player.known_c_floors = {3, 2}
     player.treasure_collected = True
 
-    assert d.elf_stage_progress_marks(player, 3) == [
+    assert display.elf_stage_progress_marks(player, 3) == [
         ("C23", False),
         ("I", True),
         ("J", False),
@@ -2876,15 +2737,15 @@ def test_elf_stage_progress_marks_use_stage_specific_boss_labels():
 
     assert d.stage_boss_label(3) == "W"
     assert d.stage_boss_label(4) == "F'"
-    assert ("W", False) in d.elf_stage_progress_marks(player, 3)
-    assert ("F'", False) in d.elf_stage_progress_marks(player, 4)
+    assert ("W", False) in display.elf_stage_progress_marks(player, 3)
+    assert ("F'", False) in display.elf_stage_progress_marks(player, 4)
 
     player.boss_defeated = True
 
-    assert ("W", True) in d.elf_stage_progress_marks(player, 3)
-    assert ("F'", True) in d.elf_stage_progress_marks(player, 4)
-    assert ("F'", True) not in d.elf_stage_progress_marks(player, 3)
-    assert ("W", True) not in d.elf_stage_progress_marks(player, 4)
+    assert ("W", True) in display.elf_stage_progress_marks(player, 3)
+    assert ("F'", True) in display.elf_stage_progress_marks(player, 4)
+    assert ("F'", True) not in display.elf_stage_progress_marks(player, 3)
+    assert ("W", True) not in display.elf_stage_progress_marks(player, 4)
 
     assert d.STAGE_BOSSES[3] in {
         (char, rank) for floor in d.STAGE3_ROSTER for char, _, rank in floor
@@ -2896,12 +2757,12 @@ def test_elf_stage_progress_marks_use_stage_specific_boss_labels():
 
 def test_revealed_entity_glyphs_distinguish_unknown_known_and_empowered():
     monster = d.Monster(4, 4, d.CHAR_TO_MONSTER_TRIBE["b"], empowered=2)
-    hidden = d.revealed_entity_glyphs(monster, set(), False, 100, None)
+    hidden = display.revealed_entity_glyphs(monster, set(), False, 100, None)
     assert [(glyph.char, glyph.tone, glyph.bold) for glyph in hidden] == [
         ("?", "yellow", True)
     ]
 
-    shown = d.revealed_entity_glyphs(
+    shown = display.revealed_entity_glyphs(
         monster, {d.monster_type_key(monster)}, False, 1, {"b"}
     )
     assert [(glyph.char, glyph.tone, glyph.dim) for glyph in shown] == [
@@ -2910,36 +2771,36 @@ def test_revealed_entity_glyphs_distinguish_unknown_known_and_empowered():
     ]
 
     fairy = d.Fairy(2, 2, d.CHAR_TO_FAIRY_TRIBE["n"])
-    unknown = d.revealed_entity_glyphs(fairy, set(), False, 1, None)
+    unknown = display.revealed_entity_glyphs(fairy, set(), False, 1, None)
     assert [(glyph.char, glyph.tone) for glyph in unknown] == [("!", "fairy")]
-    unknown_debug = d.revealed_entity_glyphs(
+    unknown_debug = display.revealed_entity_glyphs(
         fairy, set(), True, 1, None, debug_show_entities=True
     )
     assert [(glyph.char, glyph.tone) for glyph in unknown_debug] == [("n", "default")]
-    known_by_tribe = d.revealed_entity_glyphs(
+    known_by_tribe = display.revealed_entity_glyphs(
         fairy, {"n"}, True, 1, None, debug_show_entities=True
     )
     assert [(glyph.char, glyph.tone) for glyph in known_by_tribe] == [("n", "default")]
     fairy.revealed = True
-    known_debug = d.revealed_entity_glyphs(
+    known_debug = display.revealed_entity_glyphs(
         fairy, set(), True, 1, None, debug_show_entities=True
     )
     assert [(glyph.char, glyph.tone) for glyph in known_debug] == [("n", "fairy")]
-    preview = d.preview_entity_glyphs(monster)
+    preview = display.preview_entity_glyphs(monster)
     assert [(glyph.char, glyph.dim, glyph.bold) for glyph in preview] == [
         ("b", True, False),
         ("'", True, False),
     ]
 
     rank_three = d.Monster(4, 4, d.CHAR_TO_MONSTER_TRIBE["b"], empowered=3)
-    shown_rank_three = d.revealed_entity_glyphs(
+    shown_rank_three = display.revealed_entity_glyphs(
         rank_three, {d.monster_type_key(rank_three)}, False, 1, {"b"}
     )
     assert [(glyph.char, glyph.tone) for glyph in shown_rank_three] == [
         ("b", "red"),
         ('"', "red"),
     ]
-    assert [glyph.char for glyph in d.preview_entity_glyphs(rank_three)] == [
+    assert [glyph.char for glyph in display.preview_entity_glyphs(rank_three)] == [
         "b",
         '"',
     ]
@@ -2952,7 +2813,7 @@ def test_barrier_does_not_override_contact_message(importance):
                            event_message_importance=importance)
     floors, field = stage3_state(player, [d.Monster(3, 2, tribe)])
     field[2][3] = d.CHAR_BARRIER
-    result = _step((1, 0), floors, player, [0], [(2, 2)], Counter(), 1)
+    result = _process_multi_floor_turn((1, 0), floors, player, [0], [(2, 2)], Counter(), 1)
     assert result[1] == "Contact message"
 
 

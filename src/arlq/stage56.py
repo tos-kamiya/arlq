@@ -81,25 +81,6 @@ def recruit(
     return trp("-- {joined} joined your party.", 5).format(joined=t(member.role))
 
 
-def set_scholar_stairs(floors: list[Floor], active: bool) -> None:
-    """Set every hidden stair marker; retained for stage setup utilities."""
-    for current in floors:
-        for point in current.scholar_up_stairs:
-            x, y = point
-            current.field[y][x] = (
-                d.CHAR_SCHOLAR_STAIRS_UP if active else d.CHAR_HIDDEN_STAIRS_UP
-            )
-            if active:
-                current.seen[y][x] = 1
-        for point in current.scholar_down_stairs:
-            x, y = point
-            current.field[y][x] = (
-                d.CHAR_SCHOLAR_STAIRS_DOWN if active else d.CHAR_HIDDEN_STAIRS_DOWN
-            )
-            if active:
-                current.seen[y][x] = 1
-
-
 def reveal_scholar_features(current: Floor, known: list[list[int]]) -> None:
     """Reveal Explorer secrets anywhere in the explored part of the floor."""
     for points, hidden, revealed in (
