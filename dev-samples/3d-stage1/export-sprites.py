@@ -1,16 +1,19 @@
 """Export the heroic character models as cropped transparent 60-degree PNGs.
 
 `-- --only n o` re-exports just the listed characters.
+`-- --player-walk` re-exports all player walk poses.
 """
 from pathlib import Path
 import math
 import sys
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 from heroic_groups import MEMBER_MODELS, blend_path, group_of
+sys.path.insert(0, str(ROOT / 'rigged-armor'))
+from sprite_pose import HEROIC_PLAYER_SIZE, heroic_player
 
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'characters'
 OUT.mkdir(parents=True, exist_ok=True)
@@ -27,6 +30,15 @@ models += [(char + suffix, name + '-' + facing, (0, 0))
            for char, name in (('@', 'player'), ('@c', 'player-sword'),
                               ('@C', 'player-cursed-sword'), ('@K', 'player-blessed'))
            for facing, suffix in (('up', '^'), ('left', '<'), ('right', '>'))]
+walk_models = {
+    f'{char}-{facing}-{pose}': (f'{name}-{facing}-{pose}', sword, facing, pose)
+    for char, name, sword in (('@', 'player', None), ('@c', 'player-sword', 'c'),
+                              ('@C', 'player-cursed-sword', 'C'),
+                              ('@K', 'player-blessed', 'blessed'))
+    for facing in ('down', 'up', 'left', 'right')
+    for pose in ('walk-right', 'walk-left')
+}
+models += [(char, name, (0, 0)) for char, (name, _, _, _) in walk_models.items()]
 models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treasure-toy', (0, 0)), ('M', 'mimic', (0, 0)),
            ('D', 'dragon', (0, 0)), ('l', 'loop-watch', (0, 0)), ('n', 'nomicon', (0, 0)), ('o', 'ocular', (0, 0)),
            ('C', 'rare-chimera', (0, 0)), ('F', 'fire-drake', (0, 0)), ('f', 'flame-cobra', (0, 0)),
@@ -47,13 +59,20 @@ models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treas
 if '--only' in sys.argv:
     only = sys.argv[sys.argv.index('--only') + 1:]
     models = [model for model in models if model[0] in only]
+elif '--player-walk' in sys.argv:
+    models = [model for model in models if model[0] in walk_models]
 for char, name, (x, y) in models:
     bpy.ops.wm.open_mainfile(filepath=str(blend_path(group_of(char))))
     scene = bpy.context.scene
-    x, y = scene['sprite_centers'][char]
-    selected = {obj for obj in scene.objects if obj.get('sprite')}
-    selected = {obj for obj in selected if obj.users_collection[0].name.startswith(
-        'Character ' + char + ' ')}
+    if char in walk_models:
+        _, sword, facing, pose = walk_models[char]
+        selected = set(heroic_player(x, y, sword, facing, pose=pose))
+        for obj in selected:
+            obj.data.transform(Matrix.Scale(HEROIC_PLAYER_SIZE, 4))
+    else:
+        x, y = scene['sprite_centers'][char]
+        selected = {obj for obj in scene.objects if obj.get('sprite')
+                    and obj.users_collection[0].name.startswith('Character ' + char + ' ')}
     for obj in scene.objects:
         obj.hide_render = obj not in selected and obj.type not in ('LIGHT', 'CAMERA')
     camera = scene.camera

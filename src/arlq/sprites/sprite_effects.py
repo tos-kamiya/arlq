@@ -665,6 +665,10 @@ class SpriteEffectsMixin:
         # Offsets are in cells (up the screen, and to the right for `side`);
         # the feet stay the anchor.
         figure, cx, cy, picture, scale = parts['figure']
+        if kind in ('down', 'up'):
+            picture = parts['stair_pictures'][move >= 0.5]
+            if figure.image is not picture:
+                figure.image = picture
         scale *= size
         figure.scale = scale
         figure.x = cx + side * self.cell_size_x - picture.width * scale / 2
@@ -703,8 +707,14 @@ class SpriteEffectsMixin:
             landing.color = self._display_color(TERRAIN_TINT)
             shapes.append(landing)
             cy = cell_bottom - LANDING_FEET_HEIGHT * cell_y
+        stair_pictures = None
+        if kind in ('down', 'up'):
+            stair_pictures = tuple(
+                self._sprite_images[self._player_pose_sprite(player, facing, 'walk-right')]
+                for facing in ('right', 'left')
+            )
         sprite = self._player_sprite(player)
-        picture = self._sprite_images[sprite]
+        picture = stair_pictures[0] if stair_pictures else self._sprite_images[sprite]
         padding = max(1, round(self.scale))
         scale = 1.8 * max(1, self._sprite_unit() - 2 * padding) / SPRITE_REFERENCE_PIXELS
         figure = pyglet.sprite.Sprite(
@@ -718,6 +728,7 @@ class SpriteEffectsMixin:
         # _animate_floor_transition), with each one's full opacity.
         self._transition_parts = {
             'figure': (figure, cx, cy, picture, scale),
+            'stair_pictures': stair_pictures,
             'fading': [(shape, 255) for shape in shapes[:-1]],
         }
         if kind == 'climb':

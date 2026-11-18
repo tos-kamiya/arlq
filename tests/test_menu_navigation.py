@@ -607,29 +607,6 @@ def test_sprite_settings_toggle_and_reload_character_bobbing(
     assert idle_bob_enabled(load_settings(path)) is enabled
 
 
-@pytest.mark.parametrize("presses, enabled", [(0, True), (1, False), (2, True)])
-def test_sprite_settings_toggle_and_reload_smooth_movement(
-    monkeypatch, tmp_path, presses, enabled
-):
-    from arlq.settings import load_settings, move_glide_enabled
-
-    path = tmp_path / "settings.json"
-    monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
-    events = [(key.DOWN, 0)] * 3 + [(key.RIGHT, 0)] + [(key.DOWN, 0)] * 3
-    events += [(key.RIGHT, 0)] * presses + [(key.RETURN, 0), (key.UP, 0), (key.RETURN, 0)]
-    ui = _menu_ui(monkeypatch, events)
-    ui.supports_floor_transition = True
-    ui.supports_idle_bob = True
-    ui.supports_move_glide = True
-    ui.set_scale = lambda scale: None
-
-    ui.settings_menu()
-
-    assert ui.move_glide_enabled is enabled
-    assert ui.idle_bob_enabled is True
-    assert move_glide_enabled(load_settings(path)) is enabled
-
-
 def test_plain_gui_settings_also_save_sprite_display_settings(monkeypatch, tmp_path):
     path = tmp_path / "settings.json"
     monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)

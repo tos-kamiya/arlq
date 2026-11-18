@@ -56,7 +56,7 @@ def test_terminal_settings_rows_match_the_gui(monkeypatch, tmp_path, capsys):
 
 def test_terminal_settings_save_main_and_submenu_values(monkeypatch, tmp_path):
     keys = [RIGHT, DOWN, LEFT, DOWN, RIGHT]  # scale, repeat, stop
-    keys += [DOWN, RIGHT, RIGHT, DOWN, LEFT, DOWN, RIGHT, DOWN, RIGHT, ENTER]
+    keys += [DOWN, RIGHT, RIGHT, DOWN, LEFT, DOWN, RIGHT, ENTER]
     ui, path = _terminal_ui(monkeypatch, tmp_path, keys)
 
     ui.settings_menu()
@@ -68,7 +68,6 @@ def test_terminal_settings_save_main_and_submenu_values(monkeypatch, tmp_path):
     assert saved["combat_effect_seconds"] == 0.4
     assert saved["floor_transition_seconds"] == 0.4
     assert saved["idle_bob_enabled"] is False
-    assert saved["move_glide_enabled"] is False
     assert ui.combat_effect_seconds == 0.4
 
 

@@ -93,7 +93,7 @@ def _add_settings_arguments(group) -> None:
     )
     group.add_argument(
         "--smooth-movement", type=_on_off, metavar="on|off", default=suppress,
-        help="Sprite GUI smooth one-cell movement.",
+        help=suppress,
     )
 
 

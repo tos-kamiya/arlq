@@ -93,7 +93,13 @@ progress message appears while the display is rebuilt. If the window is resized
 narrower than the field, the camera follows the player;
 Shift+Left/Right scrolls the view three cells at a time.
 
-**Player**: The player is shown holding a sword when carrying one. The LP gauge
+**Player**: The player is shown holding a sword when carrying one. The sprite
+alternates its leading foot each turn, and characters and the camera move in
+whole-cell steps. The player stands with both feet together at stage start
+and just after taking stairs, falling into a pit, or rewinding. During the
+stair animation, the player faces right on the way out and left on the way back,
+with its right foot forward. When idle bobbing begins, the player brings both
+feet together while keeping its direction. The LP gauge
 appears just above the player, as in a fighting game. The disc under the player
 shows its LP status. When LP runs out, the player sinks for a moment after its
 last move and then lies collapsed on the final screen.
@@ -138,7 +144,6 @@ submenu's changes and returns to `Settings`.
 | `Combat effect duration` | `--combat-effect-duration SECONDS` | Duration of combat and barrier damage effects (`0` to `0.5` seconds in 0.1-second steps; default `0.3`). 0 disables the effects and their delay. Used in every mode. |
 | `Floor transition duration` | `--floor-transition-duration SECONDS` | Duration of the short scene `arlq-sprites` shows between floors (`0` to `1` second in 0.1-second steps; default `0.5`). 0 skips it. |
 | `Character bobbing` | `--character-bobbing on\|off` | In `arlq-sprites`, makes the player and other eligible characters in view hop slightly after 5 seconds without input, then alternate heights every 0.7 seconds (default: On). |
-| `Smooth movement` | `--smooth-movement on\|off` | In `arlq-sprites`, the player, its fairy, and following party members glide into each one-cell step, with the field scrolling along (default: On). When it is off, they and the view move a whole cell at once. |
 
 #### `Settings` → `Gamepad button settings`
 

@@ -164,6 +164,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.p
 - 1番目に `-- --group monsters`（または `members`、`others`）を付けると、そのキャラクターを含むシーンだけを作り直す（シーンの分け方は上の表）。このときと、`-- --save-only` を付けたときは全体プレビューを描かないので、2番目は不要。
 - 1番目に `-- --preview-only` を付けると、保存済みの3つのシーンから全体プレビューだけを描く（シーンは作り直さない）。
 - プレイヤーだけを直したときは、0番目のあと、1番目を `-- --group others` で実行し、`preview-player-facings.py` と `-- --preview-only` でプレビューを描き直し、3番目を `-- --only` にプレイヤーの17種類（`@`、`@c`、`@C`、`@K` と、それぞれの `^` `<` `>` 付き、`@_`）を並べて実行し、4番目をその画像に対して実行する。
+- 歩行ポーズだけを書き出すには、3番目に `-- --player-walk` を付ける。保存済みの `others` シーンの照明と甲冑モデルを使い、4方向・剣の状態4種類・左右の踏み出しの計32枚を生成する。続けて4番目に `src/arlq/assets/characters/player-*-walk-*.png` を指定する。
 - 3番目に `-- --only rock rogue-light` のようにキャラクター（`export-sprites.py` の `models` の1つ目の名前）を並べると、そのキャラクターだけを書き出す。
 - 4番目に画像のパスを並べると、その画像だけを処理する。
 

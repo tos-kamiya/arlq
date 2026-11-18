@@ -155,7 +155,6 @@ class BlessedSettingsMixin:
                 (tr("Floor transition duration"),
                  f"<  {values['floor_transition_seconds']:.1f}s  >"),
                 (tr("Character bobbing"), f"<  {_on_off(values['idle_bob_enabled'])}  >"),
-                (tr("Smooth movement"), f"<  {_on_off(values['move_glide_enabled'])}  >"),
             ]
             self._draw_settings_screen(tr("Sprite display settings"), rows, row, [
                 tr("Up/Down: item   Left/Right: value"),
@@ -181,8 +180,6 @@ class BlessedSettingsMixin:
                         values["floor_transition_seconds"], step)
                 elif row == 2:
                     values["idle_bob_enabled"] = not values["idle_bob_enabled"]
-                else:
-                    values["move_glide_enabled"] = not values["move_glide_enabled"]
 
     def gamepad_button_settings_menu(self, values):
         """Edit gamepad mode buttons, returning confirmed changes."""

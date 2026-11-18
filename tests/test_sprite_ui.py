@@ -1886,7 +1886,8 @@ def test_floor_transition_shows_only_the_players_landing(sprite_ui, monkeypatch,
 
     landings = [obj for obj in shown if getattr(obj, 'image', None) is ui._landing_image]
     assert [landing.color for landing in landings] == ([] if tint is None else [tint])
-    assert any(getattr(obj, 'image', None) is ui._sprite_images['@'] for obj in shown)
+    sprite = '@ right walk-right' if kind in ('down', 'up') else '@'
+    assert any(getattr(obj, 'image', None) is ui._sprite_images[sprite] for obj in shown)
     ropes = [obj for obj in shown if getattr(obj, 'color', None) == sprite_effects.ROPE_COLOR]
     assert len(ropes) == (kind == 'climb')
     glows = [obj for obj in shown if getattr(obj, 'image', None) is ui._disc_image]
@@ -1922,7 +1923,7 @@ def test_floor_transition_is_drawn_on_the_stairs_cell(sprite_ui, monkeypatch, in
     ui.draw_floor_transition('down', d.Player(3, 4, level=1, lp=d.LP_INIT), (7, 2))
 
     landing = next(obj for obj in made if obj.image is ui._landing_image)
-    figure = next(obj for obj in made if obj.image is ui._sprite_images['@'])
+    figure = next(obj for obj in made if obj.image is ui._sprite_images['@ right walk-right'])
     left = 7 * 13 - 26
     assert landing.x == left - sprite_defs.TERRAIN_SIDE * 13
     assert landing.y == ui.window_height - 3 * 20
@@ -1990,6 +1991,28 @@ def bob_ui(sprite_ui):
 
 def _bobbing_ys(ui):
     return [sprite.y for sprite, _ in ui._bobbing]
+
+
+def test_idle_bob_uses_the_standing_sprite_in_the_same_direction(bob_ui):
+    ui = bob_ui
+    player = d.Player(3, 4, level=1, lp=d.LP_INIT)
+    ui._player_facing = 'left'
+    ui._player_walk_pose = 'walk-right'
+    ui._last_stage_draw = (None, {'player': player, 'turn': 1})
+    drawn = []
+    ui.draw_stage = lambda **kwargs: drawn.append(ui._player_sprite(player))
+
+    assert ui._player_sprite(player) == '@ left walk-right'
+    ui.now = sprite_funcs.IDLE_BOB_DELAY
+    ui._update_idle_bob()
+    assert drawn == ['@ left']
+    ui.now += sprite_funcs.IDLE_BOB_INTERVAL + 0.01
+    ui._update_idle_bob()
+    assert ui._player_sprite(player) == '@ left'
+    assert drawn == ['@ left']
+    ui._key_queue.append(('right', 0))
+    ui._update_idle_bob()
+    assert drawn == ['@ left', '@ left walk-right']
 
 
 @pytest.mark.parametrize('text, bobs', [
@@ -2163,6 +2186,10 @@ def test_player_sprite_matches_sword_and_facing(sprite_ui, item, flags, base, fa
     expected = base if facing == 'down' else f'{base} {facing}'
     assert sprite_ui._player_sprite(player) == expected
     assert SPRITE_FILES[expected].startswith('player')
+    sprite_ui._player_walk_pose = 'walk-right'
+    assert sprite_ui._player_sprite(player) == f'{base} {facing} walk-right'
+    sprite_ui._player_walk_pose = 'walk-left'
+    assert sprite_ui._player_sprite(player) == f'{base} {facing} walk-left'
 
 
 def test_player_sprite_falls_back_to_facing_the_camera(sprite_ui):
@@ -2171,10 +2198,10 @@ def test_player_sprite_falls_back_to_facing_the_camera(sprite_ui):
     assert sprite_ui._player_sprite(d.Player(2, 2, 100, 90)) == '@'
 
 
-def test_turned_player_sprites_are_bundled():
+def test_player_sprites_are_bundled():
     directory = Path(sprite_funcs.__file__).parent.parent / 'assets' / 'characters'
-    for key, filename in SPRITE_FILES.items():
-        if key.split(' ')[-1] in sprite_funcs.PLAYER_FACINGS and filename.startswith('player'):
+    for filename in SPRITE_FILES.values():
+        if filename.startswith('player'):
             assert (directory / filename).is_file(), filename
 
 
@@ -2186,8 +2213,33 @@ def test_stage_start_faces_the_camera(sprite_ui, monkeypatch):
     sprite_ui._player_facing = 'left'
     sprite_ui.draw_stage(turn=3, stage_num=1)
     assert sprite_ui._player_facing == 'left'
+    assert sprite_ui._player_walk_pose == 'walk-right'
     sprite_ui.draw_stage(turn=0, stage_num=1)
     assert sprite_ui._player_facing == 'down'
+    assert sprite_ui._player_walk_pose is None
+
+
+@pytest.mark.parametrize('event', [
+    FloorChanged(0, 'up', 1, (3, 3)), FloorChanged(0, 'down', 1, (3, 3)),
+    FloorChanged(0, 'fall', 1, (3, 3)), Rewound(0, 'rewind', {}),
+])
+def test_transition_stands_until_the_next_turn(sprite_ui, monkeypatch, event):
+    monkeypatch.setattr(PygletUI, 'draw_stage', lambda self, **kwargs: None)
+    monkeypatch.setattr(sprite_ui, '_update_strength_column_width', lambda: None)
+    sprite_ui.window_width, sprite_ui.strength_column_width = 400, 0
+    view = {'turn': 3, 'stage_num': 3}
+
+    def play(ui, result, view):
+        ui.draw_stage(**view)
+        assert ui._player_walk_pose is None
+        return True
+
+    monkeypatch.setattr(sprite_ui._presenter, 'play', play)
+    assert sprite_ui.present_turn(_turn((-1, 0), [event]), view)
+    sprite_ui.draw_stage(**view)
+    assert sprite_ui._player_walk_pose is None
+    sprite_ui.draw_stage(turn=4, stage_num=3)
+    assert sprite_ui._player_walk_pose == 'walk-left'
 
 
 def _image(rows):
@@ -2273,10 +2325,11 @@ def transition_ui(sprite_ui, monkeypatch):
 
 def _figure_after(ui, kind, progress, fade_out=True):
     ui._create_floor_transition(kind, d.Player(3, 4, level=1, lp=d.LP_INIT), None)
-    figure, cx, cy, picture, scale = ui._transition_parts['figure']
+    figure, _, cy, _, scale = ui._transition_parts['figure']
+    ui._animate_floor_transition(kind, progress, fade_out)
+    picture = figure.image
     base_y = ui.window_height - cy - (picture.height / 2
                                       - sprite_defs.SPRITE_GROUND_OFFSET_PIXELS) * scale
-    ui._animate_floor_transition(kind, progress, fade_out)
     return figure, base_y, scale
 
 
@@ -2306,9 +2359,18 @@ def test_stairs_go_right_then_left_like_ku(transition_ui, kind, sides):
     for moved, expected in zip((0, 0.25, 0.5, 0.75, 1), sides):
         progress = fade + (1 - 2 * fade) * moved
         figure, _, scale = _figure_after(ui, kind, progress)
-        _, cx, _, picture, _ = ui._transition_parts['figure']
+        _, cx, _, _, _ = ui._transition_parts['figure']
+        picture = figure.image
         centre = figure.x + picture.width * figure.scale / 2
         assert (centre - cx) / ui.cell_size_x == pytest.approx(expected * side)
+
+
+@pytest.mark.parametrize('kind', ['up', 'down'])
+def test_stair_animation_uses_the_right_foot_pose_in_each_direction(transition_ui, kind):
+    ui = transition_ui
+    for progress, facing in ((0.3, 'right'), (0.7, 'left')):
+        figure, _, _ = _figure_after(ui, kind, progress)
+        assert figure.image is ui._sprite_images[f'@ {facing} walk-right']
 
 
 def test_fall_keeps_its_feet_on_the_falling_point(transition_ui):
@@ -2379,179 +2441,17 @@ def test_present_turn_offers_the_next_view_only_while_playing(sprite_ui, monkeyp
     assert sprite_ui._next_view is None
 
 
-@pytest.mark.parametrize('interval, seconds', [
-    (None, sprite_funcs.MOVE_SLIDE_SECONDS),
-    (1.0, sprite_funcs.MOVE_SLIDE_SECONDS),
-    (0.1, 0.1 * sprite_funcs.MOVE_SLIDE_REPEAT_SHARE),
-])
-def test_step_glide_fits_within_the_key_repeat_interval(sprite_ui, interval, seconds):
-    sprite_ui.key_repeat_interval = interval
-    assert sprite_ui._move_slide_seconds() == pytest.approx(seconds)
-
-
-def test_step_glide_is_skipped_when_repeat_leaves_too_little_time(sprite_ui, monkeypatch):
-    monkeypatch.setattr(sprite_funcs, 'MOVE_SLIDE_MIN_SECONDS', 0.1)
-    sprite_ui.key_repeat_interval = 0.1
-    assert sprite_ui._move_slide_seconds() == 0
-
-
-@pytest.mark.parametrize('held, repeat, due, seconds', [
-    ((1, 0), True, 10.25, 0.25),                       # held: until the next repeat
-    ((1, 0), True, 10.5, 0.3),                         # never longer than the interval
-    ((1, 0), True, 10.01, 0),                          # too little time left
-    ((1, 0), False, 10.3, sprite_funcs.MOVE_SLIDE_SECONDS),  # the first, pressed step
-    (None, True, 0.0, sprite_funcs.MOVE_SLIDE_SECONDS),      # released, or repeat stopped
-])
-def test_repeated_step_glides_until_the_next_repeat(sprite_ui, monkeypatch, held, repeat,
-                                                     due, seconds):
-    monkeypatch.setattr(sprite_funcs.time, 'monotonic', lambda: 10.0)
-    sprite_ui.key_repeat_interval = 0.3
-    sprite_ui._held_direction = held
-    sprite_ui._next_repeat_at = due
-    sprite_ui.input_was_repeat = repeat
-    assert sprite_ui._move_slide_seconds() == pytest.approx(seconds)
-
-
-@pytest.mark.parametrize('direction, due, seconds', [
-    ((1, 0), 10.25, 0.25),
-    ((0, 0), 0.0, sprite_funcs.MOVE_SLIDE_SECONDS),
-])
-def test_controller_repeat_glides_until_the_next_repeat(sprite_ui, monkeypatch, direction,
-                                                        due, seconds):
-    monkeypatch.setattr(sprite_funcs.time, 'monotonic', lambda: 10.0)
-    sprite_ui.key_repeat_interval = 0.3
-    sprite_ui._held_direction = None
-    sprite_ui.gamepad_previous_direction = direction
-    sprite_ui._next_gamepad_repeat_at = due
-    sprite_ui.input_was_repeat = True
-    assert sprite_ui._move_slide_seconds() == pytest.approx(seconds)
-
-
-@pytest.mark.parametrize('start, row', [((3, 5), 5), ((4, 6), 6), ((4, 4), 5)])
-def test_player_glides_in_from_the_cell_it_left(sprite_ui, start, row):
-    ui = sprite_ui
-    rows = []
-    place = ui._place_sprite
-    ui._place_sprite = lambda text, cx, cy, size, r, *args, **kwargs: (
-        rows.append(r) or place(text, cx, cy, size, r, *args, **kwargs))
-    ui._slide_from = {'@': start}
-    ui._draw_player((4, 5), d.Player(4, 5, level=8, lp=d.LP_INIT))
-    assert rows == [row]
-    assert ui._slide_row is None
-    parts = ui._slide_parts
-    assert parts and {part[3] for part in parts} == {(4 - start[0], 5 - start[1])}
-    sx, sy = 4 - start[0], 5 - start[1]
-    # Drawn back toward (by default on) the cell it left at first, ...
-    back = sprite_funcs.MOVE_SLIDE_START
-    for obj, x, y, _ in parts:
-        assert obj.x == pytest.approx(x - sx * ui.cell_size_x * back, abs=0.5)
-        assert obj.y == pytest.approx(y + sy * ui.cell_size_y * back, abs=0.5)
-    # ... halfway there after half the glide (a steady speed), and on its cell at the end.
-    ui._slide_progress = 0.5
-    ui._place_slide_parts()
-    obj, x, y, _ = parts[0]
-    assert obj.x == pytest.approx(x - sx * ui.cell_size_x * back / 2, abs=0.5)
-    assert obj.y == pytest.approx(y + sy * ui.cell_size_y * back / 2, abs=0.5)
-    ui._slide_progress = 1.0
-    ui._place_slide_parts()
-    assert all((obj.x, obj.y) == (x, y) for obj, x, y, _ in parts)
-
-
-def test_player_does_not_glide_more_than_one_cell(sprite_ui):
-    sprite_ui._slide_from = {'@': (2, 5)}
-    sprite_ui._draw_player((4, 5), d.Player(4, 5, level=8, lp=d.LP_INIT))
-    assert not sprite_ui._slide_parts
-
-
-def test_follower_glides_from_its_last_drawn_cell(sprite_ui):
-    ui = sprite_ui
-    ui._member_variants = {'H': sprite_funcs.MEMBER_SPRITES['H'][0]}
-    ui._member_skins = dict.fromkeys(sprite_funcs.MEMBER_SPRITES, 'm')
-    glyph = display.FieldGlyph(4, 5, 'H', 'member', member_role=d.MEMBER_HEALER)
-    ui._draw_member(glyph)
-    assert ui._follower_cells == {('H', d.MEMBER_HEALER): (4, 5)}
-    assert not ui._slide_parts
-    ui._slide_from = {('H', d.MEMBER_HEALER): (4, 5)}
-    ui._draw_member(display.FieldGlyph(5, 5, 'H', 'member', member_role=d.MEMBER_HEALER))
-    assert {part[3] for part in ui._slide_parts} == {(1, 0)}
-
-
-def _slide_ui(sprite_ui, before=(3, 5, 0)):
-    ui = sprite_ui
-    ui._last_camera_player_pos = before
-    ui._key_queue = []
-    calls = []
-    ui._presenter.play = lambda *args: True
-    ui.draw_stage = lambda **view: calls.append(('draw', dict(ui._slide_from or {})))
-    ui._presenter.hold = lambda ui_, seconds, create, update, stop: calls.append(
-        ('hold', seconds))
-    return ui, calls
-
-
-def test_step_does_not_glide_when_smooth_movement_is_off(sprite_ui):
-    ui, calls = _slide_ui(sprite_ui)
-    ui.move_glide_enabled = False
+def test_normal_step_has_no_presentation_pause(sprite_ui, monkeypatch):
+    monkeypatch.setattr(sprite_ui._presenter, 'play', lambda *args: True)
+    monkeypatch.setattr(sprite_ui._presenter, 'hold', lambda *args: pytest.fail('step paused'))
+    monkeypatch.setattr(sprite_ui, 'draw_stage', lambda **view: pytest.fail('extra draw'))
     player = d.Player(4, 5, level=8, lp=d.LP_INIT)
-    assert ui.present_turn(_turn((1, 0)), {'player': player}) is True
-    assert calls == []
-
-
-def test_step_draws_the_new_turn_then_glides(sprite_ui):
-    ui, calls = _slide_ui(sprite_ui)
-    ui.key_repeat_interval = None
-    player = d.Player(4, 5, level=8, lp=d.LP_INIT)
-    assert ui.present_turn(_turn((1, 0)), {'player': player}) is True
-    assert calls == [('draw', {'@': (3, 5)}), ('hold', sprite_funcs.MOVE_SLIDE_SECONDS)]
-    assert ui._slide_from is None and ui._slide_parts == []
-
-
-def test_gamepad_direction_change_interrupts_glide(sprite_ui):
-    ui, _ = _slide_ui(sprite_ui)
-    ui.controller = object()
-    ui.gamepad_previous_direction = (1, 0)
-    direction = [(1, 0)]
-    ui._controller_direction = lambda controller: direction[0]
-    checked = []
-
-    def hold(ui_, seconds, create, update, stop):
-        checked.append(stop())
-        direction[0] = (0, 1)
-        checked.append(stop())
-
-    ui._presenter.hold = hold
-    player = d.Player(4, 5, level=8, lp=d.LP_INIT)
-    ui.present_turn(_turn((1, 0)), {'player': player})
-
-    assert checked == [False, True]
-    assert ui.gamepad_previous_direction == (1, 0)
-
-
-@pytest.mark.parametrize('before, events, map_mode', [
-    ((4, 5, 0), [], False),     # bumped into a wall or lost a fight
-    ((2, 5, 0), [], False),     # more than one cell
-    ((3, 5, 1), [], False),     # another floor
-    ((3, 5, 0), [FloorChanged(0, 'down', 1, (3, 3))], False),
-    ((3, 5, 0), [Rewound(0, 'rewind', {})], False),
-    ((3, 5, 0), [], True),
-    (None, [], False),
-])
-def test_step_does_not_glide_without_a_one_cell_move(sprite_ui, before, events, map_mode):
-    ui, calls = _slide_ui(sprite_ui, before)
-    ui.map_mode = map_mode
-    player = d.Player(4, 5, level=8, lp=d.LP_INIT)
-    ui.present_turn(_turn((1, 0), events), {'player': player})
-    assert calls == []
-
-
-def test_idle_hop_waits_while_gliding(bob_ui):
-    bob_ui.now = sprite_funcs.IDLE_BOB_DELAY
-    assert bob_ui._idle_bob_raised()
-    bob_ui._slide_from = {'@': (3, 5)}
-    assert not bob_ui._idle_bob_raised()
+    assert sprite_ui.present_turn(_turn((1, 0)), {'turn': 2, 'player': player})
 
 
 def _collapse_ui(sprite_ui):
-    ui, calls = _slide_ui(sprite_ui, before=None)
+    ui, calls = sprite_ui, []
+    ui._presenter.play = lambda *args: True
     ui.draw_stage = lambda **view: calls.append(('draw', ui._player_sinking))
     ui._presenter.hold = lambda ui_, seconds, create, update=None, stop=None: calls.append(
         ('hold', seconds))
@@ -2560,12 +2460,9 @@ def _collapse_ui(sprite_ui):
 
 def test_player_with_no_lp_left_sinks_after_its_last_turn(sprite_ui):
     ui, calls = _collapse_ui(sprite_ui)
-    ui._glide_drew_next_turn = True
     assert ui.present_turn(_turn((1, 0)), {'player': d.Player(4, 5, level=8, lp=0)}) is True
     assert calls == [('draw', True), ('hold', sprite_funcs.COLLAPSE_SINK_SECONDS)]
     assert not ui._player_sinking and not ui._presenting_turn
-    # The final screen is drawn even if a glide ended on the same view.
-    assert not ui._glide_drew_next_turn
 
 
 @pytest.mark.parametrize('lp, effect_seconds, map_mode', [
@@ -2579,48 +2476,6 @@ def test_player_does_not_sink_otherwise(sprite_ui, lp, effect_seconds, map_mode)
     ui.map_mode = map_mode
     ui.present_turn(_turn((1, 0)), {'player': d.Player(4, 5, level=8, lp=lp)})
     assert calls == []
-
-
-def test_glide_end_frame_is_not_redrawn_for_the_same_view(sprite_ui, monkeypatch):
-    ui = sprite_ui
-    drawn = []
-    monkeypatch.setattr(PygletUI, 'draw_stage', lambda self, **kwargs: drawn.append(kwargs))
-    monkeypatch.setattr(ui, '_update_strength_column_width', lambda: None)
-    ui.window_width, ui.strength_column_width = 800, 100
-    ui._last_stage_draw = (None, {'turn': 3, 'message': 'a'})
-    ui._glide_drew_next_turn = True
-    ui.draw_stage(turn=3, message='a')
-    assert drawn == [] and not ui._glide_drew_next_turn
-    # Only once, and never for a changed view.
-    ui.draw_stage(turn=3, message='a')
-    ui._glide_drew_next_turn = True
-    ui.draw_stage(turn=3, message='')
-    assert len(drawn) == 2
-
-
-def test_field_scrolls_along_with_a_glide(sprite_ui):
-    ui = sprite_ui
-    assert ui._field_scroll_shift() == 0
-    ui._slide_scroll_from = 10
-    ui._horizontal_scroll_px = 11 * ui.cell_size_x
-    # The camera moved one cell right: the field starts a cell further right,
-    # just as the player starts a cell to the left, so the player stays put.
-    texel = ui.scale / sprite_defs.LOW_RESOLUTION_DETAIL_SCALE
-    expected = round(ui.cell_size_x * sprite_funcs.MOVE_SLIDE_START / texel) * texel
-    assert ui._field_scroll_shift() == expected
-    assert ui._field_scroll_shift() == ui._slide_shift(ui.cell_size_x)
-    ui._slide_progress = 1.0
-    assert ui._field_scroll_shift() == 0
-
-
-def test_glide_draws_a_cell_past_the_window_edges(sprite_ui):
-    ui = sprite_ui
-    ui.window_width = 400
-    width = ui.cell_size_x
-    assert not ui._intersects_window(-2 * width, width)
-    ui._slide_from = {'@': (3, 5)}
-    assert ui._intersects_window(-2 * width + 2, width)
-    assert ui._intersects_window(400 + width - 1, width)
 
 
 def test_sprite_defeat_effect_durations_match_character_modes():
