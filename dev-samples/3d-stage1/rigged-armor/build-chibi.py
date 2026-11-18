@@ -10,6 +10,7 @@ The result is about four heads tall. Writes
 hero-rig-chibi.blend and chibi-rest/guard/step.png next to this script.
 """
 import importlib.util
+import sys
 from pathlib import Path
 
 import bpy
@@ -137,7 +138,10 @@ def main():
     camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
     camera.data.ortho_scale = 1.45
     build.validate(rig, scene)
-    build.save_and_render(rig, scene, 'hero-rig-chibi.blend', 'chibi-', (0, 0, .55), 2.0)
+    # `-- --only rest,step` renders just those poses.
+    args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+    only = args[args.index('--only') + 1].split(',') if '--only' in args else None
+    build.save_and_render(rig, scene, 'hero-rig-chibi.blend', 'chibi-', (0, 0, .55), 2.0, only)
 
 
 if __name__ == '__main__':

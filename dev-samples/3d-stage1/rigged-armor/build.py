@@ -681,6 +681,10 @@ def chimera_sword(rig, cursed=False):
         obj.hide_render = obj.hide_viewport = True
 
 
+# How far the middle of the helmet front's top edge rises to a point.
+HELMET_PEAK = .035
+
+
 def helmet_crest_and_horns(rig, mat):
     """Crest and horns of the heroic player's helm (../build-heroic.py),
     scaled 0.8 about its head center (0, -.04, .83) onto this helmet's center."""
@@ -891,6 +895,18 @@ def build_armor(rig):
     helmet_rings = [(-.035,.1075,.1075),(.0,.13,.13),
                     (.14,.13,.13),(.2075,.115,.115),(.23,.085,.085)]
     helmet = squarish(plate(rig, 'head', 'Helmet', helmet_rings, helm), rig, 'head', helmet_rings)
+    # Raise the middle of the front's top edge to a point, like an upturned
+    # home plate seen from the front, fading out toward the back and below
+    # the eye slot.
+    width = max(abs(v.co.x) for v in helmet.data.vertices)
+    depth = max(abs(v.co.y) for v in helmet.data.vertices)
+    low, top = 1.68, max(v.co.z for v in helmet.data.vertices)
+    for vertex in helmet.data.vertices:
+        co = vertex.co
+        upper = min(1, max(0, (co.z - low) / (top - low)))
+        co.z += (HELMET_PEAK * upper * max(0, -co.y / depth)
+                 * max(0, 1 - abs(co.x) / width))
+    helmet.data.update()
     # Hollow it like a real helmet: the helmet's own rings, one wall
     # thickness inside at every height (1.8 cm at the sides, 1 cm at the
     # back, 3.5 cm at the front so the eye slot does not break through), are
@@ -1265,7 +1281,7 @@ def validate(rig, scene):
 
 
 def save_and_render(rig, scene, blend_name, image_prefix='', view_center=(0, 0, .95),
-                    view_distance=3.3):
+                    view_distance=3.3, only=None):
     """Leave the rig selected in Pose Mode, save the .blend and render each
     sample pose to <image_prefix><pose>.png next to this script."""
     bpy.ops.object.select_all(action='DESELECT')
@@ -1284,6 +1300,8 @@ def save_and_render(rig, scene, blend_name, image_prefix='', view_center=(0, 0, 
     bpy.ops.wm.save_as_mainfile(filepath=str(HERE / blend_name))
     swords = [o for o in scene.objects if o.name.startswith(SWORD_PREFIXES) and not o.hide_render]
     for frame, (label, _) in POSES.items():
+        if only and label.lower() not in only:
+            continue
         scene.frame_set(frame)
         # The collapsed figure is drawn without its sword.
         for obj in swords:
