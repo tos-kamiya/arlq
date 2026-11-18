@@ -86,7 +86,10 @@ user-visible changes since the previous version.
 - Do not rewrite large files just to modernize style.
 - Be careful with balancing constants across stages and monster tables; small numeric changes can materially change difficulty.
 
-## Commit Message Convention
+## Commit Guidelines
+
+- Keep Blender `.blend` files out of commits. They are local source files
+  covered by `.gitignore`; do not force-add them.
 
 - Use semantic commit messages.
 - Prefer Conventional Commits style such as `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `test: ...`, or `chore: ...`.
