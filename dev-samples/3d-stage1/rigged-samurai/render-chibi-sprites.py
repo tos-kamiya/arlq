@@ -1,4 +1,9 @@
-"""Preview the chibi samurai with the armor sprite camera and pose adjustments."""
+"""Render the chibi samurai with the armor sprite camera and pose adjustments.
+
+Run after build-chibi.py. Pass -- --facings --chimera --cursed --collapsed
+to write the complete preview-player-facings.jpg. The two sword variants
+come from rigged-armor/hero-rig-chibi.blend.
+"""
 
 import math
 import sys
@@ -119,17 +124,17 @@ def render_facings(scene, rig, katana, armor, floor, with_chimera, with_cursed, 
     for _, _, sword in rows:
         for part in sword:
             part.hide_render = True
-    name = 'preview-samurai-player-facings-with-chimera.jpg' if with_chimera else 'preview-samurai-player-facings.jpg'
+    name = 'preview-player-facings-with-chimera.jpg' if with_chimera else 'preview-player-facings-katana.jpg'
     if collapsed:
-        name = 'preview-samurai-player-facings-with-collapsed.jpg'
+        name = 'preview-player-facings-with-collapsed.jpg'
     if with_cursed:
-        name = 'preview-samurai-player-facings-four-rows.jpg'
+        name = 'preview-player-facings.jpg'
     scene.render.filepath = str(HERE / name)
     bpy.ops.render.render(write_still=True)
 
 
 def main():
-    source = HERE / 'hero-samurai-chibi-fuller.blend'
+    source = HERE / 'hero-rig-chibi.blend'
     bpy.ops.wm.open_mainfile(filepath=str(source))
     scene = bpy.context.scene
     rig = bpy.data.objects['Hero rig']
@@ -154,13 +159,13 @@ def main():
     scene.render.image_settings.color_mode = 'RGBA'
     bpy.data.objects['Studio floor'].hide_render = True
 
-    scene.render.filepath = str(HERE / 'chibi-sprite-upright.png')
+    scene.render.filepath = str(HERE / 'sprite-upright-down.png')
     bpy.ops.render.render(write_still=True)
     for pose in ('rest', 'step'):
         copies = bake(scene, rig, parts, pose, 'down', floor)
         for part in parts:
             part.hide_render = True
-        scene.render.filepath = str(HERE / f'chibi-sprite-{pose}.png')
+        scene.render.filepath = str(HERE / f'sprite-{pose}-down.png')
         bpy.ops.render.render(write_still=True)
         for obj in copies:
             mesh = obj.data

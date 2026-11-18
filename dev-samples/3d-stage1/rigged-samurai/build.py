@@ -1,4 +1,7 @@
-"""Build the tall Samurai and katana using the existing rigged-armor base rig."""
+"""Build the tall samurai and katana from the existing armor rig.
+
+Run with Blender in background mode. Writes hero-rig.blend and pose previews here.
+"""
 
 import math
 import sys
@@ -405,7 +408,7 @@ def preview(scene, name, frame, view):
 
 
 def main():
-    destination = HERE / 'hero-samurai.blend'
+    destination = HERE / 'hero-rig.blend'
     bpy.ops.wm.open_mainfile(filepath=str(RIG_DIR / 'hero-rig.blend'))
     scene = bpy.context.scene
     rig = bpy.data.objects['Hero rig']
@@ -420,10 +423,10 @@ def main():
     scene.render.resolution_y = 720
     scene.camera.data.ortho_scale = 2.52
     preview_views = (
-        ('samurai-front', 1, (2.0, -6, 1.35)),
-        ('samurai-back', 1, (2.3, 6, 1.6)),
-        ('samurai-side', 1, (6.2, 0, .7)),
-        ('samurai-step', 80, (-2.3, -6, 1.55)),
+        ('rest', 1, (2.0, -6, 1.35)),
+        ('rest-back', 1, (2.3, 6, 1.6)),
+        ('rest-side', 1, (6.2, 0, .7)),
+        ('step', 80, (-2.3, -6, 1.55)),
     )
     for name, frame, view in preview_views:
         preview(scene, name, frame, view)
@@ -431,7 +434,7 @@ def main():
     target = Vector((0, 0, .95))
     scene.camera.location = target + Vector(preview_views[0][2])
     scene.camera.rotation_euler = (target - scene.camera.location).to_track_quat('-Z', 'Y').to_euler()
-    scene.render.filepath = '//samurai-front.png'
+    scene.render.filepath = '//rest.png'
     bpy.context.preferences.filepaths.save_version = 0
     bpy.ops.wm.save_as_mainfile(filepath=str(destination))
 

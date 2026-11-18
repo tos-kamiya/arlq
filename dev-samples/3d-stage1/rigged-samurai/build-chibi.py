@@ -1,4 +1,7 @@
-"""Build the chibi samurai from the tall model using armor's rig rescaling."""
+"""Build hero-rig-chibi.blend and pose previews using armor's rig rescaling.
+
+Run with Blender in background mode after generating rigged-armor/hero-rig.blend.
+"""
 
 import importlib.util
 import math
@@ -17,7 +20,7 @@ def load_builder(name, path):
     return module
 
 
-tall = load_builder('samurai_tall', HERE / 'build-samurai.py')
+tall = load_builder('samurai_tall', HERE / 'build.py')
 armor_chibi = load_builder('armor_chibi', tall.RIG_DIR / 'build-chibi.py')
 
 
@@ -203,9 +206,9 @@ def main():
     target = Vector((0, 0, .57))
     front = (2, -6, 1.35)
     for name, frame, view in (
-        ('chibi-fuller-front', 1, front),
-        ('chibi-fuller-step', 80, (-2.3, -6, 1.55)),
-        ('chibi-fuller-top', 1, (0, -3, 5.196)),
+        ('chibi-rest', 1, front),
+        ('chibi-step', 80, (-2.3, -6, 1.55)),
+        ('chibi-top', 1, (0, -3, 5.196)),
         ('chibi-collapsed', 120, (0, -3, 5.196)),
     ):
         scene.frame_set(frame)
@@ -214,9 +217,9 @@ def main():
         bpy.ops.render.render(write_still=True)
     scene.frame_set(1)
     set_camera(scene.camera, target, front)
-    scene.render.filepath = '//chibi-fuller-front.png'
+    scene.render.filepath = '//chibi-rest.png'
     bpy.context.preferences.filepaths.save_version = 0
-    bpy.ops.wm.save_as_mainfile(filepath=str(HERE / 'hero-samurai-chibi-fuller.blend'))
+    bpy.ops.wm.save_as_mainfile(filepath=str(HERE / 'hero-rig-chibi.blend'))
 
 
 if __name__ == '__main__':
