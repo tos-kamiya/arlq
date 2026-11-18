@@ -1,5 +1,11 @@
 # ARLQ Release Notes
 
+## 6.8.8 - 2026-11-18
+
+- Add the `--samurai` option to `arlq-sprites`, which draws the player as a
+  samurai in every sword state, facing, walking step and the
+  collapsed-from-hunger pose.
+
 ## 6.8.7 - 2026-11-18
 
 - Add F11 fullscreen toggling to `arlq-sprites`.
