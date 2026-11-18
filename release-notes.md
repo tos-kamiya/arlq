@@ -1,5 +1,14 @@
 # ARLQ Release Notes
 
+## 6.8.9 - 2026-11-19
+
+- Redraw the knight player's helmet in sprite mode as an open-face jet helmet
+  that follows the head into the neck, covered by a ridged steel face plate
+  with a pointed top edge and a glowing eye slit. The head is a little
+  smaller, and the eye glow no longer lights the chest.
+- Replace the knight's chainmail hip skirts with curved steel plates on each
+  flank, which swing forward with the thighs.
+
 ## 6.8.8 - 2026-11-18
 
 - Add the `--samurai` option to `arlq-sprites`, which draws the player as a
