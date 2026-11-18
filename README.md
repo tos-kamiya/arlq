@@ -86,8 +86,11 @@ The terminal must be at least 80 columns by 24 lines.
 
 **Window**: The window opens wide enough to show the complete field and strength
 column without scrolling, and can be resized in both dimensions. Changing the
-window height zooms the field while keeping its rendering detail consistent. If
-the window is resized narrower than the field, the camera follows the player;
+window height zooms the field while keeping its rendering detail consistent.
+Resizing or maximizing can zoom the field beyond 400% without changing the saved
+scale. Press F11 to toggle fullscreen on the window's current monitor. A
+progress message appears while the display is rebuilt. If the window is resized
+narrower than the field, the camera follows the player;
 Shift+Left/Right scrolls the view three cells at a time.
 
 **Player**: The player is shown holding a sword when carrying one. The LP gauge

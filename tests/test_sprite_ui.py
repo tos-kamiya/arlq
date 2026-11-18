@@ -448,7 +448,7 @@ def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
 @pytest.mark.parametrize('maximized_height', [1080, 2160])
 @pytest.mark.parametrize('menu_active', [False, True])
 def test_sprite_maximize_restore_accepts_window_manager_size(
-    sprite_ui, maximized_height, menu_active,
+    sprite_ui, maximized_height, menu_active, monkeypatch,
 ):
     ui = sprite_ui
     ui.field_width, ui.field_height = d.FIELD_WIDTH, d.FIELD_HEIGHT
@@ -457,12 +457,18 @@ def test_sprite_maximize_restore_accepts_window_manager_size(
     ui._set_scaled_dimensions()
     original_size = ui.window_width, ui.window_height
     original_scale = ui.scale
+    ui._menu_scale = original_scale
+    monkeypatch.setattr(pyglet_funcs, 'save_ui_scale', pytest.fail)
     ui._menu_active = menu_active
     size_requests = []
     ui.window = SimpleNamespace(set_size=lambda *size: size_requests.append(size))
 
     ui._on_window_resize(3840, maximized_height)
     assert (ui.window_width, ui.window_height) == (3840, maximized_height)
+    assert ui.field_height * ui.cell_size_y + 2 * ui._hud_row_height == pytest.approx(
+        maximized_height
+    )
+    assert ui._menu_scale == original_scale
     # Some window managers report changed dimensions separately.
     ui._on_window_resize(original_size[0], maximized_height)
     ui._on_window_resize(*original_size)
@@ -470,6 +476,46 @@ def test_sprite_maximize_restore_accepts_window_manager_size(
     assert (ui.window_width, ui.window_height) == original_size
     assert ui.scale == pytest.approx(original_scale)
     assert size_requests == []
+
+
+@pytest.mark.parametrize(
+    'location, expected_screen',
+    [((-900, 100), 0), ((-300, 100), 1), ((100, 100), 1), ((3000, 100), 1)],
+)
+def test_sprite_fullscreen_uses_screen_with_most_window_overlap(
+    sprite_ui, monkeypatch, location, expected_screen,
+):
+    monkeypatch.setattr(pyglet, "compat_platform", "linux")
+    screens = [
+        SimpleNamespace(x=-1280, y=0, width=1280, height=1024),
+        SimpleNamespace(x=0, y=0, width=1920, height=1080),
+    ]
+    ui = sprite_ui
+    ui.window_width, ui.window_height = 800, 500
+    fullscreen_requests = []
+    ui._draw_fullscreen_progress = lambda: fullscreen_requests.append("progress")
+    ui._on_window_resize = lambda *size: fullscreen_requests.append(size)
+    ui._stage_input_active = True
+    ui.window = SimpleNamespace(
+        fullscreen=False,
+        screen=screens[1],
+        display=SimpleNamespace(get_screens=lambda: screens),
+        get_location=lambda: location,
+        get_size=lambda: (800, 500),
+        get_framebuffer_size=lambda: (800, 500),
+        set_fullscreen=lambda enabled, **kwargs: fullscreen_requests.append(
+            (enabled, kwargs)
+        ),
+    )
+
+    ui._on_fullscreen_key_release(sprite_funcs.pgkey.F11, 0)
+    ui.window.fullscreen = True
+    ui._on_fullscreen_key_release(sprite_funcs.pgkey.F11, 0)
+
+    assert fullscreen_requests == [
+        "progress", (True, {"screen": screens[expected_screen]}), "progress", (800, 500),
+        "progress", (False, {}), "progress", (800, 500),
+    ]
 
 
 def test_sprite_default_window_fits_field_and_sidebar():
@@ -490,7 +536,7 @@ def test_sprite_default_window_fits_field_and_sidebar():
     assert ui._horizontal_scroll_px == 0 and ui._camera_follow_player
 
 
-def test_sprite_resize_constraints_allow_zoom_range():
+def test_sprite_resize_constraints_set_only_minimum_size():
     ui = SpriteUI.__new__(SpriteUI)
     ui._initialize_state()
     size_constraints = []
@@ -507,9 +553,7 @@ def test_sprite_resize_constraints_allow_zoom_range():
 
     ui._update_minimum_window_size()
 
-    assert size_constraints[0][0:2] == ('minimum', 269)
-    assert size_constraints[0][2] == 250
-    assert size_constraints[1] == ('maximum', sprite_funcs.MAX_WINDOW_WIDTH, 1720)
+    assert size_constraints == [('minimum', 269, 250)]
 
 
 @pytest.mark.parametrize(

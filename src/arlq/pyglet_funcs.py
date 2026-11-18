@@ -613,14 +613,17 @@ class PygletUI(PygletSettingsMixin):
         self._prepare_window_resize()
         self._non_ascii_font_result = None
         self._select_font_size()
-        self.window.set_size(self.window_width, self.window_height)
+        if self.window.fullscreen:
+            self._on_window_resize(*self.window.get_size())
+        else:
+            self.window.set_size(self.window_width, self.window_height)
         self._update_minimum_window_size()
         # Process the resize immediately.  Otherwise the stage-selection
         # screen can be drawn with the old viewport until the next key event.
         self.window.dispatch_events()
         self._menu_font_resize_pending = False
         if save:
-            save_ui_scale(self.scale)
+            save_ui_scale(self._menu_scale)
 
     def _update_minimum_window_size(self) -> None:
         """Hook for frontends that need to update resize constraints on scale changes."""

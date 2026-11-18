@@ -8,6 +8,7 @@ from functools import partial
 from pathlib import Path
 
 import pyglet
+from pyglet.window import key as pgkey
 
 from .. import defs as d
 from .. import display as ui_display
@@ -196,7 +197,6 @@ FIELD_TEXT_RAISE = 0.1
 # sprite to its right, at the same size as on the field (larger ones may
 # overflow their row).
 STRENGTH_SPRITE_CELLS = 2
-MAX_WINDOW_WIDTH = 32767
 # Keep the complete field and strength column in the initial window.
 HORIZONTAL_VIEW_SCROLL_CELLS = 3
 HOVER_SCALE = 2.0
@@ -324,6 +324,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     def _initialize_state(self):
         super()._initialize_state()
+        self._switching_fullscreen = False
         self._presenter = Presenter()
         self._player_facing = 'down'
         # Sprites that hop while waiting for input, as (sprite, base y).
@@ -367,6 +368,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._failed_render_target_size = None
         super().__init__(scale, key_repeat_interval, resizable=True)
         self.window.push_handlers(
+            on_key_press=self._on_fullscreen_key_press,
+            on_key_release=self._on_fullscreen_key_release,
             on_mouse_motion=self._on_mouse_motion,
             on_mouse_drag=self._on_mouse_drag,
             on_mouse_leave=self._on_mouse_leave,
@@ -1134,15 +1137,10 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             self.field_height * CELL_SIZE_Y * MIN_UI_SCALE
             + 2 * self._menu_cell_size_y
         )
-        maximum_height = math.floor(
-            self.field_height * CELL_SIZE_Y * MAX_UI_SCALE
-            + 2 * self._menu_cell_size_y
-        )
         self.window.set_minimum_size(
             minimum_width,
             minimum_height,
         )
-        self.window.set_maximum_size(MAX_WINDOW_WIDTH, maximum_height)
 
     def _draw_rect(self, x, y, width, height, color, group=None):
         if (not self._menu_active and not self._drawing_hud
@@ -1223,7 +1221,74 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         finally:
             self._drawing_hud = False
 
+    def _on_fullscreen_key_press(self, symbol, modifiers):
+        if symbol == pgkey.F11:
+            return pyglet.event.EVENT_HANDLED
+
+    def _on_fullscreen_key_release(self, symbol, modifiers):
+        if symbol == pgkey.F11:
+            self._draw_fullscreen_progress()
+            self._switching_fullscreen = True
+            try:
+                if self.window.fullscreen:
+                    self.window.set_fullscreen(False)
+                else:
+                    self.window.set_fullscreen(True, screen=self._windowed_screen())
+            finally:
+                self._switching_fullscreen = False
+            self._draw_fullscreen_progress()
+            self._on_window_resize(*self.window.get_size())
+            if not self._menu_active and not self._stage_input_active:
+                self._flip()
+            return pyglet.event.EVENT_HANDLED
+
+    def _draw_fullscreen_progress(self):
+        self.window.switch_to()
+        width, height = self.window.get_size()
+        message = tr("[Rebuilding display data...]")
+        font_name, size_scale = self.font_name, 1.0
+        if not message.isascii():
+            font_name, size_scale = self._non_ascii_font(self._menu_font_size)
+        label = pyglet.text.Label(
+            message, font_name=font_name, font_size=self._menu_font_size * size_scale,
+            x=width / 2, y=height / 2, anchor_x="center", anchor_y="center",
+        )
+        try:
+            self.window.clear()
+            label.draw()
+            self.window.flip()
+        finally:
+            label.delete()
+
+    def _windowed_screen(self):
+        window = self.window
+        screens = window.display.get_screens()
+        if pyglet.compat_platform == "darwin" and not pyglet.options.headless:
+            # Cocoa's window location uses the current screen's height.
+            native_screen = window._nswindow.screen()
+            return next(
+                (screen for screen in screens if native_screen
+                 and native_screen.isEqual_(screen.get_nsscreen())),
+                window.screen,
+            )
+
+        location = window.get_location()
+        if location is None:
+            return window.screen
+        x, y = location
+        width, height = window.get_framebuffer_size()
+
+        def overlap(screen):
+            overlap_width = min(x + width, screen.x + screen.width) - max(x, screen.x)
+            overlap_height = min(y + height, screen.y + screen.height) - max(y, screen.y)
+            return max(0, overlap_width) * max(0, overlap_height)
+
+        screen = max(screens, key=overlap, default=window.screen)
+        return screen if overlap(screen) > 0 else window.screen
+
     def _on_window_resize(self, width, height):
+        if self._switching_fullscreen:
+            return
         old_cell_width = self.cell_size_x
         old_scroll_cells = self._horizontal_scroll_px / old_cell_width
         follow_player = self._camera_follow_player
@@ -1264,8 +1329,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     def _set_resized_dimensions(self, width, height, hud_row_height):
         field_pixel_height = height - 2 * hud_row_height
-        self.scale = self._valid_scale(
-            field_pixel_height / (self.field_height * CELL_SIZE_Y)
+        self.scale = max(
+            MIN_UI_SCALE, field_pixel_height / (self.field_height * CELL_SIZE_Y)
         )
         self.cell_size_x = SPRITE_CELL_SIZE_X * self.scale
         self.cell_size_y = self.scale * CELL_SIZE_Y
@@ -1276,7 +1341,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._map_pixel_width = self.field_width * self.cell_size_x
         self.window_width = width
         self._hud_row_height = hud_row_height
-        # Keep the WM's actual size even when the drawing scale is clamped.
+        # Keep the WM's actual size even below the minimum drawing scale.
         # Requesting another size here can overwrite its restore geometry.
         self.window_height = height
 
