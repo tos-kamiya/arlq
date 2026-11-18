@@ -708,10 +708,26 @@ JET_PLATE_PEAK = .03
 # How much the brow above the shell's equator follows the dome back
 # (1 follows a sphere, 0 rises straight).
 JET_PLATE_BROW_CURVE = .7
-JET_PLATE_CHIN, JET_PLATE_BOTTOM_SIDE = 1.475, 1.52
+JET_PLATE_CHIN, JET_PLATE_BOTTOM_SIDE = 1.51, 1.545
 # The eye slit through the face plate: height range and half width (around
 # the curve); a glowing window sits just behind it.
 JET_SLIT_LOW, JET_SLIT_HIGH, JET_SLIT_HALF = 1.6185, 1.6635, .10
+# The whole helmet (shell, face plate, crest and horns) is scaled by
+# HELMET_SCALE about HELMET_SCALE_CENTER, near the bottom of the head, so
+# it stays seated on the neck. The constants above are before scaling.
+HELMET_SCALE, HELMET_SCALE_CENTER = .93, (0, .005, 1.56)
+HELMET_PARTS = ('Helmet', 'Helmet face opening cutter', 'Helmet face plate', 'Eye window', 'Eye housing',
+                'Helmet crest', 'Helmet horn L', 'Helmet horn R')
+
+
+def scale_about(obj, factor, center):
+    """Scale an object's mesh by factor about a world point (at rest)."""
+    bpy.context.view_layer.update()
+    world = obj.matrix_world.copy()
+    scale = (Matrix.Translation(center) @ Matrix.Scale(factor, 4)
+             @ Matrix.Translation(-Vector(center)))
+    obj.data.transform(world.inverted() @ scale @ world)
+    obj.data.update()
 
 
 def outward_mesh(name, vertices, faces):
@@ -728,7 +744,7 @@ def outward_mesh(name, vertices, faces):
     return mesh
 
 
-def jet_helmet(rig, shell_mat, glow_mat):
+def jet_helmet(rig, shell_mat, glow_mat, lining_mat):
     """An open-face jet helmet: a round shell over the top, sides and nape,
     with a large face opening covered by a ridged steel face plate whose eye
     slit shows a glowing window."""
@@ -845,6 +861,22 @@ def jet_helmet(rig, shell_mat, glow_mat):
     for face in window.data.polygons:
         face.use_smooth = True
     attach(window, rig, 'head', glow_mat).modifiers['Forged edge'].width = .001
+
+    # Eye housing: a dark closed channel behind the window, from the face
+    # plate's inner surface back past the window, so the glow only leaves
+    # through the slit and does not light the helmet's inside or the chest.
+    end = slit * 1.15 + .005
+    us = [end * (2 * c / 16 - 1) for c in range(17)]
+    low, high = zs[0] - .003, zs[1] + .003
+    # Cross section: top lid, back wall, bottom lid.
+    profile = [(high, .002), (high, .011), (low, .011), (low, .002)]
+    vertices = [plate_point(u, z, inset=inset) for z, inset in profile for u in us]
+    faces = [(k * 17 + c, k * 17 + c + 1, (k + 1) * 17 + c + 1, (k + 1) * 17 + c)
+             for k in range(3) for c in range(16)]
+    faces += [tuple(k * 17 + c for k in range(4)) for c in (0, 16)]
+    housing = bpy.data.objects.new('Eye housing', outward_mesh('Eye housing', vertices, faces))
+    bpy.context.collection.objects.link(housing)
+    attach(housing, rig, 'head', lining_mat).modifiers['Forged edge'].width = .001
     return shell
 
 
@@ -1056,8 +1088,10 @@ def build_armor(rig):
     joint(rig, 'neck', .075, dark)
     glow = material('Player visor glow', (.3, .9, 1.0), roughness=.35,
                     emission=(.1, .75, 1.0), strength=2.5)
-    jet_helmet(rig, helm, glow)
+    jet_helmet(rig, helm, glow, dark)
     helmet_crest_and_horns(rig, trim)
+    for name in HELMET_PARTS:
+        scale_about(bpy.data.objects[name], HELMET_SCALE, HELMET_SCALE_CENTER)
     for side in ('L','R'):
         for part, radius in [('upper_arm',.085),('forearm',.062),('hand',.05),
                              ('thigh',.085),('shin',.075),('foot',.055)]:

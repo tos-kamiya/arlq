@@ -15,7 +15,7 @@ HERE = Path(__file__).resolve().parent
 RIG_DIR = HERE.parent / 'rigged-armor'
 sys.path.insert(0, str(RIG_DIR))
 
-from build import SWORD_BACK_TILT, attach, material
+from build import HELMET_SCALE, HELMET_SCALE_CENTER, SWORD_BACK_TILT, attach, material, scale_about
 
 
 def new_mesh(name, vertices, faces):
@@ -286,6 +286,10 @@ def build_armor(rig):
             (z - .039, lower_rx - .004, lower_ry - .004, .012),
         ], iron, 65, 295)
 
+    # The armor scales its helmet ornaments with the helmet; undo that so
+    # they keep the size and place this kabuto was fitted to.
+    for name in ('Helmet crest', 'Helmet horn L', 'Helmet horn R'):
+        scale_about(bpy.data.objects[name], 1 / HELMET_SCALE, HELMET_SCALE_CENTER)
     # Rotate around points inside the bowl so the bases stay seated.
     crest = bpy.data.objects['Helmet crest']
     crest.data.transform(Matrix.Translation((0, .014, -.004)))
