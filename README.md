@@ -47,6 +47,8 @@ arlq-cli
 `arlq-sprites` opens a GUI with character sprites. `arlq --terminal` also
 starts the terminal version, and `arlq --sprites` the sprite GUI version.
 
+Use `arlq-sprites --samurai` to play with the samurai character sprites.
+
 ## Command-line options
 
 | Option | Description |

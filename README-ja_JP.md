@@ -43,6 +43,8 @@ arlq-cli
 
 `arlq-cli` は端末版、`arlq` は文字表示のGUI版、`arlq-sprites` はキャラクターをスプライトで表示するGUI版を起動します。`arlq --terminal` で端末版、`arlq --sprites` でスプライト表示GUI版を起動することもできます。
 
+`arlq-sprites --samurai` で主人公を武士のスプライトにできます。
+
 ## コマンドラインオプション
 
 | オプション | 説明 |

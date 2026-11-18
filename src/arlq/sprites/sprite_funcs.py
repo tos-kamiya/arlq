@@ -340,7 +340,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._theme_floor_tiles = {}
         self._wall_rect_colors = {}
 
-    def __init__(self, scale=None, key_repeat_interval=None):
+    def __init__(self, scale=None, key_repeat_interval=None, samurai=False):
         self._member_variants = {char: random.choice(names) for char, names in MEMBER_SPRITES.items()}
         self._member_skins = {char: random.choice(MEMBER_SKINS) for char in MEMBER_SPRITES}
         self._last_stage_draw = None
@@ -369,6 +369,10 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         directory = Path(__file__).parent.parent / 'assets' / 'characters'
         self._gray_images = {}
         for char, filename in SPRITE_FILES.items():
+            if samurai and (char in ('@', 'player collapsed')
+                            or char.startswith(('player sword', 'player cursed sword',
+                                                'player blessed', '@ '))):
+                filename = 'samurai-' + filename
             path = directory / filename
             if not path.is_file():
                 continue

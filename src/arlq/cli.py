@@ -173,6 +173,9 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
                 help='Use the Pyglet sprite UI: 3D-rendered characters and marble column walls '
                      '(characters without a sprite stay text).',
             )
+    if sprites_only:
+        gui.add_argument("--samurai", action="store_true",
+                         help="Use the samurai player sprites.")
     _add_settings_arguments(settings_group)
     dev.add_argument("--debug-show-entities", action="store_true", help="Debug option.")
     dev.add_argument(
@@ -419,7 +422,7 @@ def main(terminal_only=False, sprites_only=False):
         if args.sprites:
             from .sprites.sprite_funcs import SpriteUI
 
-            ui = SpriteUI(overrides.get("scale"))
+            ui = SpriteUI(overrides.get("scale"), samurai=getattr(args, "samurai", False))
         else:
             ui = PygletUI(overrides.get("scale"))
         # The Pyglet frontends keep each setting in an attribute of the same name.
