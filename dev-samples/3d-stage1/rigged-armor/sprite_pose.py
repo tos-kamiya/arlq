@@ -66,11 +66,11 @@ def apply_walk_pose(rig, lead):
         (trail, -15, -1, 50, 20),
     ):
         for joint, angle in (
-            ('thigh', thigh), ('shin', shin), ('foot', foot), ('upper_arm', arm)
+            ('thigh', thigh), ('shin', shin), ('foot', foot)
         ):
             bones[f'{joint}.{side}'].rotation_euler.x = math.radians(angle)
-    # The sword stays in the right hand on both steps.
-    bones['forearm.R'].rotation_euler.x = math.radians(30 if lead == 'R' else 14)
+        if side == 'L':
+            bones['upper_arm.L'].rotation_euler.x = math.radians(arm)
     bones['forearm.L'].rotation_euler.x = math.radians(12)
     # Let the hem swing away from the leading leg so it reads from behind.
     sway = 1 if lead == 'R' else -1
@@ -79,8 +79,11 @@ def apply_walk_pose(rig, lead):
             cape = bones[f'cape.{chain}.{section}']
             cape.rotation_euler.x = math.radians(-3)
             cape.rotation_euler.z = math.radians(-sway * angle)
-    root = bones['root']
-    root.location += root.bone.matrix_local.to_3x3().inverted() @ Vector((0, 0, -.025))
+    # Lower the body for the step while keeping the sword arm at its rest
+    # height. The standing frame supplies all its joint angles.
+    for name, dz in (('root', -.025), ('clavicle.R', .025)):
+        bone = bones[name]
+        bone.location += bone.bone.matrix_local.to_3x3().inverted() @ Vector((0, 0, dz))
 
 
 def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4)):
@@ -89,8 +92,18 @@ def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4)):
     collapsed = pose == 'collapsed'
     rig.rotation_euler.z = 0 if collapsed else math.radians(FACINGS[facing])
     scene.frame_set(POSE_FRAMES['rest' if pose in WALK_POSES else pose])
+    clavicle = rig.pose.bones['clavicle.R']
+    shoulder_location = clavicle.location.copy()
     if pose in WALK_POSES[1:]:
         apply_walk_pose(rig, 'R' if pose == 'walk-right' else 'L')
+    if facing == 'left' and pose in WALK_POSES:
+        # Show the blade beyond the silhouette on the side where each
+        # sword is easiest to see, using the same grip throughout the gait.
+        long_sword = any(part.name.startswith((SWORDS['chimera'], SWORDS['cursed']))
+                         for part in parts)
+        upper_arm, forearm = (20, 14) if long_sword else (-16, 30)
+        rig.pose.bones['upper_arm.R'].rotation_euler.x = math.radians(upper_arm)
+        rig.pose.bones['forearm.R'].rotation_euler.x = math.radians(forearm)
     bpy.context.view_layer.update()
     depsgraph = bpy.context.evaluated_depsgraph_get()
     feet = Vector((0, 0, floor))
@@ -120,6 +133,7 @@ def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4)):
         copy = bpy.data.objects.new(part.name + ' sprite', mesh)
         scene.collection.objects.link(copy)
         copies.append(copy)
+    clavicle.location = shoulder_location
     return copies
 
 

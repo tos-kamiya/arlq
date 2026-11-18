@@ -26,19 +26,23 @@ models = [('a', 'amoeba', (-2, 1.5)), ('A', 'rare-amoeba', (2, 1.5)),
           ('@_', 'player-collapsed', (0, 0))]
 # The player turned up, left and right in each sword state, e.g. '@c<' is
 # player-sword-left.png.
+player_swords = (('@', 'player', None), ('@c', 'player-sword', 'c'),
+                 ('@C', 'player-cursed-sword', 'C'), ('@K', 'player-blessed', 'blessed'))
 models += [(char + suffix, name + '-' + facing, (0, 0))
-           for char, name in (('@', 'player'), ('@c', 'player-sword'),
-                              ('@C', 'player-cursed-sword'), ('@K', 'player-blessed'))
+           for char, name, _ in player_swords
            for facing, suffix in (('up', '^'), ('left', '<'), ('right', '>'))]
 walk_models = {
     f'{char}-{facing}-{pose}': (f'{name}-{facing}-{pose}', sword, facing, pose)
-    for char, name, sword in (('@', 'player', None), ('@c', 'player-sword', 'c'),
-                              ('@C', 'player-cursed-sword', 'C'),
-                              ('@K', 'player-blessed', 'blessed'))
+    for char, name, sword in player_swords
     for facing in ('down', 'up', 'left', 'right')
     for pose in ('walk-right', 'walk-left')
 }
 models += [(char, name, (0, 0)) for char, (name, _, _, _) in walk_models.items()]
+# Resolve left-facing grips from the rig, including the standing sprite.
+player_poses = {**walk_models, **{
+    char + '<': (name + '-left', sword, 'left', 'rest')
+    for char, name, sword in player_swords
+}}
 models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treasure-toy', (0, 0)), ('M', 'mimic', (0, 0)),
            ('D', 'dragon', (0, 0)), ('l', 'loop-watch', (0, 0)), ('n', 'nomicon', (0, 0)), ('o', 'ocular', (0, 0)),
            ('C', 'rare-chimera', (0, 0)), ('F', 'fire-drake', (0, 0)), ('f', 'flame-cobra', (0, 0)),
@@ -64,8 +68,8 @@ elif '--player-walk' in sys.argv:
 for char, name, (x, y) in models:
     bpy.ops.wm.open_mainfile(filepath=str(blend_path(group_of(char))))
     scene = bpy.context.scene
-    if char in walk_models:
-        _, sword, facing, pose = walk_models[char]
+    if char in player_poses:
+        _, sword, facing, pose = player_poses[char]
         selected = set(heroic_player(x, y, sword, facing, pose=pose))
         for obj in selected:
             obj.data.transform(Matrix.Scale(HEROIC_PLAYER_SIZE, 4))

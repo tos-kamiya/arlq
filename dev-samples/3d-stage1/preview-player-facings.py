@@ -22,7 +22,7 @@ from sprite_pose import HEROIC_PLAYER_SIZE, heroic_player
 
 SWORDS = [('@', 'OWN SWORD'), ('@c', 'CHIMERA SWORD (c)'), ('@C', 'CURSED SWORD (C)'),
           ('@K', 'K BLESSING')]
-WALK_SWORDS = {'@': None, '@c': 'c', '@C': 'C', '@K': 'blessed'}
+PLAYER_SWORDS = {'@': None, '@c': 'c', '@C': 'C', '@K': 'blessed'}
 FACINGS = [('', 'DOWN'), ('<', 'LEFT'), ('>', 'RIGHT'), ('^', 'UP')]
 COLUMNS = [name for _, name in FACINGS] + ['DOWN / RIGHT FOOT']
 # The collapsed player has one pose, shown under the down column.
@@ -78,11 +78,11 @@ def place(char, col, row):
         shown.add(obj)
 
 
-for row, (sword, _) in enumerate(SWORDS):
-    x, y = cell(len(FACINGS), row)
+def place_player(sword, col, row, facing, pose='rest'):
+    x, y = cell(col, row)
     pivot = Matrix.Translation((x, y, 0))
     resize = pivot @ Matrix.Scale(HEROIC_PLAYER_SIZE, 4) @ pivot.inverted()
-    for obj in heroic_player(x, y, WALK_SWORDS[sword], pose='walk-right'):
+    for obj in heroic_player(x, y, PLAYER_SWORDS[sword], facing, pose=pose):
         obj.matrix_world = resize @ obj.matrix_world
         shown.add(obj)
 
@@ -90,7 +90,12 @@ rows = [(sword_name, [sword + suffix for suffix, _ in FACINGS]) for sword, sword
 rows.append((COLLAPSED[1], [COLLAPSED[0]]))
 for row, (row_name, chars) in enumerate(rows):
     for col, char in enumerate(chars):
-        place(char, col, row)
+        if FACINGS[col][0] == '<':
+            place_player(SWORDS[row][0], col, row, 'left')
+        else:
+            place(char, col, row)
+    if row < len(SWORDS):
+        place_player(SWORDS[row][0], len(FACINGS), row, 'down', 'walk-right')
     left, cy = cell(0, row)
     shown.add(label(row_name, (left - SPACING_X * 0.55, cy - 0.3, 0.005), 0.14, 'RIGHT'))
 for col, facing_name in enumerate(COLUMNS):
