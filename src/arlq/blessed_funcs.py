@@ -41,10 +41,10 @@ class BlessedUI(BlessedSettingsMixin):
         self.farthest_preview = False
         self.shift_direction = False
         self._last_stage: Optional[Tuple[Any, Any]] = None
-        self._treasure_sparkle_cells = []
-        self._treasure_sparkle_started = None
+        self._treasure_sparkle_cells: List[Tuple[int, int]] = []
+        self._treasure_sparkle_started: Optional[float] = None
         self._stage_snapshot = ""
-        self._effect_player_pos = None
+        self._effect_player_pos: Optional[Tuple[int, int]] = None
 
     def _terminal_is_large_enough(self) -> bool:
         return self.term.width >= MIN_TERMINAL_WIDTH and self.term.height >= MIN_TERMINAL_HEIGHT

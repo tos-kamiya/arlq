@@ -302,9 +302,9 @@ class PygletUI(PygletSettingsMixin):
         self.floor_transition_seconds = d.FLOOR_TRANSITION_SECONDS
         self.idle_bob_enabled = d.IDLE_BOB_ENABLED
         self.move_glide_enabled = d.MOVE_GLIDE_ENABLED
-        self._effect_player_pos = None
-        self._treasure_sparkle_started = None
-        self._treasure_sparkle_cells = []
+        self._effect_player_pos: Optional[Tuple[int, int]] = None
+        self._treasure_sparkle_started: Optional[float] = None
+        self._treasure_sparkle_cells: List[Tuple[int, int]] = []
 
     def __init__(
         self,
