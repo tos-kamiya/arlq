@@ -1119,7 +1119,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     def _on_fullscreen_key_release(self, symbol, modifiers):
         if symbol == pgkey.F11:
-            self._draw_fullscreen_progress()
+            self._draw_rebuilding_message()
             self._switching_fullscreen = True
             try:
                 if self.window.fullscreen:
@@ -1128,13 +1128,13 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
                     self.window.set_fullscreen(True, screen=self._windowed_screen())
             finally:
                 self._switching_fullscreen = False
-            self._draw_fullscreen_progress()
+            self._draw_rebuilding_message()
             self._on_window_resize(*self.window.get_size())
             if not self._menu_active and not self._stage_input_active:
                 self._flip()
             return pyglet.event.EVENT_HANDLED
 
-    def _draw_fullscreen_progress(self):
+    def _draw_rebuilding_message(self):
         self.window.switch_to()
         width, height = self.window.get_size()
         message = tr("[Rebuilding display data...]")
@@ -1181,6 +1181,9 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     def _on_window_resize(self, width, height):
         if self._switching_fullscreen:
             return
+        if (width, height) != (self.window_width, self.window_height):
+            # Rebuilding the field for a new size takes a moment.
+            self._draw_rebuilding_message()
         old_cell_width = self.cell_size_x
         old_scroll_cells = self._horizontal_scroll_px / old_cell_width
         follow_player = self._camera_follow_player

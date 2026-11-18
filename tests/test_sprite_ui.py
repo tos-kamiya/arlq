@@ -434,9 +434,13 @@ def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
     ui._last_camera_player_pos = None
     ui._non_ascii_font_result = None
     ui._select_font_size = lambda: None
+    messages = []
+    ui._draw_rebuilding_message = lambda: messages.append('rebuilding')
 
     ui._on_window_resize(200, 120)
+    ui._on_window_resize(200, 120)
 
+    assert messages == ['rebuilding']
     assert (ui.window_width, ui.window_height) == (200, 120)
     assert ui.scale == pytest.approx(2)
     assert ui.cell_size_x == pytest.approx(30)
@@ -462,6 +466,8 @@ def test_sprite_maximize_restore_accepts_window_manager_size(
     ui._menu_active = menu_active
     size_requests = []
     ui.window = SimpleNamespace(set_size=lambda *size: size_requests.append(size))
+    messages = []
+    ui._draw_rebuilding_message = lambda: messages.append('rebuilding')
 
     ui._on_window_resize(3840, maximized_height)
     assert (ui.window_width, ui.window_height) == (3840, maximized_height)
@@ -476,6 +482,7 @@ def test_sprite_maximize_restore_accepts_window_manager_size(
     assert (ui.window_width, ui.window_height) == original_size
     assert ui.scale == pytest.approx(original_scale)
     assert size_requests == []
+    assert messages == ['rebuilding'] * 3
 
 
 @pytest.mark.parametrize(
@@ -493,7 +500,7 @@ def test_sprite_fullscreen_uses_screen_with_most_window_overlap(
     ui = sprite_ui
     ui.window_width, ui.window_height = 800, 500
     fullscreen_requests = []
-    ui._draw_fullscreen_progress = lambda: fullscreen_requests.append("progress")
+    ui._draw_rebuilding_message = lambda: fullscreen_requests.append("progress")
     ui._on_window_resize = lambda *size: fullscreen_requests.append(size)
     ui._stage_input_active = True
     ui.window = SimpleNamespace(

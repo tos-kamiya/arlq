@@ -90,8 +90,9 @@ The terminal must be at least 80 columns by 24 lines.
 column without scrolling, and can be resized in both dimensions. Changing the
 window height zooms the field while keeping its rendering detail consistent.
 Resizing or maximizing can zoom the field beyond 400% without changing the saved
-scale. Press F11 to toggle fullscreen on the window's current monitor. A
-progress message appears while the display is rebuilt. If the window is resized
+scale. Press F11 to toggle fullscreen on the window's current monitor. Whenever
+the window size changes, a progress message appears in the middle of the screen
+while the display is rebuilt. If the window is resized
 narrower than the field, the camera follows the player;
 Shift+Left/Right scrolls the view three cells at a time.
 
