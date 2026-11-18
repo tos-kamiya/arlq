@@ -21,6 +21,7 @@ CHIBI_BLEND = HERE / 'hero-rig-chibi.blend'
 BODY_LEAN, HEAD_TILT = 0.1, 0.3    # radians, back from the camera
 FACINGS = {'down': 0, 'left': -90, 'right': 90, 'up': 180}    # turn in degrees
 POSE_FRAMES = {'rest': 1, 'guard': 40, 'step': 80, 'collapsed': 120}
+WALK_POSES = ('rest', 'walk-right', 'walk-left')
 # The sword in the right hand: the parts whose names start with each prefix.
 SWORDS = {'own': 'Sword ', 'chimera': 'Chimera sword ', 'cursed': 'Cursed sword ',
           'blessed': 'Blessed sword '}
@@ -56,12 +57,40 @@ def standing_extent(scene, rig, parts):
     return min(heights), max(heights)
 
 
+def apply_walk_pose(rig, lead):
+    """Set one of the two walk poses on top of the standing frame."""
+    trail = 'L' if lead == 'R' else 'R'
+    bones = rig.pose.bones
+    for side, thigh, shin, foot, arm in (
+        (lead, 44, -24, -20, -16),
+        (trail, -15, -1, 50, 20),
+    ):
+        for joint, angle in (
+            ('thigh', thigh), ('shin', shin), ('foot', foot), ('upper_arm', arm)
+        ):
+            bones[f'{joint}.{side}'].rotation_euler.x = math.radians(angle)
+    # The sword stays in the right hand on both steps.
+    bones['forearm.R'].rotation_euler.x = math.radians(30 if lead == 'R' else 14)
+    bones['forearm.L'].rotation_euler.x = math.radians(12)
+    # Let the hem swing away from the leading leg so it reads from behind.
+    sway = 1 if lead == 'R' else -1
+    for chain in 'LCR':
+        for section, angle in ((2, 7), (3, 10), (4, 6)):
+            cape = bones[f'cape.{chain}.{section}']
+            cape.rotation_euler.x = math.radians(-3)
+            cape.rotation_euler.z = math.radians(-sway * angle)
+    root = bones['root']
+    root.location += root.bone.matrix_local.to_3x3().inverted() @ Vector((0, 0, -.025))
+
+
 def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4)):
     """Baked mesh copies of the posed, turned and leaned figure, each with its
     world shape in its mesh, transformed by `place` (applied last)."""
     collapsed = pose == 'collapsed'
     rig.rotation_euler.z = 0 if collapsed else math.radians(FACINGS[facing])
-    scene.frame_set(POSE_FRAMES[pose])
+    scene.frame_set(POSE_FRAMES['rest' if pose in WALK_POSES else pose])
+    if pose in WALK_POSES[1:]:
+        apply_walk_pose(rig, 'R' if pose == 'walk-right' else 'L')
     bpy.context.view_layer.update()
     depsgraph = bpy.context.evaluated_depsgraph_get()
     feet = Vector((0, 0, floor))
