@@ -1981,6 +1981,10 @@ def bob_ui(sprite_ui):
     ui._flip = lambda: setattr(ui, 'flips', ui.flips + 1)
     ui.now = 0.0
     ui._bob_clock = lambda: ui.now
+    ui._last_bob_activity = ui.now
+    ui._key_queue = []
+    ui._held_direction_keys = set()
+    ui._gamepad_held_buttons = set()
     return ui
 
 
@@ -2040,30 +2044,65 @@ def test_hop_switches_every_interval_in_whole_texels(bob_ui):
     hop = sprite_funcs.IDLE_BOB_TEXELS / sprite_defs.LOW_RESOLUTION_DETAIL_SCALE
     bob_ui._update_idle_bob()
     assert (_bobbing_ys(bob_ui), bob_ui.flips) == ([base], 0)
-    bob_ui.now = interval * 1.1
+    bob_ui.now = sprite_funcs.IDLE_BOB_DELAY + interval * 0.1
     bob_ui._update_idle_bob()
     assert (_bobbing_ys(bob_ui), bob_ui.flips) == ([base + hop], 1)
-    bob_ui.now = interval * 1.9
+    bob_ui.now = sprite_funcs.IDLE_BOB_DELAY + interval * 0.9
     bob_ui._update_idle_bob()
     assert bob_ui.flips == 1  # no redraw within one height
-    bob_ui.now = interval * 2.1
+    bob_ui.now = sprite_funcs.IDLE_BOB_DELAY + interval * 1.1
     bob_ui._update_idle_bob()
     assert (_bobbing_ys(bob_ui), bob_ui.flips) == ([base], 2)
 
 
 def test_redraw_while_raised_keeps_the_raised_height(bob_ui):
-    bob_ui.now = sprite_funcs.IDLE_BOB_INTERVAL * 1.5
+    bob_ui.now = sprite_funcs.IDLE_BOB_DELAY
     bob_ui._update_idle_bob()
     bob_ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
     sprite, base = bob_ui._bobbing[0]
     assert sprite.y == base + bob_ui._bob_offset()
 
 
+@pytest.mark.parametrize(('control', 'active', 'released'), [
+    ('_key_queue', [(pyglet.window.key.UP, 0)], []),
+    ('_held_direction_keys', {pyglet.window.key.UP}, set()),
+    ('_gamepad_held_buttons', {0}, set()),
+    ('controller', SimpleNamespace(dpadx=1, dpady=0), None),
+])
+def test_all_bobbing_waits_after_input(bob_ui, monkeypatch, control, active, released):
+    ui = bob_ui
+    monkeypatch.setattr(ui, '_player_sprite', lambda player: '@')
+    monkeypatch.setattr(ui, '_draw_lp_gauge', lambda *args: None)
+    ui._draw_player((4, 5), d.Player(4, 5, 100, 90))
+    ui._draw_field_text((5, 5), 'b', (220, 82, 82), True)
+    bases = _bobbing_ys(ui)
+    delay = sprite_funcs.IDLE_BOB_DELAY
+
+    ui.now = delay
+    ui._update_idle_bob()
+    assert _bobbing_ys(ui) == [base + ui._bob_offset() for base in bases]
+
+    setattr(ui, control, active)
+    ui._update_idle_bob()
+    assert _bobbing_ys(ui) == bases
+    ui.now += delay + 1
+    ui._update_idle_bob()
+    assert _bobbing_ys(ui) == bases
+
+    setattr(ui, control, released)
+    ui.now += delay - 0.1
+    ui._update_idle_bob()
+    assert _bobbing_ys(ui) == bases
+    ui.now += 0.2
+    ui._update_idle_bob()
+    assert _bobbing_ys(ui) == [base + ui._bob_offset() for base in bases]
+
+
 @pytest.mark.parametrize('change', ['disabled', 'not_waiting', 'map'])
 def test_hop_returns_to_ground_when_off_or_not_waiting(bob_ui, change):
     bob_ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
     base = bob_ui._bobbing[0][1]
-    bob_ui.now = sprite_funcs.IDLE_BOB_INTERVAL * 1.5
+    bob_ui.now = sprite_funcs.IDLE_BOB_DELAY
     bob_ui._update_idle_bob()
     if change == 'disabled':
         bob_ui.idle_bob_enabled = False
@@ -2079,7 +2118,7 @@ def test_menu_leaves_hopping_sprites_untouched(bob_ui):
     bob_ui._draw_field_text((4, 5), 'b', (220, 82, 82), True)
     base = bob_ui._bobbing[0][1]
     bob_ui._menu_active = True
-    bob_ui.now = sprite_funcs.IDLE_BOB_INTERVAL * 1.5
+    bob_ui.now = sprite_funcs.IDLE_BOB_DELAY
     bob_ui._update_idle_bob()
     assert (_bobbing_ys(bob_ui), bob_ui.flips) == ([base], 0)
 
@@ -2505,7 +2544,7 @@ def test_step_does_not_glide_without_a_one_cell_move(sprite_ui, before, events, 
 
 
 def test_idle_hop_waits_while_gliding(bob_ui):
-    bob_ui.now = sprite_funcs.IDLE_BOB_INTERVAL * 1.5
+    bob_ui.now = sprite_funcs.IDLE_BOB_DELAY
     assert bob_ui._idle_bob_raised()
     bob_ui._slide_from = {'@': (3, 5)}
     assert not bob_ui._idle_bob_raised()

@@ -202,9 +202,10 @@ HORIZONTAL_VIEW_SCROLL_CELLS = 3
 HOVER_SCALE = 2.0
 MOUSE_CURSOR_SECONDS = 3.0
 STRENGTH_TEXT_SCALE = 0.7
-# While waiting for input, characters in view hop between two heights every
+# After the idle delay, characters in view hop between two heights every
 # IDLE_BOB_INTERVAL seconds, all in step. The hop is whole texels of the
 # low-resolution render target (1 window pixel at 100%).
+IDLE_BOB_DELAY = 5.0
 IDLE_BOB_INTERVAL = 0.7
 IDLE_BOB_TEXELS = 2
 # When the player's LP runs out, once its last turn has been shown, it sinks
@@ -331,6 +332,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._bobbing = []
         self._bob_raised = False
         self._bob_clock = time.monotonic
+        self._last_bob_activity = self._bob_clock()
         # The won stage's treasure glow (see draw_treasure_glow).
         self._treasure_glow = None
         self._treasure_glow_since = None
@@ -609,17 +611,29 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         return IDLE_BOB_TEXELS * self.scale / LOW_RESOLUTION_DETAIL_SCALE
 
     def _idle_bob_raised(self):
+        hop_seconds = self._bob_clock() - self._last_bob_activity - IDLE_BOB_DELAY
         return (
             self.idle_bob_enabled
             and self._slide_from is None
             and self._stage_input_active
             and not self.map_mode
-            and int(self._bob_clock() / IDLE_BOB_INTERVAL) % 2 == 1
+            and hop_seconds >= 0
+            and int(hop_seconds / IDLE_BOB_INTERVAL) % 2 == 0
         )
 
     def _update_idle_bob(self):
         """Move the hopping sprites when the hop height changes; nothing is
         drawn in between, so waiting stays cheap."""
+        if (
+            self._menu_active
+            or not self._stage_input_active
+            or self.map_mode
+            or self._key_queue
+            or self._held_direction_keys
+            or self._gamepad_held_buttons
+            or (self.controller and self._controller_direction(self.controller) != (0, 0))
+        ):
+            self._last_bob_activity = self._bob_clock()
         if self._menu_active:
             return
         raised = self._idle_bob_raised()

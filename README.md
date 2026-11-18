@@ -137,7 +137,7 @@ submenu's changes and returns to `Settings`.
 | --- | --- | --- |
 | `Combat effect duration` | `--combat-effect-duration SECONDS` | Duration of combat and barrier damage effects (`0` to `0.5` seconds in 0.1-second steps; default `0.3`). 0 disables the effects and their delay. Used in every mode. |
 | `Floor transition duration` | `--floor-transition-duration SECONDS` | Duration of the short scene `arlq-sprites` shows between floors (`0` to `1` second in 0.1-second steps; default `0.5`). 0 skips it. |
-| `Character bobbing` | `--character-bobbing on\|off` | In `arlq-sprites`, makes characters in view hop slightly every 0.7 seconds while the game waits for input (default: On). |
+| `Character bobbing` | `--character-bobbing on\|off` | In `arlq-sprites`, makes the player and other eligible characters in view hop slightly after 5 seconds without input, then alternate heights every 0.7 seconds (default: On). |
 | `Smooth movement` | `--smooth-movement on\|off` | In `arlq-sprites`, the player, its fairy, and following party members glide into each one-cell step, with the field scrolling along (default: On). When it is off, they and the view move a whole cell at once. |
 
 #### `Settings` → `Gamepad button settings`
