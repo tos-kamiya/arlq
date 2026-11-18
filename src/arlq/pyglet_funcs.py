@@ -1754,6 +1754,12 @@ class PygletUI(PygletSettingsMixin):
     def farthest_preview(self, enabled: bool) -> None:
         self._keyboard_farthest_preview = bool(enabled)
 
+    @staticmethod
+    def _wait_for_input(timeout: float = 1 / 30) -> None:
+        """Wait until a window or device event arrives, or at most `timeout`
+        seconds, so a key press is handled without a fixed polling delay."""
+        pyglet.app.platform_event_loop.step(timeout)
+
     def poll_events(self) -> bool:
         """Process pending window events and report whether the window closed."""
         self._pump()
@@ -1900,7 +1906,7 @@ class PygletUI(PygletSettingsMixin):
                     self.input_was_repeat = True
                     return current_direction
 
-            time.sleep(1 / 30)
+            self._wait_for_input()
 
     def input_alphabet(self) -> Optional[str]:
         """
@@ -1928,7 +1934,7 @@ class PygletUI(PygletSettingsMixin):
                 self.controls_menu()
                 return "h"
 
-            time.sleep(1 / 30)
+            self._wait_for_input()
 
     def confirm_game_over(self):
         return self._confirm_choice(tr("No reachable encounters or exits. End the game?"))
@@ -1991,7 +1997,7 @@ class PygletUI(PygletSettingsMixin):
                 if self._resize_redraw_pending:
                     self._resize_redraw_pending = False
                     break
-                time.sleep(1 / 30)
+                self._wait_for_input()
 
     def _draw_treasure_sparkles(self, cells, tick):
         """Overlay animated particles without changing the saved stage drawing."""
@@ -2055,7 +2061,7 @@ class PygletUI(PygletSettingsMixin):
                 self._resize_redraw_pending = False
                 return (0, 0, False)
 
-            time.sleep(1 / 30)
+            self._wait_for_input()
 
     def quit(self):
         """Closes the game window."""
@@ -2137,7 +2143,7 @@ class PygletUI(PygletSettingsMixin):
                 and self.gamepad_help_button in self._gamepad_pressed_buttons
             ):
                 return
-            time.sleep(1 / 30)
+            self._wait_for_input()
 
     settings_menu = _menu_method(PygletSettingsMixin.settings_menu)
     gamepad_button_settings_menu = _menu_method(PygletSettingsMixin.gamepad_button_settings_menu)
@@ -2275,4 +2281,4 @@ class PygletUI(PygletSettingsMixin):
                             current_index = move_selection(*direction)
                             break
 
-                time.sleep(1 / 30)
+                self._wait_for_input()

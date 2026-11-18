@@ -45,6 +45,7 @@ def _menu_ui(monkeypatch, events):
     ui.quit_called = False
     ui.quit = lambda: setattr(ui, "quit_called", True)
     monkeypatch.setattr("arlq.pyglet_funcs.time.sleep", lambda *_args: None)
+    ui._wait_for_input = lambda *_args: None
     return ui
 
 
