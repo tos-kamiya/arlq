@@ -399,12 +399,12 @@ def respawn(
     point = rand.choice(candidates)
     tribe = d.CHAR_TO_TRIBE[char]
     if isinstance(tribe, d.MonsterTribe):
-        entity = d.Monster(*point, tribe, rank)
+        entity: d.Entity = d.Monster(*point, tribe, rank)
         if current.field[point[1]][point[0]] in (d.CHAR_CALTROP, d.CHAR_BARRIER):
             current.field[point[1]][point[0]] = d.CHAR_FLOOR
             current.persistent_barriers.discard(point)
     else:
-        entity = d.Fairy(*point, tribe, origin_floor=origin_floor)
+        entity = d.Fairy(*point, d.CHAR_TO_FAIRY_TRIBE[char], origin_floor=origin_floor)
     current.entities.append(entity)
     return point
 

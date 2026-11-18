@@ -147,15 +147,15 @@ def generate_floor_field(
                 for room_a, room_b in edges:
                     degree[room_a] += 1
                     degree[room_b] += 1
-                split_options = [
+                leaf_options = [
                     (edge, room)
                     for edge in edges
                     for room in edge
                     if degree[room] == 1 and room not in {up_tile, down_tile}
                 ]
-                if not split_options:
+                if not leaf_options:
                     continue
-                split_edge, detached_room = rand.choice(split_options)
+                split_edge, detached_room = rand.choice(leaf_options)
                 edges.remove(split_edge)
                 room_components = (
                     connected_rooms - {detached_room},

@@ -117,7 +117,10 @@ def build_member_trial() -> tuple[list[Floor], d.Player]:
     check_map(upper_rows, "Stage 5 floor 1")
     check_map(lower_rows, "Stage 5 floor 2")
 
-    def parse_map(rows: list[str], floor_index: int):
+    def parse_map(rows: list[str], floor_index: int) -> tuple[
+        list[list[str]], list[list[int]], list[d.Entity], set[d.Point],
+        dict[d.Point, str], dict[str, d.Point], list[d.Point],
+    ]:
         field = [[d.CHAR_WALL] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
         seen = [[0] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
         entities: list[d.Entity] = []

@@ -287,7 +287,7 @@ class PygletUI(PygletSettingsMixin):
     def _initialize_state(self) -> None:
         """Initialize Python state before creating the window or loading settings."""
         self.window_width = None
-        self.scale = 1
+        self.scale: float = 1
         self._text_overlay_group = None
         self._resize_redraw_pending = False
         self._menu_font_size = None

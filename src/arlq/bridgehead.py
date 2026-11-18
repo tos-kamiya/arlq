@@ -24,7 +24,7 @@ def reachable_floor_points(current: Floor, entry: d.Point) -> set[d.Point]:
     return reachable
 
 
-def place_bridgehead(current: Floor, anchor: d.Point) -> None:
+def place_bridgehead(current: Floor, anchor: d.Point) -> d.Point:
     open_points = set(_open_points(current)) & reachable_floor_points(current, anchor)
     choices = [
         (x, y) for x, y in open_points
@@ -36,6 +36,7 @@ def place_bridgehead(current: Floor, anchor: d.Point) -> None:
     current.bridgehead = (x, y)
     for dx, char in enumerate("/\\"):
         current.decor[y][x + dx] = d.DECOR_BRIDGEHEAD_PREFIX + char
+    return x, y
 
 
 def in_bridgehead(current: Floor, point: d.Point) -> bool:

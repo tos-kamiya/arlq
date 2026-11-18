@@ -8,7 +8,7 @@ from . import defs as d
 
 def build_strength_column(
     tribes: List[d.MonsterTribe],
-    player_attack: int,
+    player_attack: float,
     max_rows: int,
 ) -> List[Tuple[Optional[str], bool]]:
     """
@@ -353,7 +353,7 @@ def preview_entity_glyphs(
 
 
 def monster_party_tones(
-    entities: List[d.Entity], known_types: Set[str], player_attack: int,
+    entities: List[d.Entity], known_types: Set[str], player_attack: float,
 ) -> dict[d.Monster, str]:
     """Calculate each party's display tone once per rendered floor."""
     from .stage56 import monster_party_entities, monster_positions
@@ -379,7 +379,7 @@ def revealed_entity_glyphs(
     entity: d.Entity,
     known_types: Set[str],
     show_entities: bool,
-    player_attack: int,
+    player_attack: float,
     dim_types: Optional[Set[str]],
     reveal_disguises: bool = False,
     debug_show_entities: bool = False,

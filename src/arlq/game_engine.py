@@ -121,8 +121,8 @@ def reachable_known_cells(
         and known[entity.y][entity.x]
     }
     start = (player.x, player.y)
-    distances = {start: 0}
-    pending = [(0, player.y, player.x)]
+    distances: dict[d.Point, float] = {start: 0}
+    pending: List[Tuple[float, int, int]] = [(0, player.y, player.x)]
     neighbors = ((0, -1), (-1, 0), (1, 0), (0, 1))
 
     while pending:
@@ -537,7 +537,7 @@ def _vortex_rearrange(
     ]
 
     # Clear and rebuild only barriers inside the Vortex's affected area.
-    horizontal_radius = max(1.0, radius * d.FOV_WIDTH_EXPANSION_RATIO)
+    barrier_horizontal_radius = max(1.0, radius * d.FOV_WIDTH_EXPANSION_RATIO)
     vertical_radius = max(1, radius)
     for x, y in affected_points:
         if (
@@ -609,7 +609,7 @@ def _vortex_rearrange(
             normalized_distance = min(
                 1.0,
                 math.hypot(
-                    (x - center[0]) / horizontal_radius,
+                    (x - center[0]) / barrier_horizontal_radius,
                     (y - center[1]) / vertical_radius,
                 ),
             )

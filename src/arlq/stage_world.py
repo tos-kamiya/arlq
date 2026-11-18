@@ -1,6 +1,6 @@
 """Floor construction and map generation for Stages 1–4."""
 
-from typing import Container, Dict, Iterable, List, Optional, Tuple
+from typing import Collection, Container, Dict, Iterable, List, Optional, Tuple
 
 from . import defs as d
 from .arlq import (
@@ -135,7 +135,7 @@ def _place_stage4_final_floor_barriers(floor: Floor) -> None:
 
 
 def _place_final_floor_barriers(
-    floor: Floor, percent: int, *, protected_points: Container[d.Point] = (),
+    floor: Floor, percent: int, *, protected_points: Collection[d.Point] = (),
     allowed_points: Optional[Container[d.Point]] = None,
 ) -> None:
     """Cover a percentage of eligible final-floor cells with barriers."""

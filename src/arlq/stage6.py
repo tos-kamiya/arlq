@@ -103,7 +103,7 @@ def _place_detached_room_monsters(
         if avoid:
             return []
         raise RuntimeError("detached Stage 6 room needs two separated open cells")
-    points = rand.choice(point_pairs)
+    chosen_points = rand.choice(point_pairs)
     candidates = [("b", 1), ("b", 2), ("f", 1)]
     if rand.randrange(2) == 0:
         candidates.append(("A", 1))
@@ -118,7 +118,7 @@ def _place_detached_room_monsters(
         roster.append(choice)
     monsters = [
         d.Monster(*point, d.CHAR_TO_MONSTER_TRIBE[char], empowered=empowered)
-        for point, (char, empowered) in zip(points, roster, strict=True)
+        for point, (char, empowered) in zip(chosen_points, roster, strict=True)
     ]
     current.entities.extend(monsters)
     return monsters
@@ -512,7 +512,7 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
             current.entities.append(
                 d.Fairy(
                     *rand.choice(_open_points(current)),
-                    d.CHAR_TO_TRIBE[char],
+                    d.CHAR_TO_FAIRY_TRIBE[char],
                     origin_floor=index,
                 )
             )
@@ -570,9 +570,9 @@ def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player
     player.stage6_candidates = True
     radius = _bridgehead_known_radius()
     current = floors[0]
-    _place_bridgehead(current, current.up)
+    bridgehead = _place_bridgehead(current, current.up)
     for x, y in iterate_ellipse_points(
-        *current.bridgehead, radius, d.FOV_WIDTH_EXPANSION_RATIO
+        *bridgehead, radius, d.FOV_WIDTH_EXPANSION_RATIO
     ):
         current.seen[y][x] = 1
     for role in member_roles:

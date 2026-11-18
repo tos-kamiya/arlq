@@ -1,3 +1,8 @@
+from typing import Sequence, TypeVar
+
+T = TypeVar("T")
+
+
 def player_spawn_exclusion(point):
     x, y = point
     return {(x + dx, y + dy) for dx in range(-2, 3) for dy in range(-2, 3)}
@@ -59,7 +64,7 @@ class MyRandom:
             if value < width:
                 return start + value
 
-    def choice(self, items):
+    def choice(self, items: Sequence[T]) -> T:
         i = self.randrange(len(items))
         return items[i]
 
