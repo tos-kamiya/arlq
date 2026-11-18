@@ -350,6 +350,14 @@ Vertically adjacent monsters fight in parties of up to eight, combining their st
 | **f** / **f'** Flame cobra | Worth 5 experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
 | **i** Ivy | Base attack power 50. Ivies appear on floors 2 and 3. Each active Ivy deals 4 LP damage every turn when the player is directly above, below, left, or right of it. Rogue does not block this damage. |
 
+## Troubleshooting
+
+### The player flickers back to the previous cell (Linux, Wayland)
+
+In a Wayland session (such as Ubuntu's default GNOME session), the GUI versions run through XWayland. With an NVIDIA GPU and an XWayland older than 24.1, which does not support explicit sync, the display can briefly show an older frame. In `arlq-sprites`, this can make the player seem to jump back to the previous cell for a moment when you move quickly, especially in a large or maximized window. The game itself draws the frames correctly.
+
+If you see this flicker, choose **Ubuntu on Xorg** on the login screen and run the game in that session. Updating to XWayland 24.1 or later, together with a driver and compositor that support explicit sync, should also fix it.
+
 ## Development commands
 
 ```bash
