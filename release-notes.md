@@ -1,5 +1,16 @@
 # ARLQ Release Notes
 
+## 6.8.7 - 2026-11-18
+
+- Add F11 fullscreen toggling to `arlq-sprites`.
+- Move characters and the camera in whole-cell steps in sprite mode. The
+  player alternates its leading foot each turn and stands with both feet
+  together at stage start and after stairs, falls, or rewinds. The sword stays
+  steady across steps, with a grip chosen for visibility when facing left.
+- Show the right-foot-forward pose in both directions of the stair animation.
+  Idle bobbing starts after five seconds without input and shows the player
+  with both feet together while preserving its facing.
+
 ## 6.8.6 - 2026-11-18
 
 - Draw the player 5% larger in sprite mode, in every sword state, facing and
