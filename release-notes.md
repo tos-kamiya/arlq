@@ -1,5 +1,13 @@
 # ARLQ Release Notes
 
+## 6.8.10 - 2026-11-19
+
+- Respond to key presses sooner in the GUI and sprite modes: the input loops
+  now wake as soon as an event arrives instead of polling every 1/30 second.
+- Show the "[Rebuilding display data...]" message in the middle of the
+  screen whenever the `arlq-sprites` window changes size, not only when
+  toggling fullscreen with F11.
+
 ## 6.8.9 - 2026-11-19
 
 - Redraw the knight player's helmet in sprite mode as an open-face jet helmet
