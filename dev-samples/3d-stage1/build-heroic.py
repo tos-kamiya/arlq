@@ -31,7 +31,7 @@ from heroic_groups import GROUPS, MEMBER_TONES, MEMBER_VARIANTS, blend_path, gro
 # The player is the rigged armor's low head-to-body build (see
 # rigged-armor/README.md); build it first with rigged-armor/build-chibi.py.
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'rigged-armor'))
-from sprite_pose import heroic_player
+from sprite_pose import HEROIC_PLAYER_SIZE, heroic_player
 
 OUT = Path(__file__).resolve().parent / 'heroic'
 GROUP = sys.argv[sys.argv.index('--group') + 1] if '--group' in sys.argv else None
@@ -142,7 +142,7 @@ CENTERS = {char: (x, y) for char, _, x, y in ROW}
 # (MEMBER_HEAD_SIZE). The bison and buffalo were then shrunk to 0.95 of
 # their sizes, as they looked too large, with their eyes enlarged by as
 # much (BOVINE_EYE) so these stay as large on screen.
-SIZES = {**{base + turn: 1.42 for base in ('@', '@c', '@C', '@K')
+SIZES = {**{base + turn: HEROIC_PLAYER_SIZE for base in ('@', '@c', '@C', '@K')
             for turn in ('', '^', '<', '>')}, '@_': 1.6, 'a': 0.9, 'A': 0.9, 'b': 1.09 * 0.95, 'B': 1.13 * 0.95, 'c': 1.2, 'd': 1.25, 'T': 1.66, 'T-toy': 1.66, 'M': 1.66, 'D': 1.44,
          'l': 1.4, 'n': 1.15, 'o': 1.25, 'C': 1.28, 'F': 1.52, "'": 1.7, '"': 1.7,
          'w': 1.52, 'W': 2.2, 'V': 1.4, 'k': 1.4, 'm': 1.35, 'f': 1.25, 'g': 1.3, 'e': 1.71, 'E': 1.98, 'X': 1.35, 'i': 2.1, 'p': 1.3, 'H': 1.8, 'I': 1.6, 'J': 1.6, 'K': 1.6, 'L': 1.7, 'S': 1.6,

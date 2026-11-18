@@ -127,11 +127,12 @@ def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4)):
 # ../build-heroic.py) is applied; the chibi figure is scaled to it: 1.05
 # times the previous player model's 1.33, a little larger on screen.
 HEROIC_PLAYER_HEIGHT = 1.33 * 1.05
+HEROIC_PLAYER_SIZE = 1.42
 # The heroic scenes' sword states.
 HEROIC_SWORDS = {None: 'own', 'c': 'chimera', 'C': 'cursed', 'blessed': 'blessed'}
 
 
-def heroic_player(x, y, sword=None, facing='down', collapsed=False):
+def heroic_player(x, y, sword=None, facing='down', collapsed=False, *, pose='rest'):
     """Build the player for ../build-heroic.py: bring in the chibi rig, pose
     it, bake the sprite figure standing on the floor at (x, y) at the heroic
     player's height, and remove the rig again."""
@@ -149,7 +150,7 @@ def heroic_player(x, y, sword=None, facing='down', collapsed=False):
     scale = HEROIC_PLAYER_HEIGHT / (top - floor)
     place = (Matrix.Translation((x, y, 0)) @ Matrix.Scale(scale, 4)
              @ Matrix.Translation((0, 0, -floor)))
-    copies = bake(scene, rig, parts, 'collapsed' if collapsed else 'rest', facing, floor, place)
+    copies = bake(scene, rig, parts, 'collapsed' if collapsed else pose, facing, floor, place)
     scene.frame_set(1)
     for obj in loaded.objects:
         if obj is not None:

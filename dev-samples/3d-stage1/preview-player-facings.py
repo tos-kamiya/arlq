@@ -1,7 +1,8 @@
 """Render the player in every sword state and facing from the saved heroic others' scene.
 
 Rows are the sword states (own sword, chimera's sword, cursed sword, K
-blessing) and columns the facings (down, left, right, up); a last row shows
+blessing) and columns the facings (down, left, right, up) plus a down-facing
+step with the right foot forward. A last row shows
 the player collapsed from hunger, in the first column. Run after
 build-heroic.py:
 blender --background --threads 4 --python dev-samples/3d-stage1/preview-player-facings.py
@@ -10,19 +11,26 @@ Writes heroic/preview-player-facings.jpg; needs ImageMagick's `convert`.
 from pathlib import Path
 import math
 import subprocess
+import sys
 
 import bpy
 from mathutils import Matrix, Vector
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / 'rigged-armor'))
+from sprite_pose import HEROIC_PLAYER_SIZE, heroic_player
+
 SWORDS = [('@', 'OWN SWORD'), ('@c', 'CHIMERA SWORD (c)'), ('@C', 'CURSED SWORD (C)'),
           ('@K', 'K BLESSING')]
+WALK_SWORDS = {'@': None, '@c': 'c', '@C': 'C', '@K': 'blessed'}
 FACINGS = [('', 'DOWN'), ('<', 'LEFT'), ('>', 'RIGHT'), ('^', 'UP')]
+COLUMNS = [name for _, name in FACINGS] + ['DOWN / RIGHT FOOT']
 # The collapsed player has one pose, shown under the down column.
 COLLAPSED = ('@_', 'COLLAPSED (HUNGER)')
 ROWS = len(SWORDS) + 1
 SPACING_X = 1.8
 SPACING_Y = 2.4
+WALK_COLUMN_GAP = SPACING_X * 0.5
 
 bpy.ops.wm.open_mainfile(filepath=str(ROOT / 'heroic' / 'characters-others-angle60.blend'))
 scene = bpy.context.scene
@@ -46,7 +54,10 @@ def label(value, pos, size, align='CENTER'):
 
 
 def cell(col, row):
-    return ((col - (len(FACINGS) - 1) / 2) * SPACING_X, -row * SPACING_Y)
+    x = (col - (len(COLUMNS) - 1) / 2) * SPACING_X
+    if col == len(FACINGS):
+        x += WALK_COLUMN_GAP
+    return x, -row * SPACING_Y
 
 
 shown = set()
@@ -67,6 +78,14 @@ def place(char, col, row):
         shown.add(obj)
 
 
+for row, (sword, _) in enumerate(SWORDS):
+    x, y = cell(len(FACINGS), row)
+    pivot = Matrix.Translation((x, y, 0))
+    resize = pivot @ Matrix.Scale(HEROIC_PLAYER_SIZE, 4) @ pivot.inverted()
+    for obj in heroic_player(x, y, WALK_SWORDS[sword], pose='walk-right'):
+        obj.matrix_world = resize @ obj.matrix_world
+        shown.add(obj)
+
 rows = [(sword_name, [sword + suffix for suffix, _ in FACINGS]) for sword, sword_name in SWORDS]
 rows.append((COLLAPSED[1], [COLLAPSED[0]]))
 for row, (row_name, chars) in enumerate(rows):
@@ -74,7 +93,7 @@ for row, (row_name, chars) in enumerate(rows):
         place(char, col, row)
     left, cy = cell(0, row)
     shown.add(label(row_name, (left - SPACING_X * 0.55, cy - 0.3, 0.005), 0.14, 'RIGHT'))
-for col, (_, facing_name) in enumerate(FACINGS):
+for col, facing_name in enumerate(COLUMNS):
     cx, _ = cell(col, 0)
     # Above the back row's helmets, which rise well above their cells on screen.
     shown.add(label(facing_name, (cx, SPACING_Y * 0.55 + 1.1, 0.005), 0.16))
@@ -95,14 +114,15 @@ angle = math.radians(60)
 # Room on the left for the longest row label, on the right for the swords
 # held out by the last column, above for the column labels, and below for
 # the collapsed player's flung arm.
-width = len(FACINGS) * SPACING_X + 5.2
+width = len(COLUMNS) * SPACING_X + WALK_COLUMN_GAP + 5.2
 depth = ROWS * SPACING_Y + 3.4
-target = Vector((-0.6, -(ROWS - 1) * SPACING_Y / 2 + 0.2, 0.5))
+target = Vector((-0.6 + WALK_COLUMN_GAP / 2, -(ROWS - 1) * SPACING_Y / 2 + 0.2, 0.5))
 camera.location = target + Vector((0, -15 * math.cos(angle), 15 * math.sin(angle)))
 camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera.data.ortho_scale = width
-scene.render.resolution_x = 1400
-scene.render.resolution_y = round(1400 * (depth * math.sin(angle) + 2.4) / width)
+pixels_per_unit = 1400 / (len(FACINGS) * SPACING_X + 5.2)
+scene.render.resolution_x = round(width * pixels_per_unit)
+scene.render.resolution_y = round((depth * math.sin(angle) + 2.4) * pixels_per_unit)
 png = ROOT / 'heroic' / 'preview-player-facings.png'
 scene.render.filepath = str(png)
 bpy.ops.render.render(write_still=True)
