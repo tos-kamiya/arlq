@@ -4,7 +4,7 @@ import heapq
 import math
 from collections import Counter
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, List, Optional, Set, Tuple
 
 from . import defs as d
 from . import bridgehead
@@ -1449,9 +1449,7 @@ def _handle_floor_transition(
     return None
 
 
-def _reveal_paired_stair_cells(
-    floors: List[Floor], player: Optional[d.Player] = None
-) -> None:
+def _reveal_paired_stair_cells(floors: List[Floor]) -> None:
     """Mark a stair's matching cell on the adjacent floor as known."""
     for index in range(len(floors) - 1):
         upper = floors[index]
@@ -1691,7 +1689,6 @@ def _process_multi_floor_turn(
     if standing_on_collapse or entered_pit:
         from_floor = floor[0]
         collapse_point = previous if standing_on_collapse else (player.x, player.y)
-        player.floor_exit = collapse_point
         if collapse_hit is not None:
             current.seen[collapse_hit.y][collapse_hit.x] = 1
         current.seen[collapse_point[1]][collapse_point[0]] = 1
@@ -1871,7 +1868,6 @@ def _process_multi_floor_turn(
             stage6.scatter_members_on_new_route(
                 floors, player, floor_before, movement_destination, floor[0]
             )
-        player.floor_exit = movement_destination
         transition_kind = floor_transition_kind(
             floors, floor_before, floor[0], (player.x, player.y)
         )
@@ -1956,7 +1952,7 @@ def observe_world(
     stage56.reveal_rogue_monsters(current, player, visible)
     if d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
         stage56.reveal_scholar_features(current, current.seen)
-    _reveal_paired_stair_cells(floors, player)
+    _reveal_paired_stair_cells(floors)
     if d.has_member(player, d.MEMBER_FAIRY_SEER):
         for known_floor in floors:
             for entity in known_floor.entities:

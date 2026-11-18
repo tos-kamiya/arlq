@@ -104,7 +104,6 @@ def test_stage3_floor_declares_its_complete_state_shape():
         "broken_walls",
         "respawn_exclusions",
         "monster_spawn_blocked_rooms",
-        "monster_spawn_room_rates",
         "room_components",
         "decor",
         "bridgehead",

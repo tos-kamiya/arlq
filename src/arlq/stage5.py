@@ -180,7 +180,7 @@ def build_member_trial(
     if start is None or upper_stair is None or not upper_pits or not upper_gates:
         raise ValueError("Stage 5 floor 1 needs @, v, ?, and . markers")
 
-    (lower_field, lower_seen, lower_entities, lower_barriers, lower_gates,
+    (lower_field, lower_seen, lower_entities, lower_barriers, _,
      lower_markers, _) = parse_map(lower_rows, 1)
     lower_stair = lower_markers.get(d.CHAR_STAIRS_UP)
 

@@ -7,6 +7,7 @@ import pytest
 from arlq import defs as d
 from arlq import game_engine
 from arlq.arlq import GameConfig
+from arlq.game_events import FloorChanged
 from arlq.game_engine import (
     Floor,
     _ContactResult,
@@ -222,14 +223,15 @@ def test_falling_onto_same_position_collapse_drops_one_floor_per_turn():
     floor_index = [0]
     checkpoint = [(player.x, player.y)]
     queue = Counter()
+    events = []
 
     _process_multi_floor_turn(
-        (1, 0), floors, player, floor_index, checkpoint, queue, 1
+        (1, 0), floors, player, floor_index, checkpoint, queue, 1, events=events
     )
 
     assert floor_index == [1]
     assert (player.x, player.y) == (3, 2)
-    assert player.floor_exit == (3, 2)
+    assert [e.exit_point for e in events if isinstance(e, FloorChanged)] == [(3, 2)]
 
     _process_multi_floor_turn(
         (1, 0), floors, player, floor_index, checkpoint, queue, 2
@@ -248,6 +250,7 @@ def test_stair_transition_marks_repeat_stop_reason():
     lower.up_stairs = [(4, 4)]
     floors = [upper, lower]
     reasons = set()
+    events = []
 
     _process_multi_floor_turn(
         (1, 0),
@@ -258,11 +261,12 @@ def test_stair_transition_marks_repeat_stop_reason():
         Counter(),
         1,
         repeat_stop_reasons=reasons,
+        events=events,
     )
 
     assert "floor_transition" in reasons
     assert (player.x, player.y) == (4, 4)
-    assert player.floor_exit == (3, 2)
+    assert [e.exit_point for e in events if isinstance(e, FloorChanged)] == [(3, 2)]
 
 
 def test_marksman_hit_marks_repeat_stop_reason(monkeypatch):

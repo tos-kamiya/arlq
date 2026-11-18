@@ -316,30 +316,6 @@ def place_monster_barriers(
             current.field[y][x] = d.CHAR_BARRIER
 
 
-def update_moved_monster_barriers(
-    current: Floor,
-    entity: d.Monster,
-    old_position: d.Point,
-    player_position: d.Point | None = None,
-) -> None:
-    """Move one monster's barrier ring, retaining overlaps and permanent cells."""
-    offsets = _barrier_offsets(entity)
-    old_cells = {
-        (old_position[0] + dx, old_position[1] + dy)
-        for dx, dy in offsets
-        if 0 <= old_position[1] + dy < len(current.field)
-        and 0 <= old_position[0] + dx < len(current.field[old_position[1] + dy])
-    }
-    other_cells = {
-        point
-        for other in current.entities
-        if other is not entity and isinstance(other, d.Monster) and other.active
-        for point in barrier_cells(current, other)
-    }
-    clear_monster_barriers(current, old_cells, other_cells)
-    place_monster_barriers(current, entity, player_position)
-
-
 def _barrier_offsets(entity: d.Monster) -> tuple[d.Point, ...]:
     if entity.tribe.char in {"w", "W"}:
         return tuple((dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy)

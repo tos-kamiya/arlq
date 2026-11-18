@@ -146,12 +146,6 @@ def place_to_tile(x: int, y: int) -> d.Point:
     return (x - d.FIELD_X_MARGIN - 1) // (d.TILE_WIDTH + 1), (y - 1) // (d.TILE_HEIGHT)
 
 
-def tile_to_place_range(x: int, y: int) -> Tuple[d.Point, d.Point]:
-    lt = (d.FIELD_X_MARGIN + x * (d.TILE_WIDTH + 1) + 1, y * (d.TILE_HEIGHT + 1) + 1)
-    rb = (lt[0] + d.TILE_WIDTH, lt[1] + d.TILE_HEIGHT)
-    return lt, rb
-
-
 def find_random_place(
     entities: List[d.Entity],
     field: List[List[str]],

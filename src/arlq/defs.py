@@ -561,7 +561,6 @@ class Player(Entity):
         self.current_floor: int = 0
         self.just_climbed_pit: bool = False
         # The cell the player last left a floor from (stairs or pit), for the UI.
-        self.floor_exit: Optional[Point] = None
         self.last_member_scatter_route: Optional[Tuple[Tuple[int, Point], ...]] = None
         self.members: List[PartyMember] = []
         self.facing: Point = (0, -1)

@@ -65,37 +65,3 @@ class MyRandom:
 
 
 rand = MyRandom()
-
-
-def block_progress_cells(
-    current: int,
-    maximum: int,
-    bar_length: int,
-    bar_attr: int,
-) -> list[tuple[str, int]]:
-    block_chars = {
-        0: ".",
-        1: "\u258F",
-        2: "\u258E",
-        3: "\u258D",
-        4: "\u258C",
-        5: "\u258B",
-        6: "\u258A",
-        7: "\u2589",
-        8: "\u2588",
-    }
-
-    if maximum <= 0:
-        return [(block_chars[0], bar_attr)] * bar_length
-
-    current = max(0, current)
-    frac = max(0.0, min(current / maximum, 1.0))
-    total_units = bar_length * 8
-    filled = int(round(frac * total_units))
-
-    cells: list[tuple[str, int]] = []
-    for i in range(bar_length):
-        units = min(max(filled - i * 8, 0), 8)
-        ch = block_chars[units]
-        cells.append((ch, bar_attr))
-    return cells
