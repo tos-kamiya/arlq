@@ -232,7 +232,7 @@ def build_armor(rig):
     cloth = mats['Player midnight cloak']
     sole = material('Zori sole', (.22, .18, .125), roughness=.85)
     hidden = ('Sabaton', 'Eye ', 'Nape cutter', 'Cape', 'Pauldron', 'Chest seam',
-              'Breast and back plate', 'Diagonal waist plate', 'Knee cap', 'thigh plate')
+              'Breast and back plate', 'Diagonal waist plate', 'Tasset', 'Knee cap', 'thigh plate')
     for obj in list(rig.children):
         if obj.name.startswith(hidden) or obj.name in ('Helmet', 'Helmet cavity cutter'):
             obj.hide_viewport = obj.hide_render = True

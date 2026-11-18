@@ -143,7 +143,7 @@ def add_collapsed_pose(scene, rig):
     standing_floor = min(point.z for point in visible_points(rig))
     scene.frame_set(frame)
     for bone in rig.pose.bones:
-        if bone.name.startswith(('hip_plate.', 'cape.')):
+        if bone.name.startswith(('hip_plate.', 'tasset.', 'cape.')):
             continue
         x, y, z = rotations.get(bone.name, (0, 0, 0))
         if bone.name in ('waist', 'neck'):

@@ -29,9 +29,13 @@ for side, sign in [('L', 1), ('R', -1)]:
         f'thigh.{side}': ((sign*.13, 0, .91), (sign*.15, -.025, .52), 'pelvis'),
         f'shin.{side}': ((sign*.15, -.025, .52), (sign*.15, 0, .12), f'thigh.{side}'),
         f'foot.{side}': ((sign*.15, 0, .12), (sign*.15, -.20, .065), f'shin.{side}'),
-        # Hinge at the top of the lower diagonal waist plate; driven by the thigh.
+        # Hinge driven by the thigh, for the samurai's side skirts (../rigged-samurai).
         f'hip_plate.{side}': ((sign*.148, -.094, .985), (sign*.148, -.094, .741), 'pelvis'),
+        # Hinge at the top of the lower side tasset, on the flank; driven by the thigh.
+        f'tasset.{side}': ((sign*.19, -.06, .955), (sign*.19, -.06, .79), 'pelvis'),
     })
+# Angle of the side tassets' centers from the front, toward each side.
+TASSET_ANGLE = 70
 
 
 def material(name, color, metallic=0, roughness=.38, emission=None, strength=0,
@@ -160,7 +164,7 @@ def create_rig():
             # Positive X folds elbows forward; knees fold backward.
             limit.min_x, limit.max_x = ((0, math.radians(145))
                 if bone.name.startswith('forearm.') else (math.radians(-145), 0))
-        if bone.name.startswith('hip_plate.'):
+        if bone.name.startswith(('hip_plate.', 'tasset.')):
             # Swing forward with a raised thigh; hang still when it moves back.
             bone.lock_rotation = (True, True, True)
             follow = bone.constraints.new('COPY_ROTATION')
@@ -335,15 +339,18 @@ CHEST_RINGS = [(-.085, .175, .13), (.04, .205, .145), (.12, .225, .16),
 CHEST_WIDEN = 1.1
 
 
-def ring_bar(rig, bone_name, name, points, radius, mat):
-    """Closed round bar through the given world points, rigid on a bone."""
+def ring_bar(rig, bone_name, name, points, radius, mat, cyclic=True):
+    """Round bar (closed unless `cyclic` is False) through the given world
+    points, rigid on a bone."""
     curve = bpy.data.curves.new(name, 'CURVE')
     curve.dimensions, curve.bevel_depth, curve.bevel_resolution = '3D', radius, 3
     spline = curve.splines.new('POLY')
     spline.points.add(len(points) - 1)
     for point, co in zip(spline.points, points):
         point.co = (*co, 1)
-    spline.use_cyclic_u = True
+    spline.use_cyclic_u = cyclic
+    if not cyclic:
+        curve.use_fill_caps = True
     obj = bpy.data.objects.new(name, curve)
     bpy.context.collection.objects.link(obj)
     bpy.ops.object.select_all(action='DESELECT')
@@ -757,57 +764,51 @@ def belt(rig, strap_mat, buckle_mat):
     box(rig, 'pelvis', 'Belt buckle', (0, -front, BELT_Z), (.03, .004, .028), buckle_mat, .003)
 
 
-def diagonal_waist_plates(rig, mat):
-    """Hang curved mail skirts around the front-side quarters of the hips.
+def side_tassets(rig, mat, trim):
+    """Curved steel tassets over the flanks, two overlapping lames a side.
 
-    The upper band is fixed to the pelvis. The lower plate tucks under it and
-    swings on hip_plate so a raised thigh does not pass through it.
+    The upper lame hangs from inside the belt and is fixed to the pelvis. The
+    lower lame tucks under its hem and swings on tasset.L/R (hinged at the
+    side, level with the plate's middle) so a raised thigh does not pass
+    through it. A dark iron bar rolls each lame's hem. Rows are (z, half-width, half-depth, width around the hips)
+    on an ellipse around the hips, centered TASSET_ANGLE from the front.
     """
-    # Arc centered 50 degrees away from the front, wrapping toward the side.
-    # The upper band hangs from inside the belt and runs down close to the
-    # hip armor (1.5 cm off it), so nothing bulges out at the belt where a
-    # scabbard would hang; the lower part then flares gently to clear the
-    # thighs. Rows are (z, half-width, half-depth, width around the hips):
-    # 22.7 cm, like a rectangle, from the belt down to z 0.853, then
-    # narrowing to 19.4 cm at the hem.
-    hip_w, hip_d = hip_radius(.975)
-    parts = [('Diagonal waist plate', 'pelvis',
+    upper_w, upper_d = hip_radius(.94)
+    parts = [('Tasset upper', 'pelvis', .012,
               # Top edge on the belt's centerline, hidden inside it.
-              [(BELT_Z, BELT_RX, BELT_RY, .227), (.975, hip_w + .015, hip_d + .015, .227)]),
-             ('Diagonal waist plate lower', 'hip_plate',
-              # Top edge tucked 1 cm up inside the upper band, leaving room
-              # below the belt for the edge to rise as the plate swings.
-              [(.985, .193, .146, .227), (.853, .26, .195, .227), (.741, .27, .20, .194)])]
+              [(BELT_Z, BELT_RX, BELT_RY, .19), (.99, upper_w + .012, upper_d + .012, .205),
+               (.935, upper_w + .024, upper_d + .022, .225)]),
+             ('Tasset lower', 'tasset', .03,
+              # Top edge tucked 2 cm up under the upper lame's hem.
+              [(.955, upper_w + .012, upper_d + .01, .215), (.87, .235, .175, .24),
+               (.79, .25, .185, .245)])]
 
     def arc_row(radius_x, radius_y, width):
         """13 angles (radians) on the ellipse spanning `width` around it,
-        centered 50 degrees from the front, with arc lengths from the center."""
+        centered TASSET_ANGLE from the front, with arc lengths from the center."""
+        center = math.radians(TASSET_ANGLE)
+
         def point(angle):
             return Vector((radius_x * math.sin(angle), -radius_y * math.cos(angle)))
 
         def length(half):
-            steps = [math.radians(50) + half * (2 * k / 200 - 1) for k in range(201)]
+            steps = [center + half * (2 * k / 200 - 1) for k in range(201)]
             return sum((point(b) - point(a)).length for a, b in zip(steps, steps[1:]))
         low, high = 0, math.pi / 2
         for _ in range(40):
             half = (low + high) / 2
             low, high = (half, high) if length(half) < width else (low, half)
-        angles = [math.radians(50) + half * (2 * i / 12 - 1) for i in range(13)]
-        arcs = [0]
-        for a, b in zip(angles, angles[1:]):
-            arcs.append(arcs[-1] + (point(b) - point(a)).length)
-        return angles, [s - arcs[6] for s in arcs]
+        return [center + half * (2 * i / 12 - 1) for i in range(13)]
     for side, sign in (('L', 1), ('R', -1)):
-        for name, bone_name, rows in parts:
-            vertices, uvs = [], []
-            for z, radius_x, radius_y, width in rows:
-                angles, arcs = arc_row(radius_x, radius_y, width)
-                for angle, arc in zip(angles, arcs):
+        for name, bone_name, hem_round, rows in parts:
+            vertices = []
+            for r, (z, radius_x, radius_y, width) in enumerate(rows):
+                for i, angle in enumerate(arc_row(radius_x, radius_y, width)):
+                    # The hem rises toward both edges, rounding the lame's
+                    # lower corners.
+                    lift = hem_round * ((i - 6) / 6) ** 2 if r == len(rows) - 1 else 0
                     vertices.append((sign * radius_x * math.sin(angle),
-                                     -radius_y * math.cos(angle), z))
-                    # Arc length and height in meters, shared by both parts
-                    # so the mail pattern runs on across the seam.
-                    uvs.append((sign * arc, z))
+                                     -radius_y * math.cos(angle), z + lift))
             faces = []
             for row in range(len(rows) - 1):
                 for i in range(12):
@@ -816,21 +817,24 @@ def diagonal_waist_plates(rig, mat):
                     faces.append(face if sign == 1 else tuple(reversed(face)))
             mesh = bpy.data.meshes.new(f'{name} {side}')
             mesh.from_pydata(vertices, [], faces)
-            layer = mesh.uv_layers.new(name='Mail')
-            for loop in mesh.loops:
-                layer.data[loop.index].uv = uvs[loop.vertex_index]
             mesh.update()
             obj = bpy.data.objects.new(mesh.name, mesh)
             bpy.context.collection.objects.link(obj)
             attach(obj, rig, bone_name if bone_name == 'pelvis' else f'{bone_name}.{side}', mat)
+            obj.modifiers['Forged edge'].width = .003
             for face in mesh.polygons:
                 face.use_smooth = True
-            # Mail is thinner than plate.
-            solidify = obj.modifiers.new('Mail thickness', 'SOLIDIFY')
-            solidify.thickness = .007
+            shell = obj.modifiers.new('Plate thickness', 'SOLIDIFY')
+            shell.thickness = .006
             bpy.context.view_layer.objects.active = obj
-            bpy.ops.object.modifier_move_up(modifier=solidify.name)
-            bpy.ops.object.modifier_move_up(modifier=solidify.name)
+            bpy.ops.object.modifier_move_up(modifier=shell.name)
+            bpy.ops.object.modifier_move_up(modifier=shell.name)
+            hem = [Vector(v) for v in vertices[-13:]]
+            # Sit the bar on the plate's outer face, just above the hem.
+            hem = [v + Vector((v.x, v.y, 0)).normalized() * .002 + Vector((0, 0, .004))
+                   for v in hem]
+            ring_bar(rig, bone_name if bone_name == 'pelvis' else f'{bone_name}.{side}',
+                     f'{name} rim {side}', hem, .005, trim, cyclic=False)
 
 
 def build_armor(rig):
@@ -857,7 +861,7 @@ def build_armor(rig):
     hip.data.update()
     plate(rig, 'waist', 'Flexible waist lining', [(0,.135,.10),(.16,.145,.11)], dark)
     belt(rig, trim, trim)
-    diagonal_waist_plates(rig, mail)
+    side_tassets(rig, steel, trim)
     breastplate = plate(rig, 'chest', 'Breast and back plate', CHEST_RINGS, steel)
     # Extend the front center of the lower rim into a shallow V over the abdomen.
     for i in range(12):
@@ -1043,7 +1047,7 @@ def animate(rig, scene):
     for frame, (label, rotations) in POSES.items():
         scene.timeline_markers.new(label, frame=frame)
         for bone in rig.pose.bones:
-            if bone.name.startswith('hip_plate.'):
+            if bone.name.startswith(('hip_plate.', 'tasset.')):
                 continue
             angles = rotations.get(bone.name, (0,0,0))
             # Waist/neck twist around bone-local Y, which is upright.
@@ -1055,10 +1059,9 @@ def animate(rig, scene):
     # Rest the collapsed figure on the floor, centred where it stood: lift
     # the root by the lowest point's drop below the standing figure's lowest
     # point, and move it so the laid figure's footprint is centred. The
-    # collapsed figure holds no sword, so swords are left out; the cape and
-    # the mail skirts are cloth that the body presses flat, so they are left
-    # out too.
-    soft = SWORD_PREFIXES + ('Cape', 'Diagonal waist plate')
+    # collapsed figure holds no sword, so swords are left out; the cape is
+    # cloth that the body presses flat, so it is left out too.
+    soft = SWORD_PREFIXES + ('Cape',)
 
     def points():
         depsgraph = bpy.context.evaluated_depsgraph_get()
