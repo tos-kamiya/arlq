@@ -1,4 +1,4 @@
-"""Build the tall Samurai study with Blender in background mode."""
+"""Build the tall Samurai and katana using the existing rigged-armor base rig."""
 
 import math
 import sys
@@ -12,10 +12,10 @@ HERE = Path(__file__).resolve().parent
 RIG_DIR = HERE.parent / 'rigged-armor'
 sys.path.insert(0, str(RIG_DIR))
 
-from build import attach, material, own_sword
+from build import SWORD_BACK_TILT, attach, material
 
 
-def plate(rig, name, bone, vertices, faces, metal):
+def new_mesh(name, vertices, faces):
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(vertices, [], faces)
     bm = bmesh.new()
@@ -23,6 +23,11 @@ def plate(rig, name, bone, vertices, faces, metal):
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.to_mesh(mesh)
     bm.free()
+    return mesh
+
+
+def plate(rig, name, bone, vertices, faces, metal):
+    mesh = new_mesh(name, vertices, faces)
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
     attach(obj, rig, bone, metal).modifiers['Forged edge'].width = .004
@@ -30,15 +35,16 @@ def plate(rig, name, bone, vertices, faces, metal):
 
 
 def band(rig, name, bone, rings, metal, start=0, end=360, steps=32,
-         center_x=0, openings=None):
+         center_x=0, openings=None, ring_x_offsets=None):
     """Elliptical shell, optionally open at the front."""
     closed = end - start == 360
     count = steps if closed else steps + 1
     vertices = []
-    for z, rx, ry, cy in rings:
+    for row, (z, rx, ry, cy) in enumerate(rings):
+        cx = center_x + (ring_x_offsets[row] if ring_x_offsets else 0)
         for i in range(count):
             angle = math.radians(start + (end - start) * i / steps)
-            vertices.append((center_x + rx * math.sin(angle), cy - ry * math.cos(angle), z))
+            vertices.append((cx + rx * math.sin(angle), cy - ry * math.cos(angle), z))
     faces = []
     for row in range(len(rings) - 1):
         omitted = openings.get(row, ()) if openings else ()
@@ -95,6 +101,124 @@ def tilt_ornament(obj, pivot, degrees):
             @ Matrix.Translation(-center))
     world = obj.matrix_world
     obj.data.transform(world.inverted() @ turn @ world)
+
+
+def katana_part(grip, name, vertices, faces, surface, bevel_width):
+    mesh = new_mesh(name, vertices, faces)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.parent = grip
+    mesh.materials.append(surface)
+    bevel = obj.modifiers.new('Rounded edges', 'BEVEL')
+    bevel.width, bevel.segments = bevel_width, 2
+
+
+def build_katana_blade(grip, steel):
+    # X follows the grip, +Y points toward the cutting edge, and Z is thickness.
+    length, sweep = .54, .052
+    vertices = []
+    for t, width, half_thickness in (
+        (0, .054, .008), (.17, .053, .008), (.34, .051, .0075),
+        (.51, .049, .007), (.68, .047, .0065), (.83, .044, .006),
+        (.90, .040, .0055), (.94, .033, .0045),
+        (.97, .023, .0035), (.989, .011, .002),
+    ):
+        center = Vector((length * t, -sweep * t * t, 0))
+        across = Vector((2 * sweep * t, length, 0)).normalized()
+        # The spine keeps its sweep while the cutting edge rounds toward it.
+        spine = center - across * (.027 - .006 * t)
+        edge = spine + across * width
+        vertices.extend((spine + Vector((0, 0, half_thickness)),
+                         spine - Vector((0, 0, half_thickness)), edge))
+    spine_offset = Vector((2 * sweep, length, 0)).normalized() * .021
+    vertices.append(Vector((length, -sweep, 0)) - spine_offset)
+    tip = len(vertices) - 1
+    faces = [(2, 1, 0)]
+    for row in range(0, tip - 3, 3):
+        for i in range(3):
+            following = (i + 1) % 3
+            faces.append((row + i, row + following, row + following + 3, row + i + 3))
+    faces.extend((tip - 3 + i, tip - 3 + (i + 1) % 3, tip) for i in range(3))
+    katana_part(grip, 'Katana blade', vertices, faces, steel, .0008)
+
+
+def build_katana_hilt(grip, iron, indigo):
+    sides = 32
+    for name, start, end, width, depth, surface in (
+        ('Katana tsuba', -.020, .004, .066, .048, iron),
+        ('Katana grip', -.216, -.018, .031, .025, indigo),
+        ('Katana pommel', -.228, -.211, .032, .027, iron),
+    ):
+        vertices = [
+            (x, width * math.cos(angle), depth * math.sin(angle))
+            for x in (start, end)
+            for angle in (math.tau * i / sides for i in range(sides))
+        ]
+        faces = [tuple(range(sides)), tuple(range(sides, 2 * sides))]
+        for i in range(sides):
+            following = (i + 1) % sides
+            faces.append((i, following, following + sides, i + sides))
+        katana_part(grip, name, vertices, faces, surface, .003)
+
+
+def build_habaki(grip, brass):
+    # A short tapered collar that follows the blade's thick spine and thin edge.
+    vertices = [
+        (x, y, z)
+        for x, spine, edge, spine_half, edge_half in (
+            (.002, -.034, .034, .016, .007),
+            (.042, -.030, .029, .012, .004),
+        )
+        for y, z in ((spine, spine_half), (spine, -spine_half),
+                     (edge, -edge_half), (edge, edge_half))
+    ]
+    faces = [(0, 1, 2, 3), (4, 5, 6, 7)]
+    faces.extend((i, (i + 1) % 4, (i + 1) % 4 + 4, i + 4) for i in range(4))
+    katana_part(grip, 'Katana habaki', vertices, faces, brass, .0016)
+
+
+def mount_katana(rig):
+    bone = rig.data.bones['hand.R']
+    fist = bone.head_local.lerp(bone.tail_local, .6)
+    ahead = Vector((-.75, .3, .32)).normalized()
+    ahead = Matrix.Rotation(SWORD_BACK_TILT, 3, ahead.cross(Vector((0, 1, 0)))) @ ahead
+
+    # Keep the edge toward the front, so the blade sweeps back toward the spine.
+    forward = Vector((0, -1, 0))
+    edgeward = (forward - ahead * forward.dot(ahead)).normalized()
+    thickness_axis = ahead.cross(edgeward)
+    mount = Matrix((ahead, edgeward, thickness_axis)).transposed().to_4x4()
+    mount.translation = fist + ahead * .106
+    bone_tip = Matrix.Translation((0, bone.length, 0))
+    rest_parent = rig.matrix_world @ bone.matrix_local @ bone_tip
+
+    grip = bpy.data.objects.new('Katana hand mount', None)
+    bpy.context.collection.objects.link(grip)
+    grip.parent = rig
+    grip.parent_type = 'BONE'
+    grip.parent_bone = bone.name
+    grip.matrix_parent_inverse = rest_parent.inverted() @ mount
+    grip.empty_display_size = .035
+
+    steel = material('Katana steel', (.65, .70, .77), .78, .27)
+    iron = material('Katana dark iron', (.12, .13, .16), .75, .38)
+    indigo = material('Katana indigo grip', (.033, .055, .13), roughness=.62)
+    brass = material('Katana muted brass', (.47, .32, .12), .72, .39)
+    build_katana_blade(grip, steel)
+    build_katana_hilt(grip, iron, indigo)
+    build_habaki(grip, brass)
+
+    # Roll around the grip axis as the wrist turns, preserving the grip and blade heading.
+    scene = bpy.context.scene
+    original_frame = scene.frame_current
+    for frame in (1, 40, 80):
+        scene.frame_set(frame)
+        wrist = rig.matrix_world @ rig.pose.bones[bone.name].matrix @ bone_tip
+        unrolled = wrist @ grip.matrix_parent_inverse
+        local_forward = unrolled.to_3x3().inverted() @ forward
+        grip.rotation_euler.x = math.atan2(local_forward.z, local_forward.y)
+        grip.keyframe_insert(data_path='rotation_euler', index=0, frame=frame)
+    scene.frame_set(original_frame)
 
 
 def build_armor(rig):
@@ -179,12 +303,20 @@ def build_armor(rig):
                 (z - .054, .123, .128, 0), (z - .045, .119, .125, 0),
             ], iron, *shoulder_angles, steps=16, center_x=x)
 
-        trousers = band(rig, f'Baggy trousers {side}', f'thigh.{side}', [
-            (.523, .053, .064, -.023), (.55, .080, .080, -.022),
-            (.595, .105, .103, -.017), (.667, .123, .123, -.008),
-            (.746, .126, .123, 0), (.811, .114, .109, 0),
-            (.874, .089, .086, 0), (.921, .065, .070, 0),
-        ], cloth, center_x=sign * .142)
+        trouser_profile = (
+            (.523, .053, .064, -.023, 0), (.532, .055, .065, -.023, 0),
+            (.548, .093, .099, -.021, .005), (.567, .1176, .1176, -.019, .009),
+            (.595, .12705, .12495, -.016, .011), (.667, .128, .126, -.008, .012),
+            (.746, .126, .123, 0, .011), (.811, .114, .109, 0, .009),
+            (.874, .089, .086, 0, .005), (.921, .065, .070, 0, 0),
+        )
+        # Shift each widened ring inward so its outside edge stays in place.
+        trouser_rings = [(z, rx + inward / 2, ry, cy)
+                         for z, rx, ry, cy, inward in trouser_profile]
+        trouser_offsets = [-sign * ring[4] / 2 for ring in trouser_profile]
+        trousers = band(rig, f'Baggy trousers {side}', f'thigh.{side}',
+                        trouser_rings, cloth, center_x=sign * .142,
+                        ring_x_offsets=trouser_offsets)
         # A narrow cuff and fuller fabric above it keep the knee readable.
         trousers.modifiers['Forged edge'].width = .002
         band(rig, f'Zori {side}', f'foot.{side}', [
@@ -260,9 +392,7 @@ def build_armor(rig):
     for part in cuirass + waist:
         part.data.transform(widen)
     cut_armholes(cuirass)
-    blade = material('Player iron blade', (.62, .63, .66), .55, .4,
-                     rim=(.85, .9, 1.0), rim_strength=.8)
-    own_sword(rig, blade, iron)
+    mount_katana(rig)
 
 
 def preview(scene, name, frame, view):
