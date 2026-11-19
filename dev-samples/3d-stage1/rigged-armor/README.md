@@ -146,6 +146,13 @@ blender --factory-startup --background --threads 4 --python dev-samples/3d-stage
 blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only @-kneeling
 ```
 
+剣の4状態と各方向、歩行、飢餓で倒れた姿、コア暴走時のひざまずく姿を
+`preview-player-facings.jpg` に並べるには、chibi を生成したあと次を実行する。
+
+```bash
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/preview-player-facings.py
+```
+
 ## 再生成と構造変更
 
 ```bash
@@ -160,7 +167,7 @@ blender --factory-startup --background --threads 4 --python dev-samples/3d-stage
 - `plate()`: ボーン始点からの距離・幅・厚みを指定して板金形状を作る。
 - `POSES`: ボーンごとの回転角（度）。首と腰は第3成分をひねりとしてローカルYに変換。
 - `validate()`: 必須10関節の回転でパーツが実際に追従し、体積スケールが変化しないことを検証する。
-- `material()` / `setup_scene()`: 質感と照明。`../heroic/preview-player-facings.jpg` の
+- `material()` / `setup_scene()`: 質感と照明。`preview-player-facings.jpg` の
   主人公（`../build-heroic.py`）に合わせ、青みの鋼（縁がほのかに光る）、兜・脚用の鋼、
   黒い鉄の肩・肘・膝当てと靴、水色に光る覗き窓を使う。夜のスタジオの背景・床、
   暖色のキー・寒色のフィル・左右の逆光、Medium High Contrast の色調も同じ。

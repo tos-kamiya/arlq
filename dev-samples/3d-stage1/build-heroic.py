@@ -115,7 +115,7 @@ ROW += [('ration-hyorogan', 'HYOROGAN', 75, 0), ('ration-hardtack', 'HARDTACK', 
         ('ration-jerky', 'JERKY', 85, 0)]
 ROW += [(char, name, 90 + 5 * k, 0) for k, (char, name) in enumerate(OTHER_TONES)]
 # The player turned up, left and right, for each sword state, built for
-# sprite export and preview-player-facings.py only.
+# sprite export only.
 # Each facing other than down, with its character-key suffix and preview name.
 PLAYER_FACINGS = (('up', '^', 'UP'), ('left', '<', 'LEFT'), ('right', '>', 'RIGHT'))
 PLAYER_VARIANTS = (('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWORD'),
