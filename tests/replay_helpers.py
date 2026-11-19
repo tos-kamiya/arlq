@@ -5,7 +5,6 @@ tests can check that a recorded run and its replay reach the same state.
 """
 
 from collections import Counter
-from typing import List, Tuple
 
 from arlq import bridgehead, stage5, stage56, stage6, stage_replay, stage_world
 from arlq import defs as d
@@ -13,7 +12,7 @@ from arlq.game_engine import _process_multi_floor_turn, observe_world
 from arlq.stage_types import Floor, ReplayContext, _RewindRequest
 from arlq.utils import rand
 
-ReplayedState = Tuple[List[Floor], d.Player, int, d.Point, Counter[Tuple[int, str]]]
+ReplayedState = tuple[list[Floor], d.Player, int, d.Point, Counter[tuple[int, str]]]
 
 
 def replay_to_operation(replay: ReplayContext, operation_count: int) -> ReplayedState:
@@ -37,7 +36,7 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
     player.treasure_collected = False
     floor = [0]
     checkpoint = [floors[0].up]
-    queue: Counter[Tuple[int, str]] = Counter()
+    queue: Counter[tuple[int, str]] = Counter()
     replay_state = ReplayContext(replay.stage_num, replay.seed, replay.config)
     replay_state.rewind_targets = replay.rewind_targets.copy()
 

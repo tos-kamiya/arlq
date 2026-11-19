@@ -1,16 +1,16 @@
 """Shared text and glyph calculations used by both frontends."""
 
 from math import floor
-from typing import List, NamedTuple, Optional, Sequence, Set, Tuple
+from typing import NamedTuple, Optional, Sequence
 
 from . import defs as d
 
 
 def build_strength_column(
-    tribes: List[d.MonsterTribe],
+    tribes: list[d.MonsterTribe],
     player_attack: float,
     max_rows: int,
-) -> List[Tuple[Optional[str], bool]]:
+) -> list[tuple[Optional[str], bool]]:
     """
     Lay out a stage's monster tribes and the player for the right-edge
     strength column, replacing the old ">X" beatable-monster indicator.
@@ -45,11 +45,11 @@ def build_strength_column(
     kept_above = stronger[-above_cap:] if above_cap else []
     kept_below = weaker[:below_cap]
 
-    above_column: List[Tuple[Optional[str], bool]] = [(None, False)] * (
+    above_column: list[tuple[Optional[str], bool]] = [(None, False)] * (
         above_cap - len(kept_above)
     )
     above_column += [(t.char, False) for t in kept_above]
-    below_column: List[Tuple[Optional[str], bool]] = [
+    below_column: list[tuple[Optional[str], bool]] = [
         (t.char, False) for t in kept_below
     ]
     below_column += [(None, False)] * (below_cap - len(kept_below))
@@ -57,12 +57,12 @@ def build_strength_column(
     return above_column + [(None, False), ("@", True), (None, False)] + below_column
 
 
-def strength_label_known(label: str, known_types: Set[str]) -> bool:
+def strength_label_known(label: str, known_types: set[str]) -> bool:
     base, mark = label[0], label[1:]
     return base + {"'": "2", '"': "3"}.get(mark, "") in known_types
 
 
-def level_item_labels(player: d.Player) -> Tuple[str, str]:
+def level_item_labels(player: d.Player) -> tuple[str, str]:
     """Level and item fragments shared by both status bars.
 
     The Collector's x1.2 and Javelin Elf's x1.25 bonuses apply in every stage.
@@ -125,7 +125,7 @@ def status_prefix(
 
 def elf_stage_progress_marks(
     player: d.Player, stage_num: int
-) -> List[Tuple[str, bool]]:
+) -> list[tuple[str, bool]]:
     """Elf and treasure marks for the multi-floor stage status line.
 
     Each entry is (label, achieved). The Isolated Elf flag reveals all elf
@@ -133,7 +133,7 @@ def elf_stage_progress_marks(
     present, its floor is shown as ``?`` after the player has met L.
     """
     show_floors = bool(player.elf_stage_flags & d.ELF_STAGE_I_FLAG)
-    marks: List[Tuple[str, bool]] = []
+    marks: list[tuple[str, bool]] = []
     stage_roster = d.STAGE3_ROSTER if stage_num == 3 else d.STAGE4_ROSTER
     roster_elves = {
         char
@@ -172,7 +172,7 @@ def elf_stage_progress_marks(
 
 def stage5_member_progress_marks(
     player: d.Player,
-) -> List[Tuple[str, bool]]:
+) -> list[tuple[str, bool]]:
     """Return member labels and whether they should use the bold style.
 
     A label is the member's glyph followed by ``@`` while it is in the party,
@@ -217,7 +217,7 @@ class FieldGlyph(NamedTuple):
     member_role: Optional[str] = None
 
 
-def member_glyphs(player: d.Player) -> List[FieldGlyph]:
+def member_glyphs(player: d.Player) -> list[FieldGlyph]:
     return [
         FieldGlyph(member.x, member.y,
                    "J" if member.role == d.MEMBER_JAVELIN_ELF else d.MEMBER_GLYPHS[member.role],
@@ -238,7 +238,7 @@ def player_wall_break_glyph(player: d.Player) -> Optional[FieldGlyph]:
     return FieldGlyph(player.x - 1, player.y, "\\", "default", bold=True)
 
 
-def player_appearance(player: d.Player) -> Tuple[str, Optional[str]]:
+def player_appearance(player: d.Player) -> tuple[str, Optional[str]]:
     """Foreground and background tones for '@'.
 
     Low LP is a red background and warning-level LP is yellow. Poison is
@@ -257,7 +257,7 @@ def player_appearance(player: d.Player) -> Tuple[str, Optional[str]]:
     return foreground, background
 
 
-def entities_for_drawing(entities: List[d.Entity]) -> List[d.Entity]:
+def entities_for_drawing(entities: list[d.Entity]) -> list[d.Entity]:
     """Draw only the first waiting member at each position, matching contact order."""
     seen_members: set[d.Point] = set()
     result = []
@@ -272,7 +272,7 @@ def entities_for_drawing(entities: List[d.Entity]) -> List[d.Entity]:
 
 
 def treasure_glyphs(entity: d.Entity, tone: str, *, bold: bool = False,
-                    dim: bool = False) -> List[FieldGlyph]:
+                    dim: bool = False) -> list[FieldGlyph]:
     """Draw treasure and disguised mimics with the same appearance."""
     return [
         FieldGlyph(entity.x, entity.y, d.CHAR_TREASURE, tone, bold=bold, dim=dim),
@@ -282,7 +282,7 @@ def treasure_glyphs(entity: d.Entity, tone: str, *, bold: bool = False,
 
 
 def core_bracket_is_clear(glyph: FieldGlyph, field: Sequence[Sequence[str]],
-                          occupied: Set[d.Point], decor: Optional[Sequence[Sequence[str]]] = None) -> bool:
+                          occupied: set[d.Point], decor: Optional[Sequence[Sequence[str]]] = None) -> bool:
     """Leave other map contents visible underneath a core's side glyphs."""
     x, y = glyph.x, glyph.y
     return (0 <= y < len(field) and 0 <= x < len(field[y])
@@ -293,8 +293,8 @@ def core_bracket_is_clear(glyph: FieldGlyph, field: Sequence[Sequence[str]],
 def preview_entity_glyphs(
     entity: d.Entity,
     reveal_disguises: bool = False,
-    known_types: Optional[Set[str]] = None,
-) -> List[FieldGlyph]:
+    known_types: Optional[set[str]] = None,
+) -> list[FieldGlyph]:
     """Dim glyphs for an entity when the whole map is revealed."""
     known_types = known_types or set()
     if isinstance(entity, d.PartyMember):
@@ -353,7 +353,7 @@ def preview_entity_glyphs(
 
 
 def monster_party_tones(
-    entities: List[d.Entity], known_types: Set[str], player_attack: float,
+    entities: list[d.Entity], known_types: set[str], player_attack: float,
 ) -> dict[d.Monster, str]:
     """Calculate each party's display tone once per rendered floor."""
     from .stage56 import monster_party_entities, monster_positions
@@ -377,15 +377,15 @@ def monster_party_tones(
 
 def revealed_entity_glyphs(
     entity: d.Entity,
-    known_types: Set[str],
+    known_types: set[str],
     show_entities: bool,
     player_attack: float,
-    dim_types: Optional[Set[str]],
+    dim_types: Optional[set[str]],
     reveal_disguises: bool = False,
     debug_show_entities: bool = False,
-    party_entities: Optional[List[d.Entity]] = None,
+    party_entities: Optional[list[d.Entity]] = None,
     party_tones: Optional[dict[d.Monster, str]] = None,
-) -> List[FieldGlyph]:
+) -> list[FieldGlyph]:
     """Glyphs for an entity inside the explored map.
 
     Empty when the entity stays hidden (an unknown monster while the whole
@@ -484,7 +484,7 @@ def revealed_entity_glyphs(
     return []
 
 
-def choice_options(yes: bool) -> List[Tuple[str, bool]]:
+def choice_options(yes: bool) -> list[tuple[str, bool]]:
     from .i18n import t as tr
     return [
         (f"{'>' if yes else ' '} {tr('Yes (y)')}", yes),

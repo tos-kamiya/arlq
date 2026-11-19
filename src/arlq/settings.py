@@ -3,7 +3,7 @@
 import json
 import math
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 from appdirs import user_config_dir
 
@@ -134,7 +134,7 @@ def floor_transition_seconds(settings: dict) -> float:
 
 def valid_gamepad_bindings(
     help_button, preview_button, preview_mode
-) -> Tuple[Optional[int], Optional[int], str]:
+) -> tuple[Optional[int], Optional[int], str]:
     if help_button is not None and (
         type(help_button) is not int or help_button not in GAMEPAD_BUTTONS
     ):
@@ -150,7 +150,7 @@ def valid_gamepad_bindings(
     return help_button, preview_button, preview_mode
 
 
-def gamepad_bindings(settings: dict) -> Tuple[Optional[int], Optional[int], str]:
+def gamepad_bindings(settings: dict) -> tuple[Optional[int], Optional[int], str]:
     return valid_gamepad_bindings(
         settings.get("gamepad_help_button", DEFAULT_GAMEPAD_HELP_BUTTON),
         settings.get("gamepad_preview_button", DEFAULT_GAMEPAD_PREVIEW_BUTTON),

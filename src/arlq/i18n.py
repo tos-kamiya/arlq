@@ -29,9 +29,9 @@ import plistlib
 import subprocess
 import sys
 from importlib import resources
-from typing import Dict, List, Optional
+from typing import Optional
 
-_catalog_cache: Dict[str, Optional[Dict[str, str]]] = {}
+_catalog_cache: dict[str, Optional[dict[str, str]]] = {}
 
 
 class PrioritizedMessage(str):
@@ -76,7 +76,7 @@ def normalize_locale_tag(value: str) -> str:
     return "-".join(parts)
 
 
-def locale_candidates(tag: str) -> List[str]:
+def locale_candidates(tag: str) -> list[str]:
     """Expand a language tag into fallback candidates, most specific first.
 
     >>> locale_candidates("zh-Hant-TW")
@@ -198,10 +198,10 @@ def detect_locale() -> str:
     return normalize_locale_tag(raw)
 
 
-def _load_catalog(candidate: str) -> Optional[Dict[str, str]]:
+def _load_catalog(candidate: str) -> Optional[dict[str, str]]:
     """Load locales/<candidate>.json, or None if it doesn't exist."""
     if candidate not in _catalog_cache:
-        result: Optional[Dict[str, str]] = None
+        result: Optional[dict[str, str]] = None
         try:
             # joinpath takes a single child on Python 3.10's Traversable.
             path = resources.files(__package__).joinpath("locales").joinpath(f"{candidate}.json")

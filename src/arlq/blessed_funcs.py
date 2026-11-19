@@ -1,5 +1,5 @@
 import time
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, Optional
 
 from blessed import Terminal
 
@@ -40,11 +40,11 @@ class BlessedUI(BlessedSettingsMixin):
         self.map_mode = False
         self.farthest_preview = False
         self.shift_direction = False
-        self._last_stage: Optional[Tuple[Any, Any]] = None
-        self._treasure_sparkle_cells: List[Tuple[int, int]] = []
+        self._last_stage: Optional[tuple[Any, Any]] = None
+        self._treasure_sparkle_cells: list[tuple[int, int]] = []
         self._treasure_sparkle_started: Optional[float] = None
         self._stage_snapshot = ""
-        self._effect_player_pos: Optional[Tuple[int, int]] = None
+        self._effect_player_pos: Optional[tuple[int, int]] = None
 
     def _terminal_is_large_enough(self) -> bool:
         return self.term.width >= MIN_TERMINAL_WIDTH and self.term.height >= MIN_TERMINAL_HEIGHT
@@ -109,25 +109,25 @@ class BlessedUI(BlessedSettingsMixin):
 
     def _draw_stage(
         self,
-        entities: List[d.Entity],
-        field: List[List[str]],
-        cur_torched: List[List[int]],
-        torched: List[List[int]],
-        known_types: Set[str],
+        entities: list[d.Entity],
+        field: list[list[str]],
+        cur_torched: list[list[int]],
+        torched: list[list[int]],
+        known_types: set[str],
         show_entities: bool = False,
         debug_show_entities: bool = False,
         checkpoint: Optional[d.Point] = None,
         monochrome: bool = False,
-        dim_types: Optional[Set[str]] = None,
+        dim_types: Optional[set[str]] = None,
         stage_num: int = 0,
-        stage_roster: Optional[List[d.MonsterTribe]] = None,
+        stage_roster: Optional[list[d.MonsterTribe]] = None,
         floor_view: bool = False,
         floor_label: Optional[str] = None,
-        reachable_cells: Optional[Set[d.Point]] = None,
-        loop_trail_markers: Optional[Set[d.Point]] = None,
+        reachable_cells: Optional[set[d.Point]] = None,
+        loop_trail_markers: Optional[set[d.Point]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
         message=None,
-        decor: Optional[List[List[str]]] = None,
+        decor: Optional[list[list[str]]] = None,
     ) -> str:
         output = [self.term.home + self.term.clear]
         reveal_disguises = debug_show_entities or monochrome
@@ -585,15 +585,15 @@ class BlessedUI(BlessedSettingsMixin):
         message=None,
         extra_keys=False,
         checkpoint=None,
-        dim_types: Optional[Set[str]] = None,
-        stage_roster: Optional[List[d.MonsterTribe]] = None,
+        dim_types: Optional[set[str]] = None,
+        stage_roster: Optional[list[d.MonsterTribe]] = None,
         floor_view: bool = False,
         floor_label: Optional[str] = None,
-        reachable_cells: Optional[Set[d.Point]] = None,
-        loop_trail_markers: Optional[Set[d.Point]] = None,
+        reachable_cells: Optional[set[d.Point]] = None,
+        loop_trail_markers: Optional[set[d.Point]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
-        decor: Optional[List[List[str]]] = None,
-        respawn_glows: Optional[Set[d.Point]] = None,
+        decor: Optional[list[list[str]]] = None,
+        respawn_glows: Optional[set[d.Point]] = None,
     ):
         # Respawn glows are not drawn in the terminal.
         self._wait_for_terminal_size()
@@ -809,7 +809,7 @@ class BlessedUI(BlessedSettingsMixin):
             if direction is not None:
                 return (*direction, False)
 
-    def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
+    def select_stage(self, stage_numbers: tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         options = [tr("[q]uit")] + [
             tr("Stage {number}").format(number=f"[{n}]") for n in stage_numbers
         ]

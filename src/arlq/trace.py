@@ -14,7 +14,7 @@ import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Deque, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from . import defs as d
 from .__about__ import __version__
@@ -22,13 +22,13 @@ from .game_events import WallEvent
 
 SCHEMA_VERSION = 3
 
-DIR_TO_KEY: Dict[Tuple[int, int], str] = {
+DIR_TO_KEY: dict[tuple[int, int], str] = {
     (0, -1): "U",
     (0, 1): "D",
     (-1, 0): "L",
     (1, 0): "R",
 }
-KEY_TO_DIR: Dict[str, Tuple[int, int]] = {key: direction for direction, key in DIR_TO_KEY.items()}
+KEY_TO_DIR: dict[str, tuple[int, int]] = {key: direction for direction, key in DIR_TO_KEY.items()}
 
 
 class TraceRecorder:
@@ -39,12 +39,12 @@ class TraceRecorder:
     as they happen.
     """
 
-    def __init__(self, params: Dict[str, Any]) -> None:
+    def __init__(self, params: dict[str, Any]) -> None:
         self.params = params
-        self.turns: List[Dict[str, Any]] = []
-        self.start: Optional[Dict[str, Any]] = None
+        self.turns: list[dict[str, Any]] = []
+        self.start: Optional[dict[str, Any]] = None
         self.outcome: Optional[str] = None
-        self._current: Optional[Dict[str, Any]] = None
+        self._current: Optional[dict[str, Any]] = None
         self._turn_no = 0
 
     def begin_turn(self, input_key: str) -> None:
@@ -82,7 +82,7 @@ class TraceRecorder:
     def record_state_changes(
         self,
         seen_added_count: int,
-        known_monsters_added: List[str],
+        known_monsters_added: list[str],
     ) -> None:
         if self._current is None:
             return
@@ -91,32 +91,32 @@ class TraceRecorder:
 
     def record_wall(self, wall: WallEvent) -> None:
         if self._current is not None:
-            wall_record: Dict[str, Any] = {"result": wall.result}
+            wall_record: dict[str, Any] = {"result": wall.result}
             if wall.item_uses_left is not None:
                 wall_record["item_uses_left"] = wall.item_uses_left
             self._current["wall"] = wall_record
 
-    def record_contact(self, contact: Dict[str, Any]) -> None:
+    def record_contact(self, contact: dict[str, Any]) -> None:
         if self._current is not None:
             self._current["contact"] = contact
 
-    def add_expired(self, expired: Dict[str, Any]) -> None:
+    def add_expired(self, expired: dict[str, Any]) -> None:
         if self._current is not None:
             self._current.setdefault("expired", []).append(expired)
 
-    def add_world_event(self, event: Dict[str, Any]) -> None:
+    def add_world_event(self, event: dict[str, Any]) -> None:
         if self._current is not None:
             self._current.setdefault("world", []).append(event)
 
     def record_checkpoint(
         self,
         reason: str,
-        at: Tuple[int, int],
+        at: tuple[int, int],
         floor: int,
-        entities: Optional[List[str]] = None,
+        entities: Optional[list[str]] = None,
     ) -> None:
         if self._current is not None:
-            event: Dict[str, Any] = {
+            event: dict[str, Any] = {
                 "reason": reason,
                 "at": list(at),
                 "floor": floor,
@@ -146,7 +146,7 @@ class TraceRecorder:
     def set_outcome(self, outcome: str) -> None:
         self.outcome = outcome
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         data = {
             "schema_version": SCHEMA_VERSION,
             "arlq_version": __version__,
@@ -162,7 +162,7 @@ class TraceRecorder:
         }
         return data
 
-    def write_outputs(self, paths: List[Path]) -> None:
+    def write_outputs(self, paths: list[Path]) -> None:
         """Write identical trace data to each requested destination."""
         contents = json.dumps(self.to_dict(), indent=2, ensure_ascii=False) + "\n"
         for path in paths:
@@ -176,7 +176,7 @@ def timestamped_trace_path(cache_dir: Path) -> Path:
     return cache_dir / f"trace-{stamp}.json"
 
 
-def load_trace(path: Path) -> Dict[str, Any]:
+def load_trace(path: Path) -> dict[str, Any]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if data.get("schema_version") not in (2, SCHEMA_VERSION):
         raise ValueError(
@@ -188,7 +188,7 @@ def load_trace(path: Path) -> Dict[str, Any]:
     return data
 
 
-def checkpoint_turn_index(turns: List[Dict[str, Any]], index: int) -> int:
+def checkpoint_turn_index(turns: list[dict[str, Any]], index: int) -> int:
     """Return the input-turn index containing the requested checkpoint event.
 
     Positive indexes are one-based; negative indexes count from the end.
@@ -223,20 +223,20 @@ class ReplayUI:
 
     def __init__(
         self,
-        turns: List[Dict[str, Any]],
+        turns: list[dict[str, Any]],
         stage: int,
         draw_ui: Optional[Any] = None,
         draw_interval: float = 0.0,
         continue_play: bool = False,
         final_state_only: bool = False,
     ) -> None:
-        self._inputs: Deque[str] = deque(turn["input"] for turn in turns)
+        self._inputs: deque[str] = deque(turn["input"] for turn in turns)
         self._stage = stage
         self._draw_ui = draw_ui
         self._draw_interval = draw_interval
         self._continue_play = continue_play
         self._final_state_only = final_state_only
-        self._last_draw: Optional[Dict[str, Any]] = None
+        self._last_draw: Optional[dict[str, Any]] = None
         self._last_state_drawn = False
         self._using_live_input = False
         self.ran_dry = False
@@ -301,10 +301,10 @@ class ReplayUI:
             self._draw_ui.draw_stage(**self._last_draw)
             self._last_state_drawn = True
 
-    def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
+    def select_stage(self, stage_numbers: tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         return self._stage
 
-    def input_direction(self) -> Optional[Tuple[int, int]]:
+    def input_direction(self) -> Optional[tuple[int, int]]:
         self._using_live_input = False
         # Replays consume recorded input without entering the normal UI input
         # loop, so give event-driven UIs a chance to process window-close

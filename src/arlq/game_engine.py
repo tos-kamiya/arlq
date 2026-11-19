@@ -4,7 +4,7 @@ import heapq
 import math
 from collections import Counter
 from copy import deepcopy
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, Optional
 
 from . import defs as d
 from . import bridgehead
@@ -93,15 +93,15 @@ def _find_escape_place(current: Floor, far_from: Optional[d.Point] = None) -> d.
 
 
 def reachable_known_cells(
-    field: List[List[str]],
-    seen: List[List[int]],
-    visible: List[List[int]],
-    entities: List[d.Entity],
+    field: list[list[str]],
+    seen: list[list[int]],
+    visible: list[list[int]],
+    entities: list[d.Entity],
     player: d.Player,
-    phase_walls: Optional[Set[d.Point]] = None,
-    terminal_targets: Optional[Set[d.Point]] = None,
+    phase_walls: Optional[set[d.Point]] = None,
+    terminal_targets: Optional[set[d.Point]] = None,
     include_unexplored: bool = False,
-) -> Set[d.Point]:
+) -> set[d.Point]:
     """Find reachable cells, optionally including unexplored terrain for exit checks."""
     height = len(field)
     width = len(field[0]) if field else 0
@@ -122,7 +122,7 @@ def reachable_known_cells(
     }
     start = (player.x, player.y)
     distances: dict[d.Point, float] = {start: 0}
-    pending: List[Tuple[float, int, int]] = [(0, player.y, player.x)]
+    pending: list[tuple[float, int, int]] = [(0, player.y, player.x)]
     neighbors = ((0, -1), (-1, 0), (1, 0), (0, 1))
 
     while pending:
@@ -213,10 +213,10 @@ def _visible_auto_stop_entities(
     current: Floor,
     player: d.Player,
     show_all_entities: bool,
-    known_types: Set[str],
-) -> List[d.Entity]:
+    known_types: set[str],
+) -> list[d.Entity]:
     """Return entities currently represented on the player's map."""
-    visible: List[d.Entity] = []
+    visible: list[d.Entity] = []
     height = len(current.field)
     width = len(current.field[0]) if current.field else 0
     player_attack = d.current_player_attack(player)
@@ -251,7 +251,7 @@ def should_stop_movement_repeat(
     current: Floor,
     player: d.Player,
     show_all_entities: bool = False,
-    known_types: Optional[Set[str]] = None,
+    known_types: Optional[set[str]] = None,
 ) -> bool:
     """Check visible terrain and entities before an automatic repeated step."""
     dx, dy = direction
@@ -293,8 +293,8 @@ def _stop_movement_repeat(ui: Any) -> None:
 
 
 def quit_check(
-    floors: List[Floor], player: d.Player, floor_index: int,
-    visible: List[List[int]],
+    floors: list[Floor], player: d.Player, floor_index: int,
+    visible: list[list[int]],
 ) -> bool:
     """Return whether quitting requires the stuck-player confirmation."""
     active = floors[floor_index]
@@ -355,7 +355,7 @@ def _apply_terrain_hazards(
 
 
 def _reveal_collapse_pits(
-    floors: List[Floor], floor_index: int, collapse: d.Collapse
+    floors: list[Floor], floor_index: int, collapse: d.Collapse
 ) -> None:
     """Reveal pits around a Collapse and mark their lower-floor rocks."""
     current = floors[floor_index]
@@ -473,7 +473,7 @@ def _vortex_rearrange(
     player: d.Player,
     floor_index: int,
     center: d.Point,
-    floors: Optional[List[Floor]] = None,
+    floors: Optional[list[Floor]] = None,
     radius_multiplier: float = 1.0,
 ) -> None:
     """Reposition entities and forget explored floor and barrier cells."""
@@ -625,11 +625,11 @@ def _defeat_monster(
     entity: d.Monster,
     current: Floor,
     player: d.Player,
-    floor: List[int],
-    checkpoint: List[d.Point],
-    queue: Counter[Tuple[int, str]],
+    floor: list[int],
+    checkpoint: list[d.Point],
+    queue: Counter[tuple[int, str]],
     trace: Optional[TraceRecorder] = None,
-    floors: Optional[List[Floor]] = None,
+    floors: Optional[list[Floor]] = None,
     stage_num: int = 3,
 ) -> None:
     """Apply the effects of successfully defeating `entity` in combat."""
@@ -769,7 +769,7 @@ def _resolve_passive_or_repeat_contact(
     entity: d.Monster,
     current: Floor,
     player: d.Player,
-    contact_key: Tuple[int, int, int],
+    contact_key: tuple[int, int, int],
     trace: Optional[TraceRecorder],
 ) -> Optional[_ContactResult]:
     """Handle passive monsters and elves the player has already met."""
@@ -817,10 +817,10 @@ def _resolve_elf_contact(
     entity: d.Monster,
     current: Floor,
     player: d.Player,
-    floor: List[int],
-    queue: Counter[Tuple[int, str]],
+    floor: list[int],
+    queue: Counter[tuple[int, str]],
     trace: Optional[TraceRecorder],
-) -> Tuple[bool, Optional[str]]:
+) -> tuple[bool, Optional[str]]:
     """Apply a first-time elf's reward or refusal, if this elf is eligible."""
     ch = entity.tribe.char
     event_message = None
@@ -922,11 +922,11 @@ def _resolve_monster_contact(
     entity: d.Monster,
     current: Floor,
     player: d.Player,
-    floor: List[int],
-    checkpoint: List[d.Point],
-    queue: Counter[Tuple[int, str]],
+    floor: list[int],
+    checkpoint: list[d.Point],
+    queue: Counter[tuple[int, str]],
     trace: Optional[TraceRecorder] = None,
-    floors: Optional[List[Floor]] = None,
+    floors: Optional[list[Floor]] = None,
     stage_num: int = 3,
 ) -> _ContactResult:
     """Resolve contact with a monster, including early-ending elf encounters."""
@@ -1114,10 +1114,10 @@ def _resolve_monster_contact(
 def _resolve_party_contact(
     entity: d.Monster,
     current: Floor,
-    floors: List[Floor],
+    floors: list[Floor],
     player: d.Player,
-    floor: List[int],
-    checkpoint: List[d.Point],
+    floor: list[int],
+    checkpoint: list[d.Point],
     queue: Counter,
     trace: Optional[TraceRecorder],
     stage_num: int,
@@ -1261,11 +1261,11 @@ def _resolve_party_contact(
 def _resolve_contact(
     hit: int,
     current: Floor,
-    floors: List[Floor],
+    floors: list[Floor],
     player: d.Player,
-    floor: List[int],
-    checkpoint: List[d.Point],
-    queue: Counter[Tuple[int, str]],
+    floor: list[int],
+    checkpoint: list[d.Point],
+    queue: Counter[tuple[int, str]],
     trace: Optional[TraceRecorder] = None,
     stage_num: int = 3,
 ) -> _ContactResult:
@@ -1362,10 +1362,10 @@ def _resolve_contact(
 
 def _handle_floor_transition(
     current: Floor,
-    floors: List[Floor],
+    floors: list[Floor],
     player: d.Player,
-    floor: List[int],
-    checkpoint: List[d.Point],
+    floor: list[int],
+    checkpoint: list[d.Point],
 ) -> Optional[str]:
     point = (player.x, player.y)
     if (
@@ -1449,7 +1449,7 @@ def _handle_floor_transition(
     return None
 
 
-def _reveal_paired_stair_cells(floors: List[Floor]) -> None:
+def _reveal_paired_stair_cells(floors: list[Floor]) -> None:
     """Mark a stair's matching cell on the adjacent floor as known."""
     for index in range(len(floors) - 1):
         upper = floors[index]
@@ -1466,10 +1466,10 @@ def _reveal_paired_stair_cells(floors: List[Floor]) -> None:
 
 
 def _process_respawn_queue(
-    floors: List[Floor],
+    floors: list[Floor],
     player: d.Player,
-    floor: List[int],
-    queue: Counter[Tuple[int, str]],
+    floor: list[int],
+    queue: Counter[tuple[int, str]],
     turn: int,
     trace: Optional[TraceRecorder] = None,
     stage_num: int = 0,
@@ -1568,20 +1568,20 @@ def _process_respawn_queue(
 
 def _process_multi_floor_turn(
     direction: d.Point,
-    floors: List[Floor],
+    floors: list[Floor],
     player: d.Player,
-    floor: List[int],
-    checkpoint: List[d.Point],
-    queue: Counter[Tuple[int, str]],
+    floor: list[int],
+    checkpoint: list[d.Point],
+    queue: Counter[tuple[int, str]],
     turn: int,
     stage_num: int = 3,
     trace: Optional[TraceRecorder] = None,
-    repeat_stop_reasons: Optional[Set[str]] = None,
-    events: Optional[List[GameEvent]] = None,
+    repeat_stop_reasons: Optional[set[str]] = None,
+    events: Optional[list[GameEvent]] = None,
     # GameSession always passes this. Direct callers that omit it skip the
     # discovery update after barrier damage, unlike real play.
     torch_radius: Optional[int] = None,
-) -> Optional[Tuple[int, str]] | _RewindRequest:
+) -> Optional[tuple[int, str]] | _RewindRequest:
     if player.status_popup_ticks > 0:
         player.status_popup_ticks -= 1
         if player.status_popup_ticks == 0:
@@ -1923,9 +1923,9 @@ def _process_multi_floor_turn(
 
 
 def observe_world(
-    floors: List[Floor], player: d.Player, floor_index: int,
+    floors: list[Floor], player: d.Player, floor_index: int,
     torch_radius: int,
-) -> List[List[int]]:
+) -> list[list[int]]:
     """Update exploration and discoveries before the next player input."""
     current = floors[floor_index]
     visible = get_torched(player, torch_radius)
@@ -1958,7 +1958,7 @@ def observe_world(
     return visible
 
 
-def _field_for_display(floors: List[Floor], floor_index: int, player: d.Player) -> List[List[str]]:
+def _field_for_display(floors: list[Floor], floor_index: int, player: d.Player) -> list[list[str]]:
     """Render open pit landings for D without changing their terrain identity."""
     current = floors[floor_index]
     if floor_index == 0 or not d.has_member(player, d.MEMBER_DUNGEON_EXPLORER):
@@ -1974,7 +1974,7 @@ def _field_for_display(floors: List[Floor], floor_index: int, player: d.Player) 
 
 
 def floor_transition_kind(
-    floors: List[Floor], from_floor: int, to_floor: int, point: d.Point
+    floors: list[Floor], from_floor: int, to_floor: int, point: d.Point
 ) -> Optional[str]:
     """How the player just changed floors, landing at `point`: "down" or "up"
     by stairs, "fall" through a pit, "climb" out of one (with the Dungeon
@@ -1989,7 +1989,7 @@ def floor_transition_kind(
     return "down" if to_floor > from_floor else "up"
 
 
-def respawn_glow_cells(current: Floor) -> Set[d.Point]:
+def respawn_glow_cells(current: Floor) -> set[d.Point]:
     """Respawn light columns to draw: the player's and the monsters'/fairies'."""
     monster_positions = {
         (entity.x, entity.y) for entity in current.entities
@@ -2003,7 +2003,7 @@ def respawn_glow_cells(current: Floor) -> Set[d.Point]:
 
 def _stage_draw_options(
     stage_num: int,
-    floors: List[Floor],
+    floors: list[Floor],
     view_floor: int,
     single_floor_stage: bool,
     show_floor_label: bool,

@@ -3,7 +3,7 @@
 from collections import Counter
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Optional
 
 from . import defs as d
 from .i18n import trp
@@ -15,17 +15,17 @@ from .stage_world import _spawn
 class _RewindKnowledge:
     """Discoveries carried across reconstruction; encounter state is excluded."""
 
-    known_monsters: Set[str]
-    known_c_floors: Set[int]
-    elf_floors: Dict[str, int]
-    known_elf_floors: Set[str]
-    known_member_floors: Dict[str, int]
-    seen_members: Set[str]
-    seen: List[List[List[int]]]
-    discovered_secrets: List[Dict[d.Point, str]]
+    known_monsters: set[str]
+    known_c_floors: set[int]
+    elf_floors: dict[str, int]
+    known_elf_floors: set[str]
+    known_member_floors: dict[str, int]
+    seen_members: set[str]
+    seen: list[list[list[int]]]
+    discovered_secrets: list[dict[d.Point, str]]
 
     @classmethod
-    def capture(cls, floors: List[Floor], player: d.Player) -> "_RewindKnowledge":
+    def capture(cls, floors: list[Floor], player: d.Player) -> "_RewindKnowledge":
         return cls(
             known_monsters=set(player.known_monsters),
             known_c_floors=set(player.known_c_floors),
@@ -49,7 +49,7 @@ class _RewindKnowledge:
             ],
         )
 
-    def restore(self, floors: List[Floor], player: d.Player) -> None:
+    def restore(self, floors: list[Floor], player: d.Player) -> None:
         for index, (floor_data, preserved_seen, preserved_secrets) in enumerate(zip(
             floors, self.seen, self.discovered_secrets, strict=True
         )):
@@ -70,11 +70,11 @@ class _RewindKnowledge:
 
 
 def rewind(
-    floors: List[Floor],
+    floors: list[Floor],
     player: d.Player,
-    floor: List[int],
-    checkpoint: List[d.Point],
-    queue: Counter[Tuple[int, str]],
+    floor: list[int],
+    checkpoint: list[d.Point],
+    queue: Counter[tuple[int, str]],
     replay_context: ReplayContext,
     *,
     operation_count: int,

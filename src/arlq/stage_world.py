@@ -1,6 +1,6 @@
 """Floor construction and map generation for Stages 1–4."""
 
-from typing import Collection, Container, Dict, Iterable, List, Optional, Tuple
+from typing import Collection, Container, Iterable, Optional
 
 from . import defs as d
 from .arlq import (
@@ -23,7 +23,7 @@ WALL_NOTCH_PRIMES = frozenset(
 
 
 def _place_barrier(
-    field: List[List[str]], center: d.Point, protected: Container[d.Point] = ()
+    field: list[list[str]], center: d.Point, protected: Container[d.Point] = ()
 ) -> None:
     for dx in (-1, 0, 1):
         for dy in (-1, 0, 1):
@@ -39,7 +39,7 @@ def _place_barrier(
 
 
 def _would_enclose_floor_cell(
-    field: List[List[str]], wall_cells: Iterable[d.Point]
+    field: list[list[str]], wall_cells: Iterable[d.Point]
 ) -> bool:
     """Return whether adding walls would leave a floor cell walled on four sides."""
     added_walls = set(wall_cells)
@@ -60,7 +60,7 @@ def _would_enclose_floor_cell(
 
 
 def _has_four_wall_neighbors(
-    field: List[List[str]],
+    field: list[list[str]],
     point: d.Point,
     added_walls: Container[d.Point] = (),
 ) -> bool:
@@ -80,7 +80,7 @@ def _is_wall_notch_point(point: d.Point) -> bool:
 
 
 def _add_filled_room_wall_notches(
-    field: List[List[str]], filled_rooms: Iterable[d.Point], tile_width: int = d.TILE_WIDTH
+    field: list[list[str]], filled_rooms: Iterable[d.Point], tile_width: int = d.TILE_WIDTH
 ) -> None:
     """Open irregularly spaced blocks along the outer edge of each filled room."""
     height, width = len(field), len(field[0])
@@ -111,7 +111,7 @@ def _add_filled_room_wall_notches(
             field[y][x] = d.CHAR_FLOOR
 
 
-def _add_stage1_margin_notches(field: List[List[str]]) -> None:
+def _add_stage1_margin_notches(field: list[list[str]]) -> None:
     """Break up the inner edges of Stage 1's filled side columns."""
     left_edge = d.FIELD_X_MARGIN + d.STAGE1_COLUMN_MARGIN * (d.TILE_WIDTH + 1)
     right_edge = d.FIELD_X_MARGIN + (d.TILE_NUM_X - d.STAGE1_COLUMN_MARGIN) * (d.TILE_WIDTH + 1)
@@ -215,8 +215,8 @@ def _inside_island(point: Optional[d.Point], island_tile: Optional[d.Point]) -> 
 
 
 def _spawn(
-    entities: List[d.Entity],
-    field: List[List[str]],
+    entities: list[d.Entity],
+    field: list[list[str]],
     ch: str,
     avoid: Container[d.Point] = (),
     island_tile: Optional[d.Point] = None,
@@ -258,9 +258,9 @@ def _has_spawn_position(entities, field, avoid, island_tile) -> bool:
 
 
 def _split_floor_roster(
-    roster: List[Tuple[str, int, int]], elf_floors: Dict[str, int]
-) -> Tuple[
-    List[Tuple[str, int, int]], List[Tuple[str, int, int]], List[Tuple[str, int, int]]
+    roster: list[tuple[str, int, int]], elf_floors: dict[str, int]
+) -> tuple[
+    list[tuple[str, int, int]], list[tuple[str, int, int]], list[tuple[str, int, int]]
 ]:
     """Separate ordinary spawns, assigned-floor elves, and Wyrm encounters."""
     ordinary, elves, wyrms = [], [], []
@@ -279,9 +279,9 @@ def _split_floor_roster(
 
 
 def _spawn_roster_entries(
-    entries: List[Tuple[str, int, int]],
-    entities: List[d.Entity],
-    field: List[List[str]],
+    entries: list[tuple[str, int, int]],
+    entities: list[d.Entity],
+    field: list[list[str]],
     reserved: Container[d.Point],
     island_tile: Optional[d.Point],
     floor_index: int,
@@ -292,11 +292,11 @@ def _spawn_roster_entries(
 
 
 def _spawn_assigned_floor_elves(
-    entries: List[Tuple[str, int, int]],
-    elf_floors: Dict[str, int],
+    entries: list[tuple[str, int, int]],
+    elf_floors: dict[str, int],
     floor_index: int,
-    entities: List[d.Entity],
-    field: List[List[str]],
+    entities: list[d.Entity],
+    field: list[list[str]],
     reserved: Container[d.Point],
     island_tile: Optional[d.Point],
 ) -> None:
@@ -309,9 +309,9 @@ def _spawn_assigned_floor_elves(
 
 
 def _spawn_monsters_with_barriers(
-    entries: List[Tuple[str, int, int]],
-    entities: List[d.Entity],
-    field: List[List[str]],
+    entries: list[tuple[str, int, int]],
+    entities: list[d.Entity],
+    field: list[list[str]],
     reserved: Container[d.Point],
     down: d.Point,
     floor_index: int,
@@ -338,9 +338,9 @@ def _spawn_monsters_with_barriers(
 
 
 def _place_roster_treasures_and_mimics(
-    roster: List[Tuple[str, int, int]],
-    entities: List[d.Entity],
-    field: List[List[str]],
+    roster: list[tuple[str, int, int]],
+    entities: list[d.Entity],
+    field: list[list[str]],
     reserved: Container[d.Point],
     floor_index: int = 0,
 ) -> None:
@@ -398,7 +398,7 @@ def _place_roster_treasures_and_mimics(
 
 
 def _spawn_island_elf(
-    field: List[List[str]], entities: List[d.Entity], island_tile: Optional[d.Point]
+    field: list[list[str]], entities: list[d.Entity], island_tile: Optional[d.Point]
 ) -> None:
     if island_tile is None:
         return
@@ -430,7 +430,7 @@ def _spawn_island_elf(
 
 
 def _add_wall_spurs(
-    field: List[List[str]],
+    field: list[list[str]],
     up: d.Point,
     down: d.Point,
     island_tile: Optional[d.Point],
@@ -514,14 +514,14 @@ def _add_wall_spurs(
 
 def _build_floor(
     index: int,
-    special_floors: Dict[str, int],
-    elf_floors: Dict[str, int],
+    special_floors: dict[str, int],
+    elf_floors: dict[str, int],
     entry_point: Optional[d.Point] = None,
     corridor_h_width: int = d.CORRIDOR_H_WIDTH,
     corridor_v_width: int = d.CORRIDOR_V_WIDTH,
-    room_counts: Tuple[int, int] = (0, 0),
+    room_counts: tuple[int, int] = (0, 0),
     *,
-    roster: List[Tuple[str, int, int]],
+    roster: list[tuple[str, int, int]],
     stage_num: int = 3,
     split_rooms: bool = False,
     up_point: Optional[d.Point] = None,
@@ -557,7 +557,7 @@ def _build_floor(
     if index:
         field[up[1]][up[0]] = d.CHAR_STAIRS_UP
 
-    entities: List[d.Entity] = []
+    entities: list[d.Entity] = []
     reserved = {up, down}
     spawn_roster = [
         entry
@@ -599,7 +599,7 @@ def _build_floor(
 
 
 def _treasure_spot(
-    entities: List[d.Entity], field: List[List[str]], reserved: Container[d.Point]
+    entities: list[d.Entity], field: list[list[str]], reserved: Container[d.Point]
 ) -> d.Point:
     while True:
         p = find_random_place(entities, field, distance=2)
@@ -612,8 +612,8 @@ def build(
     corridor_v_width: int = d.CORRIDOR_V_WIDTH,
     stage_num: int = 3,
     stair_pairs_per_transition: Optional[int] = None,
-    floor_layout: Optional[List[Tuple[int, int]]] = None,
-) -> Tuple[List[Floor], d.Player]:
+    floor_layout: Optional[list[tuple[int, int]]] = None,
+) -> tuple[list[Floor], d.Player]:
     if stage_num not in d.ELF_STAGES:
         raise ValueError("multi-floor builder supports stages 3 and 4")
     floor_count = d.STAGE4_FLOORS if stage_num == 4 else d.STAGE3_FLOORS
@@ -660,7 +660,7 @@ def build(
         (index for index, counts in enumerate(layout_by_floor) if counts[0]),
         None,
     )
-    elf_floors: Dict[str, int] = {}
+    elf_floors: dict[str, int] = {}
     cursed_sword_floor: Optional[int] = None
     if island_floor is not None:
         elf_floors["I"] = island_floor
@@ -697,7 +697,7 @@ def build(
         special_floors = {}
         m_floor = None
 
-    stair_tiles: List[d.Point] = []
+    stair_tiles: list[d.Point] = []
     if stage_num == 4:
         tiles = [(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)]
         stair_tiles.append(rand.choice(tiles))
@@ -712,7 +712,7 @@ def build(
             available_floors.pop(rand.randrange(len(available_floors)))
         )
 
-    floors: List[Floor] = []
+    floors: list[Floor] = []
     entry_point = None
     for index in range(floor_count):
         up_point = None
@@ -784,11 +784,11 @@ def build(
 def _transition_candidates(
     upper: Floor,
     lower: Floor,
-    stairs_to_avoid: List[d.Point],
+    stairs_to_avoid: list[d.Point],
     allowed_rooms: Optional[Container[d.Point]] = None,
     avoid_stair_rooms: bool = True,
     tile_width: int = d.TILE_WIDTH,
-) -> List[d.Point]:
+) -> list[d.Point]:
     """Return matching floor cells outside the stairs' and adjacent rooms."""
     stair_rooms = [tile_at(stair, tile_width) for stair in stairs_to_avoid]
     candidates = []
@@ -808,7 +808,7 @@ def _transition_candidates(
     return candidates
 
 
-def _add_additional_stairs(floors: List[Floor], pair_counts: List[int]) -> None:
+def _add_additional_stairs(floors: list[Floor], pair_counts: list[int]) -> None:
     """Add matching stair pairs until each floor link reaches its target."""
     for index in range(len(floors) - 1):
         pair_count = pair_counts[index]
@@ -851,11 +851,11 @@ def _add_additional_stairs(floors: List[Floor], pair_counts: List[int]) -> None:
             ]
 
 
-def _place_collapses(floors: List[Floor], tile_width: int = d.TILE_WIDTH) -> None:
+def _place_collapses(floors: list[Floor], tile_width: int = d.TILE_WIDTH) -> None:
     """Place up to two five-cell Collapses on transitions below floors 2–4."""
     used_transitions: set[int] = set()
     for _ in range(2):
-        transition_options: List[Tuple[int, List[d.Point]]] = []
+        transition_options: list[tuple[int, list[d.Point]]] = []
         for index, (upper, lower) in enumerate(zip(floors, floors[1:])):
             if index not in (1, 2, 3) or index in used_transitions:
                 continue
@@ -939,7 +939,7 @@ def _place_collapses(floors: List[Floor], tile_width: int = d.TILE_WIDTH) -> Non
 
 def build_single_floor(
     config: GameConfig, stage_num: int
-) -> Tuple[List[Floor], d.Player]:
+) -> tuple[list[Floor], d.Player]:
     """Create the Stage 1/2 map inside the shared floor state model."""
     spawn_config = d.STAGE_TO_SPAWN_CONFIGS[stage_num - 1]
     field, entry, treasure_point = create_field(
@@ -950,7 +950,7 @@ def build_single_floor(
     )
     if stage_num == 1:
         _add_stage1_margin_notches(field)
-    entities: List[d.Entity] = []
+    entities: list[d.Entity] = []
     treasure_tribes = [
         spawn.tribe
         for spawn in spawn_config

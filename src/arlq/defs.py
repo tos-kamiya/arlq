@@ -1,6 +1,6 @@
 from itertools import count
 from math import ceil
-from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
+from typing import Optional, Sequence, Union
 
 from .stage_data import (
     STAGE1_COLUMN_MARGIN as STAGE1_COLUMN_MARGIN,
@@ -51,14 +51,14 @@ from .symbols import (
 TILE_WIDTH: int = 11
 FIELD_X_MARGIN: int = 1
 FIELD_SIDEBAR_GAP: int = 2
-INITIALLY_KNOWN_MONSTERS: Tuple[str, ...] = ("a",)
+INITIALLY_KNOWN_MONSTERS: tuple[str, ...] = ("a",)
 TILE_HEIGHT: int = 6
 TILE_NUM_X: int = 6
 TILE_NUM_Y: int = 3
 FIELD_WIDTH: int = (TILE_WIDTH + 1) * TILE_NUM_X + 1 + 2 * FIELD_X_MARGIN
 FIELD_HEIGHT: int = (TILE_HEIGHT + 1) * TILE_NUM_Y + 1
 # Stages available from the game's UI and command line.
-PUBLIC_STAGE_NUMBERS: Tuple[int, ...] = (1, 2, 3, 4, 5, 6)
+PUBLIC_STAGE_NUMBERS: tuple[int, ...] = (1, 2, 3, 4, 5, 6)
 MEMBER_JESTER = "Jester"
 MEMBER_JAVELIN_ELF = "Javelin Elf"
 MEMBER_HEALER = "Healer"
@@ -97,7 +97,7 @@ CORRIDOR_H_WIDTH: int = 2
 CHAR_WALL: str = "#"
 # Internal identity only; renderers show this as the ordinary wall glyph.
 CHAR_GOLEM_WALL: str = "G"
-WALL_CHARS: Tuple[str, str] = (CHAR_WALL, CHAR_GOLEM_WALL)
+WALL_CHARS: tuple[str, str] = (CHAR_WALL, CHAR_GOLEM_WALL)
 CHAR_FLOOR: str = " "
 CHAR_STAIRS_UP: str = "^"
 CHAR_STAIRS_DOWN: str = "v"
@@ -110,17 +110,17 @@ CHAR_SCHOLAR_STAIRS_UP: str = "↑"
 CHAR_SCHOLAR_STAIRS_DOWN: str = "↓"
 CHAR_HIDDEN_D_GATE: str = "|"
 CHAR_D_GATE: str = "."
-HIDDEN_STAIRS_CHARS: Tuple[str, ...] = (
+HIDDEN_STAIRS_CHARS: tuple[str, ...] = (
     CHAR_HIDDEN_STAIRS_UP,
     CHAR_HIDDEN_STAIRS_DOWN,
     CHAR_PIT_LANDING,
 )
-HIDDEN_PASSAGE_CHARS: Tuple[str, str] = (CHAR_HIDDEN_D_GATE, CHAR_D_GATE)
-SCHOLAR_STAIR_CHARS: Tuple[str, str] = (
+HIDDEN_PASSAGE_CHARS: tuple[str, str] = (CHAR_HIDDEN_D_GATE, CHAR_D_GATE)
+SCHOLAR_STAIR_CHARS: tuple[str, str] = (
     CHAR_SCHOLAR_STAIRS_UP,
     CHAR_SCHOLAR_STAIRS_DOWN,
 )
-STAIR_CHARS: Tuple[str, ...] = (
+STAIR_CHARS: tuple[str, ...] = (
     CHAR_STAIRS_UP,
     CHAR_STAIRS_DOWN,
     *SCHOLAR_STAIR_CHARS,
@@ -185,7 +185,7 @@ MARKSMAN_ARROW_LIMIT = 20
 MARKSMAN_COOLDOWN_TURNS = 2
 # Order of the elf-stage status-line marks. The stage boss and treasure "T"
 # are added separately.
-ELF_STAGE_PROGRESS: List[Tuple[str, int]] = [
+ELF_STAGE_PROGRESS: list[tuple[str, int]] = [
     ("C", ELF_STAGE_C_FLAG),
     ("I", ELF_STAGE_I_FLAG),
     ("J", ELF_STAGE_J_FLAG),
@@ -218,7 +218,7 @@ IVY_LP_DAMAGE: int = 4
 BARRIER_LP_DAMAGE: int = 30
 GUARDIAN_BARRIER_LP_DAMAGE: int = 5
 
-ROCK_SPREAD_OFFSETS: List[Tuple[int, int]] = [
+ROCK_SPREAD_OFFSETS: list[tuple[int, int]] = [
     (-2, -2),
     (2, -2),
     (-1, -1),
@@ -235,10 +235,10 @@ CHAR_DUNGEON_CORE: str = "*"
 CHAR_CALTROP: str = "x"
 CHAR_BARRIER: str = "="
 
-Point = Tuple[int, int]
-Edge = Tuple[Point, Point]
+Point = tuple[int, int]
+Edge = tuple[Point, Point]
 
-COLLAPSE_FOOTPRINT_OFFSETS: Tuple[Point, ...] = (
+COLLAPSE_FOOTPRINT_OFFSETS: tuple[Point, ...] = (
     (0, 0),
     (0, -1),
     (1, 0),
@@ -247,7 +247,7 @@ COLLAPSE_FOOTPRINT_OFFSETS: Tuple[Point, ...] = (
 )
 
 
-DUNGEON_CORE_GROWTHS: Tuple[str, ...] = ("small", "medium", "large", "huge")
+DUNGEON_CORE_GROWTHS: tuple[str, ...] = ("small", "medium", "large", "huge")
 
 
 def dungeon_core_growth(turn: int) -> str:
@@ -257,7 +257,7 @@ def dungeon_core_growth(turn: int) -> str:
     return DUNGEON_CORE_GROWTHS[stage]
 
 
-def collapse_footprint(center: Point) -> Set[Point]:
+def collapse_footprint(center: Point) -> set[Point]:
     x, y = center
     return {(x + dx, y + dy) for dx, dy in COLLAPSE_FOOTPRINT_OFFSETS}
 
@@ -476,7 +476,7 @@ class Monster(Entity):
         self.revealed: bool = False
         self.met: bool = False
         self.active: bool = True
-        self.arrow_marks: List[Tuple[Point, str]] = []
+        self.arrow_marks: list[tuple[Point, str]] = []
         self.marksman_cooldown: int = 0
         self.marksman_shots_fired: int = 0
 
@@ -546,22 +546,22 @@ class Player(Entity):
         self.dungeon_core_destroyed: bool = False
         self.treasure_collected: bool = False
         # Identified monster types are known across all floors.
-        self.known_monsters: Set[str] = set(INITIALLY_KNOWN_MONSTERS)
+        self.known_monsters: set[str] = set(INITIALLY_KNOWN_MONSTERS)
         # Floors where the Cursed Chimera has been identified or defeated us.
-        self.known_c_floors: Set[int] = set()
-        self.elf_stage_floors: Dict[str, int] = {}
-        self.known_elf_floors: Set[str] = set()
-        self.known_member_floors: Dict[str, int] = {}
-        self.joined_members: Set[str] = set()
-        self.seen_members: Set[str] = set()
+        self.known_c_floors: set[int] = set()
+        self.elf_stage_floors: dict[str, int] = {}
+        self.known_elf_floors: set[str] = set()
+        self.known_member_floors: dict[str, int] = {}
+        self.joined_members: set[str] = set()
+        self.seen_members: set[str] = set()
         # Shared progress for the elf stages, including Stage 3's W flag.
         self.elf_stage_flags: int = 0
         self.lifebringer_lp_max: int = LP_MAX
         self.current_floor: int = 0
         self.just_climbed_pit: bool = False
         # The cell the player last left a floor from (stairs or pit), for the UI.
-        self.last_member_scatter_route: Optional[Tuple[Tuple[int, Point], ...]] = None
-        self.members: List[PartyMember] = []
+        self.last_member_scatter_route: Optional[tuple[tuple[int, Point], ...]] = None
+        self.members: list[PartyMember] = []
         self.facing: Point = (0, -1)
         self.rescue_stage = False
         self.treasure_stage = False
@@ -572,7 +572,7 @@ class Player(Entity):
         # with no other monster contact in between, means that monster is
         # blocking the only way through a bridge corridor; see the escape
         # branch in game_engine._resolve_monster_contact().
-        self.last_contact_monster: Optional[Tuple[int, int, int]] = None
+        self.last_contact_monster: Optional[tuple[int, int, int]] = None
         self.last_encounter_party: str = ""
         self.status_popup: Optional[str] = None
         self.status_popup_tone: str = "default"
@@ -615,7 +615,7 @@ _CT = FairyTribe
 
 MIN_FOOD = 8
 
-MONSTER_TRIBES: List[MonsterTribe] = [
+MONSTER_TRIBES: list[MonsterTribe] = [
     _MT("a", 1, 10),  # Amoeba
     _MT(
         "A", 2, MIN_FOOD, effect=EFFECT_SPECIAL_EXP, event_message="-- Level boosted!", experience=10
@@ -751,7 +751,7 @@ assert len({tribe.char for tribe in MONSTER_TRIBES}) == len(MONSTER_TRIBES), (
     "Duplicate tribe char"
 )
 
-FAIRY_TRIBES: List[FairyTribe] = [
+FAIRY_TRIBES: list[FairyTribe] = [
     _CT(
         "l"
     ),  # Looping fairy; contact always rewinds via _rewind, so no event_message here
@@ -765,11 +765,11 @@ FAIRY_TRIBES: List[FairyTribe] = [
     ),
 ]
 
-CHAR_TO_TRIBE: Dict[str, Tribe] = {
+CHAR_TO_TRIBE: dict[str, Tribe] = {
     mt.char: mt for mt in MONSTER_TRIBES + FAIRY_TRIBES
 }
-CHAR_TO_MONSTER_TRIBE: Dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
-CHAR_TO_FAIRY_TRIBE: Dict[str, FairyTribe] = {
+CHAR_TO_MONSTER_TRIBE: dict[str, MonsterTribe] = {mt.char: mt for mt in MONSTER_TRIBES}
+CHAR_TO_FAIRY_TRIBE: dict[str, FairyTribe] = {
     mt.char: mt for mt in FAIRY_TRIBES
 }
 
@@ -780,7 +780,7 @@ HIGH_ELF_DECOY, SPAWN_CONFIGS_ST1, SPAWN_CONFIGS_ST2, STAGE_TO_SPAWN_CONFIGS = (
 
 def decode_stage_roster_entry(
     roster_char: str, empowered: int
-) -> Tuple[str, int, Optional[str], int]:
+) -> tuple[str, int, Optional[str], int]:
     """Decode a roster token into monster and optional mimic target data.
 
     ``MF'`` means a rank-1 Mimic linked to a rank-2 Fire Drake. ``MW``
@@ -830,7 +830,7 @@ def stage_boss_label(stage_num: int) -> str:
     return monster_variant_label(char, empowered)
 
 
-def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
+def _get_stage_roster_tribes(roster: list[list[tuple[str, int, int]]]):
     variants = dict.fromkeys(
         (monster_char, monster_empowered)
         for floor in roster
@@ -851,13 +851,13 @@ def _get_stage_roster_tribes(roster: List[List[Tuple[str, int, int]]]):
     )
 
 
-STAGE3_ROSTER_TRIBES: List[MonsterTribe] = sorted(
+STAGE3_ROSTER_TRIBES: list[MonsterTribe] = sorted(
     [*_get_stage_roster_tribes(STAGE3_ROSTER), CHAR_TO_MONSTER_TRIBE["C"]],
     key=lambda tribe: tribe.level,
     reverse=True,
 )
 # Collapse is a fixed stage object, but appears at level 1 on the strength gauge.
-STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
+STAGE4_ROSTER_TRIBES: list[MonsterTribe] = sorted(
     [
         *_get_stage_roster_tribes(STAGE4_ROSTER),
         CHAR_TO_MONSTER_TRIBE["C"],
@@ -868,7 +868,7 @@ STAGE4_ROSTER_TRIBES: List[MonsterTribe] = sorted(
 )
 
 
-def _get_member_stage_roster_tribes() -> List[MonsterTribe]:
+def _get_member_stage_roster_tribes() -> list[MonsterTribe]:
     variants = {
         (char, rank)
         for floor in STAGE6_ROSTER
@@ -891,7 +891,7 @@ def _get_member_stage_roster_tribes() -> List[MonsterTribe]:
     )
 
 
-MEMBER_STAGE_ROSTER_TRIBES: List[MonsterTribe] = _get_member_stage_roster_tribes()
+MEMBER_STAGE_ROSTER_TRIBES: list[MonsterTribe] = _get_member_stage_roster_tribes()
 
 
 def _javelin_follower_active(player: Player) -> bool:
@@ -994,7 +994,7 @@ def current_player_attack(player: Player) -> float:
     return value + knight_level
 
 
-def get_stage_roster_tribes(stage_num: int) -> List[MonsterTribe]:
+def get_stage_roster_tribes(stage_num: int) -> list[MonsterTribe]:
     """Distinct, non-elf monster tribes that can appear in stage 1 or 2, strongest first."""
     configs = STAGE_TO_SPAWN_CONFIGS[stage_num - 1]
     variants = dict.fromkeys(

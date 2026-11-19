@@ -1,10 +1,9 @@
 """Stage layouts, rosters, and spawn configuration."""
 
-from typing import Dict, List, Tuple
 
 from .symbols import CHAR_DRAGON, CHAR_FIRE_DRAKE, CHAR_PEGASUS
 
-Point = Tuple[int, int]
+Point = tuple[int, int]
 STAGE1_COLUMN_MARGIN: int = 1
 STAGE2_BOSS_BARRIER_COUNT: int = 5
 
@@ -60,9 +59,9 @@ def make_spawn_configs(tribes, spawn_config, monster_tribe):
 
 # Per-floor rosters for the multi-floor stages. Each entry is
 # (tribe character, population, empowered rank).
-STAGE3_FLOOR_LAYOUT: List[Tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
+STAGE3_FLOOR_LAYOUT: list[tuple[int, int]] = [(1, 0), (0, 0), (0, 0)]
 STAGE3_STAIR_PAIRS_PER_TRANSITION = 1
-STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
+STAGE3_ROSTER: list[list[tuple[str, int, int]]] = [
     [
         ("a", 20, 1),
         ("A", 2, 1),
@@ -114,7 +113,7 @@ STAGE3_ROSTER: List[List[Tuple[str, int, int]]] = [
 
 STAGE3_FLOORS = len(STAGE3_ROSTER)
 
-STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
+STAGE4_FLOOR_LAYOUT: list[tuple[int, int]] = [
     (1, 1),
     (0, 1),
     (0, 1),
@@ -122,10 +121,10 @@ STAGE4_FLOOR_LAYOUT: List[Tuple[int, int]] = [
     (0, 1),
 ]
 # build() shuffles these counts across floors when no explicit layout is given.
-STAGE4_FILLED_ROOM_COUNTS: Tuple[int, ...] = (0, 1, 1, 2, 3)
+STAGE4_FILLED_ROOM_COUNTS: tuple[int, ...] = (0, 1, 1, 2, 3)
 STAGE4_STAIR_PAIRS_PER_TRANSITION = 2
 STAGE4_FINAL_FLOOR_BARRIER_PERCENT = 10
-STAGE4_ROSTER: List[List[Tuple[str, int, int]]] = [
+STAGE4_ROSTER: list[list[tuple[str, int, int]]] = [
     [
         ("a", 20, 1),
         ("A", 1, 1),
@@ -275,18 +274,18 @@ STAGE6_FINAL_FLOOR_BARRIER_PERCENT = 7
 STAGE6_BARRIER_VORTEX_RADIUS_MULTIPLIER = 1.5
 
 # Elves placed by the multi-floor builder instead of the static floor rosters.
-STAGE_RUNTIME_ELVES: Dict[int, Tuple[str, ...]] = {
+STAGE_RUNTIME_ELVES: dict[int, tuple[str, ...]] = {
     3: ("C", "I"),
     4: ("C", "I", "J", "K", "H", "S", "L"),
 }
 
-STAGE_BOSSES: Dict[int, Tuple[str, int]] = {
+STAGE_BOSSES: dict[int, tuple[str, int]] = {
     3: ("W", 1),
     4: (CHAR_FIRE_DRAKE, 2),
 }
 
 # Display duration and untranslated text; empty stages have no opening message.
-STAGE_START_MESSAGES: Dict[int, Tuple[int, str]] = {
+STAGE_START_MESSAGES: dict[int, tuple[int, str]] = {
     1: (-1, ""),
     2: (-1, ""),
     3: (5, "-- The King has ordered the Dread Wyrm (W) slain."),

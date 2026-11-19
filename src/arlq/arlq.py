@@ -1,4 +1,4 @@
-from typing import Callable, Container, List, Tuple, Optional
+from typing import Callable, Container, Optional
 
 import argparse
 from dataclasses import dataclass
@@ -60,7 +60,7 @@ def parse_replay_interval(value: str) -> float:
     return parsed_interval
 
 
-def tick_message(message: Tuple[int, str]) -> Tuple[int, str]:
+def tick_message(message: tuple[int, str]) -> tuple[int, str]:
     ticks, text = message
     if ticks < 0:
         return message
@@ -86,7 +86,7 @@ def prefer_event_message(
 
 def generate_maze(
     width: int, height: int, excluded_tile: Optional[d.Point] = None
-) -> Tuple[List[d.Edge], d.Point, d.Point]:
+) -> tuple[list[d.Edge], d.Point, d.Point]:
     # Returns a list of neighboring points given a point p
     def neighbor_points(p):
         x, y = p
@@ -102,7 +102,7 @@ def generate_maze(
         unconnected_point_set.remove(excluded_tile)
     tile_count = len(unconnected_point_set)
     connecting_points = []
-    done_points: List[d.Point] = []
+    done_points: list[d.Point] = []
     edges = []
 
     # Choose a random starting point
@@ -147,8 +147,8 @@ def place_to_tile(x: int, y: int) -> d.Point:
 
 
 def find_random_place(
-    entities: List[d.Entity],
-    field: List[List[str]],
+    entities: list[d.Entity],
+    field: list[list[str]],
     distance: int = 1,
     *,
     far_from: Optional[d.Point] = None,
@@ -184,8 +184,8 @@ def find_random_place(
 
 
 def find_marksman_place(
-    entities: List[d.Entity],
-    field: List[List[str]],
+    entities: list[d.Entity],
+    field: list[list[str]],
     distance: int = 2,
     *,
     avoid: Optional[Callable[[d.Point], bool]] = None,
@@ -216,7 +216,7 @@ def find_marksman_place(
 
 
 def _marksman_sight_score(
-    entities: List[d.Entity], field: List[List[str]], point: d.Point
+    entities: list[d.Entity], field: list[list[str]], point: d.Point
 ) -> int:
     """Count cells a marksman at point could target along clear cardinal rays."""
     blocked_entities = {
@@ -244,7 +244,7 @@ def _marksman_sight_score(
 
 
 def spawn_at(
-    entities: List[d.Entity],
+    entities: list[d.Entity],
     x: int,
     y: int,
     tribe: d.Tribe,
@@ -264,9 +264,9 @@ def spawn_at(
 
 
 def spawn_entities(
-    entities: List[d.Entity],
-    field: List[List[str]],
-    spawn_configs: List[d.SpawnConfig],
+    entities: list[d.Entity],
+    field: list[list[str]],
+    spawn_configs: list[d.SpawnConfig],
 ) -> None:
     """Spawn monsters and fairies from the stage's spawn configurations.
 
@@ -292,9 +292,9 @@ def create_field(
     margin_x: int = 0,
     tile_columns: Optional[int] = None,
     tile_width: int = d.TILE_WIDTH,
-) -> Tuple[List[List[str]], d.Point, d.Point]:
+) -> tuple[list[list[str]], d.Point, d.Point]:
     def find_empty_cell(
-        field: List[List[str]], left_top: d.Point, right_bottom: d.Point
+        field: list[list[str]], left_top: d.Point, right_bottom: d.Point
     ) -> d.Point:
         assert left_top[0] < right_bottom[0]
         assert left_top[1] < right_bottom[1]
@@ -315,7 +315,7 @@ def create_field(
         tile_num_x = tile_columns
         tile_offset_x = (d.TILE_NUM_X - tile_num_x) // 2
 
-    field: List[List[str]] = [
+    field: list[list[str]] = [
         [d.CHAR_FLOOR for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)
     ]
 
@@ -407,7 +407,7 @@ def create_field(
             for x in range(right_edge, d.FIELD_WIDTH):
                 field[y][x] = wall_char
 
-    def room_range(point: d.Point) -> Tuple[d.Point, d.Point]:
+    def room_range(point: d.Point) -> tuple[d.Point, d.Point]:
         x, y = point
         left = d.FIELD_X_MARGIN + x * (tile_width + 1) + 1
         top = y * (d.TILE_HEIGHT + 1) + 1
@@ -430,7 +430,7 @@ def iterate_ellipse_points(
     radius: int,
     width_expansion_ratio: float,
     except_for_center: bool = False,
-    except_for_entities: Optional[List[d.Entity]] = None,
+    except_for_entities: Optional[list[d.Entity]] = None,
 ):
     entity_coordinates = (
         set((e.x, e.y) for e in except_for_entities) if except_for_entities else set()
@@ -461,9 +461,9 @@ def iterate_ellipse_points(
 
 
 def spread_caltrops(
-    field: List[List[str]],
+    field: list[list[str]],
     origin: d.Point,
-    entities: List[d.Entity],
+    entities: list[d.Entity],
     protected_points: Container[d.Point] = (),
     radius: int = d.CALTROP_SPREAD_RADIUS,
 ) -> set[d.Point]:
@@ -490,8 +490,8 @@ def spread_caltrops(
 def iterate_offsets(
     center_x: int,
     center_y: int,
-    offsets: List[d.Point],
-    except_for_entities: Optional[List[d.Entity]] = None,
+    offsets: list[d.Point],
+    except_for_entities: Optional[list[d.Entity]] = None,
 ):
     entity_coordinates = (
         set((e.x, e.y) for e in except_for_entities) if except_for_entities else set()
@@ -504,8 +504,8 @@ def iterate_offsets(
                 yield x, y
 
 
-def get_torched(player: d.Player, torch_radius: int) -> List[List[int]]:
-    torched: List[List[int]] = [
+def get_torched(player: d.Player, torch_radius: int) -> list[list[int]]:
+    torched: list[list[int]] = [
         [0 for _ in range(d.FIELD_WIDTH)] for _ in range(d.FIELD_HEIGHT)
     ]
 
@@ -525,7 +525,7 @@ def get_torched(player: d.Player, torch_radius: int) -> List[List[int]]:
 
 def unlock_treasure_for_defeat(
     monster: d.Monster,
-    entities: List[d.Entity],
+    entities: list[d.Entity],
 ) -> None:
     """Unlock chests whose key is T followed by the defeated tribe's char."""
     if monster.tribe.char == "M":
@@ -541,7 +541,7 @@ def unlock_treasure_for_defeat(
 
 def activate_mimic_for_defeat(
     monster: d.Monster,
-    entities: List[d.Entity],
+    entities: list[d.Entity],
 ) -> None:
     """Activate mimics disguised as the defeated monster's treasure."""
     if monster.tribe.char == "M":
@@ -564,7 +564,7 @@ def activate_mimic_for_defeat(
 
 def activate_dungeon_core_for_defeat(
     monster: d.Monster,
-    entities: List[d.Entity],
+    entities: list[d.Entity],
 ) -> None:
     """Reveal the Stage 6 Dungeon Core after its empowered Fire Drake falls."""
     if monster.tribe.char != d.CHAR_FIRE_DRAKE or monster.empowered != 2:
@@ -577,7 +577,7 @@ def activate_dungeon_core_for_defeat(
 
 def reveal_entities_in_fov(
     player: d.Player,
-    entities: List[d.Entity],
+    entities: list[d.Entity],
     torch_radius: int = d.TORCH_RADIUS,
     floor_index: int = 0,
 ) -> None:
@@ -605,7 +605,7 @@ def reveal_entities_in_fov(
 
 def move_player(
     direction: d.Point,
-    field: List[List[str]],
+    field: list[list[str]],
     player: d.Player,
     passable_cells: Container[str],
     phase_walls: Container[d.Point] = (),
@@ -690,7 +690,7 @@ def barrier_lp_damage(player: d.Player) -> int:
 
 
 def apply_barrier_damage(
-    field: List[List[str]], player: d.Player, previous: d.Point
+    field: list[list[str]], player: d.Player, previous: d.Point
 ) -> bool:
     """Apply the shared barrier cost after movement and report whether it burned."""
     if (player.x, player.y) == previous:
@@ -721,7 +721,7 @@ def remember_seed(stage: int, seed: int) -> None:
         print(f"Warning: cannot save game seed: {error}", file=sys.stderr)
 
 
-def read_last_seed() -> Tuple[int, int]:
+def read_last_seed() -> tuple[int, int]:
     path = last_seed_path()
     try:
         parts = path.read_text(encoding="utf-8").split()

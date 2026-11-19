@@ -4,7 +4,7 @@ import sys
 import time
 from functools import wraps
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
+from typing import Optional
 
 
 
@@ -78,7 +78,7 @@ _FONT_GLYPH_METRICS = {}
 _FONT_METRIC_SAMPLE = "".join(chr(codepoint) for codepoint in range(32, 127))
 
 
-def _font_glyph_metrics(font_name: str, size: int, weight: str) -> Tuple[int, int]:
+def _font_glyph_metrics(font_name: str, size: int, weight: str) -> tuple[int, int]:
     """Return cached maximum glyph dimensions for resize-time font fitting."""
     key = (font_name, size, weight)
     metrics = _FONT_GLYPH_METRICS.get(key)
@@ -193,7 +193,7 @@ GAMEPAD_TRIGGER_BUTTONS = (11, 12)
 GAMEPAD_TRIGGER_PRESS_THRESHOLD = 0.5
 
 
-def _held_gamepad_buttons(controller) -> Set[int]:
+def _held_gamepad_buttons(controller) -> set[int]:
     """Return pressed standard buttons, treating analog triggers as digital."""
     if controller is None:
         return set()
@@ -242,7 +242,7 @@ def save_auto_repeat_stop_enabled(enabled: bool) -> None:
     save_settings({"auto_repeat_stop_enabled": bool(enabled)}, _settings_path())
 
 
-def load_gamepad_bindings() -> Tuple[Optional[int], Optional[int], str]:
+def load_gamepad_bindings() -> tuple[Optional[int], Optional[int], str]:
     """Load configurable gamepad mode-button bindings safely."""
     return gamepad_bindings(_load_settings())
 
@@ -302,9 +302,9 @@ class PygletUI(PygletSettingsMixin):
         self.floor_transition_seconds = d.FLOOR_TRANSITION_SECONDS
         self.idle_bob_enabled = d.IDLE_BOB_ENABLED
         self.move_glide_enabled = d.MOVE_GLIDE_ENABLED
-        self._effect_player_pos: Optional[Tuple[int, int]] = None
+        self._effect_player_pos: Optional[tuple[int, int]] = None
         self._treasure_sparkle_started: Optional[float] = None
-        self._treasure_sparkle_cells: List[Tuple[int, int]] = []
+        self._treasure_sparkle_cells: list[tuple[int, int]] = []
 
     def __init__(
         self,
@@ -338,8 +338,8 @@ class PygletUI(PygletSettingsMixin):
 
         # Lazily resolved (font_name, size_scale) for non-ASCII text; see
         # _non_ascii_font(). None until first computed.
-        self._non_ascii_font_result: Optional[Tuple[str, float]] = None
-        self._menu_non_ascii_font_result: Optional[Tuple[str, float]] = None
+        self._non_ascii_font_result: Optional[tuple[str, float]] = None
+        self._menu_non_ascii_font_result: Optional[tuple[str, float]] = None
 
         self.batch = pyglet.graphics.Batch()
         self._tile_group = pyglet.graphics.Group(order=-1)
@@ -371,9 +371,9 @@ class PygletUI(PygletSettingsMixin):
             self.gamepad_preview_button,
             self.gamepad_preview_mode,
         ) = load_gamepad_bindings()
-        self._held_direction: Optional[Tuple[int, int]] = None
-        self._held_direction_keys: Set[int] = set()
-        self._held_shift_direction_keys: Set[int] = set()
+        self._held_direction: Optional[tuple[int, int]] = None
+        self._held_direction_keys: set[int] = set()
+        self._held_shift_direction_keys: set[int] = set()
         self._next_repeat_at = 0.0
         self.input_was_repeat = False
 
@@ -433,7 +433,7 @@ class PygletUI(PygletSettingsMixin):
         self.controller = controller
 
         self._next_gamepad_repeat_at = 0.0
-        self._gamepad_held_buttons: Set[int] = set()
+        self._gamepad_held_buttons: set[int] = set()
         self.map_mode = False
         self.shift_direction = False
 
@@ -515,7 +515,7 @@ class PygletUI(PygletSettingsMixin):
         return bool(getattr(device, "connected", True))
 
     @staticmethod
-    def _controller_direction(controller) -> Tuple[int, int]:
+    def _controller_direction(controller) -> tuple[int, int]:
         """Return a cardinal direction from a controller D-pad or left stick."""
         if controller is None:
             return (0, 0)
@@ -631,7 +631,7 @@ class PygletUI(PygletSettingsMixin):
     def _prepare_window_resize(self) -> None:
         """Hook for frontends that need to clear constraints before a scale change."""
 
-    def _display_color(self, color: Tuple[int, ...]) -> Tuple[int, ...]:
+    def _display_color(self, color: tuple[int, ...]) -> tuple[int, ...]:
         if not self.map_mode:
             return color
         value = round(color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114)
@@ -639,11 +639,11 @@ class PygletUI(PygletSettingsMixin):
             return (value, value, value, color[3])
         return (value, value, value)
 
-    def _dim_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
+    def _dim_color(self, color: tuple[int, int, int]) -> tuple[int, int, int]:
         DIM_FACTOR = 2
         return (color[0] // DIM_FACTOR, color[1] // DIM_FACTOR, color[2] // DIM_FACTOR)
 
-    def _tone_color(self, tone: str, dim: bool = False) -> Tuple[int, int, int]:
+    def _tone_color(self, tone: str, dim: bool = False) -> tuple[int, int, int]:
         if tone == "black":
             color = (0, 0, 0)
         elif tone == "fairy":
@@ -719,9 +719,9 @@ class PygletUI(PygletSettingsMixin):
 
     def _draw_text(
         self,
-        pos: Tuple[float, float],
+        pos: tuple[float, float],
         text: str,
-        color: Tuple[int, int, int],
+        color: tuple[int, int, int],
         bold: bool = False,
         x_offset: int = 0,
         size_scale: float = 1.0,
@@ -797,7 +797,7 @@ class PygletUI(PygletSettingsMixin):
 
     def _non_ascii_font(
         self, base_font_size: Optional[float] = None
-    ) -> Tuple[str, float]:
+    ) -> tuple[str, float]:
         """Resolve the font (and a matching font-size scale) for non-ASCII
         text, trying generic family names in order: "monospace", then
         "sans-serif". These are resolved by the OS's own font substitution
@@ -861,7 +861,7 @@ class PygletUI(PygletSettingsMixin):
     def _field_draw_columns(self, width):
         return range(width)
 
-    def _draw_tile(self, x: int, y: int, tile_color: Tuple[int, int, int], field, discovered_at):
+    def _draw_tile(self, x: int, y: int, tile_color: tuple[int, int, int], field, discovered_at):
         """Fill one field cell; `field` and `discovered_at` let subclasses look at neighbors."""
         # Sprite mode uses complete signatures instead of mutable tile colors.
         if not self._retain_drawable(('rectangle',)):
@@ -1021,7 +1021,7 @@ class PygletUI(PygletSettingsMixin):
         """Draws a revealed Collapse pit (`O`)."""
         self._draw_field_text(pos, d.CHAR_COLLAPSE, COLOR_MAP[CI_YELLOW])
 
-    def _draw_field_text(self, pos: d.Point, text: str, color: Tuple[int, int, int], bold: bool = False):
+    def _draw_field_text(self, pos: d.Point, text: str, color: tuple[int, int, int], bold: bool = False):
         """Draws text at a field grid cell (never an edge column), applying
         the same grid alignment as the other field columns."""
         self._draw_text(pos, text, color, bold=bold,
@@ -1156,7 +1156,7 @@ class PygletUI(PygletSettingsMixin):
         y: int,
         width: int,
         height: int,
-        color: Tuple[int, ...],
+        color: tuple[int, ...],
         group=None,
     ):
         y_bottom = self.window_height - y - height
@@ -1181,7 +1181,7 @@ class PygletUI(PygletSettingsMixin):
         y1: int,
         x2: int,
         y2: int,
-        color: Tuple[int, int, int],
+        color: tuple[int, int, int],
         thickness: int = 1,
     ):
         draw_y1 = self.window_height - y1
@@ -1202,26 +1202,26 @@ class PygletUI(PygletSettingsMixin):
         turn: int,
         game_start_turn: Optional[int] = None,
         player: d.Player,
-        entities: List[d.Entity],
-        field: List[List[str]],
-        cur_torched: List[List[int]],
-        torched: List[List[int]],
-        known_types: Set[str],
+        entities: list[d.Entity],
+        field: list[list[str]],
+        cur_torched: list[list[int]],
+        torched: list[list[int]],
+        known_types: set[str],
         show_entities: bool,
         stage_num: int = 0,
         message: Optional[str] = None,
         extra_keys: bool = False,
         debug_show_entities: bool = False,
         checkpoint: Optional[d.Point] = None,
-        dim_types: Optional[Set[str]] = None,
-        stage_roster: Optional[List[d.MonsterTribe]] = None,
+        dim_types: Optional[set[str]] = None,
+        stage_roster: Optional[list[d.MonsterTribe]] = None,
         floor_view: bool = False,
         floor_label: Optional[str] = None,
-        reachable_cells: Optional[Set[d.Point]] = None,
-        loop_trail_markers: Optional[Set[d.Point]] = None,
-        decor: Optional[List[List[str]]] = None,
+        reachable_cells: Optional[set[d.Point]] = None,
+        loop_trail_markers: Optional[set[d.Point]] = None,
+        decor: Optional[list[list[str]]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
-        respawn_glows: Optional[Set[d.Point]] = None,
+        respawn_glows: Optional[set[d.Point]] = None,
     ):
         """
         Renders the game stage (`decor`, the decorations no rule reads, and
@@ -1634,7 +1634,7 @@ class PygletUI(PygletSettingsMixin):
         return min(player.lp, lp_max) / lp_max
 
     @staticmethod
-    def _lp_gauge_color(player: d.Player) -> Tuple[int, int, int]:
+    def _lp_gauge_color(player: d.Player) -> tuple[int, int, int]:
         """LP gauge fill: magenta above the maximum, red when low, else white."""
         if player.lp > d.player_lp_max(player):
             return COLOR_MAP[CI_MAGENTA]
@@ -1676,13 +1676,13 @@ class PygletUI(PygletSettingsMixin):
         label.delete()
         return width
 
-    def _draw_rect_outline(self, x: int, y: int, width: int, height: int, color: Tuple[int, int, int]):
+    def _draw_rect_outline(self, x: int, y: int, width: int, height: int, color: tuple[int, int, int]):
         self._draw_line(x, y, x + width, y, color)
         self._draw_line(x, y + height, x + width, y + height, color)
         self._draw_line(x, y, x, y + height, color)
         self._draw_line(x + width, y, x + width, y + height, color)
 
-    def _draw_visibility_boundary(self, visibility: List[List[int]]) -> None:
+    def _draw_visibility_boundary(self, visibility: list[list[int]]) -> None:
         """Draw the outline around the currently visible area."""
         if not visibility:
             return
@@ -1787,7 +1787,7 @@ class PygletUI(PygletSettingsMixin):
             if (event[0] if isinstance(event, tuple) else event) != symbol
         ]
 
-    def input_direction(self) -> Optional[Tuple[int, int]]:
+    def input_direction(self) -> Optional[tuple[int, int]]:
         self._stage_input_active = True
         try:
             return self._input_direction()
@@ -1801,7 +1801,7 @@ class PygletUI(PygletSettingsMixin):
         if self.gamepad_previous_direction not in (None, (0, 0)):
             self._next_gamepad_repeat_at = float("inf")
 
-    def _input_direction(self) -> Optional[Tuple[int, int]]:
+    def _input_direction(self) -> Optional[tuple[int, int]]:
         """
         Waits for a directional input.
         Returns a tuple (dx, dy) if an arrow key, WASD key, controller D-pad,
@@ -2152,7 +2152,7 @@ class PygletUI(PygletSettingsMixin):
     gamepad_button_settings_menu = _menu_method(PygletSettingsMixin.gamepad_button_settings_menu)
 
     @_menu_method
-    def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
+    def select_stage(self, stage_numbers: tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         """
         Displays a stage selection menu where the user can navigate with arrow keys or D-pad,
         and confirm with Enter (or gamepad button 0), or directly press numeric keys or Q/ESC.

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 import pickle
-from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from . import defs as d
 from .arlq import MESSAGE_TICKS
@@ -16,18 +16,18 @@ if TYPE_CHECKING:
 class Floor:
     """State owned by one floor in a multi-floor stage."""
 
-    field: List[List[str]]
-    entities: List[d.Entity]
-    seen: List[List[int]]
+    field: list[list[str]]
+    entities: list[d.Entity]
+    seen: list[list[int]]
     up: d.Point
     down: d.Point
     island: Optional[d.Point]
-    up_stairs: List[d.Point] = dataclass_field(default_factory=list)
-    down_stairs: List[d.Point] = dataclass_field(default_factory=list)
-    scholar_up_stairs: List[d.Point] = dataclass_field(default_factory=list)
-    scholar_down_stairs: List[d.Point] = dataclass_field(default_factory=list)
+    up_stairs: list[d.Point] = dataclass_field(default_factory=list)
+    down_stairs: list[d.Point] = dataclass_field(default_factory=list)
+    scholar_up_stairs: list[d.Point] = dataclass_field(default_factory=list)
+    scholar_down_stairs: list[d.Point] = dataclass_field(default_factory=list)
     contact_reveal: Optional[d.Point] = None
-    room_components: Tuple[set[d.Point], ...] = ()
+    room_components: tuple[set[d.Point], ...] = ()
     persistent_barriers: set[d.Point] = dataclass_field(default_factory=set)
     broken_walls: set[d.Point] = dataclass_field(default_factory=set)
     respawn_exclusions: set[d.Point] = dataclass_field(default_factory=set)
@@ -35,17 +35,17 @@ class Floor:
     # Decorations (d.DECOR_*), one per cell and the same size as `field`.
     # No gameplay rule reads them; renderers draw them. They are written by turn
     # processing, so a rewind's replay rebuilds them along with `field`.
-    decor: Optional[List[List[str]]] = None
+    decor: Optional[list[list[str]]] = None
     bridgehead: Optional[d.Point] = None
     # Where the player respawned this turn, and where monsters (not elves)
     # respawned with the turns left (d.RESPAWN_GLOW_TURNS): the sprite GUI
     # lights a column there, around whoever stands on the cell. No rule reads
     # them.
     player_respawn_glow: Optional[d.Point] = None
-    respawn_glows: Dict[d.Point, int] = dataclass_field(default_factory=dict)
-    monster_spawn_queue: List[Tuple[str, int]] = dataclass_field(default_factory=list)
+    respawn_glows: dict[d.Point, int] = dataclass_field(default_factory=dict)
+    monster_spawn_queue: list[tuple[str, int]] = dataclass_field(default_factory=list)
     monster_spawn_queue_index: int = 0
-    stage6_fairy_chars: Tuple[str, ...] = ()
+    stage6_fairy_chars: tuple[str, ...] = ()
 
     @property
     def collapse_landings(self) -> set[d.Point]:
@@ -54,7 +54,7 @@ class Floor:
                 for x, cell in enumerate(row) if cell == d.CHAR_PIT_LANDING}
 
     @property
-    def d_gates(self) -> Dict[d.Point, str]:
+    def d_gates(self) -> dict[d.Point, str]:
         """Derive hidden-passage positions and their display glyph from terrain."""
         return {(x, y): "." for y, row in enumerate(self.field)
                 for x, cell in enumerate(row) if cell in d.HIDDEN_PASSAGE_CHARS}
@@ -105,14 +105,14 @@ class ReplayContext:
     stage_num: int
     seed: int
     config: "GameConfig"
-    operations: List[d.Point] = dataclass_field(default_factory=list)
-    turn_to_operation: Dict[int, int] = dataclass_field(
+    operations: list[d.Point] = dataclass_field(default_factory=list)
+    turn_to_operation: dict[int, int] = dataclass_field(
         default_factory=lambda: {0: 0}
     )
-    rewind_targets: Dict[int, int] = dataclass_field(default_factory=dict)
+    rewind_targets: dict[int, int] = dataclass_field(default_factory=dict)
     # Non-turn Rogue checks, indexed by the next committed operation.
-    rogue_checks: Dict[int, List[d.Point]] = dataclass_field(default_factory=dict)
-    snapshots: Dict[int, bytes] = dataclass_field(default_factory=dict, repr=False)
+    rogue_checks: dict[int, list[d.Point]] = dataclass_field(default_factory=dict)
+    snapshots: dict[int, bytes] = dataclass_field(default_factory=dict, repr=False)
 
     def save_snapshot(self, operation_count, floors, player, floor, checkpoint, queue) -> None:
         """Save game state without capturing or changing the random generator."""
@@ -131,7 +131,7 @@ class ReplayContext:
         self.snapshots = {index: snapshot for index, snapshot in self.snapshots.items()
                           if index in keep}
 
-    def prepare_loop_rewind(self, game_turn: int, anchor_turn: int) -> Tuple[int, int]:
+    def prepare_loop_rewind(self, game_turn: int, anchor_turn: int) -> tuple[int, int]:
         """Record the operation target before restoring a Loop rewind."""
         rewind_turn = max(anchor_turn, game_turn - d.LOOP_TURNS)
         rewind_operation = self.turn_to_operation.get(rewind_turn, 0)
