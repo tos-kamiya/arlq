@@ -91,6 +91,8 @@ def render_facings(scene, rig, katana, armor, floor, with_chimera, with_cursed, 
     scene.render.image_settings.file_format = 'JPEG'
     scene.render.image_settings.color_mode = 'RGB'
     scene.render.image_settings.quality = 90
+    scene.cycles.samples = 24
+    scene.cycles.use_denoising = True
 
     ink = bpy.data.materials.new('Facing labels')
     ink.use_nodes = True
@@ -145,13 +147,17 @@ def render_facings(scene, rig, katana, armor, floor, with_chimera, with_cursed, 
     if collapsed:
         bake(scene, rig, armor, 'collapsed', 'down', floor,
              place=Matrix.Translation((columns[0][3], last_y, 0)))
-        label_on_screen('COLLAPSED (HUNGER)', -3.55,
-                        (.8 * -last_y / 2 + last_y) * math.sqrt(3) / 2, .083)
+        bake(scene, rig, armor, 'kneeling', 'down', floor,
+             place=Matrix.Translation((columns[1][3], last_y, 0)), kneeling_thigh_angle=27)
+        ending_y = (.8 * -last_y / 2 + last_y) * math.sqrt(3) / 2 - .16
+        label_on_screen('COLLAPSED (HUNGER)', columns[0][3] - target.x, ending_y, .075)
+        label_on_screen('KNEELING (CORE)', columns[1][3] - target.x, ending_y, .075)
 
     for part in armor:
         part.hide_render = True
     for _, _, sword in rows:
         for part in sword:
+            part.animation_data_clear()
             part.hide_render = True
     name = 'preview-player-facings-with-chimera.jpg' if with_chimera else 'preview-player-facings-katana.jpg'
     if collapsed:

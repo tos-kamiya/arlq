@@ -86,12 +86,12 @@ def apply_walk_pose(rig, lead):
         bone.location += bone.bone.matrix_local.to_3x3().inverted() @ Vector((0, 0, dz))
 
 
-def apply_kneeling_pose(scene, rig, parts, floor):
+def apply_kneeling_pose(scene, rig, parts, floor, thigh_angle=35):
     """Kneel with both hands on the floor and the cape falling over the back."""
     rotations = {
         'waist': (48, 0, 0), 'chest': (18, 0, 0),
         'neck': (25, 0, 0), 'head': (18, 0, 0),
-        'thigh.L': (35, 0, 0), 'thigh.R': (35, 0, 0),
+        'thigh.L': (thigh_angle, 0, 0), 'thigh.R': (thigh_angle, 0, 0),
         'shin.L': (-140, 0, 0), 'shin.R': (-140, 0, 0),
         'foot.L': (35, 0, 0), 'foot.R': (35, 0, 0),
         'upper_arm.L': (65, 0, 8), 'upper_arm.R': (65, 0, -8),
@@ -114,7 +114,8 @@ def apply_kneeling_pose(scene, rig, parts, floor):
     rig.pose.bones['root'].location.y += floor - min(heights)
 
 
-def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4)):
+def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4), *,
+         kneeling_thigh_angle=35):
     """Baked mesh copies of the posed, turned and leaned figure, each with its
     world shape in its mesh, transformed by `place` (applied last)."""
     collapsed = pose == 'collapsed'
@@ -123,7 +124,7 @@ def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4)):
                             0 if collapsed else math.radians(FACINGS[facing]))
     scene.frame_set(POSE_FRAMES['rest' if pose in WALK_POSES or kneeling else pose])
     if kneeling:
-        apply_kneeling_pose(scene, rig, parts, floor)
+        apply_kneeling_pose(scene, rig, parts, floor, kneeling_thigh_angle)
     clavicle = rig.pose.bones['clavicle.R']
     shoulder_location = clavicle.location.copy()
     if pose in WALK_POSES[1:]:

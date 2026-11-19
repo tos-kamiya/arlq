@@ -21,8 +21,12 @@ jobs = [(name + ('' if facing == 'down' else '-' + facing), state, facing, 'rest
 jobs += [(name + '-' + facing + '-' + pose, state, facing, pose)
          for name, state in states for facing in ('down', 'up', 'left', 'right')
          for pose in ('walk-right', 'walk-left')]
-jobs.append(('player-collapsed', 'katana', 'down', 'collapsed'))
+jobs += [('player-collapsed', 'katana', 'down', 'collapsed'),
+         ('player-kneeling', 'katana', 'down', 'kneeling')]
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+if '--only' in args:
+    names = set(args[args.index('--only') + 1:])
+    jobs = [job for job in jobs if job[0] in names]
 if '--part' in args:
     pos = args.index('--part')
     index, count = int(args[pos + 1]), int(args[pos + 2])
@@ -43,7 +47,7 @@ for name, state, facing, pose in jobs:
     armor = figure_parts(scene, rig)
     floor, top = standing_extent(scene, rig, armor)
     swords = []
-    if state in ('katana', 'blessed') and pose != 'collapsed':
+    if state in ('katana', 'blessed') and pose not in ('collapsed', 'kneeling'):
         swords = list(mount.children)
         if state == 'blessed':
             blade = next(obj for obj in swords if obj.name == 'Katana blade')
@@ -67,7 +71,7 @@ for name, state, facing, pose in jobs:
         swords = loaded_sword.objects
     scale = HEROIC_PLAYER_SIZE * HEROIC_PLAYER_HEIGHT / (top - floor)
     place = Matrix.Scale(scale, 4) @ Matrix.Translation((0, 0, -floor))
-    selected = set(bake(scene, rig, armor + swords, pose, facing, floor, place))
+    selected = set(bake(scene, rig, armor + swords, pose, facing, floor, place, kneeling_thigh_angle=27))
     x = y = 0
     name = 'samurai-' + name
     char = '@'

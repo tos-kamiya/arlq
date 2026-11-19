@@ -175,7 +175,7 @@ blender --factory-startup --background --threads 4 --python dev-samples/3d-stage
 
 ### プレイヤーの向き別プレビュー
 
-プレイヤーの剣の状態（行）と向き（列: 下・左・右・上、右端は下向きで右足を前に出した姿）、最後の行に飢餓で倒れた姿を並べた確認画像を、甲冑と武士でそれぞれ作る。甲冑では倒れた姿の隣に、コア暴走時のひざまずく姿も並べる。行は自分の剣（武士は刀）・キメラの剣・呪いの剣・Kの加護の4つ。
+プレイヤーの剣の状態（行）と向き（列: 下・左・右・上、右端は下向きで右足を前に出した姿）、最後の行に飢餓で倒れた姿を並べた確認画像を、甲冑と武士でそれぞれ作る。倒れた姿の隣に、コア暴走時のひざまずく姿も並べる。行は自分の剣（武士は刀）・キメラの剣・呪いの剣・Kの加護の4つ。
 
 | 画像 | モデル | スクリプト |
 | --- | --- | --- |
@@ -191,6 +191,7 @@ blender --factory-startup --background --threads 4 --python dev-samples/3d-stage
 
 - 甲冑と武士のどちらも Blender から直接 JPEG を書き出す。
 - 甲冑の chibi を作り直したときは、`rigged-armor/build-chibi.py` のあとに甲冑のコマンドを実行する。武士の見た目は甲冑の兜の変更では変わらないが、キメラの剣と呪いの剣は甲冑の chibi から読むので、剣を変えたときは武士のコマンドも実行する。
+- 武士のひざまずく画像は `blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/export-samurai-sprites.py -- --only player-kneeling` で再生成する。ゲーム画面への接続はまだ行っていない。
 - 武士の chibi は `rigged-armor/hero-rig.blend` →（`rigged-samurai/build.py`）→ `rigged-samurai/build-chibi.py` の順で作る。
 - 武士のコマンドで `--facings` を付けないと、`rigged-samurai/sprite-*.png`（下向きの確認画像3枚）を描く。行のオプションを省くと、その行を除いた画像を描く（`--cursed` がないときは `preview-player-facings-katana.jpg` などの別名になる）。
 
