@@ -1,6 +1,6 @@
 """Marble stair cells for the sprite GUI.
 
-Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-stairs.py
+Run with: blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-stairs.py
 
 Each stair is a short flight of thin plates floating in place by magic,
 turning back at a landing, seen from the front with the walls' 60-degree
@@ -239,7 +239,10 @@ for pos, power, size, color in [((-3, 3, 9), 420, 1.5, (1.0, 0.93, 0.85)),
     bpy.ops.object.light_add(type='AREA', location=pos)
     light = bpy.context.object
     light.data.energy, light.data.size, light.data.color = power, size, color
-    light.data.cycles.cast_shadow = pos == (-3, 3, 9)
+    # Blender 5 has no Cycles cast_shadow; Light.use_shadow replaces it.
+    light.data.use_shadow = pos == (-3, 3, 9)
+    if hasattr(light.data.cycles, 'cast_shadow'):
+        light.data.cycles.cast_shadow = light.data.use_shadow
     light.rotation_euler = (Vector((0, 0, 0)) - light.location).to_track_quat('-Z', 'Y').to_euler()
 
 # Frame the canvas from the cell's south edge on the ground (image-plane

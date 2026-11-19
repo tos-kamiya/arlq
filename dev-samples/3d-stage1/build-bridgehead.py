@@ -1,6 +1,6 @@
 """The Stage 6 bridgehead for the sprite GUI: a small fortified outpost.
 
-Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-bridgehead.py
+Run with: blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-bridgehead.py
 
 It takes two cells side by side on the floor and is drawn with the stairs'
 60-degree orthographic camera, turned toward screen right (YAW) and fitted
@@ -365,7 +365,10 @@ for pos, power, size, color in [((-3, 3, 9), 420, 1.5, (1.0, 0.93, 0.85)),
     bpy.ops.object.light_add(type='AREA', location=pos)
     light = bpy.context.object
     light.data.energy, light.data.size, light.data.color = power, size, color
-    light.data.cycles.cast_shadow = pos == (-3, 3, 9)
+    # Blender 5 has no Cycles cast_shadow; Light.use_shadow replaces it.
+    light.data.use_shadow = pos == (-3, 3, 9)
+    if hasattr(light.data.cycles, 'cast_shadow'):
+        light.data.cycles.cast_shadow = light.data.use_shadow
     light.rotation_euler = (Vector((0, 0, 0)) - light.location).to_track_quat('-Z', 'Y').to_euler()
 
 height = CELL_UP * (UNDER + 1 + OVERHANG)

@@ -1,7 +1,7 @@
 """The Stage 6 Dungeon Core for the sprite GUI: an eye in a crystal among
 four pillars, in four sizes as the core grows toward bursting.
 
-Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-dungeon-core.py
+Run with: blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-dungeon-core.py
 
 The core is shown as `[*]` on three cells side by side. A clear violet
 octahedron floats in the middle with an eye hanging inside it, looking at
@@ -550,7 +550,10 @@ def render(stage, canvas=None):
         bpy.ops.object.light_add(type='AREA', location=pos)
         light = bpy.context.object
         light.data.energy, light.data.size, light.data.color = power, size, color
-        light.data.cycles.cast_shadow = pos == (-3, 3, 9)
+        # Blender 5 has no Cycles cast_shadow; Light.use_shadow replaces it.
+        light.data.use_shadow = pos == (-3, 3, 9)
+        if hasattr(light.data.cycles, 'cast_shadow'):
+            light.data.cycles.cast_shadow = light.data.use_shadow
         light.rotation_euler = (Vector((0, 0, 0)) - light.location).to_track_quat(
             '-Z', 'Y').to_euler()
 
