@@ -2166,7 +2166,7 @@ class PygletUI(PygletSettingsMixin):
 
         options = [tr("[q]uit")]
         for n in stage_numbers:
-            options.append(tr("Stage {number}").format(number=n))
+            options.append(tr("Stage {number}").format(number=f"[{n}]"))
         options.append(tr("[s]ettings"))
 
         current_index = 1  # Initial selection: stage 1

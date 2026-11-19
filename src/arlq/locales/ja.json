@@ -186,7 +186,7 @@
     "-- Explore the training ground and claim the Fire Drake’s treasure.": "-- 訓練場を進み、ファイアドレイクの宝箱を手に入れよう。",
     "-- To avert the Dungeon Core's rampage, the capital asks you to destroy it.": "-- ダンジョンコア暴走の災厄を防ぐため、王都は冒険者に発見と破壊を依頼した。",
     "-- Rogue spotted danger. Movement repeat stopped.": "-- ならず者(R)が危険を察知！ キーリピートを停止した。",
-    "Stage {number}": "ステージ{number}",
+    "Stage {number}": "ステージ {number}",
     "Yes (y)": "はい (y)",
     "No (n)": "いいえ (n)",
     "No reachable encounters or exits. End the game?": "到達できる相手や出口がありません。ゲームオーバーにしますか？",

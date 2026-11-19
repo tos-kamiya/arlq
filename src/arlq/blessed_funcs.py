@@ -810,7 +810,9 @@ class BlessedUI(BlessedSettingsMixin):
                 return (*direction, False)
 
     def select_stage(self, stage_numbers: Tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
-        options = [tr("[q]uit")] + [tr("Stage {number}").format(number=n) for n in stage_numbers]
+        options = [tr("[q]uit")] + [
+            tr("Stage {number}").format(number=f"[{n}]") for n in stage_numbers
+        ]
         options.append(tr("[s]ettings"))
         settings_index = len(options) - 1
         stage_rows = (len(stage_numbers) + 1) // 2
