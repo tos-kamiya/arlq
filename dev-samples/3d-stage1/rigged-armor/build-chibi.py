@@ -80,12 +80,15 @@ def chibify(rig, scene):
     worlds = {o.name: bone_map(o.parent_bone, o.name.startswith(ROUND_PARTS)) @ o.matrix_world
               for o in rigid}
     cape = bpy.data.objects['Cape']
-    groups = {g.index: g.name for g in cape.vertex_groups}
+    # Only the bone groups move the cape; others (the saved tall rig's
+    # 'Drape amount') are skipped.
+    groups = {g.index: g.name for g in cape.vertex_groups if g.name in head}
     cape_points = []
     for vertex in cape.data.vertices:
-        total = sum(g.weight for g in vertex.groups)
+        weights = [g for g in vertex.groups if g.group in groups]
+        total = sum(g.weight for g in weights)
         cape_points.append(sum((bone_map(groups[g.group]) @ vertex.co * (g.weight / total)
-                                for g in vertex.groups), Vector()))
+                                for g in weights), Vector()))
     # Drop everything so the lowest point stays on the floor.
     def lowest(objects_worlds):
         return min((world @ v.co).z for obj, world in objects_worlds for v in obj.data.vertices)

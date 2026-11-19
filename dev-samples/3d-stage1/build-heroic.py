@@ -219,6 +219,16 @@ def fairy_green(name, strength=0.3, trim=False):
                     strength=strength, rim=(0.6, 1.0, 0.7), rim_strength=1.2, coat=0.8)
 
 
+def auto_smooth(mesh, angle=math.radians(30)):
+    """Keep edges sharper than angle (Blender 4.0's auto smooth, 30 degrees by
+    default) sharp; Blender 4.1+ marks them sharp in the mesh instead."""
+    if hasattr(mesh, 'use_auto_smooth'):
+        mesh.use_auto_smooth = True
+        mesh.auto_smooth_angle = angle
+    else:
+        mesh.set_sharp_from_angle(angle=angle)
+
+
 def finish(obj, mat, smooth=True, name=None):
     if name:
         obj.name = name
@@ -265,7 +275,7 @@ def block(name, pos, size, mat, radius, rotation=(0, 0, 0)):
     bevel = obj.modifiers.new('Rounded edges', 'BEVEL')
     bevel.width = radius
     bevel.segments = 5
-    obj.data.use_auto_smooth = True
+    auto_smooth(obj.data)
     obj.modifiers.new('Weighted normals', 'WEIGHTED_NORMAL')
     return obj
 
@@ -338,7 +348,7 @@ def soften(obj, width, segments=3):
     bevel.segments = segments
     bevel.use_clamp_overlap = True
     bevel.harden_normals = True
-    obj.data.use_auto_smooth = True
+    auto_smooth(obj.data)
     return obj
 
 
@@ -935,8 +945,7 @@ def treasure(x, y, mimic=False, toy=False):
         faces += [(0, 2, 3, 1), (last, last + 1, last + 3, last + 2)]
         arc = mesh_object(name, verts, faces, mat, True)
         # Flat plates: smooth only along the curve, sharp at the edges.
-        arc.data.use_auto_smooth = True
-        arc.data.auto_smooth_angle = math.radians(30)
+        auto_smooth(arc.data, math.radians(30))
         return arc
 
     lid_parts = [lid]
@@ -3161,7 +3170,7 @@ def heavy_armor_figure(x, y, prefix, mats, legs, body, head, girth=1.0, boot=1.0
     torso.scale.y = flat
     for face in torso.data.polygons:
         face.use_smooth = len(face.vertices) == 4
-    torso.data.use_auto_smooth = True
+    auto_smooth(torso.data)
     bevel = torso.modifiers.new('Rounded rims', 'BEVEL')
     bevel.width = 0.06
     bevel.segments = 5
@@ -4458,7 +4467,7 @@ def hardtack_biscuit(name, pos, rotation, mat):
     bevel.segments = 3
     bevel.limit_method = 'ANGLE'
     bevel.harden_normals = True
-    obj.data.use_auto_smooth = True
+    auto_smooth(obj.data)
     for face in obj.data.polygons:
         face.use_smooth = True
     obj.rotation_euler = rotation
@@ -5104,7 +5113,8 @@ if '--preview-only' in sys.argv:
     sys.exit(0)
 if GROUP is None:
     # Build all the scenes at once, each in its own Blender.
-    children = [subprocess.Popen([bpy.app.binary_path, '--background', '--threads', '4',
+    # --factory-startup: a translated UI would rename the default nodes.
+    children = [subprocess.Popen([bpy.app.binary_path, '--factory-startup', '--background', '--threads', '4',
                                   '--python-exit-code', '1', '--python', __file__,
                                   '--', '--group', group]) for group in GROUPS]
     if any([child.wait() for child in children]):
