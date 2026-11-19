@@ -698,13 +698,16 @@ JET_OPENING_HALF, JET_OPENING_TOP, JET_OPENING_CORNER = .124, 1.712, .028
 # over the face: it lies on a cylinder of JET_PLATE_RADIUS just outside the
 # shell (a sphere above the shell's equator) with a forward ridge down its
 # middle (JET_PLATE_RIDGE deep, JET_PLATE_RIDGE_HALF wide). Half width around
-# the curve; its top edge arches over the opening's top, and its bottom edge
+# the curve; its top edge rises over the opening's top, and its bottom edge
 # runs down to a rounded point at the chin.
 JET_PLATE_RADIUS, JET_PLATE_HALF = .149, .175
 JET_PLATE_RIDGE, JET_PLATE_RIDGE_HALF = .022, .08
-JET_PLATE_TOP, JET_PLATE_TOP_DROP = 1.765, .012
-# The top edge rises to a point over the ridge, like a home plate.
-JET_PLATE_PEAK = .03
+# The top edge runs straight from the side corners (JET_PLATE_TOP) up to a
+# point JET_PLATE_PEAK higher over the ridge, the upper half of a hexagon.
+JET_PLATE_TOP, JET_PLATE_PEAK = 1.7365, .0585
+# The plate is cut back at both sides by this fraction of JET_PLATE_HALF; the
+# top and bottom edges keep the slopes of the full width.
+JET_PLATE_TRIM = .08
 # How much the brow above the shell's equator follows the dome back
 # (1 follows a sphere, 0 rises straight).
 JET_PLATE_BROW_CURVE = .7
@@ -800,16 +803,16 @@ def jet_helmet(rig, shell_mat, glow_mat, lining_mat):
     bpy.ops.object.modifier_move_to_index(modifier=opening.name, index=1)
 
     # Face plate: a grid over (around, height). Its middle band holds the eye
-    # slit at fixed heights; the bands above and below follow the arched top
-    # edge, pointed over the ridge, and the pointed chin. Faces inside the
+    # slit at fixed heights; the bands above and below follow the straight top
+    # edges, peaked over the ridge, and the pointed chin. Faces inside the
     # slit are left out.
     half, slit = JET_PLATE_HALF, JET_SLIT_HALF
-    columns = sorted(set([round(half * (2 * c / 24 - 1), 6) for c in range(25)]
+    edge = half * (1 - JET_PLATE_TRIM)
+    columns = sorted(set([round(edge * (2 * c / 24 - 1), 6) for c in range(25)]
                          + [-slit, slit]))
 
     def top(u):
-        return (JET_PLATE_TOP - JET_PLATE_TOP_DROP * (u / half) ** 2
-                + JET_PLATE_PEAK * max(0, 1 - abs(u) / JET_PLATE_RIDGE_HALF))
+        return JET_PLATE_TOP + JET_PLATE_PEAK * (1 - abs(u) / half)
 
     def bottom(u):
         return JET_PLATE_CHIN + (JET_PLATE_BOTTOM_SIDE - JET_PLATE_CHIN) * (abs(u) / half) ** 1.5
