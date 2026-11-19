@@ -1,5 +1,10 @@
 # ARLQ Release Notes
 
+## 6.8.13 - 2026-11-20
+
+- Show the knight or samurai kneeling on the sprite-mode game-over screen
+  when Stage 6 runs out of turns before the Dungeon Core is destroyed.
+
 ## 6.8.12 - 2026-11-19
 
 - Show the number keys beside the stages on the stage selection screen.
