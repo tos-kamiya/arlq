@@ -1,5 +1,15 @@
 # ARLQ Release Notes
 
+## 6.8.11 - 2026-11-19
+
+- Redraw the knight player's helmet in sprite mode, in every sword state,
+  facing, walking step and the collapsed-from-hunger pose: the face plate is
+  now a near-hexagon with a sharper peak and narrower sides, the back of the
+  helmet pinches in a little higher, the hem is shorter, the face opening is
+  a little wider, and the whole helmet is about 3% smaller.
+- Add a README troubleshooting note for sprite-mode flicker on XWayland with
+  NVIDIA drivers.
+
 ## 6.8.10 - 2026-11-19
 
 - Respond to key presses sooner in the GUI and sprite modes: the input loops
