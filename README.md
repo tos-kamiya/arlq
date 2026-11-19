@@ -131,6 +131,9 @@ submenu's changes and returns to `Settings`.
 
 #### `Settings`
 
+An asterisk marks settings that have no effect in the current mode; they can
+still be saved for use in another mode.
+
 | Settings item | Command-line option | Description |
 | --- | --- | --- |
 | `Interface scale` | `--scale FACTOR` | GUI display scale (`0.5` to `4.0`; default `1.0`). The settings screen selects it in 25% steps. |

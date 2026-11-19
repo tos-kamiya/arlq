@@ -108,6 +108,8 @@
     "Up/Down: item   Left/Right: value   Enter / Right: open submenu": "Up/Down: 項目   Left/Right: 値   Enter / Right: サブ画面を開く",
     "Enter / Gamepad button 0: apply or open   Esc / Gamepad button 1: cancel": "Enter / ボタン0: 適用または開く   Esc / ボタン1: キャンセル",
     "Interface scale": "表示倍率",
+    "* These settings have no effect in arlq-cli.": "* arlq-cli では効果がない項目です。",
+    "* Has no effect in arlq.": "* arlqでは効果はありません。",
     "Movement repeat interval": "移動リピート間隔",
     "No repeat": "リピートなし",
     "Combat effect duration": "戦闘エフェクトの表示時間",

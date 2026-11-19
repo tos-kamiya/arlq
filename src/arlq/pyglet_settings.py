@@ -239,6 +239,8 @@ class PygletSettingsMixin:
                 (tr("Character bobbing"), tr("On") if bob_enabled else tr("Off")),
             )
             for index, (label, value) in enumerate(values):
+                if index > 0 and not getattr(self, "supports_floor_transition", False):
+                    label += " *"
                 heading = f"{'>' if row == index else ' '} {label}"
                 pos = (8, 8 + 1.5 * index)
                 self._draw_text(pos, heading, gui.COLOR_MAP["default"], bold=row == index)
@@ -250,6 +252,8 @@ class PygletSettingsMixin:
             self._draw_text((8, help_y), tr("Up/Down: item   Left/Right: value"), (145, 150, 160))
             self._draw_text((8, help_y + 2), tr("Enter / Gamepad button 0: apply   Esc / Gamepad button 1: cancel"),
                             (145, 150, 160))
+            if not getattr(self, "supports_floor_transition", False):
+                self._draw_text((8, help_y + 4), tr("* Has no effect in arlq."), (145, 150, 160))
             self._flip()
 
             while True:

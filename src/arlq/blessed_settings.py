@@ -93,18 +93,19 @@ class BlessedSettingsMixin:
         while True:
             repeat = values["key_repeat_interval"]
             rows = [
-                (tr("Interface scale"), f"<  {int(values['scale'] * 100)}%  >"),
-                (tr("Movement repeat interval"),
+                (tr("Interface scale") + " *", f"<  {int(values['scale'] * 100)}%  >"),
+                (tr("Movement repeat interval") + " *",
                  f"<  {tr('No repeat') if repeat is None else format(repeat, '.1f') + 's'}  >"),
-                (tr("Automatic repeat stop"),
+                (tr("Automatic repeat stop") + " *",
                  f"<  {_on_off(values['auto_repeat_stop_enabled'])}  >"),
                 (tr("Sprite display settings"), "->"),
-                (tr("Gamepad button settings"), "->"),
+                (tr("Gamepad button settings") + " *", "->"),
                 (tr("Reset all settings to defaults"), ""),
             ]
             self._draw_settings_screen(tr("Settings"), rows, row, [
                 tr("Up/Down: item   Left/Right: value   Enter / Right: open submenu"),
                 tr("Enter: apply or open   Esc: cancel"),
+                tr("* These settings have no effect in arlq-cli."),
             ])
             command = self._settings_key()
             selected = names[row]
@@ -152,13 +153,14 @@ class BlessedSettingsMixin:
         while True:
             rows = [
                 (tr("Combat effect duration"), f"<  {values['combat_effect_seconds']:.1f}s  >"),
-                (tr("Floor transition duration"),
+                (tr("Floor transition duration") + " *",
                  f"<  {values['floor_transition_seconds']:.1f}s  >"),
-                (tr("Character bobbing"), f"<  {_on_off(values['idle_bob_enabled'])}  >"),
+                (tr("Character bobbing") + " *", f"<  {_on_off(values['idle_bob_enabled'])}  >"),
             ]
             self._draw_settings_screen(tr("Sprite display settings"), rows, row, [
                 tr("Up/Down: item   Left/Right: value"),
                 tr("Enter: apply   Esc: cancel"),
+                tr("* These settings have no effect in arlq-cli."),
             ])
             command = self._settings_key()
             if command == "enter":
@@ -190,15 +192,16 @@ class BlessedSettingsMixin:
         row = 0
         while True:
             rows = [
-                (tr("Help button"), gamepad_button_label(help_button)),
-                (tr("Range / floor preview button"), gamepad_button_label(preview_button)),
-                (tr("Range / floor preview behavior"),
+                (tr("Help button") + " *", gamepad_button_label(help_button)),
+                (tr("Range / floor preview button") + " *", gamepad_button_label(preview_button)),
+                (tr("Range / floor preview behavior") + " *",
                  tr("Hold") if preview_mode == "hold" else tr("Toggle")),
                 (f"{tr('Load default settings')} ->", ""),
             ]
             self._draw_settings_screen(tr("Gamepad button settings"), rows, row, [
                 tr("Up/Down: item   Left/Right: change / load defaults with Right"),
                 tr("Enter: apply and exit   Esc: cancel"),
+                tr("* These settings have no effect in arlq-cli."),
             ])
             command = self._settings_key()
             if command == "enter":

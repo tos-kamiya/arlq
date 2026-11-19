@@ -89,6 +89,19 @@ def test_stage_menu_places_six_stages_in_two_columns(monkeypatch):
     assert drawn['> Stage [1]'][1] < drawn['Stage [3]'][1] < drawn['Stage [5]'][1]
 
 
+@pytest.mark.parametrize('sprite_mode', [False, True])
+def test_sprite_settings_marks_inactive_options(monkeypatch, sprite_mode):
+    ui = _menu_ui(monkeypatch, [(key.ESCAPE, 0)])
+    ui.supports_floor_transition = sprite_mode
+    drawn = []
+    ui._draw_text = lambda pos, text, *args, **kwargs: drawn.append(text)
+    ui.sprite_settings_menu(0, 0, True)
+    assert '> Combat effect duration' in drawn
+    assert ('  Floor transition duration' + ('' if sprite_mode else ' *')) in drawn
+    assert ('  Character bobbing' + ('' if sprite_mode else ' *')) in drawn
+    assert ('* Has no effect in arlq.' in drawn) is not sprite_mode
+
+
 @pytest.mark.parametrize('arrows,expected', [
     ([key.RIGHT], 2), ([key.DOWN], 3),
     ([key.RIGHT, key.DOWN, key.DOWN], 6),

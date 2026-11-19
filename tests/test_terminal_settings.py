@@ -47,11 +47,31 @@ def test_terminal_settings_rows_match_the_gui(monkeypatch, tmp_path, capsys):
     ui.settings_menu()
     output = capsys.readouterr().out
     for y, label in enumerate([
-        "> Interface scale", "  Movement repeat interval", "  Automatic repeat stop",
-        "  Sprite display settings", "  Gamepad button settings",
+        "> Interface scale *", "  Movement repeat interval *", "  Automatic repeat stop *",
+        "  Sprite display settings", "  Gamepad button settings *",
         "  Reset all settings to defaults",
     ], start=4):
         assert f"<4,{y}>{label}" in output
+    assert "* These settings have no effect in arlq-cli." in output
+
+
+def test_terminal_submenus_mark_only_inactive_settings(monkeypatch, tmp_path, capsys):
+    ui, _ = _terminal_ui(monkeypatch, tmp_path, [ESC, ESC])
+    ui.sprite_settings_menu({"combat_effect_seconds": 0.3,
+                             "floor_transition_seconds": 0.5,
+                             "idle_bob_enabled": True})
+    output = capsys.readouterr().out
+    assert "> Combat effect duration  " in output
+    assert "Floor transition duration *" in output
+    assert "Character bobbing *" in output
+    assert "* These settings have no effect in arlq-cli." in output
+    from arlq.settings import default_settings
+    ui.gamepad_button_settings_menu(default_settings())
+    output = capsys.readouterr().out
+    assert "Help button *" in output
+    assert "Range / floor preview button *" in output
+    assert "Range / floor preview behavior *" in output
+    assert "* These settings have no effect in arlq-cli." in output
 
 
 def test_terminal_settings_save_main_and_submenu_values(monkeypatch, tmp_path):
