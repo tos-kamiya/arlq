@@ -1647,6 +1647,24 @@ def test_player_with_no_lp_left_lies_collapsed(lp, presenting, images, sprite):
     assert ui._player_sprite(player) == sprite
 
 
+def test_stage6_time_up_uses_kneeling_pose(sprite_ui, monkeypatch):
+    ui = sprite_ui
+    monkeypatch.setattr(PygletUI, 'draw_stage', lambda self, **kwargs: None)
+    monkeypatch.setattr(ui, '_update_strength_column_width', lambda: None)
+    ui.window_width, ui.strength_column_width = 400, 0
+    player = d.Player(1, 1, 10, 100)
+    ui.draw_stage(player=player, stage_num=6, turn=d.STAGE6_TURN_LIMIT,
+                  extra_keys=True, floor_view=True)
+    assert ui._player_sprite(player) == 'player kneeling'
+    ui._presenting_turn = True
+    assert ui._player_sprite(player) != 'player kneeling'
+    ui._presenting_turn = False
+    player.dungeon_core_destroyed = True
+    ui.draw_stage(player=player, stage_num=6, turn=d.STAGE6_TURN_LIMIT,
+                  extra_keys=True, floor_view=True)
+    assert ui._player_sprite(player) != 'player kneeling'
+
+
 def test_sinking_player_is_drawn_lower_without_hopping_and_keeps_its_gauge(bob_ui):
     ui = bob_ui
     ui._display_color = lambda color: color

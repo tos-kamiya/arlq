@@ -116,6 +116,7 @@ SPRITE_FILES = {
     'golem rock': 'golem-rock.png',
     # Not a glyph: the player collapsed from hunger, face down without a sword.
     'player collapsed': 'player-collapsed.png',
+    'player kneeling': 'player-kneeling.png',
     # Not glyphs: the player holding a chimera's sword taken from it, or its
     # own sword glowing blue after the Collector Elf's blessing.
     'player sword': 'player-sword.png',
@@ -181,7 +182,8 @@ SPRITE_NAMES = {
     '!': 'Unidentified Fairy', '&': 'Unidentified Elf',
 }
 SPRITE_NAMES.update(dict.fromkeys(
-    ('player sword', 'player cursed sword', 'player blessed', 'player collapsed'), 'Player'))
+    ('player sword', 'player cursed sword', 'player blessed', 'player collapsed',
+     'player kneeling'), 'Player'))
 SPRITE_NAMES.update(dict.fromkeys(
     (key for key in SPRITE_FILES if key.endswith((' walk-right', ' walk-left'))), 'Player'))
 SPRITE_NAMES.update({f'{name}-{skin}': role
@@ -315,6 +317,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._switching_fullscreen = False
         self._presenter = Presenter()
         self._player_facing = 'down'
+        self._player_time_up = False
         # Sprites that hop while waiting for input, as (sprite, base y).
         self._bobbing = []
         self._bob_raised = False
@@ -374,7 +377,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         directory = Path(__file__).parent.parent / 'assets' / 'characters'
         self._gray_images = {}
         for char, filename in SPRITE_FILES.items():
-            if samurai and (char in ('@', 'player collapsed')
+            if samurai and (char in ('@', 'player collapsed', 'player kneeling')
                             or char.startswith(('player sword', 'player cursed sword',
                                                 'player blessed', '@ '))):
                 filename = 'samurai-' + filename
@@ -505,6 +508,14 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         return self._row_groups[order]
 
     def draw_stage(self, *, decor=None, **kwargs):
+        player = kwargs.get('player')
+        self._player_time_up = (
+            kwargs.get('stage_num') == 6
+            and kwargs.get('extra_keys', False)
+            and (kwargs.get('turn') or 0) >= d.STAGE6_TURN_LIMIT
+            and player is not None and not player.stage_won
+            and not player.dungeon_core_destroyed
+        )
         self._update_strength_column_width()
         self.field_pixel_width = max(
             self.cell_size_x, self.window_width - self.strength_column_width,
@@ -885,7 +896,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         # Sinking or collapsed, the player does not hop.
         top = self._draw_sprite(pos, sprite,
                                 self._tone_color(background or 'default'), poison,
-                                bob=not self._player_sinking and sprite != 'player collapsed',
+                                bob=not self._player_sinking and sprite not in (
+                                    'player collapsed', 'player kneeling'),
                                 sink=self._bob_offset() if self._player_sinking else 0)
         self._draw_lp_gauge(pos, player, top)
 
@@ -937,6 +949,9 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         """The player's image for its sword: a chimera's sword it holds, else
         its own sword, glowing after the Collector Elf's blessing. With no LP
         left, once its last turn has been shown, it lies collapsed."""
+        if (self._player_time_up and not self._presenting_turn
+                and 'player kneeling' in self._sprite_images):
+            return 'player kneeling'
         if (player.lp <= 0 and not self._presenting_turn
                 and 'player collapsed' in self._sprite_images):
             return 'player collapsed'
