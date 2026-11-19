@@ -80,8 +80,7 @@ def chibify(rig, scene):
     worlds = {o.name: bone_map(o.parent_bone, o.name.startswith(ROUND_PARTS)) @ o.matrix_world
               for o in rigid}
     cape = bpy.data.objects['Cape']
-    # Only the bone groups move the cape; others (the saved tall rig's
-    # 'Drape amount') are skipped.
+    # Only the bone groups move the cape.
     groups = {g.index: g.name for g in cape.vertex_groups if g.name in head}
     cape_points = []
     for vertex in cape.data.vertices:

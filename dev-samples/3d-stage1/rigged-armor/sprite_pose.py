@@ -86,12 +86,44 @@ def apply_walk_pose(rig, lead):
         bone.location += bone.bone.matrix_local.to_3x3().inverted() @ Vector((0, 0, dz))
 
 
+def apply_kneeling_pose(scene, rig, parts, floor):
+    """Kneel with both hands on the floor and the cape falling over the back."""
+    rotations = {
+        'waist': (48, 0, 0), 'chest': (18, 0, 0),
+        'neck': (25, 0, 0), 'head': (18, 0, 0),
+        'thigh.L': (35, 0, 0), 'thigh.R': (35, 0, 0),
+        'shin.L': (-140, 0, 0), 'shin.R': (-140, 0, 0),
+        'foot.L': (35, 0, 0), 'foot.R': (35, 0, 0),
+        'upper_arm.L': (65, 0, 8), 'upper_arm.R': (65, 0, -8),
+        'forearm.L': (5, 0, 0), 'forearm.R': (5, 0, 0),
+        **{f'cape.{side}.{segment}': (angle, 0, 0) for side in 'LCR'
+           for segment, angle in ((1, 0), (2, 35), (3, 20), (4, 10))},
+    }
+    for name, angles in rotations.items():
+        rig.pose.bones[name].rotation_euler = tuple(math.radians(v) for v in angles)
+    bpy.context.view_layer.update()
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    heights = []
+    for part in parts:
+        if part.name.startswith(('Cape', *SWORDS.values())):
+            continue
+        evaluated = part.evaluated_get(depsgraph)
+        mesh = evaluated.to_mesh()
+        heights.extend((evaluated.matrix_world @ vertex.co).z for vertex in mesh.vertices)
+        evaluated.to_mesh_clear()
+    rig.pose.bones['root'].location.y += floor - min(heights)
+
+
 def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4)):
     """Baked mesh copies of the posed, turned and leaned figure, each with its
     world shape in its mesh, transformed by `place` (applied last)."""
     collapsed = pose == 'collapsed'
-    rig.rotation_euler.z = 0 if collapsed else math.radians(FACINGS[facing])
-    scene.frame_set(POSE_FRAMES['rest' if pose in WALK_POSES else pose])
+    kneeling = pose == 'kneeling'
+    rig.rotation_euler.z = (math.radians(45) if kneeling else
+                            0 if collapsed else math.radians(FACINGS[facing]))
+    scene.frame_set(POSE_FRAMES['rest' if pose in WALK_POSES or kneeling else pose])
+    if kneeling:
+        apply_kneeling_pose(scene, rig, parts, floor)
     clavicle = rig.pose.bones['clavicle.R']
     shoulder_location = clavicle.location.copy()
     if pose in WALK_POSES[1:]:
@@ -107,14 +139,14 @@ def bake(scene, rig, parts, pose, facing, floor, place=Matrix.Identity(4)):
     bpy.context.view_layer.update()
     depsgraph = bpy.context.evaluated_depsgraph_get()
     feet = Vector((0, 0, floor))
-    body = (Matrix.Identity(4) if collapsed else
+    body = (Matrix.Identity(4) if collapsed or kneeling else
             Matrix.Translation(feet) @ Matrix.Rotation(-BODY_LEAN, 4, 'X') @ Matrix.Translation(-feet))
     neck = body @ (rig.matrix_world @ rig.pose.bones['head'].head)
-    head = body if collapsed else (Matrix.Translation(neck) @ Matrix.Rotation(-HEAD_TILT, 4, 'X')
+    head = body if collapsed or kneeling else (Matrix.Translation(neck) @ Matrix.Rotation(-HEAD_TILT, 4, 'X')
                                    @ Matrix.Translation(-neck) @ body)
     copies, still = [], {}
     for part in parts:
-        if collapsed and part.name.startswith(tuple(SWORDS.values())):
+        if (collapsed or kneeling) and part.name.startswith(tuple(SWORDS.values())):
             continue
         evaluated = part.evaluated_get(depsgraph)
         mesh = bpy.data.meshes.new_from_object(evaluated, preserve_all_data_layers=True,
@@ -158,7 +190,7 @@ def heroic_player(x, y, sword=None, facing='down', collapsed=False, *, pose='res
             or o.name.startswith('Cape drape target')]
     for obj in kept:
         scene.collection.objects.link(obj)
-    show_sword(kept, None if collapsed else HEROIC_SWORDS[sword])
+    show_sword(kept, None if collapsed or pose == 'kneeling' else HEROIC_SWORDS[sword])
     parts = figure_parts(scene, rig)
     floor, top = standing_extent(scene, rig, parts)
     scale = HEROIC_PLAYER_HEIGHT / (top - floor)

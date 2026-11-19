@@ -38,8 +38,9 @@ walk_models = {
     for pose in ('walk-right', 'walk-left')
 }
 models += [(char, name, (0, 0)) for char, (name, _, _, _) in walk_models.items()]
+models.append(('@-kneeling', 'player-kneeling', (0, 0)))
 # Resolve left-facing grips from the rig, including the standing sprite.
-player_poses = {**walk_models, **{
+player_poses = {'@-kneeling': ('player-kneeling', None, 'down', 'kneeling'), **walk_models, **{
     char + '<': (name + '-left', sword, 'left', 'rest')
     for char, name, sword in player_swords
 }}
@@ -68,7 +69,11 @@ elif '--player-walk' in sys.argv:
 for char, name, (x, y) in models:
     bpy.ops.wm.open_mainfile(filepath=str(blend_path(group_of(char))))
     scene = bpy.context.scene
-    if char in player_poses:
+    if char == '@_':
+        selected = set(heroic_player(x, y, collapsed=True))
+        for obj in selected:
+            obj.data.transform(Matrix.Scale(1.6, 4))
+    elif char in player_poses:
         _, sword, facing, pose = player_poses[char]
         selected = set(heroic_player(x, y, sword, facing, pose=pose))
         for obj in selected:

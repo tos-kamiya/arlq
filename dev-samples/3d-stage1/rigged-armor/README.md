@@ -112,9 +112,8 @@ Object Mode の Object > Animation > Clear Animation でサンプルを外して
 倒れた姿勢（フレーム120）はうつ伏せで頭を画面の右下へ向け、顔をカメラ側へ55度向け、
 頭と首を後ろへ傾けて胸を床に着け、右腕を頭の先へ投げ出す。覗き窓はこのフレームだけ暗くする。
 床への接地と中央寄せは組み立て時に計算する（剣・マントは除く）。
-マントはこのフレームだけ、鎧と床をボクセルで包んだなめらかな面（非表示の `Cape drape target`）へ
-真下に投影して体にかける。落とす量は全体で0.3、脚の間で0.2（`DRAPE_AMOUNT`、
-`DRAPE_AMOUNT_BETWEEN_LEGS`）。マントの形は、裾へ行くほど後ろと体の左へ流れる（heroic のマントの半分の量、
+マントはボーンの回転で背中から脚に沿わせ、膝のあたりを緩く下げる。
+マントの形は、裾へ行くほど後ろと体の左へ流れる（heroic のマントの半分の量、
 `CAPE_DRIFT_BACK`、`CAPE_DRIFT_SIDE`）。
 
 ## 頭身を下げた版とスプライト
@@ -128,7 +127,7 @@ blender --factory-startup --background --threads 4 --python dev-samples/3d-stage
 断面方向はその1.2倍に太らせて約4頭身にする（`hero-rig-chibi.blend` と `chibi-*.png`）。
 鎖骨は長さ方向も太らせて肩幅を合わせ、マントは胸と同じ縮め方にする。丸い部品（関節の球・肘当て・膝当て・
 肩当て・籠手）と剣は縦横同じ倍率で縮めて形を保つ。斜めのボーンを太らせるとせん断になるため、
-部品の変形はメッシュへ焼き込む。組み立てにはマントの包み面を作るため約3分かかる。
+部品の変形はメッシュへ焼き込む。
 `-- --only rest,step` のように指定すると、そのポーズの画像だけを描く。
 
 `sprite_pose.py` はスプライト用のポーズを付ける。向き（下・左・右・上）に回したあと、足元を中心に体を
@@ -137,6 +136,15 @@ blender --factory-startup --background --threads 4 --python dev-samples/3d-stage
 確認画像（`sprite-<ポーズ>-<向き>.png`）を描く。`../build-heroic.py` は同じ処理でプレイヤーを heroic の
 シーンに置き、heroic の以前のプレイヤーの1.05倍の高さ（`HEROIC_PLAYER_HEIGHT`）にする。
 ゲーム用画像の再生成手順は `../README.md` の「キャラクター素材の再生成」を参照。
+
+ひざまずくポーズの試作と、ゲーム用の南東向き画像は次のコマンドで再生成できる。
+前者は正面・見下ろし・横からの確認画像と試作用の `.blend` を作り、後者は
+`assets/characters/player-kneeling.png` を書き出す。ゲーム画面への接続はまだ行っていない。
+
+```bash
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/preview-kneeling.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only @-kneeling
+```
 
 ## 再生成と構造変更
 
