@@ -685,15 +685,18 @@ def chimera_sword(rig, cursed=False):
 # the ears. At the back each ring moves in or out by its offset and down by
 # its drop (fading out toward the sides), so the back of the helmet follows
 # the head into the neck: it pinches in under the skull and flares out over
-# the nape at the rim.
+# the nape at the rim. The deepest pinch sits at z 1.5956 (5% of the helmet's
+# height above 1.58); the rings between the equator and the rim are spaced
+# around it. The rings below the pinch are squeezed toward it so the rim
+# sits 5% of the helmet's height (1.56cm) higher, keeping the flare.
 JET_RADIUS, JET_EQUATOR_Z, JET_CENTER_Y = .135, 1.68, .005
-JET_SIDE_RINGS = [(1.64, .136, -.005, 0), (1.61, .137, -.018, .002),
-                  (1.58, .138, -.03, .006), (1.555, .139, -.027, .012),
-                  (1.535, .140, -.008, .014), (1.525, .141, .02, .022)]
+JET_SIDE_RINGS = [(1.6462, .136, -.005, 0), (1.6209, .137, -.018, .002),
+                  (1.5956, .138, -.03, .006), (1.5706, .139, -.027, .012),
+                  (1.5506, .140, -.008, .014), (1.5406, .141, .02, .022)]
 JET_THICKNESS = .012
 # The face opening: half width, top edge height and corner radius, seen from
 # the front; it is open down through the rim.
-JET_OPENING_HALF, JET_OPENING_TOP, JET_OPENING_CORNER = .124, 1.712, .028
+JET_OPENING_HALF, JET_OPENING_TOP, JET_OPENING_CORNER = .1277, 1.712, .028
 # The face plate, a steel plate in front of the opening, like a visor lowered
 # over the face: it lies on a cylinder of JET_PLATE_RADIUS just outside the
 # shell (a sphere above the shell's equator) with a forward ridge down its
