@@ -4,14 +4,13 @@ from typing import Any, Optional
 from blessed import Terminal
 
 from . import defs as d
+from . import display as ui_display
 from .arlq import barrier_lp_damage
 from .blessed_settings import BlessedSettingsMixin
-from .settings import combat_effect_seconds, load_settings
 from .braille_effects import effect_frames
-from .treasure_particles import SPARKLE_TICKS_PER_SECOND, sparkle_cells, sparkle_frame
-from . import display as ui_display
 from .i18n import t as tr
-
+from .settings import combat_effect_seconds, load_settings
+from .treasure_particles import SPARKLE_TICKS_PER_SECOND, sparkle_cells, sparkle_frame
 
 MIN_TERMINAL_WIDTH = 80
 MIN_TERMINAL_HEIGHT = 24

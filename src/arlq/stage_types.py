@@ -1,9 +1,9 @@
 """State and result types shared by the game loop and replay code."""
 
+import pickle
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
-import pickle
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from . import defs as d
 from .arlq import MESSAGE_TICKS

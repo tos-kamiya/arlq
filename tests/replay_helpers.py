@@ -6,7 +6,7 @@ tests can check that a recorded run and its replay reach the same state.
 
 from collections import Counter
 
-from arlq import bridgehead, stage5, stage56, stage6, stage_replay, stage_world
+from arlq import bridgehead, stage5, stage6, stage56, stage_replay, stage_world
 from arlq import defs as d
 from arlq.game_engine import _process_multi_floor_turn, observe_world
 from arlq.stage_types import Floor, ReplayContext, _RewindRequest

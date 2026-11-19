@@ -6,17 +6,14 @@ from collections import Counter
 from copy import deepcopy
 from typing import Any, Optional
 
+from . import bridgehead, stage5, stage6, stage56
 from . import defs as d
-from . import bridgehead
 from . import display as ui_display
-from . import stage5
-from . import stage56
-from . import stage6
 from .arlq import (
-    activate_dungeon_core_for_defeat,
     MESSAGE_TICKS,
     PLAYER_PASSABLE_CELLS,
     GameConfig,
+    activate_dungeon_core_for_defeat,
     activate_mimic_for_defeat,
     apply_barrier_damage,
     barrier_lp_damage,

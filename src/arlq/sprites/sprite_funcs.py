@@ -13,35 +13,37 @@ from pyglet.window import key as pgkey
 from .. import defs as d
 from .. import display as ui_display
 from ..arlq import barrier_lp_damage
-from ..i18n import t as tr
 from ..game_events import Combat, FloorChanged, Rewound
-from .sprite_fx import Presenter
+from ..i18n import t as tr
+from ..pyglet_funcs import (
+    CELL_SIZE_X,
+    CELL_SIZE_Y,
+    CI_BLUE,
+    CI_GREEN,
+    CI_YELLOW,
+    COLOR_MAP,
+    FIELD_SIDEBAR_GAP,
+    FONT_HEIGHT_RATIO,
+    MAX_UI_SCALE,
+    MESSAGE_FONT_SIZE_SCALE,
+    MIN_UI_SCALE,
+    STRENGTH_COLUMN_PADDING,
+    PygletUI,
+    _font_glyph_metrics,
+)
 from .sprite_defs import (
+    DUNGEON_CORE_CELL_UNITS,
+    GROUND_DISC_RADIUS,
+    LOW_RESOLUTION_DETAIL_SCALE,
     NEIGHBOR_SCALE,
-    SPRITE_REFERENCE_PIXELS,
-    SPRITE_GROUND_OFFSET_PIXELS,
-    TERRAIN_SIDE,
     ROCK_SPRITE,
     SPRITE_CELL_SIZE_X,
-    LOW_RESOLUTION_DETAIL_SCALE,
-    GROUND_DISC_RADIUS,
-    DUNGEON_CORE_CELL_UNITS,
+    SPRITE_GROUND_OFFSET_PIXELS,
+    SPRITE_REFERENCE_PIXELS,
+    TERRAIN_SIDE,
 )
 from .sprite_effects import SpriteEffectsMixin
-from .sprite_terrain import (
-    WALL_PARTS,
-    WALL_IMAGE_GAIN,
-    FLOOR_PARTS,
-    FLOOR_TINTS,
-    FLOOR_CHECKER_SHADE,
-    TERRAIN_THEMES,
-    STAGE_TERRAIN_THEMES,
-    THEME_SPRITES,
-    BARRIER_REDUCED_SCALE,
-    TERRAIN_FILES,
-    TERRAIN_EXPLORED_SHADE,
-    SpriteTerrainMixin,
-)
+from .sprite_fx import Presenter
 from .sprite_images import (
     FOLLOWER_SCALE,
     GROUND_DISC_FLATTEN,
@@ -61,21 +63,19 @@ from .sprite_images import (
     smoke_image,
     soft_outline_image,
 )
-from ..pyglet_funcs import (
-    CELL_SIZE_X,
-    CELL_SIZE_Y,
-    CI_BLUE,
-    CI_GREEN,
-    CI_YELLOW,
-    COLOR_MAP,
-    FIELD_SIDEBAR_GAP,
-    FONT_HEIGHT_RATIO,
-    MAX_UI_SCALE,
-    MESSAGE_FONT_SIZE_SCALE,
-    MIN_UI_SCALE,
-    STRENGTH_COLUMN_PADDING,
-    PygletUI,
-    _font_glyph_metrics,
+from .sprite_terrain import (
+    BARRIER_REDUCED_SCALE,
+    FLOOR_CHECKER_SHADE,
+    FLOOR_PARTS,
+    FLOOR_TINTS,
+    STAGE_TERRAIN_THEMES,
+    TERRAIN_EXPLORED_SHADE,
+    TERRAIN_FILES,
+    TERRAIN_THEMES,
+    THEME_SPRITES,
+    WALL_IMAGE_GAIN,
+    WALL_PARTS,
+    SpriteTerrainMixin,
 )
 
 SPRITE_FILES = {

@@ -12,8 +12,8 @@ from arlq import game_engine as game_engine_module
 from arlq.game_engine import (
     Floor,
     _move_player,
-    _process_respawn_queue,
     _process_multi_floor_turn,
+    _process_respawn_queue,
     run_game,
 )
 from arlq.game_events import Combat

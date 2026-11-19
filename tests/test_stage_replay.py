@@ -5,13 +5,13 @@ from copy import deepcopy
 from types import SimpleNamespace
 
 import pytest
+from replay_helpers import replay_to_operation
 
 from arlq import defs as d
-from arlq import game_engine as engine
 from arlq import display, stage5, stage6, stage_replay, stage_world
+from arlq import game_engine as engine
 from arlq.arlq import GameConfig
 from arlq.stage_types import Floor, ReplayContext
-from replay_helpers import replay_to_operation
 
 
 @pytest.mark.parametrize('stage_num', range(1, 7))

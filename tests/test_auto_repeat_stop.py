@@ -7,13 +7,13 @@ import pytest
 from arlq import defs as d
 from arlq import game_engine
 from arlq.arlq import GameConfig
-from arlq.game_events import FloorChanged
 from arlq.game_engine import (
     Floor,
     _ContactResult,
     _process_multi_floor_turn,
     should_stop_movement_repeat,
 )
+from arlq.game_events import FloorChanged
 
 
 def blank_field():

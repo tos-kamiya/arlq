@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from arlq import defs as d
+
 PACKAGE = Path(__file__).resolve().parents[1] / "src" / "arlq"
 CATALOG = PACKAGE / "locales" / "ja.json"
 

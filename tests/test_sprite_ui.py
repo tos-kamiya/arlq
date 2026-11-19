@@ -6,12 +6,16 @@ import pyglet
 import pytest
 
 from arlq import defs as d
-from arlq import display, pyglet_funcs
-from arlq.sprites import sprite_defs, sprite_effects, sprite_funcs
-from arlq.sprites import sprite_images, sprite_terrain
-from arlq import i18n
+from arlq import display, i18n, pyglet_funcs
 from arlq.game_events import FloorChanged, Rewound
 from arlq.pyglet_funcs import PygletUI
+from arlq.sprites import (
+    sprite_defs,
+    sprite_effects,
+    sprite_funcs,
+    sprite_images,
+    sprite_terrain,
+)
 from arlq.sprites.sprite_defs import SPRITE_REFERENCE_PIXELS
 from arlq.sprites.sprite_funcs import SPRITE_FILES, SpriteUI
 

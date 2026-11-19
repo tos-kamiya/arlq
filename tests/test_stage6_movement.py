@@ -1,6 +1,7 @@
 from collections import Counter
 
-from arlq import defs as d, game_engine, stage6
+from arlq import defs as d
+from arlq import game_engine, stage6
 from arlq.stage_types import Floor
 
 

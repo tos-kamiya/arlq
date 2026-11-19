@@ -36,8 +36,9 @@ def test_gui_confirmation_keys(symbols, expected):
 
 @pytest.mark.parametrize('text,expected', [('y', True), ('n', False), ('q', None), ('\x1b', None)])
 def test_terminal_confirmation_direct_keys(text, expected):
-    from arlq.blessed_funcs import BlessedUI
     from blessed.keyboard import Keystroke
+
+    from arlq.blessed_funcs import BlessedUI
     ui = BlessedUI.__new__(BlessedUI)
     ui.term = SimpleNamespace(home='', clear='', normal='', width=80, height=30,
                               move_xy=lambda *a: '', length=len, KEY_ESCAPE=27)

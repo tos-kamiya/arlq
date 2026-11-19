@@ -6,9 +6,8 @@ import pytest
 
 from arlq import arlq as arlq_module
 from arlq import defs as d
-from arlq import display
+from arlq import display, i18n
 from arlq import game_engine as game_engine_module
-from arlq import i18n
 from arlq import stage_replay as stage_replay_module
 from arlq import stage_world as stage_world_module
 from arlq.arlq import (

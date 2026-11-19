@@ -1,23 +1,21 @@
-from typing import Callable, Container, Optional
-
 import argparse
-from dataclasses import dataclass
-from importlib import import_module
 import math
 import sys
+from dataclasses import dataclass
+from importlib import import_module
 from pathlib import Path
+from typing import Callable, Container, Optional
 
 from appdirs import user_cache_dir
 
-from .__about__ import __version__
-
-from .utils import rand
 from . import defs as d
+from .__about__ import __version__
+from .game_events import WallEvent
 from .i18n import PrioritizedMessage
 from .trace import (
     TraceRecorder,
 )
-from .game_events import WallEvent
+from .utils import rand
 
 MESSAGE_TICKS = 8
 GAME_ENGINE_MODULE = "game_engine"

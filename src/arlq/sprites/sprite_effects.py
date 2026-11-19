@@ -11,11 +11,11 @@ from .. import defs as d
 from ..pyglet_funcs import CI_GREEN, COLOR_MAP
 from .sprite_defs import (
     NEIGHBOR_SCALE,
-    SPRITE_REFERENCE_PIXELS,
     SPRITE_GROUND_OFFSET_PIXELS,
-    TERRAIN_TINT,
-    TERRAIN_SIDE,
+    SPRITE_REFERENCE_PIXELS,
     TERRAIN_OVERHANG,
+    TERRAIN_SIDE,
+    TERRAIN_TINT,
 )
 
 # The slash of a won fight, cut the way the player attacked: slash.png is

@@ -2,7 +2,6 @@
 
 from . import defs as d
 
-
 SPARKLE_TICKS_PER_SECOND = 2.5
 
 

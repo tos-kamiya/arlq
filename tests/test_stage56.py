@@ -5,7 +5,7 @@ from collections import Counter
 import pytest
 
 from arlq import defs as d
-from arlq import display, i18n, stage5, stage56, stage6
+from arlq import display, i18n, stage5, stage6, stage56
 from arlq import game_engine as engine
 from arlq.arlq import barrier_lp_damage, get_torched, iterate_ellipse_points
 from arlq.stage_types import Floor
@@ -1158,8 +1158,9 @@ def test_rogue_warning_stops_repeat_without_holding_movement(monkeypatch):
 
 @pytest.mark.parametrize("roles", [(), ("Healer",)])
 def test_loop_replay_preserves_lp_including_earlier_rewinds(monkeypatch, roles):
-    from arlq.arlq import GameConfig
     from replay_helpers import replay_to_operation
+
+    from arlq.arlq import GameConfig
     from arlq.stage_types import ReplayContext
 
     def build(*_):

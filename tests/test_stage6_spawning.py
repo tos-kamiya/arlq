@@ -2,7 +2,8 @@ from collections import Counter
 
 import pytest
 
-from arlq import defs as d, game_engine, stage6, stage56
+from arlq import defs as d
+from arlq import game_engine, stage6, stage56
 from arlq.stage_types import Floor
 
 
@@ -285,8 +286,10 @@ def test_bridgehead_on_another_floor_restores_on_entry():
 
 def test_bridgehead_in_stage3_works_in_game_and_replay(monkeypatch):
     from types import SimpleNamespace
-    from arlq import stage_world
+
     from replay_helpers import replay_to_operation
+
+    from arlq import stage_world
     from arlq.arlq import GameConfig
     from arlq.stage_types import ReplayContext
 
@@ -337,6 +340,7 @@ def test_bridgehead_healing_persists_after_leaving_in_game_loop(monkeypatch):
 
 def test_bridgehead_entry_does_not_heal_above_sixty(monkeypatch):
     from types import SimpleNamespace
+
     from arlq.trace import TraceRecorder
 
     current = floor()
@@ -607,6 +611,7 @@ def test_initial_monsters_are_alone_except_boss_party(seed):
 @pytest.mark.parametrize("destroy_core_on_last_turn", [False, True])
 def test_stage6_time_limit_allows_core_destruction_on_last_turn(monkeypatch, destroy_core_on_last_turn):
     from types import SimpleNamespace
+
     from arlq.trace import TraceRecorder
 
     current = floor()

@@ -4,7 +4,6 @@ from . import defs as d
 from .i18n import t
 from .stage_types import Floor
 
-
 STAGE5_MEMBER_TRIAL_MAP = """
 ####################################################
 ###          #      # g  a  E #          =====     #

@@ -1,5 +1,6 @@
 
-from arlq import arlq, defs as d, game_engine, stage_maze, stage_world
+from arlq import arlq, game_engine, stage_maze, stage_world
+from arlq import defs as d
 from arlq.stage_types import Floor
 
 

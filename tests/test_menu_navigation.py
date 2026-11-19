@@ -1,17 +1,16 @@
 """Keyboard navigation checks for the GUI menus."""
 
 import json
+from collections import deque
 from types import SimpleNamespace
 
 import pytest
-from collections import deque
-
+from blessed.keyboard import Keystroke
 from pyglet.window import key
 
 from arlq import defs, i18n
-from arlq.pyglet_funcs import PygletUI
 from arlq.blessed_funcs import BlessedUI
-from blessed.keyboard import Keystroke
+from arlq.pyglet_funcs import PygletUI
 
 
 @pytest.fixture(autouse=True)
@@ -379,8 +378,13 @@ def _changed_sprite_menu_ui(monkeypatch, tmp_path, events, controller=False):
 @pytest.mark.parametrize("controller", [False, True])
 def test_reset_row_restores_every_setting_to_its_default(monkeypatch, tmp_path, controller):
     from arlq import pyglet_funcs
-    from arlq.settings import (combat_effect_seconds, floor_transition_seconds,
-                               idle_bob_enabled, load_settings, move_glide_enabled)
+    from arlq.settings import (
+        combat_effect_seconds,
+        floor_transition_seconds,
+        idle_bob_enabled,
+        load_settings,
+        move_glide_enabled,
+    )
 
     # The reset row is last; Enter applies the defaults and exits.
     events = [(key.DOWN, 0)] * 5 + [(key.RETURN, 0)]
@@ -446,7 +450,9 @@ def test_zero_duration_skips_effect_in_all_frontends():
 
 def test_terminal_strength_labels_are_outside_field(monkeypatch):
     from types import SimpleNamespace
-    from arlq import defs as d, display
+
+    from arlq import defs as d
+    from arlq import display
     ui = BlessedUI.__new__(BlessedUI)
     ui.term = SimpleNamespace(home='', clear='', normal='', move_xy=lambda x, y: f'<{x},{y}>')
     ui.dots = False
@@ -461,7 +467,8 @@ def test_terminal_strength_labels_are_outside_field(monkeypatch):
 
 
 def test_terminal_boss_route_only_marks_explored_floor(monkeypatch):
-    from arlq import defs as d, display
+    from arlq import defs as d
+    from arlq import display
     ui = BlessedUI.__new__(BlessedUI)
     ui.term = SimpleNamespace(home='', clear='', normal='', move_xy=lambda x, y: f'<{x},{y}>')
     ui.dots = False
@@ -482,7 +489,8 @@ def test_terminal_boss_route_only_marks_explored_floor(monkeypatch):
 @pytest.mark.parametrize('dots', [False, True])
 @pytest.mark.parametrize('monochrome', [False, True])
 def test_terminal_marks_explored_golem_rubble(monkeypatch, dots, monochrome):
-    from arlq import defs as d, display
+    from arlq import defs as d
+    from arlq import display
     ui = BlessedUI.__new__(BlessedUI)
     ui.term = SimpleNamespace(home='', clear='', normal='', move_xy=lambda x, y: f'<{x},{y}>')
     ui.dots = dots
@@ -541,7 +549,8 @@ def test_gui_marks_explored_golem_rubble(visible):
     ('guardian_cursed', ('red', False, None)),
 ])
 def test_terminal_dims_protected_barriers(monkeypatch, dots, protection, expected):
-    from arlq import defs as d, display
+    from arlq import defs as d
+    from arlq import display
     ui = BlessedUI.__new__(BlessedUI)
     ui.term = SimpleNamespace(home='', clear='', normal='', move_xy=lambda x, y: f'<{x},{y}>')
     ui.dots = dots

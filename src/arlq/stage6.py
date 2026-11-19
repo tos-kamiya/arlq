@@ -2,14 +2,16 @@
 
 from collections import deque
 
-from . import defs as d, stage56
+from . import defs as d
+from . import stage56
 from .arlq import GameConfig, iterate_ellipse_points
 from .bridgehead import in_bridgehead as _in_bridgehead
 from .bridgehead import place_bridgehead as _place_bridgehead
 from .bridgehead import reachable_floor_points as _reachable_floor_points
 from .bridgehead import recover_at_bridgehead as recover_at_bridgehead
 from .stage56 import _open_points
-from .stage_maze import generate_floor_field, tile_at as maze_tile_at
+from .stage_maze import generate_floor_field
+from .stage_maze import tile_at as maze_tile_at
 from .stage_types import Floor
 from .stage_world import (
     _add_filled_room_wall_notches,
@@ -18,7 +20,6 @@ from .stage_world import (
     _place_final_floor_barriers,
 )
 from .utils import player_spawn_exclusion, rand
-
 
 MAX_STAGE_GENERATION_RETRIES = 5
 

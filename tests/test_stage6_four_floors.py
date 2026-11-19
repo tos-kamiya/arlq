@@ -2,7 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from arlq import defs as d, stage6
+from arlq import defs as d
+from arlq import stage6
 from arlq.arlq import GameConfig
 from arlq.utils import rand
 

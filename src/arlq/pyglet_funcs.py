@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Optional
 
 
-
 def _prepare_x11_locale() -> None:
     """Keep Pyglet's X11 window properties usable in the C locale.
 
@@ -39,8 +38,12 @@ _prepare_x11_locale()
 import pyglet
 from pyglet.window import key as pgkey
 
-from .__about__ import __version__
 from . import defs as d
+from . import display as ui_display
+from .__about__ import __version__
+from .arlq import barrier_lp_damage
+from .i18n import t as tr
+from .pyglet_settings import PygletSettingsMixin
 from .settings import (
     DEFAULT_AUTO_REPEAT_STOP_ENABLED,
     DEFAULT_GAMEPAD_HELP_BUTTON,
@@ -58,21 +61,21 @@ from .settings import (
     floor_transition_seconds,
     gamepad_bindings,
     gamepad_bindings_settings,
-    gamepad_button_label as _gamepad_button_label,
     idle_bob_enabled,
     load_settings,
     move_glide_enabled,
-    next_gamepad_button as _next_gamepad_button,
     save_settings,
     settings_path,
     ui_scale,
     valid_key_repeat_interval,
 )
+from .settings import (
+    gamepad_button_label as _gamepad_button_label,
+)
+from .settings import (
+    next_gamepad_button as _next_gamepad_button,
+)
 from .treasure_particles import SPARKLE_TICKS_PER_SECOND, sparkle_cells, sparkle_frame
-from . import display as ui_display
-from .arlq import barrier_lp_damage
-from .i18n import t as tr
-from .pyglet_settings import PygletSettingsMixin
 
 _FONT_GLYPH_METRICS = {}
 _FONT_METRIC_SAMPLE = "".join(chr(codepoint) for codepoint in range(32, 127))

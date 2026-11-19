@@ -4,7 +4,6 @@ from . import defs as d
 from .arlq import create_field
 from .utils import rand
 
-
 MAX_FLOOR_GENERATION_ATTEMPTS = 1000
 
 
