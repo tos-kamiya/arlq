@@ -3,9 +3,9 @@
 `hero-rig.blend` は人型の骨格を先に作り、各ボーンに独立した甲冑を取り付けた主人公のモデル。
 剣（4種類）・マント・倒れた姿勢を含む。頭身を下げた版（`hero-rig-chibi.blend`、後述）が
 ゲーム用のプレイヤー画像の元になる（`../build-heroic.py` が読み込む）。
-リポジトリには `build.py`・`build-chibi.py` などのソースと `hero-rig-chibi.blend` だけを置く。
-`hero-rig.blend` とポーズの画像（`rest.png` など）、`chibi-*.png`、`sprite-*.png` は
-スクリプトで生成し、追跡しない（`.gitignore`）。
+リポジトリには `build.py`・`build-chibi.py` などのソースだけを置く。
+`hero-rig.blend`・`hero-rig-chibi.blend`（`.blend` はリポジトリ全体で追跡しない）とポーズの画像（`rest.png` など）、
+`chibi-*.png`、`sprite-*.png` はスクリプトで生成し、追跡しない（`.gitignore`）。
 
 ## 開く・ポーズを付ける
 
@@ -120,8 +120,8 @@ Object Mode の Object > Animation > Clear Animation でサンプルを外して
 ## 頭身を下げた版とスプライト
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build-chibi.py
-blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/render-chibi-sprites.py [-- --sword chimera|cursed|blessed]
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build-chibi.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/render-chibi-sprites.py [-- --sword chimera|cursed|blessed]
 ```
 
 `build-chibi.py` は同じモデルを組み立て、頭はそのままに胴0.6・腕0.55・脚0.46倍（各ボーンの長さ方向）へ縮め、
@@ -141,11 +141,11 @@ blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/ren
 ## 再生成と構造変更
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build.py
 ```
 
 同じディレクトリに `hero-rig.blend` と4枚の画像を生成する（追跡しない）。手編集したモデルは
-別名保存する。Blender 4.0.2 で確認。
+別名保存する。Blender 4.0.2 と 5.0.1 で確認（コマンドに `--factory-startup` を付ける理由は `../README.md` を参照）。
 
 - `BONES`: 関節位置と親子関係。ここで骨格・体格を決める。
 - `build_armor()`: ボーン座標に沿って甲冑を追加する。

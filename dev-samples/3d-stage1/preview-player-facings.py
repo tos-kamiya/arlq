@@ -5,7 +5,7 @@ blessing) and columns the facings (down, left, right, up) plus a down-facing
 step with the right foot forward. A last row shows
 the player collapsed from hunger, in the first column. Run after
 build-heroic.py:
-blender --background --threads 4 --python dev-samples/3d-stage1/preview-player-facings.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/preview-player-facings.py
 Writes heroic/preview-player-facings.jpg; needs ImageMagick's `convert`.
 """
 from pathlib import Path

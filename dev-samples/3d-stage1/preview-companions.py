@@ -1,7 +1,7 @@
 """Render the fairies (n, o, l, p) side by side from the saved heroic others' scene.
 
 Run after build-heroic.py:
-blender --background --threads 4 --python dev-samples/3d-stage1/preview-companions.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/preview-companions.py
 """
 from pathlib import Path
 import math

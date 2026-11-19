@@ -1,6 +1,6 @@
 """Mint concrete floor tiles for the Stage 5 training room.
 
-Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-floor-training.py
+Run with: blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-floor-training.py
 
 Two near-white concrete slabs with different surface patterns, each filling
 one sprite-mode cell (15 x 20 px at scale 1), laid like the flagstones as a

@@ -1,6 +1,6 @@
 """Collapse pit for the sprite GUI.
 
-Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-pit.py
+Run with: blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-pit.py
 
 A Collapse pit (O) is a shapeless hole in the floor with rough rock walls,
 with rocks lying around its edge and a few chunks falling into it. It is

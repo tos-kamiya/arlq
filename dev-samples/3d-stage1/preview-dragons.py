@@ -1,7 +1,7 @@
 """Render the dragons (d, D, F, w, W) side by side from the saved heroic monsters' scene.
 
 Run after build-heroic.py:
-blender --background --threads 4 --python dev-samples/3d-stage1/preview-dragons.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/preview-dragons.py
 """
 from pathlib import Path
 import math

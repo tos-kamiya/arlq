@@ -1,6 +1,6 @@
 """Marble column wall parts for the sprite GUI.
 
-Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-walls.py
+Run with: blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-walls.py
 
 Every wall cell gets one column. Each part is rendered with the same
 60-degree orthographic camera on the same canvas, which covers one cell plus

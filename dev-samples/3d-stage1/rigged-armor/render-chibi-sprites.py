@@ -1,6 +1,6 @@
 """Render the low head-to-body rig as top-down sprites, posed like the game.
 
-blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/render-chibi-sprites.py [-- --walk --sword chimera|cursed|blessed]
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/render-chibi-sprites.py [-- --walk --sword chimera|cursed|blessed]
 
 Run build-chibi.py first; this opens hero-rig-chibi.blend. The camera looks
 down at 60 degrees, orthographic, as in the game. Each sample pose is drawn

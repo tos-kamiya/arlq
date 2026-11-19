@@ -11,7 +11,7 @@ Rendered with the character sprites' camera (60 degrees down, 256 px per
 can place it on the player's cell like a character sprite. The colors are
 baked into the image.
 
-    blender --background --threads 4 --python dev-samples/3d-stage1/build-splash.py
+    blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-splash.py
 
 Writes src/arlq/assets/effects/splash.png, the image the GUI draws.
 """

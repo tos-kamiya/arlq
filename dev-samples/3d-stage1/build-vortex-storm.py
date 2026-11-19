@@ -17,7 +17,7 @@ scale it to the area it swirls over (see draw_vortex_effect in
 sprite_effects.py, whose VORTEX_STORM_REACH is REACH / ORTHO and
 VORTEX_STORM_FOOT is FOOT).
 
-    blender --background --threads 4 --python dev-samples/3d-stage1/build-vortex-storm.py
+    blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-vortex-storm.py
 
 Writes src/arlq/assets/effects/vortex-storm.png.
 """

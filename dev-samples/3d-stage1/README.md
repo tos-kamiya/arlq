@@ -5,6 +5,9 @@
 首・肩・肘・腰・股関節・膝を個別に動かせる Blender モデルとポーズ例を収録。
 
 透明感のある樹脂・水晶風の立体駒を、Blender 4.0.2で作成した検討用素材。
+スクリプトは Blender 5.0.1 でも動く（2026-11-19 に全スクリプトの実行を確認）。
+Blender のコマンドには `--factory-startup` を付ける。UIを日本語などに翻訳していると、
+新しく作ったノードの名前（`Principled BSDF` など）も翻訳され、スクリプトがノードを見つけられずに止まるため。
 現行モデルから透過画像を書き出し、`arlq --sprites` の別GUIで利用する。
 ゲームルールは変更せず、元のPyglet GUIも引き続き利用できる。
 
@@ -32,7 +35,7 @@ uv run -p .venv/bin/python arlq --sprites
 南北に並ぶ壁は、南の柱が北の柱の足元に重なって奥へ続く列柱に見える。部品の画像がない場合は図形だけの描画に戻る。
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/build-walls.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-walls.py
 ```
 
 
@@ -42,7 +45,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-walls.py
 移動できる範囲の表示、まきびし、柵、未探索の霧は従来の色のまま。
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/build-floor.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-floor.py
 ```
 
 `src/arlq/assets/floor/floor-a.png` と `floor-b.png` を出力する。
@@ -57,7 +60,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-floor.py
 照明は壁と違い、主光源を真上やや奥に置いて、踏み面を明るく、手前を向く面を暗くして段を読みやすくする。床の影がぼやけないよう、影を落とすのは小さくした主光源だけにする。画像はほぼ白で書き出し、GUIが元の黄色の文字に合わせて金色（`TERRAIN_TINT`）に着色し、視界外の探索済みでは `TERRAIN_EXPLORED_SHADE` で暗くする。画像がない場合は従来どおり黄色の文字で描く。
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/build-stairs.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-stairs.py
 ```
 
 `src/arlq/assets/stairs/stairs-up.png`、`stairs-down.png`、`stairs-landing.png` を出力する。`--` の後に部品名を並べると、その部品だけを書き出す（例：`-- landing`）。
@@ -73,7 +76,7 @@ PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-floor-transitions.
 崩落（Collapse）の穴（`O`）も、黄色の文字の代わりに、床に開いた不定形の穴と、その縁に転がる岩として描く。`build-pit.py` が壁と同じ60度のカメラで、元の大きさの1.2倍（`PIT_SCALE`）の穴を、1マスに左右0.25マスずつと北への0.25マスの張り出しを加えた範囲（マスは幅15・高さ20ピクセルの比率で、450×500ピクセル）で `pit.png` に書き出す。階段と同じく、モデルの1単位は画面の15ピクセルのままにする。大きくした穴が範囲に収まるよう、穴の中心はマスの中央より少し北に置く（`PIT_NORTH`）。GUIは階段と同じく、左右のはみ出しを隣のマスが探索済みの普通の床のときだけ描き、同じ着色（`TERRAIN_TINT`、`TERRAIN_EXPLORED_SHADE`）で敷石の上に重ねる。穴の縁は滑らかに膨らんだ不定形の輪郭で、すぐ下に明るい岩肌の縁（`LIP_DEPTH`）がある。穴の中はでこぼこの岩肌の縦穴で、底は真っ暗、落ちていく角張ったかけらが3つある。縁の周りには大きさの違う角張った岩（`ROCKS`）と小さな瓦礫（`RUBBLE`）が転がり、一部は穴にかかる。岩は底を平らに切った不揃いな多面体で、細かい凹凸のバンプを付ける。穴の外の地面はホールドアウトの透明な板で隠す。岩は青みのある灰色で書き出し、金色の着色で灰色の石に見えるようにする（`ROCK_COLOR`）。プレイヤーが穴の上に立てるよう、壁の層（キャラクターより奥）に描く。中央の `?`（崩落そのもの）は、ルールに合わせて未識別のモンスターと同じ `?` の記号（後述）で描く。画像がない場合は黄色の `O` の文字で描く。
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/build-pit.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-pit.py
 ```
 
 `src/arlq/assets/pit/pit.png` と `fallen-rocks.png` を出力する。
@@ -95,7 +98,7 @@ PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py
 ステージ5（トレーニングルーム）だけは地形の見た目を変え、床をくすんだミント色のコンクリートにし、壁は画像を使わず、マスより一回り小さい大理石色の直方体（上面と前面の2枚の長方形）で描く（`sprite_funcs.py` の `TERRAIN_THEMES`、`STAGE_TERRAIN_THEMES`）。床は敷石と同じ1マス1枚の板で、同じ60度のカメラで書き出す。まだら・細かい凹凸・小さな気泡のある、つやのないコンクリート。模様の違う2枚を市松模様に並べる。画像は敷石と同じくほぼ白で書き出し、GUIがくすんだミント色に着色し、奇数のマスを少し暗くする（`TERRAIN_THEMES` の床の色と市松の濃さ）。訓練室は壁が多いため、描画コストを抑えるのが目的。床の画像がないときは通常の床を使う。
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/build-floor-training.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-floor-training.py
 .venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/floor/training-*.png
 ```
 
@@ -104,7 +107,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-floor-trai
 画像は `src/arlq/assets/characters/` に同梱する。プレイヤーの `@` は画像へ焼き込まず、ステータスや強さの列は従来の文字表示を維持する。
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py
 PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-sprite-ui.py
 ```
 
@@ -148,13 +151,13 @@ GUI側の1.8倍表示と強弱・状態の色表示は維持する。
 
 ```bash
 # 0. プレイヤーの元になる頭身を下げた甲冑モデル rigged-armor/hero-rig-chibi.blend（約3分）
-blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build-chibi.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build-chibi.py
 # 1. 3つのシーン heroic/characters-*-angle60.blend と全体プレビュー heroic/preview-angle60.png
-blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
 # 2. 全体プレビューを容量を抑えたJPEGにする（リポジトリには .jpg だけを置き、.png は残さない）
 (cd dev-samples/3d-stage1/heroic && convert preview-angle60.png -quality 90 preview-angle60.jpg && rm preview-angle60.png)
 # 3. ゲーム用のキャラクター画像を src/arlq/assets/characters/ に書き出す
-blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py
 # 4. 透明な画素に輪郭の色を広げる（忘れると縮小時に輪郭に黒いフチが出る）
 .venv/bin/python dev-samples/3d-stage1/bleed-alpha.py
 ```
@@ -258,7 +261,7 @@ Rogue の服とズボンは青みのある黒に近い色にし、縁の光で�
 ステージ6の橋頭堡（床の横2マスの飾り。以前の酒場を置き換えたもの）。画像 `src/arlq/assets/bridgehead/bridgehead.png` と `bridgehead.json` を `build-bridgehead.py` で作り、ゲームで使用する。階段と同じ60度の見下ろしの正射影カメラで描き、画面の右へ35度回す（`YAW`）。
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/build-bridgehead.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-bridgehead.py
 ```
 
 - 小さな砦。灰色の石積みの低い城壁で中庭を四角く囲み、城壁の上に狭間（凹凸）を並べる。ゲームの大きさでごちゃごちゃしないよう、陣地は小さく、横幅を詰めて少し縦長にする。
@@ -276,7 +279,7 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-bridgehead
 ステージ6のダンジョンコア（`[*]` の3マス）の試作。画像 `src/arlq/assets/dungeon-core/dungeon-core.png` と `dungeon-core.json` を `build-dungeon-core.py` で作る、ゲームで使用する。カメラと輪郭線は橋頭堡と同じ。
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/build-dungeon-core.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-dungeon-core.py
 ```
 
 - 中央に、紫がかった透明な大きい八面体の水晶が浮かび、中のアーモンド形の目がカメラの方を向く（白目は淡い紫灰色、虹彩は光る赤紫、瞳は黒い縦長のスリット）。
@@ -305,8 +308,8 @@ blender --background --threads 4 --python dev-samples/3d-stage1/build-dungeon-co
 - `preview-unknowns.py` で、3つの記号と比較用の正体が判明した仲間を、ゲームと同じ描画で並べた `heroic/preview-unknowns.jpg` を出力できる。
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --group others
-blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only '?' '!' '&'
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --group others
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only '?' '!' '&'
 .venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/characters/unknown-*.png
 PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-unknowns.py
 ```
@@ -320,9 +323,9 @@ LPが0以下になったときに50まで回復する非常食の画像を3種�
 - 干し肉（`ration-jerky`、`jerky()`）: 参考は干し肉の写真 `shot1.png`（写真の野菜は除く）。太めで角を丸めた四角い棒を4本ほぼ平行に並べ、もう1本を斜めに載せる。棒はわずかに曲げ、片端を細くする。色は暗い赤茶色で、クリーム色の脂（さし）を多めに入れる（`jerky_meat()`）。写真と同じく肉の繊維は厚み方向に走らせ、肉と脂の層を縦の面にする。そのため脂は上面では棒に対して少し斜めの筋に、側面では縦の縞に見える。脂の縁は薄い赤にしてなじませ、繊維の凹凸は弱くする。模様は棒ごとの向きに合わせて回す。`SIZES` は1.45。
 
 ```bash
-blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --group others
-blender --background --threads 4 --python dev-samples/3d-stage1/preview-rations.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --group others
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/preview-rations.py
 (cd dev-samples/3d-stage1/heroic && convert preview-rations.png -quality 90 preview-rations.jpg && rm preview-rations.png)
-blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only ration-hyorogan ration-hardtack ration-jerky
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only ration-hyorogan ration-hardtack ration-jerky
 .venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/rations/*.png
 ```

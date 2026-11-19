@@ -1,6 +1,6 @@
 """Refined, more dramatic versions of the Stage 1-2 characters, fairies and marks.
 
-Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
+Run with: blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
 
 This builds the three scenes (monsters, Stage 5 members and the others; see
 heroic_groups.py) in parallel child processes and renders the group shot from

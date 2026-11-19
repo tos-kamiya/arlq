@@ -1,6 +1,6 @@
 """Build a low head-to-body version of the armor rig for the overall preview.
 
-blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build-chibi.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build-chibi.py
 
 It builds the same model as build.py, then shrinks the body region by region
 while keeping the head at full size: each part is scaled about the head of

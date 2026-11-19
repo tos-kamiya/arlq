@@ -1,6 +1,6 @@
 """Build a bone-first, rigid plate armor study with editable FK poses.
 
-blender --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/rigged-armor/build.py
 """
 import math
 from pathlib import Path

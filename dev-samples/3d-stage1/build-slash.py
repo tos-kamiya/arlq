@@ -21,7 +21,7 @@ cell in front of (south of) the monster. For the other attack directions
 the same crescent is turned about the monster, so the cylinder's axis
 stands on the player's side.
 
-    blender --background --threads 4 --python dev-samples/3d-stage1/build-slash.py
+    blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-slash.py
 
 Writes src/arlq/assets/effects/slash.png (attacking up) and slash-down.png,
 slash-left.png and slash-right.png, the images the GUI draws.

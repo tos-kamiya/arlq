@@ -1,6 +1,6 @@
 """Flagstone floor tiles for the sprite GUI.
 
-Run with: blender --background --threads 4 --python dev-samples/3d-stage1/build-floor.py
+Run with: blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-floor.py
 
 Two near-white flagstones with different surface patterns, each filling one
 sprite-mode cell (15 x 20 px at scale 1). The GUI lays them out as a checkerboard and

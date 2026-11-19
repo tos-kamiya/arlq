@@ -1,7 +1,7 @@
 """Render the Stage 6 emergency rations beside the player from the saved others' scene.
 
 Run after build-heroic.py:
-blender --background --threads 4 --python dev-samples/3d-stage1/preview-rations.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/preview-rations.py
 """
 from pathlib import Path
 import math

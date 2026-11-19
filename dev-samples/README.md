@@ -25,9 +25,9 @@
 
 ```bash
 # 1. シーンを作り直す（全体プレビューは描かない。約1分）
-blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --save-only
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --save-only
 # 2. 直したキャラクターだけ書き出す（名前は export-sprites.py の models の1つ目）
-blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only explorer-m-l explorer-m-m explorer-m-d
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only explorer-m-l explorer-m-m explorer-m-d
 # 3. 書き出した画像だけ、透明な画素に輪郭の色を広げる
 .venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/characters/explorer-m-*.png
 ```
@@ -40,11 +40,11 @@ blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.p
 
 ```bash
 # 1. 3つのシーンと全体プレビュー（約4〜5分）
-blender --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py
 # 2. JPEGにする（リポジトリには .jpg だけを置く）
 (cd dev-samples/3d-stage1/heroic && convert preview-angle60.png -quality 90 preview-angle60.jpg && rm preview-angle60.png)
 # 3. 全キャラクターの書き出し（約6〜7分）
-blender --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py
 # 4. 透明な画素に輪郭の色を広げる
 .venv/bin/python dev-samples/3d-stage1/bleed-alpha.py
 git checkout -- src/arlq/assets/effects/slash.png
