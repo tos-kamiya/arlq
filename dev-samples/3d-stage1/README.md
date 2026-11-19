@@ -173,6 +173,27 @@ blender --factory-startup --background --threads 4 --python dev-samples/3d-stage
 
 書き出した画像は `PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-sprite-ui.py` でゲームの描画を画面なしで確認できる。
 
+### プレイヤーの向き別プレビュー
+
+プレイヤーの剣の状態（行）と向き（列: 下・左・右・上、右端は下向きで右足を前に出した姿）、最後の行に飢餓で倒れた姿を並べた確認画像を、甲冑と武士でそれぞれ作る。行は自分の剣（武士は刀）・キメラの剣・呪いの剣・Kの加護の4つ。
+
+| 画像 | モデル | スクリプト |
+| --- | --- | --- |
+| `heroic/preview-player-facings.jpg` | 甲冑（`rigged-armor/hero-rig-chibi.blend`） | `preview-player-facings.py` |
+| `rigged-samurai/preview-player-facings.jpg` | 武士（`rigged-samurai/hero-rig-chibi.blend`） | `rigged-samurai/render-chibi-sprites.py` |
+
+```bash
+# 甲冑: 保存済みの others シーン（build-heroic.py が作る）の照明と床に、描くときに甲冑の chibi を読み込んで並べる
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/preview-player-facings.py
+# 武士: 武士の chibi のシーンで描く。キメラの剣と呪いの剣は甲冑の chibi から借り、Kの加護は刀の刃を青く光らせる
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/rigged-samurai/render-chibi-sprites.py -- --facings --chimera --cursed --blessed --collapsed
+```
+
+- 甲冑は Blender で描いたPNGを ImageMagick の `convert` でJPEGにし、PNGは消す。武士は直接JPEGで書き出す。
+- 甲冑の chibi を作り直したときは、`rigged-armor/build-chibi.py` のあとに甲冑のコマンドを実行する。武士の見た目は甲冑の兜の変更では変わらないが、キメラの剣と呪いの剣は甲冑の chibi から読むので、剣を変えたときは武士のコマンドも実行する。
+- 武士の chibi は `rigged-armor/hero-rig.blend` →（`rigged-samurai/build.py`）→ `rigged-samurai/build-chibi.py` の順で作る。
+- 武士のコマンドで `--facings` を付けないと、`rigged-samurai/sprite-*.png`（下向きの確認画像3枚）を描く。行のオプションを省くと、その行を除いた画像を描く（`--cursed` がないときは `preview-player-facings-katana.jpg` などの別名になる）。
+
 ## 現行キャラクターモデル
 
 `heroic/` は、ゲームで使う現行キャラクターのモデルとプレビューを保存する。

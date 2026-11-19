@@ -1,8 +1,10 @@
 """Render the chibi samurai with the armor sprite camera and pose adjustments.
 
-Run after build-chibi.py. Pass -- --facings --chimera --cursed --collapsed
-to write the complete preview-player-facings.jpg. The two sword variants
-come from rigged-armor/hero-rig-chibi.blend.
+Run after build-chibi.py. Pass -- --facings --chimera --cursed --blessed
+--collapsed to write the complete preview-player-facings.jpg. The chimera
+and cursed swords come from rigged-armor/hero-rig-chibi.blend; the K
+blessing is the katana with its blade glowing blue, as in
+../export-samurai-sprites.py.
 """
 
 import math
@@ -38,13 +40,36 @@ def load_armor_sword(rig, prefix):
     return loaded.objects
 
 
-def render_facings(scene, rig, katana, armor, floor, with_chimera, with_cursed, collapsed):
+def blessed_katana(katana_parts):
+    """The katana parts with a copy of the blade glowing blue (the K blessing)."""
+    blade = next(obj for obj in katana_parts if obj.name == 'Katana blade')
+    glowing = blade.copy()
+    glowing.data = blade.data.copy()
+    glowing.name = 'Katana blessed blade'
+    bpy.context.collection.objects.link(glowing)
+    glow = blade.data.materials[0].copy()
+    shader = glow.node_tree.nodes['Principled BSDF']
+    shader.inputs['Base Color'].default_value = (.1, .35, 1, 1)
+    shader.inputs['Emission Color'].default_value = (.03, .3, 1, 1)
+    shader.inputs['Emission Strength'].default_value = 1.5
+    glowing.data.materials.clear()
+    glowing.data.materials.append(glow)
+    return [glowing if obj is blade else obj for obj in katana_parts]
+
+
+def render_facings(scene, rig, katana, armor, floor, with_chimera, with_cursed, with_blessed,
+                   collapsed):
     katana_parts = [obj for obj in katana.children if not obj.hide_render]
     rows = [('KATANA', 0, katana_parts)]
     if with_chimera:
         rows.append(('CHIMERA SWORD (c)', -1.6, load_armor_sword(rig, 'Chimera sword ')))
     if with_cursed:
         rows.append(('CURSED SWORD (C)', -1.6 * len(rows), load_armor_sword(rig, 'Cursed sword ')))
+    if with_blessed:
+        rows.append(('K BLESSING', -1.6 * len(rows), blessed_katana(katana_parts)))
+    katana_rows = [rows[0][2]] + ([rows[-1][2]] if with_blessed else [])
+    scene.frame_set(1)
+    rest_roll = katana.rotation_euler.x
     bpy.data.objects['Studio floor'].location.z = floor - .002
     for light in (obj for obj in scene.objects if obj.type == 'LIGHT'):
         distance = light.location.length
@@ -98,8 +123,12 @@ def render_facings(scene, rig, katana, armor, floor, with_chimera, with_cursed, 
     for row_label, y, sword in rows:
         if expanded:
             label_on_screen(row_label, -3.55, (.8 * -last_y / 2 + y) * math.sqrt(3) / 2, .083)
+        if any(sword is parts for parts in katana_rows):
+            # Each katana row starts from the rest grip; the gait below rekeys it.
+            katana.rotation_euler.x = rest_roll
+            katana.keyframe_insert(data_path='rotation_euler', index=0, frame=1)
         for facing, pose, _, x in columns:
-            if pose == 'walk-right' and sword is katana_parts:
+            if pose == 'walk-right' and any(sword is parts for parts in katana_rows):
                 # Recompute the blade roll for the gait, which uses the rest frame.
                 rig.rotation_euler.z = 0
                 scene.frame_set(1)
@@ -145,7 +174,7 @@ def main():
     args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     if '--facings' in args:
         render_facings(scene, rig, katana, armor, floor, '--chimera' in args,
-                       '--cursed' in args, '--collapsed' in args)
+                       '--cursed' in args, '--blessed' in args, '--collapsed' in args)
         return
 
     target = Vector((0, .05, .5))
