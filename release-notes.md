@@ -1,5 +1,11 @@
 # ARLQ Release Notes
 
+## 6.8.12 - 2026-11-19
+
+- Show the number keys beside the stages on the stage selection screen.
+- Mark settings that have no effect in the current mode and explain the
+  asterisk on the settings screen.
+
 ## 6.8.11 - 2026-11-19
 
 - Redraw the knight player's helmet in sprite mode, in every sword state,
