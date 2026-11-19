@@ -721,7 +721,7 @@ JET_SLIT_LOW, JET_SLIT_HIGH, JET_SLIT_HALF = 1.6185, 1.6635, .10
 # The whole helmet (shell, face plate, crest and horns) is scaled by
 # HELMET_SCALE about HELMET_SCALE_CENTER, near the bottom of the head, so
 # it stays seated on the neck. The constants above are before scaling.
-HELMET_SCALE, HELMET_SCALE_CENTER = .93, (0, .005, 1.56)
+HELMET_SCALE, HELMET_SCALE_CENTER = .90, (0, .005, 1.56)
 HELMET_PARTS = ('Helmet', 'Helmet face opening cutter', 'Helmet face plate', 'Eye window', 'Eye housing',
                 'Helmet crest', 'Helmet horn L', 'Helmet horn R')
 
