@@ -30,6 +30,10 @@ def add_gauntlets(rig):
         old_hand = bpy.data.objects.get(f'hand plate {side}')
         if old_hand:
             old_hand.hide_render = old_hand.hide_viewport = True
+        # The armor rig brings its own gauntlet; replace it so there is one.
+        armor_gauntlet = bpy.data.objects.get(f'Gauntlet {side}')
+        if armor_gauntlet:
+            bpy.data.objects.remove(armor_gauntlet)
         bone = rig.data.bones[f'hand.{side}']
         center = bone.head_local.lerp(bone.tail_local, .55)
         bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=.068,
@@ -150,12 +154,16 @@ def add_collapsed_pose(scene, rig):
             y, z = z, y
         bone.rotation_euler = tuple(math.radians(angle) for angle in (x, y, z))
         bone.keyframe_insert('rotation_euler', frame=frame, group=bone.name)
+    # The armor rig keys its own lift and centering at this frame; measure the
+    # prone samurai without them.
+    root = rig.pose.bones['root']
+    root.location = (0, 0, 0)
+    root.keyframe_insert('location', frame=frame, group='root')
     bpy.context.view_layer.update()
     points = list(visible_points(rig))
     center_x = (min(p.x for p in points) + max(p.x for p in points)) / 2
     center_y = (min(p.y for p in points) + max(p.y for p in points)) / 2
     lift = standing_floor - min(p.z for p in points)
-    root = rig.pose.bones['root']
     # Translate in the root's rest axes so the prone figure meets the floor.
     for key in (1, 40, 80, frame):
         root.location = (-center_x, lift, center_y) if key == frame else (0, 0, 0)

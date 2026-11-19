@@ -231,8 +231,10 @@ def build_armor(rig):
     iron = mats['Player dark iron trim']
     cloth = mats['Player midnight cloak']
     sole = material('Zori sole', (.22, .18, .125), roughness=.85)
+    # 'Sword ' is the armor's own sword; the samurai carries the katana instead.
     hidden = ('Sabaton', 'Eye ', 'Helmet face', 'Nape cutter', 'Cape', 'Pauldron', 'Chest seam',
-              'Breast and back plate', 'Diagonal waist plate', 'Tasset', 'Knee cap', 'thigh plate')
+              'Breast and back plate', 'Diagonal waist plate', 'Tasset', 'Knee cap', 'thigh plate',
+              'Sword ')
     for obj in list(rig.children):
         if obj.name.startswith(hidden) or obj.name in ('Helmet', 'Helmet cavity cutter'):
             obj.hide_viewport = obj.hide_render = True
