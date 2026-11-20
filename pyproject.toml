@@ -29,6 +29,7 @@ dependencies = [
   "appdirs>=1.4",  # MIT License
   "blessed>=1.28",  # MIT License
   "pyglet>=2.0.14",  # BSD 3-Clause License
+  "wakepy>=1.0",  # MIT License
 ]
 
 [project.optional-dependencies]

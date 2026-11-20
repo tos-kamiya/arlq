@@ -31,6 +31,7 @@ dependencies = [
     { name = "appdirs" },
     { name = "blessed" },
     { name = "pyglet" },
+    { name = "wakepy" },
 ]
 
 [package.optional-dependencies]
@@ -48,6 +49,7 @@ requires-dist = [
     { name = "pyglet", specifier = ">=2.0.14" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
+    { name = "wakepy", specifier = ">=1.0" },
 ]
 provides-extras = ["dev"]
 
@@ -156,6 +158,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc35312d08ba8bf51fdd999c576889fc2c24cb97f4f10/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730", size = 20503, upload-time = "2025-10-18T21:55:43.219Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
+]
+
+[[package]]
+name = "jeepney"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7b/6f/357efd7602486741aa73ffc0617fb310a29b588ed0fd69c2399acbb85b0c/jeepney-0.9.0.tar.gz", hash = "sha256:cf0e9e845622b81e4a28df94c40345400256ec608d0e55bb8a3feaa9163f5732", size = 106758, upload-time = "2025-02-27T18:51:01.684Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b2/a3/e137168c9c44d18eff0376253da9f1e9234d0239e0ee230d2fee6cea8e55/jeepney-0.9.0-py3-none-any.whl", hash = "sha256:97e5714520c16fc0a45695e5365a2e11b81ea79bba796e26f9f1d178cb182683", size = 49010, upload-time = "2025-02-27T18:51:00.104Z" },
 ]
 
 [[package]]
@@ -525,6 +536,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5", size = 113555, upload-time = "2026-07-02T08:40:05.92Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8", size = 45571, upload-time = "2026-07-02T08:40:04.659Z" },
+]
+
+[[package]]
+name = "wakepy"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jeepney", marker = "platform_system == 'DragonFly' or platform_system == 'FreeBSD' or platform_system == 'Minix' or platform_system == 'NetBSD' or platform_system == 'OpenBSD' or platform_system == 'SunOS' or sys_platform == 'aix' or sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d6/13/78e45a3d2cd754f95d2fca5aece046676da559b8e34e294e69bb441f18fd/wakepy-1.0.0.tar.gz", hash = "sha256:a9425e8e77e89bccfe24a70f33ecd8596b474c75ddac79310cd54f2bc92210e3", size = 323693, upload-time = "2026-02-07T21:20:32.244Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/52/33/e692c64d00b7a0d203191b1a20c81c32dca93da38345f6f1ad91426e36fc/wakepy-1.0.0-py3-none-any.whl", hash = "sha256:d5497640791517982cf66d894c502e9fa5133dc75c4a45d3b18a3495d1cf8afb", size = 70336, upload-time = "2026-02-07T21:20:31.027Z" },
 ]
 
 [[package]]
