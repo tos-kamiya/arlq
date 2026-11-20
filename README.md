@@ -100,7 +100,9 @@ for the closest cell favor fewer steps, then a fixed direction order. The
 unexplored outer edge of the field is assumed to be a wall, but can still be a
 destination. The cursor and route
 disappear after three seconds without mouse movement. Left-click a map cell to
-walk toward it; the route is recalculated as terrain is revealed. Movement stops
+walk toward it. The route is checked as terrain is revealed, and movement stops
+before the next step if the remaining route changes. Click again to follow the
+new route. Movement also stops
 before entering terrain other than ordinary floor, including unexplored walls,
 unless it is the clicked destination. Any cell can be a destination: the last
 step uses normal movement and interaction rules, even for walls, hazards or

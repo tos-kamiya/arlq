@@ -370,6 +370,7 @@ class PygletUI(PygletSettingsMixin):
         self._path_stage_draw = None
         self._path_mouse_deadline = None
         self._mouse_move_target = None
+        self._mouse_move_path = None
         self._next_mouse_move_at = 0.0
         self._mouse_expected_position = None
         self.input_was_mouse = False
@@ -1261,6 +1262,9 @@ class PygletUI(PygletSettingsMixin):
             return
         player = view['player']
         self._mouse_move_target = target if target != (player.x, player.y) else None
+        self._mouse_move_path = (
+            self._mouse_path(view, target) if self._mouse_move_target is not None else None
+        )
         self._next_mouse_move_at = time.monotonic()
         self._path_hover_dirty = True
 
@@ -1269,11 +1273,18 @@ class PygletUI(PygletSettingsMixin):
             self._mouse_move_target = None
             self._path_hover_dirty = True
         self._mouse_expected_position = None
+        self._mouse_move_path = None
 
     @staticmethod
     def _path_can_use_d_gate(player):
         return any(member.role == d.MEMBER_DUNGEON_EXPLORER
                    for member in getattr(player, 'members', ()))
+
+    def _mouse_path(self, view, target):
+        player = view['player']
+        return find_path(view['field'], view['torched'], (player.x, player.y), target,
+                         view['cur_torched'], allow_d_gate=self._path_can_use_d_gate(player),
+                         allow_special_target=True)
 
     def _mouse_move_step(self):
         if self._mouse_move_target is None or time.monotonic() < self._next_mouse_move_at:
@@ -1284,12 +1295,11 @@ class PygletUI(PygletSettingsMixin):
             return None
         player = view['player']
         start = (player.x, player.y)
-        path = find_path(view['field'], view['torched'], start, self._mouse_move_target,
-                         view['cur_torched'], allow_d_gate=self._path_can_use_d_gate(player),
-                         allow_special_target=True)
-        if len(path) < 2:
+        path = self._mouse_path(view, self._mouse_move_target)
+        if path != self._mouse_move_path or len(path) < 2:
             self._cancel_mouse_move()
             return None
+        self._mouse_move_path = path[1:]
         self._mouse_expected_position = path[1]
         self._next_mouse_move_at = time.monotonic() + (self.key_repeat_interval or MOUSE_MOVE_INTERVAL)
         self.input_was_mouse = True

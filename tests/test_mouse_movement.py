@@ -32,7 +32,7 @@ def mouse_ui(monkeypatch):
     return ui, player, field, seen
 
 
-def test_click_moves_toward_target_and_recomputes_when_wall_is_revealed(monkeypatch):
+def test_click_stops_when_revealed_wall_changes_route(monkeypatch):
     ui, player, field, seen = mouse_ui(monkeypatch)
     seen[2][3] = 0
     seen[2][4] = 0
@@ -45,6 +45,44 @@ def test_click_moves_toward_target_and_recomputes_when_wall_is_revealed(monkeypa
     assert ui._mouse_move_step() is None  # movement interval
     seen[2][3] = 1
     ui._next_mouse_move_at = 0
+    assert ui._mouse_move_step() is None
+    assert ui._mouse_move_target is None
+
+
+def test_click_continues_if_exploration_does_not_change_route(monkeypatch):
+    ui, player, field, seen = mouse_ui(monkeypatch)
+    seen[2][3] = seen[2][4] = 0
+    ui._path_mouse_press(45, 25, mouse.LEFT, 0)
+    assert ui._mouse_move_step() == (1, 0)
+    player.x = 2
+    seen[2][3] = 1
+    ui._next_mouse_move_at = 0
+    assert ui._mouse_move_step() == (1, 0)
+
+
+def test_click_stops_when_newly_known_route_takes_priority(monkeypatch):
+    ui, player, field, seen = mouse_ui(monkeypatch)
+    seen[2][3] = seen[2][4] = 0
+    ui._path_mouse_press(45, 25, mouse.LEFT, 0)
+    assert ui._mouse_move_step() == (1, 0)
+    player.x = 2
+    seen[2][4] = 1
+    ui._next_mouse_move_at = 0
+    assert ui._mouse_move_step() is None
+    assert ui._mouse_move_target is None
+
+
+def test_click_can_restart_with_new_route_after_exploration(monkeypatch):
+    ui, player, field, seen = mouse_ui(monkeypatch)
+    seen[2][3] = seen[2][4] = 0
+    field[2][3] = d.CHAR_WALL
+    ui._path_mouse_press(45, 25, mouse.LEFT, 0)
+    assert ui._mouse_move_step() == (1, 0)
+    player.x = 2
+    seen[2][3] = 1
+    ui._next_mouse_move_at = 0
+    assert ui._mouse_move_step() is None
+    ui._path_mouse_press(45, 25, mouse.LEFT, 0)
     assert ui._mouse_move_step() == (0, -1)
 
 
