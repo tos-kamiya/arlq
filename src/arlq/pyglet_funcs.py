@@ -183,6 +183,7 @@ FONT_HEIGHT_RATIO = 0.87
 MESSAGE_FONT_SIZE_SCALE = 0.95
 MENU_ROW_SPACING = 1.2
 MOUSE_CURSOR_SECONDS = 3.0
+MOUSE_MOVE_INTERVAL = 0.2
 
 GAMEPAD_CONTROLLER_ATTRIBUTES = (
     "a",
@@ -368,6 +369,11 @@ class PygletUI(PygletSettingsMixin):
         self._path_hover_dirty = False
         self._path_stage_draw = None
         self._path_mouse_deadline = None
+        self._mouse_move_target = None
+        self._next_mouse_move_at = 0.0
+        self._mouse_expected_position = None
+        self.input_was_mouse = False
+        self.input_mouse_target = None
         self._path_group = pyglet.graphics.Group(order=1)
         self._keyboard_farthest_preview = False
         self._gamepad_preview_held = False
@@ -405,6 +411,7 @@ class PygletUI(PygletSettingsMixin):
                 on_mouse_motion=self._path_mouse_motion,
                 on_mouse_drag=self._path_mouse_drag,
                 on_mouse_leave=self._path_mouse_leave,
+                on_mouse_press=self._path_mouse_press,
             )
 
         @window.event
@@ -1233,13 +1240,71 @@ class PygletUI(PygletSettingsMixin):
         self._path_mouse_deadline = time.monotonic() + MOUSE_CURSOR_SECONDS
         if not self._stage_input_active or self._menu_active:
             return
-        row = math.floor((self.window_height - y) / self.cell_size_y)
-        col = math.floor(x / self.cell_size_x)
-        cell = (col, row) if (0 <= col < self.field_width and
-                              0 <= row < self.field_height) else None
+        cell = self._path_cell_at(x, y)
         if cell != self._path_hover_cell:
             self._path_hover_cell = cell
             self._path_hover_dirty = True
+
+    def _path_cell_at(self, x, y):
+        row = math.floor((self.window_height - y) / self.cell_size_y)
+        col = math.floor(x / self.cell_size_x)
+        return (col, row) if (0 <= col < self.field_width and
+                              0 <= row < self.field_height) else None
+
+    def _path_mouse_press(self, x, y, button, modifiers):
+        view = self._path_stage_draw
+        if (button != pgmouse.LEFT or not self._stage_input_active or self._menu_active
+                or view is None or view.get('floor_view') or view.get('extra_keys')):
+            return
+        target = self._path_cell_at(x, y)
+        if target is None:
+            return
+        player = view['player']
+        self._mouse_move_target = target if target != (player.x, player.y) else None
+        self._next_mouse_move_at = time.monotonic()
+        self._path_hover_dirty = True
+
+    def _cancel_mouse_move(self):
+        if getattr(self, '_mouse_move_target', None) is not None:
+            self._mouse_move_target = None
+            self._path_hover_dirty = True
+        self._mouse_expected_position = None
+
+    @staticmethod
+    def _path_can_use_d_gate(player):
+        return any(member.role == d.MEMBER_DUNGEON_EXPLORER
+                   for member in getattr(player, 'members', ()))
+
+    def _mouse_move_step(self):
+        if self._mouse_move_target is None or time.monotonic() < self._next_mouse_move_at:
+            return None
+        view = self._path_stage_draw
+        if view is None or view.get('floor_view'):
+            self._cancel_mouse_move()
+            return None
+        player = view['player']
+        start = (player.x, player.y)
+        path = find_path(view['field'], view['torched'], start, self._mouse_move_target,
+                         view['cur_torched'], allow_d_gate=self._path_can_use_d_gate(player),
+                         allow_special_target=True)
+        if len(path) < 2:
+            self._cancel_mouse_move()
+            return None
+        self._mouse_expected_position = path[1]
+        self._next_mouse_move_at = time.monotonic() + (self.key_repeat_interval or MOUSE_MOVE_INTERVAL)
+        self.input_was_mouse = True
+        self.input_was_repeat = True
+        self.input_mouse_target = self._mouse_move_target if path[1] == self._mouse_move_target else None
+        return path[1][0] - start[0], path[1][1] - start[1]
+
+    def finish_mouse_step(self, result, player):
+        from .game_events import FloorChanged, Rewound
+
+        if (result.stop_repeat or not result.consumed or result.floor_before != result.floor_after
+                or (player.x, player.y) != self._mouse_expected_position
+                or (player.x, player.y) == self._mouse_move_target
+                or any(isinstance(event, (FloorChanged, Rewound)) for event in result.events)):
+            self._cancel_mouse_move()
 
     def _path_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         self._path_mouse_motion(x, y, dx, dy)
@@ -1324,7 +1389,9 @@ class PygletUI(PygletSettingsMixin):
         target = self._path_hover_cell
         if target is None:
             return
-        path = find_path(field, seen, (player.x, player.y), target, visible)
+        path = find_path(field, seen, (player.x, player.y), target, visible,
+                         allow_d_gate=self._path_can_use_d_gate(player),
+                         allow_special_target=True)
         if len(path) < 2:
             return
         radius = min(self.cell_size_x, self.cell_size_y) * 0.22
@@ -1604,7 +1671,8 @@ class PygletUI(PygletSettingsMixin):
                     (px, py), player.status_popup, player.status_popup_tone
                 )
 
-        if type(self) is PygletUI and not floor_view and not extra_keys and not self._menu_active:
+        if (type(self) is PygletUI and not floor_view and not extra_keys and not self._menu_active
+                and self._mouse_move_target is None):
             self._draw_hover_path(field, torched, cur_torched, player)
 
         # Draw the right-edge strength column: the stage's monster tribes and
@@ -1974,6 +2042,7 @@ class PygletUI(PygletSettingsMixin):
     def stop_movement_repeat(self) -> None:
         """Require held movement controls to be released before repeating again."""
         self._held_direction = None
+        self._cancel_mouse_move()
         self._next_repeat_at = 0.0
         if self.gamepad_previous_direction not in (None, (0, 0)):
             self._next_gamepad_repeat_at = float("inf")
@@ -1987,16 +2056,20 @@ class PygletUI(PygletSettingsMixin):
         """
         self.shift_direction = False
         self.input_was_repeat = False
+        self.input_was_mouse = False
+        self.input_mouse_target = None
         while True:
             self._pump()
             if self._closed:
                 return None
 
             if self.gamepad_help_button in self._gamepad_pressed_buttons:
+                self._cancel_mouse_move()
                 self.controls_menu()
                 return (0, 0)
 
             if self._gamepad_preview_changed:
+                self._cancel_mouse_move()
                 self._gamepad_preview_changed = False
                 return (0, 0)
 
@@ -2007,6 +2080,11 @@ class PygletUI(PygletSettingsMixin):
                     modifiers = 0
                 else:
                     symbol, modifiers = event
+                if symbol == pgkey.ESCAPE and getattr(self, '_mouse_move_target', None) is not None:
+                    self._cancel_mouse_move()
+                    return (0, 0)
+                if symbol is not None:
+                    self._cancel_mouse_move()
                 if symbol == pgkey.F:
                     self._keyboard_farthest_preview = not self._keyboard_farthest_preview
                     self.escape_check_requested = True
@@ -2039,6 +2117,7 @@ class PygletUI(PygletSettingsMixin):
                 and repeat_interval is not None
                 and time.monotonic() >= self._next_repeat_at
             ):
+                self._cancel_mouse_move()
                 self._next_repeat_at = time.monotonic() + repeat_interval
                 self.input_was_repeat = True
                 shifted_keys = [
@@ -2060,6 +2139,7 @@ class PygletUI(PygletSettingsMixin):
                 if current_direction != self.gamepad_previous_direction:
                     self.gamepad_previous_direction = current_direction
                     if current_direction != (0, 0):
+                        self._cancel_mouse_move()
                         if self._gamepad_preview_held:
                             if current_direction[0] != 0:
                                 self._next_gamepad_repeat_at = float("inf")
@@ -2077,6 +2157,7 @@ class PygletUI(PygletSettingsMixin):
                     and self.key_repeat_interval is not None
                     and time.monotonic() >= self._next_gamepad_repeat_at
                 ):
+                    self._cancel_mouse_move()
                     if self._gamepad_preview_held:
                         if current_direction[0] != 0:
                             time.sleep(1 / 30)
@@ -2085,6 +2166,11 @@ class PygletUI(PygletSettingsMixin):
                     self._next_gamepad_repeat_at = time.monotonic() + self.key_repeat_interval
                     self.input_was_repeat = True
                     return current_direction
+
+            if type(self) is PygletUI:
+                move = self._mouse_move_step()
+                if move is not None:
+                    return move
 
             self._wait_for_input()
 

@@ -249,6 +249,8 @@ def should_stop_movement_repeat(
     player: d.Player,
     show_all_entities: bool = False,
     known_types: Optional[set[str]] = None,
+    ignore_untriggered_collapse: bool = False,
+    allow_target: bool = False,
 ) -> bool:
     """Check visible terrain and entities before an automatic repeated step."""
     dx, dy = direction
@@ -272,13 +274,17 @@ def should_stop_movement_repeat(
         d.CHAR_BARRIER,
         d.CHAR_COLLAPSE,
         *d.STAIR_CHARS,
-    ) and not passable_secret:
+    ) and not passable_secret and not allow_target:
         return True
     for entity in _visible_auto_stop_entities(
         current, player, show_all_entities, known_types or set()
     ):
+        if ignore_untriggered_collapse and isinstance(entity, d.Collapse):
+            continue
         # Stop only when this step would enter a visible entity's cell.
         if (entity.x, entity.y) == next_position:
+            if allow_target:
+                continue
             return True
     return False
 
@@ -1578,6 +1584,7 @@ def _process_multi_floor_turn(
     # GameSession always passes this. Direct callers that omit it skip the
     # discovery update after barrier damage, unlike real play.
     torch_radius: Optional[int] = None,
+    stop_on_damage: bool = False,
 ) -> Optional[tuple[int, str]] | _RewindRequest:
     if player.status_popup_ticks > 0:
         player.status_popup_ticks -= 1
@@ -1743,6 +1750,8 @@ def _process_multi_floor_turn(
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("ivy_hit")
     hazard_damage = max(0, old_hazard_lp - player.lp)
+    if stop_on_damage and hazard_damage and repeat_stop_reasons is not None:
+        repeat_stop_reasons.add("damage")
     if hazard_damage or player.marksman_damage_prevented:
         tone = (
             "green"
@@ -1811,6 +1820,8 @@ def _process_multi_floor_turn(
             trace=trace,
             stage_num=stage_num,
         )
+        if stop_on_damage and player.lp < contact_lp and repeat_stop_reasons is not None:
+            repeat_stop_reasons.add("damage")
         if combat_event is not None:
             combat_event.lp_delta = player.lp - contact_lp
             if (combat_event.won and not boss_was_defeated
@@ -2082,9 +2093,14 @@ def run_game(
         result = session.step(
             move,
             repeat=getattr(ui, "input_was_repeat", False),
-            auto_repeat_stop=getattr(ui, "auto_repeat_stop_enabled", True),
+            auto_repeat_stop=(getattr(ui, "input_was_mouse", False)
+                              or getattr(ui, "auto_repeat_stop_enabled", True)),
+            mouse_move=getattr(ui, "input_was_mouse", False),
+            mouse_target=getattr(ui, "input_mouse_target", None),
             map_mode=getattr(ui, "map_mode", False),
         )
+        if getattr(ui, "input_was_mouse", False):
+            ui.finish_mouse_step(result, session.player)
         if result.stop_repeat:
             _stop_movement_repeat(ui)
         present = getattr(ui, "present_turn", None)

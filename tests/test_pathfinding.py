@@ -71,6 +71,44 @@ def test_known_floor_on_boundary_remains_passable():
     assert find_path(field, seen, (1, 1), (0, 1)) == [(1, 1), (0, 1)]
 
 
+def test_explorer_can_path_through_revealed_passage():
+    field = [list('#####'), [d.CHAR_WALL, d.CHAR_FLOOR, d.CHAR_D_GATE,
+                            d.CHAR_FLOOR, d.CHAR_WALL], list('#####')]
+    seen = [[1] * 5 for _ in field]
+    assert find_path(field, seen, (1, 1), (3, 1)) == [(1, 1)]
+    assert find_path(field, seen, (1, 1), (3, 1), allow_d_gate=True) == [
+        (1, 1), (2, 1), (3, 1)
+    ]
+    field[1][2] = d.CHAR_HIDDEN_D_GATE
+    assert find_path(field, seen, (1, 1), (3, 1), allow_d_gate=True) == [(1, 1)]
+
+
+@pytest.mark.parametrize('terrain', [*d.STAIR_CHARS, d.CHAR_COLLAPSE])
+def test_special_terrain_can_be_target_but_not_intermediate(terrain):
+    field = [list('#####'), [d.CHAR_WALL, d.CHAR_FLOOR, terrain,
+                            d.CHAR_FLOOR, d.CHAR_WALL], list('#####')]
+    seen = [[1] * 5 for _ in field]
+    assert find_path(field, seen, (1, 1), (2, 1), allow_special_target=True)[-1] == (2, 1)
+    assert find_path(field, seen, (1, 1), (3, 1), allow_special_target=True) == [(1, 1)]
+
+
+@pytest.mark.parametrize('terrain', [d.CHAR_WALL, d.CHAR_BARRIER, d.CHAR_CALTROP])
+def test_any_terrain_can_be_a_terminal_target(terrain):
+    field = [list('#####'), [d.CHAR_WALL, d.CHAR_FLOOR, terrain,
+                            d.CHAR_FLOOR, d.CHAR_WALL], list('#####')]
+    seen = [[1] * 5 for _ in field]
+    assert find_path(field, seen, (1, 1), (2, 1), allow_special_target=True)[-1] == (2, 1)
+    assert find_path(field, seen, (1, 1), (3, 1), allow_special_target=True) == [(1, 1)]
+
+
+def test_unexplored_outer_edge_can_be_target_but_not_intermediate():
+    field = [list('     ') for _ in range(5)]
+    seen = [[0] * 5 for _ in field]
+    seen[2][2] = 1
+    path = find_path(field, seen, (2, 2), (0, 2), allow_special_target=True)
+    assert path == [(2, 2), (1, 2), (0, 2)]
+
+
 def test_blocked_target_selects_closest_then_shortest():
     field = [list('    '), list('  # '), list('    ')]
     seen = [[1] * 4 for _ in field]

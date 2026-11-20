@@ -12,6 +12,9 @@ def find_path(
     start: d.Point,
     target: d.Point,
     visible: Optional[list[list[int]]] = None,
+    *,
+    allow_d_gate: bool = False,
+    allow_special_target: bool = False,
 ) -> list[d.Point]:
     """Return a path including start and the closest reachable cell.
 
@@ -51,9 +54,15 @@ def find_path(
                     continue
                 nx, ny = point
                 if known(nx, ny):
-                    if field[ny][nx] not in (d.CHAR_FLOOR, *d.HIDDEN_STAIRS_CHARS):
+                    cell = field[ny][nx]
+                    passable = cell in (d.CHAR_FLOOR, *d.HIDDEN_STAIRS_CHARS)
+                    passable |= allow_d_gate and cell == d.CHAR_D_GATE
+                    passable |= allow_special_target and point == target
+                    if not passable:
                         continue
-                elif not allow_unknown or nx in (0, width - 1) or ny in (0, height - 1):
+                elif (not allow_unknown or nx in (0, width - 1) or ny in (0, height - 1)) and not (
+                    allow_special_target and allow_unknown and point == target
+                ):
                     continue
                 parents[point] = (x, y)
                 distances[point] = distances[(x, y)] + 1

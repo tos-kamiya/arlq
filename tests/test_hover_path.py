@@ -38,10 +38,10 @@ def test_hover_path_uses_directions_and_marks_reachable_endpoint():
     ui._draw_object = lambda signature, factory: calls.append(signature)
     ui._draw_hover_path([list('  #'), list('   ')], [[1] * 3 for _ in range(2)],
                         [[1] * 3 for _ in range(2)], SimpleNamespace(x=0, y=0))
-    assert [call[0] for call in calls] == ['path_triangle', 'path_endpoint']
+    assert [call[0] for call in calls] == ['path_triangle', 'path_triangle', 'path_endpoint']
     _, tip_x, tip_y, *_ = calls[0]
     assert tip_x > 5 and tip_y == 70
-    assert calls[1][1:3] == (15, 70)
+    assert calls[2][1:3] == (25, 70)
 
 
 def test_hover_ignored_outside_game_input():

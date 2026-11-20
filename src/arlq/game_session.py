@@ -187,6 +187,8 @@ class GameSession:
         *,
         repeat=False,
         auto_repeat_stop=True,
+        mouse_move=False,
+        mouse_target=None,
         map_mode=False,
         collect_events=True,
     ):
@@ -206,6 +208,17 @@ class GameSession:
             self.floors, self.player, self.floor[0], self.config.torch_radius
         )
         current = self.floors[self.floor[0]]
+        if mouse_move:
+            nx, ny = self.player.x + move[0], self.player.y + move[1]
+            field = engine._field_for_display(self.floors, self.floor[0], self.player)
+            valid = 0 <= ny < len(field) and 0 <= nx < len(field[ny])
+            if valid:
+                cell = field[ny][nx]
+                valid = cell in (d.CHAR_FLOOR, *d.HIDDEN_STAIRS_CHARS)
+                valid |= cell == d.CHAR_D_GATE and d.has_member(self.player, d.MEMBER_DUNGEON_EXPLORER)
+                valid |= (nx, ny) == mouse_target
+            if not valid:
+                return TurnResult(False, self.message, True, floor_before, floor_before)
         show_entities = self.debug_show_entities or map_mode
         known_types = self.player.known_monsters
         # Dialogue remains visible through non-movement UI actions.
@@ -236,6 +249,9 @@ class GameSession:
                 self.player,
                 show_all_entities=show_entities,
                 known_types=known_types,
+                **({"ignore_untriggered_collapse": True} if mouse_move else {}),
+                **({"allow_target": True} if mouse_move and mouse_target == (
+                    self.player.x + move[0], self.player.y + move[1]) else {}),
             )
         ):
             return TurnResult(False, self.message, True, floor_before, floor_before)
@@ -266,6 +282,7 @@ class GameSession:
         )
         floor_before_step = self.floor[0]
         point_before_step = (self.player.x, self.player.y)
+        lp_before_step = self.player.lp
         step_result = engine._process_multi_floor_turn(
             move,
             self.floors,
@@ -279,7 +296,10 @@ class GameSession:
             repeat_stop_reasons=repeat_stop_reasons,
             events=events,
             torch_radius=self.config.torch_radius,
+            **({"stop_on_damage": True} if mouse_move else {}),
         )
+        if mouse_move and (self.player.lp < lp_before_step or self.floor[0] != floor_before_step):
+            stop_repeat = True
         if self.replay_context is not None:
             self.operation_path.append((self.floor[0], (self.player.x, self.player.y)))
         if repeat_stop_reasons and (

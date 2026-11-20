@@ -97,9 +97,21 @@ a route through unexplored cells would be shorter. Otherwise it assumes
 unexplored cells are ordinary floor and chooses a shortest route to the target,
 or to the reachable cell closest to it if the target cannot be reached. Ties
 for the closest cell favor fewer steps, then a fixed direction order. The
-unexplored outer edge of the field is assumed to be a wall. The cursor and route
-disappear after three seconds without mouse movement. Clicking the map does not
-move the player.
+unexplored outer edge of the field is assumed to be a wall, but can still be a
+destination. The cursor and route
+disappear after three seconds without mouse movement. Left-click a map cell to
+walk toward it; the route is recalculated as terrain is revealed. Movement stops
+before entering terrain other than ordinary floor, including unexplored walls,
+unless it is the clicked destination. Any cell can be a destination: the last
+step uses normal movement and interaction rules, even for walls, hazards or
+stronger monsters. Other obstacles along the way still stop movement. With a
+Dungeon Explorer in the party, the route can also
+use revealed secret passages. Movement stops after damage or a floor change.
+Hidden chests, hidden mimics, and untriggered pits do not prevent a step by
+themselves. Automatic repeat stop conditions always apply, even when the setting
+is off. Press a movement key or Escape to cancel, or click a new destination.
+With Pegasus, a final step into a wall can trigger the usual jump; the movement
+then stops. Jumps are not included in the route calculation.
 
 ### Sprite GUI version: `arlq-sprites`
 
