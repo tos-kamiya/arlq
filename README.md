@@ -80,6 +80,9 @@ Screens and controls common to `arlq-cli`, `arlq`, and `arlq-sprites`:
 - Your vision is centered on your location, and explored areas remain visible on the automap.
 - After contacting an enemy, its party composition remains in brackets, such as `[aaw]`, to the left of event messages.
 - Temporary status popups appear near the player, while event messages appear at the bottom of the screen.
+- In both GUI versions, hover over a stage or menu option to highlight it, and
+  click to select it. In settings, click the left or right side of a value to
+  change it, then click its apply control or select Back to discard changes.
 
 ### Terminal version: `arlq-cli`
 
@@ -94,7 +97,8 @@ a route through unexplored cells would be shorter. Otherwise it assumes
 unexplored cells are ordinary floor and chooses a shortest route to the target,
 or to the reachable cell closest to it if the target cannot be reached. Ties
 for the closest cell favor fewer steps, then a fixed direction order. The
-unexplored outer edge of the field is assumed to be a wall. Clicking does not
+unexplored outer edge of the field is assumed to be a wall. The cursor and route
+disappear after three seconds without mouse movement. Clicking the map does not
 move the player.
 
 ### Sprite GUI version: `arlq-sprites`

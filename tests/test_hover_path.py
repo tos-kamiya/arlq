@@ -9,6 +9,7 @@ def make_ui():
     ui._menu_active = False
     ui._path_hover_cell = None
     ui._path_hover_dirty = False
+    ui._path_mouse_deadline = None
     ui.cell_size_x, ui.cell_size_y = 10, 20
     ui.field_width, ui.field_height = 3, 2
     ui.window_height = 80
@@ -62,3 +63,17 @@ def test_unexplored_path_arrows_are_outlined():
         'path_triangle', 'path_triangle_outline', 'path_triangle_outline',
         'path_triangle_outline', 'path_endpoint',
     ]
+
+
+def test_mouse_motion_refreshes_cursor_deadline(monkeypatch):
+    ui = make_ui()
+    now = [10.0]
+    monkeypatch.setattr('arlq.pyglet_funcs.time.monotonic', lambda: now[0])
+    ui._path_mouse_motion(15, 70, 0, 0)
+    assert ui._path_mouse_deadline == 13.0
+    now[0] = 12.0
+    ui._path_mouse_motion(16, 70, 1, 0)
+    assert ui._path_mouse_deadline == 15.0
+    ui._path_mouse_leave(16, 70)
+    assert ui._path_mouse_deadline is None
+    assert ui._path_hover_cell is None

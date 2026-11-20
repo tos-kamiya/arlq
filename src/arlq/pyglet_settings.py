@@ -82,14 +82,17 @@ class PygletSettingsMixin:
 
         selectable = len(rows)
         while True:
-            selected = rows[row]
+            selected = rows[row] if row >= 0 else None
             self._clear_drawables()
+            self._menu_mouse_regions = []
+            self._menu_hover_regions = []
             self._draw_text(
                 (8, 5),
                 tr("Settings"),
                 gui.COLOR_MAP[gui.CI_YELLOW],
                 bold=True,
             )
+            self._menu_navigation_row(-1, row, 6.5, tr("Return to previous screen"), pgkey.ESCAPE)
             values = {
                 "scale": (
                     tr("Interface scale"),
@@ -121,6 +124,13 @@ class PygletSettingsMixin:
                     x_offset=self._text_width(heading, bold=selected == name)
                     + self._menu_cell_size_x,
                 )
+                value_start = 8 + self._text_width(heading, bold=selected == name) / self._menu_cell_size_x + 1
+                value_end = value_start + self._text_width(value, bold=selected == name) / self._menu_cell_size_x
+                if name in ("scale", "repeat", "stop"):
+                    self._menu_mouse_row(index, row, y, value_start, value_end)
+                    self._menu_apply_control(y, value_end + 2)
+                else:
+                    self._menu_mouse_row(index, row, y, action=pgkey.RETURN)
             help_y = 8 + 1.5 * len(rows) + 1.5
             help_color = (145, 150, 160)
             self._draw_text(
@@ -129,7 +139,7 @@ class PygletSettingsMixin:
                 help_color,
             )
             self._draw_text(
-                (8, help_y + 2),
+                (8, help_y + 1),
                 tr("Enter / Gamepad button 0: apply or open   Esc / Gamepad button 1: cancel"),
                 help_color,
             )
@@ -165,14 +175,18 @@ class PygletSettingsMixin:
                 self._pump()
                 if self._closed:
                     return
+                hovered = self._menu_hover_selection(row)
+                if hovered != row:
+                    row = hovered
+                    break
                 event = self._next_key_event()
                 if event is not None:
                     symbol, _ = event
                     if symbol == pgkey.UP:
-                        row = (row - 1) % selectable
+                        row = (row - 1 + 1) % (selectable + 1) - 1
                         break
                     if symbol == pgkey.DOWN:
-                        row = (row + 1) % selectable
+                        row = (row + 1 + 1) % (selectable + 1) - 1
                         break
                     if symbol == pgkey.LEFT:
                         change(-1)
@@ -181,7 +195,12 @@ class PygletSettingsMixin:
                         if change(1):
                             return
                         break
+                    if symbol == pgkey.F12:
+                        apply()
+                        return
                     if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
+                        if row == -1:
+                            return
                         if selected in ("sprites", "gamepad"):
                             if change(1):
                                 return
@@ -200,10 +219,10 @@ class PygletSettingsMixin:
                 if direction != self.gamepad_previous_direction:
                     self.gamepad_previous_direction = direction
                     if direction == (0, -1):
-                        row = (row - 1) % selectable
+                        row = (row - 1 + 1) % (selectable + 1) - 1
                         break
                     if direction == (0, 1):
-                        row = (row + 1) % selectable
+                        row = (row + 1 + 1) % (selectable + 1) - 1
                         break
                     if direction == (-1, 0):
                         change(-1)
@@ -213,6 +232,8 @@ class PygletSettingsMixin:
                             return
                         break
                 if 0 in self._gamepad_pressed_buttons:
+                    if row == -1:
+                        return
                     if selected in ("sprites", "gamepad"):
                         if change(1):
                             return
@@ -231,8 +252,11 @@ class PygletSettingsMixin:
         row = 0
         while True:
             self._clear_drawables()
+            self._menu_mouse_regions = []
+            self._menu_hover_regions = []
             self._draw_text((8, 5), tr("Sprite display settings"),
                             gui.COLOR_MAP[gui.CI_YELLOW], bold=True)
+            self._menu_navigation_row(-1, row, 6.5, tr("Return to previous screen"), pgkey.ESCAPE)
             values = (
                 (tr("Combat effect duration"), f"{d.COMBAT_EFFECT_SECONDS_CHOICES[effect_index]:.1f}s"),
                 (tr("Floor transition duration"), f"{d.FLOOR_TRANSITION_SECONDS_CHOICES[transition_index]:.1f}s"),
@@ -248,9 +272,13 @@ class PygletSettingsMixin:
                                 bold=row == index,
                                 x_offset=self._text_width(heading, bold=row == index)
                                 + self._menu_cell_size_x)
+                value_start = 8 + self._text_width(heading, bold=row == index) / self._menu_cell_size_x + 1
+                value_end = value_start + self._text_width(f"<  {value}  >", bold=row == index) / self._menu_cell_size_x
+                self._menu_mouse_row(index, row, pos[1], value_start, value_end)
+                self._menu_apply_control(pos[1], value_end + 2)
             help_y = 8 + 1.5 * len(values) + 1.5
             self._draw_text((8, help_y), tr("Up/Down: item   Left/Right: value"), (145, 150, 160))
-            self._draw_text((8, help_y + 2), tr("Enter / Gamepad button 0: apply   Esc / Gamepad button 1: cancel"),
+            self._draw_text((8, help_y + 1), tr("Enter / Gamepad button 0: apply   Esc / Gamepad button 1: cancel"),
                             (145, 150, 160))
             if not getattr(self, "supports_floor_transition", False):
                 self._draw_text((8, help_y + 4), tr("* Has no effect in arlq."), (145, 150, 160))
@@ -260,9 +288,15 @@ class PygletSettingsMixin:
                 self._pump()
                 if self._closed:
                     return None
+                hovered = self._menu_hover_selection(row)
+                if hovered != row:
+                    row = hovered
+                    break
                 event = self._next_key_event()
                 symbol = event[0] if event is not None else None
-                if symbol in (pgkey.RETURN, pgkey.NUM_ENTER) or 0 in self._gamepad_pressed_buttons:
+                if symbol in (pgkey.RETURN, pgkey.NUM_ENTER, pgkey.F12) or 0 in self._gamepad_pressed_buttons:
+                    if row == -1 and symbol != pgkey.F12:
+                        return None
                     return effect_index, transition_index, bob_enabled
                 if symbol in (pgkey.ESCAPE, pgkey.Q) or 1 in self._gamepad_pressed_buttons:
                     return None
@@ -272,10 +306,10 @@ class PygletSettingsMixin:
                     self.gamepad_previous_direction = direction
                     gamepad_move = direction
                 if symbol == pgkey.UP or gamepad_move == (0, -1):
-                    row = (row - 1) % len(values)
+                    row = (row - 1 + 1) % (len(values) + 1) - 1
                     break
                 if symbol == pgkey.DOWN or gamepad_move == (0, 1):
-                    row = (row + 1) % len(values)
+                    row = (row + 1 + 1) % (len(values) + 1) - 1
                     break
                 step = (-1 if symbol == pgkey.LEFT or gamepad_move == (-1, 0)
                         else 1 if symbol == pgkey.RIGHT or gamepad_move == (1, 0) else 0)
@@ -300,9 +334,12 @@ class PygletSettingsMixin:
 
         while True:
             self._clear_drawables()
+            self._menu_mouse_regions = []
+            self._menu_hover_regions = []
             self._draw_text(
                 (8, 5), tr("Gamepad button settings"), gui.COLOR_MAP[gui.CI_YELLOW], bold=True
             )
+            self._menu_navigation_row(-1, row, 6.5, tr("Return to previous screen"), pgkey.ESCAPE)
             rows = (
                 ("Help button", gui._gamepad_button_label(help_button)),
                 (
@@ -322,6 +359,7 @@ class PygletSettingsMixin:
                     (8, y), heading, gui.COLOR_MAP["default"], bold=row == index
                 )
                 if value:
+                    value = f"<  {value}  >"
                     self._draw_text(
                         (8, y),
                         value,
@@ -330,6 +368,12 @@ class PygletSettingsMixin:
                         x_offset=self._text_width(heading, bold=row == index)
                         + self._menu_cell_size_x,
                     )
+                    value_start = 8 + self._text_width(heading, bold=row == index) / self._menu_cell_size_x + 1
+                    value_end = value_start + self._text_width(value, bold=row == index) / self._menu_cell_size_x
+                    self._menu_mouse_row(index, row, y, value_start, value_end, spacing=2)
+                    self._menu_apply_control(y, value_end + 2)
+                else:
+                    self._menu_mouse_row(index, row, y, action=pgkey.RIGHT, spacing=2)
             help_color = (145, 150, 160)
             self._draw_text(
                 (8, 18),
@@ -337,7 +381,7 @@ class PygletSettingsMixin:
                 help_color,
             )
             self._draw_text(
-                (8, 20),
+                (8, 19),
                 tr("Buttons 2-12: assign   Enter / button 0: apply and exit   Esc / button 1: cancel"),
                 help_color,
             )
@@ -347,15 +391,19 @@ class PygletSettingsMixin:
                 self._pump()
                 if self._closed:
                     return False
+                hovered = self._menu_hover_selection(row)
+                if hovered != row:
+                    row = hovered
+                    break
 
                 event = self._next_key_event()
                 if event is not None:
                     symbol, _ = event
                     if symbol == pgkey.UP:
-                        row = (row - 1) % len(rows)
+                        row = (row - 1 + 1) % (len(rows) + 1) - 1
                         break
                     if symbol == pgkey.DOWN:
-                        row = (row + 1) % len(rows)
+                        row = (row + 1 + 1) % (len(rows) + 1) - 1
                         break
                     if symbol in (pgkey.LEFT, pgkey.RIGHT):
                         step = -1 if symbol == pgkey.LEFT else 1
@@ -376,7 +424,9 @@ class PygletSettingsMixin:
                                 "toggle" if preview_mode == "hold" else "hold"
                             )
                         break
-                    if symbol in (pgkey.RETURN, pgkey.NUM_ENTER):
+                    if symbol in (pgkey.RETURN, pgkey.NUM_ENTER, pgkey.F12):
+                        if row == -1 and symbol != pgkey.F12:
+                            return False
                         self.set_gamepad_bindings(
                             help_button, preview_button, preview_mode
                         )
@@ -402,10 +452,10 @@ class PygletSettingsMixin:
                 if direction != self.gamepad_previous_direction:
                     self.gamepad_previous_direction = direction
                     if direction == (0, -1):
-                        row = (row - 1) % len(rows)
+                        row = (row - 1 + 1) % (len(rows) + 1) - 1
                         break
                     if direction == (0, 1):
-                        row = (row + 1) % len(rows)
+                        row = (row + 1 + 1) % (len(rows) + 1) - 1
                         break
                     if direction in ((-1, 0), (1, 0)):
                         step = direction[0]
@@ -427,6 +477,8 @@ class PygletSettingsMixin:
                             )
                         break
                 if 0 in pressed_buttons:
+                    if row == -1:
+                        return False
                     self.set_gamepad_bindings(
                         help_button, preview_button, preview_mode
                     )

@@ -37,6 +37,7 @@ _prepare_x11_locale()
 
 import pyglet
 from pyglet.window import key as pgkey
+from pyglet.window import mouse as pgmouse
 
 from . import defs as d
 from . import display as ui_display
@@ -111,6 +112,7 @@ def _menu_method(method):
     def wrapped(self, *args, **kwargs):
         was_active = self._menu_active
         self._menu_active = True
+        self._menu_hover_index = None
         if not was_active:
             self._menu_text_records = []
             if type(self) is PygletUI:
@@ -179,6 +181,7 @@ FONT_WIDTH_RATIO = 0.95
 FONT_HEIGHT_RATIO = 0.87
 MESSAGE_FONT_SIZE_SCALE = 0.95
 MENU_ROW_SPACING = 1.2
+MOUSE_CURSOR_SECONDS = 3.0
 
 GAMEPAD_CONTROLLER_ATTRIBUTES = (
     "a",
@@ -298,6 +301,9 @@ class PygletUI(PygletSettingsMixin):
         self._resize_redraw_pending = False
         self._menu_font_size = None
         self._menu_cell_size_x = CELL_SIZE_X
+        self._menu_mouse_regions = []
+        self._menu_hover_regions = []
+        self._menu_hover_index = None
         self._frame_drawable_cache = None
         self._reused_drawable_ids = set()
         self.controller = None
@@ -359,6 +365,7 @@ class PygletUI(PygletSettingsMixin):
         self._path_hover_cell = None
         self._path_hover_dirty = False
         self._path_stage_draw = None
+        self._path_mouse_deadline = None
         self._path_group = pyglet.graphics.Group(order=1)
         self._keyboard_farthest_preview = False
         self._gamepad_preview_held = False
@@ -388,6 +395,8 @@ class PygletUI(PygletSettingsMixin):
         self.input_was_repeat = False
 
         window = self.window
+        window.push_handlers(on_mouse_press=self._menu_mouse_press,
+                             on_mouse_motion=self._menu_mouse_motion)
 
         if type(self) is PygletUI:
             window.push_handlers(
@@ -1214,9 +1223,10 @@ class PygletUI(PygletSettingsMixin):
         )
 
     def _path_mouse_motion(self, x, y, dx, dy):
+        self.window.set_mouse_visible(True)
+        self._path_mouse_deadline = time.monotonic() + MOUSE_CURSOR_SECONDS
         if not self._stage_input_active or self._menu_active:
             return
-        self.window.set_mouse_visible(True)
         row = math.floor((self.window_height - y) / self.cell_size_y)
         col = math.floor(x / self.cell_size_x)
         cell = (col, row) if (0 <= col < self.field_width and
@@ -1230,9 +1240,60 @@ class PygletUI(PygletSettingsMixin):
 
     def _path_mouse_leave(self, x, y):
         self.window.set_mouse_visible(False)
+        self._path_mouse_deadline = None
         if self._path_hover_cell is not None:
             self._path_hover_cell = None
             self._path_hover_dirty = True
+
+    def _menu_mouse_press(self, x, y, button, modifiers):
+        if not self._menu_active or button != pgmouse.LEFT:
+            return
+        col = x / self._menu_cell_size_x
+        row = (self.window_height - y) / self._menu_cell_size_y
+        for left, top, right, bottom, keys in reversed(self._menu_mouse_regions):
+            if left <= col < right and top <= row < bottom:
+                self._menu_hover_index = None
+                self._key_queue.extend((key, 0) for key in keys)
+                break
+
+    def _menu_mouse_motion(self, x, y, dx, dy):
+        if not self._menu_active:
+            return
+        col = x / self._menu_cell_size_x
+        row = (self.window_height - y) / self._menu_cell_size_y
+        for left, top, right, bottom, index in reversed(self._menu_hover_regions):
+            if left <= col < right and top <= row < bottom:
+                self._menu_hover_index = index
+                break
+
+    def _menu_hover_selection(self, current):
+        index = self._menu_hover_index
+        self._menu_hover_index = None
+        return current if index is None else index
+
+    def _menu_mouse_row(self, row, current, y, value_start=None, value_end=None,
+                        action=None, spacing=1.5):
+        keys = [pgkey.DOWN if row > current else pgkey.UP] * abs(row - current)
+        top, bottom = y - 0.2, y + min(1.0, spacing - 0.2)
+        end = value_end if value_end is not None else 70
+        self._menu_hover_regions.append((8, top, end, bottom, row))
+        self._menu_mouse_regions.append((8, top, end, bottom, keys + ([action] if action else [])))
+        if value_start is not None and value_end is not None:
+            middle = (value_start + value_end) / 2
+            self._menu_mouse_regions.append((value_start, top, middle, bottom, keys + [pgkey.LEFT]))
+            self._menu_mouse_regions.append((middle, top, value_end, bottom, keys + [pgkey.RIGHT]))
+
+    def _menu_navigation_row(self, row, current, y, label, action):
+        text = f"{'>' if row == current else ' '} {label}"
+        self._draw_text((8, y), text, COLOR_MAP['default'], bold=row == current)
+        width = max(1, self._text_width(text, bold=row == current) / self._menu_cell_size_x)
+        self._menu_mouse_row(row, current, y, value_end=8 + width, action=action)
+
+    def _menu_apply_control(self, y, x):
+        label = f"⏎ ({tr('Apply')})"
+        self._draw_text((x, y), label, COLOR_MAP['default'])
+        width = max(1, self._text_width(label) / self._menu_cell_size_x)
+        self._menu_mouse_regions.append((x, y - 0.2, x + width, y + 1, [pgkey.F12]))
 
     def _draw_hover_path(self, field, seen, visible, player):
         target = self._path_hover_cell
@@ -1809,6 +1870,9 @@ class PygletUI(PygletSettingsMixin):
         # controllers) from the platform event loop. This UI has its own loop,
         # so perform a non-blocking step here to keep device state current.
         pyglet.app.platform_event_loop.step(0)
+        if (type(self) is PygletUI and self._path_mouse_deadline is not None
+                and time.monotonic() >= self._path_mouse_deadline):
+            self._path_mouse_leave(0, 0)
         held_buttons = _held_gamepad_buttons(self.controller)
         was_preview_held = self._gamepad_preview_held
         self._gamepad_pressed_buttons = held_buttons - self._gamepad_held_buttons
@@ -2275,6 +2339,8 @@ class PygletUI(PygletSettingsMixin):
 
         while True:
             self._clear_drawables()
+            self._menu_mouse_regions = []
+            self._menu_hover_regions = []
             self._draw_text(
                 (8, 5),
                 tr("Stage Selection"),
@@ -2294,6 +2360,15 @@ class PygletUI(PygletSettingsMixin):
                     COLOR_MAP["default"],
                     bold=(i == current_index),
                 )
+                x = base_x + 22 * col
+                y = base_y + MENU_ROW_SPACING * display_row
+                symbol = (pgkey.Q if i == 0 else pgkey.S if i == settings_index
+                          else next(key for key, value in _DIGIT_KEYS.items()
+                                    if int(value) == stage_numbers[i - 1]))
+                width = max(3, self._text_width(text, bold=i == current_index)
+                            / self._menu_cell_size_x)
+                self._menu_mouse_regions.append((x, y - 0.2, x + width, y + 1, [symbol]))
+                self._menu_hover_regions.append((x, y - 0.2, x + width, y + 1, i))
             self._draw_text(
                 (8, base_y + MENU_ROW_SPACING * (stage_rows + 3) + 2),
                 tr("[h]elp: controls (gamepad button unassigned)")
@@ -2310,6 +2385,10 @@ class PygletUI(PygletSettingsMixin):
                 self._pump()
                 if self._closed:
                     return 0
+                hovered = self._menu_hover_selection(current_index)
+                if hovered != current_index:
+                    current_index = hovered
+                    break
                 # SpriteUI recalculates its cell and camera dimensions in the
                 # resize callback. Rebuild this menu as soon as that callback
                 # has run, rather than waiting for a key press to redraw it.

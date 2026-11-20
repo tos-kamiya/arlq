@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 from blessed.keyboard import Keystroke
 from pyglet.window import key
+from pyglet.window import mouse
 
 from arlq import defs, i18n
 from arlq.blessed_funcs import BlessedUI
@@ -86,6 +87,97 @@ def test_stage_menu_places_six_stages_in_two_columns(monkeypatch):
         assert left_pos[1] == right_pos[1]
         assert left_pos[0] < right_pos[0]
     assert drawn['> Stage [1]'][1] < drawn['Stage [3]'][1] < drawn['Stage [5]'][1]
+
+
+def _mouse_menu(ui, clicks):
+    ui._menu_cell_size_y = 20
+    ui.window_height = 480
+    ui._text_width = lambda text, **kwargs: len(text) * ui._menu_cell_size_x
+    ui._next_key_event = lambda: PygletUI._next_key_event(ui)
+    pending = deque(clicks)
+
+    def pump():
+        if not ui._key_queue and pending:
+            col, row = pending.popleft()
+            ui._menu_mouse_press(col * ui._menu_cell_size_x,
+                                 ui.window_height - row * ui._menu_cell_size_y,
+                                 mouse.LEFT, 0)
+    ui._pump = pump
+
+
+def test_mouse_selects_stage(monkeypatch):
+    ui = _menu_ui(monkeypatch, [])
+    _mouse_menu(ui, [(32, 10.9)])
+    assert ui.select_stage() == 2
+
+
+def test_stage_mouse_hover_moves_highlight_without_selecting(monkeypatch):
+    ui = _menu_ui(monkeypatch, [])
+    _mouse_menu(ui, [])
+    drawn = []
+    ui._draw_text = lambda pos, text, *args, **kwargs: drawn.append(text)
+    actions = deque(['hover', 'enter'])
+
+    def pump():
+        action = actions.popleft()
+        if action == 'hover':
+            ui._menu_mouse_motion(32 * 13, 480 - 10.9 * 20, 0, 0)
+        else:
+            ui._key_queue.append((key.RETURN, 0))
+
+    ui._pump = pump
+    assert ui.select_stage() == 2
+    assert '> Stage [2]' in drawn
+
+
+def test_settings_mouse_hover_changes_highlight_without_changing_value(monkeypatch):
+    ui = _menu_ui(monkeypatch, [])
+    _mouse_menu(ui, [])
+    drawn = []
+    ui._draw_text = lambda pos, text, *args, **kwargs: drawn.append(text)
+    actions = deque(['hover', 'escape'])
+
+    def pump():
+        if actions.popleft() == 'hover':
+            ui._menu_mouse_motion(10 * 13, 480 - 11.1 * 20, 0, 0)
+        else:
+            ui._key_queue.append((key.ESCAPE, 0))
+
+    ui._pump = pump
+    ui.settings_menu()
+    assert '> Automatic repeat stop' in drawn
+    assert ui.auto_repeat_stop_enabled is True
+
+
+def test_mouse_changes_and_applies_setting(monkeypatch, tmp_path):
+    monkeypatch.setattr('arlq.pyglet_funcs._settings_path', lambda: tmp_path / 'settings.json')
+    ui = _menu_ui(monkeypatch, [])
+    # Click the right half of Automatic repeat stop, then Apply.
+    _mouse_menu(ui, [(37, 11.1), (44, 11.1)])
+    ui.settings_menu()
+    assert ui.auto_repeat_stop_enabled is False
+
+
+def test_mouse_cancels_setting(monkeypatch, tmp_path):
+    monkeypatch.setattr('arlq.pyglet_funcs._settings_path', lambda: tmp_path / 'settings.json')
+    ui = _menu_ui(monkeypatch, [])
+    _mouse_menu(ui, [(37, 11.1), (10, 6.6)])
+    ui.settings_menu()
+    assert ui.auto_repeat_stop_enabled is True
+
+
+def test_settings_back_and_per_value_apply_controls(monkeypatch):
+    ui = _menu_ui(monkeypatch, [(key.ESCAPE, 0)])
+    drawn = []
+    ui._draw_text = lambda pos, text, *args, **kwargs: drawn.append((pos, text))
+    ui.settings_menu()
+    assert any(text.strip() == 'Return to previous screen' for _, text in drawn)
+    assert [pos[1] for pos, text in drawn if text == '⏎ (Apply)'] == [8, 9.5, 11]
+
+
+def test_back_in_sprite_settings_discards_changes(monkeypatch):
+    ui = _menu_ui(monkeypatch, [(key.RIGHT, 0), (key.UP, 0), (key.RETURN, 0)])
+    assert ui.sprite_settings_menu(0, 0, True) is None
 
 
 @pytest.mark.parametrize('sprite_mode', [False, True])
@@ -307,9 +399,9 @@ def test_sprite_settings_select_and_reload_floor_transition_duration(
 def test_plain_gui_settings_use_the_sprite_layout(monkeypatch, tmp_path):
     path = tmp_path / "settings.json"
     monkeypatch.setattr("arlq.pyglet_funcs._settings_path", lambda: path)
-    # Six Downs (past the reset row) wrap back to the scale row, with or
+    # Seven Downs (past reset and Back) wrap back to the scale row, with or
     # without a gamepad.
-    ui = _menu_ui(monkeypatch, [(key.DOWN, 0)] * 6 + [(key.RIGHT, 0), (key.RETURN, 0)])
+    ui = _menu_ui(monkeypatch, [(key.DOWN, 0)] * 7 + [(key.RIGHT, 0), (key.RETURN, 0)])
     scales = []
     ui.set_scale = scales.append
 
