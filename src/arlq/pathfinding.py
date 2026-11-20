@@ -15,13 +15,15 @@ def find_path(
     *,
     allow_d_gate: bool = False,
     allow_special_target: bool = False,
+    blocked: Optional[set[d.Point]] = None,
 ) -> list[d.Point]:
     """Return a path including start and the closest reachable cell.
 
     Prefer a route entirely through known floor if it reaches the target.
     Otherwise, assume unexplored cells are floor, except at the outer edge.
     Hidden floor-like terrain is treated as floor so the result does not reveal
-    its underlying identity. Ties follow the fixed neighbor order below.
+    its underlying identity. Blocked cells are avoided except at the target.
+    Ties follow the fixed neighbor order below.
     """
     height = len(field)
     width = len(field[0]) if height else 0
@@ -51,6 +53,8 @@ def find_path(
             for dx, dy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
                 point = (x + dx, y + dy)
                 if point in parents or not in_bounds(point):
+                    continue
+                if blocked is not None and point in blocked and point != target:
                     continue
                 nx, ny = point
                 if known(nx, ny):

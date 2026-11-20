@@ -71,6 +71,21 @@ def test_known_floor_on_boundary_remains_passable():
     assert find_path(field, seen, (1, 1), (0, 1)) == [(1, 1), (0, 1)]
 
 
+def test_blocked_entity_is_avoided_but_can_be_target():
+    field = [list('     ') for _ in range(3)]
+    seen = [[1] * 5 for _ in field]
+    blocked = {(2, 1)}
+    route = find_path(field, seen, (1, 1), (3, 1), blocked=blocked)
+    assert (2, 1) not in route and route[-1] == (3, 1)
+    assert find_path(field, seen, (1, 1), (2, 1), blocked=blocked) == [(1, 1), (2, 1)]
+
+
+def test_blocked_corridor_uses_closest_reachable_cell():
+    field = [list('#####'), list('#   #'), list('#####')]
+    seen = [[1] * 5 for _ in field]
+    assert find_path(field, seen, (1, 1), (3, 1), blocked={(2, 1)}) == [(1, 1)]
+
+
 def test_explorer_can_path_through_revealed_passage():
     field = [list('#####'), [d.CHAR_WALL, d.CHAR_FLOOR, d.CHAR_D_GATE,
                             d.CHAR_FLOOR, d.CHAR_WALL], list('#####')]

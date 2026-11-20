@@ -106,7 +106,9 @@ new route. Movement also stops
 before entering terrain other than ordinary floor, including unexplored walls,
 unless it is the clicked destination. Any cell can be a destination: the last
 step uses normal movement and interaction rules, even for walls, hazards or
-stronger monsters. Other obstacles along the way still stop movement. With a
+stronger monsters. Visible monsters, elves, fairies, and waiting members are
+avoided along the route unless they are at the destination. Other obstacles
+along the way still stop movement. With a
 Dungeon Explorer in the party, the route can also
 use revealed secret passages. Movement stops after damage or a floor change.
 Hidden chests, hidden mimics, and untriggered pits do not prevent a step by

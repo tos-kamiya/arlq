@@ -378,3 +378,50 @@ def test_clicked_stronger_monster_is_contacted(session):
     result = session.step((1, 0), repeat=True, mouse_move=True, mouse_target=(3, 2))
     assert result.consumed
     assert session.player.last_contact_monster is not None
+
+
+@pytest.mark.parametrize('kind', ['monster', 'fairy', 'elf', 'member'])
+def test_visible_entities_are_path_obstacles_but_click_target_is_allowed(monkeypatch, kind):
+    ui, _, field, seen = mouse_ui(monkeypatch)
+    player = d.Player(1, 2, 100, 90)
+    entity = {
+        'monster': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['a']),
+        'fairy': lambda: d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE['l']),
+        'elf': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['J']),
+        'member': lambda: d.PartyMember(3, 2, d.MEMBER_HEALER),
+    }[kind]()
+    view = ui._path_stage_draw
+    view.update(player=player, entities=[player, entity], known_types=set())
+    assert ui._mouse_path_obstacles(view) == {(3, 2)}
+    assert (3, 2) not in ui._mouse_path(view, (4, 2))
+    assert ui._mouse_path(view, (3, 2))[-1] == (3, 2)
+
+
+def test_unseen_entities_and_disguises_do_not_change_path(monkeypatch):
+    ui, _, field, seen = mouse_ui(monkeypatch)
+    player = d.Player(1, 2, 100, 90)
+    monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['a'])
+    mimic = d.Monster(4, 2, d.CHAR_TO_MONSTER_TRIBE['M'])
+    collapse = d.Collapse(2, 2)
+    view = ui._path_stage_draw
+    view.update(player=player, entities=[player, monster, mimic, collapse], known_types=set())
+    seen[2][3] = 0
+    assert ui._mouse_path_obstacles(view) == set()
+    seen[2][3] = 1
+    assert ui._mouse_path_obstacles(view) == {(3, 2)}
+
+
+def test_newly_visible_entity_causes_route_change_to_stop(monkeypatch):
+    ui, _, field, seen = mouse_ui(monkeypatch)
+    player = d.Player(1, 2, 100, 90)
+    monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['a'])
+    view = ui._path_stage_draw
+    view.update(player=player, entities=[player, monster], known_types=set())
+    seen[2][3] = seen[2][4] = 0
+    ui._path_mouse_press(45, 25, mouse.LEFT, 0)
+    assert ui._mouse_move_step() == (1, 0)
+    player.x = 2
+    seen[2][3] = 1
+    ui._next_mouse_move_at = 0
+    assert ui._mouse_move_step() is None
+    assert ui._mouse_move_target is None

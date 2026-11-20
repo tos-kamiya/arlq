@@ -1284,7 +1284,38 @@ class PygletUI(PygletSettingsMixin):
         player = view['player']
         return find_path(view['field'], view['torched'], (player.x, player.y), target,
                          view['cur_torched'], allow_d_gate=self._path_can_use_d_gate(player),
-                         allow_special_target=True)
+                         allow_special_target=True, blocked=self._mouse_path_obstacles(view))
+
+    def _mouse_path_obstacles(self, view):
+        player = view['player']
+        seen = view['torched']
+        show_entities = view.get('show_entities', False) or getattr(self, 'map_mode', False)
+        reveal_disguises = view.get('debug_show_entities', False) or getattr(self, 'map_mode', False)
+        known_types = view.get('known_types', set())
+        obstacles = set()
+        for entity in view.get('entities', ()):
+            if (not isinstance(entity, (d.Monster, d.Fairy, d.PartyMember))
+                    or isinstance(entity, d.Collapse)):
+                continue
+            x, y = entity.x, entity.y
+            if ((x, y) == (player.x, player.y) or not 0 <= y < len(seen)
+                    or not 0 <= x < len(seen[y])):
+                continue
+            glyphs = []
+            if show_entities:
+                glyphs.extend(ui_display.preview_entity_glyphs(
+                    entity, reveal_disguises=reveal_disguises, known_types=known_types
+                ))
+            if seen[y][x]:
+                glyphs.extend(ui_display.revealed_entity_glyphs(
+                    entity, known_types, show_entities, d.current_player_attack(player), None,
+                    reveal_disguises=reveal_disguises,
+                    debug_show_entities=view.get('debug_show_entities', False),
+                ))
+            if any((glyph.x, glyph.y) == (x, y) and glyph.char != d.CHAR_TREASURE
+                   for glyph in glyphs):
+                obstacles.add((x, y))
+        return obstacles
 
     def _mouse_move_step(self):
         if self._mouse_move_target is None or time.monotonic() < self._next_mouse_move_at:
@@ -1395,13 +1426,13 @@ class PygletUI(PygletSettingsMixin):
         ):
             PygletUI._draw_line(self, x1, y1, x2, y2, color, thickness)
 
-    def _draw_hover_path(self, field, seen, visible, player):
+    def _draw_hover_path(self, field, seen, visible, player, blocked=None):
         target = self._path_hover_cell
         if target is None:
             return
         path = find_path(field, seen, (player.x, player.y), target, visible,
                          allow_d_gate=self._path_can_use_d_gate(player),
-                         allow_special_target=True)
+                         allow_special_target=True, blocked=blocked)
         if len(path) < 2:
             return
         radius = min(self.cell_size_x, self.cell_size_y) * 0.22
@@ -1682,8 +1713,9 @@ class PygletUI(PygletSettingsMixin):
                 )
 
         if (type(self) is PygletUI and not floor_view and not extra_keys and not self._menu_active
-                and self._mouse_move_target is None):
-            self._draw_hover_path(field, torched, cur_torched, player)
+                and self._mouse_move_target is None and self._path_hover_cell is not None):
+            self._draw_hover_path(field, torched, cur_torched, player,
+                                  self._mouse_path_obstacles(self._path_stage_draw))
 
         # Draw the right-edge strength column: the stage's monster tribes and
         # the player, ranked strongest-first. A tinted background (full
