@@ -121,6 +121,9 @@ then stops. Jumps are not included in the route calculation.
 
 ### Sprite GUI version: `arlq-sprites`
 
+Hover over a map cell to preview the route and left-click to walk there.
+The route and stopping rules are the same as in the character GUI.
+
 **Window**: The window opens wide enough to show the complete field and strength
 column without scrolling, and can be resized in both dimensions. Changing the
 window height zooms the field while keeping its rendering detail consistent.

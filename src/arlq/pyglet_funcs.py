@@ -116,8 +116,7 @@ def _menu_method(method):
         self._menu_icon_records = []
         if not was_active:
             self._menu_text_records = []
-            if type(self) is PygletUI:
-                self._path_hover_cell = None
+            self._path_hover_cell = None
         try:
             return method(self, *args, **kwargs)
         finally:
@@ -407,13 +406,12 @@ class PygletUI(PygletSettingsMixin):
         window.push_handlers(on_mouse_press=self._menu_mouse_press,
                              on_mouse_motion=self._menu_mouse_motion)
 
-        if type(self) is PygletUI:
-            window.push_handlers(
-                on_mouse_motion=self._path_mouse_motion,
-                on_mouse_drag=self._path_mouse_drag,
-                on_mouse_leave=self._path_mouse_leave,
-                on_mouse_press=self._path_mouse_press,
-            )
+        window.push_handlers(
+            on_mouse_motion=self._path_mouse_motion,
+            on_mouse_drag=self._path_mouse_drag,
+            on_mouse_leave=self._path_mouse_leave,
+            on_mouse_press=self._path_mouse_press,
+        )
 
         @window.event
         def on_close():
@@ -1246,6 +1244,9 @@ class PygletUI(PygletSettingsMixin):
             self._path_hover_cell = cell
             self._path_hover_dirty = True
 
+    def _path_hover_target(self):
+        return self._path_hover_cell
+
     def _path_cell_at(self, x, y):
         row = math.floor((self.window_height - y) / self.cell_size_y)
         col = math.floor(x / self.cell_size_x)
@@ -1415,7 +1416,9 @@ class PygletUI(PygletSettingsMixin):
         radius = min(self.cell_size_x, self.cell_size_y) * 0.22
         color = (255, 230, 110, 180)
         for (x, y), (nx, ny) in zip(path, path[1:]):
-            cx = (x + 0.5) * self.cell_size_x
+            cx = self._field_col_x(x) + self.cell_size_x / 2
+            if not 0 <= cx < self.field_pixel_width:
+                continue
             cy = self.window_height - (y + 0.5) * self.cell_size_y
             dx, dy = nx - x, y - ny
             vertices = (cx + dx * radius, cy + dy * radius,
@@ -1440,7 +1443,9 @@ class PygletUI(PygletSettingsMixin):
                         ),
                     )
         x, y = path[-1]
-        cx = (x + 0.5) * self.cell_size_x
+        cx = self._field_col_x(x) + self.cell_size_x / 2
+        if not 0 <= cx < self.field_pixel_width:
+            return
         cy = self.window_height - (y + 0.5) * self.cell_size_y
         self._draw_object(('path_endpoint', cx, cy, radius, color), lambda: pyglet.shapes.Circle(
             cx, cy, radius * 0.55, color=color, batch=self.batch, group=self._path_group
@@ -1481,9 +1486,8 @@ class PygletUI(PygletSettingsMixin):
         - Draws the player and entities with appropriate colors.
         - Draws the status bar at the bottom.
         """
-        if type(self) is PygletUI:
-            self._path_stage_draw = {key: value for key, value in locals().items() if key != 'self'}
-            self._path_hover_dirty = False
+        self._path_stage_draw = {key: value for key, value in locals().items() if key != 'self'}
+        self._path_hover_dirty = False
         show_entities = show_entities or self.map_mode
         reveal_disguises = debug_show_entities or self.map_mode
         self._clear_drawables()
@@ -1689,10 +1693,11 @@ class PygletUI(PygletSettingsMixin):
                     (px, py), player.status_popup, player.status_popup_tone
                 )
 
-        if (type(self) is PygletUI and not floor_view and not extra_keys and not self._menu_active
-                and self._mouse_move_target is None and self._path_hover_cell is not None):
-            path = self._mouse_path(self._path_stage_draw, self._path_hover_cell)
-            self._draw_hover_path(path, torched, cur_torched)
+        if not floor_view and not extra_keys and not self._menu_active and self._mouse_move_target is None:
+            target = self._path_hover_target()
+            if target is not None:
+                path = self._mouse_path(self._path_stage_draw, target)
+                self._draw_hover_path(path, torched, cur_torched)
 
         # Draw the right-edge strength column: the stage's monster tribes and
         # the player, ranked strongest-first. A tinted background (full
@@ -1982,7 +1987,7 @@ class PygletUI(PygletSettingsMixin):
         # controllers) from the platform event loop. This UI has its own loop,
         # so perform a non-blocking step here to keep device state current.
         pyglet.app.platform_event_loop.step(0)
-        if (type(self) is PygletUI and self._path_mouse_deadline is not None
+        if (self._path_mouse_deadline is not None
                 and time.monotonic() >= self._path_mouse_deadline):
             self._path_mouse_leave(0, 0)
         held_buttons = _held_gamepad_buttons(self.controller)
@@ -2009,7 +2014,7 @@ class PygletUI(PygletSettingsMixin):
                 self._gamepad_preview_changed = True
             if was_preview_held and not self._gamepad_preview_held:
                 self.floor_view_reset_requested = True
-        if (type(self) is PygletUI and self._path_hover_dirty and self._stage_input_active
+        if (self._path_hover_dirty and self._stage_input_active
                 and not self._menu_active and self._path_stage_draw is not None):
             self.draw_stage(**self._path_stage_draw)
 
@@ -2186,10 +2191,9 @@ class PygletUI(PygletSettingsMixin):
                     self.input_was_repeat = True
                     return current_direction
 
-            if type(self) is PygletUI:
-                move = self._mouse_move_step()
-                if move is not None:
-                    return move
+            move = self._mouse_move_step()
+            if move is not None:
+                return move
 
             self._wait_for_input()
 

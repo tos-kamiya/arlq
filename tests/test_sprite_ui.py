@@ -159,6 +159,38 @@ def test_japanese_hover_names_include_glyph(sprite_ui, monkeypatch, key, name):
     assert sprite_ui._drawables[0].text == name
 
 
+def test_mouse_route_uses_scrolled_map_coordinates(sprite_ui, monkeypatch):
+    ui = sprite_ui
+    ui.field_pixel_width = 39
+    ui.field_width, ui.field_height = 7, 3
+    ui._horizontal_scroll_px = 26
+    ui._stage_input_active = True
+    ui._mouse_move_target = None
+    ui.key_repeat_interval = None
+    ui._mouse_position = (30, 470)
+    player = SimpleNamespace(x=1, y=1)
+    field = [list('#######'), list('#     #'), list('#######')]
+    seen = [[1] * 7 for _ in field]
+    ui._path_stage_draw = dict(player=player, field=field, torched=seen, cur_torched=seen)
+
+    assert ui._path_hover_target() == (4, 1)
+    route = ui._mouse_path(ui._path_stage_draw, ui._path_hover_target())
+    assert route == [(1, 1), (2, 1), (3, 1), (4, 1)]
+    draws = []
+    monkeypatch.setattr(ui, '_draw_object', lambda signature, factory: draws.append(signature))
+    ui._draw_hover_path(route, seen, seen)
+    assert [draw[0] for draw in draws] == ['path_triangle', 'path_triangle', 'path_endpoint']
+    assert draws[-1][1:3] == (32.5, 470)
+
+    left = pyglet.window.mouse.LEFT
+    ui._path_mouse_press(39, 470, left, 0)
+    assert ui._mouse_move_target is None
+    ui._path_mouse_press(30, 470, left, 0)
+    assert ui._mouse_move_path == route
+    assert ui._mouse_move_step() == (1, 0)
+    assert ui.input_was_mouse
+
+
 def test_mouse_cursor_timeout_restarts_on_motion(sprite_ui, monkeypatch):
     ui = sprite_ui
     visible = []
@@ -167,9 +199,9 @@ def test_mouse_cursor_timeout_restarts_on_motion(sprite_ui, monkeypatch):
     monkeypatch.setattr(PygletUI, '_pump', lambda self: None)
     now = [10.0]
     monkeypatch.setattr(sprite_funcs.time, 'monotonic', lambda: now[0])
-    ui._on_mouse_motion(20, 30, 1, 0)
+    ui._path_mouse_motion(20, 30, 1, 0)
     now[0] = 12.0
-    ui._on_mouse_motion(21, 30, 1, 0)
+    ui._path_mouse_motion(21, 30, 1, 0)
     now[0] = 14.0
     ui._pump()
     assert visible == [True, True]
@@ -178,9 +210,9 @@ def test_mouse_cursor_timeout_restarts_on_motion(sprite_ui, monkeypatch):
     assert visible == [True, True, False]
     assert ui._mouse_position is None
     assert ui._resize_redraw_pending
-    ui._on_mouse_motion(21, 30, 1, 0)
+    ui._path_mouse_motion(21, 30, 1, 0)
     assert ui._mouse_position == (21, 30)
-    ui._on_mouse_leave(21, 30)
+    ui._path_mouse_leave(21, 30)
     assert ui._mouse_position is None
 
 

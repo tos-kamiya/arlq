@@ -363,9 +363,6 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self.window.push_handlers(
             on_key_press=self._on_fullscreen_key_press,
             on_key_release=self._on_fullscreen_key_release,
-            on_mouse_motion=self._on_mouse_motion,
-            on_mouse_drag=self._on_mouse_drag,
-            on_mouse_leave=self._on_mouse_leave,
         )
         self._text_batch = pyglet.graphics.Batch()
         self._hud_row_height = self._menu_cell_size_y
@@ -481,6 +478,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._row_groups = {}
         self._overlay_group = pyglet.graphics.Group(order=10000)
         # Above every field row, below the HUD panels.
+        self._path_group = pyglet.graphics.Group(order=8999)
         self._lp_gauge_group = pyglet.graphics.Group(order=9000)
         self._text_panel_group = pyglet.graphics.Group(order=9999)
         self._text_overlay_group = pyglet.graphics.Group(order=10001)
@@ -795,16 +793,13 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             decor, kwargs = self._last_stage_draw
             self.draw_stage(decor=decor, **kwargs)
 
-    def _on_mouse_motion(self, x, y, dx, dy):
+    def _path_mouse_motion(self, x, y, dx, dy):
         self._mouse_position = (x, y)
         self._mouse_visible_until = time.monotonic() + MOUSE_CURSOR_SECONDS
         self.window.set_mouse_visible(True)
         self._resize_redraw_pending = True
 
-    def _on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        self._on_mouse_motion(x, y, dx, dy)
-
-    def _on_mouse_leave(self, x, y):
+    def _path_mouse_leave(self, x, y):
         self._mouse_position = None
         self._mouse_visible_until = None
         self.window.set_mouse_visible(False)
@@ -814,7 +809,12 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         mouse = self._mouse_position
         if mouse is None or self._menu_active:
             return None
-        x, y = mouse
+        return self._path_cell_at(*mouse)
+
+    def _path_hover_target(self):
+        return self._hovered_cell()
+
+    def _path_cell_at(self, x, y):
         field_y = self.window_height - y
         if not (0 <= x < self.field_pixel_width
                 and 0 <= field_y < self.field_height * self.cell_size_y):

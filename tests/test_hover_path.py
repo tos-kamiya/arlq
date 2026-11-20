@@ -12,6 +12,7 @@ def make_ui():
     ui._path_mouse_deadline = None
     ui.cell_size_x, ui.cell_size_y = 10, 20
     ui.field_width, ui.field_height = 3, 2
+    ui.field_pixel_width = 30
     ui.window_height = 80
     ui.window = SimpleNamespace(set_mouse_visible=lambda value: None)
     return ui
@@ -56,6 +57,7 @@ def test_unexplored_path_arrows_are_outlined():
     ui._path_hover_cell = (3, 1)
     calls = []
     ui._draw_object = lambda signature, factory: calls.append(signature)
+    ui.field_pixel_width = 50
     seen = [[0] * 5, [0, 1, 0, 0, 0], [0] * 5]
     ui._draw_hover_path([(1, 1), (2, 1), (3, 1)], seen, seen)
     assert [call[0] for call in calls] == [
