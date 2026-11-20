@@ -1,5 +1,14 @@
 # ARLQ Release Notes
 
+## 6.9.0 - 2026-11-20
+
+- Add mouse route previews and click-to-move to `arlq` and `arlq-sprites`.
+  Routes avoid visible obstacles. Movement stops if the remaining route changes
+  or the player takes damage. With a Rogue, click movement can break through
+  golem debris along the route.
+- Add mouse navigation to the GUI stage selector and settings. Hover to
+  highlight an option, and click to select it or adjust a setting.
+
 ## 6.8.14 - 2026-11-20
 
 - Keep the screensaver and display sleep off while the GUI (`arlq`,
