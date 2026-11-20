@@ -85,6 +85,18 @@ Screens and controls common to `arlq-cli`, `arlq`, and `arlq-sprites`:
 
 The terminal must be at least 80 columns by 24 lines.
 
+### Character GUI version: `arlq`
+
+Hover over the map to preview a walking route. Triangles show each step's
+direction; hollow triangles indicate unexplored cells. A dot marks the endpoint.
+The route uses known ordinary floor if that reaches the destination, even when
+a route through unexplored cells would be shorter. Otherwise it assumes
+unexplored cells are ordinary floor and chooses a shortest route to the target,
+or to the reachable cell closest to it if the target cannot be reached. Ties
+for the closest cell favor fewer steps, then a fixed direction order. The
+unexplored outer edge of the field is assumed to be a wall. Clicking does not
+move the player.
+
 ### Sprite GUI version: `arlq-sprites`
 
 **Window**: The window opens wide enough to show the complete field and strength

@@ -43,6 +43,7 @@ from . import display as ui_display
 from .__about__ import __version__
 from .arlq import barrier_lp_damage
 from .i18n import t as tr
+from .pathfinding import find_path
 from .pyglet_settings import PygletSettingsMixin
 from .settings import (
     DEFAULT_AUTO_REPEAT_STOP_ENABLED,
@@ -112,6 +113,8 @@ def _menu_method(method):
         self._menu_active = True
         if not was_active:
             self._menu_text_records = []
+            if type(self) is PygletUI:
+                self._path_hover_cell = None
         try:
             return method(self, *args, **kwargs)
         finally:
@@ -353,6 +356,10 @@ class PygletUI(PygletSettingsMixin):
         self._closed = False
         self._key_queue: list = []
         self._stage_input_active = False
+        self._path_hover_cell = None
+        self._path_hover_dirty = False
+        self._path_stage_draw = None
+        self._path_group = pyglet.graphics.Group(order=1)
         self._keyboard_farthest_preview = False
         self._gamepad_preview_held = False
         self._gamepad_preview_toggled = False
@@ -381,6 +388,13 @@ class PygletUI(PygletSettingsMixin):
         self.input_was_repeat = False
 
         window = self.window
+
+        if type(self) is PygletUI:
+            window.push_handlers(
+                on_mouse_motion=self._path_mouse_motion,
+                on_mouse_drag=self._path_mouse_drag,
+                on_mouse_leave=self._path_mouse_leave,
+            )
 
         @window.event
         def on_close():
@@ -1199,6 +1213,68 @@ class PygletUI(PygletSettingsMixin):
             ),
         )
 
+    def _path_mouse_motion(self, x, y, dx, dy):
+        if not self._stage_input_active or self._menu_active:
+            return
+        self.window.set_mouse_visible(True)
+        row = math.floor((self.window_height - y) / self.cell_size_y)
+        col = math.floor(x / self.cell_size_x)
+        cell = (col, row) if (0 <= col < self.field_width and
+                              0 <= row < self.field_height) else None
+        if cell != self._path_hover_cell:
+            self._path_hover_cell = cell
+            self._path_hover_dirty = True
+
+    def _path_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        self._path_mouse_motion(x, y, dx, dy)
+
+    def _path_mouse_leave(self, x, y):
+        self.window.set_mouse_visible(False)
+        if self._path_hover_cell is not None:
+            self._path_hover_cell = None
+            self._path_hover_dirty = True
+
+    def _draw_hover_path(self, field, seen, visible, player):
+        target = self._path_hover_cell
+        if target is None:
+            return
+        path = find_path(field, seen, (player.x, player.y), target, visible)
+        if len(path) < 2:
+            return
+        radius = min(self.cell_size_x, self.cell_size_y) * 0.22
+        color = (255, 230, 110, 180)
+        for (x, y), (nx, ny) in zip(path, path[1:]):
+            cx = (x + 0.5) * self.cell_size_x
+            cy = self.window_height - (y + 0.5) * self.cell_size_y
+            dx, dy = nx - x, y - ny
+            vertices = (cx + dx * radius, cy + dy * radius,
+                        cx - dx * radius - dy * radius, cy - dy * radius + dx * radius,
+                        cx - dx * radius + dy * radius, cy - dy * radius - dx * radius)
+            if seen[y][x] or visible[y][x]:
+                signature = ('path_triangle', *vertices, color)
+                self._draw_object(signature, lambda vertices=vertices: pyglet.shapes.Triangle(
+                    *vertices, color=color, batch=self.batch, group=self._path_group
+                ))
+            else:
+                points = list(zip(vertices[::2], vertices[1::2]))
+                for index in range(3):
+                    x1, y1 = points[index]
+                    x2, y2 = points[(index + 1) % 3]
+                    signature = ('path_triangle_outline', x1, y1, x2, y2, color)
+                    self._draw_object(
+                        signature,
+                        lambda x1=x1, y1=y1, x2=x2, y2=y2: pyglet.shapes.Line(
+                            x1, y1, x2, y2, thickness=1, color=color,
+                            batch=self.batch, group=self._path_group,
+                        ),
+                    )
+        x, y = path[-1]
+        cx = (x + 0.5) * self.cell_size_x
+        cy = self.window_height - (y + 0.5) * self.cell_size_y
+        self._draw_object(('path_endpoint', cx, cy, radius, color), lambda: pyglet.shapes.Circle(
+            cx, cy, radius * 0.55, color=color, batch=self.batch, group=self._path_group
+        ))
+
     def draw_stage(
         self,
         *,
@@ -1234,6 +1310,9 @@ class PygletUI(PygletSettingsMixin):
         - Draws the player and entities with appropriate colors.
         - Draws the status bar at the bottom.
         """
+        if type(self) is PygletUI:
+            self._path_stage_draw = {key: value for key, value in locals().items() if key != 'self'}
+            self._path_hover_dirty = False
         show_entities = show_entities or self.map_mode
         reveal_disguises = debug_show_entities or self.map_mode
         self._clear_drawables()
@@ -1438,6 +1517,9 @@ class PygletUI(PygletSettingsMixin):
                 self._draw_player_status_popup(
                     (px, py), player.status_popup, player.status_popup_tone
                 )
+
+        if type(self) is PygletUI and not floor_view and not extra_keys and not self._menu_active:
+            self._draw_hover_path(field, torched, cur_torched, player)
 
         # Draw the right-edge strength column: the stage's monster tribes and
         # the player, ranked strongest-first. A tinted background (full
@@ -1751,6 +1833,9 @@ class PygletUI(PygletSettingsMixin):
                 self._gamepad_preview_changed = True
             if was_preview_held and not self._gamepad_preview_held:
                 self.floor_view_reset_requested = True
+        if (type(self) is PygletUI and self._path_hover_dirty and self._stage_input_active
+                and not self._menu_active and self._path_stage_draw is not None):
+            self.draw_stage(**self._path_stage_draw)
 
     @property
     def farthest_preview(self) -> bool:
