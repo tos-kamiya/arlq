@@ -40,6 +40,7 @@ def _menu_ui(monkeypatch, events):
     ui._discard_queued_key = lambda _symbol: None
     ui._clear_drawables = lambda: None
     ui._draw_text = lambda *_args, **_kwargs: None
+    ui._draw_menu_return_icon = lambda *_args: None
     ui._text_width = lambda *_args, **_kwargs: 0
     ui._flip = lambda: None
     ui.quit_called = False
@@ -172,7 +173,17 @@ def test_settings_back_and_per_value_apply_controls(monkeypatch):
     ui._draw_text = lambda pos, text, *args, **kwargs: drawn.append((pos, text))
     ui.settings_menu()
     assert any(text.strip() == 'Return to previous screen' for _, text in drawn)
-    assert [pos[1] for pos, text in drawn if text == '⏎ (Apply)'] == [8, 9.5, 11]
+    assert [pos[1] for pos, text in drawn if text == ' (Apply)'] == [8, 9.5, 11]
+
+
+def test_apply_icon_is_drawn_as_lines(monkeypatch):
+    ui = _menu_ui(monkeypatch, [])
+    ui._menu_cell_size_y = 20
+    lines = []
+    monkeypatch.setattr(PygletUI, '_draw_line', lambda self, *args: lines.append(args))
+    PygletUI._draw_menu_return_icon(ui, 40, 8)
+    assert len(lines) == 4
+    assert ui._menu_icon_records == [(40, 8)]
 
 
 def test_back_in_sprite_settings_discards_changes(monkeypatch):

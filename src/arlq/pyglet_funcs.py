@@ -113,6 +113,7 @@ def _menu_method(method):
         was_active = self._menu_active
         self._menu_active = True
         self._menu_hover_index = None
+        self._menu_icon_records = []
         if not was_active:
             self._menu_text_records = []
             if type(self) is PygletUI:
@@ -304,6 +305,7 @@ class PygletUI(PygletSettingsMixin):
         self._menu_mouse_regions = []
         self._menu_hover_regions = []
         self._menu_hover_index = None
+        self._menu_icon_records = []
         self._frame_drawable_cache = None
         self._reused_drawable_ids = set()
         self.controller = None
@@ -687,6 +689,7 @@ class PygletUI(PygletSettingsMixin):
     def _clear_drawables(self):
         if self._menu_active:
             self._menu_text_records = []
+            self._menu_icon_records = []
         for signature in list(self._drawable_cache):
             if not self._retain_drawable(signature):
                 for drawable in self._drawable_cache.pop(signature):
@@ -704,9 +707,12 @@ class PygletUI(PygletSettingsMixin):
     def _redraw_menu_text(self) -> None:
         """Rebuild the active menu at the saved display scale after resizing."""
         records = list(self._menu_text_records)
+        icons = list(self._menu_icon_records)
         self._clear_drawables()
         for args in records:
             self._draw_text(*args)
+        for x, y in icons:
+            self._draw_menu_return_icon(x, y)
         self._flip()
 
     def _draw_object(self, signature, factory):
@@ -1290,10 +1296,29 @@ class PygletUI(PygletSettingsMixin):
         self._menu_mouse_row(row, current, y, value_end=8 + width, action=action)
 
     def _menu_apply_control(self, y, x):
-        label = f"⏎ ({tr('Apply')})"
-        self._draw_text((x, y), label, COLOR_MAP['default'])
-        width = max(1, self._text_width(label) / self._menu_cell_size_x)
+        label = f" ({tr('Apply')})"
+        self._draw_menu_return_icon(x, y)
+        self._draw_text((x + 1, y), label, COLOR_MAP['default'])
+        width = 1 + self._text_width(label) / self._menu_cell_size_x
         self._menu_mouse_regions.append((x, y - 0.2, x + width, y + 1, [pgkey.F12]))
+
+    def _draw_menu_return_icon(self, x, y):
+        self._menu_icon_records.append((x, y))
+        left = x * self._menu_cell_size_x
+        top = y * self._menu_cell_size_y
+        width, height = self._menu_cell_size_x, self._menu_cell_size_y
+        tip = left + width * 0.18
+        middle = top + height * 0.59
+        right = left + width * 0.82
+        thickness = max(1, round(min(width, height) * 0.08))
+        color = COLOR_MAP['default']
+        for x1, y1, x2, y2 in (
+            (right, top + height * 0.25, right, middle),
+            (right, middle, tip, middle),
+            (tip, middle, left + width * 0.42, top + height * 0.42),
+            (tip, middle, left + width * 0.42, top + height * 0.76),
+        ):
+            PygletUI._draw_line(self, x1, y1, x2, y2, color, thickness)
 
     def _draw_hover_path(self, field, seen, visible, player):
         target = self._path_hover_cell
