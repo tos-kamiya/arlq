@@ -1,5 +1,9 @@
 # ARLQ Release Notes
 
+## 6.9.1 - 2026-11-20
+
+- Add support for Python 3.9.
+
 ## 6.9.0 - 2026-11-20
 
 - Add mouse route previews and click-to-move to `arlq` and `arlq-sprites`.
