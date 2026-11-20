@@ -60,6 +60,7 @@ Use `arlq-sprites --samurai` to play with the samurai character sprites.
 | `--lang en`, `--lang ja`, `--lang auto` | Choose the language of in-game messages and the stage-select screen. `auto` (the default) detects it from the locale. Status-bar labels and item names stay in English. |
 | `-T` / `--large-torch` | Difficulty option. Widen the field of view. |
 | `-t` / `--small-torch` | Difficulty option. Narrow the field of view. |
+| `--allow-screensaver` | GUI only. Let the screensaver and display sleep start as usual. By default the GUI keeps them off while the game runs. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
 At game start, the stage and seed are saved to `arlq/last-seed` under the user

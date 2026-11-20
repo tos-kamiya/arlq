@@ -173,6 +173,10 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
                 help='Use the Pyglet sprite UI: 3D-rendered characters and marble column walls '
                      '(characters without a sprite stay text).',
             )
+        gui.add_argument(
+            "--allow-screensaver", action="store_true",
+            help="Do not keep the screensaver and display sleep off while the GUI runs.",
+        )
     if sprites_only:
         gui.add_argument("--samurai", action="store_true",
                          help="Use the samurai player sprites.")
@@ -428,7 +432,13 @@ def main(terminal_only=False, sprites_only=False):
         # The Pyglet frontends keep each setting in an attribute of the same name.
         for name, value in overrides.items():
             setattr(ui, name, value)
-        play(ui)
+        if args.allow_screensaver:
+            play(ui)
+        else:
+            from wakepy import keep
+
+            with keep.presenting(on_fail="pass"):
+                play(ui)
 
     if trace_recorder is not None:
         cache_dir = Path(user_cache_dir("arlq"))
