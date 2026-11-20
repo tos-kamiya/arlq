@@ -249,7 +249,7 @@ def should_stop_movement_repeat(
     player: d.Player,
     show_all_entities: bool = False,
     known_types: Optional[set[str]] = None,
-    ignore_untriggered_collapse: bool = False,
+    mouse_move: bool = False,
     allow_target: bool = False,
 ) -> bool:
     """Check visible terrain and entities before an automatic repeated step."""
@@ -276,17 +276,23 @@ def should_stop_movement_repeat(
         *d.STAIR_CHARS,
     ) and not passable_secret and not allow_target:
         return True
-    for entity in _visible_auto_stop_entities(
-        current, player, show_all_entities, known_types or set()
-    ):
-        if ignore_untriggered_collapse and isinstance(entity, d.Collapse):
-            continue
-        # Stop only when this step would enter a visible entity's cell.
-        if (entity.x, entity.y) == next_position:
-            if allow_target:
-                continue
-            return True
-    return False
+    if allow_target:
+        return False
+    if mouse_move:
+        return any(
+            (entity.x, entity.y) == next_position
+            and ui_display.mouse_path_obstacle(
+                entity, current.seen[ny][nx], known_types or set(),
+                show_all_entities, show_all_entities,
+            )
+            for entity in current.entities
+        )
+    return any(
+        (entity.x, entity.y) == next_position
+        for entity in _visible_auto_stop_entities(
+            current, player, show_all_entities, known_types or set()
+        )
+    )
 
 
 def _stop_movement_repeat(ui: Any) -> None:
@@ -1584,7 +1590,7 @@ def _process_multi_floor_turn(
     # GameSession always passes this. Direct callers that omit it skip the
     # discovery update after barrier damage, unlike real play.
     torch_radius: Optional[int] = None,
-    stop_on_damage: bool = False,
+    mouse_move: bool = False,
 ) -> Optional[tuple[int, str]] | _RewindRequest:
     if player.status_popup_ticks > 0:
         player.status_popup_ticks -= 1
@@ -1608,7 +1614,8 @@ def _process_multi_floor_turn(
     wall_result = None
     if not standing_on_collapse:
         wall_result = _move_player(direction, current, player, trace=trace)
-    if wall_result is not None and repeat_stop_reasons is not None:
+    if (wall_result is not None and repeat_stop_reasons is not None
+            and not (mouse_move and wall_result.result == "golem_wall_break")):
         repeat_stop_reasons.add("wall_interaction")
     if standing_on_collapse and repeat_stop_reasons is not None:
         repeat_stop_reasons.add("collapse_transition")
@@ -1750,7 +1757,7 @@ def _process_multi_floor_turn(
         if repeat_stop_reasons is not None:
             repeat_stop_reasons.add("ivy_hit")
     hazard_damage = max(0, old_hazard_lp - player.lp)
-    if stop_on_damage and hazard_damage and repeat_stop_reasons is not None:
+    if mouse_move and hazard_damage and repeat_stop_reasons is not None:
         repeat_stop_reasons.add("damage")
     if hazard_damage or player.marksman_damage_prevented:
         tone = (
@@ -1820,7 +1827,7 @@ def _process_multi_floor_turn(
             trace=trace,
             stage_num=stage_num,
         )
-        if stop_on_damage and player.lp < contact_lp and repeat_stop_reasons is not None:
+        if mouse_move and player.lp < contact_lp and repeat_stop_reasons is not None:
             repeat_stop_reasons.add("damage")
         if combat_event is not None:
             combat_event.lp_delta = player.lp - contact_lp

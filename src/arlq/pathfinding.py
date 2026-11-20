@@ -6,6 +6,14 @@ from typing import Optional
 from . import defs as d
 
 
+def is_route_floor(cell: str, allow_d_gate: bool, *, allow_golem_wall: bool = False) -> bool:
+    return (
+        cell in (d.CHAR_FLOOR, *d.HIDDEN_STAIRS_CHARS)
+        or (allow_d_gate and cell == d.CHAR_D_GATE)
+        or (allow_golem_wall and cell == d.CHAR_GOLEM_WALL)
+    )
+
+
 def find_path(
     field: list[list[str]],
     seen: list[list[int]],
@@ -14,6 +22,7 @@ def find_path(
     visible: Optional[list[list[int]]] = None,
     *,
     allow_d_gate: bool = False,
+    allow_golem_wall: bool = False,
     allow_special_target: bool = False,
     blocked: Optional[set[d.Point]] = None,
 ) -> list[d.Point]:
@@ -58,11 +67,9 @@ def find_path(
                     continue
                 nx, ny = point
                 if known(nx, ny):
-                    cell = field[ny][nx]
-                    passable = cell in (d.CHAR_FLOOR, *d.HIDDEN_STAIRS_CHARS)
-                    passable |= allow_d_gate and cell == d.CHAR_D_GATE
-                    passable |= allow_special_target and point == target
-                    if not passable:
+                    if not (is_route_floor(field[ny][nx], allow_d_gate,
+                                           allow_golem_wall=allow_golem_wall)
+                            or (allow_special_target and point == target)):
                         continue
                 elif (not allow_unknown or nx in (0, width - 1) or ny in (0, height - 1)) and not (
                     allow_special_target and allow_unknown and point == target

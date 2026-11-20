@@ -8,6 +8,7 @@ from . import defs as d
 from . import game_engine as engine
 from .arlq import GameConfig
 from .game_events import GameEvent, Rewound, _emit
+from .pathfinding import is_route_floor
 from .utils import rand
 
 
@@ -213,10 +214,10 @@ class GameSession:
             field = engine._field_for_display(self.floors, self.floor[0], self.player)
             valid = 0 <= ny < len(field) and 0 <= nx < len(field[ny])
             if valid:
-                cell = field[ny][nx]
-                valid = cell in (d.CHAR_FLOOR, *d.HIDDEN_STAIRS_CHARS)
-                valid |= cell == d.CHAR_D_GATE and d.has_member(self.player, d.MEMBER_DUNGEON_EXPLORER)
-                valid |= (nx, ny) == mouse_target
+                valid = (nx, ny) == mouse_target or is_route_floor(
+                    field[ny][nx], d.has_member(self.player, d.MEMBER_DUNGEON_EXPLORER),
+                    allow_golem_wall=d.has_member(self.player, d.MEMBER_ROGUE),
+                )
             if not valid:
                 return TurnResult(False, self.message, True, floor_before, floor_before)
         show_entities = self.debug_show_entities or map_mode
@@ -249,7 +250,7 @@ class GameSession:
                 self.player,
                 show_all_entities=show_entities,
                 known_types=known_types,
-                **({"ignore_untriggered_collapse": True} if mouse_move else {}),
+                **({"mouse_move": True} if mouse_move else {}),
                 **({"allow_target": True} if mouse_move and mouse_target == (
                     self.player.x + move[0], self.player.y + move[1]) else {}),
             )
@@ -296,7 +297,7 @@ class GameSession:
             repeat_stop_reasons=repeat_stop_reasons,
             events=events,
             torch_radius=self.config.torch_radius,
-            **({"stop_on_damage": True} if mouse_move else {}),
+            **({"mouse_move": True} if mouse_move else {}),
         )
         if mouse_move and (self.player.lp < lp_before_step or self.floor[0] != floor_before_step):
             stop_repeat = True

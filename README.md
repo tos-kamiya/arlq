@@ -106,13 +106,15 @@ new route. Movement also stops
 before entering terrain other than ordinary floor, including unexplored walls,
 unless it is the clicked destination. Any cell can be a destination: the last
 step uses normal movement and interaction rules, even for walls, hazards or
-stronger monsters. Visible monsters, elves, fairies, and waiting members are
-avoided along the route unless they are at the destination. Other obstacles
+stronger monsters. Visible monsters, elves, fairies, waiting members, and
+chests (including disguised mimics) are avoided along the route unless they
+are at the destination. Other obstacles
 along the way still stop movement. With a
 Dungeon Explorer in the party, the route can also
-use revealed secret passages. Movement stops after damage or a floor change.
-Hidden chests, hidden mimics, and untriggered pits do not prevent a step by
-themselves. Automatic repeat stop conditions always apply, even when the setting
+use revealed secret passages. With a Rogue, click movement can break through
+golem debris along the route. Movement stops after damage or a floor change.
+Hidden chests, hidden mimics, and unrevealed pits do not prevent a step by
+themselves. A visible pit marker is an obstacle. Automatic repeat stop conditions always apply, even when the setting
 is off. Press a movement key or Escape to cancel, or click a new destination.
 With Pegasus, a final step into a wall can trigger the usual jump; the movement
 then stops. Jumps are not included in the route calculation.

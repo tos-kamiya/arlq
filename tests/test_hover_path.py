@@ -36,8 +36,8 @@ def test_hover_path_uses_directions_and_marks_reachable_endpoint():
     ui._path_hover_cell = (2, 0)
     calls = []
     ui._draw_object = lambda signature, factory: calls.append(signature)
-    ui._draw_hover_path([list('  #'), list('   ')], [[1] * 3 for _ in range(2)],
-                        [[1] * 3 for _ in range(2)], SimpleNamespace(x=0, y=0))
+    ui._draw_hover_path([(0, 0), (1, 0), (2, 0)], [[1] * 3 for _ in range(2)],
+                        [[1] * 3 for _ in range(2)])
     assert [call[0] for call in calls] == ['path_triangle', 'path_triangle', 'path_endpoint']
     _, tip_x, tip_y, *_ = calls[0]
     assert tip_x > 5 and tip_y == 70
@@ -56,9 +56,8 @@ def test_unexplored_path_arrows_are_outlined():
     ui._path_hover_cell = (3, 1)
     calls = []
     ui._draw_object = lambda signature, factory: calls.append(signature)
-    ui._draw_hover_path([list('     ')] * 3, [[0] * 5, [0, 1, 0, 0, 0], [0] * 5],
-                        [[0] * 5, [0, 1, 0, 0, 0], [0] * 5],
-                        SimpleNamespace(x=1, y=1))
+    seen = [[0] * 5, [0, 1, 0, 0, 0], [0] * 5]
+    ui._draw_hover_path([(1, 1), (2, 1), (3, 1)], seen, seen)
     assert [call[0] for call in calls] == [
         'path_triangle', 'path_triangle_outline', 'path_triangle_outline',
         'path_triangle_outline', 'path_endpoint',

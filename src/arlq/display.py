@@ -484,6 +484,22 @@ def revealed_entity_glyphs(
     return []
 
 
+def mouse_path_obstacle(
+    entity: d.Entity,
+    seen: bool,
+    known_types: set[str],
+    show_all: bool,
+    reveal_disguises: bool,
+) -> bool:
+    """Check whether the map shows an obstacle at the entity's own cell."""
+    if show_all and preview_entity_glyphs(entity, reveal_disguises, known_types):
+        return True
+    # Strength coloring does not affect whether a glyph is drawn.
+    return bool(seen and revealed_entity_glyphs(
+        entity, known_types, show_all, 0, None, reveal_disguises=reveal_disguises,
+    ))
+
+
 def choice_options(yes: bool) -> list[tuple[str, bool]]:
     from .i18n import t as tr
     return [

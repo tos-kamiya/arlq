@@ -162,15 +162,15 @@ def test_mouse_stops_before_actual_non_floor_even_if_unexplored(session, terrain
     assert (session.player.x, session.player.y, session.turn) == (2, 2, 0)
 
 
-def test_mouse_ignores_untriggered_collapse_at_precheck(session, monkeypatch):
+def test_mouse_stops_before_displayed_collapse(session):
     current = session.floors[0]
     current.entities.append(d.Collapse(3, 2))
     current.seen[2][3] = 1
-    monkeypatch.setattr(game_engine, '_process_multi_floor_turn',
-                        lambda move, floors, player, *_args, **_kwargs: setattr(player, 'x', 3))
+
     result = session.step((1, 0), repeat=True, mouse_move=True)
-    assert result.consumed
-    assert session.player.x == 3
+
+    assert not result.consumed and result.stop_repeat
+    assert session.player.x == 2
 
 
 @pytest.mark.parametrize('kind', ['treasure', 'mimic'])
@@ -184,6 +184,28 @@ def test_mouse_does_not_stop_for_undisplayed_entity(session, monkeypatch, kind):
                         lambda move, floors, player, *_args, **_kwargs: setattr(player, 'x', 3))
     result = session.step((1, 0), repeat=True, mouse_move=True)
     assert result.consumed and not result.stop_repeat
+
+
+@pytest.mark.parametrize('kind', ['treasure', 'mimic'])
+def test_mouse_stops_before_displayed_chest_unless_it_is_the_target(session, monkeypatch, kind):
+    current = session.floors[0]
+    if kind == 'mimic':
+        entity = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['M'])
+    else:
+        entity = d.Treasure(3, 2, 'W')
+        entity.unlocked = True
+    current.entities.append(entity)
+    current.seen[2][3] = 1
+    monkeypatch.setattr(game_engine, '_process_multi_floor_turn',
+                        lambda move, floors, player, *_args, **_kwargs: setattr(player, 'x', 3))
+
+    result = session.step((1, 0), repeat=True, mouse_move=True)
+    assert not result.consumed and result.stop_repeat
+    assert session.player.x == 2
+
+    result = session.step((1, 0), repeat=True, mouse_move=True, mouse_target=(3, 2))
+    assert result.consumed
+    assert session.player.x == 3
 
 
 @pytest.mark.parametrize('damage,stops', [(0, False), (0.5, True)])
@@ -274,9 +296,13 @@ def test_mouse_can_enter_clicked_special_terrain_but_not_cross_it(session, monke
     assert entered.consumed and session.player.x == 3
 
 
-@pytest.mark.parametrize('kind', ['monster', 'fairy', 'elf', 'member'])
+@pytest.mark.parametrize('kind', ['monster', 'fairy', 'elf', 'member', 'mimic', 'treasure'])
 def test_mouse_can_enter_clicked_entity_but_stops_for_other_entity(session, monkeypatch, kind):
+    treasure = d.Treasure(3, 2, 'W')
+    treasure.unlocked = True
     entity = {
+        'treasure': lambda: treasure,
+        'mimic': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['M']),
         'monster': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['a']),
         'fairy': lambda: d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE['l']),
         'elf': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['J']),
@@ -300,17 +326,48 @@ def test_explorer_can_walk_through_revealed_passage(session):
     assert result.consumed and session.player.x == 3
 
 
+def test_rogue_click_route_breaks_golem_wall_and_continues(session, monkeypatch):
+    ui, _, _, _ = mouse_ui(monkeypatch)
+    current = session.floors[0]
+    current.field[2][3] = d.CHAR_GOLEM_WALL
+    current.seen[2][2:5] = [1, 1, 1]
+    ui._path_stage_draw = session.view()
+    assert (3, 2) not in ui._mouse_path(ui._path_stage_draw, (4, 2))
+
+    session.player.members.append(d.PartyMember(2, 2, d.MEMBER_ROGUE))
+    ui._path_stage_draw = session.view()
+    ui._path_mouse_press(45, 25, mouse.LEFT, 0)
+    assert ui._mouse_move_path == [(2, 2), (3, 2), (4, 2)]
+
+    move = ui._mouse_move_step()
+    assert move == (1, 0) and ui.input_mouse_target is None
+    result = session.step(move, repeat=True, mouse_move=True)
+    ui.finish_mouse_step(result, session.player)
+    assert result.consumed and not result.stop_repeat
+    assert current.field[2][3] == d.CHAR_FLOOR
+    assert (3, 2) in current.broken_walls
+
+    ui._path_stage_draw = session.view()
+    ui._next_mouse_move_at = 0
+    assert ui._mouse_move_step() == (1, 0)
+    assert ui.input_mouse_target == (4, 2)
+
+
 def test_passage_remains_blocked_without_explorer(session):
     session.floors[0].field[2][3] = d.CHAR_D_GATE
     result = session.step((1, 0), repeat=True, mouse_move=True)
     assert result.stop_repeat and not result.consumed
 
 
-@pytest.mark.parametrize('kind', ['monster', 'fairy', 'elf', 'member'])
+@pytest.mark.parametrize('kind', ['monster', 'fairy', 'elf', 'member', 'mimic', 'treasure'])
 def test_click_marks_visible_entity_as_intended_target(monkeypatch, kind):
     ui, _, _, _ = mouse_ui(monkeypatch)
     player = d.Player(1, 2, 100, 90)
+    treasure = d.Treasure(3, 2, 'W')
+    treasure.unlocked = True
     entity = {
+        'treasure': lambda: treasure,
+        'mimic': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['M']),
         'monster': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['a']),
         'fairy': lambda: d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE['l']),
         'elf': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['J']),
@@ -380,11 +437,15 @@ def test_clicked_stronger_monster_is_contacted(session):
     assert session.player.last_contact_monster is not None
 
 
-@pytest.mark.parametrize('kind', ['monster', 'fairy', 'elf', 'member'])
+@pytest.mark.parametrize('kind', ['monster', 'fairy', 'elf', 'member', 'mimic', 'treasure'])
 def test_visible_entities_are_path_obstacles_but_click_target_is_allowed(monkeypatch, kind):
     ui, _, field, seen = mouse_ui(monkeypatch)
     player = d.Player(1, 2, 100, 90)
+    treasure = d.Treasure(3, 2, 'W')
+    treasure.unlocked = True
     entity = {
+        'treasure': lambda: treasure,
+        'mimic': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['M']),
         'monster': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['a']),
         'fairy': lambda: d.Fairy(3, 2, d.CHAR_TO_FAIRY_TRIBE['l']),
         'elf': lambda: d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['J']),
@@ -397,7 +458,7 @@ def test_visible_entities_are_path_obstacles_but_click_target_is_allowed(monkeyp
     assert ui._mouse_path(view, (3, 2))[-1] == (3, 2)
 
 
-def test_unseen_entities_and_disguises_do_not_change_path(monkeypatch):
+def test_only_displayed_entities_are_obstacles(monkeypatch):
     ui, _, field, seen = mouse_ui(monkeypatch)
     player = d.Player(1, 2, 100, 90)
     monster = d.Monster(3, 2, d.CHAR_TO_MONSTER_TRIBE['a'])
@@ -405,10 +466,10 @@ def test_unseen_entities_and_disguises_do_not_change_path(monkeypatch):
     collapse = d.Collapse(2, 2)
     view = ui._path_stage_draw
     view.update(player=player, entities=[player, monster, mimic, collapse], known_types=set())
-    seen[2][3] = 0
+    seen[2][2] = seen[2][3] = seen[2][4] = 0
     assert ui._mouse_path_obstacles(view) == set()
-    seen[2][3] = 1
-    assert ui._mouse_path_obstacles(view) == {(3, 2)}
+    seen[2][2] = seen[2][3] = seen[2][4] = 1
+    assert ui._mouse_path_obstacles(view) == {(2, 2), (3, 2), (4, 2)}
 
 
 def test_newly_visible_entity_causes_route_change_to_stop(monkeypatch):
