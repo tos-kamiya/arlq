@@ -1,5 +1,11 @@
 # ARLQ Release Notes
 
+## 6.8.14 - 2026-11-20
+
+- Keep the screensaver and display sleep off while the GUI (`arlq`,
+  `arlq-sprites`) runs. Use `--allow-screensaver` to let them start as usual.
+  This adds the `wakepy` dependency.
+
 ## 6.8.13 - 2026-11-20
 
 - Show the knight or samurai kneeling on the sprite-mode game-over screen
