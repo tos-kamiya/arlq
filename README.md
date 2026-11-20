@@ -76,53 +76,37 @@ options reproduce layouts across Python versions.
 Screens and controls common to `arlq-cli`, `arlq`, and `arlq-sprites`:
 
 - The stage selector arranges `[1]` through `[6]` in two columns and three rows; select a stage directly with a number key.
-- Control the player character (`@` in `arlq-cli` and `arlq`) using the arrow keys or WASD. GUI versions also support gamepads; button assignments can be changed in `Settings` → `Gamepad button settings`.
+- Control the player character (`@` in `arlq-cli` and `arlq`) using the arrow keys or WASD.
 - Your vision is centered on your location, and explored areas remain visible on the automap.
 - After contacting an enemy, its party composition remains in brackets, such as `[aaw]`, to the left of event messages.
 - Temporary status popups appear near the player, while event messages appear at the bottom of the screen.
-- In both GUI versions, hover over a stage or menu option to highlight it, and
-  click to select it. In settings, click the left or right side of a value to
-  change it, then click its apply control or select Back to discard changes.
+
+Controls in `arlq` and `arlq-sprites`:
+
+**Gamepad**
+
+Use the D-pad or left stick to move. You can change the controls help and
+range / floor preview buttons in `Settings` → `Gamepad button settings`.
+
+**Mouse**
+
+Hover over a stage or menu option to highlight it, and click to select it.
+In settings, click the left or right side of a value to change it, then click
+its apply control or select Back to discard changes.
+
+Hover over a map cell to preview a route. The route treats unexplored cells
+as clear, except at the map edge, and avoids visible obstacles such as monsters
+unless they occupy the destination.
+
+Left-click a map cell to move toward it. If newly revealed terrain or obstacles
+change the remaining route, movement stops before the next step. Taking damage
+also stops movement.
 
 ### Terminal version: `arlq-cli`
 
 The terminal must be at least 80 columns by 24 lines.
 
-### Character GUI version: `arlq`
-
-Hover over the map to preview a walking route. Triangles show each step's
-direction; hollow triangles indicate unexplored cells. A dot marks the endpoint.
-The route uses known ordinary floor if that reaches the destination, even when
-a route through unexplored cells would be shorter. Otherwise it assumes
-unexplored cells are ordinary floor and chooses a shortest route to the target,
-or to the reachable cell closest to it if the target cannot be reached. Ties
-for the closest cell favor fewer steps, then a fixed direction order. The
-unexplored outer edge of the field is assumed to be a wall, but can still be a
-destination. The cursor and route
-disappear after three seconds without mouse movement. Left-click a map cell to
-walk toward it. The route is checked as terrain is revealed, and movement stops
-before the next step if the remaining route changes. Click again to follow the
-new route. Movement also stops
-before entering terrain other than ordinary floor, including unexplored walls,
-unless it is the clicked destination. Any cell can be a destination: the last
-step uses normal movement and interaction rules, even for walls, hazards or
-stronger monsters. Visible monsters, elves, fairies, waiting members, and
-chests (including disguised mimics) are avoided along the route unless they
-are at the destination. Other obstacles
-along the way still stop movement. With a
-Dungeon Explorer in the party, the route can also
-use revealed secret passages. With a Rogue, click movement can break through
-golem debris along the route. Movement stops after damage or a floor change.
-Hidden chests, hidden mimics, and unrevealed pits do not prevent a step by
-themselves. A visible pit marker is an obstacle. Automatic repeat stop conditions always apply, even when the setting
-is off. Press a movement key or Escape to cancel, or click a new destination.
-With Pegasus, a final step into a wall can trigger the usual jump; the movement
-then stops. Jumps are not included in the route calculation.
-
 ### Sprite GUI version: `arlq-sprites`
-
-Hover over a map cell to preview the route and left-click to walk there.
-The route and stopping rules are the same as in the character GUI.
 
 **Window**: The window opens wide enough to show the complete field and strength
 column without scrolling, and can be resized in both dimensions. Changing the
