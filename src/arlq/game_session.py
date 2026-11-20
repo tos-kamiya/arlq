@@ -9,7 +9,7 @@ from . import game_engine as engine
 from .arlq import GameConfig
 from .game_events import GameEvent, Rewound, _emit
 from .pathfinding import is_route_floor
-from .utils import rand
+from .utils import rand, zip_strict
 
 
 @dataclass
@@ -373,8 +373,8 @@ class GameSession:
             self.trace.set_player(self.player, floor_index=self.floor[0])
             seen_added_count = sum(
                 1
-                for floor_data, previous_seen in zip(
-                    self.floors, self.trace_seen_recorded, strict=True
+                for floor_data, previous_seen in zip_strict(
+                    self.floors, self.trace_seen_recorded
                 )
                 for y, row in enumerate(floor_data.seen)
                 for x, is_seen in enumerate(row)

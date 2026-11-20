@@ -4,7 +4,7 @@ import heapq
 import math
 from collections import Counter
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from . import bridgehead, stage5, stage6, stage56
 from . import defs as d
@@ -54,7 +54,7 @@ from .stage_world import (
     build_single_floor,
 )
 from .trace import DIR_TO_KEY, TraceRecorder
-from .utils import player_spawn_exclusion, rand
+from .utils import bit_count, player_spawn_exclusion, rand
 
 ELF_REPEAT_MESSAGES = {
     "K": "-- The Collector Elf (K) looks satisfied.",
@@ -855,7 +855,7 @@ def _resolve_elf_contact(
             trace.record_contact({"type": "monster", "id": "K", "outcome": "refused"})
     elif (
         ch == "H"
-        and (
+        and bit_count(
             player.elf_stage_flags
             & (
                 d.ELF_STAGE_I_FLAG
@@ -864,7 +864,7 @@ def _resolve_elf_contact(
                 | d.ELF_STAGE_L_FLAG
                 | d.ELF_STAGE_S_FLAG
             )
-        ).bit_count()
+        )
         < 2
     ):
         current.entities.append(entity)
@@ -1591,7 +1591,7 @@ def _process_multi_floor_turn(
     # discovery update after barrier damage, unlike real play.
     torch_radius: Optional[int] = None,
     mouse_move: bool = False,
-) -> Optional[tuple[int, str]] | _RewindRequest:
+) -> Union[tuple[int, str], _RewindRequest, None]:
     if player.status_popup_ticks > 0:
         player.status_popup_ticks -= 1
         if player.status_popup_ticks == 0:

@@ -1,5 +1,7 @@
 """Stage 6 dungeon generation."""
 
+from typing import Optional
+
 from collections import deque
 
 from . import defs as d
@@ -19,7 +21,7 @@ from .stage_world import (
     _place_collapses,
     _place_final_floor_barriers,
 )
-from .utils import player_spawn_exclusion, rand
+from .utils import player_spawn_exclusion, rand, zip_strict
 
 MAX_STAGE_GENERATION_RETRIES = 5
 
@@ -70,7 +72,7 @@ def _add_second_detached_gate(current: Floor, split_edge: tuple[d.Point, d.Point
 
 def _place_detached_room_monsters(
     current: Floor, room_components: tuple[set[d.Point], ...], *,
-    avoid: set[d.Point] | None = None,
+    avoid: Optional[set[d.Point]] = None,
 ) -> list[d.Monster]:
     detached = next(
         (component for component in room_components if len(component) == 1), None
@@ -119,7 +121,7 @@ def _place_detached_room_monsters(
         roster.append(choice)
     monsters = [
         d.Monster(*point, d.CHAR_TO_MONSTER_TRIBE[char], empowered=empowered)
-        for point, (char, empowered) in zip(chosen_points, roster, strict=True)
+        for point, (char, empowered) in zip_strict(chosen_points, roster)
     ]
     current.entities.extend(monsters)
     return monsters
@@ -130,9 +132,9 @@ def _place_party(
     roster: list[tuple[str, int]],
     floor_index: int = 0,
     *,
-    room: d.Point | None = None,
+    room: Optional[d.Point] = None,
     respect_spawn_blocks: bool = False,
-    avoid: set[d.Point] | None = None,
+    avoid: Optional[set[d.Point]] = None,
 ) -> None:
     # Keep parties separate horizontally and vertically. Members of each
     # party are placed vertically; walls and narrow corridors may be blocked.
@@ -230,7 +232,7 @@ def _place_initial_boss_party(current: Floor) -> tuple[list[d.Monster], set[d.Po
         raise _BossRouteNotFound("no vertical space for the Stage 6 boss party")
     line, cells = rand.choice(layouts)
     party = [d.Monster(*point, d.CHAR_TO_MONSTER_TRIBE[char], rank)
-             for point, (char, rank) in zip(cells, roster, strict=True)]
+             for point, (char, rank) in zip_strict(cells, roster)]
     party[0].boss_id = 1
     current.entities.extend(party)
     return party, set(line)
@@ -300,9 +302,9 @@ def _can_join_at(current: Floor, monster: d.Monster, point: d.Point, *,
 
 
 def spawn_monster(current: Floor, floor_index: int, *,
-                  avoid: set[d.Point] | None = None,
-                  player_position: d.Point | None = None,
-                  variant: tuple[str, int] | None = None,
+                  avoid: Optional[set[d.Point]] = None,
+                  player_position: Optional[d.Point] = None,
+                  variant: Optional[tuple[str, int]] = None,
                   isolated: bool = False,
                   prefer_adjacent: bool = True) -> bool:
     """Try distinct positions for one independently drawn monster."""
@@ -376,7 +378,7 @@ def advance_spawns(
     return spawned
 
 
-def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
+def build(config: Optional[GameConfig] = None) -> tuple[list[Floor], d.Player]:
     for _ in range(MAX_STAGE_GENERATION_RETRIES + 1):
         try:
             return _build_once(config)
@@ -387,7 +389,7 @@ def build(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
     )
 
 
-def _build_once(config: GameConfig | None = None) -> tuple[list[Floor], d.Player]:
+def _build_once(config: Optional[GameConfig] = None) -> tuple[list[Floor], d.Player]:
     config = config or GameConfig()
     corridor_h_width = config.corridor_h_width + 1
     corridor_v_width = config.corridor_v_width + 1
@@ -622,7 +624,7 @@ def _bridgehead_known_radius() -> int:
 
 
 def _candidate_near_bridgehead(
-    current: Floor, anchor: d.Point, excluded: d.Point | None = None, *,
+    current: Floor, anchor: d.Point, excluded: Optional[d.Point] = None, *,
     avoid_neighbors: bool = False,
 ) -> d.Point:
     bridgehead = current.bridgehead or anchor
@@ -776,7 +778,7 @@ def relocate_candidates(floors, player, candidates, player_floor=None):
         current.entities.append(member)
 
 
-def _choose_stair_point(candidates: list[d.Point], used_sections: set[d.Point]) -> d.Point | None:
+def _choose_stair_point(candidates: list[d.Point], used_sections: set[d.Point]) -> Optional[d.Point]:
     """Prefer sections beyond the eight neighbors, then use an adjacent section."""
     distinct = [point for point in candidates if tile_at(point) not in used_sections]
     distant = [

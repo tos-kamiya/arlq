@@ -1,6 +1,24 @@
-from typing import Sequence, TypeVar
+import sys
+from typing import Any, Iterator, Optional, Sequence, TypeVar
 
 T = TypeVar("T")
+
+
+if sys.version_info >= (3, 10):
+    def zip_strict(*sequences: Sequence[Any]) -> Iterator[tuple[Any, ...]]:
+        return zip(*sequences, strict=True)
+
+    def bit_count(value: int) -> int:
+        return value.bit_count()
+
+else:
+    def zip_strict(*sequences: Sequence[Any]) -> Iterator[tuple[Any, ...]]:
+        if sequences and any(len(seq) != len(sequences[0]) for seq in sequences[1:]):
+            raise ValueError("zip_strict arguments must have the same length")
+        return zip(*sequences)
+
+    def bit_count(value: int) -> int:
+        return bin(value).count("1")
 
 
 def player_spawn_exclusion(point):
@@ -46,7 +64,7 @@ class MyRandom:
         value ^= value >> 18
         return value
 
-    def randrange(self, start: int, stop: int | None = None) -> int:
+    def randrange(self, start: int, stop: Optional[int] = None) -> int:
         if stop is None:
             start, stop = 0, start
         if stop <= start:

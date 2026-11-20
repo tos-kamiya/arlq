@@ -9,6 +9,7 @@ from . import defs as d
 from .i18n import trp
 from .stage_types import Floor, ReplayContext
 from .stage_world import _spawn
+from .utils import zip_strict
 
 
 @dataclass
@@ -50,8 +51,8 @@ class _RewindKnowledge:
         )
 
     def restore(self, floors: list[Floor], player: d.Player) -> None:
-        for index, (floor_data, preserved_seen, preserved_secrets) in enumerate(zip(
-            floors, self.seen, self.discovered_secrets, strict=True
+        for index, (floor_data, preserved_seen, preserved_secrets) in enumerate(zip_strict(
+            floors, self.seen, self.discovered_secrets
         )):
             floor_data.seen = preserved_seen
             for (x, y), cell in preserved_secrets.items():

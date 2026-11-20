@@ -1,5 +1,7 @@
 """Shared room-graph maze generation for the multi-floor stages."""
 
+from typing import Optional
+
 from . import defs as d
 from .arlq import create_field
 from .utils import rand
@@ -58,8 +60,8 @@ def _add_long_loop_edges(edges, rooms, count):
 
 
 def generate_floor_field(
-    up_point: d.Point | None,
-    down_point: d.Point | None,
+    up_point: Optional[d.Point],
+    down_point: Optional[d.Point],
     corridor_h_width: int,
     corridor_v_width: int,
     island_room_count: int,
@@ -75,7 +77,7 @@ def generate_floor_field(
     set[d.Point],
     set[d.Point],
     tuple[set[d.Point], ...],
-    tuple[d.Point, d.Point] | None,
+    Optional[tuple[d.Point, d.Point]],
 ]:
     """Build a floor and return its isolated, filled, and split graph data."""
     all_rooms = {(x, y) for y in range(d.TILE_NUM_Y) for x in range(d.TILE_NUM_X)}
@@ -139,7 +141,7 @@ def generate_floor_field(
             continue
 
         room_components: tuple[set[d.Point], ...] = ()
-        split_edge: tuple[d.Point, d.Point] | None = None
+        split_edge: Optional[tuple[d.Point, d.Point]] = None
         if split_room_graph:
             if detach_leaf_room:
                 degree = dict.fromkeys(connected_rooms, 0)

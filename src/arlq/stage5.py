@@ -1,5 +1,7 @@
 """Stage 5 member trial and tutorial behavior."""
 
+from typing import Optional
+
 from . import defs as d
 from .i18n import t
 from .stage_types import Floor
@@ -91,7 +93,7 @@ TRIAL_MEMBER_LINES = {
 }
 
 
-def trial_member_line(current: Floor, player: d.Player) -> str | None:
+def trial_member_line(current: Floor, player: d.Player) -> Optional[str]:
     for entity in current.entities:
         if (
             isinstance(entity, d.PartyMember)

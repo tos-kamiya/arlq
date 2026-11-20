@@ -1,5 +1,7 @@
 """Gameplay mechanics shared by Stages 5 and 6."""
 
+from typing import Optional
+
 from . import defs as d
 from .arlq import iterate_ellipse_points
 from .i18n import t, trp
@@ -15,7 +17,7 @@ def monster_party_entities(
     entities: list[d.Entity],
     first: d.Monster,
     *,
-    positions: dict[d.Point, d.Monster] | None = None,
+    positions: Optional[dict[d.Point, d.Monster]] = None,
 ) -> list[d.Monster]:
     """Return the active vertically connected party containing ``first``."""
     if first.tribe.char == d.CHAR_DUNGEON_CORE:
@@ -108,7 +110,7 @@ def reveal_scholar_features(current: Floor, known: list[list[int]]) -> None:
 
 
 def sync_members(player: d.Player, previous: d.Point, direction: d.Point, *, reset: bool = False,
-                 current: Floor | None = None, floor_index: int = 0) -> None:
+                 current: Optional[Floor] = None, floor_index: int = 0) -> None:
     if (player.x, player.y) != previous:
         player.facing = direction
     if reset:
@@ -153,7 +155,7 @@ def reveal_rogue_monsters(
             player.known_monsters.add(d.monster_type_key(entity))
 
 
-def rogue_danger(current: Floor, destination: d.Point) -> str | None:
+def rogue_danger(current: Floor, destination: d.Point) -> Optional[str]:
     """Check whether the destination is a pit or Rare Erebus."""
     x, y = destination
     if not (0 <= y < len(current.field) and 0 <= x < len(current.field[y])):
@@ -266,7 +268,7 @@ def initialize_monster_barriers(current: Floor) -> None:
 def place_monster_barriers(
     current: Floor,
     entity: d.Monster,
-    player_position: d.Point | None = None,
+    player_position: Optional[d.Point] = None,
 ) -> None:
     """Place the barrier ring for one newly placed monster."""
     if not entity.active or not _barrier_offsets(entity):
@@ -333,7 +335,7 @@ def respawn(
     origin_floor: int,
     avoid: set[d.Point],
     floor_index: int = 0,
-) -> d.Point | None:
+) -> Optional[d.Point]:
     is_monster = isinstance(d.CHAR_TO_TRIBE[char], d.MonsterTribe)
     candidates = [
         point for point in _open_points(

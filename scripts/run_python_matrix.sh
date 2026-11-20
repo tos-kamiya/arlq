@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-PY_VERSIONS=("3.10" "3.11" "3.12" "3.13" "3.14")
+PY_VERSIONS=("3.9" "3.10" "3.11" "3.12" "3.13" "3.14")
 RUN_PYTEST=1
 RUN_COMPILEALL=1
 SKIP_INSTALL=0
@@ -15,13 +15,13 @@ Usage:
   scripts/run_python_matrix.sh [options]
 
 Options:
-  --pytest-only     Run only pytest across CPython 3.10/3.11/3.12/3.13/3.14
-  --compileall-only Run only compileall across CPython 3.10/3.11/3.12/3.13/3.14
+  --pytest-only     Run only pytest across CPython 3.9/3.10/3.11/3.12/3.13/3.14
+  --compileall-only Run only compileall across CPython 3.9/3.10/3.11/3.12/3.13/3.14
   --skip-install    Reuse existing virtual environments without reinstalling .[dev]
   -h, --help        Show this help
 
 Default:
-  Create/update .venv-3.10 .. .venv-3.14, install .[dev], then run pytest
+  Create/update .venv-3.9 .. .venv-3.14, install .[dev], then run pytest
   and compileall for each version.
 EOF
 }
