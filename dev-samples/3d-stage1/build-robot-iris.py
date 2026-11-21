@@ -8,7 +8,8 @@ polygon eyes (the normal expression only), saves robot-iris/robot-iris.blend
 and renders it with the sprite camera (export-sprites.py: 60-degree
 orthographic view, 256 px per 2.6 units, Freestyle ink) to
 robot-iris/iris.png, plus close-ups robot-iris/closeup.png (sprite angle) and
-robot-iris/closeup-side.png (three-quarter view from the side).
+robot-iris/closeup-side.png (three-quarter view from the side) and
+robot-iris/closeup-front.png (straight from the front).
 
 The model is built at the first prototype's size (below) and then shrunk to
 SCALE and lifted so it hovers at the player's shoulder height (HOVER_Z);
@@ -32,16 +33,22 @@ OUT.mkdir(parents=True, exist_ok=True)
 # about 2 tall).
 SCALE = 0.5
 HOVER_Z = 1.10
+# The whole robot leans back by this much about its middle, so its face
+# looks up toward the 60-degree camera: half the player's face tilt (its
+# body leans 0.1 and its head 0.3 more; rigged-armor/sprite_pose.py
+# BODY_LEAN, HEAD_TILT), as the full tilt looked too obvious.
+FACE_TILT = (0.1 + 0.3) / 2
 # Proportions before shrinking, in the heroic scenes' units.
 FLOAT = 0.26            # gap between the floor and the canister's bottom
 BODY_R = 0.225          # the lower two thirds
 BODY_H = 0.70
-SEAM = 0.025            # the thin gap between lid and body
-LID_R = 0.2565          # the lid, one step wider
-LID_H = 0.36
+SEAM = 0.025            # the thin gap between head and body
+LID_R = BODY_R          # the head: the body's tube continued up
+HEAD_H = 0.36
 BODY_TOP = FLOAT + BODY_H
 LID_BOTTOM = BODY_TOP + SEAM
-LID_TOP = LID_BOTTOM + LID_H
+LID_TOP = LID_BOTTOM + HEAD_H
+HEAD_Z = LID_BOTTOM + HEAD_H / 2
 # The hover ring: a thin glowing torus this far below the bottom, far
 # enough that the 60-degree camera sees its front in front of the body.
 RING_R = 0.264
@@ -49,12 +56,12 @@ RING_THICKNESS = 0.014
 RING_GAP = 0.2
 # The manipulators are this much larger than first built, about the shoulder.
 ARM_SIZE = 2.2
-# The eyes float this far in front of the lid as vertical planes facing
-# straight ahead, centred on the lid's height.
+# The eyes float this far in front of the head as vertical planes facing
+# straight ahead, centred on the head's height.
 EYE_GAP = 0.05
-EYE_Z = LID_BOTTOM + LID_H / 2
-EYE_SPACING = 0.30      # half the distance between the eye centres
-EYE_RIM = 0.045         # width of the bright edge of each eye
+EYE_Z = HEAD_Z
+EYE_SPACING = 0.22      # half the distance between the eye centres
+EYE_RIM = 0.029         # width of the bright edge of each eye
 # Player visor glow (rigged-armor/build.py).
 CYAN_BASE = (.3, .9, 1.0)
 CYAN_EMIT = (.1, .75, 1.0)
@@ -149,7 +156,47 @@ joint = material('Iris dark iron joint', (.16, .16, .18), .4, 1.0)
 eye_edge = material('Iris eye edge', CYAN_BASE, .35, emission=CYAN_EMIT, strength=6.0)
 eye_fill = see_through(material('Iris eye fill', CYAN_BASE, .35, emission=CYAN_EMIT,
                                 strength=0.8), 0.5)
-ring_glow = material('Iris hover ring', CYAN_BASE, .35, emission=CYAN_EMIT, strength=3.0)
+
+
+def light_glow(name, strength, opacity, softness):
+    """Pure light with no surface reflection: emission mixed with
+    transparency, most opaque where the surface faces the viewer and fading
+    toward the silhouette, so a tube of it reads as a soft blur of light."""
+    mat = bpy.data.materials.new(name)
+    mat.diffuse_color = (*CYAN_BASE, 1)
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    nodes.remove(nodes['Principled BSDF'])
+    out = nodes['Material Output']
+    facing = nodes.new('ShaderNodeLayerWeight')
+    facing.inputs['Blend'].default_value = 0.5
+    invert = nodes.new('ShaderNodeMath')
+    invert.operation = 'SUBTRACT'
+    invert.inputs[0].default_value = 1.0
+    links.new(facing.outputs['Facing'], invert.inputs[1])
+    curve = nodes.new('ShaderNodeMath')
+    curve.operation = 'POWER'
+    curve.inputs[1].default_value = softness
+    links.new(invert.outputs[0], curve.inputs[0])
+    scale = nodes.new('ShaderNodeMath')
+    scale.operation = 'MULTIPLY'
+    scale.inputs[1].default_value = opacity
+    links.new(curve.outputs[0], scale.inputs[0])
+    emit = nodes.new('ShaderNodeEmission')
+    emit.inputs['Color'].default_value = (*CYAN_EMIT, 1)
+    emit.inputs['Strength'].default_value = strength
+    clear = nodes.new('ShaderNodeBsdfTransparent')
+    mix = nodes.new('ShaderNodeMixShader')
+    links.new(scale.outputs[0], mix.inputs['Fac'])
+    links.new(clear.outputs[0], mix.inputs[1])
+    links.new(emit.outputs[0], mix.inputs[2])
+    links.new(mix.outputs[0], out.inputs['Surface'])
+    return mat
+
+
+# The hover ring: a thin core of light inside a wider, fainter halo.
+ring_glow = light_glow('Iris hover ring core', 3.0, 0.9, 0.6)
+ring_halo = light_glow('Iris hover ring halo', 1.5, 0.45, 2.5)
 
 
 def auto_smooth(mesh, angle=math.radians(30)):
@@ -225,18 +272,13 @@ def on_surface(radius, angle, z, out=0.0):
 
 
 def build_canister():
-    # Body: the lower two thirds, with a brass band round its bottom edge and
-    # a dark underside.
-    cylinder('Iris body', BODY_R, FLOAT + 0.01, BODY_TOP, steel, edge=0.012)
+    # Body and head: one tube of ceramic, no seam at the neck, its top edge
+    # rounded; a brass band round its bottom edge, another where the head
+    # begins, and a dark underside.
+    cylinder('Iris body', BODY_R, FLOAT + 0.01, LID_TOP, steel, edge=0.035)
     cylinder('Iris bottom band', BODY_R + 0.012, FLOAT, FLOAT + 0.06, brass, edge=0.008)
     cylinder('Iris underside', BODY_R - 0.03, FLOAT - 0.02, FLOAT + 0.01, dark)
-    # The thin gap between body and lid: a dark core shows through it.
-    cylinder('Iris seam core', BODY_R - 0.02, BODY_TOP - 0.01, LID_BOTTOM + 0.01, dark)
-    # Lid: one step wider, its top edge rounded, a brass band round its rim.
-    cylinder('Iris lid', LID_R, LID_BOTTOM, LID_TOP, lid_steel, edge=0.035)
-    cylinder('Iris lid band', LID_R + 0.01, LID_BOTTOM, LID_BOTTOM + 0.055, brass, edge=0.008)
-    # A raised plate on top where the antenna stands.
-    cylinder('Iris top plate', 0.13, LID_TOP - 0.01, LID_TOP + 0.018, lid_steel, edge=0.008)
+    cylinder('Iris head band', LID_R + 0.01, LID_BOTTOM, LID_BOTTOM + 0.05, brass, edge=0.008)
     # A raised vertical seam strip on the body (glazed ceramic: no rivets
     # or screws anywhere).
     strip = math.radians(52)
@@ -249,9 +291,9 @@ def build_antenna():
     # small dark mesh ball held in a brass cup. Off-centre toward the back
     # right so the eyes stay clear.
     x, y = 0.06, 0.05
-    cylinder('Iris antenna collar', 0.032, LID_TOP + 0.01, LID_TOP + 0.05, brass, 24, x, y,
+    cylinder('Iris antenna collar', 0.032, LID_TOP - 0.035, LID_TOP + 0.02, brass, 24, x, y,
              edge=0.006)
-    rod('Iris antenna rod', (x, y, LID_TOP + 0.04), (x + 0.02, y + 0.03, LID_TOP + 0.26),
+    rod('Iris antenna rod', (x, y, LID_TOP + 0.01), (x + 0.02, y + 0.03, LID_TOP + 0.26),
         0.011, steel)
     tip = Vector((x + 0.02, y + 0.03, LID_TOP + 0.28))
     cylinder('Iris mic cup', 0.026, tip.z - 0.03, tip.z - 0.005, brass, 24, tip.x, tip.y,
@@ -364,6 +406,10 @@ def build_hover():
                                      major_segments=64, minor_segments=12,
                                      location=(0, 0, FLOAT - RING_GAP))
     place(bpy.context.object, ring_glow, glow_col, name='Iris hover ring')
+    bpy.ops.mesh.primitive_torus_add(major_radius=RING_R, minor_radius=RING_THICKNESS * 3.5,
+                                     major_segments=64, minor_segments=16,
+                                     location=(0, 0, FLOAT - RING_GAP))
+    place(bpy.context.object, ring_halo, glow_col, name='Iris hover ring halo')
     pool = material('Iris floor glow', CYAN_BASE, 1.0, emission=CYAN_EMIT, strength=1.0)
     nodes, links = pool.node_tree.nodes, pool.node_tree.links
     out = nodes['Material Output']
@@ -415,7 +461,7 @@ def regular(n, radius, start=90.0):
 
 
 # Large enough to overhang the canister's sides.
-HEX = regular(6, 0.27)
+HEX = regular(6, 0.173)
 
 
 def eye_polygon_mesh(name, polygons):
@@ -446,19 +492,6 @@ def build_eyes():
         obj = eye_polygon_mesh(f'Iris eye {"L" if side < 0 else "R"}', [HEX])
         glow_col.objects.link(obj)
         obj.location = (side * EYE_SPACING, -(LID_R + EYE_GAP), EYE_Z)
-    # The eyes' light on the lid front: a soft cyan glow, so the floating
-    # eyes read as the robot's own.
-    bpy.ops.object.light_add(type='AREA', location=(0, -(LID_R + EYE_GAP - 0.02), EYE_Z))
-    light = bpy.context.object
-    light.name = 'Iris eye glow on lid'
-    light.data.shape = 'RECTANGLE'
-    light.data.size, light.data.size_y = 0.36, 0.14
-    light.data.energy = 1.0
-    light.data.color = CYAN_EMIT
-    light.rotation_euler = (-math.pi / 2, 0, 0)  # facing +y, toward the lid
-    light.data.use_shadow = False
-    glow_col.objects.link(light)
-    scene.collection.objects.unlink(light)
 
 
 build_canister()
@@ -469,9 +502,15 @@ build_arm(1)
 build_hover()
 build_eyes()
 
-# Shrink everything to SCALE and lift it to HOVER_Z; the floor glow stays
+# Shrink everything to SCALE, lift it to HOVER_Z and lean it back by
+# FACE_TILT; the floor glow stays
 # on the floor, and lights lose power with the square of the shrink.
+# Bring matrix_world up to date with the locations set above.
+bpy.context.view_layer.update()
 lift = Matrix.Translation((0, 0, HOVER_Z - FLOAT * SCALE)) @ Matrix.Scale(SCALE, 4)
+middle = Vector((0, 0, HOVER_Z + (LID_TOP - FLOAT) * SCALE / 2))
+lift = (Matrix.Translation(middle) @ Matrix.Rotation(-FACE_TILT, 4, 'X')
+        @ Matrix.Translation(-middle) @ lift)
 for obj in [*body_col.all_objects, *glow_col.all_objects]:
     if obj.name == 'Iris floor glow':
         obj.scale = (0.42 * SCALE * 1.5, 0.42 * SCALE * 1.5, 1)
@@ -571,16 +610,23 @@ path = OUT / 'iris.png'
 scene.render.filepath = str(path)
 bpy.ops.render.render(write_still=True)
 trim(path)
-frame(HOVER_Z + 0.2, 1.0, 900)
+frame(HOVER_Z + 0.25, 1.1, 900)
 scene.render.filepath = str(OUT / 'closeup.png')
 bpy.ops.render.render(write_still=True)
 # A three-quarter close-up from lower and to the side (screen right), to
 # check the eyes' float, the arms and the hover ring in depth.
-target = Vector((0, 0, HOVER_Z + 0.2))
+target = Vector((0, 0, HOVER_Z + 0.25))
 yaw, pitch = math.radians(40), math.radians(20)
 camera.location = target + 10 * Vector((math.sin(yaw) * math.cos(pitch),
                                         -math.cos(yaw) * math.cos(pitch), math.sin(pitch)))
 camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
-camera.data.ortho_scale = 1.0
+camera.data.ortho_scale = 1.1
 scene.render.filepath = str(OUT / 'closeup-side.png')
+bpy.ops.render.render(write_still=True)
+# Straight from the front, nearly level, to check the face (the eyes).
+yaw, pitch = 0.0, math.radians(8)
+camera.location = target + 10 * Vector((math.sin(yaw) * math.cos(pitch),
+                                        -math.cos(yaw) * math.cos(pitch), math.sin(pitch)))
+camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
+scene.render.filepath = str(OUT / 'closeup-front.png')
 bpy.ops.render.render(write_still=True)
