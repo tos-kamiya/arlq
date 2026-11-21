@@ -276,9 +276,11 @@ def test_stage5_member_progress_shows_candidates_before_they_depart():
     player.known_member_floors = {"Jester": 1, "Rogue": 2}
     assert [
         label for label, _ in display.stage5_member_progress_marks(player)
-    ] == ["J1", "H", "R2", "K", "D", "G"]
+    ] == ["D", "G", "H", "J1", "K", "R2"]
     player.stage6_candidates = True
-    assert display.stage5_member_progress_marks(player)[-3:] == [("Y", False), ("S", False), ("I", False)]
+    assert [label for label, _ in display.stage5_member_progress_marks(player)] == [
+        "D", "G", "H", "I", "J1", "K", "R2", "S", "Y"
+    ]
 
 
 def test_stage5_member_progress_marks_party_members_with_at():
@@ -286,8 +288,7 @@ def test_stage5_member_progress_marks_party_members_with_at():
     player.known_member_floors = {d.MEMBER_JESTER: 1, d.MEMBER_YAWNING_CAT: 2, d.MEMBER_ROGUE: 3}
     player.stage6_candidates = True
     labels = [label for label, _ in display.stage5_member_progress_marks(player)]
-    assert labels[:3] == ["J@", "H", "R3"]
-    assert "Y@" in labels
+    assert labels == ["D", "G", "H", "I", "J@", "K", "R3", "S", "Y@"]
 
 
 def test_fairy_seer_identifies_fairies_in_explored_areas_on_every_floor():

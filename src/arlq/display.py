@@ -178,7 +178,7 @@ def stage5_member_progress_marks(
     A label is the member's glyph followed by ``@`` while it is in the party,
     the floor it was seen on while it waits, or ``-`` once it has left.
     """
-    roles = d.RECRUITABLE_MEMBER_ROLES
+    roles = sorted(d.RECRUITABLE_MEMBER_ROLES, key=d.MEMBER_GLYPHS.__getitem__)
     marks = []
     current_roles = {member.role for member in player.members}
     for role in roles:
