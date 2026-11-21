@@ -392,7 +392,7 @@ def build_door():
 
 
 def build_arm(side):
-    """A thin jointed manipulator splayed at the side: shoulder hub at mid
+    """A jointed manipulator splayed at the side: shoulder hub at mid
     body, upper arm down and out, forearm forward, a three-fingered gripper."""
     s = side
     start = set(bpy.data.objects)
@@ -400,18 +400,18 @@ def build_arm(side):
     bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.055, depth=0.05,
                                         location=shoulder, rotation=(0, math.pi / 2, 0))
     bevel(place(bpy.context.object, P.gray, name='Iris shoulder hub'), 0.01)
-    sphere('Iris shoulder joint', shoulder + Vector((s * 0.03, 0, 0)), 0.035, P.joint)
+    sphere('Iris shoulder joint', shoulder + Vector((s * 0.03, 0, 0)), 0.046, P.joint)
     # Splayed out from the body so they stand clear of its silhouette.
     elbow = Vector((s * (BODY_R + 0.13), 0.0, FLOAT + 0.30))
     wrist = Vector((s * (BODY_R + 0.15), -0.19, FLOAT + 0.36))
-    rod('Iris upper arm', shoulder + Vector((s * 0.03, 0, 0)), elbow, 0.022, P.ceramic)
-    sphere('Iris elbow', elbow, 0.032, P.joint)
-    rod('Iris forearm', elbow, wrist, 0.019, P.ceramic)
+    rod('Iris upper arm', shoulder + Vector((s * 0.03, 0, 0)), elbow, 0.040, P.ceramic)
+    sphere('Iris elbow', elbow, 0.044, P.joint)
+    rod('Iris forearm', elbow, wrist, 0.036, P.ceramic)
     # Gripper: a short palm with three curled fingers (two below, one above).
     ahead = (wrist - elbow).normalized()
     palm = wrist + ahead * 0.03
-    sphere('Iris wrist', wrist, 0.026, P.joint)
-    bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=0.03, depth=0.03, location=palm)
+    sphere('Iris wrist', wrist, 0.038, P.joint)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=0.038, depth=0.03, location=palm)
     hub = bpy.context.object
     hub.rotation_euler = ahead.to_track_quat('Z', 'Y').to_euler()
     bevel(place(hub, P.gray, name='Iris gripper palm'), 0.006)
@@ -422,9 +422,9 @@ def build_arm(side):
         base = palm + ahead * 0.015 + radial * 0.022
         knuckle = base + ahead * 0.04 + radial * 0.012
         tip = knuckle + ahead * 0.032 - radial * 0.018
-        rod('Iris finger', base, knuckle, 0.008, P.ceramic, 10)
-        sphere('Iris knuckle', knuckle, 0.009, P.joint, 10)
-        rod('Iris finger tip', knuckle, tip, 0.007, P.ceramic, 10)
+        rod('Iris finger', base, knuckle, 0.014, P.ceramic, 10)
+        sphere('Iris knuckle', knuckle, 0.015, P.joint, 10)
+        rod('Iris finger tip', knuckle, tip, 0.013, P.ceramic, 10)
     # Built at the first prototype's size, then enlarged about the shoulder.
     grow = (Matrix.Translation(shoulder) @ Matrix.Scale(ARM_SIZE, 4)
             @ Matrix.Translation(-shoulder))
