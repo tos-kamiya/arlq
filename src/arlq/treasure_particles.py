@@ -49,3 +49,15 @@ def sparkle_frame(cells, tick, center):
             bit = bits[pixel_y % 4][pixel_x % 2]
             frame[point] = frame.get(point, 0) | bit
     return [(point, chr(0x2800 + mask)) for point, mask in frame.items()]
+
+
+# Iris's ration glow: a small twinkle inside her own cell. Each frame is a
+# braille mask; the corner dots leave the middle of the glyph readable.
+IRIS_SPARKLE_SECONDS = 0.6
+_IRIS_SPARKLE_MASKS = (0x01, 0x08 | 0x40, 0x80 | 0x01, 0x40 | 0x08 | 0x80, 0x01 | 0x08,
+                       0x40 | 0x80, 0x01 | 0x80, 0x08 | 0x40)
+
+
+def iris_sparkle_frames():
+    """Braille characters for the twinkle, one per frame."""
+    return [chr(0x2800 + mask) for mask in _IRIS_SPARKLE_MASKS]

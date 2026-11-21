@@ -126,3 +126,67 @@ def test_braille_dot_mapping():
     assert list(_braille_dots("⢀")) == [(1, 3)]
     assert len(list(_braille_dots("⣿"))) == 8
 
+
+
+def test_iris_ration_effect_follows_events_on_the_current_floor():
+    from arlq.game_events import IrisRation
+    from arlq.presentation import play_iris_ration
+
+    calls = []
+    ui = SimpleNamespace(draw_iris_ration=calls.append)
+    events = [IrisRation(0, (1, 1)), IrisRation(1, (2, 2))]
+    play_iris_ration(ui, SimpleNamespace(events=events, floor_after=1))
+    assert calls == [(2, 2)]
+
+
+def test_iris_sparkle_frames_light_only_the_cell_corners():
+    from arlq.treasure_particles import iris_sparkle_frames
+
+    frames = iris_sparkle_frames()
+    assert frames
+    for char in frames:
+        mask = ord(char) - 0x2800
+        assert mask and not mask & ~(0x01 | 0x08 | 0x40 | 0x80)
+
+
+def test_terminal_iris_ration_alternates_sparkle_and_glyph(monkeypatch, capsys):
+    from arlq import blessed_funcs
+
+    ui = blessed_funcs.BlessedUI.__new__(blessed_funcs.BlessedUI)
+    ui.combat_effect_seconds = 0.3
+    ui._stage_snapshot = "stage"
+    ui._combat_cell_backgrounds = {}
+    ui._wait_for_terminal_size = lambda: None
+    ui._style = lambda text, **kwargs: text
+    ui.term = SimpleNamespace(normal="", move_xy=lambda x, y: f"[{x},{y}]")
+    monkeypatch.setattr(blessed_funcs.time, "sleep", lambda _: None)
+    ui.draw_iris_ration((4, 3))
+    output = capsys.readouterr().out
+    assert "[4,3]I" in output and "[4,3]⠁" in output
+    assert output.endswith("stage")
+
+
+def test_gui_iris_ration_draws_dots_inside_her_cell(monkeypatch):
+    from arlq import pyglet_funcs
+
+    ui = pyglet_funcs.PygletUI.__new__(pyglet_funcs.PygletUI)
+    ui.combat_effect_seconds = 0.3
+    ui._closed = False
+    ui.cell_size_x = ui.cell_size_y = 16
+    ui.window_height = 160
+    ui.batch = None
+    ui._field_col_x = lambda x: x * 16
+    ui._field_col_width = lambda x: 16
+    ui._display_color = lambda color: color
+    ui._flip = lambda: None
+    ui._pump = lambda: None
+    rects = []
+    item = lambda *args, **kwargs: SimpleNamespace(delete=lambda: None)
+    monkeypatch.setattr(pyglet_funcs.pyglet.shapes, "Rectangle",
+                        lambda x, y, w, h, **kwargs: (rects.append((x, y, w, h)), item())[1])
+    monkeypatch.setattr(pyglet_funcs, "IRIS_SPARKLE_SECONDS", 0)
+    ui.draw_iris_ration((2, 3))
+    assert rects
+    for x, y, w, h in rects:
+        assert 32 <= x and x + w <= 48
+        assert 160 - 4 * 16 <= y and y + h <= 160 - 3 * 16

@@ -1949,6 +1949,8 @@ def test_iris_lets_the_player_collapse_then_restores_lp_on_the_next_move(monkeyp
     assert result.stop_repeat
     assert session.phase == "playing" and session.iris_rescue_pending
     assert session.player.lp <= 0
+    assert [type(event).__name__ for event in result.events] == ["IrisRation"]
+    assert result.events[0].at == (session.player.members[0].x, session.player.members[0].y)
     english = iris_dialogue.lines_for("en")["emergency_food"]
     assert session.message[1] in [iris_dialogue.format_line(line, "en") for line in english]
     point, turn = (session.player.x, session.player.y), session.turn
@@ -1990,7 +1992,12 @@ def test_iris_rescue_in_the_game_loop(monkeypatch):
         def input_alphabet(self):
             return None
 
+        def draw_iris_ration(self, pos):
+            self.drawn.append(("ration", pos))
+
     ui = UI()
     engine.run_game(ui, "test", stage_num=1)
     # Collapsed with Iris's line, revived in place by the next key, then on.
-    assert ui.drawn == [(1, 2), (0, 3), (d.IRIS_RATION_LP, 3), (d.IRIS_RATION_LP - 1, 4)]
+    # The ration glow plays over a redrawn collapsed frame.
+    assert ui.drawn == [(1, 2), (0, 3), ("ration", (2, 2)), (0, 3),
+                        (d.IRIS_RATION_LP, 3), (d.IRIS_RATION_LP - 1, 4)]

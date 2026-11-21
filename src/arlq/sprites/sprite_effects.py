@@ -68,6 +68,16 @@ VORTEX_RADIUS_RATIO = 1 / 4
 VORTEX_SECONDS_FACTOR = 4 / 3
 
 
+# Iris's ration rises glowing above her as she hands it over. The image is
+# picked with Python's random, never the game's.
+IRIS_RATION_SECONDS = 0.7
+IRIS_RATION_FILES = ('ration-hyorogan.png', 'ration-hardtack.png', 'ration-jerky.png')
+IRIS_RATION_SIZE = 1.5  # sprite units
+IRIS_RATION_HEIGHT = (1.0, 1.4)  # cells above her cell's centre, rising
+IRIS_RATION_GLOW_COLOR = (255, 214, 120)
+IRIS_RATION_GLOW_SIZE = 2.6  # sprite units
+IRIS_RATION_SPARKS = 12
+
 # A stage boss's afterglow (draw_boss_afterglow), over BOSS_AFTERGLOW_SECONDS
 # on the cell where it fell: a pillar of BOSS_AFTERGLOW_COLOR light, a
 # brighter BOSS_AFTERGLOW_CORE_COLOR core inside it, shoots up
@@ -410,6 +420,86 @@ class SpriteEffectsMixin:
                                 * min(1.0, t / 0.15) * (1 - t) ** 1.2)
 
         self._play_effect(BOSS_AFTERGLOW_SECONDS, create, update)
+
+    def draw_iris_ration(self, pos) -> None:
+        """Raise a ration, picked at random, glowing above Iris with a few
+        twinkles around it, as she hands it to the collapsed player."""
+        if self.combat_effect_seconds == 0:
+            return
+        rand = random.Random()
+        path = (Path(__file__).parent.parent / "assets" / "rations"
+                / rand.choice(IRIS_RATION_FILES))
+        if not path.is_file():
+            return
+        picture = pyglet.image.load(str(path))
+        x, y = pos
+        sparks = [
+            {
+                'angle': rand.uniform(0, 2 * math.pi),
+                'out': rand.uniform(0.7, 1.4),
+                'start': rand.uniform(0, 0.6),
+                'life': rand.uniform(0.2, 0.35),
+                'size': rand.uniform(0.06, 0.12),
+            }
+            for _ in range(IRIS_RATION_SPARKS)
+        ]
+        parts = {}
+        additive = {"blend_src": pyglet.gl.GL_SRC_ALPHA, "blend_dest": pyglet.gl.GL_ONE}
+
+        def create():
+            glow_color = self._display_color(IRIS_RATION_GLOW_COLOR)
+            back = pyglet.graphics.Group(order=100000)
+            front = pyglet.graphics.Group(order=100001)
+            sparkle = pyglet.graphics.Group(order=100002)
+            parts['glow'] = pyglet.sprite.Sprite(
+                self._disc_image, batch=self.batch, group=back, **additive)
+            parts['glow'].color = glow_color
+            parts['ration'] = pyglet.sprite.Sprite(picture, batch=self.batch, group=front)
+            parts['ration'].color = self._display_color((255, 255, 255))
+            parts['sparks'] = [
+                pyglet.shapes.Circle(0, 0, 1, color=self._display_color((255, 246, 214)),
+                                     batch=self.batch, group=sparkle, **additive)
+                for _ in sparks
+            ]
+            return [parts['glow'], parts['ration'], *parts['sparks']]
+
+        def update(progress):
+            unit = self._sprite_unit()
+            cx = self._field_col_x(x) + self.cell_size_x / 2
+            appear = 1 - (1 - min(1.0, progress / 0.25)) ** 3
+            fade = 1 - max(0.0, (progress - 0.75) / 0.25)
+            low, high = IRIS_RATION_HEIGHT
+            cy = (self.window_height - (y + 0.5) * self.cell_size_y
+                  + (low + (high - low) * appear) * self.cell_size_y)
+
+            ration = parts['ration']
+            scale = IRIS_RATION_SIZE * unit * (0.6 + 0.4 * appear) / max(
+                picture.width, picture.height)
+            ration.scale = scale
+            ration.x = cx - picture.width * scale / 2
+            ration.y = cy - picture.height * scale / 2
+            ration.opacity = round(255 * appear * fade)
+
+            glow = parts['glow']
+            pulse = 0.85 + 0.15 * math.sin(progress * 4 * math.pi)
+            size = IRIS_RATION_GLOW_SIZE * unit * (0.5 + 0.5 * appear) * pulse
+            glow.scale_x = size / self._disc_image.width
+            glow.scale_y = size / self._disc_image.height
+            glow.x = cx - size / 2
+            glow.y = cy - size / 2
+            glow.opacity = round(200 * appear * fade)
+
+            for spark, dot in zip(sparks, parts['sparks']):
+                t = (progress - spark['start']) / spark['life']
+                if not 0 <= t <= 1:
+                    dot.opacity = 0
+                    continue
+                dot.x = cx + unit * spark['out'] * math.cos(spark['angle'])
+                dot.y = cy + unit * spark['out'] * math.sin(spark['angle'])
+                dot.radius = max(1.0, spark['size'] * unit * math.sin(math.pi * t))
+                dot.opacity = round(255 * math.sin(math.pi * t) * fade)
+
+        self._play_effect(IRIS_RATION_SECONDS, create, update)
 
     def draw_core_burst(self, pos) -> None:
         """Swell a dark dome over the destroyed Dungeon Core's cell and let

@@ -2049,7 +2049,12 @@ def run_game(
     stage_num: int = 3,
 ) -> None:
     from .game_session import GameSession
-    from .presentation import play_defeat_effects, play_turn_events
+    from .presentation import (
+        iris_ration_events,
+        play_defeat_effects,
+        play_iris_ration,
+        play_turn_events,
+    )
 
     session = GameSession(
         stage_num,
@@ -2124,6 +2129,9 @@ def run_game(
                    for event in result.events):
                 ui.draw_stage(**session.view(result.floor_after))
                 play_defeat_effects(ui, result)
+            if iris_ration_events(result):
+                ui.draw_stage(**session.view(result.floor_after))
+                play_iris_ration(ui, result)
         view_floor = result.floor_after
     view_floor = session.floor[0]
     while True:

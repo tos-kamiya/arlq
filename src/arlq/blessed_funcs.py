@@ -10,7 +10,13 @@ from .blessed_settings import BlessedSettingsMixin
 from .braille_effects import effect_frames
 from .i18n import t as tr
 from .settings import combat_effect_seconds, load_settings
-from .treasure_particles import SPARKLE_TICKS_PER_SECOND, sparkle_cells, sparkle_frame
+from .treasure_particles import (
+    IRIS_SPARKLE_SECONDS,
+    SPARKLE_TICKS_PER_SECOND,
+    iris_sparkle_frames,
+    sparkle_cells,
+    sparkle_frame,
+)
 
 MIN_TERMINAL_WIDTH = 80
 MIN_TERMINAL_HEIGHT = 24
@@ -668,6 +674,24 @@ class BlessedUI(BlessedSettingsMixin):
                 output.append(self.term.move_xy(x, y) + glyph)
             print("".join(output) + self.term.normal, end="", flush=True)
             time.sleep(seconds / len(frames))
+        print(snapshot, end="", flush=True)
+
+    def draw_iris_ration(self, pos):
+        """Alternate Iris's cell between a yellow twinkle and her glyph as
+        she hands over her ration (a terminal cell holds one character)."""
+        if self.combat_effect_seconds == 0:
+            return
+        frames = iris_sparkle_frames()
+        snapshot = self._stage_snapshot
+        bg = self._combat_cell_backgrounds.get(pos)
+        for index, char in enumerate(frames):
+            self._wait_for_terminal_size()
+            if index % 2:
+                char = d.MEMBER_GLYPHS[d.MEMBER_IRIS]
+            glyph = self._style(char, color="yellow", bold=True, bg=bg)
+            print(snapshot + self.term.move_xy(*pos) + glyph + self.term.normal,
+                  end="", flush=True)
+            time.sleep(IRIS_SPARKLE_SECONDS / len(frames))
         print(snapshot, end="", flush=True)
 
     def draw_vortex_effect(self, pos):

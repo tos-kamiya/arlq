@@ -77,7 +77,13 @@ from .settings import (
 from .settings import (
     next_gamepad_button as _next_gamepad_button,
 )
-from .treasure_particles import SPARKLE_TICKS_PER_SECOND, sparkle_cells, sparkle_frame
+from .treasure_particles import (
+    IRIS_SPARKLE_SECONDS,
+    SPARKLE_TICKS_PER_SECOND,
+    iris_sparkle_frames,
+    sparkle_cells,
+    sparkle_frame,
+)
 
 _FONT_GLYPH_METRICS = {}
 _FONT_METRIC_SAMPLE = "".join(chr(codepoint) for codepoint in range(32, 127))
@@ -1143,6 +1149,42 @@ class PygletUI(PygletSettingsMixin):
                     ))
             self._flip()
             deadline = time.monotonic() + seconds / len(frames)
+            while not self._closed and time.monotonic() < deadline:
+                self._pump()
+                time.sleep(min(1 / 60, max(0, deadline - time.monotonic())))
+            for obj in objects:
+                obj.delete()
+        if not self._closed:
+            self._flip()
+
+    def draw_iris_ration(self, pos):
+        """Twinkle a small treasure-like glow in Iris's cell as she hands
+        over her ration."""
+        if self.combat_effect_seconds == 0:
+            return
+        frames = iris_sparkle_frames()
+        group = pyglet.graphics.Group(order=10002)
+        x, y = pos
+        left = self._field_col_x(x)
+        top = self.window_height - y * self.cell_size_y
+        width = self._field_col_width(x)
+        slot_w, slot_h = width / 2, self.cell_size_y / 4
+        size = max(1.0, min(slot_w, slot_h) * 0.6)
+        for char in frames:
+            if self._closed:
+                break
+            objects = [
+                pyglet.shapes.Rectangle(
+                    left + slot_w * (column + 0.5) - size / 2,
+                    top - slot_h * (row + 0.5) - size / 2,
+                    size, size,
+                    color=self._display_color(COLOR_MAP[CI_YELLOW]),
+                    batch=self.batch, group=group,
+                )
+                for column, row in _braille_dots(char)
+            ]
+            self._flip()
+            deadline = time.monotonic() + IRIS_SPARKLE_SECONDS / len(frames)
             while not self._closed and time.monotonic() < deadline:
                 self._pump()
                 time.sleep(min(1 / 60, max(0, deadline - time.monotonic())))

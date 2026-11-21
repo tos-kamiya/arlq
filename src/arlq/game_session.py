@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from . import defs as d
 from . import game_engine as engine
 from .arlq import GameConfig
-from .game_events import GameEvent, Rewound, _emit
+from .game_events import GameEvent, IrisRation, Rewound, _emit
 from .iris_dialogue import IrisChatter
 from .pathfinding import is_route_floor
 from .utils import rand, zip_strict
@@ -418,6 +418,8 @@ class GameSession:
             self.iris_rescue_pending = True
             stop_repeat = True
             self.message = (-1, self.iris_chatter.ration_line())
+            iris = next(m for m in self.player.members if m.role == d.MEMBER_IRIS)
+            _emit(events, IrisRation(self.floor[0], (iris.x, iris.y)))
         if self.trace is not None:
             self.trace.set_turn_end_lp(self.player.lp)
             self.trace.commit_turn()

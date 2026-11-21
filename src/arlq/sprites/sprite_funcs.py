@@ -43,6 +43,7 @@ from .sprite_defs import (
     TERRAIN_SIDE,
 )
 from .sprite_effects import SpriteEffectsMixin
+from ..presentation import iris_ration_events
 from .sprite_fx import Presenter
 from .sprite_images import (
     FOLLOWER_SCALE,
@@ -861,6 +862,12 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             player = view.get('player')
             if player is not None and player.lp <= 0 and not self._closed:
                 self._show_collapse(view)
+            # Iris hands over her ration over the collapsed player.
+            for event in iris_ration_events(result):
+                if self._closed:
+                    break
+                self.draw_stage(**view)
+                self.draw_iris_ration(event.at)
             return not self._closed
         finally:
             self._next_view = None

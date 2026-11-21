@@ -305,3 +305,21 @@ def test_boss_afterglow_and_core_burst_play_on_the_destination_frame():
     result = TurnResult(True, None, True, 0, 0, events)
     assert ui.present_turn(result, {})
     assert calls == ["effects", "destination", ("afterglow", (3, 2)), ("core", (4, 4))]
+
+
+def test_iris_ration_plays_over_the_collapsed_frame():
+    from arlq.game_events import IrisRation
+    from arlq.sprites.sprite_funcs import SpriteUI
+
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._closed = False
+    calls = []
+    ui._update_player_facing = lambda result: None
+    ui._presenter = SimpleNamespace(play=lambda *args: calls.append("effects") or True)
+    ui._show_collapse = lambda view: calls.append("collapse")
+    ui.draw_stage = lambda **view: calls.append("frame")
+    ui.draw_iris_ration = lambda pos: calls.append(("ration", pos))
+    player = SimpleNamespace(lp=0)
+    result = TurnResult(True, None, True, 0, 0, [IrisRation(0, (3, 2))])
+    assert ui.present_turn(result, {"player": player})
+    assert calls == ["effects", "collapse", "frame", ("ration", (3, 2))]

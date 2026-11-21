@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 from . import defs as d
-from .game_events import BarrierHit, Combat, FloorChanged, Rewound
+from .game_events import BarrierHit, Combat, FloorChanged, IrisRation, Rewound
 
 if TYPE_CHECKING:
     from .game_session import TurnResult
@@ -57,3 +57,17 @@ def play_defeat_effects(ui, result: "TurnResult") -> None:
             effect = getattr(ui, method, None)
             if point is not None and effect is not None:
                 effect(point)
+
+
+def iris_ration_events(result: "TurnResult") -> list[IrisRation]:
+    return [event for event in result.events
+            if isinstance(event, IrisRation) and event.floor == result.floor_after]
+
+
+def play_iris_ration(ui, result: "TurnResult") -> None:
+    """Let Iris's ration glow over the collapsed player's frame."""
+    effect = getattr(ui, "draw_iris_ration", None)
+    if effect is None:
+        return
+    for event in iris_ration_events(result):
+        effect(event.at)

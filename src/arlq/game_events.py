@@ -48,6 +48,12 @@ class FloorChanged(GameEvent):
 
 
 @dataclass
+class IrisRation(GameEvent):
+    # Where Iris stands as she hands over her ration.
+    at: Point
+
+
+@dataclass
 class Rewound(GameEvent):
     message: str
     trail: dict[int, set[Point]]
