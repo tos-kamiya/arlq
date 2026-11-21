@@ -774,6 +774,7 @@ class PygletUI(PygletSettingsMixin):
         size_scale: float = 1.0,
         group=None,
         y_offset: int = 0,
+        opacity: int = 255,
     ):
         """
         Draws text at the grid cell defined by pos, optionally nudged by
@@ -799,7 +800,7 @@ class PygletUI(PygletSettingsMixin):
             )
         x = pos[0] * cell_size_x + x_offset
         y = self.window_height - pos[1] * cell_size_y + y_offset
-        label_color = (*self._display_color(color), 255)
+        label_color = (*self._display_color(color), opacity)
         signature = ("label", text, font_name, font_size, "bold" if bold else "normal",
                      x, y, label_color, id(group) if group is not None else None)
         self._draw_object(

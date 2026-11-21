@@ -214,6 +214,7 @@ FIELD_TEXT_RAISE = 0.1
 STRENGTH_SPRITE_CELLS = 1.35
 STRENGTH_SPRITE_SCALE = 0.9
 STRENGTH_SPACING_COMPRESSION = 0.15
+STRENGTH_OPACITY = 204
 HORIZONTAL_VIEW_SCROLL_CELLS = 3
 HOVER_SCALE = 2.0
 MOUSE_CURSOR_SECONDS = 3.0
@@ -590,10 +591,11 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         size_scale=1.0,
         group=None,
         y_offset=0,
+        opacity=255,
     ):
         if self._menu_active:
             return super()._draw_text(
-                pos, text, color, bold, x_offset, size_scale, group, y_offset,
+                pos, text, color, bold, x_offset, size_scale, group, y_offset, opacity,
             )
         x = pos[0] * self.cell_size_x + x_offset
         y = self.window_height - pos[1] * self.cell_size_y + y_offset
@@ -605,14 +607,14 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             and group is not self._text_overlay_group
         ):
             return super()._draw_text(
-                pos, text, color, bold, x_offset, size_scale, group, y_offset,
+                pos, text, color, bold, x_offset, size_scale, group, y_offset, opacity,
             )
 
         scene_batch = self.batch
         self.batch = self._text_batch
         try:
             return super()._draw_text(
-                pos, text, color, bold, x_offset, size_scale, group, y_offset,
+                pos, text, color, bold, x_offset, size_scale, group, y_offset, opacity,
             )
         finally:
             self.batch = scene_batch
@@ -1405,7 +1407,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         y_offset = line_height / 2 - center_y
         self._draw_text((0, 0), label, COLOR_MAP["default"],
                         x_offset=left, size_scale=text_scale,
-                        y_offset=y_offset, group=self._overlay_group)
+                        y_offset=y_offset, group=self._overlay_group, opacity=STRENGTH_OPACITY)
         base, mark = label[0], label[1:]
         type_key = base + {"'": '2', '"': '3'}.get(mark, '')
         if base not in self._sprite_images or not (is_player or type_key in self._known_types):
@@ -1429,6 +1431,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         )
         self._set_drawable_attribute(sprite, 'scale', scale)
         self._set_drawable_attribute(sprite, 'color', tint)
+        self._set_drawable_attribute(sprite, 'opacity', STRENGTH_OPACITY)
         if mark in self._mark_images:
             # The rank mark at the sprite's right, at the field's scale, kept
             # within the entry's own row.
@@ -1448,6 +1451,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             )
             self._set_drawable_attribute(badge, 'scale', badge_scale)
             self._set_drawable_attribute(badge, 'color', badge_color)
+            self._set_drawable_attribute(badge, 'opacity', STRENGTH_OPACITY)
 
     def _clear_drawables(self):
         for drawable in self._uncached_drawables:

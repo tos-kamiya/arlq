@@ -851,6 +851,7 @@ def test_strength_column_shows_sprites_of_identified_types_only(monkeypatch, lab
     # The sidebar sprites and their rank marks use 90% of the field scale.
     for piece in ui._drawables:
         assert piece.scale == pytest.approx(0.9 * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+        assert piece.opacity == sprite_funcs.STRENGTH_OPACITY
 
 
 def test_strength_label_uses_popup_font_and_overlay_position(monkeypatch):
@@ -861,6 +862,7 @@ def test_strength_label_uses_popup_font_and_overlay_position(monkeypatch):
     assert calls[0]['x_offset'] == pytest.approx(473.45)
     assert calls[0]['y_offset'] == pytest.approx(5 - ui._strength_row_center(3))
     assert not calls[0].get('bold', False)
+    assert calls[0]['opacity'] == sprite_funcs.STRENGTH_OPACITY
     assert calls[0]['size_scale'] == (ui._status_font_scale()
                                       * sprite_funcs.MESSAGE_FONT_SIZE_SCALE
                                       * sprite_funcs.STRENGTH_TEXT_SCALE)
