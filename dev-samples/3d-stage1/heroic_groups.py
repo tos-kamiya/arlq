@@ -1,7 +1,8 @@
 """Which of the three heroic scenes holds each character.
 
 Monsters (with the treasure chest beside the mimic, the golem's rock and the
-rank marks) go in one scene, the Stage 5 party members in another, and
+rank marks) go in one scene, the Stage 5 party members (with the Stage 6
+yawning cat and robot Iris) in another, and
 everyone else (the player, fairies and elves) in the third, so one group
 can be rebuilt without the others.
 """
@@ -20,7 +21,7 @@ MEMBER_VARIANTS = (('jester', 'n'), ('healer', 'f'), ('healer', 'm'), ('rogue', 
 MEMBER_TONES = ('l', 'm', 'd')
 MEMBER_MODELS = tuple(f'{job}-{gender}-{tone}' for job, gender in MEMBER_VARIANTS
                       for tone in MEMBER_TONES)
-MEMBERS = (*dict.fromkeys(job for job, _ in MEMBER_VARIANTS), 'cat')
+MEMBERS = (*dict.fromkeys(job for job, _ in MEMBER_VARIANTS), 'cat', 'iris')
 
 
 def group_of(char):

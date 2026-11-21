@@ -32,6 +32,8 @@ from heroic_groups import GROUPS, MEMBER_TONES, MEMBER_VARIANTS, blend_path, gro
 # rigged-armor/README.md); build it first with rigged-armor/build-chibi.py.
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'rigged-armor'))
 from sprite_pose import HEROIC_PLAYER_SIZE, heroic_player
+# The Stage 6 robot Iris is built by robot_iris.py (also used by build-robot-iris.py).
+import robot_iris
 
 OUT = Path(__file__).resolve().parent / 'heroic'
 GROUP = sys.argv[sys.argv.index('--group') + 1] if '--group' in sys.argv else None
@@ -72,7 +74,8 @@ GRID_COLS, GRID_ROWS = 14, 7
 # the fairies and elves; monsters in stage order, then the party members in
 # the medium skin tone in the order J, H, R, K, G, D (Explorer), S (Fairy
 # Seer), Y (female and male for the Healer and Fairy Seer, whose hair
-# shows; the Dungeon Explorer, a dragon, has one build), the Stage 5 toy chest, and last the Stage 6 ivy.
+# shows; the Dungeon Explorer, a dragon, has one build), the Stage 6 yawning cat and robot
+# Iris, the Stage 5 toy chest, and last the Stage 6 ivy.
 MEMBER_LABELS = {'jester': 'JESTER', 'healer': 'HEALER', 'rogue': 'ROGUE', 'knight': 'KNIGHT',
                  'guardian': 'GUARDIAN', 'explorer': 'EXPLORER', 'seer': 'FAIRY SEER'}
 GENDER_LABELS = {'f': ' FEMALE', 'm': ' MALE', 'n': ''}
@@ -88,7 +91,7 @@ ORDER = [('@', 'PLAYER'), ('@c', 'PLAYER + SWORD'), ('@C', 'PLAYER + CURSED SWOR
          ('f', 'FLAME COBRA'), ('B', 'BUFFALO'),
          *[(f'{job}-{gender}-m', MEMBER_LABELS[job] + GENDER_LABELS[gender])
            for job, gender in MEMBER_VARIANTS],
-         ('cat', 'YAWNING CAT'), ('T-toy', 'TOY CHEST'), ('i', 'IVY')]
+         ('cat', 'YAWNING CAT'), ('iris', 'ROBOT IRIS'), ('T-toy', 'TOY CHEST'), ('i', 'IVY')]
 # The members in the light and dark skin tones are built for sprite export
 # only, off the preview grid like the marks and rations below.
 OTHER_TONES = [(f'{job}-{gender}-{tone}', f'{job}-{gender}-{tone}'.upper())
@@ -149,7 +152,9 @@ SIZES = {**{base + turn: HEROIC_PLAYER_SIZE for base in ('@', '@c', '@C', '@K')
          'rock': 2.5,
          '?': 1.3, '!': 1.3, '&': 1.3,
          'ration-hyorogan': 1.4, 'ration-hardtack': 1.3, 'ration-jerky': 1.45,
-         'cat': 1.2}
+         'cat': 1.2,
+         # Iris is built at its own size, hovering at the player's shoulder height.
+         'iris': 1.0}
 # Each party member job is one size for both genders and every skin tone.
 MEMBER_SIZES = {'jester': 1.3, 'healer': 1.4, 'rogue': 1.42, 'knight': 1.79, 'guardian': 1.49,
                 'explorer': 1.49, 'seer': 1.3}
@@ -5069,7 +5074,7 @@ builders = {'@': heroic_player, '@_': lambda x, y: heroic_player(x, y, collapsed
             'E': lambda x, y: erebus(x, y, True), 'X': caltrop_plant, 'i': ivy, 'p': pegasus,
             'H': high_elf, 'I': isolated_elf, 'J': javelin_elf, 'K': collector_elf,
             'L': lifebringer_elf, 'S': sylvan_elf, 'rock': golem_rock,
-            'cat': yawning_cat,
+            'cat': yawning_cat, 'iris': lambda x, y: robot_iris.build(x, y),
             'ration-hyorogan': hyorogan, 'ration-hardtack': hardtack, 'ration-jerky': jerky,
             **{f'{job}-{gender}-{tone}': member_builder(job, gender, tone)
                for job, gender in MEMBER_VARIANTS for tone in MEMBER_TONES}}

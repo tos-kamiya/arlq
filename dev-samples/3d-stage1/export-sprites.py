@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 from heroic_groups import MEMBER_MODELS, blend_path, group_of
 sys.path.insert(0, str(ROOT / 'rigged-armor'))
 from sprite_pose import HEROIC_PLAYER_SIZE, heroic_player
+from robot_iris import EXPRESSIONS as IRIS_EXPRESSIONS, show_expression
 
 OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'characters'
 OUT.mkdir(parents=True, exist_ok=True)
@@ -58,6 +59,11 @@ models += [('c', 'chimera', (0, 0)), ('T', 'treasure', (0, 0)), ('T-toy', 'treas
            ('&', 'unknown-ampersand', (0, 0)),
            *[(model, model, (0, 0)) for model in MEMBER_MODELS],
            ('cat', 'yawning-cat', (0, 0)),
+           # Iris in every expression: robot-iris.png (neutral) and
+           # robot-iris-<expression>.png, from the one model.
+           *[('iris' if expr == 'neutral' else 'iris-' + expr,
+              'robot-iris' if expr == 'neutral' else 'robot-iris-' + expr, (0, 0))
+             for expr in IRIS_EXPRESSIONS],
            ('ration-hyorogan', 'ration-hyorogan', (0, 0)),
            ('ration-hardtack', 'ration-hardtack', (0, 0)),
            ('ration-jerky', 'ration-jerky', (0, 0))]
@@ -79,11 +85,15 @@ for char, name, (x, y) in models:
         for obj in selected:
             obj.data.transform(Matrix.Scale(HEROIC_PLAYER_SIZE, 4))
     else:
-        x, y = scene['sprite_centers'][char]
+        # Iris's expressions are one model with every set of eyes.
+        model = 'iris' if char.startswith('iris') else char
+        x, y = scene['sprite_centers'][model]
         selected = {obj for obj in scene.objects if obj.get('sprite')
-                    and obj.users_collection[0].name.startswith('Character ' + char + ' ')}
+                    and obj.users_collection[0].name.startswith('Character ' + model + ' ')}
     for obj in scene.objects:
         obj.hide_render = obj not in selected and obj.type not in ('LIGHT', 'CAMERA')
+    if char.startswith('iris'):
+        show_expression(selected, char[len('iris-'):] or 'neutral')
     camera = scene.camera
     # The lights are aimed at the scene origin; move them with the
     # character so every sprite is lit the same way wherever it stands.
@@ -120,6 +130,12 @@ for char, name, (x, y) in models:
     inner.linestyle.color = (0.04, 0.05, 0.07)
     inner.linestyle.thickness = 1.5
     inner.linestyle.alpha = 0.7
+    # No ink round glowing parts whose faces carry Freestyle marks (Iris's
+    # eyes and hover ring).
+    for lineset in (lines, inner):
+        lineset.select_by_face_marks = True
+        lineset.face_mark_negation = 'EXCLUSIVE'
+        lineset.face_mark_condition = 'ONE'
     scene.cycles.samples = 256
     scene.render.image_settings.file_format = 'PNG'
     scene.render.image_settings.color_mode = 'RGBA'
