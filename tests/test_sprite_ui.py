@@ -1,5 +1,6 @@
 """Sprite rendering must respect the shared information disclosure rules."""
 from pathlib import Path
+from importlib import import_module
 from types import SimpleNamespace
 
 import pyglet
@@ -49,15 +50,15 @@ def sprite_ui(monkeypatch):
     ui._drawables = []
     ui.text_calls = []
     ui.outlines = []
-    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.shapes.Rectangle',
+    monkeypatch.setattr(import_module('pyglet.shapes'), 'Rectangle',
                         lambda x, y, width, height, **kwargs: SimpleNamespace(
                             x=x, y=y, width=width, height=height, **kwargs))
     monkeypatch.setattr(PygletUI, '_draw_field_text',
                         lambda self, *args: self.text_calls.append(args))
     monkeypatch.setattr(ui, '_draw_ground_disc', lambda *args: ui.outlines.append(args))
-    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
+    monkeypatch.setattr(import_module('pyglet.sprite'), 'Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
-    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.text.Label',
+    monkeypatch.setattr(import_module('pyglet.text'), 'Label',
                         lambda text, **kwargs: SimpleNamespace(text=text, **kwargs))
     return ui
 

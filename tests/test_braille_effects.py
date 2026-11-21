@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from importlib import import_module
 
 import pytest
 
@@ -82,7 +83,7 @@ def test_gui_effect_keeps_player_cell(monkeypatch):
     ui._pump = lambda: None
     positions = []
     item = lambda *args, **kwargs: SimpleNamespace(delete=lambda: None)
-    monkeypatch.setattr(pyglet_funcs.pyglet.shapes, "Rectangle",
+    monkeypatch.setattr(import_module("pyglet.shapes"), "Rectangle",
                         lambda x, y, w, h, **kwargs: (positions.append((x, y, w, h)), item())[1])
     monkeypatch.setattr(braille_effects, "effect_frames", lambda *args: (
         0, [[((2, 2), "⣿", (255, 255, 255)),
@@ -200,7 +201,7 @@ def test_gui_iris_ration_draws_dots_beside_her(monkeypatch):
     ui._pump = lambda: None
     rects = []
     item = lambda *args, **kwargs: SimpleNamespace(delete=lambda: None)
-    monkeypatch.setattr(pyglet_funcs.pyglet.shapes, "Rectangle",
+    monkeypatch.setattr(import_module("pyglet.shapes"), "Rectangle",
                         lambda x, y, w, h, **kwargs: (rects.append((x, y, w, h)), item())[1])
     monkeypatch.setattr(pyglet_funcs, "IRIS_SPARKLE_SECONDS", 0)
     ui.draw_iris_ration((2, 3))
