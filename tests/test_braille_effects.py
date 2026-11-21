@@ -50,7 +50,7 @@ def test_terminal_effect_keeps_player_cell(monkeypatch, capsys):
     ui.map_mode = False
     ui._wait_for_terminal_size = lambda: None
     ui._style = lambda text, **kwargs: text
-    ui.term = SimpleNamespace(number_of_colors=0, normal="",
+    ui.term = SimpleNamespace(number_of_colors=0, normal="", inkey=lambda timeout: "",
                               move_xy=lambda x, y: f"[{x},{y}]")
     monkeypatch.setattr(blessed_funcs, "effect_frames", lambda *args: (
         0.1, [[((2, 2), "⣿", (255, 255, 255)),
@@ -170,9 +170,13 @@ def test_terminal_iris_ration_twinkles_beside_her(monkeypatch, capsys):
     ui._sparkle_context = _sparkle_context()
     ui._wait_for_terminal_size = lambda: None
     ui._style = lambda text, **kwargs: text
-    ui.term = SimpleNamespace(normal="", move_xy=lambda x, y: f"[{x},{y}]")
+    queued = ["d", "d"]
+    ui.term = SimpleNamespace(normal="", move_xy=lambda x, y: f"[{x},{y}]",
+                              inkey=lambda timeout: queued.pop() if queued else "")
     monkeypatch.setattr(blessed_funcs.time, "sleep", lambda _: None)
     ui.draw_iris_ration((4, 3))
+    # Keys repeated while the effect played are dropped.
+    assert queued == []
     output = capsys.readouterr().out
     assert "[4,3]" not in output
     assert all(f"[{x},{y}]" in output for x, y in ((4, 2), (5, 3), (4, 4), (3, 3)))
@@ -217,3 +221,19 @@ def test_iris_sparkle_above_and_below_stays_in_the_half_near_her():
                 assert not mask & ~lower_half
             elif point == (2, 3):
                 assert not mask & ~upper_half
+
+
+def test_terminal_stop_movement_repeat_discards_queued_keys():
+    from arlq import blessed_funcs
+
+    ui = blessed_funcs.BlessedUI.__new__(blessed_funcs.BlessedUI)
+    queued = ["d", "d", "d"]
+    timeouts = []
+
+    def inkey(timeout):
+        timeouts.append(timeout)
+        return queued.pop() if queued else ""
+
+    ui.term = SimpleNamespace(inkey=inkey)
+    ui.stop_movement_repeat()
+    assert queued == [] and set(timeouts) == {0}

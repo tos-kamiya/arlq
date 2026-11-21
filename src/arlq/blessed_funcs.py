@@ -80,6 +80,17 @@ class BlessedUI(BlessedSettingsMixin):
         )
         print(self._stage_snapshot, end="", flush=True)
 
+    def _discard_pending_keys(self) -> None:
+        """Drop keys already waiting in the terminal, such as OS key
+        repeats that arrived while an effect was playing."""
+        while self.term.inkey(timeout=0):
+            pass
+
+    def stop_movement_repeat(self) -> None:
+        # The terminal has no repeat of its own to stop; held-key repeats
+        # queued so far are discarded instead.
+        self._discard_pending_keys()
+
     def _read_key(self):
         while True:
             self._wait_for_terminal_size()
@@ -656,6 +667,7 @@ class BlessedUI(BlessedSettingsMixin):
                 bg=self._combat_cell_backgrounds.get(point),
             ), end="", flush=True)
         time.sleep(seconds)
+        self._discard_pending_keys()
 
     def _draw_braille_effect(self, name, pos):
         seconds, frames = effect_frames(name, pos, self.combat_effect_seconds)
@@ -682,6 +694,7 @@ class BlessedUI(BlessedSettingsMixin):
             print("".join(output) + self.term.normal, end="", flush=True)
             time.sleep(seconds / len(frames))
         print(snapshot, end="", flush=True)
+        self._discard_pending_keys()
 
     def draw_iris_ration(self, pos):
         """Twinkle a small treasure-like sparkle in the cells beside Iris as
@@ -702,6 +715,7 @@ class BlessedUI(BlessedSettingsMixin):
             print("".join(output) + self.term.normal, end="", flush=True)
             time.sleep(IRIS_SPARKLE_SECONDS / IRIS_SPARKLE_FRAMES)
         print(snapshot, end="", flush=True)
+        self._discard_pending_keys()
 
     def draw_vortex_effect(self, pos):
         self._draw_braille_effect("Vortex", pos)
