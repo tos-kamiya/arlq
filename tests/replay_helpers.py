@@ -67,6 +67,8 @@ def replay_to_operation(replay: ReplayContext, operation_count: int) -> Replayed
             bridgehead.recover_at_bridgehead(
                 floors, player, floor[0], previous_floor, previous_point
             )
+        if stage56.take_iris_ration(player):
+            player.lp = d.IRIS_RATION_LP
         player.current_floor = floor[0]
     observe()
     return floors, player, floor[0], checkpoint[0], queue

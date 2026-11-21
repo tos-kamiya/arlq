@@ -67,6 +67,9 @@ class GameSession:
         self.debug_show_entities = debug_show_entities
         self.phase = "playing"
         self.outcome = None
+        # Iris caught a starving player: they lie collapsed with her line
+        # shown until the next movement input, which restores their LP.
+        self.iris_rescue_pending = False
         self.replay_context = (
             engine.ReplayContext(self.stage_num, self.initial_seed, self.config)
             if not self.single_floor_stage
@@ -198,7 +201,12 @@ class GameSession:
         Disabling collection leaves gameplay unchanged.
         """
         floor_before = self.floor[0]
-        if self.phase == "playing" and self.player.lp <= 0:
+        if self.iris_rescue_pending and self.phase == "playing" and move != (0, 0):
+            self.iris_rescue_pending = False
+            self.player.lp = d.IRIS_RATION_LP
+            self.message = (-1, "")
+            return TurnResult(False, self.message, True, floor_before, floor_before)
+        if self.phase == "playing" and self.player.lp <= 0 and not self.iris_rescue_pending:
             self._finish()
         if self.phase != "playing" or move == (0, 0):
             return TurnResult(False, self.message, False, floor_before, floor_before)
@@ -398,6 +406,10 @@ class GameSession:
                 floor_before_step,
                 point_before_step,
             )
+        if engine.stage56.take_iris_ration(self.player):
+            self.iris_rescue_pending = True
+            stop_repeat = True
+            self.message = (-1, engine.trp(engine.stage56.IRIS_RATION_LINE, 9))
         if self.trace is not None:
             self.trace.set_turn_end_lp(self.player.lp)
             self.trace.commit_turn()
@@ -439,7 +451,7 @@ class GameSession:
                     "-- The Dungeon Core is swelling; its rampage draws near!", 7
                 ),
             )
-        if self.player.lp <= 0:
+        if self.player.lp <= 0 and not self.iris_rescue_pending:
             stop_repeat = True
             self._finish()
         return TurnResult(

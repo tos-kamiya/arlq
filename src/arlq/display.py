@@ -182,7 +182,7 @@ def stage5_member_progress_marks(
     marks = []
     current_roles = {member.role for member in player.members}
     for role in roles:
-        if role in (d.MEMBER_YAWNING_CAT, d.MEMBER_FAIRY_SEER) and not getattr(player, "stage6_candidates", False):
+        if role in (d.MEMBER_YAWNING_CAT, d.MEMBER_FAIRY_SEER, d.MEMBER_IRIS) and not getattr(player, "stage6_candidates", False):
             continue
         label = d.MEMBER_GLYPHS[role]
         departed = (not getattr(player, "stage6_candidates", False)

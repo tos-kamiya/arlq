@@ -147,12 +147,16 @@ MEMBER_GUARDIAN = "Guardian"
 MEMBER_NOBLE = "Noble"
 MEMBER_YAWNING_CAT = "Yawning Cat"
 MEMBER_FAIRY_SEER = "Fairy Seer"
+MEMBER_IRIS = "Iris"
 MEMBERS_BLOCKED_BY_BARRIERS = frozenset({MEMBER_FAIRY_SEER, MEMBER_HEALER, MEMBER_JESTER})
 CAT_EXPLORE_INTERVAL = 20
 CAT_EXPLORE_SIZE = 2
 CAT_EXPLORE_RADIUS = 10  # Vertical radius, tuned independently of Vortex.
 
 PARTY_LIMIT = 2
+# Iris carries one ration; while she is in the party and LP drops to 0 or
+# below, it sets LP to this value. Entering a bridgehead with her refills it.
+IRIS_RATION_LP = 30
 MEMBER_STAGE_JESTER_EXP_MULTIPLIER = 1.5
 KNIGHT_INITIAL_LEVEL = 40
 JESTER_DEPARTURE_LEVEL = 100
@@ -161,12 +165,14 @@ HEALER_RESPAWN_COST = 3
 RECRUITABLE_MEMBER_ROLES = (
     MEMBER_JESTER, MEMBER_HEALER, MEMBER_ROGUE, MEMBER_KNIGHT,
     MEMBER_DUNGEON_EXPLORER, MEMBER_GUARDIAN, MEMBER_YAWNING_CAT, MEMBER_FAIRY_SEER,
+    MEMBER_IRIS,
 )
 MEMBER_GLYPHS = {
     MEMBER_JESTER: "J", MEMBER_HEALER: "H", MEMBER_ROGUE: "R",
     MEMBER_KNIGHT: "K", MEMBER_DUNGEON_EXPLORER: "D", MEMBER_GUARDIAN: "G", MEMBER_NOBLE: "N",
     MEMBER_YAWNING_CAT: "Y",
     MEMBER_FAIRY_SEER: "S",
+    MEMBER_IRIS: "I",
 }
 # Stages that feature elves and share the multi-floor progress state.
 ELF_STAGES = frozenset({3, 4})
@@ -521,6 +527,7 @@ class PartyMember(Entity):
         self.exploration_turns = 0
         self.origin_floor = origin_floor
         self.level: float = KNIGHT_INITIAL_LEVEL if role == MEMBER_KNIGHT else 0
+        self.has_ration: bool = role == MEMBER_IRIS
 
 
 class Monster(Entity):

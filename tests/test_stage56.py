@@ -278,7 +278,7 @@ def test_stage5_member_progress_shows_candidates_before_they_depart():
         label for label, _ in display.stage5_member_progress_marks(player)
     ] == ["J1", "H", "R2", "K", "D", "G"]
     player.stage6_candidates = True
-    assert display.stage5_member_progress_marks(player)[-2:] == [("Y", False), ("S", False)]
+    assert display.stage5_member_progress_marks(player)[-3:] == [("Y", False), ("S", False), ("I", False)]
 
 
 def test_stage5_member_progress_marks_party_members_with_at():
@@ -1898,3 +1898,98 @@ def test_cat_does_nothing_when_only_distant_floor_is_unexplored(monkeypatch):
     stage56.explore_with_cat(current, player)
     assert current.seen[-1][-1] == 0
     assert player.members[0].exploration_turns == 0
+
+
+def test_iris_ration_is_used_once_when_lp_drops_to_zero_or_below():
+    _, player = state((d.MEMBER_IRIS,), lp=1)
+    assert not stage56.take_iris_ration(player)
+    assert player.members[0].has_ration
+    player.lp = -12
+    assert stage56.take_iris_ration(player)
+    assert not player.members[0].has_ration
+    assert not stage56.take_iris_ration(player)
+
+
+def test_iris_ration_needs_iris_in_the_party():
+    _, player = state((d.MEMBER_KNIGHT,), lp=0)
+    assert not stage56.take_iris_ration(player)
+
+
+def test_iris_ration_stays_used_after_leaving_and_refills_at_bridgehead():
+    from arlq import bridgehead
+
+    current, player = state((d.MEMBER_IRIS,), lp=0)
+    iris = player.members[0]
+    assert stage56.take_iris_ration(player)
+    # Leaving the party alone does not refill it.
+    player.members.remove(iris)
+    current.entities.append(iris)
+    current.bridgehead = (player.x, player.y)
+    bridgehead.recover_at_bridgehead([current], player, 0, 0, (player.x - 1, player.y))
+    assert not iris.has_ration
+    # Entering a bridgehead with her does.
+    current.entities.remove(iris)
+    player.members.append(iris)
+    bridgehead.recover_at_bridgehead([current], player, 0, 0, (player.x - 1, player.y))
+    assert iris.has_ration
+
+
+def iris_session(monkeypatch, lp=1):
+    from arlq.game_session import GameSession
+
+    current, player = state((d.MEMBER_IRIS,), lp=lp)
+    player.members[0].x, player.members[0].y = 1, 2
+    monkeypatch.setattr(engine, "build_single_floor", lambda *_: ([current], player))
+    return GameSession(1, seed_str="iris-ration")
+
+
+def test_iris_lets_the_player_collapse_then_restores_lp_on_the_next_move(monkeypatch):
+    session = iris_session(monkeypatch)
+    result = session.step((1, 0))
+    assert result.stop_repeat
+    assert session.phase == "playing" and session.iris_rescue_pending
+    assert session.player.lp <= 0
+    assert session.message[1] == stage56.IRIS_RATION_LINE
+    point, turn = (session.player.x, session.player.y), session.turn
+    assert not session.step((0, 0)).consumed
+    assert session.iris_rescue_pending
+    result = session.step((1, 0))
+    assert not result.consumed
+    assert not session.iris_rescue_pending
+    assert session.player.lp == d.IRIS_RATION_LP
+    assert (session.player.x, session.player.y) == point and session.turn == turn
+    assert session.message == (-1, "")
+
+
+def test_starving_again_without_a_ration_ends_the_game(monkeypatch):
+    session = iris_session(monkeypatch)
+    session.step((1, 0))
+    session.step((1, 0))
+    session.player.lp = 1
+    session.step((1, 0))
+    assert session.phase == "game_over" and session.outcome == "lose"
+
+
+def test_iris_rescue_in_the_game_loop(monkeypatch):
+    current, player = state((d.MEMBER_IRIS,), lp=1)
+    player.members[0].x, player.members[0].y = 1, 2
+    monkeypatch.setattr(engine, "build_single_floor", lambda *_: ([current], player))
+
+    class UI:
+        def __init__(self):
+            self.moves = iter([(1, 0), (1, 0), (1, 0)])
+            self.drawn = []
+
+        def draw_stage(self, **kwargs):
+            self.drawn.append((kwargs["player"].lp, kwargs["player"].x))
+
+        def input_direction(self):
+            return next(self.moves, None)
+
+        def input_alphabet(self):
+            return None
+
+    ui = UI()
+    engine.run_game(ui, "test", stage_num=1)
+    # Collapsed with Iris's line, revived in place by the next key, then on.
+    assert ui.drawn == [(1, 2), (0, 3), (d.IRIS_RATION_LP, 3), (d.IRIS_RATION_LP - 1, 4)]

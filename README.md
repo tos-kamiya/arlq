@@ -330,7 +330,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 ### Stage 5: Training Ground
 
-Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of six Stage 6 party members (excluding the Yawning Cat and Fairy Seer). Defeated monsters do not respawn.
+Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of six Stage 6 party members (excluding the Yawning Cat, Fairy Seer, and Iris). Defeated monsters do not respawn.
 
 ### Stage 6: Dungeon with a Party
 
@@ -354,6 +354,7 @@ In Stage 6, S, H, and J cannot cross barriers. If they would enter a barrier, th
 | **G** Guardian | Reduces barrier damage from 30 LP to 5 LP per turn. |
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
+| **I** Iris | A talkative robot built in the capital's arsenal. Carries one ration: if you collapse from hunger while she is in the party, she offers it instead of the game ending, and your next move key restores LP to 30. Entering a bridgehead with her refills the ration; leaving the party does not. |
 
 Vertically adjacent monsters fight in parties of up to eight, combining their strength and experience; the highest LP reward applies. If a defeated party includes a sword-bearing `c`, its sword takes precedence over other items.
 

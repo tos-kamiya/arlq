@@ -149,6 +149,8 @@ MEMBER_SPRITES = {'J': ('jester-n',), 'H': ('healer-f', 'healer-m'),
                   'S': ('seer-f', 'seer-m')}
 CAT_SPRITE = 'yawning-cat'
 SPRITE_FILES[CAT_SPRITE] = 'yawning-cat.png'
+IRIS_SPRITE = 'robot-iris'
+SPRITE_FILES[IRIS_SPRITE] = 'robot-iris.png'
 # The player's images facing up, left and right; facing down (the camera) is
 # the plain image. Keys add the facing to the plain image's key, e.g.
 # 'player sword left' for player-sword-left.png.
@@ -191,6 +193,7 @@ SPRITE_NAMES.update({f'{name}-{skin}': role
                      for name in MEMBER_SPRITES.get(char, ())
                      for skin in MEMBER_SKINS})
 SPRITE_NAMES[CAT_SPRITE] = d.MEMBER_YAWNING_CAT
+SPRITE_NAMES[IRIS_SPRITE] = d.MEMBER_IRIS
 # An elf the player has met (drawn without bold as text) is shown with its
 # sprite and ground disc darkened to this fraction.
 MET_ELF_SHADE = 0.6
@@ -1514,6 +1517,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
                 else self._member_variants.get(glyph.char))
         key = ("J" if glyph.member_role == d.MEMBER_JAVELIN_ELF else
                CAT_SPRITE if glyph.char == 'Y' else
+               IRIS_SPRITE if glyph.char == 'I' else
                f'{name}-{self._member_skins[glyph.char]}' if name else None)
         if key not in self._sprite_images:
             return super()._draw_member(glyph)

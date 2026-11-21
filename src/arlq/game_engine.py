@@ -2060,7 +2060,7 @@ def run_game(
     )
     view_floor = 0
     while session.phase == "playing":
-        if session.player.lp <= 0:
+        if session.player.lp <= 0 and not session.iris_rescue_pending:
             _stop_movement_repeat(ui)
             session._finish()
             break

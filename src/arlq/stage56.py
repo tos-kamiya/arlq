@@ -83,6 +83,25 @@ def recruit(
     return trp("-- {joined} joined your party.", 5).format(joined=t(member.role))
 
 
+# Iris's line when she catches the starving player (emergency_food in
+# dev-samples/stage6-robot-dialogue-ja.json).
+IRIS_RATION_LINE = "I: Oh no! Please take my spare ration. It's the last meal I have."
+
+
+def take_iris_ration(player: d.Player) -> bool:
+    """Use up Iris's ration if LP has dropped to 0 or below while she is in
+    the party with it. Returns whether she used it; the caller sets LP to
+    IRIS_RATION_LP."""
+    if player.lp > 0:
+        return False
+    iris = next((member for member in player.members
+                 if member.role == d.MEMBER_IRIS and member.has_ration), None)
+    if iris is None:
+        return False
+    iris.has_ration = False
+    return True
+
+
 def reveal_scholar_features(current: Floor, known: list[list[int]]) -> None:
     """Reveal Explorer secrets anywhere in the explored part of the floor."""
     for points, hidden, revealed in (

@@ -50,10 +50,14 @@ def recover_at_bridgehead(
     floors: list[Floor], player: d.Player, floor_index: int,
     previous_floor: int, previous_point: d.Point,
 ) -> bool:
-    """Restore LP when entering a bridgehead on any floor."""
+    """Restore LP, and refill Iris's ration if she is in the party, when
+    entering a bridgehead on any floor."""
     current = floors[floor_index]
     entered = (in_bridgehead(current, (player.x, player.y))
                and (previous_floor != floor_index or not in_bridgehead(current, previous_point)))
     if entered:
         player.lp = max(player.lp, d.BRIDGEHEAD_RECOVERY_LP)
+        for member in player.members:
+            if member.role == d.MEMBER_IRIS:
+                member.has_ration = True
     return entered
