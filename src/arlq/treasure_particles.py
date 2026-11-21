@@ -5,7 +5,7 @@ from . import defs as d
 SPARKLE_TICKS_PER_SECOND = 2.5
 
 
-def sparkle_cells(player, entities, field, visible, decor=None, blocked=()):
+def _occupied_cells(player, entities, blocked):
     occupied = set(blocked)
     occupied.add((player.x, player.y))
     for entity in entities:
@@ -16,6 +16,11 @@ def sparkle_cells(player, entities, field, visible, decor=None, blocked=()):
         if isinstance(entity, d.Treasure):
             occupied.update(((entity.x - 1, entity.y), (entity.x + 1, entity.y)))
     occupied.update((member.x, member.y) for member in player.members)
+    return occupied
+
+
+def sparkle_cells(player, entities, field, visible, decor=None, blocked=()):
+    occupied = _occupied_cells(player, entities, blocked)
     cells = []
     for y in range(max(0, player.y - 2), min(len(field), player.y + 3)):
         for x in range(max(0, player.x - 2), min(len(field[y]), player.x + 3)):
@@ -51,13 +56,42 @@ def sparkle_frame(cells, tick, center):
     return [(point, chr(0x2800 + mask)) for point, mask in frame.items()]
 
 
-# Iris's ration glow: a small twinkle inside her own cell. Each frame is a
-# braille mask; the corner dots leave the middle of the glyph readable.
+# Iris's ration glow: a small version of the treasure sparkle in the four
+# cells beside her, leaving her own glyph in place.
 IRIS_SPARKLE_SECONDS = 0.6
-_IRIS_SPARKLE_MASKS = (0x01, 0x08 | 0x40, 0x80 | 0x01, 0x40 | 0x08 | 0x80, 0x01 | 0x08,
-                       0x40 | 0x80, 0x01 | 0x80, 0x08 | 0x40)
+IRIS_SPARKLE_FRAMES = 8
+# Fixed braille masks each neighbour cycles through, offset per cell (no
+# randomness). The cells beside her use any dot; the cell above uses only
+# its lower half and the cell below only its upper half, so the twinkle
+# stays close to her.
+_IRIS_SPARKLE_MASKS = (0x01, 0x10, 0x04 | 0x80, 0x00, 0x08, 0x02 | 0x40, 0x20, 0x00)
+_IRIS_SPARKLE_UPPER_MASKS = (0x01, 0x10, 0x02 | 0x08, 0x00, 0x08, 0x01 | 0x10, 0x02, 0x00)
+_IRIS_SPARKLE_LOWER_MASKS = (0x04, 0x80, 0x40 | 0x20, 0x00, 0x20, 0x04 | 0x80, 0x40, 0x00)
 
 
-def iris_sparkle_frames():
-    """Braille characters for the twinkle, one per frame."""
-    return [chr(0x2800 + mask) for mask in _IRIS_SPARKLE_MASKS]
+def iris_sparkle_cells(center, player, entities, field, visible, decor=None, blocked=()):
+    """Free, visible floor cells beside Iris for her ration twinkle."""
+    occupied = _occupied_cells(player, entities, blocked)
+    cx, cy = center
+    cells = []
+    for x, y in ((cx, cy - 1), (cx + 1, cy), (cx, cy + 1), (cx - 1, cy)):
+        if not (0 <= y < len(field) and 0 <= x < len(field[y])):
+            continue
+        if (field[y][x] != d.CHAR_FLOOR or not visible[y][x]
+                or (x, y) in occupied or (decor and decor[y][x])):
+            continue
+        cells.append((x, y))
+    return cells
+
+
+def iris_sparkle_frame(cells, index, center):
+    """The braille characters shown in each cell on frame `index`."""
+    frame = []
+    for k, point in enumerate(cells):
+        masks = (_IRIS_SPARKLE_LOWER_MASKS if point[1] < center[1]
+                 else _IRIS_SPARKLE_UPPER_MASKS if point[1] > center[1]
+                 else _IRIS_SPARKLE_MASKS)
+        mask = masks[(index + 2 * k) % len(masks)]
+        if mask:
+            frame.append((point, chr(0x2800 + mask)))
+    return frame

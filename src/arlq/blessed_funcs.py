@@ -11,9 +11,11 @@ from .braille_effects import effect_frames
 from .i18n import t as tr
 from .settings import combat_effect_seconds, load_settings
 from .treasure_particles import (
+    IRIS_SPARKLE_FRAMES,
     IRIS_SPARKLE_SECONDS,
     SPARKLE_TICKS_PER_SECOND,
-    iris_sparkle_frames,
+    iris_sparkle_cells,
+    iris_sparkle_frame,
     sparkle_cells,
     sparkle_frame,
 )
@@ -47,6 +49,7 @@ class BlessedUI(BlessedSettingsMixin):
         self.shift_direction = False
         self._last_stage: Optional[tuple[Any, Any]] = None
         self._treasure_sparkle_cells: list[tuple[int, int]] = []
+        self._sparkle_context = None
         self._treasure_sparkle_started: Optional[float] = None
         self._stage_snapshot = ""
         self._effect_player_pos: Optional[tuple[int, int]] = None
@@ -628,6 +631,10 @@ class BlessedUI(BlessedSettingsMixin):
         elif self._treasure_sparkle_started is None:
             self._treasure_sparkle_started = time.monotonic()
         self._treasure_sparkle_center = (player.x, player.y)
+        self._sparkle_context = (
+            None if floor_view or self.map_mode
+            else (player, entities, field, torched, decor, blocked)
+        )
         self._treasure_sparkle_cells = (
             sparkle_cells(player, entities, field, torched, decor, blocked)
             if player.treasure_collected and player.stage_won and not floor_view
@@ -677,21 +684,23 @@ class BlessedUI(BlessedSettingsMixin):
         print(snapshot, end="", flush=True)
 
     def draw_iris_ration(self, pos):
-        """Alternate Iris's cell between a yellow twinkle and her glyph as
-        she hands over her ration (a terminal cell holds one character)."""
-        if self.combat_effect_seconds == 0:
+        """Twinkle a small treasure-like sparkle in the cells beside Iris as
+        she hands over her ration."""
+        if self.combat_effect_seconds == 0 or self._sparkle_context is None:
             return
-        frames = iris_sparkle_frames()
+        cells = iris_sparkle_cells(pos, *self._sparkle_context)
+        if not cells:
+            return
         snapshot = self._stage_snapshot
-        bg = self._combat_cell_backgrounds.get(pos)
-        for index, char in enumerate(frames):
+        for index in range(IRIS_SPARKLE_FRAMES):
             self._wait_for_terminal_size()
-            if index % 2:
-                char = d.MEMBER_GLYPHS[d.MEMBER_IRIS]
-            glyph = self._style(char, color="yellow", bold=True, bg=bg)
-            print(snapshot + self.term.move_xy(*pos) + glyph + self.term.normal,
-                  end="", flush=True)
-            time.sleep(IRIS_SPARKLE_SECONDS / len(frames))
+            output = [snapshot]
+            for point, char in iris_sparkle_frame(cells, index, pos):
+                output.append(self.term.move_xy(*point) + self._style(
+                    char, color="yellow", bold=True,
+                    bg=self._combat_cell_backgrounds.get(point)))
+            print("".join(output) + self.term.normal, end="", flush=True)
+            time.sleep(IRIS_SPARKLE_SECONDS / IRIS_SPARKLE_FRAMES)
         print(snapshot, end="", flush=True)
 
     def draw_vortex_effect(self, pos):

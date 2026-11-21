@@ -78,9 +78,11 @@ from .settings import (
     next_gamepad_button as _next_gamepad_button,
 )
 from .treasure_particles import (
+    IRIS_SPARKLE_FRAMES,
     IRIS_SPARKLE_SECONDS,
     SPARKLE_TICKS_PER_SECOND,
-    iris_sparkle_frames,
+    iris_sparkle_cells,
+    iris_sparkle_frame,
     sparkle_cells,
     sparkle_frame,
 )
@@ -325,6 +327,7 @@ class PygletUI(PygletSettingsMixin):
         self._effect_player_pos: Optional[tuple[int, int]] = None
         self._treasure_sparkle_started: Optional[float] = None
         self._treasure_sparkle_cells: list[tuple[int, int]] = []
+        self._sparkle_context = None
 
     def __init__(
         self,
@@ -1158,33 +1161,32 @@ class PygletUI(PygletSettingsMixin):
             self._flip()
 
     def draw_iris_ration(self, pos):
-        """Twinkle a small treasure-like glow in Iris's cell as she hands
-        over her ration."""
-        if self.combat_effect_seconds == 0:
+        """Twinkle a small treasure-like sparkle in the cells beside Iris as
+        she hands over her ration."""
+        if self.combat_effect_seconds == 0 or self._sparkle_context is None:
             return
-        frames = iris_sparkle_frames()
+        cells = iris_sparkle_cells(pos, *self._sparkle_context)
+        if not cells:
+            return
         group = pyglet.graphics.Group(order=10002)
-        x, y = pos
-        left = self._field_col_x(x)
-        top = self.window_height - y * self.cell_size_y
-        width = self._field_col_width(x)
-        slot_w, slot_h = width / 2, self.cell_size_y / 4
-        size = max(1.0, min(slot_w, slot_h) * 0.6)
-        for char in frames:
+        for index in range(IRIS_SPARKLE_FRAMES):
             if self._closed:
                 break
-            objects = [
-                pyglet.shapes.Rectangle(
-                    left + slot_w * (column + 0.5) - size / 2,
-                    top - slot_h * (row + 0.5) - size / 2,
-                    size, size,
-                    color=self._display_color(COLOR_MAP[CI_YELLOW]),
-                    batch=self.batch, group=group,
-                )
-                for column, row in _braille_dots(char)
-            ]
+            objects = []
+            for (x, y), char in iris_sparkle_frame(cells, index, pos):
+                left = self._field_col_x(x)
+                top = self.window_height - y * self.cell_size_y
+                width = self._field_col_width(x)
+                for column, row in _braille_dots(char):
+                    objects.append(pyglet.shapes.Rectangle(
+                        left + width * column / 2,
+                        top - self.cell_size_y * (row + 1) / 4,
+                        width / 2, self.cell_size_y / 4,
+                        color=self._display_color(COLOR_MAP[CI_YELLOW]),
+                        batch=self.batch, group=group,
+                    ))
             self._flip()
-            deadline = time.monotonic() + IRIS_SPARKLE_SECONDS / len(frames)
+            deadline = time.monotonic() + IRIS_SPARKLE_SECONDS / IRIS_SPARKLE_FRAMES
             while not self._closed and time.monotonic() < deadline:
                 self._pump()
                 time.sleep(min(1 / 60, max(0, deadline - time.monotonic())))
@@ -1546,6 +1548,10 @@ class PygletUI(PygletSettingsMixin):
         elif self._treasure_sparkle_started is None:
             self._treasure_sparkle_started = time.monotonic()
         self._treasure_sparkle_center = (px, py)
+        self._sparkle_context = (
+            None if floor_view or self.map_mode
+            else (player, entities, field, torched, decor, blocked)
+        )
         self._treasure_sparkle_cells = (
             sparkle_cells(player, entities, field, torched, decor, blocked)
             if self.show_treasure_sparkles and self.combat_effect_seconds > 0

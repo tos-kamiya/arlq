@@ -139,39 +139,53 @@ def test_iris_ration_effect_follows_events_on_the_current_floor():
     assert calls == [(2, 2)]
 
 
-def test_iris_sparkle_frames_light_only_the_cell_corners():
-    from arlq.treasure_particles import iris_sparkle_frames
+def test_iris_sparkle_uses_free_floor_cells_beside_her():
+    from arlq.treasure_particles import iris_sparkle_cells, iris_sparkle_frame
 
-    frames = iris_sparkle_frames()
-    assert frames
-    for char in frames:
-        mask = ord(char) - 0x2800
-        assert mask and not mask & ~(0x01 | 0x08 | 0x40 | 0x80)
+    field = [[d.CHAR_FLOOR] * 5 for _ in range(5)]
+    field[1][2] = d.CHAR_WALL
+    visible = [[1] * 5 for _ in range(5)]
+    visible[2][1] = 0
+    player = d.Player(3, 2, 1, 0)
+    cells = iris_sparkle_cells((2, 2), player, [], field, visible)
+    # Up is a wall, right is the player, left is out of sight.
+    assert cells == [(2, 3)]
+    chars = [char for index in range(8) for _, char in iris_sparkle_frame(cells, index, (2, 2))]
+    assert chars and all(0x2800 < ord(char) <= 0x28ff for char in chars)
 
 
-def test_terminal_iris_ration_alternates_sparkle_and_glyph(monkeypatch, capsys):
+def _sparkle_context():
+    field = [[d.CHAR_FLOOR] * 8 for _ in range(8)]
+    visible = [[1] * 8 for _ in range(8)]
+    return (d.Player(6, 6, 1, 0), [], field, visible, None, set())
+
+
+def test_terminal_iris_ration_twinkles_beside_her(monkeypatch, capsys):
     from arlq import blessed_funcs
 
     ui = blessed_funcs.BlessedUI.__new__(blessed_funcs.BlessedUI)
     ui.combat_effect_seconds = 0.3
     ui._stage_snapshot = "stage"
     ui._combat_cell_backgrounds = {}
+    ui._sparkle_context = _sparkle_context()
     ui._wait_for_terminal_size = lambda: None
     ui._style = lambda text, **kwargs: text
     ui.term = SimpleNamespace(normal="", move_xy=lambda x, y: f"[{x},{y}]")
     monkeypatch.setattr(blessed_funcs.time, "sleep", lambda _: None)
     ui.draw_iris_ration((4, 3))
     output = capsys.readouterr().out
-    assert "[4,3]I" in output and "[4,3]⠁" in output
+    assert "[4,3]" not in output
+    assert all(f"[{x},{y}]" in output for x, y in ((4, 2), (5, 3), (4, 4), (3, 3)))
     assert output.endswith("stage")
 
 
-def test_gui_iris_ration_draws_dots_inside_her_cell(monkeypatch):
+def test_gui_iris_ration_draws_dots_beside_her(monkeypatch):
     from arlq import pyglet_funcs
 
     ui = pyglet_funcs.PygletUI.__new__(pyglet_funcs.PygletUI)
     ui.combat_effect_seconds = 0.3
     ui._closed = False
+    ui._sparkle_context = _sparkle_context()
     ui.cell_size_x = ui.cell_size_y = 16
     ui.window_height = 160
     ui.batch = None
@@ -186,7 +200,20 @@ def test_gui_iris_ration_draws_dots_inside_her_cell(monkeypatch):
                         lambda x, y, w, h, **kwargs: (rects.append((x, y, w, h)), item())[1])
     monkeypatch.setattr(pyglet_funcs, "IRIS_SPARKLE_SECONDS", 0)
     ui.draw_iris_ration((2, 3))
-    assert rects
-    for x, y, w, h in rects:
-        assert 32 <= x and x + w <= 48
-        assert 160 - 4 * 16 <= y and y + h <= 160 - 3 * 16
+    cells = {(int(x // 16), int((160 - y - h) // 16)) for x, y, w, h in rects}
+    assert cells == {(2, 2), (3, 3), (2, 4), (1, 3)}
+
+
+def test_iris_sparkle_above_and_below_stays_in_the_half_near_her():
+    from arlq.treasure_particles import iris_sparkle_frame
+
+    center = (2, 2)
+    cells = [(2, 1), (3, 2), (2, 3), (1, 2)]
+    lower_half, upper_half = 0x04 | 0x20 | 0x40 | 0x80, 0x01 | 0x02 | 0x08 | 0x10
+    for index in range(8):
+        for point, char in iris_sparkle_frame(cells, index, center):
+            mask = ord(char) - 0x2800
+            if point == (2, 1):
+                assert not mask & ~lower_half
+            elif point == (2, 3):
+                assert not mask & ~upper_half
