@@ -126,6 +126,14 @@ def test_hover_names_preserve_identity_and_member_roles(sprite_ui, key, name):
     assert sprite_ui._drawables[0].text == name
 
 
+@pytest.mark.parametrize('base', sprite_funcs.PLAYER_SPRITE_FILES)
+@pytest.mark.parametrize('facing', sprite_funcs.PLAYER_FACINGS)
+@pytest.mark.parametrize('pose', ['', ' walk-right', ' walk-left'])
+def test_hover_names_for_player_facing_and_walk(sprite_ui, base, facing, pose):
+    sprite_ui._draw_hover_name((4, 5), f'{base} {facing}{pose}', 100)
+    assert sprite_ui._drawables[0].text == 'Player'
+
+
 @pytest.mark.parametrize('key', sprite_funcs.UNKNOWN_SPRITES)
 def test_hover_unknown_character_has_no_name(sprite_ui, key):
     sprite_ui._draw_hover_name((4, 5), key, 100)
@@ -149,7 +157,8 @@ def test_hover_name_is_below_only_at_dungeon_top(sprite_ui, row):
 @pytest.mark.parametrize('key,name', [
     ('c', 'キメラ(c)'), ('k', '射手(k)'), ('@', 'プレイヤー(@)'),
     ('d', 'コモドドラゴン(d)'),
-    ('player blessed', 'プレイヤー(@)'), ('knight-n-l', '騎士(K)'),
+    ('player blessed', 'プレイヤー(@)'), ('@ left', 'プレイヤー(@)'),
+    ('player sword right', 'プレイヤー(@)'), ('knight-n-l', '騎士(K)'),
     ('K', 'コレクターエルフ(K)'), ('D', 'ドラゴン(D)'),
     ('explorer-n-d', 'ダンジョン探検家(D)'),
 ])

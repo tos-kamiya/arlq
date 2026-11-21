@@ -188,7 +188,9 @@ SPRITE_NAMES.update(dict.fromkeys(
     ('player sword', 'player cursed sword', 'player blessed', 'player collapsed',
      'player kneeling'), 'Player'))
 SPRITE_NAMES.update(dict.fromkeys(
-    (key for key in SPRITE_FILES if key.endswith((' walk-right', ' walk-left'))), 'Player'))
+    (key for key in SPRITE_FILES
+     if any(key.startswith(f'{base} ') for base in PLAYER_SPRITE_FILES)
+     and key.endswith((*PLAYER_FACINGS, ' walk-right', ' walk-left'))), 'Player'))
 SPRITE_NAMES.update({f'{name}-{skin}': role
                      for role, char in d.MEMBER_GLYPHS.items()
                      for name in MEMBER_SPRITES.get(char, ())
