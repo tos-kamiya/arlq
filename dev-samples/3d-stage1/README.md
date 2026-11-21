@@ -168,6 +168,8 @@ blender --factory-startup --background --threads 4 --python dev-samples/3d-stage
 - 1番目に `-- --preview-only` を付けると、保存済みの3つのシーンから全体プレビューだけを描く（シーンは作り直さない）。
 - プレイヤーだけを直したときは、0番目のあと、1番目を `-- --group others` で実行し、`rigged-armor/preview-player-facings.py` と `-- --preview-only` でプレビューを描き直し、3番目を `-- --only` にプレイヤーの17種類（`@`、`@c`、`@C`、`@K` と、それぞれの `^` `<` `>` 付き、`@_`）を並べて実行し、4番目をその画像に対して実行する。
 - 歩行ポーズだけを書き出すには、3番目に `-- --player-walk` を付ける。保存済みの `others` シーンの照明と甲冑モデルを使い、4方向・剣の状態4種類・左右の踏み出しの計32枚を生成する。続けて4番目に `src/arlq/assets/characters/player-*-walk-*.png` を指定する。
+- ロボットのアイリス（`robot_iris.py`）だけを直したときは、1番目を `-- --group members` で、続けて `-- --preview-only` で実行し、2番目のあと、3番目を `-- --only iris iris-joy iris-worry iris-panic iris-surprise iris-curious iris-idle`（7つの表情）で実行し、4番目を `src/arlq/assets/characters/robot-iris*.png` に対して実行する。
+- 比較画像の並び（`ORDER`）を変えて、後ろのキャラクターのマスがずれるときは、ずれたキャラクターを含むシーンもすべて作り直す（シーンには各キャラクターの位置が保存されている）。たとえばアイリスを猫の次に入れたときは、後ろのおもちゃの宝箱とツタのため `monsters` も作り直した（全部を作り直すのがかんたん）。位置が変わるだけで見た目は変わらないので、そのキャラクターの画像は書き出し直さなくてよい。
 - 3番目に `-- --only rock rogue-light` のようにキャラクター（`export-sprites.py` の `models` の1つ目の名前）を並べると、そのキャラクターだけを書き出す。
 - 4番目に画像のパスを並べると、その画像だけを処理する。
 
@@ -305,9 +307,19 @@ Rogue の服とズボンは青みのある黒に近い色にし、縁の光で�
 - `build-robot-iris.py` は、同じモデルを単体で置き、全部の表情をゲームと同じ角度と正面から描いて `robot-iris/expr/` に書き出し、通常の目の拡大画像（ゲームと同じ角度・斜め横・正面）を `robot-iris/` に書き出す。`robot-iris/preview-expressions.sh` は全部の表情を1枚に並べた `robot-iris/preview-expressions.png` を、`robot-iris/preview-with-player.sh` はプレイヤーと並べた画像を作る。これらの画像は確認用で、リポジトリには置かない。
 
 ```bash
+# ゲーム用の画像（メンバーのシーンから。手順は「キャラクター素材の再生成」）
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --group members
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-heroic.py -- --preview-only
+(cd dev-samples/3d-stage1/heroic && convert preview-angle60.png -quality 90 preview-angle60.jpg && rm preview-angle60.png)
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/export-sprites.py -- --only iris iris-joy iris-worry iris-panic iris-surprise iris-curious iris-idle
+.venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/characters/robot-iris*.png
+# 確認用の画像（単体のモデルから。約2分）
 blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-robot-iris.py
 sh dev-samples/3d-stage1/robot-iris/preview-expressions.sh
+sh dev-samples/3d-stage1/robot-iris/preview-with-player.sh
 ```
+
+`preview-expressions.sh` は、表情ごとに、正面から見た顔（上）とゲームと同じ角度の画像（下、2倍に拡大して床の色の上に置く）を1列にし、4列ずつ並べる。`preview-with-player.sh` は、`robot-iris/iris.png` とプレイヤーの画像（`src/arlq/assets/characters/player.png`）を、同じ縮尺で隣り合うマスに置き、足元をそろえて並べる。
 
 ### ステージ6の橋頭堡
 
