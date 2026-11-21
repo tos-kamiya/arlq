@@ -400,11 +400,11 @@ def build_arm(side):
     bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.055, depth=0.05,
                                         location=shoulder, rotation=(0, math.pi / 2, 0))
     bevel(place(bpy.context.object, P.gray, name='Iris shoulder hub'), 0.01)
-    sphere('Iris shoulder joint', shoulder + Vector((s * 0.03, 0, 0)), 0.046, P.joint)
+    sphere('Iris shoulder joint', shoulder + Vector((s * 0.03, 0, 0)), 0.0405, P.joint)
     # Splayed out from the body so they stand clear of its silhouette.
     elbow = Vector((s * (BODY_R + 0.13), 0.0, FLOAT + 0.30))
     wrist = Vector((s * (BODY_R + 0.15), -0.19, FLOAT + 0.36))
-    rod('Iris upper arm', shoulder + Vector((s * 0.03, 0, 0)), elbow, 0.040, P.ceramic)
+    rod('Iris upper arm', shoulder + Vector((s * 0.03, 0, 0)), elbow, 0.031, P.ceramic)
     sphere('Iris elbow', elbow, 0.044, P.joint)
     rod('Iris forearm', elbow, wrist, 0.036, P.ceramic)
     # Gripper: a short palm with three curled fingers (two below, one above).
