@@ -22,7 +22,6 @@ from ..pyglet_funcs import (
     CI_GREEN,
     CI_YELLOW,
     COLOR_MAP,
-    FIELD_SIDEBAR_GAP,
     FONT_HEIGHT_RATIO,
     MAX_UI_SCALE,
     MESSAGE_FONT_SIZE_SCALE,
@@ -212,8 +211,9 @@ FIELD_TEXT_RAISE = 0.1
 # player has identified that type (as on the field), shows the character's
 # sprite to its right, at the same size as on the field (larger ones may
 # overflow their row).
-STRENGTH_SPRITE_CELLS = 2
-# Keep the complete field and strength column in the initial window.
+STRENGTH_SPRITE_CELLS = 1.35
+STRENGTH_SPRITE_SCALE = 0.9
+STRENGTH_SPACING_COMPRESSION = 0.15
 HORIZONTAL_VIEW_SCROLL_CELLS = 3
 HOVER_SCALE = 2.0
 MOUSE_CURSOR_SECONDS = 3.0
@@ -528,9 +528,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             and not player.dungeon_core_destroyed
         )
         self._update_strength_column_width()
-        self.field_pixel_width = max(
-            self.cell_size_x, self.window_width - self.strength_column_width,
-        )
+        self.field_pixel_width = self.window_width
         field = kwargs.get('field')
         if field:
             self._set_edge_shade_field(field)
@@ -1003,13 +1001,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             self.window_height = round(
                 self.field_height * self.cell_size_y + 2 * self._hud_row_height
             )
-        self.window_width = (
-            self._map_pixel_width + FIELD_SIDEBAR_GAP * self.cell_size_x
-            + self.strength_column_width
-        )
-        self.field_pixel_width = max(
-            self.cell_size_x, self.window_width - self.strength_column_width
-        )
+        self.window_width = self._map_pixel_width
+        self.field_pixel_width = self.window_width
         self._horizontal_scroll_px = 0
         self._camera_follow_player = True
         self._last_camera_player_pos = None
@@ -1028,10 +1021,9 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         return self._menu_font_size / self.font_size
 
     def _strength_text_scale(self):
-        hud_font_size = (
-            self.font_size if self._menu_font_size is None else self._menu_font_size
-        )
-        return min(STRENGTH_TEXT_SCALE, hud_font_size / self.font_size)
+        if self._menu_font_size is None:
+            return MESSAGE_FONT_SIZE_SCALE * STRENGTH_TEXT_SCALE
+        return self._status_font_scale() * MESSAGE_FONT_SIZE_SCALE * STRENGTH_TEXT_SCALE
 
     def _update_strength_column_width(self):
         try:
@@ -1074,9 +1066,6 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         )
 
     def _draw_rect(self, x, y, width, height, color, group=None):
-        if (not self._menu_active and not self._drawing_hud
-                and not self._intersects_window(x, width)):
-            return
         if not self._drawing_hud:
             if (
                 x == self.field_pixel_width
@@ -1084,19 +1073,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
                 and width == self.strength_column_width
                 and height == self.field_height * self.cell_size_y
             ):
+                x = self.window_width - width
                 y_bottom = self.window_height - y - height
-                if self.field_pixel_width >= self._map_pixel_width:
-                    background = self._display_color((0, 0, 0))
-                    signature = ('rectangle', x, y_bottom, width, height,
-                                 background, id(self._sidebar_bg_group))
-                    self._draw_object(
-                        signature,
-                        lambda: pyglet.shapes.Rectangle(
-                            x, y_bottom, width, height, color=background,
-                            batch=self._text_batch, group=self._sidebar_bg_group,
-                        ),
-                    )
-
                 panel_color = self._display_color((0, 0, 0, TEXT_PANEL_ALPHA))
                 signature = ('rectangle', x, y_bottom, width, height,
                              panel_color, id(self._sidebar_group))
@@ -1107,6 +1085,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
                         batch=self._text_batch, group=self._sidebar_group,
                     ),
                 )
+                return
+            if not self._menu_active and not self._intersects_window(x, width):
                 return
             return super()._draw_rect(x, y, width, height, color, group=group)
         scene_batch = self.batch
@@ -1243,9 +1223,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             self.window_width = width
             self.window_height = height
         self._update_strength_column_width()
-        self.field_pixel_width = max(
-            self.cell_size_x, width - self.strength_column_width
-        )
+        self.field_pixel_width = width
         if self.field_pixel_width >= self._map_pixel_width:
             self._horizontal_scroll_px = 0
             self._camera_follow_player = True
@@ -1319,8 +1297,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     def _horizontal_scroll_bounds(self):
         if self.field_pixel_width >= self._map_pixel_width:
             return (0, 0)
-        return (0, max(0, self._map_pixel_width
-                       + FIELD_SIDEBAR_GAP * self.cell_size_x - self.field_pixel_width))
+        return (0, max(0, self._map_pixel_width - self.field_pixel_width))
 
     def _center_camera_on_player(self, player_x):
         min_scroll, max_scroll = self._horizontal_scroll_bounds()
@@ -1352,28 +1329,94 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         finally:
             self.batch = scene_batch
 
+    def _strength_distance(self, distance):
+        center = self.field_height // 2
+        extent = max(center, self.field_height - 1 - center, 1)
+        near = min(distance, extent)
+        compression = STRENGTH_SPACING_COMPRESSION
+        return (near - compression * near * near / (2 * extent)
+                + (1 - compression) * (distance - near))
+
+    def _strength_column_rows(self):
+        center_y = (self.field_height // 2 + 0.5) * STRENGTH_SPRITE_SCALE
+        margin = STRENGTH_SPRITE_SCALE / 2
+        available = min(center_y - margin, self.field_height - margin - center_y)
+        distance = 0
+        while self._strength_distance(distance + 1) * STRENGTH_SPRITE_SCALE <= available:
+            distance += 1
+        return 2 * distance + 1
+
+    def _prepare_strength_column(self, entries):
+        self._strength_entry_count = len(entries)
+        self._strength_player_row = next((i for i, (_, player) in enumerate(entries) if player),
+                                         len(entries) // 2)
+
+    def _build_strength_column(self, tribes, player_attack):
+        entries = ui_display.build_strength_column(tribes, player_attack, len(tribes) + 3)
+        player = next(i for i, (_, is_player) in enumerate(entries) if is_player)
+        unit = self.cell_size_y * STRENGTH_SPRITE_SCALE
+        available = self.field_height * self.cell_size_y - unit
+        best = (0, 0, 0, 0)
+        for start in range(player + 1):
+            for end in range(player + 1, len(entries) + 1):
+                above, below = player - start, end - 1 - player
+                if (self._strength_distance(above) + self._strength_distance(below)) * unit > available:
+                    continue
+                candidate = (end - start, -abs(above - below), -start, end)
+                if candidate > best:
+                    best = candidate
+        return entries[-best[2]:best[3]]
+
+    def _strength_row_center(self, row):
+        rows = getattr(self, '_strength_entry_count', self._strength_column_rows())
+        center = getattr(self, '_strength_player_row', rows // 2)
+        unit = self.cell_size_y * STRENGTH_SPRITE_SCALE
+        above = self._strength_distance(center) * unit
+        below = self._strength_distance(rows - 1 - center) * unit
+        height = self.field_height * self.cell_size_y
+        margin = unit / 2
+        factor = min(1, (height - 2 * margin) / max(above + below, 1))
+        above *= factor
+        below *= factor
+        if center < rows - 1 - center:
+            player_y = height - margin - below
+        elif center > rows - 1 - center:
+            player_y = margin + above
+        else:
+            player_y = max(margin + above, min(height / 2, height - margin - below))
+        distance = abs(row - center)
+        compressed = self._strength_distance(distance)
+        direction = 1 if row >= center else -1
+        return player_y + direction * compressed * unit * factor
+
     def _draw_strength_entry_content(self, row, label, is_player):
         """A small label on the left, and the character's sprite to its right.
 
         Labels such as "b'" show the base character with its rank mark. A
         monster type shows its sprite only once identified, as on the field.
         """
-        left = self.field_pixel_width + self.strength_column_padding
-        self._draw_text((0, row), label, COLOR_MAP["default"], bold=is_player,
-                        x_offset=left, size_scale=self._strength_text_scale(),
-                        group=self._overlay_group)
+        box_width = STRENGTH_SPRITE_CELLS * self._sprite_unit()
+        text_scale = self._strength_text_scale()
+        right = self.window_width - self.strength_column_padding - box_width
+        left = right - self._text_width(label, size_scale=text_scale)
+        font = pyglet.font.load(self.font_name, size=self.font_size * text_scale)
+        line_height = font.ascent - font.descent
+        center_y = self._strength_row_center(row)
+        y_offset = line_height / 2 - center_y
+        self._draw_text((0, 0), label, COLOR_MAP["default"],
+                        x_offset=left, size_scale=text_scale,
+                        y_offset=y_offset, group=self._overlay_group)
         base, mark = label[0], label[1:]
         type_key = base + {"'": '2', '"': '3'}.get(mark, '')
         if base not in self._sprite_images or not (is_player or type_key in self._known_types):
             return
         images = self._gray_images if self.map_mode else self._sprite_images
         picture = images[base]
-        box_width = STRENGTH_SPRITE_CELLS * self._sprite_unit()
         padding = max(1, round(self.scale))
-        scale = 1.8 * max(1, self._sprite_unit() - 2 * padding) / SPRITE_REFERENCE_PIXELS
-        cx = (self.field_pixel_width + self.strength_column_width
-              - self.strength_column_padding - box_width / 2)
-        cy = self.window_height - (row + 0.5) * self.cell_size_y
+        scale = (STRENGTH_SPRITE_SCALE * 1.8 * max(1, self._sprite_unit() - 2 * padding)
+                 / SPRITE_REFERENCE_PIXELS)
+        cx = self.window_width - self.strength_column_padding - box_width / 2
+        cy = self.window_height - center_y
         left, bottom = cx - picture.width * scale / 2, cy - picture.height * scale / 2
         tint = self._display_color((255, 255, 255))
         signature = ('sprite', id(picture), left, bottom, scale, scale,
@@ -1470,6 +1513,9 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     def _field_overlay_cell_width(self):
         return self._menu_cell_size_x
 
+    def _field_overlay_y_offset(self):
+        return self._menu_cell_size_y - self.cell_size_y
+
     def _draw_progress_panel(self, marks):
         if not marks:
             return
@@ -1478,6 +1524,10 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     def _floor_label_group(self):
         return self._text_overlay_group
+
+    def _floor_label_x(self, label_width, overlay_cell_width):
+        padding = max(1, round(TEXT_PANEL_PADDING * self._menu_scale))
+        return max(0, self.window_width - self.strength_column_width - padding - label_width)
 
     def _draw_floor_label_panel(self, label, x, width):
         self._draw_text_panel('floor', x, width)
@@ -1502,7 +1552,8 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         padding = max(1, round(TEXT_PANEL_PADDING * self._menu_scale))
         left = max(0, x - padding)
         row = self.field_height - 1
-        top = self.window_height - row * self.cell_size_y
+        top = (self.window_height - row * self.cell_size_y
+               + self._field_overlay_y_offset())
         bottom = top - self._menu_font_size - padding
         panel_width = width + 2 * padding
         height = self._menu_font_size + 2 * padding

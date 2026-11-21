@@ -34,6 +34,7 @@ def sprite_ui(monkeypatch):
     ui.map_mode = False
     ui.scale = 1
     ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.field_height = 21
     ui._menu_cell_size_y = 20
     ui._menu_font_size = 12
     ui.font_size = 12
@@ -433,9 +434,9 @@ def test_shift_horizontal_view_scrolls_only_when_field_overflows():
 
     ui._horizontal_scroll_px = 50
     ui._handle_horizontal_view_key(pyglet.window.key.RIGHT)
-    assert ui._horizontal_scroll_px == 60
+    assert ui._horizontal_scroll_px == 50
     ui._handle_horizontal_view_key(pyglet.window.key.RIGHT)
-    assert ui._horizontal_scroll_px == 60
+    assert ui._horizontal_scroll_px == 50
 
     ui.field_pixel_width = 100
     ui._horizontal_scroll_px = 0
@@ -455,7 +456,7 @@ def test_sprite_camera_centers_player_and_clamps_at_field_edges():
     ui._center_camera_on_player(0)
     assert ui._horizontal_scroll_px == 0
     ui._center_camera_on_player(9)
-    assert ui._horizontal_scroll_px == 70
+    assert ui._horizontal_scroll_px == 60
 
 
 def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
@@ -491,7 +492,7 @@ def test_sprite_vertical_resize_scales_field_and_preserves_horizontal_view():
     assert ui.scale == pytest.approx(2)
     assert ui.cell_size_x == pytest.approx(30)
     assert ui.cell_size_y == pytest.approx(40)
-    assert ui.field_pixel_width == pytest.approx(106)
+    assert ui.field_pixel_width == pytest.approx(200)
     assert ui._horizontal_scroll_px == pytest.approx(30)
 
 
@@ -571,7 +572,7 @@ def test_sprite_fullscreen_uses_screen_with_most_window_overlap(
     ]
 
 
-def test_sprite_default_window_fits_field_and_sidebar():
+def test_sprite_default_window_fits_field():
     ui = SpriteUI.__new__(SpriteUI)
     ui._initialize_state()
     ui.field_width, ui.field_height = d.FIELD_WIDTH, d.FIELD_HEIGHT
@@ -584,8 +585,8 @@ def test_sprite_default_window_fits_field_and_sidebar():
 
     assert ui.window_height == d.FIELD_HEIGHT * 20 + 2 * 20
     assert ui._map_pixel_width == d.FIELD_WIDTH * 15
-    assert ui.field_pixel_width == ui._map_pixel_width + sprite_funcs.FIELD_SIDEBAR_GAP * ui.cell_size_x
-    assert ui.window_width == ui.field_pixel_width + 60
+    assert ui.field_pixel_width == ui._map_pixel_width
+    assert ui.window_width == ui.field_pixel_width
     assert ui._horizontal_scroll_px == 0 and ui._camera_follow_player
 
 
@@ -606,7 +607,7 @@ def test_sprite_resize_constraints_set_only_minimum_size():
 
     ui._update_minimum_window_size()
 
-    assert size_constraints == [('minimum', 269, 250)]
+    assert size_constraints == [('minimum', 235, 250)]
 
 
 @pytest.mark.parametrize(
@@ -810,21 +811,27 @@ def test_rank_mark_grows_with_an_enlarged_neighbor(sprite_ui):
 def _strength_column_ui(monkeypatch, known_types):
     ui = SpriteUI.__new__(SpriteUI)
     ui._initialize_state()
+    ui.field_height = 21
     ui._sprite_images = {char: SimpleNamespace(width=100, height=120) for char in SPRITE_FILES}
     ui._mark_images = {mark: SimpleNamespace(width=30, height=40) for mark in ("'", '"')}
     ui._known_types = known_types
     ui.map_mode = False
     ui.scale = 1
     ui.font_size = ui._menu_font_size = 17
+    ui.font_name = 'Courier New'
     ui.cell_size_x, ui.cell_size_y = 13, 20
     ui._text_batch = None
     ui.field_pixel_width, ui.strength_column_width, ui.strength_column_padding = 500, 60, 4
+    ui.window_width = 500
     ui.window_height = 500
     ui.batch = None
     ui._overlay_group = 'overlay'
     ui._drawables = []
     ui._display_color = lambda color: color
     texts = []
+    monkeypatch.setattr(ui, '_text_width', lambda text, **kwargs: len(text) * 5)
+    monkeypatch.setattr(sprite_funcs.pyglet.font, 'load',
+                        lambda *args, **kwargs: SimpleNamespace(ascent=8, descent=-2))
     monkeypatch.setattr(ui, '_draw_text', lambda pos, text, *args, **kwargs: texts.append(text))
     monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
@@ -841,9 +848,119 @@ def test_strength_column_shows_sprites_of_identified_types_only(monkeypatch, lab
     assert texts == [label]
     expected = [ui._sprite_images.get(name) or ui._mark_images[name] for name in images]
     assert [piece.image for piece in ui._drawables] == expected
-    # Sprites keep the field's common scale, so their sizes match the field.
+    # The sidebar sprites and their rank marks use 90% of the field scale.
     for piece in ui._drawables:
-        assert piece.scale == pytest.approx(1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+        assert piece.scale == pytest.approx(0.9 * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
+
+
+def test_strength_label_uses_popup_font_and_overlay_position(monkeypatch):
+    ui, _ = _strength_column_ui(monkeypatch, {'b'})
+    calls = []
+    monkeypatch.setattr(ui, '_draw_text', lambda *args, **kwargs: calls.append(kwargs))
+    ui._draw_strength_entry(3, 'b', False)
+    assert calls[0]['x_offset'] == pytest.approx(473.45)
+    assert calls[0]['y_offset'] == pytest.approx(5 - ui._strength_row_center(3))
+    assert not calls[0].get('bold', False)
+    assert calls[0]['size_scale'] == (ui._status_font_scale()
+                                      * sprite_funcs.MESSAGE_FONT_SIZE_SCALE
+                                      * sprite_funcs.STRENGTH_TEXT_SCALE)
+
+
+def test_strength_labels_are_right_aligned(monkeypatch):
+    ui, _ = _strength_column_ui(monkeypatch, {'b', 'b2'})
+    offsets = []
+    monkeypatch.setattr(ui, '_draw_text', lambda *args, **kwargs: offsets.append(kwargs['x_offset']))
+    ui._draw_strength_entry(3, 'b', False)
+    ui._draw_strength_entry(4, "b'", False)
+    assert offsets[1] == offsets[0] - 5
+
+
+def test_strength_entries_use_compact_rows(monkeypatch):
+    ui, _ = _strength_column_ui(monkeypatch, {'b'})
+    positions = []
+    monkeypatch.setattr(ui, '_draw_text', lambda pos, *args, **kwargs: positions.append(pos))
+    ui._draw_strength_entry(3, 'b', False)
+    sprite = ui._drawables[0]
+    assert positions[0][1] == 0
+    assert sprite.y + sprite.image.height * sprite.scale / 2 == pytest.approx(
+        ui.window_height - ui._strength_row_center(3))
+
+
+def test_strength_rows_are_progressively_closer_toward_edges(monkeypatch):
+    ui, _ = _strength_column_ui(monkeypatch, {'b'})
+    rows = ui._strength_column_rows()
+    center = rows // 2
+    positions = [ui._strength_row_center(row) for row in range(rows)]
+    gaps = [positions[i + 1] - positions[i] for i in range(rows - 1)]
+    assert all(gap > 0 for gap in gaps)
+    assert gaps[0] < gaps[1] < gaps[center - 1]
+    assert gaps[-1] < gaps[-2] < gaps[center]
+    assert min(gaps) >= 0.85 * ui.cell_size_y * sprite_funcs.STRENGTH_SPRITE_SCALE
+    assert positions[center] == pytest.approx(ui.field_height * ui.cell_size_y / 2)
+    assert rows >= ui.field_height
+    assert positions[0] >= 9
+    assert positions[-1] <= ui.field_height * ui.cell_size_y - 9
+
+
+def test_compact_strength_column_uses_extra_space_for_weaker_monsters(monkeypatch):
+    from arlq import display
+
+    ui, _ = _strength_column_ui(monkeypatch, {'a'})
+    roster = d.MEMBER_STAGE_ROSTER_TRIBES
+    old = display.build_strength_column(roster, 1000, ui.field_height)
+    compact = ui._build_strength_column(roster, 1000)
+    assert len([label for label, _ in compact if label]) > len([label for label, _ in old if label])
+
+
+@pytest.mark.parametrize('attack, edge', [(1000, -1), (0, 0)])
+def test_strength_column_shifts_player_to_use_available_space(monkeypatch, attack, edge):
+    from arlq import display
+
+    ui, _ = _strength_column_ui(monkeypatch, {'a'})
+    entries = display.build_strength_column(d.MEMBER_STAGE_ROSTER_TRIBES, attack,
+                                            ui._strength_column_rows())
+    player_row = next(i for i, (_, is_player) in enumerate(entries) if is_player)
+    assert entries[edge][0] is not None
+    assert (player_row < len(entries) // 2) == (attack == 1000)
+    ui._prepare_strength_column(entries)
+    positions = [ui._strength_row_center(i) for i in range(len(entries))]
+    assert all(a < b for a, b in zip(positions, positions[1:]))
+    assert positions[0] >= 9 - 1e-9
+    assert positions[-1] <= ui.field_height * ui.cell_size_y - 9 + 1e-9
+
+
+@pytest.mark.parametrize('attack, edge', [(1000, -1), (0, 0)])
+def test_sprite_strength_column_fills_edge_using_compressed_spacing(monkeypatch, attack, edge):
+    ui, _ = _strength_column_ui(monkeypatch, {'a'})
+    entries = ui._build_strength_column(d.MEMBER_STAGE_ROSTER_TRIBES, attack)
+    ui._prepare_strength_column(entries)
+    assert len(entries) > ui._strength_column_rows()
+    assert entries[edge][0] is not None
+    position = ui._strength_row_center(0 if edge == 0 else len(entries) - 1)
+    expected = 9 if edge == 0 else ui.field_height * ui.cell_size_y - 9
+    assert position == pytest.approx(expected)
+
+
+def test_field_overlay_stays_at_bottom_when_field_cells_grow(sprite_ui):
+    ui = sprite_ui
+    ui.cell_size_y = 40
+    ui._menu_cell_size_y = 20
+    ui.field_height = 10
+    text_top = (ui.window_height - (ui.field_height - 1) * ui.cell_size_y
+                + ui._field_overlay_y_offset())
+    field_bottom = ui.window_height - ui.field_height * ui.cell_size_y
+    assert text_top == field_bottom + ui._menu_cell_size_y
+
+
+def test_floor_panel_ends_before_strength_overlay(sprite_ui):
+    ui = sprite_ui
+    ui.window_width = 500
+    ui.strength_column_width = 60
+    ui._menu_scale = 1
+    label_width = 30
+    label_x = ui._floor_label_x(label_width, 10)
+    padding = max(1, round(sprite_funcs.TEXT_PANEL_PADDING * ui._menu_scale))
+    assert label_x + label_width + padding == ui.window_width - ui.strength_column_width
 
 
 def test_disc_halves_split_on_the_diagonal(monkeypatch):

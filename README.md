@@ -113,6 +113,12 @@ fullscreen on the window's current monitor. If the window is narrower than the
 field, the camera follows the player;
 Shift+Left/Right scrolls the view three cells at a time.
 
+The attack-power ranking overlays the right edge of the field. The initial
+window width fits the field.
+
+The player's position in the attack-power ranking moves vertically to make room
+for more monsters.
+
 **Player**: The sprite changes when the player's sword is one obtained from a
 Chimera or Rare Chimera. The LP gauge
 appears just above the player, as in a fighting game. The disc under the player

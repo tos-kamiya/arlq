@@ -833,11 +833,17 @@ class PygletUI(PygletSettingsMixin):
     def _field_overlay_cell_width(self) -> int:
         return self.cell_size_x
 
+    def _field_overlay_y_offset(self):
+        return 0
+
     def _draw_progress_panel(self, marks):
         """Draw an optional background beneath the stage progress marks."""
 
     def _floor_label_group(self):
         return None
+
+    def _floor_label_x(self, label_width, overlay_cell_width):
+        return max(0, self.field_pixel_width - label_width - 2 * overlay_cell_width)
 
     def _draw_floor_label_panel(self, label, x, width):
         """Draw an optional background beneath the floor label."""
@@ -1028,6 +1034,15 @@ class PygletUI(PygletSettingsMixin):
                 - text_width
             ),
         )
+
+    def _strength_column_rows(self):
+        return self.field_height
+
+    def _prepare_strength_column(self, entries):
+        pass
+
+    def _build_strength_column(self, tribes, player_attack):
+        return ui_display.build_strength_column(tribes, player_attack, self._strength_column_rows())
 
     def _draw_golem_rubble(self, pos: d.Point, visible: bool) -> None:
         color = COLOR_MAP[CI_GREEN]
@@ -1763,7 +1778,9 @@ class PygletUI(PygletSettingsMixin):
         )
         ranking_attack = d.current_player_attack(player)
         self._strength_known_types = known_types
-        for y, (strength_char, is_player) in enumerate(ui_display.build_strength_column(tribes, ranking_attack, self.field_height)):
+        entries = self._build_strength_column(tribes, ranking_attack)
+        self._prepare_strength_column(entries)
+        for y, (strength_char, is_player) in enumerate(entries):
             if strength_char is None:
                 continue
             self._draw_strength_entry(y, strength_char, is_player)
@@ -1783,6 +1800,7 @@ class PygletUI(PygletSettingsMixin):
                         + self._progress_mark_x_offset()
                     ),
                     size_scale=overlay_font_scale,
+                    y_offset=self._field_overlay_y_offset(),
                     group=self._progress_mark_group(),
                 )
                 progress_x += len(label) + 1
@@ -1801,6 +1819,7 @@ class PygletUI(PygletSettingsMixin):
                         + self._progress_mark_x_offset()
                     ),
                     size_scale=overlay_font_scale,
+                    y_offset=self._field_overlay_y_offset(),
                     group=self._progress_mark_group(),
                 )
                 progress_x += len(label) + 1
@@ -1811,13 +1830,12 @@ class PygletUI(PygletSettingsMixin):
             label_width = self._text_width(
                 floor_label, size_scale=overlay_font_scale
             )
-            label_x = max(
-                0, self.field_pixel_width - label_width - 2 * overlay_cell_width
-            )
+            label_x = self._floor_label_x(label_width, overlay_cell_width)
             self._draw_floor_label_panel(floor_label, label_x, label_width)
             self._draw_text(
                 (0, self.field_height - 1), floor_label, COLOR_MAP["default"],
                 x_offset=label_x, size_scale=overlay_font_scale,
+                y_offset=self._field_overlay_y_offset(),
                 group=self._floor_label_group(),
             )
 

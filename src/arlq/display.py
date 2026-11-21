@@ -15,14 +15,9 @@ def build_strength_column(
     Lay out a stage's monster tribes and the player for the right-edge
     strength column, replacing the old ">X" beatable-monster indicator.
 
-    The player is fixed near the vertical center with a blank row on each
-    side. Tribes stronger than the player stack above it (strongest at the
-    top, closest to the player at the bottom, right above the gap); tribes
-    the player can beat (including a tie) stack below it (closest to the
-    player at the top, right below the gap, weakest at the bottom). If a
-    side has more tribes than fit, the ones closest to the player's
-    strength are kept and the rest are dropped, leaving blank rows at that
-    side's far end.
+    Stronger tribes appear above the player and weaker tribes below, with a
+    blank row on each side of the player. Shift the player when needed to use
+    available rows, keeping the closest strengths when the list overflows.
 
     Returns exactly `max_rows` (char, is_player) pairs, char is None for a
     blank row.
@@ -38,23 +33,20 @@ def build_strength_column(
         reverse=True,
     )
 
-    center = max_rows // 2
-    above_cap = max(center - 1, 0)
-    below_cap = max(max_rows - center - 2, 0)
-
-    kept_above = stronger[-above_cap:] if above_cap else []
-    kept_below = weaker[:below_cap]
-
-    above_column: list[tuple[Optional[str], bool]] = [(None, False)] * (
-        above_cap - len(kept_above)
-    )
-    above_column += [(t.char, False) for t in kept_above]
-    below_column: list[tuple[Optional[str], bool]] = [
-        (t.char, False) for t in kept_below
-    ]
-    below_column += [(None, False)] * (below_cap - len(kept_below))
-
-    return above_column + [(None, False), ("@", True), (None, False)] + below_column
+    if max_rows <= 0:
+        return []
+    if max_rows < 3:
+        return [("@", True)] + [(None, False)] * (max_rows - 1)
+    entries = ([(t.char, False) for t in stronger]
+               + [(None, False), ("@", True), (None, False)]
+               + [(t.char, False) for t in weaker])
+    player_index = len(stronger) + 1
+    if len(entries) > max_rows:
+        start = max(0, min(player_index - max_rows // 2, len(entries) - max_rows))
+        return entries[start:start + max_rows]
+    spare = max_rows - len(entries)
+    before = spare if len(stronger) > len(weaker) else 0 if len(weaker) > len(stronger) else spare // 2
+    return [(None, False)] * before + entries + [(None, False)] * (spare - before)
 
 
 def strength_label_known(label: str, known_types: set[str]) -> bool:
