@@ -60,7 +60,7 @@ ARM_SIZE = 2.2
 # straight ahead, centred on the head's height.
 EYE_GAP = 0.05
 EYE_Z = HEAD_Z
-EYE_SPACING = 0.22      # half the distance between the eye centres
+EYE_SPACING = 0.16      # half the distance between the eye centres
 EYE_RIM = 0.029         # width of the bright edge of each eye
 # Player visor glow (rigged-armor/build.py).
 CYAN_BASE = (.3, .9, 1.0)
@@ -154,8 +154,10 @@ gray = material('Iris gray joint housing', (.36, .38, .41), .4, .6, rim=(.7, .8,
 dark = material('Iris dark seam', (.025, .034, .045), .5, .2)
 joint = material('Iris dark iron joint', (.16, .16, .18), .4, 1.0)
 eye_edge = material('Iris eye edge', CYAN_BASE, .35, emission=CYAN_EMIT, strength=6.0)
+# The fill lets a little of what is behind show through; much more and the
+# sprite's plain alpha blending turns the overhanging parts a dull teal.
 eye_fill = see_through(material('Iris eye fill', CYAN_BASE, .35, emission=CYAN_EMIT,
-                                strength=0.8), 0.5)
+                                strength=1.2), 0.85)
 
 
 def light_glow(name, strength, opacity, softness):
@@ -452,19 +454,116 @@ def build_hover():
 
 
 # --- Eyes -----------------------------------------------------------------
-# The normal expression only: a regular hexagon per eye, within the
-# canister's width. Outlines are 2D (x to screen right, y up).
+# Outlines are 2D (x to screen right, y up), given for the eye on screen
+# left; most right eyes are its mirror image. Sizes are in units of the
+# normal hexagon's radius R.
 
-def regular(n, radius, start=90.0):
+R = 0.173               # the normal hexagon: large enough to overhang the sides
+
+
+def regular(n, radius, start=90.0, squash=1.0):
     return [(radius * math.cos(math.radians(start + i * 360 / n)),
-             radius * math.sin(math.radians(start + i * 360 / n))) for i in range(n)]
+             squash * radius * math.sin(math.radians(start + i * 360 / n))) for i in range(n)]
 
 
-# Large enough to overhang the canister's sides.
-HEX = regular(6, 0.173)
+def star(points, outer, inner, start=90.0):
+    return [((outer if i % 2 == 0 else inner) * math.cos(math.radians(start + i * 180 / points)),
+             (outer if i % 2 == 0 else inner) * math.sin(math.radians(start + i * 180 / points)))
+            for i in range(points * 2)]
 
 
-def eye_polygon_mesh(name, polygons):
+def arc_band(width, height, thickness, start, end, steps=20):
+    """A curved band along an elliptical arc about the origin (width and
+    height are the outer ellipse's), from angle start to end in degrees."""
+    def arc(rx, ry):
+        return [(rx * math.cos(math.radians(start + (end - start) * k / steps)),
+                 ry * math.sin(math.radians(start + (end - start) * k / steps)))
+                for k in range(steps + 1)]
+    return arc(width / 2, height / 2) + arc(width / 2 - thickness, height / 2 - thickness)[::-1]
+
+
+def shift(points, dx, dy):
+    return [(x + dx, y + dy) for x, y in points]
+
+
+def bent_stroke(points, width):
+    """A stroke of even width along a polyline, with mitred corners."""
+    def normal(a, b):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        length = math.hypot(dx, dy)
+        return -dy / length, dx / length
+    left, right = [], []
+    for k, (x, y) in enumerate(points):
+        normals = [normal(points[j], points[j + 1]) for j in (k - 1, k)
+                   if 0 <= j < len(points) - 1]
+        nx = sum(n[0] for n in normals) / len(normals)
+        ny = sum(n[1] for n in normals) / len(normals)
+        length = math.hypot(nx, ny)
+        nx, ny = nx / length, ny / length
+        miter = width / 2 / (nx * normals[0][0] + ny * normals[0][1])
+        left.append((x + nx * miter, y + ny * miter))
+        right.append((x - nx * miter, y - ny * miter))
+    return left + right[::-1]
+
+
+def rotate(points, degrees):
+    c, s = math.cos(math.radians(degrees)), math.sin(math.radians(degrees))
+    return [(x * c - y * s, x * s + y * c) for x, y in points]
+
+
+def mirror(points):
+    return [(-x, y) for x, y in reversed(points)]
+
+
+def rectangle(width, height):
+    w, h = width / 2, height / 2
+    return [(-w, -h), (w, -h), (w, h), (-w, h)]
+
+
+def ellipse(width, height, steps=32):
+    return [(width / 2 * math.cos(k * math.tau / steps), height / 2 * math.sin(k * math.tau / steps))
+            for k in range(steps)]
+
+
+EYE = rectangle(1.0 * R, 1.25 * R) # the normal eye: a tall filled rectangle
+DOT = regular(16, 0.32 * R)         # a small round dot
+# name: (left eye outlines, right eye outlines, (outward shift, upward shift)
+# of each eye in units of R, bright edge width). The table follows
+# dev-notes/handoff-stage6-robot-iris-design-20261121.md.
+EXPRESSIONS = {
+    # Normal: tall filled rectangles.
+    'neutral': ([EYE], [EYE], (0, 0), EYE_RIM),
+    # Joy (a won battle, the core destroyed): rainbow arcs, the smiling eyes
+    # of Japanese comics, on a tall ellipse.
+    'joy': ([arc_band(1.5 * R, 2.2 * R, 0.35 * R, 12, 168)],
+            [arc_band(1.5 * R, 2.2 * R, 0.35 * R, 12, 168)], (0, -0.35), 0.45 * EYE_RIM),
+    # Worry (the hunger warning): arcs bowing downward on the same kind of
+    # ellipse, spread like the kanji 八 (eight): high at the inner ends,
+    # sweeping down and out.
+    'worry': ([arc_band(1.5 * R, 2.0 * R, 0.3 * R, 245, 360)],
+              [mirror(arc_band(1.5 * R, 2.0 * R, 0.3 * R, 245, 360))], (0.15, 0.55),
+              0.45 * EYE_RIM),
+    # Panic (the emergency rations): blank, small round dots, all expression
+    # gone.
+    'panic': ([regular(16, 0.16 * R)], [regular(16, 0.16 * R)], (-0.2, 0), 0.6 * EYE_RIM),
+    # Surprise (falling into a pit): plump five-pointed stars, well past
+    # the canister.
+    'surprise': ([star(5, 1.33 * R, 0.79 * R)], [star(5, 1.33 * R, 0.79 * R)], (0.3, 0.1),
+                 0.8 * EYE_RIM),
+    # Curiosity (an unknown monster, a treasure chest): the normal eye,
+    # and a small dot under a brow bent like the kana he: rising steeply
+    # from the inner end over the dot, then dropping a little to the outer
+    # end, like a famous science-fiction officer's raised eyebrow.
+    'curious': ([EYE], [DOT, shift(bent_stroke([(-0.6 * R, 0), (0.3 * R, 0.42 * R),
+                                                 (0.7 * R, 0.2 * R)], 0.18 * R), 0, 0.14 * R)],
+                (0, 0), 0.4 * EYE_RIM),
+    # Waiting: thin horizontal bars, small (slowly breathing in the game).
+    'idle': ([rectangle(1.36 * R, 0.3 * R)], [rectangle(1.36 * R, 0.3 * R)], (0, -0.15),
+             0.35 * EYE_RIM),
+}
+
+
+def eye_polygon_mesh(name, polygons, rim):
     """Flat eye: each outline becomes a translucent fill inside a bright edge."""
     bm = bmesh.new()
     for outline in polygons:
@@ -473,7 +572,7 @@ def eye_polygon_mesh(name, polygons):
         face.normal_update()
         if face.normal.y > 0:
             face.normal_flip()
-        edge = bmesh.ops.inset_region(bm, faces=[face], thickness=EYE_RIM, depth=0,
+        edge = bmesh.ops.inset_region(bm, faces=[face], thickness=rim, depth=0,
                                       use_even_offset=True)['faces']
         face.material_index = 1
         for f in edge:
@@ -488,10 +587,17 @@ def eye_polygon_mesh(name, polygons):
 
 
 def build_eyes():
-    for side in (-1, 1):
-        obj = eye_polygon_mesh(f'Iris eye {"L" if side < 0 else "R"}', [HEX])
-        glow_col.objects.link(obj)
-        obj.location = (side * EYE_SPACING, -(LID_R + EYE_GAP), EYE_Z)
+    """One collection of eyes per expression, all hidden but one at render."""
+    sets = {}
+    for expr, (left, right, (out, up), rim) in EXPRESSIONS.items():
+        col = bpy.data.collections.new('Iris eyes ' + expr)
+        glow_col.children.link(col)
+        for side, polygons in ((-1, left), (1, right)):
+            obj = eye_polygon_mesh(f'Iris eye {expr} {"L" if side < 0 else "R"}', polygons, rim)
+            col.objects.link(obj)
+            obj.location = (side * (EYE_SPACING + out * R), -(LID_R + EYE_GAP), EYE_Z + up * R)
+        sets[expr] = col
+    return sets
 
 
 build_canister()
@@ -500,7 +606,7 @@ build_door()
 build_arm(-1)
 build_arm(1)
 build_hover()
-build_eyes()
+eye_sets = build_eyes()
 
 # Shrink everything to SCALE, lift it to HOVER_Z and lean it back by
 # FACE_TILT; the floor glow stays
@@ -603,6 +709,38 @@ def trim(path):
     trimmed.file_format = 'PNG'
     trimmed.save()
 
+
+def show_expression(name):
+    for other, col in eye_sets.items():
+        col.hide_render = col.hide_viewport = other != name
+
+
+def front_camera(target, ortho):
+    """Straight from the front, nearly level, to check the face."""
+    pitch = math.radians(8)
+    camera.location = target + 10 * Vector((0, -math.cos(pitch), math.sin(pitch)))
+    camera.rotation_euler = (target - camera.location).to_track_quat('-Z', 'Y').to_euler()
+    camera.data.ortho_scale = ortho
+
+
+# Every expression with the sprite camera (expr/iris-<name>.png, trimmed like
+# the game sprites) and its face straight from the front
+# (expr/face-<name>.png).
+EXPR_OUT = OUT / 'expr'
+EXPR_OUT.mkdir(exist_ok=True)
+face = Vector((0, 0, HOVER_Z + (EYE_Z - FLOAT) * SCALE - 0.02))
+for name in EXPRESSIONS:
+    show_expression(name)
+    frame(0.35, 4.6, round(256 * 4.6 / 2.6))
+    path = EXPR_OUT / f'iris-{name}.png'
+    scene.render.filepath = str(path)
+    bpy.ops.render.render(write_still=True)
+    trim(path)
+    front_camera(face, 0.8)
+    scene.render.resolution_x = scene.render.resolution_y = 480
+    scene.render.filepath = str(EXPR_OUT / f'face-{name}.png')
+    bpy.ops.render.render(write_still=True)
+show_expression('neutral')
 
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT / 'robot-iris.blend'))
 frame(0.35, 4.6, round(256 * 4.6 / 2.6))
