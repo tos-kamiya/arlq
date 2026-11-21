@@ -441,9 +441,16 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             self._bridgehead_under = placement['under']
             self._bridgehead_height = 1 + placement['under'] + placement['overhang']
             bridgehead = mipmapped(pyglet.image.load(str(bridgehead_path)))
-            half = bridgehead.width // 2
-            self._bridgehead_images = {part: bridgehead.get_region(i * half, 0, half, bridgehead.height)
-                                       for i, part in enumerate(('/', '\\'))}
+            # The image may reach past the two cells' sides; it is split at
+            # the line between them, and each part keeps its overhang.
+            left, right = placement.get('left', 0.0), placement.get('right', 0.0)
+            self._bridgehead_spans = {'/': (left, left + 1), '\\': (0.0, 1 + right)}
+            split = round(bridgehead.width * (left + 1) / (left + 2 + right))
+            self._bridgehead_images = {
+                '/': bridgehead.get_region(0, 0, split, bridgehead.height),
+                '\\': bridgehead.get_region(split, 0, bridgehead.width - split,
+                                             bridgehead.height),
+            }
         else:
             self._bridgehead_images = {}
         self._terrain_regions = {}

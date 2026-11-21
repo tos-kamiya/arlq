@@ -6,7 +6,8 @@ barrier shown near the player while Guardian lowers its damage, the Stage 6
 bridgehead (build-bridgehead.py) and the Stage 6 Dungeon Core at each of its
 four growth stages (build-dungeon-core.py). The bridgehead and Dungeon Core
 images are centred over their two and three cells here, at the game's
-scale, placed by their JSON.
+scale, placed by their JSON (the bridgehead's may reach past its cells'
+sides).
 
     PYTHONPATH=src .venv/bin/python dev-samples/3d-stage1/preview-terrain.py [--stage N]
 
@@ -81,9 +82,12 @@ with tempfile.TemporaryDirectory() as work:
     cx, cy = ui.cell_size_x, ui.cell_size_y
     for name, image, row, column, span in OVERLAYS:
         placing = json.loads((ASSETS / name / (name + '.json')).read_text())
-        image_left = round(ui._field_col_x(column) + (span - placing['cells']) * cx / 2)
+        # The bridgehead may reach past its cells' sides (`left`, `right`).
+        reach_left, reach_right = placing.get('left', 0), placing.get('right', 0)
+        image_left = round(ui._field_col_x(column) + (span - placing['cells']) * cx / 2
+                           - reach_left * cx)
         image_bottom = round((row + 1 + placing['under']) * cy)
-        image_width = round(placing['cells'] * cx)
+        image_width = round((reach_left + placing['cells'] + reach_right) * cx)
         image_height = round((placing['under'] + 1 + placing['overhang']) * cy)
         subprocess.run(['convert', str(full), '(', str(ASSETS / name / (image + '.png')),
                         '-resize', '%dx%d!' % (image_width, image_height), ')',

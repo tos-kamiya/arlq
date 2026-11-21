@@ -4,17 +4,21 @@ Run with: blender --factory-startup --background --threads 4 --python dev-sample
 
 It takes two cells side by side on the floor and is drawn with the stairs'
 60-degree orthographic camera, turned toward screen right (YAW) and fitted
-to the cells' width. The outpost is a low curtain of grey stone blocks
-with battlements around a packed-earth yard,
-a gatehouse in the front wall with a barred plank gate, a round watchtower
-at the back west corner flying a plain blue banner, and only a campfire
-in the yard; the whole raised on a low earth mound. Like the characters, it is drawn
-simplified and exaggerated: big stones, merlons, gate and banner.
+to the cells' width without its forecourt. The outpost is a low curtain of
+grey stone blocks with battlements around a packed-earth yard, a gatehouse
+in the front wall with a barred plank gate, and a round watchtower at the
+back west corner flying a plain blue banner, with a brass watch glass on a
+swivel post for spotting monsters. Alone in the yard stands an arcane
+apparatus, a cyan crystal floating in brass rings over a rune circle, the
+touch of the capital's research; a campfire burns on the forecourt before
+the gate. The whole is raised on a low earth mound. Like the characters, it
+is drawn simplified and exaggerated: big stones, merlons, gate and banner.
 
 Writes to OUT (BRIDGEHEAD_OUT in the environment, else
 src/arlq/assets/bridgehead):
   bridgehead.png
-  bridgehead.json  {"cells": 2, "under": UNDER, "overhang": OVERHANG}
+  bridgehead.json  {"cells": 2, "left": LEFT, "right": RIGHT,
+                    "under": UNDER, "overhang": OVERHANG}
 """
 from pathlib import Path
 import json
@@ -32,7 +36,6 @@ CELL_PIXELS = (300, 400)
 UNIT_PIXELS = 300
 CELL_W = CELL_PIXELS[0] / UNIT_PIXELS
 CELLS = 2
-WIDTH = CELL_PIXELS[0] * CELLS
 ELEVATION = math.radians(60)
 CELL_UP = CELL_PIXELS[1] / UNIT_PIXELS
 YAW = math.radians(35)
@@ -175,7 +178,6 @@ scene.cycles.use_denoising = False
 scene.cycles.sample_clamp_indirect = 2.0
 scene.view_settings.view_transform = 'Standard'
 scene.view_settings.look = 'Medium High Contrast'
-scene.render.resolution_x = WIDTH
 scene.render.film_transparent = True
 world = bpy.data.worlds.new('Night studio')
 world.use_nodes = True
@@ -290,42 +292,126 @@ faces = [(u * (NV + 1) + v, u * (NV + 1) + v + 1, (u + 1) * (NV + 1) + v + 1,
 flag = mesh('Banner', vertices, faces, banner_cloth)
 solid = flag.modifiers.new('Cloth thickness', 'SOLIDIFY')
 solid.thickness = 0.012
-# In the yard, alone: a campfire ringed with stones.
-FX, FY = 0.04, 0.50
+
+
+def aimed(direction):
+    """Euler rotation turning a primitive's local Z toward `direction`."""
+    return Vector(direction).to_track_quat('Z', 'Y').to_euler()
+
+
+# On the tower platform, at the parapet facing the approach: a watch glass
+# for spotting monsters, a stout brass spyglass on an iron swivel fork atop
+# an iron-banded timber post, held level and peering out between the
+# merlons, its objective shaded by a short hood.
+SX, SY, SZ = TOWER_X + 0.15, TOWER_Y - 0.15, TOWER_H + 0.01
+SCOPE_Z = SZ + 0.17
+cylinder('Watch post', SX, SY, SZ, SCOPE_Z - 0.04, 0.026, timber, 12, 0.004)
+for z in (SZ + 0.03, SCOPE_Z - 0.07):
+    cylinder('Watch post band', SX, SY, z, z + 0.018, 0.030, dark_iron, 12)
+cylinder('Swivel', SX, SY, SCOPE_Z - 0.05, SCOPE_Z - 0.03, 0.040, dark_iron, 16, 0.003)
+heading = math.radians(-40)
+aim = Vector((math.cos(heading), math.sin(heading), -0.06)).normalized()
+side = Vector((-math.sin(heading), math.cos(heading), 0))
+for k in (-1, 1):
+    box('Swivel fork', -0.008, 0.008, -0.012, 0.012, SCOPE_Z - 0.04, SCOPE_Z + 0.01,
+        dark_iron, 0.002, rotation=(0, 0, heading))
+    obj = bpy.context.object
+    obj.location = (SX + k * 0.042 * side.x, SY + k * 0.042 * side.y, SCOPE_Z - 0.015)
+centre = Vector((SX, SY, SCOPE_Z))
+bpy.ops.mesh.primitive_cone_add(vertices=16, radius1=0.024, radius2=0.034, depth=0.30,
+                                location=centre + aim * 0.04, rotation=aimed(aim))
+finish(bpy.context.object, 'Watch glass tube', gold, 0.004)
+for t, r, depth, mat in ((-0.11, 0.028, 0.03, dark_iron), (0.0, 0.034, 0.025, dark_iron),
+                         (0.21, 0.042, 0.07, dark_iron)):
+    bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=r, depth=depth,
+                                        location=centre + aim * t, rotation=aimed(aim))
+    finish(bpy.context.object, 'Watch glass band', mat, 0.003)
+
+# In the yard, alone: an arcane apparatus in place of the old campfire. A
+# cyan crystal floats over a short stone pedestal inside two tilted brass
+# rings, over a glowing rune circle; the cyan is the player's visor light,
+# the colour of the capital's craft.
+crystal_glow = material('Crystal', (0.15, 0.75, 1.0), roughness=0.2,
+                        emission=(0.05, 0.6, 1.0), strength=1.3)
+rune_glow = material('Rune circle', (0.2, 0.7, 0.9), emission=(0.1, 0.7, 1.0),
+                     strength=1.6)
+FX, FY = 0.06, 0.57
+for radius, minor in ((0.18, 0.010), (0.135, 0.006)):
+    bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=minor,
+                                     major_segments=40, minor_segments=6,
+                                     location=(FX, FY, 0.018))
+    obj = bpy.context.object
+    obj.scale = (1, 1, 0.35)
+    finish(obj, 'Rune ring', rune_glow)
+for k in range(6):
+    a = 2 * math.pi * k / 6
+    box('Rune mark', -0.012, 0.012, -0.022, 0.022, 0.015, 0.020, rune_glow, 0,
+        rotation=(0, 0, a))
+    obj = bpy.context.object
+    obj.location = (FX + 0.158 * math.cos(a), FY + 0.158 * math.sin(a), 0.0175)
+cylinder('Pedestal', FX, FY, 0, 0.12, 0.065, stone_tower, 16, 0.006)
+cylinder('Pedestal cap', FX, FY, 0.12, 0.145, 0.08, cap, 16, 0.006)
+CZ = 0.36
+bpy.ops.mesh.primitive_uv_sphere_add(segments=4, ring_count=2, radius=0.08,
+                                     location=(FX, FY, CZ), rotation=(0, 0, 0.4))
+obj = bpy.context.object
+obj.scale = (1, 1, 1.7)
+finish(obj, 'Crystal', crystal_glow)
+for rotation in ((math.radians(65), 0, 0.5), (math.radians(65), 0, 0.5 + math.pi / 2)):
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.13, minor_radius=0.008,
+                                     major_segments=32, minor_segments=6,
+                                     location=(FX, FY, CZ), rotation=rotation)
+    finish(bpy.context.object, 'Armillary ring', gold)
+bpy.ops.object.light_add(type='POINT', location=(FX, FY, CZ))
+crystal_light = bpy.context.object
+crystal_light.data.energy, crystal_light.data.color = 1.2, (0.3, 0.8, 1.0)
+crystal_light.data.shadow_soft_size = 0.05
+
+# Outside, on the mound in front of the gate, a little to the east of its
+# middle: the campfire, ringed with stones.
+FX, FY = GATE_HALF - 0.06, SOUTH - 0.22
 for k in range(7):
     a = 2 * math.pi * k / 7
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.045,
-                                         location=(FX + 0.12 * math.cos(a),
-                                                   FY + 0.12 * math.sin(a), 0.03))
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.040,
+                                         location=(FX + 0.105 * math.cos(a),
+                                                   FY + 0.105 * math.sin(a), 0.03))
     obj = bpy.context.object
     obj.scale = (1, 1, 0.7)
     finish(obj, 'Hearth stone', cap)
 for a in (0.3, 1.9, 3.6):
-    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.018, depth=0.18,
+    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.016, depth=0.16,
                                         location=(FX, FY, 0.05),
                                         rotation=(math.radians(70), 0, a))
     finish(bpy.context.object, 'Firewood', timber)
-bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=0.07, depth=0.20,
-                                location=(FX, FY, 0.12))
+bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=0.062, depth=0.18,
+                                location=(FX, FY, 0.11))
 finish(bpy.context.object, 'Flame', glow)
-bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=0.04, depth=0.14,
-                                location=(FX + 0.03, FY - 0.02, 0.17), rotation=(0, 0.25, 0))
+bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=0.036, depth=0.12,
+                                location=(FX + 0.03, FY - 0.02, 0.15), rotation=(0, 0.25, 0))
 finish(bpy.context.object, 'Flame', glow)
 bpy.ops.object.light_add(type='POINT', location=(FX, FY, 0.25))
 fire_light = bpy.context.object
 fire_light.data.energy, fire_light.data.color = 1.2, (1.0, 0.55, 0.2)
 fire_light.data.shadow_soft_size = 0.05
+point_lights = (crystal_light, fire_light)
 
 # Everything stands on a low earth mound, a little wider than the walls,
-# reaching out in front just past the gatehouse.
+# reaching out in front far enough for the campfire before the gate.
 lift = Matrix.Translation((0, 0, MOUND))
 bpy.context.view_layer.update()
 for obj in scene.objects:
     if obj.type == 'MESH':
         obj.matrix_world = lift @ obj.matrix_world
-fire_light.location.z += MOUND
-box('Earth mound', -HALF_W - 0.10, HALF_W + 0.10, SOUTH - 0.12, NORTH + 0.10, 0, MOUND,
+for light in point_lights:
+    light.location.z += MOUND
+box('Earth mound', -HALF_W - 0.10, HALF_W + 0.10, SOUTH - 0.36, NORTH + 0.10, 0, MOUND,
     earth, 0.03)
+# The scale is fitted without the forecourt (the campfire and the mound
+# before the gatehouse), as the outpost was before them; they may reach
+# past the cells' sides.
+FORECOURT = ('Earth mound', 'Hearth stone', 'Firewood', 'Flame')
+footprint = [Vector((x, y, z)) for x in (-HALF_W - 0.10, HALF_W + 0.10)
+             for y in (SOUTH - 0.12, NORTH + 0.10) for z in (0, MOUND)]
 
 # Turn the outpost toward screen right.
 pivot = Vector((0, MID, 0))
@@ -339,13 +425,17 @@ for obj in scene.objects:
 bpy.context.view_layer.update()
 points = [obj.matrix_world @ v.co for obj in scene.objects if obj.type == 'MESH'
           for v in obj.data.vertices]
-x_lo, x_hi = min(p.x for p in points), max(p.x for p in points)
+fitted = [obj.matrix_world @ v.co for obj in scene.objects
+          if obj.type == 'MESH' and not obj.name.startswith(FORECOURT)
+          for v in obj.data.vertices] + [turn @ p for p in footprint]
+x_lo, x_hi = min(p.x for p in fitted), max(p.x for p in fitted)
 fit = CELLS * CELL_W / (x_hi - x_lo)
 shrink = (Matrix.Translation(pivot) @ Matrix.Scale(fit, 4)
           @ Matrix.Translation(-pivot - Vector(((x_lo + x_hi) / 2, 0, 0))))
 for obj in scene.objects:
     obj.matrix_world = shrink @ obj.matrix_world
-fire_light.data.energy *= fit * fit
+for light in point_lights:
+    light.data.energy *= fit * fit
 ups = [(shrink @ p).y * math.sin(ELEVATION) + (shrink @ p).z * math.cos(ELEVATION)
        for p in points]
 # A little room past the model for the ink outline and the banner's
@@ -353,9 +443,15 @@ ups = [(shrink @ p).y * math.sin(ELEVATION) + (shrink @ p).z * math.cos(ELEVATIO
 MARGIN = 0.03
 UNDER = math.ceil(max(0.0, -min(ups) / CELL_UP + MARGIN) * 20) / 20
 OVERHANG = math.ceil(max(0.0, max(ups) / CELL_UP - 1 + MARGIN) * 20) / 20
-print(f'bridgehead: scale {fit:.3f}, UNDER {UNDER}, OVERHANG {OVERHANG}')
-(OUT / 'bridgehead.json').write_text(json.dumps({'cells': CELLS, 'under': UNDER,
+xs = [(shrink @ p).x / CELL_W for p in points]
+LEFT = math.ceil(max(0.0, -min(xs) - CELLS / 2 + MARGIN) * 20) / 20
+RIGHT = math.ceil(max(0.0, max(xs) - CELLS / 2 + MARGIN) * 20) / 20
+print(f'bridgehead: scale {fit:.3f}, UNDER {UNDER}, OVERHANG {OVERHANG}, '
+      f'LEFT {LEFT}, RIGHT {RIGHT}')
+(OUT / 'bridgehead.json').write_text(json.dumps({'cells': CELLS, 'left': LEFT,
+                                                 'right': RIGHT, 'under': UNDER,
                                                  'overhang': OVERHANG}) + '\n')
+scene.render.resolution_x = round(CELL_PIXELS[0] * (LEFT + CELLS + RIGHT))
 scene.render.resolution_y = round(CELL_PIXELS[1] * (UNDER + 1 + OVERHANG))
 
 for pos, power, size, color in [((-3, 3, 9), 420, 1.5, (1.0, 0.93, 0.85)),
@@ -374,12 +470,14 @@ for pos, power, size, color in [((-3, 3, 9), 420, 1.5, (1.0, 0.93, 0.85)),
 height = CELL_UP * (UNDER + 1 + OVERHANG)
 view = Vector((0, math.cos(ELEVATION), -math.sin(ELEVATION)))
 image_up = Vector((0, math.sin(ELEVATION), math.cos(ELEVATION)))
-centre = image_up * (height / 2 - UNDER * CELL_UP)
+width = CELL_W * (LEFT + CELLS + RIGHT)
+centre = (image_up * (height / 2 - UNDER * CELL_UP)
+          + Vector(((RIGHT - LEFT) / 2 * CELL_W, 0, 0)))
 bpy.ops.object.camera_add(location=centre - view * 20)
 camera = bpy.context.object
 camera.rotation_euler = view.to_track_quat('-Z', 'Y').to_euler()
 camera.data.type = 'ORTHO'
-camera.data.ortho_scale = max(height, CELL_W * CELLS)
+camera.data.ortho_scale = max(height, width)
 scene.camera = camera
 
 scene.render.use_freestyle = True

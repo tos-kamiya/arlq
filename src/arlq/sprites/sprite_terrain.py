@@ -319,9 +319,10 @@ class SpriteTerrainMixin:
         if image is None:
             return super()._draw_bridgehead(pos, part, visible)
         x, y = pos
-        left = self._field_col_x(x)
+        reach, span = self._bridgehead_spans[part]
+        left = self._field_col_x(x) - reach * self.cell_size_x
         bottom = self.window_height - (y + 1 + self._bridgehead_under) * self.cell_size_y
-        scale_x = self.cell_size_x / image.width
+        scale_x = span * self.cell_size_x / image.width
         scale_y = self._bridgehead_height * self.cell_size_y / image.height
         shade = 1 if visible else TERRAIN_EXPLORED_SHADE
         tint = self._display_color((round(255 * shade),) * 3)

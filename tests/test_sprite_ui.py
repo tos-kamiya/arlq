@@ -2024,6 +2024,7 @@ def test_bridgehead_parts_are_aligned_and_dim_when_explored(sprite_ui):
     ui = sprite_ui
     ui._bridgehead_under = 0.4
     ui._bridgehead_height = 1.75
+    ui._bridgehead_spans = {'/': (0.0, 1.0), '\\': (0.0, 1.0)}
     ui._bridgehead_images = {part: SimpleNamespace(width=300, height=620) for part in ('/', '\\')}
     ui._draw_bridgehead((4, 5), '/', True)
     ui._draw_bridgehead((5, 5), '\\', False)
@@ -2033,6 +2034,22 @@ def test_bridgehead_parts_are_aligned_and_dim_when_explored(sprite_ui):
     assert left.y == pytest.approx(ui.window_height - 6.4 * ui.cell_size_y)
     assert left.color == (255, 255, 255)
     assert right.color == (140, 140, 140)
+
+
+def test_bridgehead_parts_reach_past_the_cells_sides(sprite_ui):
+    ui = sprite_ui
+    ui._bridgehead_under = 0.4
+    ui._bridgehead_height = 1.75
+    ui._bridgehead_spans = {'/': (0.05, 1.05), '\\': (0.0, 1.2)}
+    ui._bridgehead_images = {'/': SimpleNamespace(width=315, height=620),
+                             '\\': SimpleNamespace(width=360, height=620)}
+    ui._draw_bridgehead((4, 5), '/', True)
+    ui._draw_bridgehead((5, 5), '\\', True)
+    left, right = ui._drawables
+    assert left.x == pytest.approx(ui._field_col_x(4) - 0.05 * ui.cell_size_x)
+    assert right.x == pytest.approx(ui._field_col_x(5))
+    assert left.scale_x * 315 == pytest.approx(1.05 * ui.cell_size_x)
+    assert right.scale_x * 360 == pytest.approx(1.2 * ui.cell_size_x)
 
 
 @pytest.fixture
