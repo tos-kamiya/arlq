@@ -8,7 +8,7 @@ experiment in developing code and manuals with humans and AIs.
     <img alt="PyPI version" src="https://img.shields.io/pypi/v/arlq" />
   </a>
   <a href="https://www.python.org/">
-    <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
+    <img alt="Python 3.9-3.14" src="https://img.shields.io/badge/Python-3.9--3.14-3776AB?logo=python&logoColor=white" />
   </a>
 </p>
 
@@ -32,7 +32,7 @@ Features include:
 
 ## Installation
 
-ARLQ requires Python 3.10 or later. Install it from PyPI with:
+ARLQ requires Python 3.9 or later. Install it from PyPI with:
 
 ```bash
 pip install arlq

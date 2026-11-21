@@ -7,7 +7,7 @@ ARLQ（Another Rogue-Like Quest）は、人間とAIsが共同で作成した実�
     <img alt="PyPI version" src="https://img.shields.io/pypi/v/arlq" />
   </a>
   <a href="https://www.python.org/">
-    <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
+    <img alt="Python 3.9-3.14" src="https://img.shields.io/badge/Python-3.9--3.14-3776AB?logo=python&logoColor=white" />
   </a>
 </p>
 
@@ -20,7 +20,7 @@ ARLQ（Another Rogue-Like Quest）は、人間とAIsが共同で作成した実�
 
 ## インストールと起動
 
-Python 3.10以降が必要です。リリース版は以下のコマンドでインストールできます。
+Python 3.9以降が必要です。リリース版は以下のコマンドでインストールできます。
 
 ```bash
 pipx install arlq

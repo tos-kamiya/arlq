@@ -9,7 +9,7 @@ the Python implementation with Pyglet and Blessed terminal frontends.
     <img alt="PyPI version" src="https://img.shields.io/pypi/v/arlq" />
   </a>
   <a href="https://www.python.org/">
-    <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
+    <img alt="Python 3.9-3.14" src="https://img.shields.io/badge/Python-3.9--3.14-3776AB?logo=python&logoColor=white" />
   </a>
 </p>
 
@@ -22,7 +22,7 @@ the Python implementation with Pyglet and Blessed terminal frontends.
 
 ## Installation Instructions
 
-ARLQ requires Python 3.10 or later. Install the latest released version with:
+ARLQ requires Python 3.9 or later. Install the latest released version with:
 
 ```bash
 pipx install arlq
