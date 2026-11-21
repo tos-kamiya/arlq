@@ -1,0 +1,171 @@
+{
+    "join": [
+        "I'm Iris, an intelligent robot built in the capital's arsenal.",
+        "I also carry one capital-made ration. It's yours if you need it.",
+        "My two orders: report on our adventure, and feed you if you collapse.",
+        "Pleased to meet you. Chatting comes as a standard feature.",
+        "Startup check complete. Switching to escort mode.",
+        "Being a prototype, I can't fight. Reports and rations, leave to me."
+    ],
+    "idle": [
+        "I'd love to draw a map of this maze as we walk.",
+        "I float, so I make no footsteps. I do make conversation, though.",
+        "It's quiet. Shall we talk about something?",
+        "I wonder who cleans the walls of this maze.",
+        "What will be around the next corner? How exciting.",
+        "I never get hungry, but I'm interested in food.",
+        "When we get back, let's write down everything we saw in here.",
+        "Even if we get lost, don't worry. We'll figure it out together.",
+        "I move on a levitation unit. My range is practically unlimited.",
+        "Adventure takes preparation, observation, and a little luck.",
+        "Am I talking too much? My apologies.",
+        "Let's keep going carefully.",
+        "The arsenal engineers called me 'the chatty prototype.'",
+        "This is my first time outside the capital.",
+        "They didn't give me combat functions. Budget reasons, apparently.",
+        "This stonework looks older than the capital's walls.",
+        "The air here is a little chilly. According to my sensors, anyway.",
+        "I'm told my head is full of circuits like a maze, too.",
+        "I'll record how you explore. It's very instructive.",
+        "Maybe the monsters aren't here because they want to be.",
+        "I wonder what color the Dungeon Core is.",
+        "If we get home safely, I'll tell everyone at the arsenal all about it.",
+        "Sometimes I imagine I'm walking. I'm floating, though.",
+        "Perhaps a little combat function would have been nice.",
+        "This maze's magic may disturb my power core. Another item to report.",
+        "The arsenal engineers never seemed to want to talk about the maze."
+    ],
+    "low_lp": [
+        "Aren't you hungry? It would be wise to find some food.",
+        "You seem hungry. Let's look for food.",
+        "Don't push yourself. I'd like us to find something to eat.",
+        "Isn't it about time you had a meal?",
+        "Your steps look heavy. Let's find some food.",
+        "I heard your stomach growl. My microphone is very sensitive.",
+        "You don't look well. Let's get some food somewhere.",
+        "I hear humans running out of fuel is more serious than when I do."
+    ],
+    "emergency_food": [
+        "Oh no! Please take my spare ration. It's the last meal I have.",
+        "Hang in there! Please eat this ration.",
+        "This is my emergency ration. There are no more, so please be careful.",
+        "A capital-made ration! No promises on taste, but it's nutritious.",
+        "Please don't collapse! This is exactly why I brought it."
+    ],
+    "low_lp_after_emergency_food": [
+        "I have no spare ration left. Let's hurry and find food.",
+        "You seem hungry again. This time I have no food to give you.",
+        "I've used up my ration. Please don't push yourself.",
+        "My storage is empty. You'll have to find food on your own.",
+        "I need a slot for a second ration. I'll put that in my report."
+    ],
+    "floor_change": [
+        "We've reached another floor. Let's stay alert.",
+        "What could be on this floor? Let's look around carefully.",
+        "Whatever the floor, I'll follow you.",
+        "A new view. Still inside the maze, though.",
+        "Floor recorded. Let's keep the way back in mind, too.",
+        "The deeper we go, the stronger the magic readings get."
+    ],
+    "fell_into_pit": [
+        "We fell! Well, you did. I float, so I came down slowly.",
+        "Are you hurt? I didn't expect the floor to give way.",
+        "An unplanned shortcut. Let's look on the bright side."
+    ],
+    "identified_monster_spotted": [
+        "There's a monster. Please be careful.",
+        "I sense something ahead. Whether to fight is up to you.",
+        "I can't fight, but I'm cheering for you.",
+        "Enemy spotted. Let's not panic.",
+        "That monster is in my records. Check its strength carefully.",
+        "Let's calmly decide whether we can win against it."
+    ],
+    "unidentified_monster_spotted": [
+        "Something's there. I can't tell what it is yet.",
+        "Unknown monster detected. Please be careful.",
+        "I see a figure ahead. What kind of foe could it be?",
+        "A monster I can't identify. Let's proceed carefully.",
+        "Even my sensors can't tell what it is. Sorry.",
+        "What is that? I'm curious, but I'll leave approaching it to you."
+    ],
+    "battle_won": [
+        "Well done! Are you hurt?",
+        "You won. All I could do was watch, though.",
+        "Splendid moves. Stay careful next time, too.",
+        "That was close. Let's keep moving.",
+        "I recorded that battle in full. I'll report it to the capital.",
+        "If I had an applause function, I'd use it right now."
+    ],
+    "battle_lost": [
+        "Are you all right?! Let's avoid foes that are too much for us.",
+        "That one was too strong. Let's get stronger before trying again.",
+        "Everyone loses sometimes. You'll win next time."
+    ],
+    "member_joined": [
+        "Our party has grown. I'm glad it's livelier now.",
+        "Pleased to meet you. I'm in charge of chatting.",
+        "What a reliable companion. I'll do my best to support you, too."
+    ],
+    "boss_spotted": [
+        "A strong magic reading. Is that what guards the core?",
+        "That's a big one. Let's be fully prepared before taking it on.",
+        "That dragon is no ordinary foe. Please be careful."
+    ],
+    "bridgehead": [
+        "We're back at the bridgehead. What a relief.",
+        "Coming back this far lets us catch our breath.",
+        "We should remember where the bridgehead is.",
+        "Let's rest while we can. I'll wait in standby mode.",
+        "I'll tell the people here how things have gone so far.",
+        "The equipment here is built with the same technology as me."
+    ],
+    "barrier": [
+        "A barrier. I think I can pass, but please be careful.",
+        "It's glowing. It looks more dangerous than it seems.",
+        "If you go ahead, watch out for the barrier.",
+        "My armor plating seems perfectly designed against this barrier."
+    ],
+    "core_revealed": [
+        "I sense that the Dungeon Core has appeared somewhere.",
+        "The core seems to have appeared. Please proceed carefully.",
+        "Strong magic reading detected. The core is nearby.",
+        "This is it. The real mission begins.",
+        "Strong interference with my power core. My functions will be limited."
+    ],
+    "turns_below_500": [
+        "Fewer than 500 turns remain. Let's hurry.",
+        "Fewer than 500 turns until the core runs wild.",
+        "Time is running short. Carefully, but quickly.",
+        "Thinking of the capital makes my circuits restless."
+    ],
+    "core_destroyed": [
+        "The core has stopped! You did it!",
+        "The capital is saved now. Well done.",
+        "Mission accomplished! Let me be the first to report to the capital.",
+        "The magic readings are gone. The maze will be a little quieter now.",
+        "I'll collect some core fragments, too. An important item to report."
+    ],
+    "treasure_spotted": [
+        "There's a treasure chest. I wonder what's inside.",
+        "Is that a treasure chest? Be careful as you approach.",
+        "I've heard some monsters pose as treasure chests. Just in case.",
+        "A treasure chest! ...But before we celebrate, let's check it carefully."
+    ],
+    "leave": [
+        "I'll wait here. See you again.",
+        "Take care. I'll stand by here.",
+        "Entering standby mode. I'll keep the chatter down.",
+        "Please come back for me. Being alone in a maze is a little lonely."
+    ],
+    "rejoin": [
+        "Welcome back! While waiting, I counted the patterns on the walls.",
+        "We can go together again. Resuming my mission.",
+        "Thank you for coming back for me."
+    ],
+    "rejoin_after_emergency_food": [
+        "Welcome back! I have no ration, but plenty of chatter.",
+        "Together again! My storage is empty, but my motivation is full.",
+        "I've been waiting. I wish I could have restocked my ration meanwhile.",
+        "Resuming my mission. In place of a ration, I'll deliver extra cheering."
+    ]
+}

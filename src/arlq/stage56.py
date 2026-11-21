@@ -84,7 +84,7 @@ def recruit(
 
 
 # Iris's line when she catches the starving player (emergency_food in
-# dev-samples/stage6-robot-dialogue-ja.json).
+# locales/iris-dialogue/en.json and ja.json).
 IRIS_RATION_LINE = "I: Oh no! Please take my spare ration. It's the last meal I have."
 
 
