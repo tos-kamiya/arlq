@@ -1,5 +1,23 @@
 # ARLQ Release Notes
 
+## 6.10.0 - 2026-11-21
+
+- Add Iris (`I`), a talkative robot from the capital's arsenal, to the Stage 6
+  party candidates. She can cross barriers and carries one ration: if you
+  collapse from hunger while she is in the party, she offers it instead of
+  the game ending, and your next move key restores LP to 30. Entering a
+  bridgehead with her refills the ration.
+- Let Iris chat about what happens on the way while she is in the party
+  (joining, battles, sightings, low LP, the bridgehead, the Dungeon Core and
+  more), in English and Japanese. She tells you when the bridgehead restocks
+  her ration.
+- Show a short effect when Iris hands over her ration: a small yellow sparkle
+  beside her in `arlq` and `arlq-cli`, and a randomly chosen ration rising
+  with a glow above her in `arlq-sprites`.
+- Give the Stage 6 bridgehead a research outpost look in sprite mode.
+- In `arlq-cli`, discard keys pressed or repeated while an effect is
+  playing, so a held key no longer walks on right after it.
+
 ## 6.9.1 - 2026-11-20
 
 - Add support for Python 3.9.
