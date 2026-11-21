@@ -1,5 +1,16 @@
 # ARLQ Release Notes
 
+## 6.10.1 - 2026-11-22
+
+- Use available space in the attack-power ranking to show more monsters in all
+  modes, shifting the player's position when needed.
+- In `arlq-sprites`, overlay the translucent ranking on the field, fit the
+  initial window to the field, and keep the camera centered on the player when
+  the window is narrow. Adjust ranking spacing and the floor and progress
+  labels to fit the new layout.
+- Show the player's name when hovering over directional sprites.
+- Sort Stage 6 party progress marks alphabetically and refine Iris's sprites.
+
 ## 6.10.0 - 2026-11-21
 
 - Add Iris (`I`), a talkative robot from the capital's arsenal, to the Stage 6
