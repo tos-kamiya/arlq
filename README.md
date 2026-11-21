@@ -118,13 +118,8 @@ while the display is rebuilt. If the window is resized
 narrower than the field, the camera follows the player;
 Shift+Left/Right scrolls the view three cells at a time.
 
-**Player**: The player is shown holding a sword when carrying one. The sprite
-alternates its leading foot each turn, and characters and the camera move in
-whole-cell steps. The player stands with both feet together at stage start
-and just after taking stairs, falling into a pit, or rewinding. During the
-stair animation, the player faces right on the way out and left on the way back,
-with its right foot forward. When idle bobbing begins, the player brings both
-feet together while keeping its direction. The LP gauge
+**Player**: The sprite changes when the player's sword is one obtained from a
+Chimera or Rare Chimera. The LP gauge
 appears just above the player, as in a fighting game. The disc under the player
 shows its LP status. When LP runs out, the player sinks for a moment after its
 last move and then lies collapsed on the final screen.
