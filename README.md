@@ -330,7 +330,7 @@ Unidentified traps appear as `?`. The Mimic appears with the same timing and sym
 
 ### Stage 5: Training Ground
 
-Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of six Stage 6 party members (excluding the Yawning Cat, Fairy Seer, and Iris). Defeated monsters do not respawn.
+Stage 5 is a fixed-map training ground for trying enemy parties and the abilities of six Stage 6 party members (excluding Iris, the Fairy Seer, and the Yawning Cat). Defeated monsters do not respawn.
 
 ### Stage 6: Dungeon with a Party
 
@@ -342,19 +342,19 @@ Deeper floors contain stronger monsters and barriers. Defeated monsters do not r
 
 #### Party members
 
-In Stage 6, S, H, and J cannot cross barriers. If they would enter a barrier, they leave the party and wait on their current cell; contact them again to recruit them.
+In Stage 6, H, J, and S cannot cross barriers. If they would enter a barrier, they leave the party and wait on their current cell; contact them again to recruit them.
 
 | Display & Profession | Ability |
 | --- | --- |
-| **J** Jester | Multiplies your experience by 1.5, leaves at level 100 or above, and can rejoin below level 100. |
-| **H** Healer | Reduces the LP cost per turn to 0.75 and the defeat cost to 3. |
-| **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
-| **K** Knight | Adds a fixed 40 to your attack power. |
 | **D** Dungeon Explorer | A dragon who became interested in humans while exploring ancient ruins. Lets you climb pits using a rope and travel through hidden passages. These are shown with green characters or light. |
 | **G** Guardian | Reduces barrier damage from 30 LP to 5 LP per turn. |
+| **H** Healer | Reduces the LP cost per turn to 0.75 and the defeat cost to 3. |
+| **I** Iris | A talkative robot built in the capital's arsenal. She carries one ration and offers it if you collapse from hunger while she is in the party, preventing the game from ending. Entering a bridgehead with her refills the ration. |
+| **J** Jester | Multiplies your experience by 1.5, leaves at level 100 or above, and can rejoin below level 100. |
+| **K** Knight | Adds a fixed 40 to your attack power. |
+| **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
-| **I** Iris | A talkative robot built in the capital's arsenal; while in the party, she chats about what happens on the way. Carries one ration: if you collapse from hunger while she is in the party, she offers it instead of the game ending, and your next move key restores LP to 30. Entering a bridgehead with her refills the ration; leaving the party does not. |
 
 Vertically adjacent monsters fight in parties of up to eight, combining their strength and experience; the highest LP reward applies. If a defeated party includes a sword-bearing `c`, its sword takes precedence over other items.
 
