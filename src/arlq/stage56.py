@@ -83,11 +83,6 @@ def recruit(
     return trp("-- {joined} joined your party.", 5).format(joined=t(member.role))
 
 
-# Iris's line when she catches the starving player (emergency_food in
-# locales/iris-dialogue/en.json and ja.json).
-IRIS_RATION_LINE = "I: Oh no! Please take my spare ration. It's the last meal I have."
-
-
 def take_iris_ration(player: d.Player) -> bool:
     """Use up Iris's ration if LP has dropped to 0 or below while she is in
     the party with it. Returns whether she used it; the caller sets LP to

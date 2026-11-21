@@ -119,6 +119,11 @@
         "I'll tell the people here how things have gone so far.",
         "The equipment here is built with the same technology as me."
     ],
+    "ration_refilled": [
+        "Ration restocked. No need to worry in an emergency now.",
+        "A ration is back in storage. I feel a little heavier.",
+        "I picked up a ration at the bridgehead. Capital-made, of course."
+    ],
     "barrier": [
         "A barrier. I think I can pass, but please be careful.",
         "It's glowing. It looks more dangerous than it seems.",

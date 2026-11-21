@@ -8,6 +8,7 @@ from . import defs as d
 from . import game_engine as engine
 from .arlq import GameConfig
 from .game_events import GameEvent, Rewound, _emit
+from .iris_dialogue import IrisChatter
 from .pathfinding import is_route_floor
 from .utils import rand, zip_strict
 
@@ -70,6 +71,7 @@ class GameSession:
         # Iris caught a starving player: they lie collapsed with her line
         # shown until the next movement input, which restores their LP.
         self.iris_rescue_pending = False
+        self.iris_chatter = IrisChatter()
         self.replay_context = (
             engine.ReplayContext(self.stage_num, self.initial_seed, self.config)
             if not self.single_floor_stage
@@ -212,6 +214,9 @@ class GameSession:
             return TurnResult(False, self.message, False, floor_before, floor_before)
         stop_repeat = False
         events: list[GameEvent] | None = [] if collect_events else None
+        # Iris's chatter needs the turn's events even when the caller
+        # does not ask for them.
+        iris_events: list[GameEvent] = [] if events is None else events
         # Discovery must also advance when no renderer calls view().
         engine.observe_world(
             self.floors, self.player, self.floor[0], self.config.torch_radius
@@ -233,6 +238,7 @@ class GameSession:
         # Dialogue remains visible through non-movement UI actions.
         if self.message[0] == -2:
             self.message = (-1, "")
+        message_at_start = self.message
         rogue_spotted_danger = False
         if d.has_member(self.player, d.MEMBER_ROGUE):
             destination = (self.player.x + move[0], self.player.y + move[1])
@@ -292,6 +298,7 @@ class GameSession:
         floor_before_step = self.floor[0]
         point_before_step = (self.player.x, self.player.y)
         lp_before_step = self.player.lp
+        iris_start = self.iris_chatter.start_turn(self.player, self.floor[0])
         step_result = engine._process_multi_floor_turn(
             move,
             self.floors,
@@ -303,7 +310,7 @@ class GameSession:
             stage_num=self.stage_num,
             trace=self.trace,
             repeat_stop_reasons=repeat_stop_reasons,
-            events=events,
+            events=iris_events,
             torch_radius=self.config.torch_radius,
             **({"mouse_move": True} if mouse_move else {}),
         )
@@ -355,7 +362,7 @@ class GameSession:
             self.loop_anchor_turn = rewind_turn
             self.has_rewound = True
             _emit(
-                events,
+                iris_events,
                 Rewound(
                     step_result.floor_index,
                     transition_message,
@@ -398,8 +405,9 @@ class GameSession:
             self.trace_known_monsters_recorded = set(self.player.known_monsters)
         self.turn += 1
         self.player.lp -= d.movement_lp_cost(self.player)
+        bridgehead_entered = False
         if not isinstance(step_result, engine._RewindRequest):
-            engine.bridgehead.recover_at_bridgehead(
+            bridgehead_entered = engine.bridgehead.recover_at_bridgehead(
                 self.floors,
                 self.player,
                 self.floor[0],
@@ -409,7 +417,7 @@ class GameSession:
         if engine.stage56.take_iris_ration(self.player):
             self.iris_rescue_pending = True
             stop_repeat = True
-            self.message = (-1, engine.trp(engine.stage56.IRIS_RATION_LINE, 9))
+            self.message = (-1, self.iris_chatter.ration_line())
         if self.trace is not None:
             self.trace.set_turn_end_lp(self.player.lp)
             self.trace.commit_turn()
@@ -451,6 +459,15 @@ class GameSession:
                     "-- The Dungeon Core is swelling; its rampage draws near!", 7
                 ),
             )
+        iris_message = self.iris_chatter.end_turn(
+            self,
+            iris_start,
+            iris_events,
+            bridgehead_entered=bridgehead_entered,
+            game_spoke=self.message is not message_at_start,
+        )
+        if iris_message is not None:
+            self.message = iris_message
         if self.player.lp <= 0 and not self.iris_rescue_pending:
             stop_repeat = True
             self._finish()

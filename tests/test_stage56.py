@@ -5,7 +5,7 @@ from collections import Counter
 import pytest
 
 from arlq import defs as d
-from arlq import display, i18n, stage5, stage6, stage56
+from arlq import display, i18n, iris_dialogue, stage5, stage6, stage56
 from arlq import game_engine as engine
 from arlq.arlq import barrier_lp_damage, get_torched, iterate_ellipse_points
 from arlq.stage_types import Floor
@@ -1949,7 +1949,8 @@ def test_iris_lets_the_player_collapse_then_restores_lp_on_the_next_move(monkeyp
     assert result.stop_repeat
     assert session.phase == "playing" and session.iris_rescue_pending
     assert session.player.lp <= 0
-    assert session.message[1] == stage56.IRIS_RATION_LINE
+    english = iris_dialogue.lines_for("en")["emergency_food"]
+    assert session.message[1] in [iris_dialogue.format_line(line, "en") for line in english]
     point, turn = (session.player.x, session.player.y), session.turn
     assert not session.step((0, 0)).consumed
     assert session.iris_rescue_pending
