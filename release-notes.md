@@ -1,5 +1,11 @@
 # ARLQ Release Notes
 
+## 6.10.2 - 2026-11-22
+
+- Preserve Stage 6 trace replay compatibility with version 6.9.0 and earlier
+  by excluding Iris from the party candidates. Seed strings now record the
+  roster rules, so games continued from older traces can be reproduced.
+
 ## 6.10.1 - 2026-11-22
 
 - Use available space in the attack-power ranking to show more monsters in all
