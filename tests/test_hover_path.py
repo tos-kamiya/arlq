@@ -78,3 +78,14 @@ def test_mouse_motion_refreshes_cursor_deadline(monkeypatch):
     ui._path_mouse_leave(16, 70)
     assert ui._path_mouse_deadline is None
     assert ui._path_hover_cell is None
+
+
+def test_replay_ignores_hover_and_click():
+    ui = make_ui()
+    ui._replaying = True
+    ui._path_stage_draw = None
+    ui._path_mouse_motion(15, 70, 0, 0)
+    ui._path_mouse_press(15, 70, 1, 0)
+    assert ui._path_hover_cell is None
+    assert not ui._path_hover_dirty
+    assert ui._path_mouse_deadline is None

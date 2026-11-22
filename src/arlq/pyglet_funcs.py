@@ -372,6 +372,11 @@ class PygletUI(PygletSettingsMixin):
 
         self._closed = False
         self._key_queue: list = []
+        self._replaying = False
+        self._replay_cancelled = False
+        self._replay_blocked_keys: set[int] = set()
+        self._replay_blocked_buttons: set[int] = set()
+        self._replay_blocked_direction = False
         self._stage_input_active = False
         self._path_hover_cell = None
         self._path_hover_dirty = False
@@ -432,6 +437,13 @@ class PygletUI(PygletSettingsMixin):
 
         @window.event
         def on_key_press(symbol, modifiers):
+            if getattr(self, "_replaying", False):
+                if symbol in (pgkey.Q, pgkey.ESCAPE):
+                    self._replay_cancelled = True
+                self._replay_blocked_keys.add(symbol)
+                return pyglet.event.EVENT_HANDLED
+            if symbol in self._replay_blocked_keys:
+                return pyglet.event.EVENT_HANDLED
             if symbol == pgkey.ESCAPE:
                 if self._escape_key_held:
                     return pyglet.event.EVENT_HANDLED
@@ -452,6 +464,7 @@ class PygletUI(PygletSettingsMixin):
 
         @window.event
         def on_key_release(symbol, modifiers):
+            self._replay_blocked_keys.discard(symbol)
             if symbol == pgkey.ESCAPE:
                 self._escape_key_held = False
             if symbol == pgkey.F:
@@ -1295,6 +1308,8 @@ class PygletUI(PygletSettingsMixin):
         )
 
     def _path_mouse_motion(self, x, y, dx, dy):
+        if getattr(self, "_replaying", False):
+            return
         self.window.set_mouse_visible(True)
         self._path_mouse_deadline = time.monotonic() + MOUSE_CURSOR_SECONDS
         if not self._stage_input_active or self._menu_active:
@@ -1315,7 +1330,7 @@ class PygletUI(PygletSettingsMixin):
 
     def _path_mouse_press(self, x, y, button, modifiers):
         view = self._path_stage_draw
-        if (button != pgmouse.LEFT or not self._stage_input_active or self._menu_active
+        if (getattr(self, "_replaying", False) or button != pgmouse.LEFT or not self._stage_input_active or self._menu_active
                 or view is None or view.get('floor_view') or view.get('extra_keys')):
             return
         target = self._path_cell_at(x, y)
@@ -1402,7 +1417,7 @@ class PygletUI(PygletSettingsMixin):
             self._path_hover_dirty = True
 
     def _menu_mouse_press(self, x, y, button, modifiers):
-        if not self._menu_active or button != pgmouse.LEFT:
+        if getattr(self, "_replaying", False) or not self._menu_active or button != pgmouse.LEFT:
             return
         col = x / self._menu_cell_size_x
         row = (self.window_height - y) / self._menu_cell_size_y
@@ -1413,7 +1428,7 @@ class PygletUI(PygletSettingsMixin):
                 break
 
     def _menu_mouse_motion(self, x, y, dx, dy):
-        if not self._menu_active:
+        if getattr(self, "_replaying", False) or not self._menu_active:
             return
         col = x / self._menu_cell_size_x
         row = (self.window_height - y) / self._menu_cell_size_y
@@ -2058,6 +2073,13 @@ class PygletUI(PygletSettingsMixin):
                 and time.monotonic() >= self._path_mouse_deadline):
             self._path_mouse_leave(0, 0)
         held_buttons = _held_gamepad_buttons(self.controller)
+        blocked_buttons = getattr(self, "_replay_blocked_buttons", set())
+        if getattr(self, "_replaying", False):
+            blocked_buttons = held_buttons.copy()
+            self._replay_blocked_buttons = blocked_buttons
+        else:
+            blocked_buttons.intersection_update(held_buttons)
+        held_buttons = held_buttons - blocked_buttons
         was_preview_held = self._gamepad_preview_held
         self._gamepad_pressed_buttons = held_buttons - self._gamepad_held_buttons
         self._gamepad_held_buttons = held_buttons
@@ -2099,10 +2121,31 @@ class PygletUI(PygletSettingsMixin):
         seconds, so a key press is handled without a fixed polling delay."""
         pyglet.app.platform_event_loop.step(timeout)
 
+    def begin_replay(self) -> None:
+        self._replaying = True
+        self._replay_cancelled = False
+        self._key_queue.clear()
+        self._cancel_mouse_move()
+        self._path_hover_cell = None
+
+    def end_replay(self) -> None:
+        if not self._replaying:
+            return
+        self._pump()
+        self._key_queue.clear()
+        self._replay_blocked_direction = bool(
+            self.controller and self._controller_direction(self.controller) != (0, 0)
+        )
+        self.gamepad_previous_direction = (0, 0)
+        self._next_gamepad_repeat_at = float("inf")
+        self._replaying = False
+
     def poll_events(self) -> bool:
         """Process pending window events and report whether the window closed."""
         self._pump()
-        return self._closed
+        return self._closed or (
+            getattr(self, "_replaying", False) and self._replay_cancelled
+        )
 
     def _next_key(self) -> Optional[int]:
         """Pops the oldest queued key symbol, or None if no key is queued."""
@@ -2226,6 +2269,11 @@ class PygletUI(PygletSettingsMixin):
             controller = self.controller
             if controller:
                 current_direction = self._controller_direction(controller)
+                if getattr(self, "_replay_blocked_direction", False):
+                    if current_direction == (0, 0):
+                        self._replay_blocked_direction = False
+                    else:
+                        current_direction = (0, 0)
 
                 if current_direction != self.gamepad_previous_direction:
                     self.gamepad_previous_direction = current_direction

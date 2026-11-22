@@ -259,6 +259,9 @@ class ReplayUI:
         self._last_state_drawn = False
         self._using_live_input = False
         self.ran_dry = False
+        begin = getattr(draw_ui, "begin_replay", None)
+        if begin is not None:
+            begin()
 
     @property
     def input_was_repeat(self) -> bool:
@@ -323,16 +326,18 @@ class ReplayUI:
     def select_stage(self, stage_numbers: tuple[int, ...] = d.PUBLIC_STAGE_NUMBERS) -> int:
         return self._stage
 
+    def finish_replay(self) -> None:
+        if not self._using_live_input:
+            end = getattr(self._draw_ui, "end_replay", None)
+            if end is not None:
+                end()
+            self._using_live_input = True
+
     def input_direction(self) -> Optional[tuple[int, int]]:
-        self._using_live_input = False
         # Replays consume recorded input without entering the normal UI input
         # loop, so give event-driven UIs a chance to process window-close
         # events between turns.
-        poll_events = (
-            None
-            if self._final_state_only
-            else getattr(self._draw_ui, "poll_events", None)
-        )
+        poll_events = getattr(self._draw_ui, "poll_events", None) if not self._using_live_input else None
         if poll_events is not None and poll_events():
             return None
         while self._inputs:
@@ -347,7 +352,7 @@ class ReplayUI:
         if self._continue_play and self._draw_ui is not None:
             if self._final_state_only:
                 self._draw_last_state()
-            self._using_live_input = True
+            self.finish_replay()
             return self._draw_ui.input_direction()
         self.ran_dry = True
         return None
@@ -366,5 +371,6 @@ class ReplayUI:
             self._draw_last_state()
             if not self._continue_play:
                 return None
+        self.finish_replay()
         input_game_over = getattr(self._draw_ui, "input_game_over", None)
         return input_game_over() if input_game_over is not None else self.input_alphabet()

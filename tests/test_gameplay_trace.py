@@ -884,3 +884,57 @@ def test_pegasus_landing_on_golem_wall(rogue):
     assert ((player.x, player.y) == target) == rogue
     assert (target in floor.broken_walls) == rogue
     assert floor.field[target[1]][target[0]] == (d.CHAR_FLOOR if rogue else d.CHAR_GOLEM_WALL)
+
+
+def test_replay_discards_input_until_continuation_even_when_fast_forwarding():
+    calls = []
+
+    class UI:
+        def begin_replay(self):
+            calls.append("begin")
+
+        def poll_events(self):
+            calls.append("poll")
+            return False
+
+        def end_replay(self):
+            calls.append("end")
+
+        def input_direction(self):
+            calls.append("live")
+            return (1, 0)
+
+    ui = ReplayUI([{"input": "U"}], 1, UI(), continue_play=True, final_state_only=True)
+    assert ui.input_direction() == KEY_TO_DIR["U"]
+    assert ui.input_direction() == (1, 0)
+    assert ui.input_direction() == (1, 0)
+    ui.finish_replay()
+    assert calls == ["begin", "poll", "poll", "end", "live", "live"]
+
+
+@pytest.mark.parametrize("fast_forward", [False, True])
+def test_replay_poll_can_cancel_before_recorded_input(fast_forward):
+    class UI:
+        def poll_events(self):
+            return True
+
+    ui = ReplayUI([{"input": "U"}], 1, UI(), final_state_only=fast_forward)
+    assert ui.input_direction() is None
+    assert not ui.ran_dry
+
+
+@pytest.mark.parametrize("quit_key", ["q", "Q", "escape"])
+def test_terminal_replay_discards_other_keys_and_accepts_quit(quit_key):
+    from types import SimpleNamespace
+    from arlq.blessed_funcs import BlessedUI
+
+    class Key(str):
+        @property
+        def code(self):
+            return 27 if self == "escape" else None
+
+    keys = iter([Key("w"), Key(quit_key), Key("d"), ""])
+    ui = BlessedUI.__new__(BlessedUI)
+    ui.term = SimpleNamespace(KEY_ESCAPE=27, inkey=lambda timeout: next(keys))
+    assert ui.poll_events()
+    assert next(keys, None) is None

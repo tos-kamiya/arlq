@@ -392,15 +392,18 @@ def main(terminal_only=False, sprites_only=False):
                 continue_play=args.continue_trace,
                 final_state_only=args.replay_fast_forward,
             )
-            game.run_game(
-                replay_ui,
-                seed_str,
-                args.stage,
-                args.debug_show_entities,
-                None,
-                trace=trace_recorder,
-                config=game_config,
-            )
+            try:
+                game.run_game(
+                    replay_ui,
+                    seed_str,
+                    args.stage,
+                    args.debug_show_entities,
+                    None,
+                    trace=trace_recorder,
+                    config=game_config,
+                )
+            finally:
+                replay_ui.finish_replay()
         else:
             game.run_game(
                 ui,

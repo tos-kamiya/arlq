@@ -98,12 +98,19 @@ class BlessedUI(BlessedSettingsMixin):
             if key:
                 return key
 
+    def begin_replay(self) -> None:
+        self._discard_pending_keys()
+
+    def end_replay(self) -> None:
+        self._discard_pending_keys()
+
     def poll_events(self) -> bool:
-        """Read a pending replay cancel key without waiting for input."""
-        key = self.term.inkey(timeout=0)
-        if not key:
-            return False
-        return key.code == self.term.KEY_ESCAPE or str(key).lower() == "q"
+        """Discard pending input, except the replay quit keys."""
+        cancelled = False
+        while key := self.term.inkey(timeout=0):
+            if key.code == self.term.KEY_ESCAPE or str(key).lower() == "q":
+                cancelled = True
+        return cancelled
 
     def _style(
         self,

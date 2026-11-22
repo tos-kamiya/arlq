@@ -1,5 +1,11 @@
 # ARLQ Release Notes
 
+## 6.10.3 - 2026-11-22
+
+- Discard player input during trace replay, including mouse route previews,
+  while allowing Q or Escape to quit. In GUI modes, held keys and gamepad
+  controls must be released before they can affect continued play.
+
 ## 6.10.2 - 2026-11-22
 
 - Preserve Stage 6 trace replay compatibility with version 6.9.0 and earlier

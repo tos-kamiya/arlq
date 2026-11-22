@@ -806,7 +806,14 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             decor, kwargs = self._last_stage_draw
             self.draw_stage(decor=decor, **kwargs)
 
+    def begin_replay(self):
+        super().begin_replay()
+        self._mouse_position = None
+        self._mouse_visible_until = None
+
     def _path_mouse_motion(self, x, y, dx, dy):
+        if getattr(self, "_replaying", False):
+            return
         self._mouse_position = (x, y)
         self._mouse_visible_until = time.monotonic() + MOUSE_CURSOR_SECONDS
         self.window.set_mouse_visible(True)
@@ -820,7 +827,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     def _hovered_cell(self):
         mouse = self._mouse_position
-        if mouse is None or self._menu_active:
+        if getattr(self, "_replaying", False) or mouse is None or self._menu_active:
             return None
         return self._path_cell_at(*mouse)
 
