@@ -79,3 +79,49 @@ def test_trace_replay_uses_environment_language_not_recorded_language(monkeypatc
         assert i18n.get_language() == "en"
     finally:
         i18n.set_language(previous_language)
+
+
+@pytest.mark.parametrize(("version", "expected"), [
+    ("6.8.0", False), ("6.9.0", False), ("6.9.1", True),
+    ("6.10.0", True), ("7.0.0", True), (None, True),
+])
+def test_trace_roster_version_and_continuation(monkeypatch, version, expected):
+    data = {"arlq_version": version, "params": {"seed": "v6.9.0--6-123"}, "turns": []}
+    monkeypatch.setattr(cli, "load_trace", lambda _path: data)
+    monkeypatch.setattr(sys, "argv", ["arlq", "--trace", "trace.json", "--continue"])
+    _, _, _, config, recorder = _prepare_cli_session()
+    assert config.include_iris is expected
+    if not expected:
+        assert recorder.params["seed"] == f"v{__about__.__version__}-none-6.0-123"
+        continued = recorder.to_dict()
+        assert not cli.trace_includes_iris(continued)
+
+
+@pytest.mark.parametrize(("seed", "expected", "large_torch"), [
+    ("none-6.0-123", False, False), ("none-6.1-123", True, False),
+    ("T-6.0-123", False, True), ("-6-123", True, False),
+])
+def test_seed_rules_round_trip(monkeypatch, seed, expected, large_torch):
+    monkeypatch.setattr(sys, "argv", ["arlq", "--seed", f"v{__about__.__version__}-{seed}"])
+    _, _, seed_str, config, _ = _prepare_cli_session()
+    assert config.include_iris is expected
+    flags = "T" if large_torch else "none"
+    assert seed_str == f"v{__about__.__version__}-{flags}-6.{int(expected)}-123"
+    assert (config.corridor_h_width, config.corridor_v_width) == (2, 3)
+
+
+def test_interactive_stage_selection_preserves_seed_rules(monkeypatch):
+    from types import SimpleNamespace
+    from arlq.trace import TraceRecorder
+
+    recorded = TraceRecorder({})
+    monkeypatch.setattr(cli.game, "import_module", lambda *_args, **_kwargs: SimpleNamespace(run_game=lambda *args, **kwargs: None))
+    cli.game.run_game(SimpleNamespace(select_stage=lambda _stages: 6),
+                      f"v{__about__.__version__}-none-0.1-123", 0, trace=recorded)
+    assert recorded.params["seed"] == f"v{__about__.__version__}-none-6.1-123"
+
+
+def test_seed_without_options_field_is_rejected(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["arlq", "--seed", f"v{__about__.__version__}-6.1-123"])
+    with pytest.raises(SystemExit):
+        _prepare_cli_session()

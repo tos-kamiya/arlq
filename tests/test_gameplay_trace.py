@@ -3,6 +3,7 @@
 import json
 from collections import Counter
 from copy import deepcopy
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -226,6 +227,20 @@ def test_replay_preserves_random_state_after_returning_to_previous_cell(monkeypa
     game_engine_module.rand.set_seed(17)
     run_game(replay, "seed", stage_num=6)
     assert replay_states[-1] == expected
+
+
+def test_stage6_replays_pre_iris_trace(monkeypatch):
+    from arlq.cli import _prepare_cli_session
+    import sys
+
+    path = Path(__file__).parent / "fixtures" / "stage6-6.8.0-trace.json"
+    monkeypatch.setattr(sys, "argv", ["arlq", "--trace", str(path)])
+    args, data, seed, config, _ = _prepare_cli_session()
+    recorded = TraceRecorder(params={})
+    run_game(ReplayUI(data["turns"], args.stage), seed, stage_num=args.stage,
+             config=config, trace=recorded)
+    assert recorded.start == data["start"]
+    assert recorded.turns[:len(data["turns"])] == data["turns"]
 
 
 def test_recorder_quit_turn_has_only_input_and_bumps_turn_count():

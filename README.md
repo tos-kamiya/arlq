@@ -63,6 +63,8 @@ Use `arlq-sprites --samurai` to play with the samurai character sprites.
 | `--allow-screensaver` | GUI only. Let the screensaver and display sleep start as usual. By default the GUI keeps them off while the game runs. |
 | `--debug-show-entities` | Show undiscovered entities. |
 
+In a versioned seed such as `v6.10.1-none-6.1-123`, `none` means no options, and the stage suffix `.1` selects the current Stage 6 roster; `.0` selects the roster without Iris for older traces. Seeds with the previous format remain readable.
+
 At game start, the stage and seed are saved to `arlq/last-seed` under the user
 cache directory. `--rematch` alone starts the saved stage directly. It is an
 error if combined with `--seed`, if `--stage` differs from the saved stage, or if

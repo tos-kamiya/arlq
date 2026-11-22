@@ -35,6 +35,7 @@ class GameConfig:
     torch_radius: int = d.TORCH_RADIUS
     corridor_h_width: int = d.CORRIDOR_H_WIDTH
     corridor_v_width: int = d.CORRIDOR_V_WIDTH
+    include_iris: bool = True
 
 
 def game_config_from_args(args) -> GameConfig:
@@ -759,7 +760,9 @@ def run_game(
         # played.
         parts = seed_str.split("-")
         if len(parts) == 4:
-            parts[2] = str(stage_num)
+            stage_index = 2
+            suffix = "." + parts[stage_index].split(".", 1)[1] if "." in parts[stage_index] else ""
+            parts[stage_index] = f"{stage_num}{suffix}"
             seed_str = "-".join(parts)
 
     if trace is not None:
@@ -788,7 +791,9 @@ def generate_seed_string(args):
         flag_str += "t"
     if args.narrower_corridors:
         flag_str += "n"
-    return f"v{__version__}-{flag_str}-{args.stage}-{args.seed}"
+    flags = flag_str or "none"
+    rules = 1 if getattr(args, "include_iris", True) else 0
+    return f"v{__version__}-{flags}-{args.stage}.{rules}-{args.seed}"
 
 
 def parse_seed_string(args, seed_str, enforce_version: bool = True):
@@ -799,6 +804,16 @@ def parse_seed_string(args, seed_str, enforce_version: bool = True):
         )
 
     version_part, flag_str, stage_str, seed_value_str = parts
+    if flag_str == "none":
+        flag_str = ""
+
+    if "." in stage_str:
+        stage_str, rules = stage_str.split(".", 1)
+        if rules not in ("0", "1"):
+            exit("Error: Unsupported rules version in seed string.")
+        args.include_iris = rules == "1"
+    else:
+        args.include_iris = True
 
     if not version_part.startswith("v"):
         exit("Error: Seed string must start with 'v'.")

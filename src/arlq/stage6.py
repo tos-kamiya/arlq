@@ -402,6 +402,8 @@ def _build_once(config: Optional[GameConfig] = None) -> tuple[list[Floor], d.Pla
     boss_barrier_half_density = set()
     entry = None
     member_roles = list(d.RECRUITABLE_MEMBER_ROLES)
+    if not config.include_iris:
+        member_roles.remove(d.MEMBER_IRIS)
     while len(member_roles) > 4:
         member_roles.pop(rand.randrange(len(member_roles)))
     filled_counts_by_floor = [0] + [

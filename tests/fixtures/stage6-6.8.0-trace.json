@@ -1,0 +1,484 @@
+{
+  "schema_version": 3,
+  "arlq_version": "6.8.0",
+  "recorded_at": "2026-11-16T00:49:31+09:00",
+  "params": {
+    "stage": 6,
+    "seed": "v6.8.0--6-57236",
+    "large_torch": false,
+    "narrower_corridors": false,
+    "lang": "ja"
+  },
+  "start": {
+    "floor": 0,
+    "position": [
+      57,
+      18
+    ],
+    "lp": 120
+  },
+  "turns": [
+    {
+      "turn": 1,
+      "input": "L",
+      "player": {
+        "lp": 120,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          56,
+          18
+        ],
+        "lp_after_turn": 119
+      },
+      "seen_added_count": 1,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 2,
+      "input": "L",
+      "player": {
+        "lp": 119,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          55,
+          18
+        ],
+        "lp_after_turn": 118
+      },
+      "seen_added_count": 1,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 3,
+      "input": "L",
+      "player": {
+        "lp": 118,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          54,
+          18
+        ],
+        "lp_after_turn": 117
+      },
+      "seen_added_count": 3,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 4,
+      "input": "L",
+      "player": {
+        "lp": 117,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          53,
+          18
+        ],
+        "lp_after_turn": 116
+      },
+      "seen_added_count": 7,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 5,
+      "input": "L",
+      "contact": {
+        "type": "member",
+        "id": "Jester",
+        "joined": true
+      },
+      "player": {
+        "lp": 116,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          52,
+          18
+        ],
+        "lp_after_turn": 115
+      },
+      "seen_added_count": 7,
+      "known_monsters_added": [],
+      "wall": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 6,
+      "input": "U",
+      "player": {
+        "lp": 115,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          52,
+          17
+        ],
+        "lp_after_turn": 114
+      },
+      "seen_added_count": 7,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 7,
+      "input": "U",
+      "player": {
+        "lp": 114,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          52,
+          16
+        ],
+        "lp_after_turn": 113
+      },
+      "seen_added_count": 4,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 8,
+      "input": "U",
+      "player": {
+        "lp": 113,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          52,
+          15
+        ],
+        "lp_after_turn": 112
+      },
+      "seen_added_count": 6,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 9,
+      "input": "R",
+      "player": {
+        "lp": 112,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          53,
+          15
+        ],
+        "lp_after_turn": 111
+      },
+      "seen_added_count": 8,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 10,
+      "input": "R",
+      "contact": {
+        "type": "member",
+        "id": "Yawning Cat",
+        "joined": true
+      },
+      "player": {
+        "lp": 111,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          54,
+          15
+        ],
+        "lp_after_turn": 110
+      },
+      "seen_added_count": 1,
+      "known_monsters_added": [],
+      "wall": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 11,
+      "input": "D",
+      "player": {
+        "lp": 110,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          54,
+          16
+        ],
+        "lp_after_turn": 109
+      },
+      "seen_added_count": 1,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 12,
+      "input": "D",
+      "player": {
+        "lp": 109,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          54,
+          17
+        ],
+        "lp_after_turn": 108
+      },
+      "seen_added_count": 0,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 13,
+      "input": "L",
+      "player": {
+        "lp": 108,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          53,
+          17
+        ],
+        "lp_after_turn": 107
+      },
+      "seen_added_count": 0,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 14,
+      "input": "L",
+      "player": {
+        "lp": 107,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          52,
+          17
+        ],
+        "lp_after_turn": 106
+      },
+      "seen_added_count": 0,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 15,
+      "input": "L",
+      "player": {
+        "lp": 106,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          51,
+          17
+        ],
+        "lp_after_turn": 105
+      },
+      "seen_added_count": 0,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 16,
+      "input": "L",
+      "player": {
+        "lp": 105,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          50,
+          17
+        ],
+        "lp_after_turn": 104
+      },
+      "seen_added_count": 5,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 17,
+      "input": "L",
+      "player": {
+        "lp": 104,
+        "level": 1,
+        "attack": 1,
+        "floor": 0,
+        "position": [
+          49,
+          17
+        ],
+        "lp_after_turn": 103
+      },
+      "seen_added_count": 7,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 18,
+      "input": "L",
+      "contact": {
+        "type": "monster",
+        "id": "a",
+        "outcome": "win"
+      },
+      "checkpoint": [
+        {
+          "reason": "monster_defeated",
+          "at": [
+            48,
+            17
+          ],
+          "floor": 0
+        }
+      ],
+      "player": {
+        "lp": 103,
+        "level": 2.5,
+        "attack": 2.5,
+        "floor": 0,
+        "position": [
+          48,
+          17
+        ],
+        "lp_after_turn": 102
+      },
+      "seen_added_count": 7,
+      "known_monsters_added": [],
+      "wall": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 19,
+      "input": "L",
+      "player": {
+        "lp": 102,
+        "level": 2.5,
+        "attack": 2.5,
+        "floor": 0,
+        "position": [
+          47,
+          17
+        ],
+        "lp_after_turn": 101
+      },
+      "seen_added_count": 7,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    },
+    {
+      "turn": 20,
+      "input": "L",
+      "player": {
+        "lp": 101,
+        "level": 2.5,
+        "attack": 2.5,
+        "floor": 0,
+        "position": [
+          46,
+          17
+        ],
+        "lp_after_turn": 100
+      },
+      "seen_added_count": 7,
+      "known_monsters_added": [],
+      "wall": null,
+      "contact": null,
+      "expired": [],
+      "world": [],
+      "damage": []
+    }
+  ]
+}

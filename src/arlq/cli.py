@@ -3,6 +3,7 @@
 import argparse
 import sys
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
@@ -19,6 +20,7 @@ from .trace import (
     checkpoint_turn_index,
     load_trace,
     timestamped_trace_path,
+    trace_includes_iris,
 )
 
 
@@ -352,9 +354,13 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
         else:
             args.seed = int(time.time()) % 100000
 
+    if trace_data is not None:
+        args.include_iris = trace_includes_iris(trace_data)
     game.rand.set_seed(args.seed)
     seed_str = game.generate_seed_string(args)
     game_config = game.game_config_from_args(args)
+    if not getattr(args, "include_iris", True):
+        game_config = replace(game_config, include_iris=False)
 
     trace_recorder: Optional[TraceRecorder] = None
     if trace_data is None or args.continue_trace or args.checkpoint_index is not None:

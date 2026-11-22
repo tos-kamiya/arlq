@@ -10,6 +10,7 @@ this module owns the trace file's schema plus the replay-side input source.
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections import deque
 from datetime import datetime
@@ -21,6 +22,24 @@ from .__about__ import __version__
 from .game_events import WallEvent
 
 SCHEMA_VERSION = 3
+
+
+def trace_includes_iris(data: dict[str, Any]) -> bool:
+    """Restore the roster used by a trace, including continued old traces."""
+    params = data["params"]
+    if "include_iris" in params:
+        return params["include_iris"]
+    seed = params.get("seed", "")
+    parts = seed.split("-") if isinstance(seed, str) else []
+    if len(parts) == 4:
+        stage = parts[-2]
+        if stage.endswith(".0"):
+            return False
+        if stage.endswith(".1"):
+            return True
+    version = data.get("arlq_version", "")
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version if isinstance(version, str) else "")
+    return not match or tuple(map(int, match.groups())) > (6, 9, 0)
 
 DIR_TO_KEY: dict[tuple[int, int], str] = {
     (0, -1): "U",
