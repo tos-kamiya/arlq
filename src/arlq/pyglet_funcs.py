@@ -1976,7 +1976,7 @@ class PygletUI(PygletSettingsMixin):
     @staticmethod
     def _lp_gauge_ratio(player: d.Player) -> float:
         lp_max = d.player_lp_max(player)
-        return min(player.lp, lp_max) / lp_max
+        return max(0, min(player.lp, lp_max)) / lp_max
 
     @staticmethod
     def _lp_gauge_color(player: d.Player) -> tuple[int, int, int]:

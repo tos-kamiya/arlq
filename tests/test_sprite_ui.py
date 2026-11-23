@@ -1881,6 +1881,21 @@ def test_lp_gauge_sits_over_player_head_scaled_to_its_disc(sprite_ui, lp, tone):
     assert not ui._status_shows_lp_gauge()
 
 
+def test_negative_lp_gauge_matches_zero(sprite_ui):
+    ui = sprite_ui
+    ui._display_color = lambda color: color
+    player = d.Player(4, 5, level=8, lp=0)
+    ui._draw_lp_gauge((4, 5), player, 100)
+    zero = [(rect.x, rect.y, rect.width, rect.height, rect.color)
+            for rect in ui._drawables]
+    ui._drawables = []
+    player.lp = -10
+    ui._draw_lp_gauge((4, 5), player, 100)
+    negative = [(rect.x, rect.y, rect.width, rect.height, rect.color)
+                for rect in ui._drawables]
+    assert negative == zero
+
+
 def test_edge_floor_shade_fades_smoothly_from_the_outer_walls():
     shade = sprite_images.edge_floor_shade
     width, height = d.FIELD_WIDTH, d.FIELD_HEIGHT
