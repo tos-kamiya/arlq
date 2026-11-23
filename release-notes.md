@@ -1,5 +1,15 @@
 # ARLQ Release Notes
 
+## 6.10.7 - 2026-11-23
+
+- Add `arlq-cli --wide` for a terminal map and strength column using
+  fullwidth characters. The mode requires a fullwidth-capable font and a
+  terminal of at least 160 columns by 24 lines. Braille effects use two
+  characters per map cell for finer horizontal detail.
+- Keep dialogue and status popups at their normal text width in wide mode.
+  Improve Stage 5 dialogue wrapping in English and Japanese in both the
+  terminal and character-based GUI.
+
 ## 6.10.6 - 2026-11-23
 
 - When the Stage 6 turn limit runs out, show the Dungeon Core running wild:
