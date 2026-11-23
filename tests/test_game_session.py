@@ -128,3 +128,38 @@ def test_repeat_stop_reports_no_move(session):
     floor.field[2][3] = d.CHAR_WALL
     floor.seen[2][3] = 1
     assert session.step((1, 0), repeat=True).move is None
+
+
+def test_core_calamity_shows_the_dormant_core_only_after_the_time_limit():
+    session = GameSession(6, seed_str="1")
+    floor_index, core = next(
+        (index, entity)
+        for index, floor in enumerate(session.floors)
+        for entity in floor.entities
+        if isinstance(entity, d.Monster) and entity.tribe.char == d.CHAR_DUNGEON_CORE
+    )
+    assert not core.active
+    assert session.core_calamity() is None
+    session.turn = d.STAGE6_TURN_LIMIT - 1
+    for move in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        if session.step(move).consumed:
+            break
+    assert session.outcome == "time_up"
+
+    def shown_core(view):
+        return [entity for entity in view["entities"]
+                if isinstance(entity, d.Monster)
+                and entity.tribe.char == d.CHAR_DUNGEON_CORE]
+
+    # Not before the calamity is shown (the last turn is drawn first).
+    assert shown_core(session.view(floor_index)) == [core]
+    at, view = session.core_calamity()
+    assert at == (core.x, core.y)
+    (shown,) = shown_core(view)
+    assert shown is not core and shown.active
+    assert view["torched"][core.y][core.x]
+    assert view["floor_view"] == (floor_index != session.floor[0])
+    # The game itself is left as it was.
+    assert not core.active
+    assert not session.floors[floor_index].seen[core.y][core.x]
+    assert shown_core(session.view(floor_index))[0].active

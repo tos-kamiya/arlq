@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 
 from . import defs as d
@@ -69,6 +70,8 @@ class GameSession:
         self.debug_show_entities = debug_show_entities
         self.phase = "playing"
         self.outcome = None
+        # Set once the core's calamity is shown at the Stage 6 time limit.
+        self.core_ran_wild = False
         # Iris caught a starving player: they lie collapsed with her line
         # shown until the next movement input, which restores their LP.
         self.iris_rescue_pending = False
@@ -144,6 +147,17 @@ class GameSession:
                 },
             )
         render_entities = [self.player, *display_floor.entities]
+        torched = display_floor.seen
+        if self.core_ran_wild:
+            # Shown from then on, found or not.
+            core = self._dungeon_core(view_floor)
+            if core is not None:
+                shown = copy.copy(core)
+                shown.active = True
+                render_entities = [shown if entity is core else entity
+                                   for entity in render_entities]
+                torched = [list(row) for row in torched]
+                torched[core.y][core.x] = 1
         known_types = self.player.known_monsters
         no_current_visibility = [
             [0] * len(display_floor.field[0]) for _ in display_floor.field
@@ -164,7 +178,7 @@ class GameSession:
             entities=render_entities,
             field=engine._field_for_display(self.floors, view_floor, self.player),
             cur_torched=no_current_visibility if floor_view else cur,
-            torched=display_floor.seen,
+            torched=torched,
             known_types=known_types,
             show_entities=show_entities,
             debug_show_entities=self.debug_show_entities,
@@ -188,6 +202,25 @@ class GameSession:
             options.pop("reachable_cells")
             options.pop("loop_trail_markers")
         return options
+
+    def _dungeon_core(self, floor_index):
+        for entity in self.floors[floor_index].entities:
+            if (isinstance(entity, d.Monster)
+                    and entity.tribe.char == d.CHAR_DUNGEON_CORE):
+                return entity
+        return None
+
+    def core_calamity(self):
+        """Where the Dungeon Core ran wild at the Stage 6 time limit, as its
+        cell and the view of its floor, or None."""
+        if self.outcome != "time_up":
+            return None
+        for index in range(len(self.floors)):
+            core = self._dungeon_core(index)
+            if core is not None:
+                self.core_ran_wild = True
+                return (core.x, core.y), self.view(index)
+        return None
 
     def step(
         self,

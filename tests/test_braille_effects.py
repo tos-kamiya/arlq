@@ -9,7 +9,7 @@ from arlq.game_events import Combat
 from arlq.presentation import play_defeat_effects
 
 
-@pytest.mark.parametrize("name", ["Vortex", "Dungeon Core", "Boss"])
+@pytest.mark.parametrize("name", ["Vortex", "Dungeon Core", "Boss", "Core Calamity"])
 def test_frames_are_clipped_and_disabled_by_combat_setting(name):
     assert effect_frames(name, (0, 0), 0) == (0, [])
     duration, frames = effect_frames(name, (0, 0), 0.3)
@@ -21,7 +21,8 @@ def test_frames_are_clipped_and_disabled_by_combat_setting(name):
             assert len(color) == 3
 
 
-@pytest.mark.parametrize("name, expected", [("Boss", 14 / 15), ("Dungeon Core", 1.0)])
+@pytest.mark.parametrize("name, expected", [("Boss", 14 / 15), ("Dungeon Core", 1.0),
+                                            ("Core Calamity", 2.0)])
 def test_defeat_effect_duration_is_fixed_when_enabled(name, expected):
     for setting in (0.1, 1.0):
         duration, frames = effect_frames(name, (10, 9), setting)

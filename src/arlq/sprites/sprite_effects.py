@@ -152,6 +152,30 @@ TREASURE_MOTE_RISE = (0.25, 0.55)  # dome radii over a mote's life
 TREASURE_MOTE_SHIMMER = 0.35
 TREASURE_GLOW_FPS = 30
 
+# The Stage 6 Dungeon Core running wild at the time limit
+# (draw_core_calamity): over CORE_CALAMITY_SECONDS the core blazes up while
+# arms of black smoke, rimmed with violet light, reach out from it and
+# scatter away (assets/effects/core-calamity, see build-core-calamity.py:
+# each frame's smoke drawn over the floor, its glow and lightning added as
+# light). The eye of the arms, CORE_CALAMITY_FOOT of an image's height below
+# its centre, is on the core's cell; a full arm, CORE_CALAMITY_REACH of an
+# image's width from the eye, reaches CORE_CALAMITY_REACH_CELLS cell widths
+# across the floor (less up and down the screen, like the Vortex's storm).
+# The core's own blaze (a hazy dome of CORE_CALAMITY_GLOW_COLOR light
+# CORE_CALAMITY_GLOW_RADIUS cell widths across) swells to its full over the
+# first CORE_CALAMITY_BLAZE of the time, as the arms reach out, and eases to
+# CORE_CALAMITY_GLOW_END while they scatter.
+CORE_CALAMITY_SECONDS = 2.0
+CORE_CALAMITY_FRAMES = 20
+CORE_CALAMITY_FOOT = 0.010353
+CORE_CALAMITY_REACH = 1 / 3
+CORE_CALAMITY_REACH_CELLS = 10
+CORE_CALAMITY_GLOW_COLOR = (225, 175, 255)
+CORE_CALAMITY_GLOW_RADIUS = 5.0
+CORE_CALAMITY_GLOW_OPACITY = 0.6
+CORE_CALAMITY_BLAZE = 0.4
+CORE_CALAMITY_GLOW_END = 0.7
+
 
 def dome_images(size=128, bands=DOME_GLOW_BANDS):
     """A unit hemisphere on the ground seen DOME_ELEVATION down: a dark
@@ -607,6 +631,88 @@ class SpriteEffectsMixin:
                                      * min(1.0, t / 0.1) * (1 - t) ** 1.2)
 
         self._play_effect(CORE_BURST_SECONDS, create, update)
+
+    def _core_calamity_images(self):
+        cls = type(self)
+        if getattr(cls, '_calamity_images', None) is None:
+            folder = Path(__file__).parent.parent / "assets" / "effects" / "core-calamity"
+            frames = []
+            for index in range(CORE_CALAMITY_FRAMES):
+                pair = []
+                for layer in ('smoke', 'light'):
+                    path = folder / f"frame-{index:02d}-{layer}.png"
+                    if not path.is_file():
+                        cls._calamity_images = []
+                        return cls._calamity_images
+                    image = pyglet.image.load(str(path))
+                    image.anchor_x = image.width // 2
+                    image.anchor_y = round(image.height * (0.5 - CORE_CALAMITY_FOOT))
+                    pair.append(image)
+                frames.append(tuple(pair))
+            cls._calamity_images = frames
+        return cls._calamity_images
+
+    def draw_core_calamity(self, pos) -> None:
+        """Let the Dungeon Core blaze up and loose arms of calamitous smoke
+        that reach out from it and scatter away."""
+        if self.combat_effect_seconds == 0:
+            return
+        frames = self._core_calamity_images()
+        if not frames:
+            return
+        x, y = pos
+        parts = {}
+        additive = {"blend_src": pyglet.gl.GL_SRC_ALPHA, "blend_dest": pyglet.gl.GL_ONE}
+
+        def create():
+            smoke_image, light_image = frames[0]
+            parts['smoke'] = pyglet.sprite.Sprite(
+                smoke_image, batch=self.batch, group=pyglet.graphics.Group(order=100000))
+            # The core stays in sight over its own smoke, blazing.
+            parts['core'] = self._core_calamity_core_sprites(
+                pos, pyglet.graphics.Group(order=100001))
+            parts['light'] = pyglet.sprite.Sprite(
+                light_image, batch=self.batch,
+                group=pyglet.graphics.Group(order=100002), **additive)
+            parts['glow'] = pyglet.sprite.Sprite(
+                soft_dome_image(), batch=self.batch,
+                group=pyglet.graphics.Group(order=100003), **additive)
+            parts['glow'].color = self._display_color(CORE_CALAMITY_GLOW_COLOR)
+            return [parts['smoke'], parts['light'], parts['glow'],
+                    *(sprite for sprite, _ in parts['core'])]
+
+        def update(progress):
+            smoke_image, light_image = frames[
+                min(CORE_CALAMITY_FRAMES - 1, int(progress * CORE_CALAMITY_FRAMES))]
+            horizontal = CORE_CALAMITY_REACH_CELLS
+            vertical = horizontal / d.FOV_WIDTH_EXPANSION_RATIO
+            reach = CORE_CALAMITY_REACH * smoke_image.width
+            gx = self._field_col_x(x) + self.cell_size_x / 2
+            gy = self.window_height - (y + 0.5) * self.cell_size_y
+            for sprite, image in ((parts['smoke'], smoke_image),
+                                  (parts['light'], light_image)):
+                if sprite.image is not image:
+                    sprite.image = image
+                sprite.update(x=gx, y=gy,
+                              scale_x=horizontal * self.cell_size_x / reach,
+                              scale_y=vertical * self.cell_size_y / reach)
+            blaze = (min(1.0, progress / CORE_CALAMITY_BLAZE) if progress < CORE_CALAMITY_BLAZE
+                     else 1 - (1 - CORE_CALAMITY_GLOW_END)
+                     * (progress - CORE_CALAMITY_BLAZE) / (1 - CORE_CALAMITY_BLAZE))
+            glow = parts['glow']
+            glow.update(x=gx, y=gy,
+                        scale=CORE_CALAMITY_GLOW_RADIUS * self.cell_size_x / glow.image.width)
+            glow.opacity = round(255 * CORE_CALAMITY_GLOW_OPACITY * blaze)
+            for sprite, strength in parts['core']:
+                if strength is not None:
+                    sprite.opacity = round(255 * strength * blaze)
+
+        self._play_effect(CORE_CALAMITY_SECONDS, create, update)
+
+    def _core_calamity_core_sprites(self, pos, group):
+        """The core drawn over its smoke as (sprite, opacity at full blaze,
+        or None for a steady one); none where there is no core image."""
+        return []
 
     def draw_treasure_glow(self, pos) -> None:
         """Put the won stage's hazy golden dome and its floating motes over

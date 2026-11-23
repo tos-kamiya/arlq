@@ -699,7 +699,8 @@ class BlessedUI(BlessedSettingsMixin):
                     if name == "Vortex" and color == (170, 170, 170):
                         color_name = "white"
                     else:
-                        color_name = {"Boss": "yellow", "Dungeon Core": "magenta", "Vortex": "cyan"}[name]
+                        color_name = {"Boss": "yellow", "Dungeon Core": "magenta", "Vortex": "cyan",
+                                      "Core Calamity": "magenta"}[name]
                     glyph = self._style(char, color=color_name, bg=bg)
                 output.append(self.term.move_xy(x, y) + glyph)
             print("".join(output) + self.term.normal, end="", flush=True)
@@ -736,6 +737,14 @@ class BlessedUI(BlessedSettingsMixin):
 
     def draw_core_burst(self, pos):
         self._draw_braille_effect("Dungeon Core", pos)
+
+    def present_core_calamity(self, at, view):
+        """The core ran wild at the time limit: cut to its floor and let its
+        smoke reach out and scatter."""
+        if self.combat_effect_seconds == 0:
+            return
+        self.draw_stage(**view)
+        self._draw_braille_effect("Core Calamity", at)
 
     def draw_rewind_transition(self, message: str) -> None:
         """Show the Loop Fairy transition before the next stage frame."""

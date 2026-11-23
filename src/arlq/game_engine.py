@@ -2134,6 +2134,10 @@ def run_game(
                 ui.draw_stage(**session.view(result.floor_after))
                 play_iris_ration(ui, result)
         view_floor = result.floor_after
+    calamity = session.core_calamity()
+    present_calamity = getattr(ui, "present_core_calamity", None)
+    if calamity is not None and present_calamity is not None:
+        present_calamity(*calamity)
     view_floor = session.floor[0]
     while True:
         ui.draw_stage(

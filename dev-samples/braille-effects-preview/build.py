@@ -28,6 +28,8 @@ class Capture(SpriteEffectsMixin):
         self.name = name
         self.batch = pyglet.graphics.Batch()
         self._disc_image = ground_disc_image()
+        self._dome_images = None
+        self._pillar_image = None
         self.frames = []
     def _field_col_x(self, x):
         return x * self.cell_size_x
@@ -94,16 +96,17 @@ def convert(pixels, name, progress):
 window = pyglet.window.Window(WIDTH, HEIGHT, visible=False)
 window.switch_to()
 all_frames = {}
-for name, method in [('Vortex', 'draw_vortex_effect'), ('Dungeon Core', 'draw_core_burst'), ('Boss', 'draw_boss_afterglow')]:
+for name, method in [('Vortex', 'draw_vortex_effect'), ('Dungeon Core', 'draw_core_burst'),
+                     ('Boss', 'draw_boss_afterglow'), ('Core Calamity', 'draw_core_calamity')]:
     capture = Capture(name)
     getattr(capture, method)((10, 9))
     all_frames[name] = capture.frames
 window.close()
-# Keep the shipped Vortex frames identical to the preview; other effects
-# are left untouched when adjusting the storm.
+# Keep the shipped Core Calamity frames identical to the preview; the
+# other effects are left untouched when adjusting it.
 frames_path = Path(__file__).resolve().parents[2] / 'src/arlq/assets/effects/braille-frames.json'
 shipped_frames = json.loads(frames_path.read_text(encoding='utf-8'))
-shipped_frames['Vortex'] = all_frames['Vortex']
+shipped_frames['Core Calamity'] = all_frames['Core Calamity']
 frames_path.write_text(json.dumps(shipped_frames, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
 html = '''<!doctype html><html lang="ja"><meta charset="utf-8"><title>点字エフェクト プレビュー</title>
 <style>body{background:#181b20;color:#e7e8ec;font-family:sans-serif;padding:24px}main{display:flex;flex-wrap:wrap;gap:20px}section{background:#24282c;padding:14px;border-radius:8px}h2{font-size:18px}pre{font-size:0;margin:0;background:rgb(43,52,65);white-space:pre}.cell{display:inline-block;width:13px;height:20px;vertical-align:top}.cell svg{display:block;width:13px;height:20px}.player{font:bold 14px/20px monospace;color:white}button{padding:8px 15px}</style>

@@ -196,6 +196,11 @@ SPRITE_NAMES.update({f'{name}-{skin}': role
                      for skin in MEMBER_SKINS})
 SPRITE_NAMES[CAT_SPRITE] = d.MEMBER_YAWNING_CAT
 SPRITE_NAMES[IRIS_SPRITE] = d.MEMBER_IRIS
+# The camera turns to a Dungeon Core running wild only so far that it is in
+# sight, with this many cell widths beside its cell.
+CORE_CALAMITY_EDGE_CELLS = 1.5
+# How strongly the core's light is added again over it at its full blaze.
+CORE_CALAMITY_CORE_BLAZE = 0.55
 # An elf the player has met (drawn without bold as text) is shown with its
 # sprite and ground disc darkened to this fraction.
 MET_ELF_SHADE = 0.6
@@ -1652,14 +1657,9 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._draw_sprite(pos, text, color, shade=MET_ELF_SHADE if met_elf else 1.0,
                           bob=bob)
 
-    def _draw_dungeon_core(self, pos):
+    def _dungeon_core_placement(self, pos, image):
+        """The core image's width, left, bottom and scales on `pos`."""
         x, y = pos
-        image = self._dungeon_core_images[self._dungeon_core_growth]
-        cx = self._field_col_x(x) + self.cell_size_x / 2
-        cy = (y + 0.5) * self.cell_size_y
-        shade = 1.0 if self._cur_torched is not None and self._cur_torched[y][x] else TERRAIN_EXPLORED_SHADE
-        glow = self._display_color(tuple(round(c * shade) for c in COLOR_MAP[CI_YELLOW]))
-        self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self._sprite_unit(), glow)
         cells = self._dungeon_core_cells
         width = (cells * DUNGEON_CORE_CELL_UNITS
                  * max(1, self._sprite_unit() - 2 * max(1, round(self.scale))))
@@ -1674,6 +1674,69 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             * self.cell_size_y * factor
             / image.height
         )
+        return width, left, bottom, scale_x, scale_y
+
+    def _core_calamity_core_sprites(self, pos, group):
+        """The core over its calamity's smoke, lit, with its light layer
+        (or the image itself) added again as it blazes up."""
+        image = self._dungeon_core_images.get(self._dungeon_core_growth)
+        if image is None:
+            return []
+        _, left, bottom, scale_x, scale_y = self._dungeon_core_placement(pos, image)
+        light = self._dungeon_core_light_images.get(self._dungeon_core_growth, image)
+        sprites = []
+        for picture, blend, strength in (
+            (image, {}, None),
+            (light, {"blend_src": pyglet.gl.GL_SRC_ALPHA,
+                     "blend_dest": pyglet.gl.GL_ONE}, CORE_CALAMITY_CORE_BLAZE),
+        ):
+            sprite = pyglet.sprite.Sprite(picture, x=left, y=bottom, batch=self.batch,
+                                          group=group, **blend)
+            sprite.update(scale_x=scale_x, scale_y=scale_y)
+            sprite.color = self._display_color((255, 255, 255))
+            sprites.append((sprite, strength))
+        return sprites
+
+    def present_core_calamity(self, at, view):
+        """The core ran wild at the time limit: cut to it (its floor, and
+        the camera only far enough that it is in sight), play its calamity,
+        and leave the camera as it was for the final screen, where the
+        player kneels."""
+        if self.combat_effect_seconds == 0 or self._closed:
+            return
+        scroll = self._horizontal_scroll_px
+        follow = self._camera_follow_player
+        x = at[0]
+        min_scroll, max_scroll = self._horizontal_scroll_bounds()
+        margin = CORE_CALAMITY_EDGE_CELLS * self.cell_size_x
+        left = x * self.cell_size_x - margin
+        right = (x + 1) * self.cell_size_x + margin
+        # The strength column covers the right of the field.
+        visible = self.field_pixel_width - self.strength_column_width
+        if left < scroll:
+            self._horizontal_scroll_px = max(min_scroll, left)
+        elif right > scroll + visible:
+            self._horizontal_scroll_px = min(max_scroll, right - visible)
+        self._camera_follow_player = False
+        # The player kneels once the calamity has played.
+        self._presenting_turn = True
+        try:
+            self.draw_stage(**view)
+            self.draw_core_calamity(at)
+        finally:
+            self._presenting_turn = False
+            self._horizontal_scroll_px = scroll
+            self._camera_follow_player = follow
+
+    def _draw_dungeon_core(self, pos):
+        x, y = pos
+        image = self._dungeon_core_images[self._dungeon_core_growth]
+        cx = self._field_col_x(x) + self.cell_size_x / 2
+        cy = (y + 0.5) * self.cell_size_y
+        shade = 1.0 if self._cur_torched is not None and self._cur_torched[y][x] else TERRAIN_EXPLORED_SHADE
+        glow = self._display_color(tuple(round(c * shade) for c in COLOR_MAP[CI_YELLOW]))
+        self._draw_ground_disc(cx, cy, GROUND_DISC_RADIUS * self._sprite_unit(), glow)
+        width, left, bottom, scale_x, scale_y = self._dungeon_core_placement(pos, image)
         light = self._dungeon_core_light_images.get(self._dungeon_core_growth)
         # Without its light layer, the core is not dimmed out of view, so its
         # glow does not go dark.
