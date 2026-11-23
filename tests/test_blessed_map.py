@@ -41,6 +41,14 @@ def test_effect_padding_is_included_in_style():
     assert view.map_cell(2, 5, "界") == "<4,5>界"
 
 
+def test_rank_marks_use_requested_unicode_characters_only_in_wide_mode():
+    term = TerminalStub()
+    assert BlessedMap(term).rank_text("b' c\"") == "b' c\""
+    view = BlessedMap(term, cell_width=2)
+    assert view.rank_text("b' c\"") == "b❜ c❞"
+    assert view.map_text(0, 0, view.rank_text("'\"")) == "<0,0>❜ ❞ "
+
+
 def test_effect_animation_renders_frames_with_timing_and_restores_snapshot(monkeypatch, capsys):
     term = TerminalStub()
     term.normal = "!"
@@ -114,13 +122,18 @@ def test_wide_ui_draws_map_sidebar_dialogue_and_status(monkeypatch):
     field[2][3] = d.CHAR_WALL
     seen = [[1] * d.FIELD_WIDTH for _ in field]
     player = d.Player(2, 2, 1, 100)
-    output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[],
+    monsters = [d.Monster(10, 4, d.MONSTER_TRIBES[0], empowered=2),
+                d.Monster(14, 4, d.MONSTER_TRIBES[0], empowered=3)]
+    known = {d.monster_type_key(monster) for monster in monsters}
+    output = ui._draw_stage([player, *monsters], field, seen, seen, known, stage_roster=[],
                             message=TrialDialogue("Hello"), loop_trail_markers={(4, 2)})
     assert "<4,2>＠" in output
     assert "<6,2>＃" in output
     assert "<10,2>  " in output
     assert "<8,2>・" in output
-    assert f"<{(d.FIELD_WIDTH + d.FIELD_SIDEBAR_GAP) * 2},0>ｂ＇" in output
+    assert "<22,4>❜ " in output
+    assert "<30,4>❞ " in output
+    assert f"<{(d.FIELD_WIDTH + d.FIELD_SIDEBAR_GAP) * 2},0>ｂ❜ " in output
     assert "<6,1>[bold:[yellow:< Hello]]" in output
     assert "<0,22>" in ui._draw_status_bar(player, 0)
     assert ui._terminal_is_large_enough()

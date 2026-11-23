@@ -49,6 +49,10 @@ class BlessedMap:
         """Return the number of map cells occupied by rendered text."""
         return len(text) if self.cell_width == 2 else self.terminal.length(text)
 
+    def rank_text(self, text: str) -> str:
+        """Select the wide-mode glyphs used for monster rank marks."""
+        return text.translate(str.maketrans({"'": "❜", '"': "❞"})) if self.cell_width == 2 else text
+
     def _wide_char(self, char: str) -> str:
         code = ord(char)
         if char == " ":

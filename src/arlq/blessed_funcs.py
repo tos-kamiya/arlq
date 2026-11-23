@@ -177,7 +177,10 @@ class BlessedUI(BlessedSettingsMixin):
             bold: bool = False,
             dim: bool = False,
             bg: Optional[str] = None,
+            rank: bool = False,
         ):
+            if rank:
+                text = self._map.rank_text(text)
             output.append(self._map.map_text(
                 x, y, text, lambda value: self._style(
                     value, None if render_monochrome else color, bold, dim,
@@ -373,7 +376,7 @@ class BlessedUI(BlessedSettingsMixin):
             if stage_num in (5, 6) else None
         )
 
-        def paint(glyph: ui_display.FieldGlyph) -> None:
+        def paint(glyph: ui_display.FieldGlyph, rank: bool = False) -> None:
             color = (
                 None
                 if glyph.tone in (
@@ -390,6 +393,7 @@ class BlessedUI(BlessedSettingsMixin):
                 bold=False if glyph.tone in ("stair", "member") else glyph.bold,
                 dim=glyph.dim,
                 bg=background,
+                rank=rank,
             )
 
         drawing_entities = ui_display.entities_for_drawing(entities)
@@ -438,7 +442,9 @@ class BlessedUI(BlessedSettingsMixin):
             if (is_bracket(entity, glyph)
                     and not ui_display.core_bracket_is_clear(glyph, field, occupied, decor)):
                 continue
-            paint(glyph)
+            paint(glyph, rank=(isinstance(entity, d.Monster)
+                               and glyph.x == entity.x + 1
+                               and glyph.char in ("'", '"')))
 
         if not floor_view:
             for glyph in ui_display.member_glyphs(player):
@@ -507,7 +513,7 @@ class BlessedUI(BlessedSettingsMixin):
                 continue
             gauge_x = d.FIELD_WIDTH + d.FIELD_SIDEBAR_GAP + 2 - len(strength_char)
             known = is_player or ui_display.strength_label_known(strength_char, known_types)
-            put(gauge_x, y, strength_char, "white", bold=is_player, dim=not known)
+            put(gauge_x, y, strength_char, "white", bold=is_player, dim=not known, rank=True)
 
         if stage_num in d.ELF_STAGES:
             progress_x = 0
