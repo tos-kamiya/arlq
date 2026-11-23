@@ -56,7 +56,7 @@ def sprite_ui(monkeypatch):
                             x=x, y=y, width=width, height=height, **kwargs))
     monkeypatch.setattr(PygletUI, '_draw_field_text',
                         lambda self, *args: self.text_calls.append(args))
-    monkeypatch.setattr(ui, '_draw_ground_disc', lambda *args: ui.outlines.append(args))
+    monkeypatch.setattr(ui, '_draw_ground_disc', lambda *args, **kwargs: ui.outlines.append(args))
     monkeypatch.setattr(import_module('pyglet.sprite'), 'Sprite',
                         lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
     monkeypatch.setattr(import_module('pyglet.text'), 'Label',
@@ -1366,10 +1366,12 @@ def test_scholar_stairs_use_green_direction_glyph_without_background(sprite_ui):
 
 def test_pit_up_marker_is_a_green_disc_and_allows_fallen_rocks(sprite_ui, monkeypatch):
     discs = []
-    monkeypatch.setattr(sprite_ui, '_draw_ground_disc', lambda *args: discs.append(args))
+    monkeypatch.setattr(sprite_ui, '_draw_ground_disc',
+                        lambda *args, **kwargs: discs.append((args, kwargs)))
     sprite_ui._draw_stairs((4, 5), d.CHAR_SCHOLAR_STAIRS_UP)
     assert len(discs) == 1
-    assert discs[0][3] == sprite_funcs.COLOR_MAP[sprite_funcs.CI_GREEN]
+    assert discs[0][0][3] == sprite_funcs.COLOR_MAP[sprite_funcs.CI_GREEN]
+    assert discs[0][1]['opacity'] == sprite_terrain.EXPLORER_DISC_OPACITY
     assert not sprite_ui.text_calls
     assert d.CHAR_SCHOLAR_STAIRS_UP not in sprite_terrain.FALLEN_ROCK_BLOCKERS
 

@@ -123,6 +123,9 @@ TERRAIN_FILES = {d.CHAR_STAIRS_UP: 'stairs/stairs-up.png',
 TERRAIN_EXPLORED_SHADE = 0.55
 # Opacity of the yellow ground disc that marks each stair.
 STAIR_DISC_OPACITY = 90
+# Opacity of the green ground disc that the Dungeon Explorer shows on hidden
+# passages and under a collapse on the floor above.
+EXPLORER_DISC_OPACITY = 128
 
 
 class SpriteTerrainMixin:
@@ -283,7 +286,7 @@ class SpriteTerrainMixin:
         self._draw_ground_disc(self._field_col_x(x) + self.cell_size_x / 2,
                                (y + 0.5) * self.cell_size_y,
                                GROUND_DISC_RADIUS * self._sprite_unit(),
-                               COLOR_MAP[CI_GREEN])
+                               COLOR_MAP[CI_GREEN], opacity=EXPLORER_DISC_OPACITY)
 
     def _draw_stairs(self, pos, char):
         if char == d.CHAR_SCHOLAR_STAIRS_UP:
@@ -293,7 +296,7 @@ class SpriteTerrainMixin:
             self._draw_ground_disc(self._field_col_x(x) + self.cell_size_x / 2,
                                    (y + 0.5) * self.cell_size_y,
                                    GROUND_DISC_RADIUS * self._sprite_unit(),
-                                   COLOR_MAP[CI_GREEN])
+                                   COLOR_MAP[CI_GREEN], opacity=EXPLORER_DISC_OPACITY)
             return
         if char in d.SCHOLAR_STAIR_CHARS:
             return super()._draw_stairs(pos, char)
