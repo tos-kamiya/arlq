@@ -1,5 +1,23 @@
 # ARLQ Release Notes
 
+## 6.10.5 - 2026-11-23
+
+- Make every stage progress mark follow one rule: grey at first, followed by
+  a floor number once its location is known, and white once done. Stage 6 now
+  shows the empowered Fire Drake (`F'`), the Dungeon Core (`[*]`) and the
+  treasure chest (`[T]`) after the party members, and Stages 3 and 4 write the
+  chest as `[T]`. The boss shows its floor once identified and on an explored
+  cell, the core once it appears, and the chest once unsealed.
+- Mark Stage 6 party members white only while they are in the party. A member
+  who leaves keeps its known floor, and a member you have seen who scatters to
+  an unknown floor shows `?`, like `L`.
+- Add a README section on reading the stage progress marks.
+- In `arlq-sprites`, keep the light of the bridgehead's campfire and arcane
+  apparatus, and the Dungeon Core's glow, bright when they are out of view;
+  the Dungeon Core's body now dims out of view like terrain.
+- In `arlq-sprites`, halve the strength of the Dungeon Explorer's green floor
+  light on hidden passages and under collapses.
+
 ## 6.10.4 - 2026-11-23
 
 - Show whether Iris has a ration in her Stage 6 status mark after she is
