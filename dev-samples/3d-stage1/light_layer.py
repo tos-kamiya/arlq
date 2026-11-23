@@ -9,6 +9,10 @@ layer is the first image scaled by the share of that light in each pixel
 surroundings as much as the light reaches them. The game dims the sprite
 for an explored cell out of view and adds this layer back by the amount it
 dimmed, so the light keeps its brightness and colour.
+
+With `own_colour=True` the layer is instead what the light sources add itself,
+in their own colour: for light cast onto something the game tints (a wall
+torch on a tinted column), where the light should not take that colour.
 """
 from array import array
 
@@ -31,9 +35,10 @@ def _luminance(r, g, b):
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def write_light_layer(lit_path, unlit_path, out_path, floor=LIGHT_FLOOR):
+def write_light_layer(lit_path, unlit_path, out_path, floor=LIGHT_FLOOR, own_colour=False):
     """Write to `out_path` the light layer of `lit_path` against `unlit_path`
-    (premultiplied), clear where the light adds less than `floor`."""
+    (premultiplied), clear where the light adds less than `floor`; with
+    `own_colour`, the added light itself."""
     lit, size = _rgba_pixels(lit_path)
     unlit, _ = _rgba_pixels(unlit_path)
     light_pixels = array('f', bytes(4 * len(lit)))
@@ -43,6 +48,9 @@ def write_light_layer(lit_path, unlit_path, out_path, floor=LIGHT_FLOOR):
         added = [max(0.0, full[k] - unlit[i + k] * b) for k in range(3)]
         brightness = _luminance(*full)
         if max(added) < floor or brightness <= 0.0:
+            continue
+        if own_colour:
+            light_pixels[i:i + 4] = array('f', (*added, 1.0))
             continue
         share = min(1.0, _luminance(*added) / brightness)
         light_pixels[i:i + 4] = array('f', (*(c * share for c in full), 1.0))

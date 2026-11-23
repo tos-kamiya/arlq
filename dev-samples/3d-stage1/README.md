@@ -38,6 +38,18 @@ uv run -p .venv/bin/python arlq --sprites
 blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-walls.py
 ```
 
+左右の一番端の壁（`dev-notes/handoff-sprite-wall-torches-20261124.md`）に付ける松明は、`-- --torch` で書き出す。柱の、床に面する側（左端の壁なら東、右端の壁なら西）の柱身の中ほどに、鉄の金具と少し外へ傾けた木の柄を付け、先に炎を灯す。炎は拠点の焚き火と同じく発光する円錐を重ね、橙の点光源で柱を照らす。
+
+- `wall-torch-east.png`、`wall-torch-west.png`: 金具と柄だけ（炎は入れない）。柱をホールドアウトにして描くので、柱の陰になる部分は透明になる
+- `wall-torch-east-light.png`、`wall-torch-west-light.png`: 炎、炎の周りの淡い光の輪、柱への照り返し。`light_layer.py` の `own_colour=True` で、増えた光そのもの（光の色のまま）を書き出す。拠点のような「元の画素の色を光の割合で残す」方式だと、柱の大理石の青白い色になってしまうため
+
+GUIは柱を着色して描いたあと、松明の画像を重ね、光の画像を加算する想定。炎を光の画像だけに入れるのは、壁と一緒に暗くしても炎の明るさが変わらないようにするため（松明の画像にも入れると、加算で2重になって白く飛ぶ）。照り返しは2枚の差なので、描画のノイズが柱の上の粒として見えないよう、サンプル数を1024に上げている（`TORCH_SAMPLES`。4スレッドで約1分）。
+
+```bash
+blender --factory-startup --background --threads 4 --python dev-samples/3d-stage1/build-walls.py -- --torch
+.venv/bin/python dev-samples/3d-stage1/bleed-alpha.py src/arlq/assets/walls/wall-torch-*.png
+```
+
 
 床は暗い敷石を1マス1枚で敷き、模様が少し違う2種類を市松模様に並べる（(x + y) の偶奇）。`build-floor.py` がマスの比率（幅15・高さ20）の150×200ピクセルで書き出す。カメラは壁や階段と同じ60度の見下ろしの平行投影で、敷石の手前（南）の縁に厚みが見える。斜めのカメラはマスの北の端の先も写すため、下地の目地はマスより広く敷き、画像に透明な部分を残さない。
 奇数のマスは色もわずかに暗くする（`FLOOR_CHECKER_SHADE`）。

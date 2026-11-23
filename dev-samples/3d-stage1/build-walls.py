@@ -13,16 +13,32 @@ The parts are near-white; the GUI tints them for visible/explored walls.
 With `-- --training` the same columns are written as training-*.png for the
 Stage 5 training room: brighter, and darkening far less toward its bright
 floor.
+
+With `-- --torch` only the wall torches of the dungeon's west and east edge
+walls are written, each mounted on the column's side facing the floor
+(east for the west edge wall, west for the east edge wall):
+  wall-torch-east.png        the torch alone (iron bracket and stick, no
+                             flame), hidden where the column stands in front
+  wall-torch-east-light.png  its light: the flame, a faint halo and the warm
+                             light it casts on the column, in their own
+                             colour (light_layer.py with own_colour=True)
+  wall-torch-west*.png       the same on the west side
+The GUI draws the torch over the column and adds the light layer.
+The output directory can be changed with WALLS_OUT.
 """
 from pathlib import Path
 import math
+import os
 import sys
 
 import bpy
 from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parent
-OUT = ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'walls'
+sys.path.insert(0, str(ROOT))
+from light_layer import write_light_layer
+
+OUT = Path(os.environ.get('WALLS_OUT', ROOT.parents[1] / 'src' / 'arlq' / 'assets' / 'walls'))
 OUT.mkdir(parents=True, exist_ok=True)
 # Canvas aspect: one sprite-mode cell (15 x 20 px at scale 1) plus a
 # 0.25-cell rise.
@@ -39,7 +55,22 @@ CANVAS_W = CANVAS_UP * WIDTH / HEIGHT
 # The marble darkens toward the floor to stress the walls' height
 # (darken_toward_floor): FOOT_SHADE of its brightness at the floor, rising
 # as height ** HEIGHT_CURVE to full brightness at the abacus top.
-TRAINING = '--training' in sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else False
+ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+TRAINING = '--training' in ARGS
+TORCH = '--torch' in ARGS
+# The wall torch: mounted on the shaft at this height and angle from the
+# east toward the viewer, its stick leaning out by TORCH_LEAN, and the
+# flame's point light (energy in W).
+TORCH_MOUNT_Z = 1.30
+TORCH_MOUNT_ANGLE = math.radians(-25)
+TORCH_LEAN = math.radians(15)
+TORCH_LIGHT_ENERGY = 25.0
+# The torch's light is a small difference between two renders; more samples
+# keep its render noise from showing as specks on the column.
+TORCH_SAMPLES = 1024
+# A faint halo of light around the flame, within the canvas.
+TORCH_HALO_RADIUS = 0.20
+TORCH_HALO_STRENGTH = 1.5
 FOOT_SHADE = 0.45 if TRAINING else 0.12
 HEIGHT_CURVE = 1.0
 
@@ -218,6 +249,169 @@ lines.linestyle.color = (0.04, 0.05, 0.07)
 lines.linestyle.thickness = 5.0
 scene.render.image_settings.file_format = 'PNG'
 scene.render.image_settings.color_mode = 'RGBA'
+
+
+def torch_parts(side):
+    """Bracket, stick, head and flame of a torch on the shaft's `side` (+1
+    east, -1 west), and its point light."""
+    iron = material('Black iron', (0.03, 0.03, 0.035), 0.0, 0.4)
+    wood = material('Torch stick', (0.20, 0.10, 0.04), 0.0, 0.8)
+    pitch = material('Pitch-soaked rag', (0.05, 0.03, 0.02), 0.0, 0.9)
+    flame = material('Torch flame', (0.9, 0.5, 0.15), 0.0, 0.5)
+    core = material('Torch flame core', (1.0, 0.8, 0.4), 0.0, 0.5)
+    for mat, color, strength in ((flame, (1.0, 0.28, 0.03), 0.9),
+                                 (core, (1.0, 0.60, 0.12), 1.5)):
+        bsdf = mat.node_tree.nodes['Principled BSDF']
+        bsdf.inputs['Emission Color'].default_value = (*color, 1)
+        bsdf.inputs['Emission Strength'].default_value = strength
+    angle = TORCH_MOUNT_ANGLE if side > 0 else math.pi - TORCH_MOUNT_ANGLE
+    out = Vector((math.cos(angle), math.sin(angle), 0))
+    mount = out * 0.31 + Vector((0, 0, TORCH_MOUNT_Z))
+    objects = []
+    # A plate on the shaft and an arm reaching out to a ring.
+    plate = box('Torch plate', mount, (0.10, 0.10, 0.16), iron, 0.01)
+    plate.rotation_euler = (0, 0, angle)
+    arm_end = mount + out * 0.10
+    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.018, depth=0.10,
+                                        location=(mount + arm_end) / 2,
+                                        rotation=(0, math.pi / 2, angle))
+    arm = bpy.context.object
+    arm.name = 'Torch arm'
+    arm.data.materials.append(iron)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.04, minor_radius=0.012,
+                                     location=arm_end)
+    ring = bpy.context.object
+    ring.name = 'Torch ring'
+    ring.data.materials.append(iron)
+    objects += [plate, arm, ring]
+    # The stick through the ring, leaning out; the rag and flame at its top.
+    lean = out * math.sin(TORCH_LEAN) + Vector((0, 0, math.cos(TORCH_LEAN)))
+    rotation = lean.to_track_quat('Z', 'Y').to_euler()
+    for name, mat, start, length, r0, r1 in (
+            ('Torch stick', wood, -0.14, 0.34, 0.020, 0.030),
+            ('Torch head', pitch, 0.17, 0.08, 0.042, 0.048)):
+        bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=r0, radius2=r1, depth=length,
+                                        location=arm_end + lean * (start + length / 2),
+                                        rotation=rotation)
+        obj = bpy.context.object
+        obj.name = name
+        obj.data.materials.append(mat)
+        objects.append(obj)
+    top = arm_end + lean * 0.25
+    for name, mat, radius, depth, lift in (('Torch flame', flame, 0.075, 0.30, 0.13),
+                                           ('Torch flame core', core, 0.040, 0.16, 0.08)):
+        bpy.ops.mesh.primitive_cone_add(vertices=12, radius1=radius, depth=depth,
+                                        location=top + Vector((0, 0, lift)))
+        obj = bpy.context.object
+        obj.name = name
+        obj.data.materials.append(mat)
+        objects.append(obj)
+    # The halo: a disc facing the camera, glowing most at its centre and
+    # fading out to its rim, in front of the flame.
+    centre = top + Vector((0, 0, 0.12))
+    view = Vector((0, math.cos(ELEVATION), -math.sin(ELEVATION)))
+    bpy.ops.mesh.primitive_circle_add(vertices=32, radius=TORCH_HALO_RADIUS, fill_type='NGON',
+                                      location=centre - view * 0.3,
+                                      rotation=view.to_track_quat('-Z', 'Y').to_euler())
+    halo = bpy.context.object
+    halo.name = 'Torch halo'
+    halo.data.materials.append(halo_material())
+    objects.append(halo)
+    bpy.ops.object.light_add(type='POINT', location=centre + out * 0.03)
+    light = bpy.context.object
+    light.data.energy, light.data.color = TORCH_LIGHT_ENERGY, (1.0, 0.50, 0.15)
+    light.data.shadow_soft_size = 0.05
+    return objects, light, (flame, core), halo
+
+
+def halo_material():
+    mat = bpy.data.materials.new('Torch halo')
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    nodes.remove(nodes['Principled BSDF'])
+    coords = nodes.new('ShaderNodeTexCoord')
+    distance = nodes.new('ShaderNodeVectorMath')
+    distance.operation = 'LENGTH'
+    fade = nodes.new('ShaderNodeMapRange')
+    fade.inputs['From Max'].default_value = TORCH_HALO_RADIUS
+    fade.inputs['To Min'].default_value = 1.0
+    fade.inputs['To Max'].default_value = 0.0
+    square = nodes.new('ShaderNodeMath')
+    square.operation = 'POWER'
+    square.inputs[1].default_value = 2.0
+    glow = nodes.new('ShaderNodeEmission')
+    glow.inputs['Color'].default_value = (1.0, 0.45, 0.12, 1)
+    glow.inputs['Strength'].default_value = TORCH_HALO_STRENGTH
+    clear = nodes.new('ShaderNodeBsdfTransparent')
+    mix = nodes.new('ShaderNodeMixShader')
+    links.new(coords.outputs['Object'], distance.inputs[0])
+    links.new(distance.outputs['Value'], fade.inputs['Value'])
+    links.new(fade.outputs['Result'], square.inputs[0])
+    links.new(square.outputs[0], mix.inputs['Fac'])
+    links.new(clear.outputs[0], mix.inputs[1])
+    links.new(glow.outputs[0], mix.inputs[2])
+    links.new(mix.outputs[0], nodes['Material Output'].inputs['Surface'])
+    return mat
+
+
+def render_torches():
+    """Render each side's torch and its light layer (see the docstring)."""
+    column = parts['column']
+    scene.cycles.samples = TORCH_SAMPLES
+    for name, side in (('east', 1), ('west', -1)):
+        objects, light, glowing, halo = torch_parts(side)
+        others = [obj for obj in scene.objects
+                  if obj.type == 'MESH' and obj not in column and obj not in objects]
+        for obj in others:
+            obj.hide_render = True
+        lit_path = OUT / f'wall-torch-{name}-lit.png'
+        unlit_path = OUT / f'wall-torch-{name}-unlit.png'
+        scene.render.use_freestyle = False
+        scene.render.filepath = str(lit_path)
+        bpy.ops.render.render(write_still=True)
+        # The light layer: the column and torch again, the flame out.
+        halo.hide_render = True
+        energy = light.data.energy
+        light.data.energy = 0.0
+        saved = []
+        for mat in glowing:
+            bsdf = mat.node_tree.nodes['Principled BSDF']
+            saved.append((bsdf, bsdf.inputs['Emission Strength'].default_value,
+                          tuple(bsdf.inputs['Base Color'].default_value)))
+            bsdf.inputs['Emission Strength'].default_value = 0.0
+            bsdf.inputs['Base Color'].default_value = (0, 0, 0, 1)
+        scene.render.filepath = str(unlit_path)
+        bpy.ops.render.render(write_still=True)
+        write_light_layer(lit_path, unlit_path, OUT / f'wall-torch-{name}-light.png',
+                          own_colour=True)
+        light.data.energy = energy
+        for bsdf, strength, color in saved:
+            bsdf.inputs['Emission Strength'].default_value = strength
+            bsdf.inputs['Base Color'].default_value = color
+        # The torch alone, hidden behind the column where it stands in front.
+        # The flame is left out: the light layer holds it, so it stays as
+        # bright when the GUI dims the torch with the wall.
+        flames = [obj for obj in objects if obj.name.startswith('Torch flame')]
+        for obj in flames:
+            obj.hide_render = True
+        for obj in column:
+            obj.is_holdout = True
+        scene.render.filepath = str(OUT / f'wall-torch-{name}.png')
+        bpy.ops.render.render(write_still=True)
+        for obj in column:
+            obj.is_holdout = False
+        for path in (lit_path, unlit_path):
+            path.unlink()
+        for obj in objects + [light]:
+            bpy.data.objects.remove(obj)
+        for obj in others:
+            obj.hide_render = False
+
+
+if TORCH:
+    render_torches()
+    sys.exit(0)
+
 for name, objects in parts.items():
     for obj in scene.objects:
         obj.hide_render = obj.type == 'MESH' and obj not in objects
