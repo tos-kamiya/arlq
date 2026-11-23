@@ -304,6 +304,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     _wall_tints = TERRAIN_THEMES['ruins'][4]
     _respawn_glows = frozenset()
     _bridgehead_light_images = {}
+    _dungeon_core_light_images = {}
     # Respawn cells of this frame on known cells, and those whose column a
     # character's sprite has drawn.
     _respawn_draws = ()
@@ -473,6 +474,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         core_paths = {growth: core_dir / f'dungeon-core-{growth}.png'
                       for growth in d.DUNGEON_CORE_GROWTHS}
         self._dungeon_core_images = {}
+        self._dungeon_core_light_images = {}
         self._dungeon_core_under = self._dungeon_core_overhang = 0.0
         self._dungeon_core_cells = 1.0
         if all(path.is_file() for path in core_paths.values()):
@@ -482,6 +484,13 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             self._dungeon_core_cells = placement['cells']
             self._dungeon_core_images = {growth: mipmapped(pyglet.image.load(str(path)))
                                          for growth, path in core_paths.items()}
+            # The light its glow gives, kept bright out of view.
+            light_paths = {growth: path.with_name(f'{path.stem}-light.png')
+                           for growth, path in core_paths.items()}
+            if all(path.is_file() for path in light_paths.values()):
+                self._dungeon_core_light_images = {
+                    growth: mipmapped(pyglet.image.load(str(path)))
+                    for growth, path in light_paths.items()}
         self._dungeon_core_growth = 'small'
         self._landing_image = (mipmapped(pyglet.image.load(str(assets / LANDING_FILE)))
                                if (assets / LANDING_FILE).is_file() else None)
@@ -1665,7 +1674,12 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             * self.cell_size_y * factor
             / image.height
         )
-        tint = self._display_color((255, 255, 255))
+        light = self._dungeon_core_light_images.get(self._dungeon_core_growth)
+        # Without its light layer, the core is not dimmed out of view, so its
+        # glow does not go dark.
+        if light is None:
+            shade = 1.0
+        tint = self._display_color((round(255 * shade),) * 3)
         group = self._row_group(y, 'wall')
         signature = ('dungeon-core', id(image), left, bottom, scale_x, scale_y,
                      id(group), tint)
@@ -1677,6 +1691,23 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._set_drawable_attribute(sprite, 'scale_x', scale_x)
         self._set_drawable_attribute(sprite, 'scale_y', scale_y)
         self._set_drawable_attribute(sprite, 'color', tint)
+        if shade == 1.0:
+            return
+        # Out of view, the glow is added back over the dimmed image.
+        light_tint = self._display_color((round(255 * (1 - shade)),) * 3)
+        light_group = self._row_group(y, 'column')
+        signature = ('dungeon-core-light', id(light), left, bottom, scale_x, scale_y,
+                     id(light_group), light_tint)
+        glow_sprite = self._draw_bounded_object(
+            left, width, signature,
+            lambda: pyglet.sprite.Sprite(light, x=left, y=bottom,
+                                         blend_src=pyglet.gl.GL_SRC_ALPHA,
+                                         blend_dest=pyglet.gl.GL_ONE,
+                                         batch=self.batch, group=light_group),
+        )
+        self._set_drawable_attribute(glow_sprite, 'scale_x', scale_x)
+        self._set_drawable_attribute(glow_sprite, 'scale_y', scale_y)
+        self._set_drawable_attribute(glow_sprite, 'color', light_tint)
 
     def _draw_rank_mark(self, pos, mark, color):
         """Tinted 3D apostrophe(s) at the upper right of the sprite in `pos`."""

@@ -23,14 +23,17 @@ src/arlq/assets/bridgehead):
   bridgehead.json  {"cells": 2, "left": LEFT, "right": RIGHT,
                     "under": UNDER, "overhang": OVERHANG}
 """
-from array import array
 from pathlib import Path
 import json
 import math
 import os
+import sys
 
 import bpy
 from mathutils import Matrix, Vector
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from light_layer import write_light_layer
 
 ROOT = Path(__file__).resolve().parent
 OUT = Path(os.environ.get('BRIDGEHEAD_OUT',
@@ -55,8 +58,6 @@ GATE_HALF, GATE_H, GATEHOUSE_H, PIER = 0.20, 0.48, 0.68, 0.14
 # The watchtower at the back west corner.
 TOWER_X, TOWER_Y, TOWER_R, TOWER_H = -HALF_W + 0.06, NORTH - 0.06, 0.30, 1.15
 MOUND = 0.08
-# Light differences below this (0..1) are taken as render noise.
-LIGHT_FLOOR = 0.02
 
 
 def material(name, color, roughness=0.65, metallic=0.0, rim_strength=0.0,
@@ -500,39 +501,17 @@ scene.render.image_settings.color_mode = 'RGBA'
 scene.render.filepath = str(OUT / 'bridgehead.png')
 bpy.ops.render.render(write_still=True)
 
-# Render again with the point lights out and nothing glowing; the difference,
-# premultiplied, is the light those sources give (their own glow and what
-# they cast around them). The game adds it back over the explored-cell dim.
+# Render again with the point lights out and the glowing surfaces black, for
+# the light layer (see light_layer.py).
 for light in point_lights:
     light.data.energy = 0.0
 for mat in (glow, slit_glow, crystal_glow, rune_glow):
-    mat.node_tree.nodes['Principled BSDF'].inputs['Emission Strength'].default_value = 0.0
+    bsdf = mat.node_tree.nodes['Principled BSDF']
+    bsdf.inputs['Emission Strength'].default_value = 0.0
+    bsdf.inputs['Base Color'].default_value = (0, 0, 0, 1)
 unlit_path = OUT / 'bridgehead-unlit.png'
 scene.render.filepath = str(unlit_path)
 bpy.ops.render.render(write_still=True)
 
-
-def rgba_pixels(path):
-    image = bpy.data.images.load(str(path))
-    pixels = array('f', bytes(4 * len(image.pixels)))
-    image.pixels.foreach_get(pixels)
-    size = tuple(image.size)
-    bpy.data.images.remove(image)
-    return pixels, size
-
-
-lit, size = rgba_pixels(OUT / 'bridgehead.png')
-unlit, _ = rgba_pixels(unlit_path)
+write_light_layer(OUT / 'bridgehead.png', unlit_path, OUT / 'bridgehead-light.png')
 unlit_path.unlink()
-light_pixels = array('f', bytes(4 * len(lit)))
-for i in range(0, len(lit), 4):
-    a, b = lit[i + 3], unlit[i + 3]
-    added = [min(1.0, max(0.0, lit[i + k] * a - unlit[i + k] * b)) for k in range(3)]
-    # Drop render noise where the two passes barely differ.
-    if max(added) >= LIGHT_FLOOR:
-        light_pixels[i:i + 4] = array('f', (*added, 1.0))
-light_image = bpy.data.images.new('Bridgehead light', *size, alpha=True)
-light_image.pixels.foreach_set(light_pixels)
-light_image.filepath_raw = str(OUT / 'bridgehead-light.png')
-light_image.file_format = 'PNG'
-light_image.save()

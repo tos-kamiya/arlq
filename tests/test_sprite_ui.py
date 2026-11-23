@@ -405,6 +405,33 @@ def test_dungeon_core_art_matches_treasure_width_and_hides_brackets(sprite_ui):
     assert PygletUI.show_core_brackets and PygletUI.show_treasure_brackets
 
 
+
+def test_dungeon_core_glow_stays_bright_out_of_view(sprite_ui):
+    ui = sprite_ui
+    image = SimpleNamespace(width=660, height=800)
+    ui._dungeon_core_images = {'small': image}
+    ui._dungeon_core_growth = 'small'
+    ui._dungeon_core_under, ui._dungeon_core_overhang = 0.6, 0.4
+    ui._dungeon_core_cells = 2.2
+    ui._cur_torched = [[False] * 10 for _ in range(10)]
+    # Without a light layer the core is not dimmed.
+    ui._draw_dungeon_core((4, 5))
+    assert ui._drawables[0].color == (255, 255, 255)
+    ui._drawables.clear()
+    ui._dungeon_core_light_images = {'small': SimpleNamespace(width=660, height=800)}
+    ui._draw_dungeon_core((4, 5))
+    core, light = ui._drawables
+    assert light.image is ui._dungeon_core_light_images['small']
+    assert (light.x, light.y, light.scale_x, light.scale_y) == (
+        core.x, core.y, core.scale_x, core.scale_y)
+    assert core.color == (140, 140, 140)
+    assert light.color == (115, 115, 115)
+    assert core.group.order < light.group.order
+    ui._drawables.clear()
+    ui._cur_torched = [[True] * 10 for _ in range(10)]
+    ui._draw_dungeon_core((4, 5))
+    assert [sprite.color for sprite in ui._drawables] == [(255, 255, 255)]
+
 def test_collected_chest_is_drawn_behind_player(sprite_ui, monkeypatch):
     ui = sprite_ui
     ui._won_chest_cell = (4, 5)

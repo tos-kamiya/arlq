@@ -38,6 +38,8 @@ pillars stay put when the game swaps them.
 Writes to OUT (DUNGEON_CORE_OUT in the environment, else
 src/arlq/assets/dungeon-core):
   dungeon-core-{small,medium,large,huge}.png
+  dungeon-core-{small,medium,large,huge}-light.png  the light its glow adds
+      (see light_layer.py), for the game to keep bright out of view
   dungeon-core.json  {"cells": CELLS, "under": UNDER, "overhang": OVERHANG}
 """
 from pathlib import Path
@@ -45,9 +47,13 @@ import json
 import math
 import os
 import random
+import sys
 
 import bpy
 from mathutils import Matrix, Vector
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from light_layer import write_light_layer
 
 ROOT = Path(__file__).resolve().parent
 OUT = Path(os.environ.get('DUNGEON_CORE_OUT',
@@ -587,8 +593,32 @@ def render(stage, canvas=None):
     lines.linestyle.thickness = 4.0
     scene.render.image_settings.file_format = 'PNG'
     scene.render.image_settings.color_mode = 'RGBA'
-    scene.render.filepath = str(OUT / f'dungeon-core-{stage}.png')
+    lit_path = OUT / f'dungeon-core-{stage}.png'
+    scene.render.filepath = str(lit_path)
     bpy.ops.render.render(write_still=True)
+
+    # Again with the inner light out and the glowing surfaces black (the
+    # grooves and bands, cracks, iris, crystal rim and the rays' violet), for
+    # the light layer (see light_layer.py); the pillars' rim sheen is
+    # lighting, not glow, and stays.
+    core_light.data.energy = 0.0
+    for mat in bpy.data.materials:
+        if mat.name.startswith(('Violet glow', 'Crack glow', 'Core eye')):
+            bsdf = mat.node_tree.nodes['Principled BSDF']
+            bsdf.inputs['Emission Strength'].default_value = 0.0
+            bsdf.inputs['Base Color'].default_value = (0, 0, 0, 1)
+        elif mat.name.startswith(('Core crystal', 'Dark light')):
+            for node in mat.node_tree.nodes:
+                if node.type == 'EMISSION':
+                    strength = node.inputs['Strength']
+                    for link in list(strength.links):
+                        mat.node_tree.links.remove(link)
+                    strength.default_value = 0.0
+    unlit_path = OUT / f'dungeon-core-{stage}-unlit.png'
+    scene.render.filepath = str(unlit_path)
+    bpy.ops.render.render(write_still=True)
+    write_light_layer(lit_path, unlit_path, OUT / f'dungeon-core-{stage}-light.png')
+    unlit_path.unlink()
     return under, overhang
 
 
