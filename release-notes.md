@@ -1,5 +1,10 @@
 # ARLQ Release Notes
 
+## 6.10.8 - 2026-11-24
+
+- Improve character and scene detail in `arlq-sprites` when the window is
+  enlarged or displayed on a high-DPI screen.
+
 ## 6.10.7 - 2026-11-23
 
 - Add `arlq-cli --wide` for a terminal map and strength column using
