@@ -4,7 +4,7 @@ from typing import Any, Optional
 from . import defs as d
 from . import display as ui_display
 from .arlq import barrier_lp_damage
-from .blessed_map import BlessedMap, Terminal
+from .blessed_map import BlessedMap, EffectAnimation, EffectCell, Terminal
 from .blessed_settings import BlessedSettingsMixin
 from .braille_effects import effect_frames
 from .i18n import t as tr
@@ -681,11 +681,10 @@ class BlessedUI(BlessedSettingsMixin):
         positions = [pos] if len(pos) == 2 and all(
             isinstance(value, (int, float)) for value in pos
         ) else pos
-        for point in positions:
-            print(self._map.effect_cell(*point, "*", lambda value: self._style(
-                value, "blue" if won else "red", bold=True,
-                bg=self._combat_cell_backgrounds.get(point),
-            )), end="", flush=True)
+        cells = [EffectCell(*point, "*", "blue" if won else "red",
+                            self._combat_cell_backgrounds.get(point), True)
+                 for point in positions]
+        print(self._map.effect_frame(cells), end="", flush=True)
         time.sleep(seconds)
         self._discard_pending_keys()
 
@@ -693,30 +692,21 @@ class BlessedUI(BlessedSettingsMixin):
         seconds, frames = effect_frames(name, pos, self.combat_effect_seconds)
         if not frames:
             return
-        snapshot = self._stage_snapshot
+        effect_frames_data = []
         for cells in frames:
-            self._wait_for_terminal_size()
-            output = [snapshot]
+            frame = []
             for (x, y), char, color in cells:
                 if (x, y) == self._effect_player_pos:
                     continue
                 bg = self._combat_cell_backgrounds.get((x, y))
-                color_name = None
-                if not self.map_mode and self.term.number_of_colors < 256:
-                    if name == "Vortex" and color == (170, 170, 170):
-                        color_name = "white"
-                    else:
-                        color_name = {"Boss": "yellow", "Dungeon Core": "magenta", "Vortex": "cyan",
-                                      "Core Calamity": "magenta"}[name]
-                def effect_style(value):
-                    glyph = self._style(value, color=color_name, bg=bg)
-                    if not self.map_mode and self.term.number_of_colors >= 256:
-                        glyph = self.term.color_rgb(*color)(glyph)
-                    return glyph
-                output.append(self._map.effect_cell(x, y, char, effect_style))
-            print("".join(output) + self.term.normal, end="", flush=True)
-            time.sleep(seconds / len(frames))
-        print(snapshot, end="", flush=True)
+                fallback = ("white" if name == "Vortex" and color == (170, 170, 170)
+                            else {"Boss": "yellow", "Dungeon Core": "magenta", "Vortex": "cyan",
+                                  "Core Calamity": "magenta"}[name])
+                frame.append(EffectCell(x, y, char, None if self.map_mode else color,
+                                        bg, fallback_color=fallback))
+            effect_frames_data.append(frame)
+        animation = EffectAnimation(effect_frames_data, seconds / len(frames))
+        self._map.play_effect(animation, self._stage_snapshot, self._wait_for_terminal_size)
         self._discard_pending_keys()
 
     def draw_iris_ration(self, pos):
@@ -727,17 +717,13 @@ class BlessedUI(BlessedSettingsMixin):
         cells = iris_sparkle_cells(pos, *self._sparkle_context)
         if not cells:
             return
-        snapshot = self._stage_snapshot
+        frames = []
         for index in range(IRIS_SPARKLE_FRAMES):
-            self._wait_for_terminal_size()
-            output = [snapshot]
-            for point, char in iris_sparkle_frame(cells, index, pos):
-                output.append(self._map.effect_cell(*point, char, lambda value: self._style(
-                    value, color="yellow", bold=True,
-                    bg=self._combat_cell_backgrounds.get(point))))
-            print("".join(output) + self.term.normal, end="", flush=True)
-            time.sleep(IRIS_SPARKLE_SECONDS / IRIS_SPARKLE_FRAMES)
-        print(snapshot, end="", flush=True)
+            frames.append([EffectCell(*point, char, "yellow",
+                                      self._combat_cell_backgrounds.get(point), True)
+                           for point, char in iris_sparkle_frame(cells, index, pos)])
+        animation = EffectAnimation(frames, IRIS_SPARKLE_SECONDS / IRIS_SPARKLE_FRAMES)
+        self._map.play_effect(animation, self._stage_snapshot, self._wait_for_terminal_size)
         self._discard_pending_keys()
 
     def draw_vortex_effect(self, pos):
@@ -851,11 +837,11 @@ class BlessedUI(BlessedSettingsMixin):
                 tick = int((time.monotonic() - self._treasure_sparkle_started) * SPARKLE_TICKS_PER_SECOND)
                 if tick != last_tick:
                     output = [self._stage_snapshot]
-                    for (x, y), char in sparkle_frame(self._treasure_sparkle_cells, tick, self._treasure_sparkle_center):
-                        output.append(self._map.effect_cell(x, y, char, lambda value: self._style(
-                            value, "yellow", bold=True,
-                            bg=self._combat_cell_backgrounds.get((x, y)),
-                        )))
+                    cells = [EffectCell(x, y, char, "yellow",
+                                        self._combat_cell_backgrounds.get((x, y)), True)
+                             for (x, y), char in sparkle_frame(
+                                 self._treasure_sparkle_cells, tick, self._treasure_sparkle_center)]
+                    output.append(self._map.effect_frame(cells))
                     print("".join(output) + self.term.normal, end="", flush=True)
                     last_tick = tick
             key = self.term.inkey(timeout=0.2 if self._treasure_sparkle_cells else 0.5)

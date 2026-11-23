@@ -7,9 +7,29 @@ coordinates passed to screen_text are ordinary terminal columns and rows.
 
 from __future__ import annotations
 
+import time
+from dataclasses import dataclass
+from functools import partial
 from typing import Callable
 
 from blessed import Terminal
+
+
+@dataclass(frozen=True)
+class EffectCell:
+    x: int
+    y: int
+    char: str
+    color: str | tuple[int, int, int] | None = None
+    background: str | None = None
+    bold: bool = False
+    fallback_color: str | None = None
+
+
+@dataclass(frozen=True)
+class EffectAnimation:
+    frames: list[list[EffectCell]]
+    frame_seconds: float
 
 
 class BlessedMap:
@@ -57,6 +77,37 @@ class BlessedMap:
                     style: Callable[[str], str] | None = None) -> str:
         """Draw an effect cell, including padding in its styled background."""
         return self.map_cell(x, y, char, style)
+
+    def _effect_style(self, cell: EffectCell, text: str) -> str:
+        color = cell.color
+        if isinstance(color, tuple) and self.terminal.number_of_colors < 256:
+            color = cell.fallback_color
+        color_name = color if isinstance(color, str) else None
+        attr = (f"{color_name}_on_{cell.background}" if color_name and cell.background
+                else f"on_{cell.background}" if cell.background else color_name)
+        if attr:
+            text = getattr(self.terminal, attr)(text)
+        if cell.bold:
+            text = self.terminal.bold(text)
+        if isinstance(color, tuple):
+            text = self.terminal.color_rgb(*color)(text)
+        return text
+
+    def effect_frame(self, cells: list[EffectCell]) -> str:
+        """Render a frame of positioned effect cells."""
+        return "".join(self.effect_cell(
+            cell.x, cell.y, cell.char, partial(self._effect_style, cell),
+        ) for cell in cells)
+
+    def play_effect(self, animation: EffectAnimation, snapshot: str,
+                    wait_for_size: Callable[[], None]) -> None:
+        """Play frames over a snapshot and restore it after the final frame."""
+        for cells in animation.frames:
+            wait_for_size()
+            print(snapshot + self.effect_frame(cells) + self.terminal.normal,
+                  end="", flush=True)
+            time.sleep(animation.frame_seconds)
+        print(snapshot, end="", flush=True)
 
     def screen_text(self, x: int, y: int, text: str,
                     style: Callable[[str], str] | None = None) -> str:

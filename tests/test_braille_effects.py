@@ -53,7 +53,7 @@ def test_terminal_effect_keeps_player_cell(monkeypatch, capsys):
     ui._wait_for_terminal_size = lambda: None
     ui._style = lambda text, **kwargs: text
     ui.term = SimpleNamespace(number_of_colors=0, normal="", inkey=lambda timeout: "",
-                              move_xy=lambda x, y: f"[{x},{y}]")
+                              move_xy=lambda x, y: f"[{x},{y}]", magenta=lambda text: text)
     monkeypatch.setattr(blessed_funcs, "effect_frames", lambda *args: (
         0.1, [[((2, 2), "⣿", (255, 255, 255)),
                ((3, 2), "⠁", (255, 255, 255))]]))
@@ -174,7 +174,8 @@ def test_terminal_iris_ration_twinkles_beside_her(monkeypatch, capsys):
     ui._style = lambda text, **kwargs: text
     queued = ["d", "d"]
     ui.term = SimpleNamespace(normal="", move_xy=lambda x, y: f"[{x},{y}]",
-                              inkey=lambda timeout: queued.pop() if queued else "")
+                              inkey=lambda timeout: queued.pop() if queued else "",
+                              yellow=lambda text: text, bold=lambda text: text)
     monkeypatch.setattr(blessed_funcs.time, "sleep", lambda _: None)
     ui.draw_iris_ration((4, 3))
     # Keys repeated while the effect played are dropped.
