@@ -1699,9 +1699,9 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
 
     def present_core_calamity(self, at, view):
         """The core ran wild at the time limit: cut to it (its floor, and
-        the camera only far enough that it is in sight), play its calamity,
-        and leave the camera as it was for the final screen, where the
-        player kneels."""
+        the camera only far enough that it is in sight) and play its
+        calamity, the player kneeling as it starts; then leave the camera as
+        it was for the final screen."""
         if self.combat_effect_seconds == 0 or self._closed:
             return
         scroll = self._horizontal_scroll_px
@@ -1718,13 +1718,10 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         elif right > scroll + visible:
             self._horizontal_scroll_px = min(max_scroll, right - visible)
         self._camera_follow_player = False
-        # The player kneels once the calamity has played.
-        self._presenting_turn = True
         try:
             self.draw_stage(**view)
             self.draw_core_calamity(at)
         finally:
-            self._presenting_turn = False
             self._horizontal_scroll_px = scroll
             self._camera_follow_player = follow
 
