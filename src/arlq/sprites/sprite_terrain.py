@@ -339,6 +339,26 @@ class SpriteTerrainMixin:
         self._set_drawable_attribute(sprite, 'scale_x', scale_x)
         self._set_drawable_attribute(sprite, 'scale_y', scale_y)
         self._set_drawable_attribute(sprite, 'color', tint)
+        light = self._bridgehead_light_images.get(part)
+        if visible or light is None:
+            return
+        # Out of view, the fire's and the crystal's own light is added back
+        # over the dimmed image, so the light sources stay as bright.
+        light_tint = self._display_color((round(255 * (1 - shade)),) * 3)
+        light_group = self._row_group(y, 'pillar-back')
+        signature = ('terrain-cell', 'bridgehead-light', x, y, id(light), bottom,
+                     scale_x, scale_y, id(light_group), light_tint)
+        glow = self._draw_bounded_object(
+            left, light.width * scale_x, signature,
+            partial(pyglet.sprite.Sprite, light, x=left, y=bottom,
+                    blend_src=pyglet.gl.GL_SRC_ALPHA, blend_dest=pyglet.gl.GL_ONE,
+                    batch=self.batch, group=light_group),
+        )
+        if glow is not None and glow.x != left:
+            glow.x = left
+        self._set_drawable_attribute(glow, 'scale_x', scale_x)
+        self._set_drawable_attribute(glow, 'scale_y', scale_y)
+        self._set_drawable_attribute(glow, 'color', light_tint)
 
     def _open_floor(self, x, y):
         field = self._stage_field

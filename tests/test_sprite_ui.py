@@ -2180,6 +2180,26 @@ def test_bridgehead_parts_are_aligned_and_dim_when_explored(sprite_ui):
     assert right.color == (140, 140, 140)
 
 
+
+def test_bridgehead_light_stays_bright_only_out_of_view(sprite_ui):
+    ui = sprite_ui
+    ui._bridgehead_under = 0.4
+    ui._bridgehead_height = 1.75
+    ui._bridgehead_spans = {'/': (0.0, 1.0), '\\': (0.0, 1.0)}
+    ui._bridgehead_images = {part: SimpleNamespace(width=300, height=620) for part in ('/', '\\')}
+    ui._bridgehead_light_images = {part: SimpleNamespace(width=300, height=620)
+                                   for part in ('/', '\\')}
+    ui._draw_bridgehead((4, 5), '/', True)
+    assert len(ui._drawables) == 1
+    ui._draw_bridgehead((5, 5), '\\', False)
+    base, light = ui._drawables[1:]
+    assert light.image is ui._bridgehead_light_images['\\']
+    assert (light.x, light.y, light.scale_x, light.scale_y) == (
+        base.x, base.y, base.scale_x, base.scale_y)
+    # The dimmed image plus this much of the light adds up to full brightness.
+    assert light.color == (115, 115, 115)
+    assert base.color[0] + light.color[0] == 255
+
 def test_bridgehead_parts_reach_past_the_cells_sides(sprite_ui):
     ui = sprite_ui
     ui._bridgehead_under = 0.4

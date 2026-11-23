@@ -303,6 +303,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     _floor_checker_shade = FLOOR_CHECKER_SHADE
     _wall_tints = TERRAIN_THEMES['ruins'][4]
     _respawn_glows = frozenset()
+    _bridgehead_light_images = {}
     # Respawn cells of this frame on known cells, and those whose column a
     # character's sprite has drawn.
     _respawn_draws = ()
@@ -453,13 +454,20 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             left, right = placement.get('left', 0.0), placement.get('right', 0.0)
             self._bridgehead_spans = {'/': (left, left + 1), '\\': (0.0, 1 + right)}
             split = round(bridgehead.width * (left + 1) / (left + 2 + right))
-            self._bridgehead_images = {
-                '/': bridgehead.get_region(0, 0, split, bridgehead.height),
-                '\\': bridgehead.get_region(split, 0, bridgehead.width - split,
-                                             bridgehead.height),
-            }
+
+            def halves(image):
+                return {'/': image.get_region(0, 0, split, image.height),
+                        '\\': image.get_region(split, 0, image.width - split, image.height)}
+
+            self._bridgehead_images = halves(bridgehead)
+            # The light its fire and crystal give, kept bright out of view.
+            light_path = bridgehead_path.with_name('bridgehead-light.png')
+            self._bridgehead_light_images = (
+                halves(mipmapped(pyglet.image.load(str(light_path))))
+                if light_path.is_file() else {})
         else:
             self._bridgehead_images = {}
+            self._bridgehead_light_images = {}
         self._terrain_regions = {}
         core_dir = assets / 'dungeon-core'
         core_paths = {growth: core_dir / f'dungeon-core-{growth}.png'
