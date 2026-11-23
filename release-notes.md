@@ -1,5 +1,12 @@
 # ARLQ Release Notes
 
+## 6.10.9 - 2026-11-24
+
+- In `arlq-sprites`, torches light the dungeon's west and east edge walls,
+  about one every three rows, so the edges of the stage are easier to see.
+  A torch goes out when its wall is broken. The Stage 5 training room has
+  no torches.
+
 ## 6.10.8 - 2026-11-24
 
 - Improve character and scene detail in `arlq-sprites` when the window is
