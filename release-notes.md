@@ -1,5 +1,15 @@
 # ARLQ Release Notes
 
+## 6.10.6 - 2026-11-23
+
+- When the Stage 6 turn limit runs out, show the Dungeon Core running wild:
+  the view cuts to the core (its floor, or just far enough to bring it into
+  sight), which blazes up while arms of black, violet-rimmed smoke reach out
+  from it and scatter away, then cuts back to the final screen. The core is
+  shown from then on even if it was dormant or not yet found.
+- In `arlq-sprites`, the player kneels as the calamity begins. `arlq` and the
+  terminal mode play the effect as braille dots.
+
 ## 6.10.5 - 2026-11-23
 
 - Make every stage progress mark follow one rule: grey at first, followed by
