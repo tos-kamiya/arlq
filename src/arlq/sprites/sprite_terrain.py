@@ -56,6 +56,8 @@ WALL_BLOCK_HEIGHT = 0.56
 # Marble column parts (mid grey, tinted per visible/explored wall color);
 # each covers one cell plus the WALL_OVERHANG band north of it.
 WALL_PARTS = ('link-west', 'link-east', 'column')
+# A wall torch's light outside the current view, relative to in view.
+WALL_TORCH_EXPLORED_LIGHT = 0.6
 # Explored walls and floor outside the current view are kept clearly darker.
 WALL_TINT = {VISIBLE_WALL: 2.4, WALL: 1.75}
 # Per terrain theme, the wall parts are brightened by this factor when loaded,
@@ -221,7 +223,7 @@ class SpriteTerrainMixin:
             if not complete:
                 texture.delete()
 
-    ROW_LAYERS = ('wall', 'column', 'pillar-back', 'chest-back', 'sprite', 'pillar-front', 'familiar',
+    ROW_LAYERS = ('wall', 'column', 'wall-torch', 'pillar-back', 'chest-back', 'sprite', 'pillar-front', 'familiar',
                   'familiar-front', 'mark')
 
     def _set_edge_shade_field(self, field):
@@ -486,6 +488,9 @@ class SpriteTerrainMixin:
                     self._set_drawable_attribute(piece, 'scale_x', scale_x)
                     self._set_drawable_attribute(piece, 'scale_y', scale_y)
                     self._set_drawable_attribute(piece, 'color', draw_tint)
+            decor = self._decor_at(x, y)
+            if decor in d.DECOR_WALL_TORCHES and not self.map_mode:
+                self._draw_wall_torch(x, y, decor, tile_color, left, width, height)
             return
         if TERRAIN_THEMES[self._terrain_theme][1] is None:
             return self._draw_wall_block(x, y, tile_color, group)
@@ -497,6 +502,36 @@ class SpriteTerrainMixin:
             front = WALL_OVERHANG * self.cell_size_y
             self._draw_wall_rect(left, (y + 1) * self.cell_size_y - front, width, front + 1,
                                  tile_color, WALL_FRONT_SHADE, group)
+
+    def _draw_wall_torch(self, x, y, decor, tile_color, left, width, height):
+        """A torch on a wall column: the bracket tinted like the wall, then its
+        light added, a little dimmer outside the current view."""
+        images = self._wall_torch_images.get(
+            'east' if decor == d.DECOR_WALL_TORCH_EAST else 'west')
+        if images is None:
+            return
+        torch, light = images
+        bottom = self.window_height - (y + 1) * self.cell_size_y
+        light_shade = 1 if tile_color == VISIBLE_WALL else WALL_TORCH_EXPLORED_LIGHT
+        for kind, image, layer, tint, blend in (
+                ('wall-torch', torch, 'wall-torch', self._wall_tints[tile_color], {}),
+                ('wall-torch-light', light, 'pillar-back', (round(255 * light_shade),) * 3,
+                 {'blend_src': pyglet.gl.GL_SRC_ALPHA, 'blend_dest': pyglet.gl.GL_ONE})):
+            group = self._row_group(y, layer)
+            scale_x = width / image.width
+            scale_y = height / image.height
+            signature = ('wall-cell', kind, x, y, id(image), bottom, scale_x, scale_y,
+                         id(group), tint)
+            sprite = self._draw_bounded_object(
+                left, image.width * scale_x, signature,
+                partial(pyglet.sprite.Sprite, image, x=left, y=bottom,
+                        batch=self.batch, group=group, **blend),
+            )
+            if sprite is not None and sprite.x != left:
+                sprite.x = left
+            self._set_drawable_attribute(sprite, 'scale_x', scale_x)
+            self._set_drawable_attribute(sprite, 'scale_y', scale_y)
+            self._set_drawable_attribute(sprite, 'color', tint)
 
     def _draw_wall_block(self, x, y, tile_color, group):
         """A free-standing box a little smaller than its cell: top and front faces."""

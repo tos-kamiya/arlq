@@ -310,6 +310,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     _respawn_glows = frozenset()
     _bridgehead_light_images = {}
     _dungeon_core_light_images = {}
+    _wall_torch_images = {}
     # Respawn cells of this frame on known cells, and those whose column a
     # character's sprite has drawn.
     _respawn_draws = ()
@@ -446,6 +447,15 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             self._theme_images[theme] = (walls, floors or ruins[1],
                                          grays if floors else ruins[2])
         self._set_terrain_theme('ruins')
+        # Wall torches per side: the bracket and stick, tinted with the wall,
+        # and their light (flame and glow), added untinted.
+        self._wall_torch_images = {}
+        for side in ('east', 'west'):
+            paths = (assets / 'walls' / f'wall-torch-{side}.png',
+                     assets / 'walls' / f'wall-torch-{side}-light.png')
+            if all(path.is_file() for path in paths):
+                self._wall_torch_images[side] = tuple(
+                    mipmapped(pyglet.image.load(str(path))) for path in paths)
         self._terrain_images = {char: mipmapped(pyglet.image.load(str(assets / filename)))
                                 for char, filename in TERRAIN_FILES.items()
                                 if (assets / filename).is_file()}

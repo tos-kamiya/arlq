@@ -599,6 +599,61 @@ def test_sword_break_exposes_outer_wall_as_column():
     assert floor_data.decor[2][0] == d.DECOR_OUTER_WALL
 
 
+def _torch_floor():
+    # Rows 0..7; rows 2 and 5 get torches (WALL_TORCH_ROW_OFFSETS).
+    field = [[d.CHAR_WALL] * 12 for _ in range(8)]
+    for y in range(1, 7):
+        field[y][3:9] = [d.CHAR_FLOOR] * 6
+    # Row 5's west edge is a hidden passage: no torch gives it away.
+    field[5][3] = d.CHAR_HIDDEN_D_GATE
+    return Floor(field, [], [[1] * 12 for _ in field], (4, 2), (7, 2), None)
+
+
+def test_wall_torches_mark_west_and_east_edge_walls_of_every_few_rows():
+    floor_data = _torch_floor()
+    floor_data.place_wall_torch_decor()
+    floor_data.update_outer_wall_decor()
+    torches = {(x, y): value for y, row in enumerate(floor_data.decor)
+               for x, value in enumerate(row) if value in d.DECOR_WALL_TORCHES}
+    assert torches == {
+        (2, 2): d.DECOR_WALL_TORCH_EAST, (9, 2): d.DECOR_WALL_TORCH_WEST,
+        (9, 5): d.DECOR_WALL_TORCH_WEST,
+    }
+
+
+def test_sword_break_removes_the_torch_of_the_broken_wall():
+    floor_data = _torch_floor()
+    floor_data.place_wall_torch_decor()
+    floor_data.update_outer_wall_decor()
+    player = d.Player(3, 2, 10, 90)
+    player.item = d.ITEM_SWORD_X1_5
+    player.item_uses = 2
+    _move_player(KEYS['L'], floor_data, player)
+    assert floor_data.field[2][2] == d.CHAR_FLOOR
+    assert floor_data.decor[2][2] == d.DECOR_NONE
+    # The wall now at the edge gets no torch.
+    assert floor_data.decor[2][1] not in d.DECOR_WALL_TORCHES
+    assert floor_data.decor[2][9] == d.DECOR_WALL_TORCH_WEST
+
+
+@pytest.mark.parametrize('stage_num', [1, 3, 6])
+def test_stages_start_with_torches_on_their_edge_walls_only(stage_num):
+    from arlq.game_session import GameSession
+    session = GameSession(stage_num)
+    walls = (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
+    for floor_data in session.floors:
+        torches = [(x, y, value) for y, row in enumerate(floor_data.decor)
+                   for x, value in enumerate(row) if value in d.DECOR_WALL_TORCHES]
+        assert torches
+        for x, y, value in torches:
+            row = floor_data.field[y]
+            assert row[x] == d.CHAR_WALL
+            assert y % (d.TILE_HEIGHT + 1) in d.WALL_TORCH_ROW_OFFSETS
+            interior = [i for i, cell in enumerate(row) if cell not in walls]
+            assert x == (interior[0] - 1 if value == d.DECOR_WALL_TORCH_EAST
+                         else interior[-1] + 1)
+
+
 def test_top_and_bottom_edge_walls_stay_columns_when_exposed():
     field = [[d.CHAR_WALL] * 5 for _ in range(5)]
     field[2][2] = d.CHAR_FLOOR

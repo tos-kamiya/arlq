@@ -219,6 +219,14 @@ DECOR_BOSS_ROUTE: str = "boss route"
 DECOR_BOSS_ROUTE_FALLEN_ROCKS: str = "boss route and fallen rocks"
 DECOR_OUTER_WALL: str = "outer wall"
 DECOR_BURIED_WALL: str = "buried wall"
+# A torch on the dungeon's west or east edge wall, on the column's side
+# facing the floor (east on a west edge wall). Placed once when a stage is
+# built, on the edge walls of rows WALL_TORCH_ROW_OFFSETS into each band of
+# rooms (y % (TILE_HEIGHT + 1)); removed when its wall is broken.
+DECOR_WALL_TORCH_EAST: str = "wall torch:east"
+DECOR_WALL_TORCH_WEST: str = "wall torch:west"
+DECOR_WALL_TORCHES: tuple[str, str] = (DECOR_WALL_TORCH_EAST, DECOR_WALL_TORCH_WEST)
+WALL_TORCH_ROW_OFFSETS: tuple[int, ...] = (2, 5)
 
 TORCH_RADIUS: int = 3
 FOV_WIDTH_EXPANSION_RATIO: float = 1.4

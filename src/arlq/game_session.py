@@ -59,6 +59,7 @@ class GameSession:
                 stage_num,
             )
         for floor_data in self.floors:
+            floor_data.place_wall_torch_decor()
             floor_data.update_outer_wall_decor()
         self.player.known_monsters = set(d.INITIALLY_KNOWN_MONSTERS)
         self.player.boss_defeated = False

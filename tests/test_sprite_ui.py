@@ -1143,6 +1143,47 @@ def test_golem_rock_cell_is_rubble_and_breaks_column_links(monkeypatch):
     assert [piece.image for piece in ui._drawables] == [ui._wall_images['column']]
 
 
+@pytest.mark.parametrize('tile_color, light', [(pyglet_funcs.VISIBLE_WALL, 255),
+                                               (pyglet_funcs.WALL, 153)])
+def test_wall_torch_is_drawn_over_its_column_and_lit(monkeypatch, tile_color, light):
+    ui = SpriteUI.__new__(SpriteUI)
+    ui._initialize_state()
+    ui._wall_images = {part: SimpleNamespace(name=part, width=30, height=50)
+                       for part in sprite_terrain.WALL_PARTS}
+    ui._wall_torch_images = {side: (SimpleNamespace(name=side, width=30, height=50),
+                                    SimpleNamespace(name=side + '-light', width=30, height=50))
+                             for side in ('east', 'west')}
+    ui._floor_images = None
+    ui.map_mode = False
+    ui.scale = 1
+    ui.cell_size_x, ui.cell_size_y = 13, 20
+    ui.window_height = 500
+    ui.batch = None
+    ui._row_groups = {}
+    ui._drawables = []
+    ui._display_color = lambda color: color
+    monkeypatch.setattr(PygletUI, '_draw_tile', lambda *args: None)
+    monkeypatch.setattr('arlq.sprites.sprite_funcs.pyglet.sprite.Sprite',
+                        lambda picture, **kwargs: SimpleNamespace(image=picture, **kwargs))
+    field = [[d.CHAR_WALL, d.CHAR_FLOOR, d.CHAR_WALL]]
+    ui._decor = [[d.DECOR_WALL_TORCH_EAST, d.DECOR_NONE, d.DECOR_WALL_TORCH_WEST]]
+    ui._draw_tile(0, 0, tile_color, field, lambda x, y: True)
+    column, torch, glow = ui._drawables
+    assert column.image.name == 'column'
+    assert torch.image.name == 'east' and torch.color == ui._wall_tints[tile_color]
+    assert glow.image.name == 'east-light' and glow.color == (light,) * 3
+    assert glow.blend_dest == pyglet.gl.GL_ONE
+    assert torch.group.order > column.group.order
+    assert (torch.x, torch.y) == (column.x, column.y)
+    ui._drawables.clear()
+    ui._draw_tile(2, 0, tile_color, field, lambda x, y: True)
+    assert [piece.image.name for piece in ui._drawables] == ['column', 'west', 'west-light']
+    ui._drawables.clear()
+    ui.map_mode = True
+    ui._draw_tile(2, 0, tile_color, field, lambda x, y: True)
+    assert [piece.image.name for piece in ui._drawables] == ['column']
+
+
 def _barrier_ui(monkeypatch, cooling_center):
     ui = SpriteUI.__new__(SpriteUI)
     ui._initialize_state()

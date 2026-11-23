@@ -63,11 +63,29 @@ class Floor:
         if self.decor is None:
             self.decor = [[d.DECOR_NONE] * len(row) for row in self.field]
 
+    def place_wall_torch_decor(self) -> None:
+        """Mark torches on the west and east edge walls of every few rows."""
+        walls = (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
+        for y, row in enumerate(self.field):
+            if y % (d.TILE_HEIGHT + 1) not in d.WALL_TORCH_ROW_OFFSETS:
+                continue
+            interior = [x for x, cell in enumerate(row) if cell not in walls]
+            if not interior:
+                continue
+            for x, decor in ((interior[0] - 1, d.DECOR_WALL_TORCH_EAST),
+                             (interior[-1] + 1, d.DECOR_WALL_TORCH_WEST)):
+                if (0 <= x < len(row) and row[x] == d.CHAR_WALL
+                        and self.decor[y][x] == d.DECOR_NONE):
+                    self.decor[y][x] = decor
+
     def update_outer_wall_decor(self) -> None:
-        """Mark buried walls at the edges and inside solid wall areas."""
-        for row in self.decor:
+        """Mark buried walls at the edges and inside solid wall areas, and
+        drop the torches of walls that are gone."""
+        for y, row in enumerate(self.decor):
             for x, value in enumerate(row):
                 if value in (d.DECOR_OUTER_WALL, d.DECOR_BURIED_WALL):
+                    row[x] = d.DECOR_NONE
+                elif value in d.DECOR_WALL_TORCHES and self.field[y][x] != d.CHAR_WALL:
                     row[x] = d.DECOR_NONE
         for y, row in enumerate(self.field):
             walls = (*d.WALL_CHARS, d.CHAR_HIDDEN_D_GATE)
