@@ -24,6 +24,7 @@ class EffectCell:
     background: str | None = None
     bold: bool = False
     fallback_color: str | None = None
+    subcell: int | None = None
 
 
 @dataclass(frozen=True)
@@ -99,9 +100,16 @@ class BlessedMap:
 
     def effect_frame(self, cells: list[EffectCell]) -> str:
         """Render a frame of positioned effect cells."""
-        return "".join(self.effect_cell(
-            cell.x, cell.y, cell.char, partial(self._effect_style, cell),
-        ) for cell in cells)
+        output = []
+        for cell in cells:
+            if cell.subcell is None:
+                output.append(self.effect_cell(
+                    cell.x, cell.y, cell.char, partial(self._effect_style, cell)))
+            else:
+                output.append(self.screen_text(
+                    self.map_x(cell.x) + cell.subcell, cell.y, cell.char,
+                    partial(self._effect_style, cell)))
+        return "".join(output)
 
     def play_effect(self, animation: EffectAnimation, snapshot: str,
                     wait_for_size: Callable[[], None]) -> None:

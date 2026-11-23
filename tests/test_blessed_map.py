@@ -41,6 +41,12 @@ def test_effect_padding_is_included_in_style():
     assert view.map_cell(2, 5, "界") == "<4,5>界"
 
 
+def test_wide_effect_subcells_are_rendered_in_adjacent_terminal_columns():
+    view = BlessedMap(TerminalStub(), cell_width=2)
+    cells = [EffectCell(2, 5, "⠁", subcell=0), EffectCell(2, 5, "⢀", subcell=1)]
+    assert view.effect_frame(cells) == "<4,5>⠁<5,5>⢀"
+
+
 def test_rank_marks_use_requested_unicode_characters_only_in_wide_mode():
     term = TerminalStub()
     assert BlessedMap(term).rank_text("b' c\"") == "b' c\""

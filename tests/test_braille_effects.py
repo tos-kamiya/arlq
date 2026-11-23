@@ -4,7 +4,7 @@ from importlib import import_module
 import pytest
 
 from arlq import defs as d
-from arlq.braille_effects import effect_frames
+from arlq.braille_effects import effect_frames, wide_effect_frames
 from arlq.game_events import Combat
 from arlq.presentation import play_defeat_effects
 
@@ -19,6 +19,30 @@ def test_frames_are_clipped_and_disabled_by_combat_setting(name):
             assert 0 <= x < d.FIELD_WIDTH and 0 <= y < d.FIELD_HEIGHT
             assert 0x2800 < ord(char) <= 0x28ff
             assert len(color) == 3
+
+
+@pytest.mark.parametrize("name", ["Vortex", "Dungeon Core", "Boss", "Core Calamity"])
+def test_wide_frames_have_two_subcells_and_are_clipped(name):
+    assert wide_effect_frames(name, (0, 0), 0) == (0, [])
+    duration, frames = wide_effect_frames(name, (0, 0), 0.3)
+    assert duration > 0 and any(frames)
+    for frame in frames:
+        for (x, y), subcell, char, color in frame:
+            assert 0 <= x < d.FIELD_WIDTH and 0 <= y < d.FIELD_HEIGHT
+            assert subcell in (0, 1)
+            assert 0x2800 < ord(char) <= 0x28ff
+            assert len(color) == 3
+
+
+def test_wide_sparkles_use_both_subcells_and_remain_in_available_cells():
+    from arlq.treasure_particles import wide_iris_sparkle_frame, wide_sparkle_frame
+
+    cells = [(x, y) for x in range(3, 8) for y in range(3, 8)]
+    frames = [wide_sparkle_frame(cells, tick, (5, 5)) for tick in range(9)]
+    assert {subcell for frame in frames for _, subcell, _ in frame} == {0, 1}
+    assert all(point in cells for frame in frames for point, _, _ in frame)
+    iris_frames = [wide_iris_sparkle_frame(cells, tick, (5, 5)) for tick in range(8)]
+    assert {subcell for frame in iris_frames for _, subcell, _ in frame} == {0, 1}
 
 
 @pytest.mark.parametrize("name, expected", [("Boss", 14 / 15), ("Dungeon Core", 1.0),
@@ -62,6 +86,30 @@ def test_terminal_effect_keeps_player_cell(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert "[2,2]" not in output
     assert "[3,2]⠁" in output
+
+
+def test_terminal_wide_effect_draws_both_halves_but_preserves_player(monkeypatch, capsys):
+    from arlq import blessed_funcs
+
+    ui = blessed_funcs.BlessedUI.__new__(blessed_funcs.BlessedUI)
+    ui.wide = True
+    ui.combat_effect_seconds = 0.3
+    ui._effect_player_pos = (2, 2)
+    ui._stage_snapshot = "stage"
+    ui._combat_cell_backgrounds = {}
+    ui.map_mode = False
+    ui._wait_for_terminal_size = lambda: None
+    ui.term = SimpleNamespace(number_of_colors=0, normal="", inkey=lambda timeout: "",
+                              move_xy=lambda x, y: f"[{x},{y}]", magenta=lambda text: text)
+    monkeypatch.setattr(blessed_funcs, "wide_effect_frames", lambda *args: (
+        0.1, [[((2, 2), 0, "⣿", (255, 255, 255)),
+               ((3, 2), 0, "⠁", (255, 255, 255)),
+               ((3, 2), 1, "⢀", (255, 255, 255))]]))
+    monkeypatch.setattr(blessed_funcs.time, "sleep", lambda _: None)
+    ui.draw_core_burst((2, 2))
+    output = capsys.readouterr().out
+    assert "[4,2]" not in output
+    assert "[6,2]⠁[7,2]⢀" in output
 
 
 def test_gui_effect_keeps_player_cell(monkeypatch):

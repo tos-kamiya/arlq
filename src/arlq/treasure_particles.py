@@ -56,6 +56,23 @@ def sparkle_frame(cells, tick, center):
     return [(point, chr(0x2800 + mask)) for point, mask in frame.items()]
 
 
+def wide_sparkle_frame(cells, tick, center):
+    """Twinkle on a four-dot-wide grid inside each available map cell."""
+    cx, cy = center
+    bits = ((1, 8), (2, 16), (4, 32), (64, 128))
+    available = set(cells)
+    frame = {}
+    for pixel_x, pixel_y, start in _SPARKLES:
+        wide_x = pixel_x * 2 + (start % 2)
+        point = (cx - 2 + wide_x // 4, cy - 2 + pixel_y // 4)
+        if point in available and (tick - start) % 9 < 3:
+            subcell = wide_x % 4 // 2
+            key = (point, subcell)
+            frame[key] = frame.get(key, 0) | bits[pixel_y % 4][wide_x % 2]
+    return [(point, subcell, chr(0x2800 + mask))
+            for (point, subcell), mask in frame.items()]
+
+
 # Iris's ration glow: a small version of the treasure sparkle in the four
 # cells beside her, leaving her own glyph in place.
 IRIS_SPARKLE_SECONDS = 0.6
@@ -94,4 +111,21 @@ def iris_sparkle_frame(cells, index, center):
         mask = masks[(index + 2 * k) % len(masks)]
         if mask:
             frame.append((point, chr(0x2800 + mask)))
+    return frame
+
+
+def wide_iris_sparkle_frame(cells, index, center):
+    """Distribute Iris's dots over both halves of each neighbouring cell."""
+    bits = ((1, 8), (2, 16), (4, 32), (64, 128))
+    frame = []
+    for point, char in iris_sparkle_frame(cells, index, center):
+        mask = ord(char) - 0x2800
+        halves = [0, 0]
+        for y, row in enumerate(bits):
+            for x, bit in enumerate(row):
+                if mask & bit:
+                    wide_x = 2 * x + ((index + y) % 2)
+                    halves[wide_x // 2] |= row[wide_x % 2]
+        frame.extend((point, half, chr(0x2800 + value))
+                     for half, value in enumerate(halves) if value)
     return frame

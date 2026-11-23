@@ -145,7 +145,8 @@ The terminal must be at least 80 columns by 24 lines.
 Run `arlq-cli --wide` to display the map and strength column using two terminal
 columns per cell. This mode requires at least 160 columns by 24 lines and a
 terminal font that supports fullwidth characters. Dialogue and status messages
-retain their normal text size. The mode stays fixed for the entire run.
+retain their normal text size. Braille effects use two characters per map cell
+for finer horizontal detail. The mode stays fixed for the entire run.
 
 ### Sprite GUI version: `arlq-sprites`
 

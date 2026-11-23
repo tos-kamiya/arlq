@@ -6,7 +6,7 @@ from . import display as ui_display
 from .arlq import barrier_lp_damage
 from .blessed_map import BlessedMap, EffectAnimation, EffectCell, Terminal
 from .blessed_settings import BlessedSettingsMixin
-from .braille_effects import effect_frames
+from .braille_effects import effect_frames, wide_effect_frames
 from .i18n import t as tr
 from .settings import combat_effect_seconds, load_settings
 from .treasure_particles import (
@@ -17,6 +17,8 @@ from .treasure_particles import (
     iris_sparkle_frame,
     sparkle_cells,
     sparkle_frame,
+    wide_iris_sparkle_frame,
+    wide_sparkle_frame,
 )
 
 MIN_TERMINAL_WIDTH = 80
@@ -668,13 +670,20 @@ class BlessedUI(BlessedSettingsMixin):
         self._discard_pending_keys()
 
     def _draw_braille_effect(self, name, pos):
-        seconds, frames = effect_frames(name, pos, self.combat_effect_seconds)
+        wide = getattr(self, "wide", False)
+        loader = wide_effect_frames if wide else effect_frames
+        seconds, frames = loader(name, pos, self.combat_effect_seconds)
         if not frames:
             return
         effect_frames_data = []
         for cells in frames:
             frame = []
-            for (x, y), char, color in cells:
+            for item in cells:
+                if wide:
+                    (x, y), subcell, char, color = item
+                else:
+                    (x, y), char, color = item
+                    subcell = None
                 if (x, y) == self._effect_player_pos:
                     continue
                 bg = self._combat_cell_backgrounds.get((x, y))
@@ -682,7 +691,7 @@ class BlessedUI(BlessedSettingsMixin):
                             else {"Boss": "yellow", "Dungeon Core": "magenta", "Vortex": "cyan",
                                   "Core Calamity": "magenta"}[name])
                 frame.append(EffectCell(x, y, char, None if self.map_mode else color,
-                                        bg, fallback_color=fallback))
+                                        bg, fallback_color=fallback, subcell=subcell))
             effect_frames_data.append(frame)
         animation = EffectAnimation(effect_frames_data, seconds / len(frames))
         self._map.play_effect(animation, self._stage_snapshot, self._wait_for_terminal_size)
@@ -698,9 +707,15 @@ class BlessedUI(BlessedSettingsMixin):
             return
         frames = []
         for index in range(IRIS_SPARKLE_FRAMES):
-            frames.append([EffectCell(*point, char, "yellow",
-                                      self._combat_cell_backgrounds.get(point), True)
-                           for point, char in iris_sparkle_frame(cells, index, pos)])
+            if getattr(self, "wide", False):
+                frames.append([EffectCell(*point, char, "yellow",
+                                          self._combat_cell_backgrounds.get(point), True,
+                                          subcell=subcell)
+                               for point, subcell, char in wide_iris_sparkle_frame(cells, index, pos)])
+            else:
+                frames.append([EffectCell(*point, char, "yellow",
+                                          self._combat_cell_backgrounds.get(point), True)
+                               for point, char in iris_sparkle_frame(cells, index, pos)])
         animation = EffectAnimation(frames, IRIS_SPARKLE_SECONDS / IRIS_SPARKLE_FRAMES)
         self._map.play_effect(animation, self._stage_snapshot, self._wait_for_terminal_size)
         self._discard_pending_keys()
@@ -804,10 +819,17 @@ class BlessedUI(BlessedSettingsMixin):
                 tick = int((time.monotonic() - self._treasure_sparkle_started) * SPARKLE_TICKS_PER_SECOND)
                 if tick != last_tick:
                     output = [self._stage_snapshot]
-                    cells = [EffectCell(x, y, char, "yellow",
-                                        self._combat_cell_backgrounds.get((x, y)), True)
-                             for (x, y), char in sparkle_frame(
-                                 self._treasure_sparkle_cells, tick, self._treasure_sparkle_center)]
+                    if getattr(self, "wide", False):
+                        cells = [EffectCell(*point, char, "yellow",
+                                            self._combat_cell_backgrounds.get(point), True,
+                                            subcell=subcell)
+                                 for point, subcell, char in wide_sparkle_frame(
+                                     self._treasure_sparkle_cells, tick, self._treasure_sparkle_center)]
+                    else:
+                        cells = [EffectCell(x, y, char, "yellow",
+                                            self._combat_cell_backgrounds.get((x, y)), True)
+                                 for (x, y), char in sparkle_frame(
+                                     self._treasure_sparkle_cells, tick, self._treasure_sparkle_center)]
                     output.append(self._map.effect_frame(cells))
                     print("".join(output) + self.term.normal, end="", flush=True)
                     last_tick = tick
