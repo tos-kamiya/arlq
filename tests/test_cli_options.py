@@ -18,6 +18,15 @@ def test_sprite_gui_option_and_terminal_conflict(monkeypatch):
     assert error.value.code == 2
 
 
+def test_wide_option_is_available_in_terminal_mode(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["arlq-cli", "--wide", "--seed", "123"])
+    args, *_ = _prepare_cli_session(terminal_only=True)
+    assert args.wide and args.terminal
+    monkeypatch.setattr(sys, "argv", ["arlq", "--wide", "--seed", "123"])
+    with pytest.raises(SystemExit):
+        _prepare_cli_session()
+
+
 @pytest.mark.parametrize("option", ["-n", "--narrower-corridors"])
 def test_narrow_corridor_option_is_not_available(monkeypatch, option):
     monkeypatch.setattr(sys, "argv", ["arlq", option])

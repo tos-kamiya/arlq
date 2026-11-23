@@ -31,7 +31,7 @@ def test_narrow_map_and_screen_text_keep_original_coordinates_and_text():
 
 def test_wide_map_expands_coordinates_and_ascii_characters():
     view = BlessedMap(TerminalStub(), cell_width=2)
-    assert view.map_text(3, 4, "@[ #]") == "<6,4>＠［　＃］"
+    assert view.map_text(3, 4, "@[ #]") == "<6,4>＠［  ＃］"
     assert view.screen_text(3, 22, "LP: 10") == "<3,22>LP: 10"
 
 
@@ -96,3 +96,33 @@ def test_rejects_invalid_cell_width_and_non_cell_text():
         view.map_cell(0, 0, "ab")
     with pytest.raises(ValueError):
         view.map_cell(0, 0, "\n")
+
+
+def test_wide_ui_draws_map_sidebar_dialogue_and_status(monkeypatch):
+    from arlq import defs as d
+    from arlq import display
+    from arlq.blessed_funcs import BlessedUI
+    from arlq.stage5 import TrialDialogue
+
+    term = TerminalStub()
+    term.home = term.clear = term.normal = ""
+    ui = BlessedUI.__new__(BlessedUI)
+    ui.term, ui.wide, ui.dots = term, True, False
+    ui._style = lambda text, *args, **kwargs: text
+    monkeypatch.setattr(display, "build_strength_column", lambda *_: [("b'", False)])
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    field[2][3] = d.CHAR_WALL
+    seen = [[1] * d.FIELD_WIDTH for _ in field]
+    player = d.Player(2, 2, 1, 100)
+    output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[],
+                            message=TrialDialogue("Hello"), loop_trail_markers={(4, 2)})
+    assert "<4,2>＠" in output
+    assert "<6,2>＃" in output
+    assert "<10,2>  " in output
+    assert "<8,2>・" in output
+    assert f"<{(d.FIELD_WIDTH + d.FIELD_SIDEBAR_GAP) * 2},0>ｂ＇" in output
+    assert "<6,1>[bold:[yellow:< Hello]]" in output
+    assert "<0,22>" in ui._draw_status_bar(player, 0)
+    assert ui._terminal_is_large_enough()
+    term.width = 159
+    assert not ui._terminal_is_large_enough()

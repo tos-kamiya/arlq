@@ -159,6 +159,10 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
             action="store_true",
             help="Use dots instead of background colors for unexplored areas in the terminal UI.",
         )
+        terminal.add_argument(
+            "--wide", action="store_true",
+            help="Use two terminal columns per map cell (requires a 160-column terminal).",
+        )
     general.add_argument(
         "--lang",
         choices=["auto", "en", "ja"],
@@ -234,6 +238,8 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
     args = parser.parse_args()
     if args.sprites and args.terminal:
         parser.error('--sprites cannot be combined with --terminal')
+    if getattr(args, "wide", False) and not args.terminal:
+        parser.error("--wide requires terminal mode")
 
     if args.rewind_index is not None:
         if args.checkpoint_index is not None:
@@ -423,7 +429,7 @@ def main(terminal_only=False, sprites_only=False):
 
         term = Terminal()
         with term.fullscreen(), term.cbreak(), term.hidden_cursor():
-            ui = BlessedUI(term, dots=args.dots)
+            ui = BlessedUI(term, dots=args.dots, wide=args.wide)
             ui.setting_overrides = overrides
             if "combat_effect_seconds" in overrides:
                 ui.combat_effect_seconds = overrides["combat_effect_seconds"]

@@ -45,10 +45,14 @@ class BlessedMap:
     def map_x(self, x: int) -> int:
         return x * self.cell_width
 
+    def map_text_width(self, text: str) -> int:
+        """Return the number of map cells occupied by rendered text."""
+        return len(text) if self.cell_width == 2 else self.terminal.length(text)
+
     def _wide_char(self, char: str) -> str:
         code = ord(char)
         if char == " ":
-            return "\u3000"
+            return "  "
         if 0x21 <= code <= 0x7e:
             return chr(code + 0xfee0)
         width = self.terminal.length(char)

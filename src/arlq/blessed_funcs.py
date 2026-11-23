@@ -22,6 +22,7 @@ from .treasure_particles import (
 MIN_TERMINAL_WIDTH = 80
 MIN_TERMINAL_HEIGHT = 24
 TERMINAL_SIZE_MESSAGE = "Please resize the terminal to at least 80x24."
+WIDE_TERMINAL_SIZE_MESSAGE = "Please resize the terminal to at least 160x24."
 
 
 def key_to_dir(key: str) -> Optional[d.Point]:
@@ -37,12 +38,13 @@ def key_to_dir(key: str) -> Optional[d.Point]:
 
 
 class BlessedUI(BlessedSettingsMixin):
-    def __init__(self, term: Terminal, dots: bool = False):
+    def __init__(self, term: Terminal, dots: bool = False, wide: bool = False):
         self.combat_effect_seconds = combat_effect_seconds(load_settings())
         # Command-line settings for this run only; never saved by themselves.
         self.setting_overrides = {}
         self.term = term
         self.dots = dots
+        self.wide = wide
         self.map_mode = False
         self.farthest_preview = False
         self.shift_direction = False
@@ -55,10 +57,11 @@ class BlessedUI(BlessedSettingsMixin):
 
     @property
     def _map(self) -> BlessedMap:
-        return BlessedMap(self.term)
+        return BlessedMap(self.term, cell_width=2 if getattr(self, "wide", False) else 1)
 
     def _terminal_is_large_enough(self) -> bool:
-        return self.term.width >= MIN_TERMINAL_WIDTH and self.term.height >= MIN_TERMINAL_HEIGHT
+        width = MIN_TERMINAL_WIDTH * (2 if getattr(self, "wide", False) else 1)
+        return self.term.width >= width and self.term.height >= MIN_TERMINAL_HEIGHT
 
     def _wait_for_terminal_size(self) -> None:
         was_too_small = False
@@ -67,7 +70,8 @@ class BlessedUI(BlessedSettingsMixin):
             print(
                 self.term.clear
                 + self.term.home
-                + self.term.bold(tr(TERMINAL_SIZE_MESSAGE)),
+                + self.term.bold(tr(WIDE_TERMINAL_SIZE_MESSAGE) if getattr(self, "wide", False)
+                                 else tr(TERMINAL_SIZE_MESSAGE)),
                 end="",
                 flush=True,
             )
@@ -336,7 +340,7 @@ class BlessedUI(BlessedSettingsMixin):
                     put(
                         x,
                         y,
-                        ".",
+                        "・" if getattr(self, "wide", False) else ".",
                         "cyan",
                         bg=cell_background(x, y),
                     )
@@ -465,7 +469,7 @@ class BlessedUI(BlessedSettingsMixin):
                 bg=player_background,
             )
             if player.status_popup and player.status_popup_ticks > 0:
-                popup_width = self.term.length(player.status_popup)
+                popup_width = self._map.map_text_width(player.status_popup)
                 if py > 0 and px + 1 + popup_width <= d.FIELD_WIDTH:
                     put(
                         px + 1,
