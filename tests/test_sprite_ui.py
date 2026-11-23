@@ -1459,14 +1459,16 @@ def test_collapse_pit_without_image_stays_yellow_text(sprite_ui):
 @pytest.mark.parametrize('scale, pixel_ratio, expected', [
     (1, 1, (1600, 1200)),
     (2, 1, (800, 600)),
-    (4, 1, (400, 300)),
+    (3.19, 1, (502, 377)),
+    (3.2, 1, (1000, 750)),
+    (4, 1, (800, 600)),
     (1, 2, (1600, 1200)),
-    (2, 2, (800, 600)),
-    (4, 2, (400, 300)),
-    (3.37, 1, (475, 357)),
-    (3.37, 2, (475, 357)),
+    (2, 2, (1600, 1200)),
+    (4, 2, (800, 600)),
+    (3.37, 1, (950, 713)),
+    (3.37, 2, (950, 713)),
 ])
-def test_render_target_detail_is_independent_of_pixel_ratio(scale, pixel_ratio, expected):
+def test_render_target_detail_increases_at_1_6_fold_enlargement(scale, pixel_ratio, expected):
     ui = SpriteUI.__new__(SpriteUI)
     ui._initialize_state()
     ui.scale = scale
@@ -1475,6 +1477,9 @@ def test_render_target_detail_is_independent_of_pixel_ratio(scale, pixel_ratio, 
         get_framebuffer_size=lambda: (800 * pixel_ratio, 600 * pixel_ratio),
     )
     assert ui._render_target_dimensions() == expected
+    assert ui._render_target_unit() == pytest.approx(scale / 2 / (
+        2 if scale / 2 * pixel_ratio >= 1.6 else 1
+    ))
 
 
 @pytest.fixture

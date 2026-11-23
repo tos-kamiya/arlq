@@ -720,11 +720,16 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         return self.window.width, self.window.height
 
     def _render_target_dimensions(self):
-        density = LOW_RESOLUTION_DETAIL_SCALE / self.scale
+        density = 1 / self._render_target_unit()
         return (
             max(1, math.ceil(self.window.width * density)),
             max(1, math.ceil(self.window.height * density)),
         )
+
+    def _render_target_unit(self):
+        unit = self.scale / LOW_RESOLUTION_DETAIL_SCALE
+        pixel_ratio = self._framebuffer_size()[1] / max(1, self.window.height)
+        return unit / 2 if unit * pixel_ratio >= 1.6 else unit
 
     def _ensure_render_target(self):
         target_size = self._render_target_dimensions()
@@ -776,7 +781,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
     def _update_composite_scale(self):
         if self._composite_sprite is None:
             return
-        unit = self.scale / LOW_RESOLUTION_DETAIL_SCALE
+        unit = self._render_target_unit()
         self._composite_sprite.scale = unit
         self._composite_sprite.y = self.window.height - self._render_texture.height * unit
 
@@ -790,7 +795,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         if use_render_target:
             self._render_framebuffer.bind()
             pyglet.gl.glViewport(0, 0, *self._render_target_size)
-            unit = self.scale / LOW_RESOLUTION_DETAIL_SCALE
+            unit = self._render_target_unit()
             width, height = self._render_target_size
             self.window.projection = pyglet.math.Mat4.orthogonal_projection(
                 0, width * unit, self.window_height - height * unit,
