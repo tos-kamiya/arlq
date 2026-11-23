@@ -282,6 +282,7 @@ STAGE_RUNTIME_ELVES: dict[int, tuple[str, ...]] = {
 STAGE_BOSSES: dict[int, tuple[str, int]] = {
     3: ("W", 1),
     4: (CHAR_FIRE_DRAKE, 2),
+    6: (CHAR_FIRE_DRAKE, 2),
 }
 
 # Display duration and untranslated text; empty stages have no opening message.

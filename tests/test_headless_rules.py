@@ -20,6 +20,7 @@ from arlq.arlq import (
     unlock_treasure_for_defeat,
 )
 from arlq.game_engine import Floor, _process_multi_floor_turn
+from arlq.game_session import GameSession
 
 
 @pytest.mark.parametrize(
@@ -400,6 +401,7 @@ def test_game_loop_draws_with_keyword_arguments_only():
         "checkpoint",
         "decor",
         "respawn_glows",
+        "target_floors",
         "d_gates",
         "reachable_cells",
         "loop_trail_markers",
@@ -2726,9 +2728,72 @@ def test_elf_stage_progress_marks_add_elf_floors_after_the_isolated_elf():
         ("K2", True),
         ("H3", False),
         ("W", False),
-        ("T", True),
+        ("[T]", True),
     ]
 
+
+
+def test_stage6_progress_marks_show_boss_core_and_treasure():
+    player = d.Player(1, 1, 1, 90)
+    player.stage6_candidates = True
+
+    def tail(floors=None):
+        return display.stage6_progress_marks(player, floors)[-3:]
+
+    assert tail() == [("F'", False), ("[*]", False), ("[T]", False)]
+    # A floor follows each once known; white (achieved) once done.
+    assert tail({"boss": 3, "core": 3}) == [("F'3", False), ("[*]3", False), ("[T]", False)]
+    player.boss_defeated = True
+    player.dungeon_core_destroyed = True
+    assert tail({"treasure": 2}) == [("F'", True), ("[*]", True), ("[T]2", False)]
+    player.treasure_collected = True
+    assert tail() == [("F'", True), ("[*]", True), ("[T]", True)]
+    assert display.stage6_progress_marks(player)[:-3] == (
+        display.stage5_member_progress_marks(player))
+
+
+def test_member_marks_are_achieved_only_while_in_the_party():
+    player = d.Player(1, 1, 1, 90)
+    player.stage6_candidates = True
+    player.seen_members = {d.MEMBER_JESTER, d.MEMBER_HEALER}
+    player.known_member_floors = {d.MEMBER_JESTER: 2}
+    player.members.append(d.PartyMember(1, 1, d.MEMBER_HEALER))
+    marks = dict(display.stage5_member_progress_marks(player))
+    assert marks["J2"] is False
+    assert marks["H@"] is True
+
+
+def test_stage_target_floors_follow_identification_exploration_and_unlocks():
+    session = GameSession(6, seed_str="abc")
+    player, floors = session.player, session.floors
+    boss_floor = next(index for index, floor_data in enumerate(floors)
+                      for entity in floor_data.entities
+                      if isinstance(entity, d.Monster) and entity.boss_id == 1)
+    boss = next(entity for entity in floors[boss_floor].entities
+                if isinstance(entity, d.Monster) and entity.boss_id == 1)
+    core = next(entity for entity in floors[boss_floor].entities
+                if isinstance(entity, d.Monster) and entity.tribe.char == d.CHAR_DUNGEON_CORE)
+    chest = next(entity for floor_data in floors for entity in floor_data.entities
+                 if isinstance(entity, d.Treasure))
+    chest_floor = next(index for index, floor_data in enumerate(floors)
+                       if chest in floor_data.entities)
+    for floor_data in floors:
+        for row in floor_data.seen:
+            row[:] = [0] * len(row)
+
+    assert display.stage_target_floors(floors, player, 6) == {}
+    # The boss needs both identification and an explored cell.
+    floors[boss_floor].seen[boss.y][boss.x] = 1
+    assert display.stage_target_floors(floors, player, 6) == {}
+    player.known_monsters.add(d.monster_type_key(boss))
+    assert display.stage_target_floors(floors, player, 6) == {"boss": boss_floor + 1}
+    floors[boss_floor].seen[boss.y][boss.x] = 0
+    player.known_monsters.discard(d.monster_type_key(boss))
+    # The core once it appears, and the chest once unlocked, wherever they are.
+    core.active = True
+    chest.unlocked = True
+    assert display.stage_target_floors(floors, player, 6) == {
+        "core": boss_floor + 1, "treasure": chest_floor + 1}
 
 def test_elf_stage_progress_marks_use_stage_specific_boss_labels():
     player = d.Player(1, 1, 1, 90)

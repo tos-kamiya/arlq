@@ -311,8 +311,9 @@ def test_iris_progress_shows_ration_after_discovery_and_departure():
     assert iris_label() == "I-@"
     player.members.remove(iris)
     assert iris_label() == "I-3"
+    # Seen, then moved to an unknown floor.
     player.known_member_floors.pop(d.MEMBER_IRIS)
-    assert iris_label() == "I-"
+    assert iris_label() == "I-?"
 
 
 def test_fairy_seer_identifies_fairies_in_explored_areas_on_every_floor():
@@ -389,6 +390,8 @@ def test_stage6_leaving_first_floor_scatters_waiting_candidates(monkeypatch):
     candidate = d.PartyMember(10, 10, d.MEMBER_FAIRY_SEER, origin_floor=0)
     upper.entities.append(candidate)
     player.known_member_floors[candidate.role] = 1
+    player.seen_members.add(candidate.role)
+    player.stage6_candidates = True
     floor = [0]
     monkeypatch.setattr(stage6.rand, "choice", lambda choices: choices[-1])
 
@@ -399,6 +402,8 @@ def test_stage6_leaving_first_floor_scatters_waiting_candidates(monkeypatch):
     assert candidate.origin_floor == 1
     assert (candidate.x, candidate.y) != (player.x, player.y)
     assert candidate.role not in player.known_member_floors
+    # Seen before, now somewhere unknown, like L.
+    assert ("S?", False) in display.stage5_member_progress_marks(player)
 
 
 def test_stage6_falling_from_first_floor_scatters_members_on_all_floors(monkeypatch):
@@ -482,7 +487,8 @@ def test_stage6_departed_members_return_to_first_floor_bridgehead():
     stage6.relocate_candidates(floors, player, [member], player_floor=1)
 
     assert member in floors[0].entities and member.origin_floor == 0
-    assert member.role not in player.known_member_floors
+    # The player sees it go back, so its floor stays known.
+    assert player.known_member_floors[member.role] == 1
     x, y = floors[0].bridgehead
     assert abs(member.x - x) + abs(member.y - y) <= 7
 
@@ -583,6 +589,8 @@ def test_jester_leaves_when_experience_crosses_level_100(stage_num):
     assert player.level == pytest.approx(101)
     assert not d.has_member(player, d.MEMBER_JESTER)
     assert any(isinstance(e, d.PartyMember) and e.role == d.MEMBER_JESTER for e in current.entities)
+    # It stays on this floor, so its floor stays known.
+    assert player.known_member_floors[d.MEMBER_JESTER] == 1
 
 
 @pytest.mark.parametrize("level, returns", [(99, True), (100, False), (101, False)])
@@ -593,7 +601,7 @@ def test_jester_reappears_only_below_departure_level(level, returns):
     player.known_member_floors[d.MEMBER_JESTER] = 1
     stage6.relocate_candidates(floors, player, [jester], player_floor=1)
     assert (jester in floors[0].entities) is returns
-    assert d.MEMBER_JESTER not in player.known_member_floors
+    assert (d.MEMBER_JESTER in player.known_member_floors) is returns
 
 
 def test_recruiting_jester_at_level_100_is_refused():

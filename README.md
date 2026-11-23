@@ -112,6 +112,33 @@ Left-click a map cell to move toward it. If newly revealed terrain or obstacles
 change the remaining route, movement stops before the next step. Taking damage
 also stops movement.
 
+### Reading the stage progress marks
+
+In Stages 3, 4, and 6, a row of marks at the bottom left of the map shows the
+stage's progress; the floor on display appears at the bottom right, such as
+`2/3`. Every mark follows the same rule:
+
+- **Grey**: not done yet.
+- **Grey with a floor number**, such as `K2`: its location is known. `?`
+  means it was found but has since moved to an unknown floor.
+- **White**: done.
+
+| Mark | Stages | Floor number appears | White when |
+| --- | --- | --- | --- |
+| Elves `I` `J` `K` `H` `L` `S` | 3, 4 | When the elf is identified, by contact or in view with the fairy `n`. Meeting the Isolated Elf (`I`) reveals every elf's floor. `L`, who keeps moving, shows `?` once met. | You met it with its condition fulfilled. |
+| Rare Chimera `C` | 3, 4 | Each floor where it has been identified, such as `C23`. | Defeated. |
+| Party members `D` `G` `H` `I` `J` `K` `R` `S` `Y` | 6 | When you see it. A member who leaves the party stays known: one stopped by a barrier waits where it stopped, and one replaced in a full party goes back near the first-floor bridgehead (`1`). When waiting members scatter to random floors, each member you have seen shows `?`. In the party it shows `@`. | In the party (`@`). |
+| Stage boss `W` / `F'` | 3, 4, 6 | When it is identified and stands on an explored cell. | Defeated. |
+| Dungeon Core `[*]` | 6 | When it appears, on the defeat of `F'`. | Destroyed. |
+| Treasure chest `[T]` | 3, 4, 6 | When it is unsealed. | Taken. |
+
+After Iris is discovered, her mark includes `+` when she has a ration and `-`
+when she does not. For example, `I+@` means she is in the party with a ration,
+while `I-3` means she is waiting on floor 3 without one.
+
+The floor number of the boss, the core, and the chest disappears once they are
+done, as they leave the map.
+
 ### Terminal version: `arlq-cli`
 
 The terminal must be at least 80 columns by 24 lines.
@@ -298,7 +325,9 @@ Stage 3 has three connected floors and four elves: `I`, `J`, `K`, and `H`.
 Empowered Bison, Chimeras, and Komodo Dragons (`b'`, `c'`, and `d'`) also
 appear.
 
-The HUD shows the current floor and elf progress. Use Shift+Up/Down in the GUI
+The HUD shows the current floor and the stage's progress marks (see
+"Reading the stage progress marks" under "Screen and controls").
+Use Shift+Up/Down in the GUI
 or Shift+W/S in `arlq-cli` to inspect another floor. Unexplored areas remain
 hidden; moving returns the display to the player's floor.
 
@@ -369,7 +398,9 @@ Stage 6 is a three-floor dungeon starting at level 1. Recruit party members near
 
 The core appears as `[*]`; either bracket is hidden when another map feature occupies its cell.
 
-Deeper floors contain stronger monsters and barriers. Defeated monsters do not respawn. Unrecruited members scatter to random floors when you use a different staircase or pit from your previous floor change, and their known locations are cleared.
+The status line shows the party members, `F'`, the core, and the treasure chest; see "Reading the stage progress marks" under "Screen and controls".
+
+Deeper floors contain stronger monsters and barriers. Defeated monsters do not respawn. Unrecruited members scatter to random floors when you use a different staircase or pit from your previous floor change, and their known locations are cleared (their marks show `?`).
 
 #### Party members
 
@@ -386,8 +417,6 @@ In Stage 6, H, J, and S cannot cross barriers. If they would enter a barrier, th
 | **R** Rogue | Identifies trap-type monsters (`M`, `g`, `X`, `E`) in view and opens Collapse pits. Breaks Golem walls and warns about pits and Rare Erebus, stopping key repeat after the current move. Negates each Marksman's odd-numbered shots. |
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
-
-After Iris is discovered, her status mark includes `+` when she has a ration and `-` when she does not. For example, `I+@` means she is in the party with a ration, while `I-3` means she is waiting on floor 3 without one.
 
 Vertically adjacent monsters fight in parties of up to eight, combining their strength and experience; the highest LP reward applies. If a defeated party includes a sword-bearing `c`, its sword takes precedence over other items.
 

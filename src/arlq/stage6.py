@@ -779,7 +779,8 @@ def relocate_candidates(floors, player, candidates, player_floor=None):
         excluded = (player.x, player.y) if player_floor == 0 else None
         member.x, member.y = _candidate_near_bridgehead(current, current.up, excluded)
         member.origin_floor = 0
-        player.known_member_floors.pop(member.role, None)
+        # The player sees it go back to the bridgehead.
+        player.known_member_floors[member.role] = 1
         current.entities.append(member)
 
 

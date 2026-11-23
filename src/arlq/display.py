@@ -6,6 +6,12 @@ from typing import NamedTuple, Optional, Sequence
 from . import defs as d
 
 
+# Status line marks for the treasure chest and the Stage 6 Dungeon Core,
+# written as they appear on the field.
+TREASURE_MARK = "[T]"
+CORE_MARK = f"[{d.CHAR_DUNGEON_CORE}]"
+
+
 def build_strength_column(
     tribes: list[d.MonsterTribe],
     player_attack: float,
@@ -115,14 +121,63 @@ def status_prefix(
     return text
 
 
-def elf_stage_progress_marks(
-    player: d.Player, stage_num: int
+def stage_target_floors(floors, player: d.Player, stage_num: int) -> dict[str, int]:
+    """Floors (from 1) of the stage boss, the Dungeon Core and the treasure
+    chest, for those the status line shows a floor for: the boss once
+    identified and on an explored cell, the core once it has appeared and
+    the chest once unlocked. Keys are "boss", "core" and "treasure"."""
+    boss = d.STAGE_BOSSES.get(stage_num)
+    found: dict[str, int] = {}
+    for index, floor_data in enumerate(floors):
+        for entity in floor_data.entities:
+            if isinstance(entity, d.Treasure):
+                if entity.unlocked:
+                    found["treasure"] = index + 1
+            elif not isinstance(entity, d.Monster):
+                continue
+            elif entity.tribe.char == d.CHAR_DUNGEON_CORE:
+                if entity.active:
+                    found["core"] = index + 1
+            elif (
+                entity.boss_id is not None
+                and (entity.tribe.char, entity.empowered) == boss
+                and d.monster_type_key(entity) in player.known_monsters
+                and floor_data.seen[entity.y][entity.x]
+            ):
+                found["boss"] = index + 1
+    return found
+
+
+def _target_marks(
+    player: d.Player, stage_num: int, target_floors: Optional[dict[str, int]],
+    core: bool = False,
 ) -> list[tuple[str, bool]]:
-    """Elf and treasure marks for the multi-floor stage status line.
+    """The boss, (with `core`) Dungeon Core and treasure chest marks: each
+    followed by its floor once known (see stage_target_floors), and achieved
+    once defeated, destroyed or taken."""
+    floors = target_floors or {}
+
+    def mark(label, key, done):
+        floor = floors.get(key)
+        return (label + ("" if floor is None else str(floor)), done)
+
+    marks = [mark(d.stage_boss_label(stage_num), "boss", player.boss_defeated)]
+    if core:
+        marks.append(mark(CORE_MARK, "core", player.dungeon_core_destroyed))
+    marks.append(mark(TREASURE_MARK, "treasure", player.treasure_collected))
+    return marks
+
+
+def elf_stage_progress_marks(
+    player: d.Player, stage_num: int,
+    target_floors: Optional[dict[str, int]] = None,
+) -> list[tuple[str, bool]]:
+    """Elf, boss and treasure marks for the multi-floor stage status line.
 
     Each entry is (label, achieved). The Isolated Elf flag reveals all elf
     floors; otherwise, identifying an elf reveals that elf's floor. If L is
-    present, its floor is shown as ``?`` after the player has met L.
+    present, its floor is shown as ``?`` after the player has met L. The
+    boss and treasure follow _target_marks.
     """
     show_floors = bool(player.elf_stage_flags & d.ELF_STAGE_I_FLAG)
     marks: list[tuple[str, bool]] = []
@@ -157,18 +212,27 @@ def elf_stage_progress_marks(
         ) and label in player.elf_stage_floors:
             text += str(player.elf_stage_floors[label])
         marks.append((text, bool(player.elf_stage_flags & bit)))
-    marks.append((d.stage_boss_label(stage_num), player.boss_defeated))
-    marks.append(("T", player.treasure_collected))
+    marks.extend(_target_marks(player, stage_num, target_floors))
     return marks
+
+
+def stage6_progress_marks(
+    player: d.Player, target_floors: Optional[dict[str, int]] = None,
+) -> list[tuple[str, bool]]:
+    """Stage 6 status line marks as (label, achieved): the members, then the
+    boss, the Dungeon Core and the treasure chest (see _target_marks)."""
+    return [*stage5_member_progress_marks(player),
+            *_target_marks(player, 6, target_floors, core=True)]
 
 
 def stage5_member_progress_marks(
     player: d.Player,
 ) -> list[tuple[str, bool]]:
-    """Return member labels and whether they should use the bold style.
+    """Return member labels and whether each is in the party.
 
     A label is the member's glyph followed by ``@`` while it is in the party,
-    the floor it was seen on while it waits, or ``-`` once it has left.
+    the floor it waits on while that is known, ``?`` once it has moved to an
+    unknown floor since it was seen, or ``-`` once it has left.
     """
     roles = sorted(d.RECRUITABLE_MEMBER_ROLES, key=d.MEMBER_GLYPHS.__getitem__)
     marks = []
@@ -191,7 +255,10 @@ def stage5_member_progress_marks(
             known_floor = player.known_member_floors.get(role)
             if known_floor is not None:
                 label += str(known_floor)
-        marks.append((label, role in player.seen_members and not departed))
+            elif role in player.seen_members:
+                # Seen before, but it has since moved to an unknown floor.
+                label += "?"
+        marks.append((label, role in current_roles and not departed))
     return marks
 
 

@@ -1211,7 +1211,8 @@ def _resolve_party_contact(
         jester = next(member for member in player.members if member.role == d.MEMBER_JESTER)
         player.members[:] = [member for member in player.members
                              if member.role != d.MEMBER_JESTER]
-        player.known_member_floors.pop(d.MEMBER_JESTER, None)
+        # It stays on this floor, where the player sees it leave.
+        player.known_member_floors[d.MEMBER_JESTER] = floor[0] + 1
         available = [point for point in stage56._open_points(current)
                      if point != (player.x, player.y)]
         if available:

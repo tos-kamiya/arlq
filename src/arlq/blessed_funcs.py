@@ -154,6 +154,7 @@ class BlessedUI(BlessedSettingsMixin):
         d_gates: Optional[dict[d.Point, str]] = None,
         message=None,
         decor: Optional[list[list[str]]] = None,
+        target_floors: Optional[dict[str, int]] = None,
     ) -> str:
         output = [self.term.home + self.term.clear]
         reveal_disguises = debug_show_entities or monochrome
@@ -507,7 +508,8 @@ class BlessedUI(BlessedSettingsMixin):
 
         if stage_num in d.ELF_STAGES:
             progress_x = 0
-            for label, achieved in ui_display.elf_stage_progress_marks(player, stage_num):
+            for label, achieved in ui_display.elf_stage_progress_marks(
+                    player, stage_num, target_floors):
                 put(
                     progress_x,
                     d.FIELD_HEIGHT - 1,
@@ -518,13 +520,13 @@ class BlessedUI(BlessedSettingsMixin):
                 progress_x += len(label) + 1
         elif stage_num == 6:
             progress_x = 0
-            for label, joined in ui_display.stage5_member_progress_marks(player):
+            for label, achieved in ui_display.stage6_progress_marks(player, target_floors):
                 put(
                     progress_x,
                     d.FIELD_HEIGHT - 1,
                     label,
-                    bold=joined,
-                    dim=not joined,
+                    bold=achieved,
+                    dim=not achieved,
                 )
                 progress_x += len(label) + 1
 
@@ -620,6 +622,7 @@ class BlessedUI(BlessedSettingsMixin):
         d_gates: Optional[dict[d.Point, str]] = None,
         decor: Optional[list[list[str]]] = None,
         respawn_glows: Optional[set[d.Point]] = None,
+        target_floors: Optional[dict[str, int]] = None,
     ):
         # Respawn glows are not drawn in the terminal.
         self._wait_for_terminal_size()
@@ -632,6 +635,7 @@ class BlessedUI(BlessedSettingsMixin):
             d_gates,
             message,
             decor,
+            target_floors,
         )
         status_args = (
             player,

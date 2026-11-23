@@ -9,6 +9,7 @@ from . import game_engine as engine
 from .arlq import GameConfig
 from .game_events import GameEvent, IrisRation, Rewound, _emit
 from .iris_dialogue import IrisChatter
+from .display import stage_target_floors
 from .pathfinding import is_route_floor
 from .utils import rand, zip_strict
 
@@ -172,6 +173,7 @@ class GameSession:
             checkpoint=self.checkpoint[0],
             decor=display_floor.decor,
             respawn_glows=engine.respawn_glow_cells(display_floor),
+            target_floors=stage_target_floors(self.floors, self.player, self.stage_num),
             d_gates=display_floor.d_gates,
             reachable_cells=reachable_cells,
             loop_trail_markers=self.loop_trail_by_floor.get(self.floor[0], set())

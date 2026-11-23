@@ -1552,6 +1552,7 @@ class PygletUI(PygletSettingsMixin):
         decor: Optional[list[list[str]]] = None,
         d_gates: Optional[dict[d.Point, str]] = None,
         respawn_glows: Optional[set[d.Point]] = None,
+        target_floors: Optional[dict[str, int]] = None,
     ):
         """
         Renders the game stage (`decor`, the decorations no rule reads, and
@@ -1802,7 +1803,8 @@ class PygletUI(PygletSettingsMixin):
             self._draw_strength_entry(y, strength_char, is_player)
 
         if stage_num in d.ELF_STAGES:
-            progress_marks = ui_display.elf_stage_progress_marks(player, stage_num)
+            progress_marks = ui_display.elf_stage_progress_marks(
+                player, stage_num, target_floors)
             self._draw_progress_panel(progress_marks)
             overlay_font_scale = self._field_overlay_font_scale()
             overlay_cell_width = self._field_overlay_cell_width()
@@ -1821,15 +1823,15 @@ class PygletUI(PygletSettingsMixin):
                 )
                 progress_x += len(label) + 1
         elif stage_num == 6:
-            progress_marks = ui_display.stage5_member_progress_marks(player)
+            progress_marks = ui_display.stage6_progress_marks(player, target_floors)
             self._draw_progress_panel(progress_marks)
             overlay_font_scale = self._field_overlay_font_scale()
             overlay_cell_width = self._field_overlay_cell_width()
             progress_x = 0
-            for label, joined in progress_marks:
-                color = COLOR_MAP["default"] if joined else (100, 106, 118)
+            for label, achieved in progress_marks:
+                color = COLOR_MAP["default"] if achieved else (100, 106, 118)
                 self._draw_text(
-                    (0, self.field_height - 1), label, color, bold=joined,
+                    (0, self.field_height - 1), label, color, bold=achieved,
                     x_offset=(
                         progress_x * overlay_cell_width
                         + self._progress_mark_x_offset()
