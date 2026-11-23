@@ -45,10 +45,6 @@ class BlessedMap:
     def map_x(self, x: int) -> int:
         return x * self.cell_width
 
-    def map_text_width(self, text: str) -> int:
-        """Return the number of map cells occupied by rendered text."""
-        return len(text) if self.cell_width == 2 else self.terminal.length(text)
-
     def rank_text(self, text: str) -> str:
         """Select the wide-mode glyphs used for monster rank marks."""
         return text.translate(str.maketrans({"'": "❜", '"': "❞"})) if self.cell_width == 2 else text
@@ -146,6 +142,25 @@ class BlessedMap:
 
         return "".join(self.screen_text(bx, by + i, line, style)
                        for i, line in enumerate(lines))
+
+    def status_popup(self, x: int, y: int, text: str, tone: str,
+                     field_width: int, field_height: int, monochrome: bool = False) -> str:
+        """Place unscaled status text above right or below left of a map cell."""
+        term = self.terminal
+        width = term.length(text)
+        right_x = self.map_x(x + 1)
+        if y > 0 and right_x + width <= self.map_x(field_width):
+            popup_x, popup_y = right_x, y - 1
+        else:
+            popup_x = max(0, self.map_x(x) - width)
+            popup_y = min(y + 1, field_height - 1)
+
+        def style(value):
+            if not monochrome and tone != "default":
+                value = getattr(term, tone)(value)
+            return term.bold(value)
+
+        return self.screen_text(popup_x, popup_y, text, style)
 
     def rewind_transition(self, message: str, field_width: int, field_height: int) -> str:
         """Darken the map and center an unscaled transition message."""

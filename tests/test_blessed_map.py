@@ -87,6 +87,20 @@ def test_dialogue_stays_unscaled_and_is_positioned_in_terminal_columns():
     )
 
 
+@pytest.mark.parametrize("cell_width", [1, 2])
+def test_status_popup_uses_terminal_width_and_unchanged_text(cell_width):
+    view = BlessedMap(TerminalStub(), cell_width=cell_width)
+    assert view.status_popup(3, 4, "LP-10", "red", 20, 10) == (
+        f"<{4 * cell_width},3>[bold:[red:LP-10]]"
+    )
+    assert view.status_popup(19, 4, "LP-10", "default", 20, 10) == (
+        f"<{19 * cell_width - 5},5>[bold:LP-10]"
+    )
+    assert view.status_popup(3, 0, "LP-10", "red", 20, 10, True) == (
+        f"<{max(0, 3 * cell_width - 5)},1>[bold:LP-10]"
+    )
+
+
 def test_rewind_transition_scales_background_and_keeps_message_unscaled():
     term = TerminalStub()
     term.normal = "!"
