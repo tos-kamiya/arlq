@@ -177,6 +177,10 @@ def stage5_member_progress_marks(
         if role in (d.MEMBER_YAWNING_CAT, d.MEMBER_FAIRY_SEER, d.MEMBER_IRIS) and not getattr(player, "stage6_candidates", False):
             continue
         label = d.MEMBER_GLYPHS[role]
+        if role == d.MEMBER_IRIS and role in player.seen_members:
+            iris = next((member for member in player.members if member.role == role), player.iris)
+            if iris is not None:
+                label += "+" if iris.has_ration else "-"
         departed = (not getattr(player, "stage6_candidates", False)
                     and role in player.joined_members and role not in current_roles)
         if departed:

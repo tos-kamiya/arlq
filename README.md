@@ -364,6 +364,8 @@ In Stage 6, H, J, and S cannot cross barriers. If they would enter a barrier, th
 | **S** Fairy Seer | While in the party, identifies fairies in explored areas on every floor. |
 | **Y** Yawning Cat | Patrols independently and reveals information a short distance away. |
 
+After Iris is discovered, her status mark includes `+` when she has a ration and `-` when she does not. For example, `I+@` means she is in the party with a ration, while `I-3` means she is waiting on floor 3 without one.
+
 Vertically adjacent monsters fight in parties of up to eight, combining their strength and experience; the highest LP reward applies. If a defeated party includes a sword-bearing `c`, its sword takes precedence over other items.
 
 #### Monsters

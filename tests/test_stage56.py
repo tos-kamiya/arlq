@@ -291,6 +291,30 @@ def test_stage5_member_progress_marks_party_members_with_at():
     assert labels == ["D", "G", "H", "I", "J@", "K", "R3", "S", "Y@"]
 
 
+def test_iris_progress_shows_ration_after_discovery_and_departure():
+    _, player = state()
+    player.stage6_candidates = True
+    iris = d.PartyMember(1, 1, d.MEMBER_IRIS)
+    player.iris = iris
+
+    def iris_label():
+        return next(label for label, _ in display.stage5_member_progress_marks(player)
+                    if label.startswith("I"))
+
+    assert iris_label() == "I"
+    player.seen_members.add(d.MEMBER_IRIS)
+    player.known_member_floors[d.MEMBER_IRIS] = 3
+    assert iris_label() == "I+3"
+    player.members.append(iris)
+    assert iris_label() == "I+@"
+    iris.has_ration = False
+    assert iris_label() == "I-@"
+    player.members.remove(iris)
+    assert iris_label() == "I-3"
+    player.known_member_floors.pop(d.MEMBER_IRIS)
+    assert iris_label() == "I-"
+
+
 def test_fairy_seer_identifies_fairies_in_explored_areas_on_every_floor():
     upper, player = state((d.MEMBER_FAIRY_SEER,))
     lower, _ = state()

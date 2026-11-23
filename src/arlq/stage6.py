@@ -585,7 +585,10 @@ def _build_once(config: Optional[GameConfig] = None) -> tuple[list[Floor], d.Pla
             point = _candidate_near_bridgehead(current, current.up, avoid_neighbors=True)
         except RuntimeError as exc:
             raise _BossRouteNotFound() from exc
-        current.entities.append(d.PartyMember(*point, role, origin_floor=0))
+        member = d.PartyMember(*point, role, origin_floor=0)
+        current.entities.append(member)
+        if role == d.MEMBER_IRIS:
+            player.iris = member
     for index, current in enumerate(floors):
         avoid = player_spawn_exclusion((player.x, player.y)) if index == 0 else set()
         for char, rank, count in d.STAGE6_FIXED_MONSTERS[index]:

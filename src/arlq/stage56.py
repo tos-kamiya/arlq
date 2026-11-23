@@ -66,6 +66,8 @@ def recruit(
 ) -> str:
     player.joined_members.add(member.role)
     player.seen_members.add(member.role)
+    if member.role == d.MEMBER_IRIS:
+        player.iris = member
     if member.origin_floor is not None:
         player.known_member_floors.setdefault(member.role, member.origin_floor + 1)
     departed = player.members.pop(1) if len(player.members) == d.PARTY_LIMIT else None
