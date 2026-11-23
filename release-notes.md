@@ -1,5 +1,11 @@
 # ARLQ Release Notes
 
+## 6.10.4 - 2026-11-23
+
+- Show whether Iris has a ration in her Stage 6 status mark after she is
+  discovered, including while she is waiting outside the party.
+- Keep the player's LP gauge in `arlq-sprites` empty when LP is negative.
+
 ## 6.10.3 - 2026-11-22
 
 - Discard player input during trace replay, including mouse route previews,
