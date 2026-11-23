@@ -535,25 +535,10 @@ class BlessedUI(BlessedSettingsMixin):
         from .stage5 import TrialDialogue
 
         if isinstance(message, TrialDialogue) and not floor_view:
-            output.append(self._draw_trial_dialogue(px, py, str(message), render_monochrome))
+            output.append(self._map.dialogue(
+                px, py, str(message), d.FIELD_WIDTH, d.FIELD_HEIGHT, render_monochrome))
 
         return "".join(output) + self.term.normal
-
-    def _draw_trial_dialogue(self, px, py, message, monochrome):
-        from .stage5 import trial_dialogue_lines
-
-        width = 30
-        lines = trial_dialogue_lines(message, width, measure=self.term.length)
-        on_left = px + 1 + max(self.term.length(line) for line in lines) > d.FIELD_WIDTH
-        if on_left:
-            lines = trial_dialogue_lines(message, width, on_left=True, measure=self.term.length)
-        bubble_width = max(self.term.length(line) for line in lines)
-        bx = max(0, px - bubble_width) if on_left else px + 1
-        by = py - len(lines) if py >= len(lines) else min(py + 1, d.FIELD_HEIGHT - len(lines))
-        return "".join(self._map.map_text(
-            bx, by + index, line,
-            lambda value: self._style(value, None if monochrome else "yellow", bold=True),
-        ) for index, line in enumerate(lines))
 
     def _draw_status_bar(
         self,
@@ -746,20 +731,8 @@ class BlessedUI(BlessedSettingsMixin):
     def draw_rewind_transition(self, message: str) -> None:
         """Show the Loop Fairy transition before the next stage frame."""
         self._wait_for_terminal_size()
-        width = max(0, d.FIELD_WIDTH - 3)
-        height = min(d.FIELD_HEIGHT, self.term.height)
-        dark_row = self._style(" " * width, bg="black")
-        output = []
-        output.extend(
-            self.term.move_xy(0, y) + dark_row for y in range(height)
-        )
-        message_width = self.term.length(message)
-        x = max(0, (width - message_width) // 2)
-        output.append(
-            self.term.move_xy(x, min(d.FIELD_HEIGHT // 2, self.term.height - 1))
-            + self._style(message, color="white", bold=True, bg="black")
-        )
-        print("".join(output) + self.term.normal, end="", flush=True)
+        print(self._map.rewind_transition(message, d.FIELD_WIDTH, d.FIELD_HEIGHT),
+              end="", flush=True)
 
     def input_direction(self) -> Optional[d.Point]:
         self.shift_direction = False

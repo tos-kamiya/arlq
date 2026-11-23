@@ -115,3 +115,39 @@ class BlessedMap:
         if style is not None:
             text = style(text)
         return self.terminal.move_xy(x, y) + text
+
+    def dialogue(self, x: int, y: int, text: str, field_width: int,
+                 field_height: int, monochrome: bool = False) -> str:
+        """Place unscaled dialogue beside a map cell, within the field."""
+        from .stage5 import trial_dialogue_lines
+
+        term = self.terminal
+        field_columns = self.map_x(field_width)
+        player_x = self.map_x(x)
+        right_x = self.map_x(x + 1)
+        lines = trial_dialogue_lines(text, 30, measure=term.length)
+        on_left = right_x + max(term.length(line) for line in lines) > field_columns
+        if on_left:
+            lines = trial_dialogue_lines(text, 30, on_left=True, measure=term.length)
+        bubble_width = max(term.length(line) for line in lines)
+        bx = max(0, player_x - bubble_width) if on_left else right_x
+        by = y - len(lines) if y >= len(lines) else min(y + 1, field_height - len(lines))
+
+        def style(value):
+            return term.bold(value if monochrome else term.yellow(value))
+
+        return "".join(self.screen_text(bx, by + i, line, style)
+                       for i, line in enumerate(lines))
+
+    def rewind_transition(self, message: str, field_width: int, field_height: int) -> str:
+        """Darken the map and center an unscaled transition message."""
+        term = self.terminal
+        width = self.map_x(max(0, field_width - 3))
+        height = min(field_height, term.height)
+        dark_row = term.on_black(" " * width)
+        output = [term.move_xy(0, y) + dark_row for y in range(height)]
+        x = max(0, (width - term.length(message)) // 2)
+        y = min(field_height // 2, term.height - 1)
+        output.append(self.screen_text(x, y, message,
+                                       lambda value: term.bold(term.white_on_black(value))))
+        return "".join(output) + term.normal

@@ -6,6 +6,7 @@ from arlq.blessed_map import BlessedMap, EffectAnimation, EffectCell
 
 class TerminalStub:
     width = 160
+    height = 24
     number_of_colors = 256
 
     def __init__(self):
@@ -66,6 +67,25 @@ def test_effect_rgb_fallback_and_background_are_applied_by_adapter():
     term.number_of_colors = 256
     term.color_rgb = lambda *rgb: lambda text: f"[rgb{rgb}:{text}]"
     assert view.effect_frame([cell]) == "<2,2>[rgb(1, 2, 3):[bold:[on_black:⠁ ]]]"
+
+
+def test_dialogue_stays_unscaled_and_is_positioned_in_terminal_columns():
+    view = BlessedMap(TerminalStub(), cell_width=2)
+    assert view.dialogue(3, 4, "Hello\n日本語", 20, 10) == (
+        "<8,2>[bold:[yellow:/ Hello]]<8,3>[bold:[yellow:\\ 日本語]]"
+    )
+    assert view.dialogue(19, 4, "Hello", 20, 10) == (
+        "<31,3>[bold:[yellow:Hello >]]"
+    )
+
+
+def test_rewind_transition_scales_background_and_keeps_message_unscaled():
+    term = TerminalStub()
+    term.normal = "!"
+    view = BlessedMap(term, cell_width=2)
+    result = view.rewind_transition("Loop", 8, 2)
+    assert result == ("<0,0>[on_black:          ]<0,1>[on_black:          ]"
+                      "<3,1>[bold:[white_on_black:Loop]]!")
 
 
 def test_rejects_invalid_cell_width_and_non_cell_text():
