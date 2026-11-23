@@ -1,11 +1,10 @@
 import time
 from typing import Any, Optional
 
-from blessed import Terminal
-
 from . import defs as d
 from . import display as ui_display
 from .arlq import barrier_lp_damage
+from .blessed_map import BlessedMap, Terminal
 from .blessed_settings import BlessedSettingsMixin
 from .braille_effects import effect_frames
 from .i18n import t as tr
@@ -53,6 +52,10 @@ class BlessedUI(BlessedSettingsMixin):
         self._treasure_sparkle_started: Optional[float] = None
         self._stage_snapshot = ""
         self._effect_player_pos: Optional[tuple[int, int]] = None
+
+    @property
+    def _map(self) -> BlessedMap:
+        return BlessedMap(self.term)
 
     def _terminal_is_large_enough(self) -> bool:
         return self.term.width >= MIN_TERMINAL_WIDTH and self.term.height >= MIN_TERMINAL_HEIGHT
@@ -171,16 +174,12 @@ class BlessedUI(BlessedSettingsMixin):
             dim: bool = False,
             bg: Optional[str] = None,
         ):
-            output.append(
-                self.term.move_xy(x, y)
-                + self._style(
-                    text,
-                    None if render_monochrome else color,
-                    bold,
-                    dim,
+            output.append(self._map.map_text(
+                x, y, text, lambda value: self._style(
+                    value, None if render_monochrome else color, bold, dim,
                     None if render_monochrome else bg,
-                )
-            )
+                ),
+            ))
 
         player, px, py = None, None, None
         for entity in entities:
@@ -533,19 +532,28 @@ class BlessedUI(BlessedSettingsMixin):
         if floor_label:
             put(d.FIELD_WIDTH - len(floor_label) - 2, d.FIELD_HEIGHT - 1, floor_label)
 
-        from .stage5 import TrialDialogue, trial_dialogue_lines
+        from .stage5 import TrialDialogue
 
         if isinstance(message, TrialDialogue) and not floor_view:
-            width = 30
-            on_left = px + 1 + width > d.FIELD_WIDTH
-            lines = trial_dialogue_lines(str(message), width, on_left=on_left)
-            bubble_width = max(self.term.length(line) for line in lines)
-            bx = max(0, px - bubble_width) if on_left else px + 1
-            by = py - len(lines) if py >= len(lines) else min(py + 1, d.FIELD_HEIGHT - len(lines))
-            for index, line in enumerate(lines):
-                put(bx, by + index, line, "yellow", bold=True)
+            output.append(self._draw_trial_dialogue(px, py, str(message), render_monochrome))
 
         return "".join(output) + self.term.normal
+
+    def _draw_trial_dialogue(self, px, py, message, monochrome):
+        from .stage5 import trial_dialogue_lines
+
+        width = 30
+        lines = trial_dialogue_lines(message, width, measure=self.term.length)
+        on_left = px + 1 + max(self.term.length(line) for line in lines) > d.FIELD_WIDTH
+        if on_left:
+            lines = trial_dialogue_lines(message, width, on_left=True, measure=self.term.length)
+        bubble_width = max(self.term.length(line) for line in lines)
+        bx = max(0, px - bubble_width) if on_left else px + 1
+        by = py - len(lines) if py >= len(lines) else min(py + 1, d.FIELD_HEIGHT - len(lines))
+        return "".join(self._map.map_text(
+            bx, by + index, line,
+            lambda value: self._style(value, None if monochrome else "yellow", bold=True),
+        ) for index, line in enumerate(lines))
 
     def _draw_status_bar(
         self,
@@ -561,7 +569,8 @@ class BlessedUI(BlessedSettingsMixin):
 
         def add(text: str, color: Optional[str] = None, bold: bool = False, dim: bool = False):
             nonlocal x
-            output.append(self.term.move_xy(x, y) + self._style(text, color, bold, dim))
+            output.append(self._map.screen_text(
+                x, y, text, lambda value: self._style(value, color, bold, dim)))
             x += self.term.length(text)
 
         add(ui_display.status_prefix(player, stage_num, turn, game_start_turn))
@@ -673,10 +682,10 @@ class BlessedUI(BlessedSettingsMixin):
             isinstance(value, (int, float)) for value in pos
         ) else pos
         for point in positions:
-            print(self.term.move_xy(*point) + self._style(
-                "*", "blue" if won else "red", bold=True,
+            print(self._map.effect_cell(*point, "*", lambda value: self._style(
+                value, "blue" if won else "red", bold=True,
                 bg=self._combat_cell_backgrounds.get(point),
-            ), end="", flush=True)
+            )), end="", flush=True)
         time.sleep(seconds)
         self._discard_pending_keys()
 
@@ -692,17 +701,19 @@ class BlessedUI(BlessedSettingsMixin):
                 if (x, y) == self._effect_player_pos:
                     continue
                 bg = self._combat_cell_backgrounds.get((x, y))
-                glyph = self._style(char, bg=bg)
-                if not self.map_mode and self.term.number_of_colors >= 256:
-                    glyph = self.term.color_rgb(*color)(glyph)
-                elif not self.map_mode:
+                color_name = None
+                if not self.map_mode and self.term.number_of_colors < 256:
                     if name == "Vortex" and color == (170, 170, 170):
                         color_name = "white"
                     else:
                         color_name = {"Boss": "yellow", "Dungeon Core": "magenta", "Vortex": "cyan",
                                       "Core Calamity": "magenta"}[name]
-                    glyph = self._style(char, color=color_name, bg=bg)
-                output.append(self.term.move_xy(x, y) + glyph)
+                def effect_style(value):
+                    glyph = self._style(value, color=color_name, bg=bg)
+                    if not self.map_mode and self.term.number_of_colors >= 256:
+                        glyph = self.term.color_rgb(*color)(glyph)
+                    return glyph
+                output.append(self._map.effect_cell(x, y, char, effect_style))
             print("".join(output) + self.term.normal, end="", flush=True)
             time.sleep(seconds / len(frames))
         print(snapshot, end="", flush=True)
@@ -721,9 +732,9 @@ class BlessedUI(BlessedSettingsMixin):
             self._wait_for_terminal_size()
             output = [snapshot]
             for point, char in iris_sparkle_frame(cells, index, pos):
-                output.append(self.term.move_xy(*point) + self._style(
-                    char, color="yellow", bold=True,
-                    bg=self._combat_cell_backgrounds.get(point)))
+                output.append(self._map.effect_cell(*point, char, lambda value: self._style(
+                    value, color="yellow", bold=True,
+                    bg=self._combat_cell_backgrounds.get(point))))
             print("".join(output) + self.term.normal, end="", flush=True)
             time.sleep(IRIS_SPARKLE_SECONDS / IRIS_SPARKLE_FRAMES)
         print(snapshot, end="", flush=True)
@@ -841,10 +852,10 @@ class BlessedUI(BlessedSettingsMixin):
                 if tick != last_tick:
                     output = [self._stage_snapshot]
                     for (x, y), char in sparkle_frame(self._treasure_sparkle_cells, tick, self._treasure_sparkle_center):
-                        output.append(self.term.move_xy(x, y) + self._style(
-                            char, "yellow", bold=True,
+                        output.append(self._map.effect_cell(x, y, char, lambda value: self._style(
+                            value, "yellow", bold=True,
                             bg=self._combat_cell_backgrounds.get((x, y)),
-                        ))
+                        )))
                     print("".join(output) + self.term.normal, end="", flush=True)
                     last_tick = tick
             key = self.term.inkey(timeout=0.2 if self._treasure_sparkle_cells else 0.5)

@@ -418,9 +418,8 @@ def main(terminal_only=False, sprites_only=False):
     overrides = cli_setting_overrides(args)
 
     if args.terminal:
-        from blessed import Terminal
-
         from .blessed_funcs import BlessedUI
+        from .blessed_map import Terminal
 
         term = Terminal()
         with term.fullscreen(), term.cbreak(), term.hidden_cursor():

@@ -61,26 +61,23 @@ class TrialDialogue(str):
     """A tutorial line drawn in a small speech bubble."""
 
 
-def trial_dialogue_lines(text: str, width: int, *, on_left: bool = False) -> list[str]:
-    """Wrap dialogue into a one-line bubble or a two-line speech balloon."""
-    width = max(8, width)
-    words = text.split()
-    lines = [""]
-    for word in words:
-        candidate = f"{lines[-1]} {word}".strip()
-        if len(candidate) <= width or not lines[-1]:
-            lines[-1] = candidate
-        elif len(lines) == 1:
-            lines.append(word)
-        else:
-            lines[-1] += f" {word}"
-    if on_left:
-        if len(lines) == 1:
-            return [f"{lines[0]} >"]
-        return [lines[0] + " " + chr(92), lines[1] + " /"]
+def trial_dialogue_lines(text: str, width: int, *, on_left: bool = False,
+                         measure=len) -> list[str]:
+    """Honor translated line breaks and fit each balloon line to its width."""
+    from .display import wrap_prompt
+
+    # Leave room for the two-character balloon edge on every line.
+    content_width = max(1, width - max(measure("/ "), measure(" \\")))
+    lines = []
+    for paragraph in text.split("\n"):
+        lines.extend(wrap_prompt(paragraph, measure, content_width))
     if len(lines) == 1:
-        return [f"< {lines[0]}"]
-    return [f"/ {lines[0]}", f"\\ {lines[1]}"]
+        return [f"{lines[0]} >" if on_left else f"< {lines[0]}"]
+    if on_left:
+        return [line + (" \\" if i == 0 else " /" if i == len(lines) - 1 else " |")
+                for i, line in enumerate(lines)]
+    return [("/ " if i == 0 else "\\ " if i == len(lines) - 1 else "| ") + line
+            for i, line in enumerate(lines)]
 
 
 TRIAL_MEMBER_LINES = {

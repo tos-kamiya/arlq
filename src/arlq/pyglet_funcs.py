@@ -997,14 +997,18 @@ class PygletUI(PygletSettingsMixin):
 
     def _draw_player_dialogue(self, pos, text, line_formatter) -> None:
         scale = self._status_font_scale() * MESSAGE_FONT_SIZE_SCALE
-        lines = line_formatter(text, 30)
+        measure = lambda value: self._text_width(value, size_scale=scale)
+        max_width = min(measure("M" * 30), self.field_pixel_width)
+        lines = line_formatter(text, max_width, measure=measure)
         width = max(self._text_width(line, size_scale=scale) for line in lines)
         gap = max(1, round(self.cell_size_x * 0.2))
         text_x = pos[0] * self.cell_size_x + self._field_text_x_offset()
         right_x = text_x + self.cell_size_x + gap
         on_left = right_x + width > self.field_pixel_width
         x = max(0, text_x - width - gap) if on_left else right_x
-        lines = line_formatter(text, 30, on_left=on_left)
+        lines = line_formatter(text, max_width, on_left=on_left, measure=measure)
+        width = max(measure(line) for line in lines)
+        x = max(0, text_x - width - gap) if on_left else right_x
         y = pos[1] - len(lines) - 0.25 if pos[1] >= len(lines) else min(pos[1] + 1, self.field_height - len(lines))
         padding_x = max(2, round(self.cell_size_x * 0.2))
         padding_y = max(2, round(self.cell_size_y * 0.12))
