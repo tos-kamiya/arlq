@@ -49,6 +49,9 @@ starts the terminal version, and `arlq --sprites` the sprite GUI version.
 
 Use `arlq-sprites --samurai` to play with the samurai character sprites.
 
+<details>
+  <summary>Command-line options</summary>
+
 ## Command-line options
 
 | Option | Description |
@@ -72,6 +75,11 @@ no valid saved value exists.
 
 The game uses its own MT19937 generator, so the same game version, seed, and
 options reproduce layouts across Python versions.
+
+</details>
+
+<details>
+  <summary>Screen and controls</summary>
 
 ## Screen and controls
 
@@ -131,6 +139,11 @@ last move and then lies collapsed on the final screen.
 strength. Hover over a character to enlarge it and display its name above it.
 Unidentified characters show no name.
 
+</details>
+
+<details>
+  <summary>Game settings</summary>
+
 ## Game settings
 
 `Settings` on the stage selection screen (the `s` key) changes display and
@@ -185,6 +198,8 @@ screen have no command-line options.
 
 In the GUI versions, pressing gamepad button 2 to 12 also assigns it to the selected item.
 
+</details>
+
 ## Game Description
 
 * **Objective**  
@@ -226,6 +241,9 @@ In the GUI versions, pressing gamepad button 2 to 12 also assigns it to the sele
 
   In Stages 5 and 6, you can recruit up to two party members whose abilities support combat and exploration. The first stays with you; each later recruit replaces the second member. Jester is an exception: J leaves at level 100 or above, but can rejoin if your level falls below 100. Members follow the path you take, in joining order, and move to your landing cell when you jump with Pegasus.
 
+<details>
+  <summary>Fairy List</summary>
+
 ## Fairy List
 
 | Display & Name | Description                                                      |
@@ -236,6 +254,11 @@ In the GUI versions, pressing gamepad button 2 to 12 also assigns it to the sele
 | **p** Pegasus  | Appears from Stage 2 onward. Helps the player overcome walls when a collision is imminent. Barrier landings require barrier immunity or G; R clears Golem walls at the landing point. |
 
 Note on the Loop Fairy: The destination becomes the new anchor, and subsequent rewinds cannot go earlier than that anchor, even when using a Loop Fairy on another floor. Explored maps, monster identities, and learned elf and member locations remain known. Map knowledge is carried over as it stands immediately before the rewind, including any areas erased by a Vortex. The random generator continues from its current state through the rewind, so later encounters can differ. The path from the discarded future appears as cyan dots for 10 turns after the rewind.
+
+</details>
+
+<details>
+  <summary>Stage List</summary>
 
 ## Stage List
 
@@ -375,6 +398,8 @@ Vertically adjacent monsters fight in parties of up to eight, combining their st
 | **B** Buffalo | Attack power 8. Defeating it restores 90 LP and can raise LP to 5 above the current permanent maximum. Other monster recovery cannot replenish LP above the normal cap. |
 | **f** / **f'** Flame cobra | Worth 5 experience. `f` places barriers on available cells immediately to its left and right; the empowered form `f'` places them in all four cardinal directions. |
 | **i** Ivy | Base attack power 50. Ivies appear on floors 2 and 3. Each active Ivy deals 4 LP damage every turn when the player is directly above, below, left, or right of it. Rogue does not block this damage. |
+
+</details>
 
 ## Troubleshooting
 

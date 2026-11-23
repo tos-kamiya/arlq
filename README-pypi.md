@@ -3,6 +3,9 @@
 ARLQ (Another Rogue-Like Quest) is a compact rogue-like game created as an
 experiment in developing code and manuals with humans and AIs.
 
+For detailed game information, controls, and settings, see the
+[README on GitHub](https://github.com/tos-kamiya/arlq#readme).
+
 <p align="center">
   <a href="https://pypi.org/project/arlq/">
     <img alt="PyPI version" src="https://img.shields.io/pypi/v/arlq" />
