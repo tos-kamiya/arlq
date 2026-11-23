@@ -1233,6 +1233,14 @@ class PygletUI(PygletSettingsMixin):
     def draw_core_burst(self, pos):
         self._draw_braille_effect("Dungeon Core", pos)
 
+    def present_core_calamity(self, at, view):
+        """The core ran wild at the time limit: cut to its floor and let its
+        smoke reach out and scatter."""
+        if self.combat_effect_seconds == 0 or self._closed:
+            return
+        self.draw_stage(**view)
+        self._draw_braille_effect("Core Calamity", at)
+
     def draw_rewind_transition(self, message: str) -> None:
         """Show the Loop Fairy transition before the next stage frame."""
         overlay_group = pyglet.graphics.Group(order=10000)
