@@ -1,5 +1,10 @@
 # ARLQ Release Notes
 
+## 6.10.13 - 2026-11-24
+
+- In `arlq-sprites`, shade the lower part of monster images in the strength
+  gauge to make overlapping images easier to distinguish.
+
 ## 6.10.12 - 2026-11-24
 
 - In `arlq-cli --wide`, use normal-width progress, floor and strength displays,
