@@ -231,10 +231,16 @@ class BlessedUI(BlessedSettingsMixin):
             for x, cell in enumerate(row):
                 display_cell = (
                     "+" if cell == d.CHAR_GOLEM_WALL
+                    else "⌶"
+                    if getattr(self, "wide", False) and cell in (d.CHAR_WALL, d.CHAR_HIDDEN_D_GATE)
                     else d.CHAR_WALL
                     if cell == d.CHAR_HIDDEN_D_GATE
                     else d.CHAR_FLOOR
                     if cell in d.HIDDEN_STAIRS_CHARS
+                    else "↑"
+                    if getattr(self, "wide", False) and cell == d.CHAR_STAIRS_UP
+                    else "↓"
+                    if getattr(self, "wide", False) and cell == d.CHAR_STAIRS_DOWN
                     else cell
                 )
                 discovered = bool(torched[y][x] or show_entities)
@@ -244,12 +250,15 @@ class BlessedUI(BlessedSettingsMixin):
                     color = "black" if background == "red" else "red"
                     put(x, y, display_cell, color, dim=barrier_damage == 0, bg=background)
                     continue
-                if discovered and cell in d.SCHOLAR_STAIR_CHARS:
+                if discovered and cell in (*d.SCHOLAR_STAIR_CHARS, d.CHAR_PIT_UP_MARKER):
                     stair_glyph = (
                         d.CHAR_STAIRS_UP
-                        if cell == d.CHAR_SCHOLAR_STAIRS_UP
+                        if cell in (d.CHAR_SCHOLAR_STAIRS_UP, d.CHAR_PIT_UP_MARKER)
                         else d.CHAR_STAIRS_DOWN
                     )
+                    if getattr(self, "wide", False):
+                        stair_glyph = ("⇡" if cell == d.CHAR_PIT_UP_MARKER else
+                                       "↑" if cell == d.CHAR_SCHOLAR_STAIRS_UP else "↓")
                     put(
                         x,
                         y,
@@ -456,7 +465,7 @@ class BlessedUI(BlessedSettingsMixin):
                 put(
                     wall_break_glyph.x,
                     wall_break_glyph.y,
-                    wall_break_glyph.char,
+                    "⍀" if getattr(self, "wide", False) else wall_break_glyph.char,
                     "white",
                     bold=True,
                     bg=cell_background(wall_break_glyph.x, wall_break_glyph.y),

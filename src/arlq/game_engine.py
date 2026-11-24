@@ -1985,7 +1985,7 @@ def _field_for_display(floors: list[Floor], floor_index: int, player: d.Player) 
         for x, cell in enumerate(row):
             if (cell == d.CHAR_PIT_LANDING and current.seen[y][x]
                     and upper.field[y][x] == d.CHAR_COLLAPSE):
-                row[x] = d.CHAR_SCHOLAR_STAIRS_UP
+                row[x] = d.CHAR_PIT_UP_MARKER
     return visible
 
 

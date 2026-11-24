@@ -1087,11 +1087,11 @@ class PygletUI(PygletSettingsMixin):
 
     def _draw_stairs(self, pos: d.Point, char: str):
         """Draw an ordinary stair or an Explorer stair marker."""
-        is_scholar = char in d.SCHOLAR_STAIR_CHARS
-        if char in d.SCHOLAR_STAIR_CHARS:
+        is_scholar = char in (*d.SCHOLAR_STAIR_CHARS, d.CHAR_PIT_UP_MARKER)
+        if is_scholar:
             char = (
                 d.CHAR_STAIRS_UP
-                if char == d.CHAR_SCHOLAR_STAIRS_UP
+                if char in (d.CHAR_SCHOLAR_STAIRS_UP, d.CHAR_PIT_UP_MARKER)
                 else d.CHAR_STAIRS_DOWN
             )
         color = COLOR_MAP[CI_GREEN if is_scholar else CI_YELLOW]

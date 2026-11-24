@@ -120,7 +120,7 @@ def test_pit_landing_uses_one_terrain_symbol_and_d_controls_display_and_climb():
     assert game_engine._field_for_display(floors, 1, player)[10][10] == d.CHAR_PIT_LANDING
     assert game_engine._handle_floor_transition(lower, floors, player, [1], [(10, 10)]) is None
     player.members.append(d.PartyMember(10, 10, d.MEMBER_DUNGEON_EXPLORER))
-    assert game_engine._field_for_display(floors, 1, player)[10][10] == d.CHAR_SCHOLAR_STAIRS_UP
+    assert game_engine._field_for_display(floors, 1, player)[10][10] == d.CHAR_PIT_UP_MARKER
     assert lower.field[10][10] == d.CHAR_PIT_LANDING
     floor_index = [1]
     assert game_engine._handle_floor_transition(lower, floors, player, floor_index, [(10, 10)])

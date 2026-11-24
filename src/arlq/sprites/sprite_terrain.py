@@ -112,7 +112,7 @@ SMOKE_OPACITY = 140
 # Rocks fallen through a pit (d.DECOR_FALLEN_ROCKS) are hidden where the
 # cell has since become a wall, pit or stair, or a character stands there.
 FALLEN_ROCK_BLOCKERS = (*d.WALL_CHARS, d.CHAR_COLLAPSE,
-                        *(char for char in d.STAIR_CHARS if char != d.CHAR_SCHOLAR_STAIRS_UP))
+                        *(char for char in d.STAIR_CHARS if char not in (d.CHAR_SCHOLAR_STAIRS_UP, d.CHAR_PIT_UP_MARKER)))
 # Stairs and Collapse pits are drawn on the walls' canvas and placed like a
 # wall part: near-white marble flights (up: rising north; down: descending
 # toward the viewer into a dark opening) and a shapeless hole with rocks lying
@@ -291,7 +291,7 @@ class SpriteTerrainMixin:
                                COLOR_MAP[CI_GREEN], opacity=EXPLORER_DISC_OPACITY)
 
     def _draw_stairs(self, pos, char):
-        if char == d.CHAR_SCHOLAR_STAIRS_UP:
+        if char in (d.CHAR_SCHOLAR_STAIRS_UP, d.CHAR_PIT_UP_MARKER):
             if not self._show_pit_up_marker:
                 return
             x, y = pos

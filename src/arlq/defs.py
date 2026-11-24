@@ -190,6 +190,7 @@ CHAR_HIDDEN_STAIRS_UP: str = "u"
 CHAR_HIDDEN_STAIRS_DOWN: str = "w"
 # A pit landing is always floor-like; D can climb when the pit above is open.
 CHAR_PIT_LANDING: str = "j"
+CHAR_PIT_UP_MARKER: str = "⇡"  # display-only marker for an open pit above
 CHAR_SCHOLAR_STAIRS_UP: str = "↑"
 CHAR_SCHOLAR_STAIRS_DOWN: str = "↓"
 CHAR_HIDDEN_D_GATE: str = "|"
@@ -208,6 +209,7 @@ STAIR_CHARS: tuple[str, ...] = (
     CHAR_STAIRS_UP,
     CHAR_STAIRS_DOWN,
     *SCHOLAR_STAIR_CHARS,
+    CHAR_PIT_UP_MARKER,
 )
 CHAR_COLLAPSE: str = "O"
 # Decorations kept beside the field (Floor.decor): no rule reads them; only
