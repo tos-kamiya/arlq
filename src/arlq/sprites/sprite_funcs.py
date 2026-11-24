@@ -62,6 +62,7 @@ from .sprite_images import (
     respawn_column_image,
     smoke_image,
     soft_outline_image,
+    strength_shaded_image,
 )
 from .sprite_terrain import (
     BARRIER_REDUCED_SCALE,
@@ -359,6 +360,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         self._sprite_head_room = {}
         # Image data kept for followers' faded-outline copies, made on first use.
         self._sprite_data = {}
+        self._strength_images = {}
         self._follower_images = {}
         self._theme_floor_tiles = {}
         self._wall_rect_colors = {}
@@ -1458,6 +1460,14 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             return
         images = self._gray_images if self.map_mode else self._sprite_images
         picture = images[base]
+        if not is_player:
+            key = (base, self.map_mode)
+            if key not in self._strength_images:
+                data = self._sprite_data[base]
+                if self.map_mode:
+                    data = gray_image(data)
+                self._strength_images[key] = mipmapped(strength_shaded_image(data))
+            picture = self._strength_images[key]
         padding = max(1, round(self.scale))
         scale = (STRENGTH_SPRITE_SCALE * 1.8 * max(1, self._sprite_unit() - 2 * padding)
                  / SPRITE_REFERENCE_PIXELS)

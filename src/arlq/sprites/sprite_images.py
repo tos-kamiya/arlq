@@ -233,6 +233,19 @@ def ground_disc_image(half=None):
     return pyglet.image.ImageData(size, size, 'RGBA', bytes(rgba), pitch=size * 4)
 
 
+def strength_shaded_image(data):
+    """Darken the bottom of a strength-column sprite while preserving alpha."""
+    width, height = data.width, data.height
+    rgba = bytearray(data.get_data('RGBA', width * 4))
+    for y in range(height):
+        shade = 0.4 + 0.6 * min(1.0, y / max(1, height * 0.6))
+        for x in range(width):
+            offset = (y * width + x) * 4
+            for channel in range(3):
+                rgba[offset + channel] = round(rgba[offset + channel] * shade)
+    return pyglet.image.ImageData(width, height, 'RGBA', bytes(rgba), pitch=width * 4)
+
+
 def gray_image(data):
     """Grayscale copy of image data, keeping its alpha."""
     rgba = bytearray(data.get_data('RGBA', data.width * 4))

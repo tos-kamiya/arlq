@@ -840,6 +840,7 @@ def _strength_column_ui(monkeypatch, known_types):
     ui._initialize_state()
     ui.field_height = 21
     ui._sprite_images = {char: SimpleNamespace(width=100, height=120) for char in SPRITE_FILES}
+    ui._strength_images = {(char, False): image for char, image in ui._sprite_images.items()}
     ui._mark_images = {mark: SimpleNamespace(width=30, height=40) for mark in ("'", '"')}
     ui._known_types = known_types
     ui.map_mode = False
@@ -2566,6 +2567,14 @@ def _image(rows):
     height, width = len(rows), len(rows[0])
     data = bytes(value for row in rows for pixel in row for value in pixel)
     return pyglet.image.ImageData(width, height, 'RGBA', data, pitch=width * 4)
+
+
+def test_strength_shading_darkens_bottom_and_preserves_alpha():
+    data = _image([[(200, 100, 50, 128)]] * 5)
+    shaded = sprite_images.strength_shaded_image(data)
+    pixels = list(shaded.get_data('RGBA', 4))
+    assert pixels[:4] == [80, 40, 20, 128]
+    assert pixels[-4:] == [200, 100, 50, 128]
 
 
 def test_soft_outline_fades_only_dark_pixels_near_the_edge(monkeypatch):
