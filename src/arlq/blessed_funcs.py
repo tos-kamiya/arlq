@@ -22,9 +22,10 @@ from .treasure_particles import (
 )
 
 MIN_TERMINAL_WIDTH = 80
+WIDE_TERMINAL_WIDTH = d.FIELD_WIDTH * 2 + d.FIELD_SIDEBAR_GAP + 2
 MIN_TERMINAL_HEIGHT = 24
 TERMINAL_SIZE_MESSAGE = "Please resize the terminal to at least 80x24."
-WIDE_TERMINAL_SIZE_MESSAGE = "Please resize the terminal to at least 160x24."
+WIDE_TERMINAL_SIZE_MESSAGE = "Please resize the terminal to at least 154x24."
 
 
 def key_to_dir(key: str) -> Optional[d.Point]:
@@ -62,7 +63,7 @@ class BlessedUI(BlessedSettingsMixin):
         return BlessedMap(self.term, cell_width=2 if getattr(self, "wide", False) else 1)
 
     def _terminal_is_large_enough(self) -> bool:
-        width = MIN_TERMINAL_WIDTH * (2 if getattr(self, "wide", False) else 1)
+        width = WIDE_TERMINAL_WIDTH if getattr(self, "wide", False) else MIN_TERMINAL_WIDTH
         return self.term.width >= width and self.term.height >= MIN_TERMINAL_HEIGHT
 
     def _wait_for_terminal_size(self) -> None:
@@ -190,6 +191,14 @@ class BlessedUI(BlessedSettingsMixin):
                 ),
             ))
 
+        def put_info(x: int, y: int, text: str, color: Optional[str] = None,
+                     bold: bool = False, dim: bool = False):
+            output.append(self._map.screen_text(
+                x, y, text, lambda value: self._style(
+                    value, None if render_monochrome else color, bold, dim, None,
+                ),
+            ))
+
         player, px, py = None, None, None
         for entity in entities:
             if isinstance(entity, d.Player):
@@ -238,9 +247,9 @@ class BlessedUI(BlessedSettingsMixin):
                     if cell == d.CHAR_HIDDEN_D_GATE
                     else d.CHAR_FLOOR
                     if cell in d.HIDDEN_STAIRS_CHARS
-                    else "∆"
+                    else "↗"
                     if getattr(self, "wide", False) and cell == d.CHAR_STAIRS_UP
-                    else "∇"
+                    else "↘"
                     if getattr(self, "wide", False) and cell == d.CHAR_STAIRS_DOWN
                     else cell
                 )
@@ -251,6 +260,9 @@ class BlessedUI(BlessedSettingsMixin):
                     color = "black" if background == "red" else "red"
                     put(x, y, display_cell, color, dim=barrier_damage == 0, bg=background)
                     continue
+                if discovered and cell in (d.CHAR_STAIRS_UP, d.CHAR_STAIRS_DOWN):
+                    put(x, y, display_cell, "yellow", bold=True, bg=cell_background(x, y))
+                    continue
                 if discovered and cell in (*d.SCHOLAR_STAIR_CHARS, d.CHAR_PIT_UP_MARKER):
                     stair_glyph = (
                         d.CHAR_STAIRS_UP
@@ -259,7 +271,7 @@ class BlessedUI(BlessedSettingsMixin):
                     )
                     if getattr(self, "wide", False):
                         stair_glyph = ("▵" if cell == d.CHAR_PIT_UP_MARKER else
-                                       "∆" if cell == d.CHAR_SCHOLAR_STAIRS_UP else "∇")
+                                       "↗" if cell == d.CHAR_SCHOLAR_STAIRS_UP else "↘")
                     put(
                         x,
                         y,
@@ -509,13 +521,20 @@ class BlessedUI(BlessedSettingsMixin):
                 continue
             gauge_x = d.FIELD_WIDTH + d.FIELD_SIDEBAR_GAP + 2 - len(strength_char)
             known = is_player or ui_display.strength_label_known(strength_char, known_types)
-            put(gauge_x, y, strength_char, "white", bold=is_player, dim=not known, rank=True)
+            if getattr(self, "wide", False):
+                right = WIDE_TERMINAL_WIDTH
+                put_info(right - len(strength_char), y, strength_char, "white",
+                         bold=is_player, dim=not known)
+            else:
+                put(gauge_x, y, strength_char, "white", bold=is_player, dim=not known, rank=True)
 
         if stage_num in d.ELF_STAGES:
             progress_x = 0
             for label, achieved in ui_display.elf_stage_progress_marks(
                     player, stage_num, target_floors):
-                put(
+                if getattr(self, "wide", False) and progress_x:
+                    put_info(progress_x - 1, d.FIELD_HEIGHT - 1, " ")
+                (put_info if getattr(self, "wide", False) else put)(
                     progress_x,
                     d.FIELD_HEIGHT - 1,
                     label,
@@ -526,7 +545,9 @@ class BlessedUI(BlessedSettingsMixin):
         elif stage_num == 6:
             progress_x = 0
             for label, achieved in ui_display.stage6_progress_marks(player, target_floors):
-                put(
+                if getattr(self, "wide", False) and progress_x:
+                    put_info(progress_x - 1, d.FIELD_HEIGHT - 1, " ")
+                (put_info if getattr(self, "wide", False) else put)(
                     progress_x,
                     d.FIELD_HEIGHT - 1,
                     label,
@@ -535,8 +556,19 @@ class BlessedUI(BlessedSettingsMixin):
                 )
                 progress_x += len(label) + 1
 
+        if getattr(self, "wide", False) and stage_num in (*d.ELF_STAGES, 6):
+            progress_width = max(0, progress_x - 1)
+            if progress_width % 2:
+                put_info(progress_width, d.FIELD_HEIGHT - 1, " ")
+
         if floor_label:
-            put(d.FIELD_WIDTH - len(floor_label) - 2, d.FIELD_HEIGHT - 1, floor_label)
+            if getattr(self, "wide", False):
+                if len(floor_label) % 2:
+                    floor_label = " " + floor_label
+                put_info(self._map.map_x(d.FIELD_WIDTH) - len(floor_label),
+                         d.FIELD_HEIGHT - 1, floor_label)
+            else:
+                put(d.FIELD_WIDTH - len(floor_label) - 2, d.FIELD_HEIGHT - 1, floor_label)
 
         from .stage5 import TrialDialogue
 

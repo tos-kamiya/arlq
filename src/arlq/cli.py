@@ -161,7 +161,7 @@ def _prepare_cli_session(terminal_only=False, sprites_only=False):
         )
         terminal.add_argument(
             "--wide", action="store_true",
-            help="Use two terminal columns per map cell (requires a 160-column terminal).",
+            help="Use two terminal columns per map cell (requires a 154-column terminal).",
         )
     general.add_argument(
         "--lang",

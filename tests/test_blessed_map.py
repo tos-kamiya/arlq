@@ -154,11 +154,13 @@ def test_wide_ui_draws_map_sidebar_dialogue_and_status(monkeypatch):
     assert "<8,2>・" in output
     assert "<22,4>❜ " in output
     assert "<30,4>❞ " in output
-    assert f"<{(d.FIELD_WIDTH + d.FIELD_SIDEBAR_GAP) * 2},0>ｂ❜ " in output
+    assert f"<{d.FIELD_WIDTH * 2 + d.FIELD_SIDEBAR_GAP},0>b'" in output
     assert "<6,1>[bold:[yellow:< Hello]]" in output
     assert "<0,22>" in ui._draw_status_bar(player, 0)
     assert ui._terminal_is_large_enough()
-    term.width = 159
+    term.width = 154
+    assert ui._terminal_is_large_enough()
+    term.width = 153
     assert not ui._terminal_is_large_enough()
 
 
@@ -172,7 +174,11 @@ def test_terminal_stair_glyphs(wide, dots):
     term.home = term.clear = term.normal = ""
     ui = BlessedUI.__new__(BlessedUI)
     ui.term, ui.wide, ui.dots = term, wide, dots
-    ui._style = lambda text, *args, **kwargs: text
+    styles = []
+    def capture_style(text, color, bold, dim, bg):
+        styles.append((text, bold))
+        return text
+    ui._style = capture_style
     field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
     field[2][3:8] = [d.CHAR_STAIRS_UP, d.CHAR_STAIRS_DOWN,
                      d.CHAR_SCHOLAR_STAIRS_UP, d.CHAR_SCHOLAR_STAIRS_DOWN,
@@ -180,8 +186,9 @@ def test_terminal_stair_glyphs(wide, dots):
     seen = [[1] * d.FIELD_WIDTH for _ in field]
     player = d.Player(2, 2, 1, 100)
     output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[])
-    for x, glyph in zip(range(3, 8), ("∆", "∇", "∆", "∇", "▵") if wide else ("^", "v", "^", "v", "^")):
+    for x, glyph in zip(range(3, 8), ("↗", "↘", "↗", "↘", "▵") if wide else ("^", "v", "^", "v", "^")):
         assert f"<{x * (2 if wide else 1)},2>{glyph}" in output
+        assert any(text.startswith(glyph) and bold for text, bold in styles)
 
 
 def test_wide_walls_omitted_in_sprite_mode_use_small_squares():
@@ -208,6 +215,28 @@ def test_wide_walls_omitted_in_sprite_mode_use_small_squares():
     assert f"<{(d.FIELD_WIDTH - 2) * 2},3>□" in output
     assert f"<{(d.FIELD_WIDTH - 1) * 2},3>▫" in output
     assert "<2,4>□" in output
+
+
+def test_wide_progress_and_floor_labels_use_terminal_columns(monkeypatch):
+    from arlq import defs as d, display
+    from arlq.blessed_funcs import BlessedUI
+
+    term = TerminalStub()
+    term.home = term.clear = term.normal = ""
+    ui = BlessedUI.__new__(BlessedUI)
+    ui.term, ui.wide, ui.dots = term, True, False
+    ui._style = lambda text, *args, **kwargs: text
+    monkeypatch.setattr(display, "stage6_progress_marks", lambda *_: [("D", True), ("G", False)])
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    seen = [[1] * d.FIELD_WIDTH for _ in field]
+    output = ui._draw_stage([d.Player(4, 4, 1, 100)], field, seen, seen, set(),
+                            stage_num=6, stage_roster=[], floor_label="1/3")
+    y = d.FIELD_HEIGHT - 1
+    assert f"<0,{y}>D" in output
+    assert f"<1,{y}> " in output
+    assert f"<2,{y}>G" in output
+    assert f"<3,{y}> " in output
+    assert f"<{d.FIELD_WIDTH * 2 - 4},{y}> 1/3" in output
 
 
 @pytest.mark.parametrize("wide", [False, True])
