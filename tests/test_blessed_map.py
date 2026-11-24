@@ -149,8 +149,8 @@ def test_wide_ui_draws_map_sidebar_dialogue_and_status(monkeypatch):
     output = ui._draw_stage([player, *monsters], field, seen, seen, known, stage_roster=[],
                             message=TrialDialogue("Hello"), loop_trail_markers={(4, 2)})
     assert "<4,2>＠" in output
-    assert "<6,2>⌶" in output
-    assert "<10,2>⌶" in output
+    assert "<6,2>□" in output
+    assert "<10,2>□" in output
     assert "<8,2>・" in output
     assert "<22,4>❜ " in output
     assert "<30,4>❞ " in output
@@ -180,8 +180,34 @@ def test_terminal_stair_glyphs(wide, dots):
     seen = [[1] * d.FIELD_WIDTH for _ in field]
     player = d.Player(2, 2, 1, 100)
     output = ui._draw_stage([player], field, seen, seen, set(), stage_roster=[])
-    for x, glyph in zip(range(3, 8), ("↑", "↓", "↑", "↓", "⇡") if wide else ("^", "v", "^", "v", "^")):
+    for x, glyph in zip(range(3, 8), ("∆", "∇", "∆", "∇", "▵") if wide else ("^", "v", "^", "v", "^")):
         assert f"<{x * (2 if wide else 1)},2>{glyph}" in output
+
+
+def test_wide_walls_omitted_in_sprite_mode_use_small_squares():
+    from arlq import defs as d
+    from arlq.blessed_funcs import BlessedUI
+
+    term = TerminalStub()
+    term.home = term.clear = term.normal = ""
+    ui = BlessedUI.__new__(BlessedUI)
+    ui.term, ui.wide, ui.dots = term, True, False
+    ui._style = lambda text, *args, **kwargs: text
+    field = [[d.CHAR_FLOOR] * d.FIELD_WIDTH for _ in range(d.FIELD_HEIGHT)]
+    field[3][0:2] = [d.CHAR_WALL, d.CHAR_WALL]
+    field[3][-2:] = [d.CHAR_WALL, d.CHAR_WALL]
+    field[4][1] = d.CHAR_WALL
+    decor = [[d.DECOR_NONE] * d.FIELD_WIDTH for _ in field]
+    decor[3][0] = d.DECOR_OUTER_WALL
+    decor[3][-1] = d.DECOR_BURIED_WALL
+    seen = [[1] * d.FIELD_WIDTH for _ in field]
+    output = ui._draw_stage([d.Player(4, 4, 1, 100)], field, seen, seen, set(),
+                            stage_roster=[], decor=decor)
+    assert "<0,3>▫" in output
+    assert "<2,3>□" in output
+    assert f"<{(d.FIELD_WIDTH - 2) * 2},3>□" in output
+    assert f"<{(d.FIELD_WIDTH - 1) * 2},3>▫" in output
+    assert "<2,4>□" in output
 
 
 @pytest.mark.parametrize("wide", [False, True])

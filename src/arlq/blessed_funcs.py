@@ -231,15 +231,16 @@ class BlessedUI(BlessedSettingsMixin):
             for x, cell in enumerate(row):
                 display_cell = (
                     "+" if cell == d.CHAR_GOLEM_WALL
-                    else "⌶"
+                    else ("▫" if decor and decor[y][x] in
+                          (d.DECOR_OUTER_WALL, d.DECOR_BURIED_WALL) else "□")
                     if getattr(self, "wide", False) and cell in (d.CHAR_WALL, d.CHAR_HIDDEN_D_GATE)
                     else d.CHAR_WALL
                     if cell == d.CHAR_HIDDEN_D_GATE
                     else d.CHAR_FLOOR
                     if cell in d.HIDDEN_STAIRS_CHARS
-                    else "↑"
+                    else "∆"
                     if getattr(self, "wide", False) and cell == d.CHAR_STAIRS_UP
-                    else "↓"
+                    else "∇"
                     if getattr(self, "wide", False) and cell == d.CHAR_STAIRS_DOWN
                     else cell
                 )
@@ -257,8 +258,8 @@ class BlessedUI(BlessedSettingsMixin):
                         else d.CHAR_STAIRS_DOWN
                     )
                     if getattr(self, "wide", False):
-                        stair_glyph = ("⇡" if cell == d.CHAR_PIT_UP_MARKER else
-                                       "↑" if cell == d.CHAR_SCHOLAR_STAIRS_UP else "↓")
+                        stair_glyph = ("▵" if cell == d.CHAR_PIT_UP_MARKER else
+                                       "∆" if cell == d.CHAR_SCHOLAR_STAIRS_UP else "∇")
                     put(
                         x,
                         y,
