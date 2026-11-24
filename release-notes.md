@@ -1,5 +1,11 @@
 # ARLQ Release Notes
 
+## 6.10.12 - 2026-11-24
+
+- In `arlq-cli --wide`, use normal-width progress, floor and strength displays,
+  reduce the required terminal width to 154 columns, and show stairs as `↗`
+  and `↘`. Render terminal stairs in bold in both display modes.
+
 ## 6.10.11 - 2026-11-24
 
 - Refine the wall, stair and pit-climbing symbols in `arlq-cli --wide`;
