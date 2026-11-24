@@ -1,5 +1,10 @@
 # ARLQ Release Notes
 
+## 6.10.10 - 2026-11-24
+
+- In `arlq-cli --wide`, distinguish walls, stairs, the Dungeon Explorer's
+  pit-climbing markers, and the player's sword with clearer symbols.
+
 ## 6.10.9 - 2026-11-24
 
 - In `arlq-sprites`, torches light the dungeon's west and east edge walls,
