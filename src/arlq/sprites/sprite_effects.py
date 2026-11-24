@@ -154,8 +154,8 @@ TREASURE_GLOW_FPS = 30
 
 # The Stage 6 Dungeon Core running wild at the time limit
 # (draw_core_calamity): over CORE_CALAMITY_SECONDS the core blazes up while
-# arms of black smoke, rimmed with violet light, reach out from it and
-# scatter away (assets/effects/core-calamity, see build-core-calamity.py:
+# arms of black smoke, rimmed with violet light, and paler arms of whitish
+# smoke burst out from it and scatter away (assets/effects/core-calamity, see build-core-calamity.py:
 # each frame's smoke drawn over the floor, its glow and lightning added as
 # light). The eye of the arms, CORE_CALAMITY_FOOT of an image's height below
 # its centre, is on the core's cell; a full arm, CORE_CALAMITY_REACH of an

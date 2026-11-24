@@ -5,7 +5,9 @@ Built on build-vortex-storm.py: the same volume smoke lofted along spiral
 bands and seen from the same steep orthographic camera, but ARMS thin
 tentacle-like arms creep low over the floor (HEIGHT) instead of a tall
 funnel. Each arm is black smoke over a violet glowing sheath that shows
-round its edges, and white-violet lightning crackles between them.
+round its edges; WHITE_ARMS paler arms of whitish smoke reach out between
+them, and white-violet lightning crackles among them all. The arms barely
+curl (CURL), so they burst straight out rather than swirl.
 
 FRAMES frames are written, FPS a second, each as two layers
 (frame-NN-smoke.png, frame-NN-light.png): over GROW_FRAMES the arms reach
@@ -50,8 +52,8 @@ FRAMES, GROW_FRAMES, FPS = 20, 8, 10
 # their tips to SCATTER_HEAD, their roots to SCATTER_TAIL.
 SCATTER_HEAD, SCATTER_TAIL = 1.35, 1.0
 # How far an arm curls (radians) from the eye to its tip, and how much it
-# writhes.
-CURL, WRITHE = 2.4, 0.18
+# writhes. Kept small so the arms burst outwards instead of swirling.
+CURL, WRITHE = 0.45, 0.18
 BAND, FLAT = 0.055, 0.5
 SHEATH, SHEATH_PAD = 1.5, 0.012
 SHEATH_FLAT, SHEATH_DROP = 0.25, 0.02
@@ -66,6 +68,13 @@ for k in range(7):
     ARMS.append((2 * math.pi * k / 7 + rand.uniform(-0.25, 0.25),
                  rand.uniform(0.7, 1.0), BAND * rand.uniform(0.7, 1.2),
                  rand.uniform(0, 1)))
+# Whitish arms between the black ones, a little shorter and thinner.
+white_rand = random.Random(16)
+WHITE_ARMS = []
+for k in range(5):
+    WHITE_ARMS.append((2 * math.pi * (k + 0.5) / 5 + white_rand.uniform(-0.2, 0.2),
+                       white_rand.uniform(0.55, 0.85), BAND * white_rand.uniform(0.6, 0.9),
+                       white_rand.uniform(0, 1)))
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -178,6 +187,8 @@ def emission(name, color, strength):
 
 
 black_smoke = volume('Calamity black smoke', (0.02, 0.01, 0.035), DENSITY)
+white_smoke = volume('Calamity white smoke', (0.9, 0.88, 0.95), DENSITY,
+                     emission=(0.85, 0.82, 0.95), strength=5.0)
 # Barely there as smoke: it is the glow around the black.
 violet_sheath = volume('Calamity violet sheath', (0.3, 0.08, 0.5), 0.6,
                        emission=(0.55, 0.15, 1.0), strength=3.0, noise_scale=9.0)
@@ -227,8 +238,29 @@ def build(tail, head, scatter, phase):
     smoke, light = [], []
     steps = 90
     grow = min(head, 1.0)
-    for mat in (black_smoke, violet_sheath, bolt_glow):
+    for mat in (black_smoke, white_smoke, violet_sheath, bolt_glow):
         fade(mat, scatter)
+    for angle, length, band, writhe_phase in WHITE_ARMS:
+        points, radii = [], []
+        thick = band * (0.45 + 0.55 * grow) * (1 + 0.8 * scatter)
+        for i in range(steps + 1):
+            u = i / steps
+            points.append(arm_point(angle, length, writhe_phase, phase,
+                                    tail + (head - tail) * u))
+            profile = u ** 0.5 * (1 - u) ** 0.6 / 0.468
+            radii.append(0.01 + thick * profile)
+        radii[-1] = 0
+        if tail > 0:
+            radii[0] = 0
+        obj = tube('Calamity white arm', points, radii, white_smoke, flat=FLAT)
+        wobble = obj.modifiers.new('Smoke wobble', 'DISPLACE')
+        texture = bpy.data.textures.new('Calamity wobble', 'CLOUDS')
+        texture.noise_scale = 0.08
+        wobble.texture = texture
+        wobble.strength = 0.03
+        smoke.append(obj)
+        light.append(tube('Calamity white arm holdout', points,
+                          [r * HOLDOUT for r in radii], holdout, flat=FLAT))
     for angle, length, band, writhe_phase in ARMS:
         points, radii = [], []
         # Short while reaching out; spreading wider as they scatter.
