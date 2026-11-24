@@ -77,9 +77,13 @@ def convert(pixels, name, progress):
                         colors.append(rgb)
             if mask:
                 color = tuple(round(sum(c[k] for c in colors) / len(colors)) for k in range(3))
+                # The calamity's whitish arms: mostly pale, unsaturated dots.
+                pale = [c for c in colors if min(c) >= 95 and max(c) - min(c) <= 25]
+                if name == 'Core Calamity' and len(pale) * 2 >= len(colors):
+                    color = (225, 222, 232)
                 # Preview the storm's dark marks in grey while retaining
                 # the violet and other colors of its brighter details.
-                if name == 'Vortex' and max(color) < 65:
+                elif name == 'Vortex' and max(color) < 65:
                     color = (170, 170, 170)
                 elif max(color) < 55:
                     color = (130, 125, 145)
