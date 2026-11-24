@@ -408,7 +408,11 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
             opaque_rows = [y for y in range(data.height)
                            if any(rgba[y * row_bytes + 3:(y + 1) * row_bytes:4])]
             self._sprite_head_room[char] = data.height - 1 - max(opaque_rows, default=0)
-            self._gray_images[char] = mipmapped(gray_image(data))
+            gray_data = gray_image(data)
+            self._gray_images[char] = mipmapped(gray_data)
+            if len(char) == 1 and char != '@':
+                self._strength_images[(char, False)] = mipmapped(strength_shaded_image(data))
+                self._strength_images[(char, True)] = mipmapped(strength_shaded_image(gray_data))
         self._mark_images = {mark: mipmapped(pyglet.image.load(str(directory / filename)))
                              for mark, filename in MARK_FILES.items()
                              if (directory / filename).is_file()}
@@ -1461,13 +1465,7 @@ class SpriteUI(SpriteTerrainMixin, SpriteEffectsMixin, PygletUI):
         images = self._gray_images if self.map_mode else self._sprite_images
         picture = images[base]
         if not is_player:
-            key = (base, self.map_mode)
-            if key not in self._strength_images:
-                data = self._sprite_data[base]
-                if self.map_mode:
-                    data = gray_image(data)
-                self._strength_images[key] = mipmapped(strength_shaded_image(data))
-            picture = self._strength_images[key]
+            picture = self._strength_images[(base, self.map_mode)]
         padding = max(1, round(self.scale))
         scale = (STRENGTH_SPRITE_SCALE * 1.8 * max(1, self._sprite_unit() - 2 * padding)
                  / SPRITE_REFERENCE_PIXELS)

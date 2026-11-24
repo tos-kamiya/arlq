@@ -840,7 +840,8 @@ def _strength_column_ui(monkeypatch, known_types):
     ui._initialize_state()
     ui.field_height = 21
     ui._sprite_images = {char: SimpleNamespace(width=100, height=120) for char in SPRITE_FILES}
-    ui._strength_images = {(char, False): image for char, image in ui._sprite_images.items()}
+    ui._strength_images = {(char, mode): SimpleNamespace(width=100, height=120)
+                           for char in SPRITE_FILES for mode in (False, True)}
     ui._mark_images = {mark: SimpleNamespace(width=30, height=40) for mark in ("'", '"')}
     ui._known_types = known_types
     ui.map_mode = False
@@ -874,12 +875,21 @@ def test_strength_column_shows_sprites_of_identified_types_only(monkeypatch, lab
     ui, texts = _strength_column_ui(monkeypatch, known)
     ui._draw_strength_entry(3, label, label == '@')
     assert texts == [label]
-    expected = [ui._sprite_images.get(name) or ui._mark_images[name] for name in images]
+    expected = [(ui._sprite_images[name] if name == '@' else ui._strength_images[(name, False)])
+                if name in ui._sprite_images else ui._mark_images[name] for name in images]
     assert [piece.image for piece in ui._drawables] == expected
     # The sidebar sprites and their rank marks use 90% of the field scale.
     for piece in ui._drawables:
         assert piece.scale == pytest.approx(0.9 * 1.8 * 11 / SPRITE_REFERENCE_PIXELS)
         assert piece.opacity == sprite_funcs.STRENGTH_OPACITY
+
+
+def test_strength_column_uses_prepared_grayscale_image_in_map_mode(monkeypatch):
+    ui, _ = _strength_column_ui(monkeypatch, {'b'})
+    ui.map_mode = True
+    ui._gray_images = dict(ui._sprite_images)
+    ui._draw_strength_entry(3, 'b', False)
+    assert ui._drawables[0].image is ui._strength_images[('b', True)]
 
 
 def test_strength_label_uses_popup_font_and_overlay_position(monkeypatch):
