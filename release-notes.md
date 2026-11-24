@@ -1,5 +1,10 @@
 # ARLQ Release Notes
 
+## 6.10.11 - 2026-11-24
+
+- Refine the wall, stair and pit-climbing symbols in `arlq-cli --wide`;
+  walls buried or at the outer edge use a smaller square.
+
 ## 6.10.10 - 2026-11-24
 
 - In `arlq-cli --wide`, distinguish walls, stairs, the Dungeon Explorer's
