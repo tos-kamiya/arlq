@@ -293,6 +293,7 @@ _DIGIT_KEYS = {getattr(pgkey, "_%d" % n): "%d" % n for n in range(1, 10)}
 
 class PygletUI(PygletSettingsMixin):
     supports_horizontal_view = False
+    supports_fullscreen_toggle = False
     show_treasure_brackets = True
     show_core_brackets = True
     show_treasure_sparkles = True
@@ -2632,8 +2633,9 @@ class PygletUI(PygletSettingsMixin):
                             / self._menu_cell_size_x)
                 self._menu_mouse_regions.append((x, y - 0.2, x + width, y + 1, [symbol]))
                 self._menu_hover_regions.append((x, y - 0.2, x + width, y + 1, i))
+            help_y = base_y + MENU_ROW_SPACING * (stage_rows + 3) + 2
             self._draw_text(
-                (8, base_y + MENU_ROW_SPACING * (stage_rows + 3) + 2),
+                (8, help_y),
                 tr("[h]elp: controls (gamepad button unassigned)")
                 if self.gamepad_help_button is None
                 else tr("[h]elp / {button}: controls").format(
@@ -2641,6 +2643,12 @@ class PygletUI(PygletSettingsMixin):
                 ),
                 (145, 150, 160),
             )
+            if self.supports_fullscreen_toggle:
+                self._draw_text(
+                    (8, help_y + MENU_ROW_SPACING),
+                    tr("F11: toggle fullscreen"),
+                    (145, 150, 160),
+                )
 
             self._flip()
 

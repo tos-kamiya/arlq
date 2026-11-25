@@ -166,6 +166,7 @@
     "Press any key or {button} to return": "いずれかのキー、または{button}で戻る",
     "[h]elp: controls (gamepad button unassigned)": "[h] / 操作方法",
     "[h]elp / {button}: controls": "[h] / {button}: 操作方法",
+    "F11: toggle fullscreen": "F11: 全画面表示を切り替え",
     "S: show the seed": "S: シードを表示",
     "Q / Esc: quit the stage": "Q / Esc: ステージを終了",
     "Press any key to return": "いずれかのキーで戻る",
