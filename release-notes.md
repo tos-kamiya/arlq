@@ -1,5 +1,9 @@
 # ARLQ Release Notes
 
+## 6.10.14 - 2026-11-25
+
+- Show the F11 fullscreen shortcut on the `arlq-sprites` stage selection screen.
+
 ## 6.10.13 - 2026-11-24
 
 - In `arlq-sprites`, shade the lower part of monster images in the strength
